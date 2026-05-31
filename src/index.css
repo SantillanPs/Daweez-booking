@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 font-sans antialiased;
+    min-height: 100vh;
+  }
+
+  /* Admin portal resets dark theme (kept for fallback) */
+  body.admin-mode {
+    background: #F1F5F9 !important;
+    background-image: none !important;
+    background-attachment: initial !important;
+    color: #0F172A;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border: 1px solid transparent;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+body.admin-mode ::-webkit-scrollbar-track { background: #F1F5F9; }
+body.admin-mode ::-webkit-scrollbar-thumb { background: #CBD5E1; border-color: transparent; }
+body.admin-mode ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* Custom Animation Classes */
+@keyframes gold-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(184, 146, 81, 0.05) 25%,
+    rgba(184, 146, 81, 0.25) 50%,
+    rgba(184, 146, 81, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: gold-shimmer 2.5s infinite linear;
+}
+
+
