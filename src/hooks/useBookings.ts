@@ -5,11 +5,11 @@ import { Booking, Room, Venue, SyncFeed, BookingSource, BreakfastOrder, Equipmen
 export function useBookings() {
   const queryClient = useQueryClient()
 
-  // 1. Fetch Rooms List
+  // 1. Fetch Rooms List (Now async from Supabase/local)
   const { data: rooms = [], isLoading: isLoadingRooms } = useQuery<Room[]>({
     queryKey: ['rooms'],
     queryFn: async () => {
-      return syncEngine.DEFAULT_ROOMS
+      return await syncEngine.DEFAULT_ROOMS // Prepopulated list matches DB varchar ids perfectly
     },
     staleTime: Infinity,
   })
@@ -23,11 +23,11 @@ export function useBookings() {
     staleTime: Infinity,
   })
 
-  // 3. Fetch Bookings List
+  // 3. Fetch Bookings List (Async queries from Supabase/local)
   const { data: bookings = [], isLoading: isLoadingBookings } = useQuery<Booking[]>({
     queryKey: ['bookings'],
     queryFn: async () => {
-      return syncEngine.getBookings()
+      return await syncEngine.getBookings()
     },
     refetchInterval: 5000, // Poll every 5s for active 30-min lock countdowns & OTA syncs
   })
@@ -36,7 +36,7 @@ export function useBookings() {
   const { data: feeds = [], isLoading: isLoadingFeeds } = useQuery<SyncFeed[]>({
     queryKey: ['feeds'],
     queryFn: async () => {
-      return syncEngine.getFeeds()
+      return await syncEngine.getFeeds()
     }
   })
 
@@ -57,11 +57,11 @@ export function useBookings() {
       const { roomId, venueId, guestName, guestEmail, guestPhone, checkIn, checkOut, breakfastOrders, equipmentRentals, eventAddons } = params
       
       // Safety guard check
-      if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut)) {
-        throw new Error('This chamber is no longer available for the selected dates.')
+      if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings)) {
+        throw new Error('This room is no longer available for the selected dates.')
       }
 
-      if (venueId && !syncEngine.isVenueAvailable(venueId, checkIn)) {
+      if (venueId && !syncEngine.isVenueAvailable(venueId, checkIn, bookings)) {
         throw new Error('This event venue is already reserved for the selected date.')
       }
 
@@ -74,7 +74,8 @@ export function useBookings() {
         guestEmail,
         breakfastOrders,
         equipmentRentals,
-        eventAddons
+        eventAddons,
+        bookingsList: bookings
       })
 
       const now = new Date()
@@ -101,8 +102,8 @@ export function useBookings() {
         expires_at: expires.toISOString()
       }
 
-      const current = syncEngine.getBookings()
-      syncEngine.saveBookings([...current, newBooking])
+      const current = await syncEngine.getBookings()
+      await syncEngine.saveBookings([...current, newBooking])
       return newBooking
     },
     onSuccess: () => {
@@ -113,7 +114,7 @@ export function useBookings() {
   // 6. Mutation: Confirm Pending Booking (Permanent Block)
   const confirmBookingMutation = useMutation({
     mutationFn: async (bookingId: string) => {
-      const current = syncEngine.getBookings()
+      const current = await syncEngine.getBookings()
       const updated = current.map(b => {
         if (b.id === bookingId) {
           return {
@@ -124,7 +125,7 @@ export function useBookings() {
         }
         return b
       })
-      syncEngine.saveBookings(updated)
+      await syncEngine.saveBookings(updated)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
@@ -134,9 +135,9 @@ export function useBookings() {
   // 7. Mutation: Delete/Cancel Booking
   const cancelBookingMutation = useMutation({
     mutationFn: async (bookingId: string) => {
-      const current = syncEngine.getBookings()
+      const current = await syncEngine.getBookings()
       const filtered = current.filter(b => b.id !== bookingId)
-      syncEngine.saveBookings(filtered)
+      await syncEngine.saveBookings(filtered)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
@@ -158,14 +159,15 @@ export function useBookings() {
       breakfastOrders?: BreakfastOrder[]
       equipmentRentals?: EquipmentRental
       eventAddons?: EventAddons
+      rateMultiplier?: number
     }) => {
-      const { roomId, venueId, guestName, guestEmail, guestPhone, checkIn, checkOut, source, status, breakfastOrders, equipmentRentals, eventAddons } = params
+      const { roomId, venueId, guestName, guestEmail, guestPhone, checkIn, checkOut, source, status, breakfastOrders, equipmentRentals, eventAddons, rateMultiplier = 1.0 } = params
 
-      if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut)) {
+      if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings)) {
         throw new Error('The room is already booked or blocked for these dates.')
       }
 
-      if (venueId && !syncEngine.isVenueAvailable(venueId, checkIn)) {
+      if (venueId && !syncEngine.isVenueAvailable(venueId, checkIn, bookings)) {
         throw new Error('This venue is already reserved for the selected date.')
       }
 
@@ -178,7 +180,9 @@ export function useBookings() {
         guestEmail,
         breakfastOrders,
         equipmentRentals,
-        eventAddons
+        eventAddons,
+        bookingsList: bookings,
+        rateMultiplier
       })
 
       const newBooking: Booking = {
@@ -202,8 +206,8 @@ export function useBookings() {
         expires_at: null
       }
 
-      const current = syncEngine.getBookings()
-      syncEngine.saveBookings([...current, newBooking])
+      const current = await syncEngine.getBookings()
+      await syncEngine.saveBookings([...current, newBooking])
       return newBooking
     },
     onSuccess: () => {
@@ -214,7 +218,7 @@ export function useBookings() {
   // 9. Mutation: Trigger Simulated OTA Feed Sync
   const triggerOTASyncMutation = useMutation({
     mutationFn: async () => {
-      return syncEngine.runSimulatedOTASync()
+      return await syncEngine.runSimulatedOTASync()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
@@ -225,7 +229,7 @@ export function useBookings() {
   // 10. Mutation: Update Room iCal Feeds URLs
   const updateFeedUrlsMutation = useMutation({
     mutationFn: async (updatedFeeds: SyncFeed[]) => {
-      syncEngine.saveFeeds(updatedFeeds)
+      await syncEngine.saveFeeds(updatedFeeds)
       return updatedFeeds
     },
     onSuccess: () => {

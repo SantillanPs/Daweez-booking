@@ -1,0 +1,1212 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "plum-hotel-booking",
+    "languages": [
+      "TypeScript",
+      "JavaScript",
+      "CSS",
+      "HTML",
+      "SQL",
+      "JSON",
+      "Markdown"
+    ],
+    "frameworks": [
+      "React",
+      "Supabase",
+      "TanStack Query",
+      "TanStack Table",
+      "Tailwind CSS",
+      "Vite"
+    ],
+    "description": "Plum Hotel Booking is a modern hotel reservation platform built with React, TypeScript, and Vite. It utilizes Supabase for backend services (Auth, Database, Storage) and features a sync engine for iCal integration.",
+    "analyzedAt": "2026-06-01T05:34:24.452Z",
+    "gitCommitHash": "4beba2788a1b22f27032c1423c4d7f0dabaf1699"
+  },
+  "nodes": [
+    {
+      "id": "file:src/components/AdminPortal.tsx",
+      "type": "file",
+      "name": "AdminPortal.tsx",
+      "filePath": "src/components/AdminPortal.tsx",
+      "summary": "The main administrative interface for property management, featuring an authentication gate, occupancy analytics, a room/housekeeping registry, and interactive schedulers for booking management.",
+      "tags": [
+        "ui",
+        "admin",
+        "pms",
+        "scheduler"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/components/ChatbotWidget.tsx",
+      "type": "file",
+      "name": "ChatbotWidget.tsx",
+      "filePath": "src/components/ChatbotWidget.tsx",
+      "summary": "A floating digital concierge assistant providing automated guest support, checking availability, and explaining pricing and rules through a chat interface.",
+      "tags": [
+        "ui",
+        "chatbot",
+        "concierge"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/components/GuestPortal.tsx",
+      "type": "file",
+      "name": "GuestPortal.tsx",
+      "filePath": "src/components/GuestPortal.tsx",
+      "summary": "The primary guest-facing interface for browsing room/venue availability and completing the multi-step booking process with integrated payment locking.",
+      "tags": [
+        "ui",
+        "guest",
+        "booking"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/hooks/useBookings.ts",
+      "type": "file",
+      "name": "useBookings.ts",
+      "filePath": "src/hooks/useBookings.ts",
+      "summary": "A custom React hook that orchestrates data fetching and mutations for rooms, venues, bookings, and sync feeds using TanStack Query.",
+      "tags": [
+        "hook",
+        "data",
+        "state"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/types/booking.ts",
+      "type": "file",
+      "name": "booking.ts",
+      "filePath": "src/types/booking.ts",
+      "summary": "Domain model definitions for the booking system, including interfaces for Rooms, Venues, Bookings, and synchronization feeds.",
+      "tags": [
+        "types",
+        "domain-model"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/utils/supabaseClient.ts",
+      "type": "file",
+      "name": "supabaseClient.ts",
+      "filePath": "src/utils/supabaseClient.ts",
+      "summary": "Configuration and initialization of the Supabase client for remote database connectivity.",
+      "tags": [
+        "utils",
+        "database",
+        "config"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/utils/syncEngine.ts",
+      "type": "file",
+      "name": "syncEngine.ts",
+      "filePath": "src/utils/syncEngine.ts",
+      "summary": "The core business logic engine responsible for availability checks, dynamic pricing, iCal synchronization, and persistence (Supabase/LocalStorage).",
+      "tags": [
+        "utils",
+        "logic",
+        "sync",
+        "pricing"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "class:src/types/booking.ts:Room",
+      "type": "class",
+      "name": "Room",
+      "filePath": "src/types/booking.ts",
+      "summary": "Interface defining properties of a rental room, including price, capacity, and descriptive metadata.",
+      "tags": [
+        "interface",
+        "domain"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:src/types/booking.ts:Venue",
+      "type": "class",
+      "name": "Venue",
+      "filePath": "src/types/booking.ts",
+      "summary": "Interface for event venues, supporting equipment tracking and capacity constraints.",
+      "tags": [
+        "interface",
+        "domain"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:src/types/booking.ts:Booking",
+      "type": "class",
+      "name": "Booking",
+      "filePath": "src/types/booking.ts",
+      "summary": "The central entity representing a reservation, tracking guest details, dates, financial status, and add-ons.",
+      "tags": [
+        "interface",
+        "domain"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/hooks/useBookings.ts:useBookings",
+      "type": "function",
+      "name": "useBookings",
+      "filePath": "src/hooks/useBookings.ts",
+      "summary": "Main hook providing reactive state and methods for the entire booking lifecycle.",
+      "tags": [
+        "hook",
+        "api"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:src/utils/syncEngine.ts:calculatePricing",
+      "type": "function",
+      "name": "calculatePricing",
+      "filePath": "src/utils/syncEngine.ts",
+      "summary": "Calculates the total invoice breakdown, applying loyalty discounts, dynamic multipliers, and add-on costs.",
+      "tags": [
+        "logic",
+        "pricing"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:src/utils/syncEngine.ts:isRoomAvailable",
+      "type": "function",
+      "name": "isRoomAvailable",
+      "filePath": "src/utils/syncEngine.ts",
+      "summary": "Collision detection logic that validates if a room is free for a specific date range.",
+      "tags": [
+        "logic",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/utils/syncEngine.ts:runSimulatedOTASync",
+      "type": "function",
+      "name": "runSimulatedOTASync",
+      "filePath": "src/utils/syncEngine.ts",
+      "summary": "Simulates fetching and merging iCal data from external channels like Airbnb and Booking.com.",
+      "tags": [
+        "logic",
+        "sync"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/App.tsx",
+      "type": "file",
+      "name": "App.tsx",
+      "filePath": "src/App.tsx",
+      "summary": "Root component of the application, managing high-level routing between Guest and Admin portals and initializing the TanStack Query client.",
+      "tags": [
+        "react",
+        "component",
+        "routing",
+        "tanstack-query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/App.tsx:App",
+      "type": "function",
+      "name": "App",
+      "filePath": "src/App.tsx",
+      "summary": "The main App functional component that handles conditional rendering of portals based on the current view state.",
+      "tags": [
+        "react",
+        "hook",
+        "state"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/components/MainLayout.tsx",
+      "type": "file",
+      "name": "MainLayout.tsx",
+      "filePath": "src/components/MainLayout.tsx",
+      "summary": "A layout wrapper component providing consistent styling, background gradients, and a central container for application content.",
+      "tags": [
+        "react",
+        "component",
+        "layout",
+        "styling"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/components/MainLayout.tsx:MainLayout",
+      "type": "function",
+      "name": "MainLayout",
+      "filePath": "src/components/MainLayout.tsx",
+      "summary": "A functional component that wraps children with a styled main container and decorative background elements.",
+      "tags": [
+        "react",
+        "props"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/main.tsx",
+      "type": "file",
+      "name": "main.tsx",
+      "filePath": "src/main.tsx",
+      "summary": "Entry point of the React application that initializes the root element and renders the App component within StrictMode.",
+      "tags": [
+        "react",
+        "entry-point"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:supabase/migrations/schema.sql",
+      "type": "file",
+      "name": "schema.sql",
+      "filePath": "supabase/migrations/schema.sql",
+      "summary": "Main database schema definition for the L'Etoile Central Channel Manager. Defines rooms, bookings, and iCal feed tables with associated security policies and seed data.",
+      "tags": [
+        "sql",
+        "migration",
+        "supabase",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:public:rooms",
+      "type": "table",
+      "name": "rooms",
+      "summary": "Stores hotel room details including room number, name, base price, capacity, and description.",
+      "tags": [
+        "database",
+        "schema",
+        "master-data"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:public:bookings",
+      "type": "table",
+      "name": "bookings",
+      "summary": "Records room reservations with guest information, check-in/out dates, booking source (website, airbnb, etc.), and status.",
+      "tags": [
+        "database",
+        "schema",
+        "transactions"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:public:ical_feeds",
+      "type": "table",
+      "name": "ical_feeds",
+      "summary": "Manages external iCal subscription feeds for syncing room availability with external channels like Airbnb and Booking.com.",
+      "tags": [
+        "database",
+        "schema",
+        "integration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "concept:rls_policies",
+      "type": "concept",
+      "name": "Row Level Security (RLS)",
+      "summary": "Security layer controlling access to database tables based on user authentication and roles (public vs authenticated).",
+      "tags": [
+        "security",
+        "supabase"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "Primary project documentation. Provides an overview of the Plum Hotel Booking application, including its purpose, features (automated check-ins, multi-platform sync, chatbot assistant), tech stack (Supabase, Vite, React), and setup instructions. It also outlines the core features for both guest and admin portals.",
+      "tags": [
+        "documentation",
+        "overview",
+        "setup",
+        "features"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:index.html",
+      "type": "file",
+      "name": "index.html",
+      "filePath": "index.html",
+      "summary": "Main entry point HTML file for the Vite application. Defines the basic document structure, sets the favicon, and includes the main TypeScript entry point (src/main.tsx).",
+      "tags": [
+        "entrypoint",
+        "html",
+        "structure"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/components/GuestPortal.tsx:GuestPortal",
+      "type": "function",
+      "name": "GuestPortal",
+      "filePath": "src/components/GuestPortal.tsx",
+      "summary": "The primary guest-facing functional component for browsing availability and managing the multi-step booking process.",
+      "tags": [
+        "react",
+        "component",
+        "guest"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:src/components/AdminPortal.tsx:AdminPortal",
+      "type": "function",
+      "name": "AdminPortal",
+      "filePath": "src/components/AdminPortal.tsx",
+      "summary": "The main administrative functional component featuring a dashboard, scheduler, and channel management tools.",
+      "tags": [
+        "react",
+        "component",
+        "admin"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:src/components/ChatbotWidget.tsx:ChatbotWidget",
+      "type": "function",
+      "name": "ChatbotWidget",
+      "filePath": "src/components/ChatbotWidget.tsx",
+      "summary": "A React functional component providing a simulated chat interface for automated guest assistance.",
+      "tags": [
+        "react",
+        "component",
+        "chatbot"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:package.json",
+      "type": "config",
+      "name": "package.json",
+      "filePath": "package.json",
+      "summary": "Project manifest file. Defines dependencies, scripts, and metadata for the application. Key dependencies include React, Lucide-React for icons, Supabase for backend, and Tailwind CSS for styling. Includes development scripts for building, linting, and previewing the app.",
+      "tags": [
+        "config",
+        "dependencies",
+        "manifest",
+        "scripts"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:tsconfig.app.json",
+      "type": "config",
+      "name": "tsconfig.app.json",
+      "filePath": "tsconfig.app.json",
+      "summary": "TypeScript configuration for the application source code. Specifies compiler options like target, module system (ESNext), and strict type checking. It also configures paths for aliasing and includes source files in the 'src' directory.",
+      "tags": [
+        "typescript",
+        "config",
+        "compiler"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:tsconfig.json",
+      "type": "config",
+      "name": "tsconfig.json",
+      "filePath": "tsconfig.json",
+      "summary": "Root TypeScript configuration file. It references other tsconfig files (tsconfig.app.json, tsconfig.node.json) to manage configuration for different parts of the project.",
+      "tags": [
+        "typescript",
+        "config"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:tsconfig.node.json",
+      "type": "config",
+      "name": "tsconfig.node.json",
+      "filePath": "tsconfig.node.json",
+      "summary": "TypeScript configuration for Node.js environments, specifically for the Vite configuration (vite.config.ts). Sets appropriate compiler options for modern Node.js versions.",
+      "tags": [
+        "typescript",
+        "config",
+        "node"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:.understand-anything/.understandignore",
+      "type": "config",
+      "name": ".understandignore",
+      "filePath": ".understand-anything/.understandignore",
+      "summary": "Exclusion patterns for code analysis, preventing noise from logs, environment files, and temporary assets.",
+      "tags": [
+        "understand-anything",
+        "config",
+        "ignore"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:eslint.config.js",
+      "type": "config",
+      "name": "ESLint Config",
+      "filePath": "eslint.config.js",
+      "summary": "Flat configuration for ESLint, enforcing code quality and consistency for TypeScript and React components.",
+      "tags": [
+        "eslint",
+        "config",
+        "typescript",
+        "react",
+        "linting"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:postcss.config.js",
+      "type": "config",
+      "name": "PostCSS Config",
+      "filePath": "postcss.config.js",
+      "summary": "Configures PostCSS plugins, enabling Tailwind CSS and Autoprefixer for the build pipeline.",
+      "tags": [
+        "postcss",
+        "config",
+        "tailwindcss",
+        "autoprefixer"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/App.css",
+      "type": "file",
+      "name": "App Styles",
+      "filePath": "src/App.css",
+      "summary": "Global layout and component-specific styles, including hero sections, counters, and responsive documentation blocks.",
+      "tags": [
+        "css",
+        "styles",
+        "layout",
+        "responsive"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/index.css",
+      "type": "file",
+      "name": "Index Styles",
+      "filePath": "src/index.css",
+      "summary": "Main entry point for styles, loading typography and Tailwind directives while defining core theme overrides.",
+      "tags": [
+        "css",
+        "tailwind",
+        "typography",
+        "theme"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/utils/cn.ts",
+      "type": "file",
+      "name": "Class Name Utility",
+      "filePath": "src/utils/cn.ts",
+      "summary": "Helper module for merging Tailwind CSS classes conditionally.",
+      "tags": [
+        "utility",
+        "tailwind",
+        "styles"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/utils/cn.ts:cn",
+      "type": "function",
+      "name": "cn",
+      "filePath": "src/utils/cn.ts",
+      "summary": "Combines class names using clsx and tailwind-merge, handling conflicts and conditional logic.",
+      "tags": [
+        "utility",
+        "helper"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "endpoint:supabase/functions/export-ical/index.ts:export-ical",
+      "type": "endpoint",
+      "name": "Export iCal",
+      "filePath": "supabase/functions/export-ical/index.ts",
+      "summary": "API endpoint that serves room availability as a standard iCal feed (RFC 5545) for external calendar synchronization.",
+      "tags": [
+        "supabase",
+        "edge-function",
+        "ical",
+        "api"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "service:supabase/functions/sync-ical/index.ts",
+      "type": "service",
+      "name": "iCal Sync Worker",
+      "filePath": "supabase/functions/sync-ical/index.ts",
+      "summary": "Automated sync service that fetches external booking feeds and updates the internal database availability.",
+      "tags": [
+        "supabase",
+        "edge-function",
+        "sync",
+        "automation"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:supabase/functions/sync-ical/index.ts:parseiCal",
+      "type": "function",
+      "name": "parseiCal",
+      "filePath": "supabase/functions/sync-ical/index.ts",
+      "summary": "Parses iCalendar formatted text into structured event objects.",
+      "tags": [
+        "parser",
+        "ical"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:supabase/functions/sync-ical/index.ts:parseDate",
+      "type": "function",
+      "name": "parseDate",
+      "filePath": "supabase/functions/sync-ical/index.ts",
+      "summary": "Converts iCal date strings into SQL-friendly date formats.",
+      "tags": [
+        "utility",
+        "formatter"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:tailwind.config.js",
+      "type": "config",
+      "name": "Tailwind Config",
+      "filePath": "tailwind.config.js",
+      "summary": "Defines the 'Plum' and 'Champagne' design system tokens, including colors, fonts, and custom animations.",
+      "tags": [
+        "tailwind",
+        "config",
+        "design-system",
+        "theme"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:vite.config.ts",
+      "type": "config",
+      "name": "Vite Config",
+      "filePath": "vite.config.ts",
+      "summary": "Development and build configuration for Vite, setting up React support and path aliasing.",
+      "tags": [
+        "vite",
+        "config",
+        "build-tool"
+      ],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:src/components/AdminPortal.tsx",
+      "target": "file:src/hooks/useBookings.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/AdminPortal.tsx",
+      "target": "file:src/types/booking.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/AdminPortal.tsx",
+      "target": "file:src/utils/syncEngine.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/ChatbotWidget.tsx",
+      "target": "file:src/hooks/useBookings.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/ChatbotWidget.tsx",
+      "target": "file:src/types/booking.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/ChatbotWidget.tsx",
+      "target": "file:src/utils/syncEngine.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/GuestPortal.tsx",
+      "target": "file:src/hooks/useBookings.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/GuestPortal.tsx",
+      "target": "file:src/types/booking.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/GuestPortal.tsx",
+      "target": "file:src/utils/syncEngine.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/hooks/useBookings.ts",
+      "target": "file:src/types/booking.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/hooks/useBookings.ts",
+      "target": "file:src/utils/syncEngine.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/utils/syncEngine.ts",
+      "target": "file:src/types/booking.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/utils/syncEngine.ts",
+      "target": "file:src/utils/supabaseClient.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/AdminPortal.tsx",
+      "target": "function:src/hooks/useBookings.ts:useBookings",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/ChatbotWidget.tsx",
+      "target": "function:src/hooks/useBookings.ts:useBookings",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/GuestPortal.tsx",
+      "target": "function:src/hooks/useBookings.ts:useBookings",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/AdminPortal.tsx",
+      "target": "function:src/utils/syncEngine.ts:calculatePricing",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/GuestPortal.tsx",
+      "target": "function:src/utils/syncEngine.ts:calculatePricing",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/hooks/useBookings.ts",
+      "target": "function:src/utils/syncEngine.ts:calculatePricing",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/types/booking.ts",
+      "target": "class:src/types/booking.ts:Room",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/types/booking.ts",
+      "target": "class:src/types/booking.ts:Venue",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/types/booking.ts",
+      "target": "class:src/types/booking.ts:Booking",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/hooks/useBookings.ts",
+      "target": "function:src/hooks/useBookings.ts:useBookings",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/utils/syncEngine.ts",
+      "target": "function:src/utils/syncEngine.ts:calculatePricing",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/utils/syncEngine.ts",
+      "target": "function:src/utils/syncEngine.ts:isRoomAvailable",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/utils/syncEngine.ts",
+      "target": "function:src/utils/syncEngine.ts:runSimulatedOTASync",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:App",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "file:src/components/MainLayout.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "file:src/components/GuestPortal.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "file:src/components/AdminPortal.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "file:src/components/ChatbotWidget.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/components/MainLayout.tsx:MainLayout",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/MainLayout.tsx",
+      "target": "function:src/components/MainLayout.tsx:MainLayout",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/main.tsx",
+      "target": "file:src/App.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/main.tsx",
+      "target": "file:src/index.css",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/main.tsx",
+      "target": "function:src/App.tsx:App",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:supabase/migrations/schema.sql",
+      "target": "table:public:rooms",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:supabase/migrations/schema.sql",
+      "target": "table:public:bookings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:supabase/migrations/schema.sql",
+      "target": "table:public:ical_feeds",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:public:bookings",
+      "target": "table:public:rooms",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:public:ical_feeds",
+      "target": "table:public:rooms",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:supabase/migrations/schema.sql",
+      "target": "concept:rls_policies",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:index.html",
+      "target": "file:src/main.tsx",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "config:package.json",
+      "target": "file:index.html",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:tsconfig.json",
+      "target": "config:tsconfig.app.json",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:tsconfig.json",
+      "target": "config:tsconfig.node.json",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:README.md",
+      "target": "config:package.json",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "config:postcss.config.js",
+      "target": "config:tailwind.config.js",
+      "type": "configures",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/index.css",
+      "target": "file:src/main.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/utils/cn.ts",
+      "target": "function:src/utils/cn.ts:cn",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "service:supabase/functions/sync-ical/index.ts",
+      "target": "function:supabase/functions/sync-ical/index.ts:parseiCal",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "service:supabase/functions/sync-ical/index.ts",
+      "target": "function:supabase/functions/sync-ical/index.ts:parseDate",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "config:tailwind.config.js",
+      "target": "file:src/index.css",
+      "type": "configures",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "config:vite.config.ts",
+      "target": "file:src/main.tsx",
+      "type": "configures",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/components/GuestPortal.tsx:GuestPortal",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/components/AdminPortal.tsx:AdminPortal",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/components/ChatbotWidget.tsx:ChatbotWidget",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/GuestPortal.tsx",
+      "target": "function:src/components/GuestPortal.tsx:GuestPortal",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/AdminPortal.tsx",
+      "target": "function:src/components/AdminPortal.tsx:AdminPortal",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/components/ChatbotWidget.tsx",
+      "target": "function:src/components/ChatbotWidget.tsx:ChatbotWidget",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:supabase/functions/export-ical/index.ts:export-ical",
+      "target": "table:public:bookings",
+      "type": "reads_from",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "service:supabase/functions/sync-ical/index.ts",
+      "target": "table:public:ical_feeds",
+      "type": "reads_from",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "service:supabase/functions/sync-ical/index.ts",
+      "target": "table:public:bookings",
+      "type": "writes_to",
+      "weight": 0.8,
+      "direction": "forward"
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:frontend-ui",
+      "name": "Frontend UI",
+      "description": "React components, layouts, and global styles responsible for user interaction and rendering.",
+      "nodeIds": [
+        "file:src/App.tsx",
+        "file:src/main.tsx",
+        "file:src/components/AdminPortal.tsx",
+        "file:src/components/ChatbotWidget.tsx",
+        "file:src/components/GuestPortal.tsx",
+        "file:src/components/MainLayout.tsx",
+        "file:src/App.css",
+        "file:src/index.css",
+        "file:src/utils/cn.ts",
+        "file:index.html"
+      ]
+    },
+    {
+      "id": "layer:state-&-data-fetching",
+      "name": "State & Data Fetching",
+      "description": "Custom React hooks for managing application state and orchestrating data fetching with TanStack Query.",
+      "nodeIds": [
+        "file:src/hooks/useBookings.ts"
+      ]
+    },
+    {
+      "id": "layer:core-logic",
+      "name": "Core Logic",
+      "description": "Core domain logic, synchronization services, and pricing engines.",
+      "nodeIds": [
+        "file:src/utils/syncEngine.ts"
+      ]
+    },
+    {
+      "id": "layer:data-access",
+      "name": "Data Access",
+      "description": "Database client configuration and initialization for Supabase.",
+      "nodeIds": [
+        "file:src/utils/supabaseClient.ts"
+      ]
+    },
+    {
+      "id": "layer:domain-models",
+      "name": "Domain Models",
+      "description": "TypeScript type definitions and domain modeling shared across the application.",
+      "nodeIds": [
+        "file:src/types/booking.ts"
+      ]
+    },
+    {
+      "id": "layer:backend-services",
+      "name": "Backend Services",
+      "description": "Supabase edge functions for backend operations like iCal feed export and synchronization.",
+      "nodeIds": [
+        "endpoint:supabase/functions/export-ical/index.ts:export-ical",
+        "service:supabase/functions/sync-ical/index.ts"
+      ]
+    },
+    {
+      "id": "layer:database-layer",
+      "name": "Database Layer",
+      "description": "Database schemas, tables, and migrations defining the persistence layer.",
+      "nodeIds": [
+        "file:supabase/migrations/schema.sql",
+        "table:public:rooms",
+        "table:public:bookings",
+        "table:public:ical_feeds"
+      ]
+    },
+    {
+      "id": "layer:configuration-&-documentation",
+      "name": "Configuration & Documentation",
+      "description": "Project setup, build, styling, linting configurations, and project documentation.",
+      "nodeIds": [
+        "config:package.json",
+        "config:tsconfig.app.json",
+        "config:tsconfig.json",
+        "config:tsconfig.node.json",
+        "config:vite.config.ts",
+        "config:tailwind.config.js",
+        "config:eslint.config.js",
+        "config:postcss.config.js",
+        "config:.understand-anything/.understandignore",
+        "document:README.md"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Welcome to Plum Hotel Booking",
+      "description": "Start here to understand the big picture. Plum Hotel Booking is a full-stack reservation system combining a React frontend with Supabase backend services.",
+      "nodeIds": [
+        "document:README.md",
+        "file:src/main.tsx",
+        "file:src/App.tsx"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "The Data Foundation",
+      "description": "Explore the core domain models and database schema that power the entire application.",
+      "nodeIds": [
+        "file:src/types/booking.ts",
+        "file:supabase/migrations/schema.sql",
+        "table:public:bookings",
+        "table:public:rooms"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Core Business Logic: The Sync Engine",
+      "description": "This is the 'brain' of the application. It handles room availability, pricing calculations, and synchronization with external iCal feeds.",
+      "nodeIds": [
+        "file:src/utils/syncEngine.ts",
+        "file:src/hooks/useBookings.ts"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Guest Experience",
+      "description": "See how guests interact with the platform, from browsing rooms to booking their stay, including the digital concierge.",
+      "nodeIds": [
+        "file:src/components/GuestPortal.tsx",
+        "file:src/components/ChatbotWidget.tsx"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "Administrative Control",
+      "description": "The Admin Portal provides deep visibility into bookings, availability, and system configuration.",
+      "nodeIds": [
+        "file:src/components/AdminPortal.tsx"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "Backend Services & Automation",
+      "description": "Understand how the system maintains data integrity and provides external integrations via Supabase Edge Functions.",
+      "nodeIds": [
+        "service:supabase/functions/sync-ical/index.ts",
+        "endpoint:supabase/functions/export-ical/index.ts:export-ical",
+        "table:public:ical_feeds"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,851 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "4beba2788a1b22f27032c1423c4d7f0dabaf1699",
+  "generatedAt": "2026-06-01T06:51:51.866Z",
+  "files": {
+    "src/components/AdminPortal.tsx": {
+      "filePath": "src/components/AdminPortal.tsx",
+      "contentHash": "d9445beb5813d6ec378b76108410673bcee35761ccd68d3afe0378380071c139",
+      "functions": [
+        {
+          "name": "AdminPortal",
+          "params": [
+            "{ onNavigateToGuest }"
+          ],
+          "exported": true,
+          "lineCount": 2440
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "React",
+            "useState",
+            "useEffect"
+          ]
+        },
+        {
+          "source": "@tanstack/react-query",
+          "specifiers": [
+            "useQueryClient"
+          ]
+        },
+        {
+          "source": "../hooks/useBookings",
+          "specifiers": [
+            "useBookings"
+          ]
+        },
+        {
+          "source": "../types/booking",
+          "specifiers": [
+            "Room",
+            "Venue",
+            "Booking",
+            "SyncFeed",
+            "BookingSource",
+            "BreakfastOrder",
+            "EquipmentRental",
+            "EventAddons",
+            "GuestRecord"
+          ]
+        },
+        {
+          "source": "../utils/syncEngine",
+          "specifiers": [
+            "* as syncEngine"
+          ]
+        },
+        {
+          "source": "lucide-react",
+          "specifiers": [
+            "Calendar",
+            "User",
+            "Phone",
+            "Mail",
+            "Clock",
+            "RefreshCw",
+            "Key",
+            "Plus",
+            "Settings",
+            "ClipboardCheck",
+            "Trash2",
+            "CheckCircle2",
+            "AlertCircle",
+            "Sparkles",
+            "X",
+            "Eye",
+            "TrendingUp",
+            "Users",
+            "Home",
+            "LogIn",
+            "LogOut",
+            "Receipt",
+            "Search",
+            "ChevronLeft",
+            "ChevronRight",
+            "Filter"
+          ]
+        }
+      ],
+      "exports": [
+        "AdminPortal"
+      ],
+      "totalLines": 2467,
+      "hasStructuralAnalysis": true
+    },
+    "src/components/ChatbotWidget.tsx": {
+      "filePath": "src/components/ChatbotWidget.tsx",
+      "contentHash": "392047d930b0b2e3d01fd7060317317c6e1f12d176d809d3fcdffeb1e026cf2c",
+      "functions": [
+        {
+          "name": "ChatbotWidget",
+          "params": [],
+          "exported": true,
+          "lineCount": 453
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "React",
+            "useState",
+            "useEffect",
+            "useRef"
+          ]
+        },
+        {
+          "source": "../hooks/useBookings",
+          "specifiers": [
+            "useBookings"
+          ]
+        },
+        {
+          "source": "../utils/syncEngine",
+          "specifiers": [
+            "* as syncEngine"
+          ]
+        },
+        {
+          "source": "../types/booking",
+          "specifiers": [
+            "Room"
+          ]
+        },
+        {
+          "source": "lucide-react",
+          "specifiers": [
+            "MessageSquare",
+            "X",
+            "Send",
+            "Sparkles",
+            "Calendar",
+            "Coffee",
+            "DollarSign",
+            "Clock",
+            "Building",
+            "Users",
+            "User",
+            "Volume2",
+            "VolumeX",
+            "Gift"
+          ]
+        }
+      ],
+      "exports": [
+        "ChatbotWidget"
+      ],
+      "totalLines": 490,
+      "hasStructuralAnalysis": true
+    },
+    "src/components/GuestPortal.tsx": {
+      "filePath": "src/components/GuestPortal.tsx",
+      "contentHash": "3874f0cf1057831427d28113044cd2d137be9fcd76334f0a8ba32f28059a1348",
+      "functions": [
+        {
+          "name": "GuestPortal",
+          "params": [
+            "{ onNavigateToAdmin }"
+          ],
+          "exported": true,
+          "lineCount": 936
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "React",
+            "useState",
+            "useEffect"
+          ]
+        },
+        {
+          "source": "../hooks/useBookings",
+          "specifiers": [
+            "useBookings"
+          ]
+        },
+        {
+          "source": "../types/booking",
+          "specifiers": [
+            "Room",
+            "Venue",
+            "Booking",
+            "BreakfastOrder",
+            "EquipmentRental",
+            "EventAddons"
+          ]
+        },
+        {
+          "source": "../utils/syncEngine",
+          "specifiers": [
+            "* as syncEngine"
+          ]
+        },
+        {
+          "source": "lucide-react",
+          "specifiers": [
+            "Calendar",
+            "User",
+            "Phone",
+            "Mail",
+            "Clock",
+            "ShieldCheck",
+            "CheckCircle2",
+            "AlertTriangle",
+            "ArrowRight",
+            "X",
+            "Sparkles",
+            "Coffee",
+            "Music",
+            "Settings",
+            "Info",
+            "Tag"
+          ]
+        }
+      ],
+      "exports": [
+        "GuestPortal"
+      ],
+      "totalLines": 947,
+      "hasStructuralAnalysis": true
+    },
+    "src/hooks/useBookings.ts": {
+      "filePath": "src/hooks/useBookings.ts",
+      "contentHash": "b3eaa69c1b17f41eb213e0a3faa3d8428f99bbf10492914de7ff4a81adfbcf20",
+      "functions": [
+        {
+          "name": "useBookings",
+          "params": [],
+          "exported": true,
+          "lineCount": 262
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "@tanstack/react-query",
+          "specifiers": [
+            "useQuery",
+            "useMutation",
+            "useQueryClient"
+          ]
+        },
+        {
+          "source": "../utils/syncEngine",
+          "specifiers": [
+            "* as syncEngine"
+          ]
+        },
+        {
+          "source": "../types/booking",
+          "specifiers": [
+            "Booking",
+            "Room",
+            "Venue",
+            "SyncFeed",
+            "BookingSource",
+            "BreakfastOrder",
+            "EquipmentRental",
+            "EventAddons"
+          ]
+        }
+      ],
+      "exports": [
+        "useBookings"
+      ],
+      "totalLines": 267,
+      "hasStructuralAnalysis": true
+    },
+    "src/types/booking.ts": {
+      "filePath": "src/types/booking.ts",
+      "contentHash": "df704f7ea0c6b1eaf7721d3ea22097ff62edfd606b13974f246d0252a587cc91",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 90,
+      "hasStructuralAnalysis": true
+    },
+    "src/utils/supabaseClient.ts": {
+      "filePath": "src/utils/supabaseClient.ts",
+      "contentHash": "3a977d699aad95674ce8ce6afc73c862ae0accdeed0106d495e3d64e551a393e",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "@supabase/supabase-js",
+          "specifiers": [
+            "createClient"
+          ]
+        }
+      ],
+      "exports": [
+        "isSupabaseConfigured",
+        "supabase"
+      ],
+      "totalLines": 13,
+      "hasStructuralAnalysis": true
+    },
+    "src/utils/syncEngine.ts": {
+      "filePath": "src/utils/syncEngine.ts",
+      "contentHash": "34a2a11b5c9ac32e21b2e94a1c36c8dd18b4ea52652b018d648dca401eb6554d",
+      "functions": [
+        {
+          "name": "generateUUID",
+          "params": [],
+          "returnType": "string",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "initDB",
+          "params": [],
+          "exported": true,
+          "lineCount": 98
+        },
+        {
+          "name": "getBookings",
+          "params": [],
+          "returnType": "Promise<Booking[]>",
+          "exported": true,
+          "lineCount": 72
+        },
+        {
+          "name": "saveBookings",
+          "params": [
+            "bookings"
+          ],
+          "returnType": "Promise<void>",
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "getFeeds",
+          "params": [],
+          "returnType": "Promise<SyncFeed[]>",
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "saveFeeds",
+          "params": [
+            "feeds"
+          ],
+          "returnType": "Promise<void>",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "isRoomAvailable",
+          "params": [
+            "roomId",
+            "checkInStr",
+            "checkOutStr",
+            "bookingsList",
+            "skipBookingId"
+          ],
+          "returnType": "boolean",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "isVenueAvailable",
+          "params": [
+            "venueId",
+            "eventDateStr",
+            "bookingsList",
+            "skipBookingId"
+          ],
+          "returnType": "boolean",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "checkGuestLoyalty",
+          "params": [
+            "email",
+            "bookingsList"
+          ],
+          "returnType": "boolean",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "calculatePricing",
+          "params": [
+            "params"
+          ],
+          "exported": true,
+          "lineCount": 79
+        },
+        {
+          "name": "generateRoomiCal",
+          "params": [
+            "roomId",
+            "bookingsList"
+          ],
+          "returnType": "string",
+          "exported": true,
+          "lineCount": 31
+        },
+        {
+          "name": "parseiCalFeed",
+          "params": [
+            "icsString"
+          ],
+          "returnType": "Omit<Booking, 'id' | 'room_id' | 'created_at' | 'expires_at' | 'downpayment_paid' | 'balance_due' | 'security_deposit'>[]",
+          "exported": true,
+          "lineCount": 54
+        },
+        {
+          "name": "parseiCalDate",
+          "params": [
+            "value",
+            "params"
+          ],
+          "returnType": "string",
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "runSimulatedOTASync",
+          "params": [],
+          "returnType": "Promise<number>",
+          "exported": true,
+          "lineCount": 62
+        },
+        {
+          "name": "getGuestRecords",
+          "params": [
+            "bookingsList"
+          ],
+          "returnType": "GuestRecord[]",
+          "exported": true,
+          "lineCount": 26
+        },
+        {
+          "name": "seedFutureMockData",
+          "params": [],
+          "returnType": "Promise<number>",
+          "exported": true,
+          "lineCount": 272
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "../types/booking",
+          "specifiers": [
+            "Room",
+            "Venue",
+            "Booking",
+            "SyncFeed",
+            "BookingSource",
+            "BookingStatus",
+            "BreakfastOrder",
+            "EquipmentRental",
+            "EventAddons",
+            "GuestRecord"
+          ]
+        },
+        {
+          "source": "./supabaseClient",
+          "specifiers": [
+            "supabase",
+            "isSupabaseConfigured"
+          ]
+        }
+      ],
+      "exports": [
+        "generateUUID",
+        "DEFAULT_ROOMS",
+        "DEFAULT_VENUES",
+        "initDB",
+        "getBookings",
+        "saveBookings",
+        "getFeeds",
+        "saveFeeds",
+        "isRoomAvailable",
+        "isVenueAvailable",
+        "checkGuestLoyalty",
+        "calculatePricing",
+        "generateRoomiCal",
+        "parseiCalFeed",
+        "MOCK_AIRBNB_FEED",
+        "MOCK_BOOKING_COM_FEED",
+        "runSimulatedOTASync",
+        "getGuestRecords",
+        "seedFutureMockData"
+      ],
+      "totalLines": 1014,
+      "hasStructuralAnalysis": true
+    },
+    "src/App.tsx": {
+      "filePath": "src/App.tsx",
+      "contentHash": "cd2bf154efa3cea18faee77bd4d8372b5fb81069e061f6e0799f3c5b3d1a6553",
+      "functions": [
+        {
+          "name": "App",
+          "params": [],
+          "exported": true,
+          "lineCount": 19
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "useState"
+          ]
+        },
+        {
+          "source": "@tanstack/react-query",
+          "specifiers": [
+            "QueryClient",
+            "QueryClientProvider"
+          ]
+        },
+        {
+          "source": "./components/MainLayout",
+          "specifiers": [
+            "MainLayout"
+          ]
+        },
+        {
+          "source": "./components/GuestPortal",
+          "specifiers": [
+            "GuestPortal"
+          ]
+        },
+        {
+          "source": "./components/AdminPortal",
+          "specifiers": [
+            "AdminPortal"
+          ]
+        },
+        {
+          "source": "./components/ChatbotWidget",
+          "specifiers": [
+            "ChatbotWidget"
+          ]
+        }
+      ],
+      "exports": [
+        "App"
+      ],
+      "totalLines": 37,
+      "hasStructuralAnalysis": true
+    },
+    "src/components/MainLayout.tsx": {
+      "filePath": "src/components/MainLayout.tsx",
+      "contentHash": "9fedb93afd08936ecd1f1cab080277d3db0d2e055282264ffd2d4b0e616d9cf7",
+      "functions": [
+        {
+          "name": "MainLayout",
+          "params": [
+            "{ children }"
+          ],
+          "exported": true,
+          "lineCount": 15
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "React"
+          ]
+        }
+      ],
+      "exports": [
+        "MainLayout"
+      ],
+      "totalLines": 24,
+      "hasStructuralAnalysis": true
+    },
+    "src/main.tsx": {
+      "filePath": "src/main.tsx",
+      "contentHash": "6e9e5807fcbd48b75a96db5cbef36c996262196be42e6d4760dc86babbe61ad2",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "StrictMode"
+          ]
+        },
+        {
+          "source": "react-dom/client",
+          "specifiers": [
+            "createRoot"
+          ]
+        },
+        {
+          "source": "./index.css",
+          "specifiers": []
+        },
+        {
+          "source": "./App.tsx",
+          "specifiers": [
+            "App"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": true
+    },
+    "supabase/migrations/schema.sql": {
+      "filePath": "supabase/migrations/schema.sql",
+      "contentHash": "9ef50079c7987a0f9f2440bfb5da648d64fdf41b27871c7947abba9712b60444",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 99,
+      "hasStructuralAnalysis": true
+    },
+    "index.html": {
+      "filePath": "index.html",
+      "contentHash": "66af738ad66c45414e2ce84817f9d4bfe8666c8fdda5d3f4d57f28778d5450fa",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": false
+    },
+    "package.json": {
+      "filePath": "package.json",
+      "contentHash": "7d2c8ef5de8f335f02134ad7a09e24d8c5113242b8d2fd0397ad00b81ce99242",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 42,
+      "hasStructuralAnalysis": true
+    },
+    "tsconfig.app.json": {
+      "filePath": "tsconfig.app.json",
+      "contentHash": "5d588d4d976bf9814450c9c5755636ffff754c68e0937ad32ac2494951f98fad",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "tsconfig.json": {
+      "filePath": "tsconfig.json",
+      "contentHash": "770b4140bbb581e2dfd9ea9946ffc9c75a1d86ba7d2db5f77c83e37cbdf9d808",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 8,
+      "hasStructuralAnalysis": true
+    },
+    "tsconfig.node.json": {
+      "filePath": "tsconfig.node.json",
+      "contentHash": "90a22c920cbc14624fb4658b58f15c875abf3234224f3933f211849c3ada3242",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 25,
+      "hasStructuralAnalysis": true
+    },
+    ".understand-anything/.understandignore": {
+      "filePath": ".understand-anything/.understandignore",
+      "contentHash": "073ebf1c7e7bf2c54802f71183255381b2fda8fd6aea6a1d92d7d215f4a1fe03",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 34,
+      "hasStructuralAnalysis": false
+    },
+    "eslint.config.js": {
+      "filePath": "eslint.config.js",
+      "contentHash": "cf80a7510234dcd5ae594b30b44682b8b45ba13c0fcb5bf8928bea143802aa1c",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "@eslint/js",
+          "specifiers": [
+            "js"
+          ]
+        },
+        {
+          "source": "globals",
+          "specifiers": [
+            "globals"
+          ]
+        },
+        {
+          "source": "eslint-plugin-react-hooks",
+          "specifiers": [
+            "reactHooks"
+          ]
+        },
+        {
+          "source": "eslint-plugin-react-refresh",
+          "specifiers": [
+            "reactRefresh"
+          ]
+        },
+        {
+          "source": "typescript-eslint",
+          "specifiers": [
+            "tseslint"
+          ]
+        },
+        {
+          "source": "eslint/config",
+          "specifiers": [
+            "defineConfig",
+            "globalIgnores"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 23,
+      "hasStructuralAnalysis": true
+    },
+    "postcss.config.js": {
+      "filePath": "postcss.config.js",
+      "contentHash": "190c877db466995bf1482f4a16abd06e04a89ede3119341e2a86ff96e1737b27",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": true
+    },
+    "src/App.css": {
+      "filePath": "src/App.css",
+      "contentHash": "6e25a776d3e8102da5bacb3cb99f4a5fc662a2e01e6143140671a556d28c3d5c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 185,
+      "hasStructuralAnalysis": false
+    },
+    "src/index.css": {
+      "filePath": "src/index.css",
+      "contentHash": "a62b40cab442abe25426d18e0bc3eeef534f920ce9c4f897c961dd65fb966899",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 66,
+      "hasStructuralAnalysis": false
+    },
+    "src/utils/cn.ts": {
+      "filePath": "src/utils/cn.ts",
+      "contentHash": "12c453fe9c994ee8dda079a9af00b41fa48475dc1f8778b34c3680351bdf2ae1",
+      "functions": [
+        {
+          "name": "cn",
+          "params": [
+            "...inputs"
+          ],
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "clsx",
+          "specifiers": [
+            "ClassValue",
+            "clsx"
+          ]
+        },
+        {
+          "source": "tailwind-merge",
+          "specifiers": [
+            "twMerge"
+          ]
+        }
+      ],
+      "exports": [
+        "cn"
+      ],
+      "totalLines": 7,
+      "hasStructuralAnalysis": true
+    },
+    "tailwind.config.js": {
+      "filePath": "tailwind.config.js",
+      "contentHash": "a5a387d9ccc783909b89330e5c49c7711f359705ab47b7e56adef9a2c4988589",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 44,
+      "hasStructuralAnalysis": true
+    },
+    "vite.config.ts": {
+      "filePath": "vite.config.ts",
+      "contentHash": "bbebc4a366202b8de8fe31b3792f8675ce24030e7ff00a9ab3e893fe078664a5",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "vite",
+          "specifiers": [
+            "defineConfig"
+          ]
+        },
+        {
+          "source": "@vitejs/plugin-react",
+          "specifiers": [
+            "react"
+          ]
+        },
+        {
+          "source": "path",
+          "specifiers": [
+            "path"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    }
+  }
+}

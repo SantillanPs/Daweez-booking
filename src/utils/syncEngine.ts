@@ -1,4 +1,5 @@
 import { Room, Venue, Booking, SyncFeed, BookingSource, BookingStatus, BreakfastOrder, EquipmentRental, EventAddons, GuestRecord } from '../types/booking'
+import { supabase, isSupabaseConfigured } from './supabaseClient'
 
 // Helper: Generate UUID
 export function generateUUID(): string {
@@ -148,10 +149,14 @@ const FEEDS_KEY = 'l_etoile_feeds_db'
 
 // 4. Initialization
 export function initDB() {
+  if (isSupabaseConfigured) return // Suppressed seed if using Supabase
+
   if (!localStorage.getItem(BOOKINGS_KEY)) {
     const today = new Date()
     const tomorrow = new Date(today)
     tomorrow.setDate(today.getDate() + 1)
+    const inTwoDays = new Date(today)
+    inTwoDays.setDate(today.getDate() + 2)
     const inThreeDays = new Date(today)
     inThreeDays.setDate(today.getDate() + 3)
     const inFiveDays = new Date(today)
@@ -197,7 +202,7 @@ export function initDB() {
         guest_email: 'maria@rizal.ph',
         guest_phone: '0919-876-5432',
         check_in: tomorrow.toISOString().split('T')[0],
-        check_out: tomorrow.toISOString().split('T')[0], // Single day event
+        check_out: inTwoDays.toISOString().split('T')[0], // Adjusted to satisfy check_in < check_out
         source: 'website',
         status: 'confirmed',
         downpayment_paid: 2500,
@@ -243,7 +248,58 @@ export function initDB() {
 }
 
 // 5. Booking Operations
-export function getBookings(): Booking[] {
+export async function getBookings(): Promise<Booking[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+      if (error) throw error
+
+      if (data) {
+        // Clean expired pending website locks on the fly
+        const now = new Date()
+        const activeRecords = data.filter(b => {
+          if (b.status === 'pending' && b.expires_at) {
+            const expires = new Date(b.expires_at)
+            return expires > now
+          }
+          return true
+        })
+
+        // Clean expired remote bookings asynchronously
+        const expiredIds = data.filter(b => b.status === 'pending' && b.expires_at && new Date(b.expires_at) <= now).map(b => b.id)
+        if (expiredIds.length > 0) {
+          await supabase.from('bookings').delete().in('id', expiredIds)
+        }
+
+        return activeRecords.map(b => ({
+          id: b.id,
+          room_id: b.room_id || undefined,
+          venue_id: b.venue_id || undefined,
+          guest_name: b.guest_name,
+          guest_email: b.guest_email,
+          guest_phone: b.guest_phone,
+          check_in: b.check_in,
+          check_out: b.check_out,
+          source: b.source as BookingSource,
+          status: b.status as BookingStatus,
+          downpayment_paid: Number(b.downpayment_paid || 0),
+          balance_due: Number(b.balance_due || 0),
+          security_deposit: Number(b.security_deposit || 0),
+          breakfast_orders: b.breakfast_orders || undefined,
+          equipment_rentals: b.equipment_rentals || undefined,
+          event_addons: b.event_addons || undefined,
+          created_at: b.created_at,
+          expires_at: b.expires_at || null
+        }))
+      }
+    } catch (err) {
+      console.error('Supabase getBookings Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  // Fallback local storage logic
   initDB()
   const data = localStorage.getItem(BOOKINGS_KEY)
   if (!data) return []
@@ -265,28 +321,93 @@ export function getBookings(): Booking[] {
   return activeBookings
 }
 
-export function saveBookings(bookings: Booking[]) {
+export async function saveBookings(bookings: Booking[]): Promise<void> {
+  if (isSupabaseConfigured) {
+    try {
+      // Upsert full list to Supabase
+      const records = bookings.map(b => ({
+        id: b.id,
+        room_id: b.room_id || null,
+        venue_id: b.venue_id || null,
+        guest_name: b.guest_name,
+        guest_email: b.guest_email,
+        guest_phone: b.guest_phone,
+        check_in: b.check_in,
+        check_out: b.check_out,
+        source: b.source,
+        status: b.status,
+        downpayment_paid: b.downpayment_paid,
+        balance_due: b.balance_due,
+        security_deposit: b.security_deposit,
+        breakfast_orders: b.breakfast_orders || null,
+        equipment_rentals: b.equipment_rentals || null,
+        event_addons: b.event_addons || null,
+        expires_at: b.expires_at || null
+      }))
+
+      const { error } = await supabase.from('bookings').upsert(records)
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase saveBookings Error, falling back to LocalStorage:', err)
+    }
+  }
+
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings))
 }
 
-export function getFeeds(): SyncFeed[] {
+export async function getFeeds(): Promise<SyncFeed[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('ical_feeds').select('*')
+      if (error) throw error
+      if (data) {
+        return data.map(f => ({
+          id: f.id,
+          room_id: f.room_id,
+          channel: f.channel,
+          url: f.url,
+          last_synced: f.last_synced
+        }))
+      }
+    } catch (err) {
+      console.error('Supabase getFeeds Error:', err)
+    }
+  }
+
   initDB()
   const data = localStorage.getItem(FEEDS_KEY)
   return data ? JSON.parse(data) : []
 }
 
-export function saveFeeds(feeds: SyncFeed[]) {
+export async function saveFeeds(feeds: SyncFeed[]): Promise<void> {
+  if (isSupabaseConfigured) {
+    try {
+      const records = feeds.map(f => ({
+        id: f.id,
+        room_id: f.room_id,
+        channel: f.channel,
+        url: f.url,
+        last_synced: f.last_synced
+      }))
+      const { error } = await supabase.from('ical_feeds').upsert(records)
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase saveFeeds Error:', err)
+    }
+  }
+
   localStorage.setItem(FEEDS_KEY, JSON.stringify(feeds))
 }
 
 // 6. Availability Collision Vectors (Bilateral safety)
-export function isRoomAvailable(roomId: string, checkInStr: string, checkOutStr: string, skipBookingId?: string): boolean {
+export function isRoomAvailable(roomId: string, checkInStr: string, checkOutStr: string, bookingsList: Booking[] = [], skipBookingId?: string): boolean {
   const checkIn = new Date(checkInStr)
   const checkOut = new Date(checkOutStr)
   if (checkIn >= checkOut) return false
 
-  const bookings = getBookings()
-  return !bookings.some(booking => {
+  return !bookingsList.some(booking => {
     if (booking.room_id !== roomId) return false
     if (booking.id === skipBookingId) return false
     
@@ -296,9 +417,8 @@ export function isRoomAvailable(roomId: string, checkInStr: string, checkOutStr:
   })
 }
 
-export function isVenueAvailable(venueId: string, eventDateStr: string, skipBookingId?: string): boolean {
-  const bookings = getBookings()
-  return !bookings.some(booking => {
+export function isVenueAvailable(venueId: string, eventDateStr: string, bookingsList: Booking[] = [], skipBookingId?: string): boolean {
+  return !bookingsList.some(booking => {
     if (booking.venue_id !== venueId) return false
     if (booking.id === skipBookingId) return false
     return booking.check_in === eventDateStr
@@ -306,10 +426,9 @@ export function isVenueAvailable(venueId: string, eventDateStr: string, skipBook
 }
 
 // 7. Silent Loyalty Verification (10% discount trigger)
-export function checkGuestLoyalty(email: string): boolean {
-  const bookings = getBookings()
+export function checkGuestLoyalty(email: string, bookingsList: Booking[] = []): boolean {
   // Check if guest has at least 1 confirmed past stay in the system under this email
-  return bookings.some(b => b.guest_email.toLowerCase() === email.toLowerCase() && b.status === 'confirmed')
+  return bookingsList.some(b => b.guest_email.toLowerCase() === email.toLowerCase() && b.status === 'confirmed')
 }
 
 // 8. Dynamic Invoice Calculations
@@ -322,29 +441,32 @@ export function calculatePricing(params: {
   breakfastOrders?: BreakfastOrder[]
   equipmentRentals?: EquipmentRental
   eventAddons?: EventAddons
+  bookingsList?: Booking[]
+  rateMultiplier?: number
 }) {
-  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons } = params
+  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier = 1.0 } = params
   
   let basePrice = 0
-  let isVenue = false
   let nights = 0
   
   // A. Nightly Room vs Daily Venue rate mapping
   if (roomId) {
     const room = DEFAULT_ROOMS.find(r => r.id === roomId)
     basePrice = room ? room.base_price : 0
+    basePrice = Math.round(basePrice * rateMultiplier)
     nights = Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
   } else if (venueId) {
     const venue = DEFAULT_VENUES.find(v => v.id === venueId)
     basePrice = venue ? venue.base_price : 0
+    basePrice = Math.round(basePrice * rateMultiplier)
     nights = 1 // Venue bookings are charged per day/event
-    isVenue = true
   }
 
   // B. Loyalty Program: 10% auto-deducted if guest has past completed stay
-  const hasLoyalty = checkGuestLoyalty(guestEmail)
+  const hasLoyalty = checkGuestLoyalty(guestEmail, bookingsList)
   const discountMultiplier = hasLoyalty ? 0.90 : 1.0
   const subtotal = basePrice * nights * discountMultiplier
+  const grandTotal = subtotal
 
   // C. Breakfast Add-ons (₱200/set)
   let breakfastTotal = 0
@@ -373,9 +495,9 @@ export function calculatePricing(params: {
 
   // F. Balance & Deposit Sums
   const securityDeposit = 500 // Flat rate
-  const grandTotal = subtotal + breakfastTotal + rentalsTotal + addonsTotal
-  const downpayment = Math.round(grandTotal * 0.50) // 50% reservation policy
-  const balanceDue = (grandTotal - downpayment) + securityDeposit
+  const calculatedGrand = grandTotal + breakfastTotal + rentalsTotal + addonsTotal
+  const downpayment = Math.round(calculatedGrand * 0.50) // 50% reservation policy
+  const balanceDue = (calculatedGrand - downpayment) + securityDeposit
 
   return {
     subtotal: Math.round(subtotal),
@@ -384,15 +506,15 @@ export function calculatePricing(params: {
     rentalsTotal,
     addonsTotal,
     securityDeposit,
-    grandTotal,
+    grandTotal: calculatedGrand,
     downpayment,
     balanceDue
   }
 }
 
 // 9. Generate iCal string (Rooms only)
-export function generateRoomiCal(roomId: string): string {
-  const bookings = getBookings().filter(b => b.room_id === roomId && (b.status === 'confirmed' || b.status === 'blocked'))
+export function generateRoomiCal(roomId: string, bookingsList: Booking[] = []): string {
+  const bookings = bookingsList.filter(b => b.room_id === roomId && (b.status === 'confirmed' || b.status === 'blocked'))
   
   let ics = [
     'BEGIN:VCALENDAR',
@@ -525,9 +647,9 @@ END:VEVENT
 END:VCALENDAR
 `
 
-export function runSimulatedOTASync(): number {
-  const bookings = getBookings()
-  const feeds = getFeeds()
+export async function runSimulatedOTASync(): Promise<number> {
+  const bookings = await getBookings()
+  const feeds = await getFeeds()
   
   let updatedBookings = bookings.filter(b => b.source === 'website' || b.source === 'manual' || b.source === 'facebook' || b.source === 'google_maps')
   let newSyncCount = 0
@@ -535,7 +657,7 @@ export function runSimulatedOTASync(): number {
   // Sync Room 2 Airbnb
   const abEvents = parseiCalFeed(MOCK_AIRBNB_FEED)
   abEvents.forEach(evt => {
-    if (isRoomAvailable('room-2', evt.check_in, evt.check_out)) {
+    if (isRoomAvailable('room-2', evt.check_in, evt.check_out, bookings)) {
       updatedBookings.push({
         id: `sync-ab-${generateUUID()}`,
         room_id: 'room-2',
@@ -546,8 +668,8 @@ export function runSimulatedOTASync(): number {
         check_out: evt.check_out,
         source: 'airbnb',
         status: 'confirmed',
-        downpayment_paid: 4500, // Predefined PHP downpayment
-        balance_due: 5000,
+        downpayment_paid: 950, // Suite 2 nightly PHP rate downpayment
+        balance_due: 1450,
         security_deposit: 500,
         created_at: new Date().toISOString(),
         expires_at: null
@@ -559,7 +681,7 @@ export function runSimulatedOTASync(): number {
   // Sync Room 3 Booking.com
   const bcEvents = parseiCalFeed(MOCK_BOOKING_COM_FEED)
   bcEvents.forEach(evt => {
-    if (isRoomAvailable('room-3', evt.check_in, evt.check_out)) {
+    if (isRoomAvailable('room-3', evt.check_in, evt.check_out, bookings)) {
       updatedBookings.push({
         id: `sync-bc-${generateUUID()}`,
         room_id: 'room-3',
@@ -570,8 +692,8 @@ export function runSimulatedOTASync(): number {
         check_out: evt.check_out,
         source: 'booking_com',
         status: 'confirmed',
-        downpayment_paid: 4500,
-        balance_due: 5000,
+        downpayment_paid: 950,
+        balance_due: 1450,
         security_deposit: 500,
         created_at: new Date().toISOString(),
         expires_at: null
@@ -580,17 +702,17 @@ export function runSimulatedOTASync(): number {
     }
   })
 
-  saveBookings(updatedBookings)
+  await saveBookings(updatedBookings)
 
   const updatedFeeds = feeds.map(f => ({ ...f, last_synced: new Date().toISOString() }))
-  saveFeeds(updatedFeeds)
+  await saveFeeds(updatedFeeds)
 
   return newSyncCount
 }
 
 // 12. Retrieve visit logs stats for PMS Loyalty Tab
-export function getGuestRecords(): GuestRecord[] {
-  const bookings = getBookings().filter(b => b.status === 'confirmed')
+export function getGuestRecords(bookingsList: Booking[] = []): GuestRecord[] {
+  const bookings = bookingsList.filter(b => b.status === 'confirmed')
   const map = new Map<string, GuestRecord>()
 
   bookings.forEach(b => {
@@ -614,4 +736,278 @@ export function getGuestRecords(): GuestRecord[] {
   })
 
   return Array.from(map.values())
+}
+
+// 13. Seed Future Mock Data (June - Dec 2026) for testing
+export async function seedFutureMockData(): Promise<number> {
+  const futureBookings: Booking[] = [
+    {
+      id: 'mock-june-1',
+      room_id: 'room-2',
+      guest_name: 'Gabriel Reyes',
+      guest_email: 'gabriel.reyes@gmail.com',
+      guest_phone: '0917-222-3344',
+      check_in: '2026-06-10',
+      check_out: '2026-06-14',
+      source: 'website',
+      status: 'confirmed',
+      downpayment_paid: 1900,
+      balance_due: 2400,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-june-2',
+      room_id: 'room-6',
+      guest_name: 'Sofia Dimagiba',
+      guest_email: 'sofia@dimagiba.org',
+      guest_phone: '0918-333-4455',
+      check_in: '2026-06-18',
+      check_out: '2026-06-20',
+      source: 'airbnb',
+      status: 'confirmed',
+      downpayment_paid: 1800,
+      balance_due: 2300,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-june-3',
+      venue_id: 'venue-gazebo',
+      guest_name: 'Clara Cruz',
+      guest_email: 'clara.cruz@yahoo.com',
+      guest_phone: '0919-444-5566',
+      check_in: '2026-06-25',
+      check_out: '2026-06-26', // Modified to satisfy check constraint
+      source: 'manual',
+      status: 'confirmed',
+      downpayment_paid: 2500,
+      balance_due: 3000,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-july-1',
+      room_id: 'room-1',
+      guest_name: 'Ramon Magsaysay',
+      guest_email: 'ramon@magsaysay.ph',
+      guest_phone: '0920-555-6677',
+      check_in: '2026-07-05',
+      check_out: '2026-07-09',
+      source: 'booking_com',
+      status: 'confirmed',
+      downpayment_paid: 2100,
+      balance_due: 2600,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-july-2',
+      room_id: 'room-8',
+      guest_name: 'Alfonso Sy',
+      guest_email: 'alfonso@sygroup.com.ph',
+      guest_phone: '0921-666-7788',
+      check_in: '2026-07-15',
+      check_out: '2026-07-18',
+      source: 'google_maps',
+      status: 'confirmed',
+      downpayment_paid: 1275,
+      balance_due: 1775,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-aug-1',
+      room_id: 'room-3',
+      guest_name: 'Maria Leonora',
+      guest_email: 'leonora.maria@outlook.com',
+      guest_phone: '0922-777-8899',
+      check_in: '2026-08-12',
+      check_out: '2026-08-15',
+      source: 'facebook',
+      status: 'confirmed',
+      downpayment_paid: 1425,
+      balance_due: 1925,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-aug-2',
+      room_id: 'room-10',
+      guest_name: 'Jose Rizal',
+      guest_email: 'rizal.jose@ilustrado.es',
+      guest_phone: '0923-888-9900',
+      check_in: '2026-08-20',
+      check_out: '2026-08-22',
+      source: 'website',
+      status: 'confirmed',
+      downpayment_paid: 2400,
+      balance_due: 2900,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-sept-1',
+      room_id: 'room-5',
+      guest_name: 'Liza Soberano',
+      guest_email: 'liza@soberano.com',
+      guest_phone: '0924-999-0011',
+      check_in: '2026-09-08',
+      check_out: '2026-09-12',
+      source: 'airbnb',
+      status: 'confirmed',
+      downpayment_paid: 2400,
+      balance_due: 2900,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-sept-2',
+      venue_id: 'venue-garden',
+      guest_name: 'Pedro Penduko',
+      guest_email: 'pedro@penduko.ph',
+      guest_phone: '0925-000-1122',
+      check_in: '2026-09-18',
+      check_out: '2026-09-19', // Modified to satisfy check constraint
+      source: 'manual',
+      status: 'confirmed',
+      downpayment_paid: 3750,
+      balance_due: 4250,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-oct-1',
+      room_id: 'room-7',
+      guest_name: 'Catriona Gray',
+      guest_email: 'catriona@missuniverse.tv',
+      guest_phone: '0926-111-2233',
+      check_in: '2026-10-10',
+      check_out: '2026-10-13',
+      source: 'booking_com',
+      status: 'confirmed',
+      downpayment_paid: 1650,
+      balance_due: 2150,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-oct-2',
+      room_id: 'room-4',
+      guest_name: 'Manny Pacquiao',
+      guest_email: 'manny@pacman.com',
+      guest_phone: '0927-222-3344',
+      check_in: '2026-10-24',
+      check_out: '2026-10-28',
+      source: 'website',
+      status: 'confirmed',
+      downpayment_paid: 1900,
+      balance_due: 2400,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-nov-1',
+      room_id: 'room-9',
+      guest_name: 'Carlos Yulo',
+      guest_email: 'carlos@gymnastics.org',
+      guest_phone: '0928-333-4455',
+      check_in: '2026-11-14',
+      check_out: '2026-11-17',
+      source: 'facebook',
+      status: 'confirmed',
+      downpayment_paid: 1350,
+      balance_due: 1850,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-nov-2',
+      room_id: 'room-2',
+      guest_name: 'Kylie Verzosa',
+      guest_email: 'kylie@verzosa.com',
+      guest_phone: '0929-444-5566',
+      check_in: '2026-11-20',
+      check_out: '2026-11-23',
+      source: 'airbnb',
+      status: 'confirmed',
+      downpayment_paid: 1425,
+      balance_due: 1925,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-dec-1',
+      room_id: 'room-5',
+      guest_name: 'Pia Wurtzbach',
+      guest_email: 'pia.wurtzbach@universe.org',
+      guest_phone: '0930-555-6677',
+      check_in: '2026-12-12',
+      check_out: '2026-12-15',
+      source: 'booking_com',
+      status: 'confirmed',
+      downpayment_paid: 1800,
+      balance_due: 2300,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-dec-2',
+      room_id: 'room-6',
+      guest_name: 'Lea Salonga',
+      guest_email: 'lea@salongatheatre.com',
+      guest_phone: '0931-666-7788',
+      check_in: '2026-12-22',
+      check_out: '2026-12-27',
+      source: 'website',
+      status: 'confirmed',
+      downpayment_paid: 4500,
+      balance_due: 5000,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    },
+    {
+      id: 'mock-dec-3',
+      venue_id: 'venue-vacation',
+      guest_name: 'Vicente Manansala',
+      guest_email: 'vicente@manansala.ph',
+      guest_phone: '0932-777-8899',
+      check_in: '2026-12-24',
+      check_out: '2026-12-25', // Modified to satisfy check constraint
+      source: 'manual',
+      status: 'confirmed',
+      downpayment_paid: 7500,
+      balance_due: 8000,
+      security_deposit: 500,
+      created_at: new Date().toISOString(),
+      expires_at: null
+    }
+  ]
+
+  const current = await getBookings()
+  const currentIds = new Set(current.map(b => b.id))
+  
+  // Only add if not already seeded
+  const toAdd = futureBookings.filter(b => !currentIds.has(b.id))
+  
+  if (toAdd.length > 0) {
+    await saveBookings([...current, ...toAdd])
+  }
+  
+  return toAdd.length
 }

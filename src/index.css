@@ -8,6 +8,7 @@
   body {
     @apply bg-slate-50 text-slate-800 font-sans antialiased;
     min-height: 100vh;
+    overflow-x: hidden;
   }
 
   /* Admin portal resets dark theme (kept for fallback) */
