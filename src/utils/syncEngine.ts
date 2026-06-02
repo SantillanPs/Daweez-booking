@@ -148,7 +148,7 @@ const BOOKINGS_KEY = 'l_etoile_bookings_db'
 const FEEDS_KEY = 'l_etoile_feeds_db'
 
 // 4. Initialization
-export function initDB() {
+function initDB() {
   if (isSupabaseConfigured) return // Suppressed seed if using Supabase
 
   if (!localStorage.getItem(BOOKINGS_KEY)) {
@@ -512,41 +512,10 @@ export function calculatePricing(params: {
   }
 }
 
-// 9. Generate iCal string (Rooms only)
-export function generateRoomiCal(roomId: string, bookingsList: Booking[] = []): string {
-  const bookings = bookingsList.filter(b => b.room_id === roomId && (b.status === 'confirmed' || b.status === 'blocked'))
-  
-  let ics = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Daweez Central Channel Manager//Pension House//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH'
-  ]
 
-  bookings.forEach(b => {
-    const dateStart = b.check_in.replace(/-/g, '')
-    const dateEnd = b.check_out.replace(/-/g, '')
-    const createdStr = b.created_at.replace(/[-:.]/g, '').split('T')[0] + 'T000000Z'
-
-    ics.push(
-      'BEGIN:VEVENT',
-      `UID:${b.id}@daweez-pensionhouse.com`,
-      `DTSTAMP:${createdStr}`,
-      `DTSTART;VALUE=DATE:${dateStart}`,
-      `DTEND;VALUE=DATE:${dateEnd}`,
-      `SUMMARY:${b.source.toUpperCase()} - Reserved`,
-      'STATUS:CONFIRMED',
-      'END:VEVENT'
-    )
-  })
-
-  ics.push('END:VCALENDAR')
-  return ics.join('\r\n')
-}
 
 // 10. iCal Scraper & Ingestion
-export function parseiCalFeed(icsString: string): Omit<Booking, 'id' | 'room_id' | 'created_at' | 'expires_at' | 'downpayment_paid' | 'balance_due' | 'security_deposit'>[] {
+function parseiCalFeed(icsString: string): Omit<Booking, 'id' | 'room_id' | 'created_at' | 'expires_at' | 'downpayment_paid' | 'balance_due' | 'security_deposit'>[] {
   const events: any[] = []
   const lines = icsString.split(/\r?\n/)
   
@@ -613,7 +582,7 @@ function parseiCalDate(value: string, params?: string): string {
 }
 
 // 11. Scraper Mocks
-export const MOCK_AIRBNB_FEED = `
+const MOCK_AIRBNB_FEED = `
 BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Airbnb Inc//Hosting Calendar 1.0//EN
@@ -630,7 +599,7 @@ END:VEVENT
 END:VCALENDAR
 `
 
-export const MOCK_BOOKING_COM_FEED = `
+const MOCK_BOOKING_COM_FEED = `
 BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Booking.com//iCal Export//EN

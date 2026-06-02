@@ -185,6 +185,47 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
     localStorage.setItem('daweez_pms_housekeeping', JSON.stringify(updated))
   }
 
+  // Helper to filter bookings by search query
+  const filterBookingBySearch = (b: Booking) => {
+    const term = searchQuery.toLowerCase()
+    if (!term) return true
+    const room = rooms.find(r => r.id === b.room_id)
+    const venue = venues.find(v => v.id === b.venue_id)
+    return b.guest_name.toLowerCase().includes(term) ||
+      (room && `room ${room.room_number}`.includes(term)) ||
+      (venue && venue.name.toLowerCase().includes(term))
+  }
+
+  // Helper to reset and open the manual booking form
+  const resetAndOpenManualForm = (
+    pathway: 'room' | 'venue',
+    roomIds: Set<string>,
+    checkIn = '',
+    checkOut = ''
+  ) => {
+    setFormPathway(pathway)
+    setFormRoomIds(roomIds)
+    setFormCheckIn(checkIn)
+    setFormCheckOut(checkOut)
+    setFormGuestName('')
+    setFormGuestEmail('')
+    setFormGuestPhone('')
+    setFormSource('manual')
+    setFormStatus('confirmed')
+    setFormBreakfastQty({ Bangsilog: 0, Lumpiasilog: 0, Cornsilog: 0, Hotsilog: 0 })
+    setFormBigTable(0)
+    setFormSmallTable(0)
+    setFormChairs(0)
+    setFormWater(0)
+    setFormBand(false)
+    setFormStage(false)
+    setFormLedWall(false)
+    setFormStep(1)
+    setApplySuggestedRate(true)
+    setFormError('')
+    setShowManualForm(true)
+  }
+
   // Handle open manual booking form from cell click
   const handleCellClick = (roomId: string, date: Date) => {
     const formattedDate = date.toISOString().split('T')[0]
@@ -192,18 +233,7 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
     tomorrow.setDate(date.getDate() + 1)
     const formattedTomorrow = tomorrow.toISOString().split('T')[0]
 
-    setFormPathway('room')
-    setFormRoomIds(new Set([roomId]))
-    setFormCheckIn(formattedDate)
-    setFormCheckOut(formattedTomorrow)
-    setFormGuestName('')
-    setFormGuestEmail('')
-    setFormGuestPhone('')
-    setFormSource('manual')
-    setFormStatus('confirmed')
-    setFormBreakfastQty({ Bangsilog: 0, Lumpiasilog: 0, Cornsilog: 0, Hotsilog: 0 })
-    setFormError('')
-    setShowManualForm(true)
+    resetAndOpenManualForm('room', new Set([roomId]), formattedDate, formattedTomorrow)
   }
 
   // Handle Manual Booking Submission
@@ -836,42 +866,18 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
                       <LogIn className="w-3.5 h-3.5 text-emerald-600" />
                     </div>
                     <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Arrivals Today ({arrivalsToday.filter(b => {
-                        const term = searchQuery.toLowerCase()
-                        if (!term) return true
-                        const room = rooms.find(r => r.id === b.room_id)
-                        const venue = venues.find(v => v.id === b.venue_id)
-                        return b.guest_name.toLowerCase().includes(term) ||
-                          (room && `room ${room.room_number}`.includes(term)) ||
-                          (venue && venue.name.toLowerCase().includes(term))
-                      }).length})
+                      Arrivals Today ({arrivalsToday.filter(filterBookingBySearch).length})
                     </h3>
                   </div>
                   <div className="p-5 space-y-3">
 
-                    {arrivalsToday.filter(b => {
-                      const term = searchQuery.toLowerCase()
-                      if (!term) return true
-                      const room = rooms.find(r => r.id === b.room_id)
-                      const venue = venues.find(v => v.id === b.venue_id)
-                      return b.guest_name.toLowerCase().includes(term) ||
-                        (room && `room ${room.room_number}`.includes(term)) ||
-                        (venue && venue.name.toLowerCase().includes(term))
-                    }).length === 0 ? (
+                    {arrivalsToday.filter(filterBookingBySearch).length === 0 ? (
                       <p className="text-xs text-slate-400 italic py-4 text-center">
                         {searchQuery ? 'No matching arrivals found.' : 'No arrivals scheduled for today.'}
                       </p>
                     ) : (
                       <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                        {arrivalsToday.filter(b => {
-                          const term = searchQuery.toLowerCase()
-                          if (!term) return true
-                          const room = rooms.find(r => r.id === b.room_id)
-                          const venue = venues.find(v => v.id === b.venue_id)
-                          return b.guest_name.toLowerCase().includes(term) ||
-                            (room && `room ${room.room_number}`.includes(term)) ||
-                            (venue && venue.name.toLowerCase().includes(term))
-                        }).map(b => {
+                        {arrivalsToday.filter(filterBookingBySearch).map(b => {
                           const room = rooms.find(r => r.id === b.room_id)
                           const venue = venues.find(v => v.id === b.venue_id)
 
@@ -912,42 +918,18 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
                       <LogOut className="w-3.5 h-3.5 text-rose-600" />
                     </div>
                     <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Departures Today ({departuresToday.filter(b => {
-                        const term = searchQuery.toLowerCase()
-                        if (!term) return true
-                        const room = rooms.find(r => r.id === b.room_id)
-                        const venue = venues.find(v => v.id === b.venue_id)
-                        return b.guest_name.toLowerCase().includes(term) ||
-                          (room && `room ${room.room_number}`.includes(term)) ||
-                          (venue && venue.name.toLowerCase().includes(term))
-                      }).length})
+                      Departures Today ({departuresToday.filter(filterBookingBySearch).length})
                     </h3>
                   </div>
                   <div className="p-5 space-y-3">
 
-                    {departuresToday.filter(b => {
-                      const term = searchQuery.toLowerCase()
-                      if (!term) return true
-                      const room = rooms.find(r => r.id === b.room_id)
-                      const venue = venues.find(v => v.id === b.venue_id)
-                      return b.guest_name.toLowerCase().includes(term) ||
-                        (room && `room ${room.room_number}`.includes(term)) ||
-                        (venue && venue.name.toLowerCase().includes(term))
-                    }).length === 0 ? (
+                    {departuresToday.filter(filterBookingBySearch).length === 0 ? (
                       <p className="text-xs text-slate-400 italic py-4 text-center">
                         {searchQuery ? 'No matching departures found.' : 'No departures scheduled for today.'}
                       </p>
                     ) : (
                       <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                        {departuresToday.filter(b => {
-                          const term = searchQuery.toLowerCase()
-                          if (!term) return true
-                          const room = rooms.find(r => r.id === b.room_id)
-                          const venue = venues.find(v => v.id === b.venue_id)
-                          return b.guest_name.toLowerCase().includes(term) ||
-                            (room && `room ${room.room_number}`.includes(term)) ||
-                            (venue && venue.name.toLowerCase().includes(term))
-                        }).map(b => {
+                        {departuresToday.filter(filterBookingBySearch).map(b => {
                           const room = rooms.find(r => r.id === b.room_id)
                           const venue = venues.find(v => v.id === b.venue_id)
 
@@ -988,22 +970,7 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
                   </p>
                 </div>
                 <button
-                  onClick={() => {
-                    setFormPathway('room')
-                    setFormRoomIds(new Set(['room-1']))
-                    setFormCheckIn('')
-                    setFormCheckOut('')
-                    setFormGuestName('')
-                    setFormGuestEmail('')
-                    setFormGuestPhone('')
-                    setFormSource('manual')
-                    setFormStatus('confirmed')
-                    setFormBreakfastQty({ Bangsilog: 0, Lumpiasilog: 0, Cornsilog: 0, Hotsilog: 0 })
-                    setFormStep(1)
-                    setApplySuggestedRate(true)
-                    setFormError('')
-                    setShowManualForm(true)
-                  }}
+                  onClick={() => resetAndOpenManualForm('room', new Set(['room-1']))}
                   className="shrink-0 bg-white text-[#9A783E] hover:bg-[#FDFBF7] font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow-sm"
                 >
                   + Walk-In Booking
@@ -1095,21 +1062,7 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
                 </div>
 
                 <button
-                  onClick={() => {
-                    setFormPathway('room')
-                    setFormRoomIds(new Set(['room-1']))
-                    setFormCheckIn('')
-                    setFormCheckOut('')
-                    setFormGuestName('')
-                    setFormGuestEmail('')
-                    setFormGuestPhone('')
-                    setFormSource('manual')
-                    setFormStatus('confirmed')
-                    setFormBreakfastQty({ Bangsilog: 0, Lumpiasilog: 0, Cornsilog: 0, Hotsilog: 0 })
-                    setFormError('')
-                    setFormStep(1)
-                    setShowManualForm(true)
-                  }}
+                  onClick={() => resetAndOpenManualForm('room', new Set(['room-1']))}
                   className="bg-[#B89251] pl-2 pr-2 hover:bg-[#9A783E] justify-center text-white font-bold uppercase tracking-wider text-[10px] px-4.5 py-2.5 rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm shadow-[#B89251]/10"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -1249,21 +1202,11 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setFormPathway('room')
-                                    setFormRoomIds(new Set([rooms[0]?.id || 'room-1']))
-                                    setFormCheckIn(formattedDate)
+                                    const formattedDate = date.toISOString().split('T')[0]
                                     const nextD = new Date(date)
                                     nextD.setDate(date.getDate() + 1)
-                                    setFormCheckOut(nextD.toISOString().split('T')[0])
-                                    setFormGuestName('')
-                                    setFormGuestEmail('')
-                                    setFormGuestPhone('')
-                                    setFormSource('manual')
-                                    setFormStatus('confirmed')
-                                    setFormBreakfastQty({ Bangsilog: 0, Lumpiasilog: 0, Cornsilog: 0, Hotsilog: 0 })
-                                    setFormStep(1)
-                                    setFormError('')
-                                    setShowManualForm(true)
+                                    const formattedTomorrow = nextD.toISOString().split('T')[0]
+                                    resetAndOpenManualForm('room', new Set([rooms[0]?.id || 'room-1']), formattedDate, formattedTomorrow)
                                   }}
                                   className="opacity-0 group-hover:opacity-100 w-4.5 h-4.5 bg-slate-100 text-slate-500 hover:bg-[#B89251] hover:text-white rounded flex items-center justify-center transition-all duration-150 text-[10px]"
                                   title="Add Booking"
