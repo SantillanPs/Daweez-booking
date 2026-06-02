@@ -1008,39 +1008,7 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
                     </button>
                   </div>
 
-                  {schedulerMode === 'month' && (
-                    <div className="flex items-center space-x-1.5 ml-4">
-                      <button
-                        onClick={() => {
-                          const prev = new Date(currentMonthDate)
-                          prev.setMonth(currentMonthDate.getMonth() - 1)
-                          setCurrentMonthDate(prev)
-                        }}
-                        className="p-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <span className="text-xs font-bold text-slate-850 px-2 min-w-[100px] text-center uppercase tracking-wider">
-                        {currentMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-                      </span>
-                      <button
-                        onClick={() => {
-                          const next = new Date(currentMonthDate)
-                          next.setMonth(currentMonthDate.getMonth() + 1)
-                          setCurrentMonthDate(next)
-                        }}
-                        className="p-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setCurrentMonthDate(new Date())}
-                        className="text-[9px] font-extrabold uppercase tracking-wider text-[#9A783E] border border-[#E5D5C0] bg-[#FDFBF7] hover:bg-[#B89251] hover:text-white px-2.5 py-1.5 rounded-lg ml-2 transition-all"
-                      >
-                        This Month
-                      </button>
-                    </div>
-                  )}
+
 
                   {schedulerMode === 'timeline' && (
                     <div className="flex items-center space-x-3 ml-4">
@@ -1101,7 +1069,7 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
                       </button>
                     </div>
 
-                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
                       {rooms.map(room => {
                         const isChecked = selectedRoomIds.has(room.id)
                         const scheme = ROOM_COLOR_SCHEMES[room.id] || { badgeBg: 'bg-slate-150', text: 'text-slate-700' }
@@ -1141,6 +1109,40 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
 
                   {/* Right Column: Month Calendar Grid */}
                   <div className="lg:col-span-3 bg-white border border-slate-200/80 shadow-md rounded-xl p-5 overflow-hidden">
+                    {/* Calendar Header / Month Control */}
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-150">
+                      <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                        {currentMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+                      </h3>
+                      <div className="flex items-center space-x-1.5">
+                        <button
+                          onClick={() => {
+                            const prev = new Date(currentMonthDate)
+                            prev.setMonth(currentMonthDate.getMonth() - 1)
+                            setCurrentMonthDate(prev)
+                          }}
+                          className="p-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            const next = new Date(currentMonthDate)
+                            next.setMonth(currentMonthDate.getMonth() + 1)
+                            setCurrentMonthDate(next)
+                          }}
+                          className="p-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setCurrentMonthDate(new Date())}
+                          className="text-[9px] font-extrabold uppercase tracking-wider text-[#9A783E] border border-[#E5D5C0] bg-[#FDFBF7] hover:bg-[#B89251] hover:text-white px-2.5 py-1.5 rounded-lg transition-all"
+                        >
+                          This Month
+                        </button>
+                      </div>
+                    </div>
 
                     {/* Calendar Grid Header */}
                     <div className="grid grid-cols-7 text-center border-b border-slate-150 pb-2 text-[9px] uppercase tracking-wider font-extrabold text-slate-400">
