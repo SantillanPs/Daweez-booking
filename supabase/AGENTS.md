@@ -21,7 +21,7 @@ This directory contains the database migration schema definitions and Supabase E
   - Public can insert `bookings` with status set to `pending`.
   - Authenticated managers have full access to `rooms`, `bookings`, and `ical_feeds`.
 - **Edge Functions**:
-  - `export-ical`: Serverless function exporting local reservation tables into standard `.ics` file format.
+  - `export-ical`: Serverless function exporting local reservation tables into standard `.ics` file format. Accepts either `room_id` (UUID) or `room_number` (integer) query parameters. Rewritten from `/api/ical/room/:room_number.ics` in the Vercel deployment.
   - `sync-ical`: Serverless function fetching, parsing, and updating local booking tables from subscribed external iCal feeds.
 
 ## Work Guidance
