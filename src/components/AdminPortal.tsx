@@ -1,128 +1,128 @@
 import React, { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useBookings } from '../hooks/useBookings'
-import { Room, Venue, Booking, SyncFeed, BookingSource, BreakfastOrder, EquipmentRental, EventAddons, GuestRecord } from '../types/booking'
+import { Room, Venue, Booking, SyncFeed, BookingSource, BreakfastOrder } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
-import { Calendar, User, Phone, Mail, Clock, RefreshCw, Key, Plus, Settings, ClipboardCheck, Trash2, CheckCircle2, AlertCircle, Sparkles, X, Eye, TrendingUp, Users, Home, LogIn, LogOut, Receipt, Search, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
+import {
+  Calendar, User, Phone, Mail, Clock, RefreshCw, Plus, Settings,
+  Trash2, AlertCircle, Sparkles, X, Eye, Users, LogIn, LogOut,
+  ChevronLeft, ChevronRight, Filter, Home, TrendingUp,
+  ClipboardCheck, LayoutGrid, Copy, Check
+} from 'lucide-react'
 
-const ROOM_COLOR_SCHEMES: Record<string, { bg: string; text: string; border: string; badgeBg: string }> = {
-  'room-1': { bg: 'bg-amber-50/70', text: 'text-amber-800', border: 'border-amber-200/50', badgeBg: 'bg-amber-200/50' },
-  'room-2': { bg: 'bg-[#FDFBF7]', text: 'text-[#9A783E]', border: 'border-[#E5D5C0]/50', badgeBg: 'bg-[#E5D5C0]/50' },
-  'room-3': { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200/50', badgeBg: 'bg-emerald-200/50' },
-  'room-4': { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200/50', badgeBg: 'bg-blue-200/50' },
-  'room-5': { bg: 'bg-rose-50', text: 'text-rose-800', border: 'border-rose-200/50', badgeBg: 'bg-rose-200/50' },
-  'room-6': { bg: 'bg-violet-50', text: 'text-violet-850', border: 'border-violet-200/50', badgeBg: 'bg-violet-200/50' },
-  'room-7': { bg: 'bg-teal-50', text: 'text-teal-800', border: 'border-teal-200/50', badgeBg: 'bg-teal-200/50' },
-  'room-8': { bg: 'bg-sky-50', text: 'text-sky-850', border: 'border-sky-200/50', badgeBg: 'bg-sky-200/50' },
-  'room-9': { bg: 'bg-orange-50', text: 'text-orange-800', border: 'border-orange-200/50', badgeBg: 'bg-orange-200/50' },
-  'room-10': { bg: 'bg-slate-50', text: 'text-slate-800', border: 'border-slate-300/50', badgeBg: 'bg-slate-300/50' },
+/* ──────────────────────────────────────────────
+   Room / Venue color tokens for calendar badges
+   ────────────────────────────────────────────── */
+const ROOM_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  'room-1':  { bg: 'bg-amber-50',   text: 'text-amber-800',   border: 'border-amber-200' },
+  'room-2':  { bg: 'bg-yellow-50',  text: 'text-yellow-800',  border: 'border-yellow-200' },
+  'room-3':  { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200' },
+  'room-4':  { bg: 'bg-blue-50',    text: 'text-blue-800',    border: 'border-blue-200' },
+  'room-5':  { bg: 'bg-rose-50',    text: 'text-rose-800',    border: 'border-rose-200' },
+  'room-6':  { bg: 'bg-violet-50',  text: 'text-violet-800',  border: 'border-violet-200' },
+  'room-7':  { bg: 'bg-teal-50',    text: 'text-teal-800',    border: 'border-teal-200' },
+  'room-8':  { bg: 'bg-sky-50',     text: 'text-sky-800',     border: 'border-sky-200' },
+  'room-9':  { bg: 'bg-orange-50',  text: 'text-orange-800',  border: 'border-orange-200' },
+  'room-10': { bg: 'bg-slate-100',  text: 'text-slate-700',   border: 'border-slate-300' },
 }
+const VENUE_COLORS = { bg: 'bg-fuchsia-50', text: 'text-fuchsia-800', border: 'border-fuchsia-200' }
 
-const VENUE_COLOR_SCHEME = { bg: 'bg-fuchsia-50', text: 'text-fuchsia-800', border: 'border-fuchsia-200/50', badgeBg: 'bg-fuchsia-200/50' }
+/* ──────────────────────────────────────────────
+   Tab definitions
+   ────────────────────────────────────────────── */
+type TabId = 'calendar' | 'bookings' | 'guests' | 'settings'
+const TABS: { id: TabId; label: string; Icon: React.FC<{ className?: string }> }[] = [
+  { id: 'calendar',  label: 'Calendar',  Icon: Calendar },
+  { id: 'bookings',  label: 'Bookings',  Icon: ClipboardCheck },
+  { id: 'guests',    label: 'Guests',    Icon: Users },
+  { id: 'settings',  label: 'Settings',  Icon: Settings },
+]
 
-interface AdminPortalProps {
-  onLogout: () => void
-}
+/* ──────────────────────────────────────────────
+   Component
+   ────────────────────────────────────────────── */
+interface AdminPortalProps { onLogout: () => void }
 
 export function AdminPortal({ onLogout }: AdminPortalProps) {
   const queryClient = useQueryClient()
   const {
-    rooms,
-    venues,
-    bookings,
-    feeds,
-    confirmBooking,
-    cancelBooking,
-    createManualBooking,
-    triggerOTASync,
-    updateFeedUrls,
-    isLoading
+    rooms, venues, bookings, feeds,
+    confirmBooking, cancelBooking, createManualBooking,
+    triggerOTASync, updateFeedUrls, isLoading
   } = useBookings()
 
+  // ── Navigation ──
+  const [activeTab, setActiveTab] = useState<TabId>('calendar')
 
-
-  // 2. Tab Navigation
-  const [activeTab, setActiveTab] = useState<'scheduler' | 'bookings' | 'loyalty' | 'channels'>('scheduler')
-
-  // 2b. Usability & Revenue Management States
-  const [searchQuery, setSearchQuery] = useState<string>('')
-  const [housekeepingStates, setHousekeepingStates] = useState<Record<string, 'Clean' | 'Dirty' | 'Inspected'>>(() => {
-    try {
-      const saved = localStorage.getItem('daweez_pms_housekeeping')
-      return saved ? JSON.parse(saved) : {
-        'room-1': 'Clean',
-        'room-2': 'Clean',
-        'room-3': 'Dirty',
-        'room-4': 'Inspected',
-        'room-5': 'Clean',
-        'room-6': 'Clean',
-        'room-7': 'Dirty',
-        'room-8': 'Clean',
-        'room-9': 'Clean',
-        'room-10': 'Inspected'
-      }
-    } catch {
-      return {}
-    }
-  })
-  const [formStep, setFormStep] = useState<number>(1)
-  const [applySuggestedRate, setApplySuggestedRate] = useState<boolean>(true)
-
-  // 2c. Month Calendar & Filtering States
-  const [schedulerMode, setSchedulerMode] = useState<'timeline' | 'month'>('month') // Default to Month view
+  // ── Calendar state ──
+  const [schedulerMode, setSchedulerMode] = useState<'month' | 'timeline'>('month')
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(new Date())
   const [selectedRoomIds, setSelectedRoomIds] = useState<Set<string>>(new Set())
+  const [showRoomFilter, setShowRoomFilter] = useState(false)
+  const [selectedPreviewDate, setSelectedPreviewDate] = useState<Date | null>(null)
 
-  // Extension management modal states
+  // ── Timeline state ──
+  const [schedulerStartDate, setSchedulerStartDate] = useState<Date>(new Date())
+  const [daysCount] = useState<number>(30)
+  const [daysList, setDaysList] = useState<Date[]>([])
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
+
+  // ── Booking detail / extension modal ──
   const [selectedExtendBooking, setSelectedExtendBooking] = useState<Booking | null>(null)
   const [extendCheckoutDate, setExtendCheckoutDate] = useState<string>('')
   const [extendError, setExtendError] = useState<string>('')
 
-  // Populate all room IDs as selected by default when rooms are fetched
+  // ── Walk‑in form wizard ──
+  const [showManualForm, setShowManualForm] = useState(false)
+  const [formStep, setFormStep] = useState(1)
+  const [formPathway, setFormPathway] = useState<'room' | 'venue'>('room')
+  const [formRoomIds, setFormRoomIds] = useState<Set<string>>(new Set(['room-1']))
+  const [formVenueId, setFormVenueId] = useState<string>('venue-gazebo')
+  const [formGuestName, setFormGuestName] = useState('')
+  const [formGuestEmail, setFormGuestEmail] = useState('')
+  const [formGuestPhone, setFormGuestPhone] = useState('')
+  const [formCheckIn, setFormCheckIn] = useState('')
+  const [formCheckOut, setFormCheckOut] = useState('')
+  const [formSource, setFormSource] = useState<BookingSource>('manual')
+  const [formStatus, setFormStatus] = useState<'confirmed' | 'blocked'>('confirmed')
+  const [formError, setFormError] = useState('')
+  const [applySuggestedRate, setApplySuggestedRate] = useState(true)
+
+  // Add‑ons
+  const [formBreakfastQty, setFormBreakfastQty] = useState<Record<string, number>>({ Bangsilog: 0, Lumpiasilog: 0, Cornsilog: 0, Hotsilog: 0 })
+  const [formBigTable, setFormBigTable] = useState(0)
+  const [formSmallTable, setFormSmallTable] = useState(0)
+  const [formChairs, setFormChairs] = useState(0)
+  const [formWater, setFormWater] = useState(0)
+  const [formBand, setFormBand] = useState(false)
+  const [formStage, setFormStage] = useState(false)
+  const [formLedWall, setFormLedWall] = useState(false)
+
+  // ── Channel feeds editing ──
+  const [editingFeeds, setEditingFeeds] = useState<SyncFeed[]>([])
+  const [syncSuccessMsg, setSyncSuccessMsg] = useState('')
+  const [copiedFeedId, setCopiedFeedId] = useState<string | null>(null)
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedFeedId(id)
+      setTimeout(() => setCopiedFeedId(null), 1500)
+    })
+  }
+
+  // ── Receipt modal ──
+  const [selectedReceiptData, setSelectedReceiptData] = useState<Booking | null>(null)
+
+  /* ─── Effects ─── */
+
+  // Auto‑select all rooms when they load
   useEffect(() => {
-    if (rooms && rooms.length > 0 && selectedRoomIds.size === 0) {
+    if (rooms.length > 0 && selectedRoomIds.size === 0) {
       setSelectedRoomIds(new Set(rooms.map(r => r.id)))
     }
   }, [rooms])
 
-  // 3. Date Scheduler Matrix Configs
-  const [schedulerStartDate, setSchedulerStartDate] = useState<Date>(new Date())
-  const [daysCount] = useState<number>(30)
-  const [daysList, setDaysList] = useState<Date[]>([])
-
-  // 4. Walk-in Booking Console State (Rooms & Venues)
-  const [showManualForm, setShowManualForm] = useState<boolean>(false)
-  const [formPathway, setFormPathway] = useState<'room' | 'venue'>('room')
-  const [formRoomIds, setFormRoomIds] = useState<Set<string>>(new Set(['room-1']))
-  const [formVenueId, setFormVenueId] = useState<string>('venue-gazebo')
-
-  // Guest details
-  const [formGuestName, setFormGuestName] = useState<string>('')
-  const [formGuestEmail, setFormGuestEmail] = useState<string>('')
-  const [formGuestPhone, setFormGuestPhone] = useState<string>('')
-  const [formCheckIn, setFormCheckIn] = useState<string>('')
-  const [formCheckOut, setFormCheckOut] = useState<string>('')
-  const [formSource, setFormSource] = useState<BookingSource>('manual')
-  const [formStatus, setFormStatus] = useState<'confirmed' | 'blocked'>('confirmed')
-  const [formError, setFormError] = useState<string>('')
-
-  // Add-ons
-  const [formBreakfastQty, setFormBreakfastQty] = useState<{ [key: string]: number }>({ Bangsilog: 0, Lumpiasilog: 0, Cornsilog: 0, Hotsilog: 0 })
-  const [formBigTable, setFormBigTable] = useState<number>(0)
-  const [formSmallTable, setFormSmallTable] = useState<number>(0)
-  const [formChairs, setFormChairs] = useState<number>(0)
-  const [formWater, setFormWater] = useState<number>(0)
-  const [formBand, setFormBand] = useState<boolean>(false)
-  const [formStage, setFormStage] = useState<boolean>(false)
-  const [formLedWall, setFormLedWall] = useState<boolean>(false)
-
-  // 5. Channel Feeds Editing States
-  const [editingFeeds, setEditingFeeds] = useState<SyncFeed[]>([])
-  const [syncSuccessMsg, setSyncSuccessMsg] = useState<string>('')
-  const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
-  const [selectedReceiptData, setSelectedReceiptData] = useState<Booking | null>(null)
-
-  // Generate 30 days list from schedulerStartDate
+  // Build timeline day list
   useEffect(() => {
     const list: Date[] = []
     for (let i = 0; i < daysCount; i++) {
@@ -133,1389 +133,572 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
     setDaysList(list)
   }, [schedulerStartDate, daysCount])
 
-  // Sync editingFeeds with query data when loaded
+  // Sync feed edits with loaded data
   useEffect(() => {
-    if (feeds.length > 0 && editingFeeds.length === 0) {
-      setEditingFeeds(feeds)
-    }
+    if (feeds.length > 0 && editingFeeds.length === 0) setEditingFeeds(feeds)
   }, [feeds, editingFeeds])
 
-  // Toggle admin-mode class on body for CSS overrides
+  // Admin‑mode body class
   useEffect(() => {
     document.body.classList.add('admin-mode')
     return () => document.body.classList.remove('admin-mode')
   }, [])
 
-  // Trigger automatic seeding of future mock bookings (June to Dec) on mount
+  // Seed mock data
   useEffect(() => {
-    syncEngine.seedFutureMockData().then((count) => {
+    syncEngine.seedFutureMockData().then(count => {
       if (count > 0) {
         queryClient.invalidateQueries({ queryKey: ['bookings'] })
-        console.log(`Successfully seeded ${count} future mock bookings for June to December 2026!`)
       }
     })
   }, [])
 
-  // Trigger automatic OTA Sync on mount, and then set up a periodic background sync every 60s
+  // OTA background sync
   useEffect(() => {
-    triggerOTASync().catch((err) => {
-      console.error('Initial background OTA sync failed:', err)
-    })
-
-    const interval = setInterval(() => {
-      triggerOTASync().catch((err) => {
-        console.error('Periodic background OTA sync failed:', err)
-      })
-    }, 60000)
-
-    return () => clearInterval(interval)
+    triggerOTASync().catch(() => {})
+    const id = setInterval(() => { triggerOTASync().catch(() => {}) }, 60000)
+    return () => clearInterval(id)
   }, [triggerOTASync])
 
+  /* ─── Handlers ─── */
 
-  const handleToggleHousekeeping = (roomId: string) => {
-    const current = housekeepingStates[roomId] || 'Clean'
-    const nextMap: Record<'Clean' | 'Dirty' | 'Inspected', 'Clean' | 'Dirty' | 'Inspected'> = {
-      'Clean': 'Dirty',
-      'Dirty': 'Inspected',
-      'Inspected': 'Clean'
-    }
-    const next = nextMap[current]
-    const updated = { ...housekeepingStates, [roomId]: next }
-    setHousekeepingStates(updated)
-    localStorage.setItem('daweez_pms_housekeeping', JSON.stringify(updated))
-  }
-
-  // Helper to filter bookings by search query
-  const filterBookingBySearch = (b: Booking) => {
-    const term = searchQuery.toLowerCase()
-    if (!term) return true
-    const room = rooms.find(r => r.id === b.room_id)
-    const venue = venues.find(v => v.id === b.venue_id)
-    return b.guest_name.toLowerCase().includes(term) ||
-      (room && `room ${room.room_number}`.includes(term)) ||
-      (venue && venue.name.toLowerCase().includes(term))
-  }
-
-  // Helper to reset and open the manual booking form
-  const resetAndOpenManualForm = (
-    pathway: 'room' | 'venue',
-    roomIds: Set<string>,
-    checkIn = '',
-    checkOut = ''
-  ) => {
-    setFormPathway(pathway)
-    setFormRoomIds(roomIds)
-    setFormCheckIn(checkIn)
-    setFormCheckOut(checkOut)
-    setFormGuestName('')
-    setFormGuestEmail('')
-    setFormGuestPhone('')
-    setFormSource('manual')
-    setFormStatus('confirmed')
+  const resetAndOpenManualForm = (pathway: 'room' | 'venue', roomIds: Set<string>, checkIn = '', checkOut = '') => {
+    setFormPathway(pathway); setFormRoomIds(roomIds)
+    setFormCheckIn(checkIn); setFormCheckOut(checkOut)
+    setFormGuestName(''); setFormGuestEmail(''); setFormGuestPhone('')
+    setFormSource('manual'); setFormStatus('confirmed')
     setFormBreakfastQty({ Bangsilog: 0, Lumpiasilog: 0, Cornsilog: 0, Hotsilog: 0 })
-    setFormBigTable(0)
-    setFormSmallTable(0)
-    setFormChairs(0)
-    setFormWater(0)
-    setFormBand(false)
-    setFormStage(false)
-    setFormLedWall(false)
-    setFormStep(1)
-    setApplySuggestedRate(true)
-    setFormError('')
+    setFormBigTable(0); setFormSmallTable(0); setFormChairs(0); setFormWater(0)
+    setFormBand(false); setFormStage(false); setFormLedWall(false)
+    setFormStep(1); setApplySuggestedRate(true); setFormError('')
     setShowManualForm(true)
   }
 
-  // Handle open manual booking form from cell click
   const handleCellClick = (roomId: string, date: Date) => {
-    const formattedDate = date.toISOString().split('T')[0]
-    const tomorrow = new Date(date)
-    tomorrow.setDate(date.getDate() + 1)
-    const formattedTomorrow = tomorrow.toISOString().split('T')[0]
-
-    resetAndOpenManualForm('room', new Set([roomId]), formattedDate, formattedTomorrow)
+    const d = date.toISOString().split('T')[0]
+    const next = new Date(date); next.setDate(date.getDate() + 1)
+    resetAndOpenManualForm('room', new Set([roomId]), d, next.toISOString().split('T')[0])
   }
 
-  // Handle Manual Booking Submission
   const handleManualBookingSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setFormError('')
-
+    e.preventDefault(); setFormError('')
     if (!formCheckIn || (formPathway === 'room' && !formCheckOut)) {
-      setFormError('Please select active date bounds.')
-      return
+      setFormError('Please select active date bounds.'); return
     }
-
     try {
       const breakfasts: BreakfastOrder[] = []
       if (formPathway === 'room') {
         Object.entries(formBreakfastQty).forEach(([meal, qty]) => {
-          if (qty > 0) {
-            breakfasts.push({ option: meal as any, quantity: qty, withCoffee: true })
-          }
+          if (qty > 0) breakfasts.push({ option: meal as any, quantity: qty, withCoffee: true })
         })
       }
-
-      // Calculate dynamic price multiplier based on occupancy
       let localMultiplier = 1.0
       if (applySuggestedRate) {
-        if (roomOccupancyRate < 40) {
-          localMultiplier = 0.90
-        } else if (roomOccupancyRate >= 80) {
-          localMultiplier = 1.15
-        }
+        if (roomOccupancyRate < 40) localMultiplier = 0.90
+        else if (roomOccupancyRate >= 80) localMultiplier = 1.15
       }
-
       if (formPathway === 'room') {
-        // Validate availability for all rooms before creating any bookings
-        const unavailableRooms = Array.from(formRoomIds).filter(roomId => {
-          return !syncEngine.isRoomAvailable(roomId, formCheckIn, formCheckOut, bookings)
-        })
-        if (unavailableRooms.length > 0) {
-          const names = unavailableRooms.map(id => rooms.find(r => r.id === id)?.name || id).join(', ')
-          setFormError(`Overlap collision! The following rooms are already booked or blocked: ${names}`)
-          return
+        const unavail = Array.from(formRoomIds).filter(id => !syncEngine.isRoomAvailable(id, formCheckIn, formCheckOut, bookings))
+        if (unavail.length > 0) {
+          setFormError(`Overlap collision! ${unavail.map(id => rooms.find(r => r.id === id)?.name || id).join(', ')} already booked.`); return
         }
-
-        // Loop over the Set of room IDs and create booking sequentially
         for (const roomId of Array.from(formRoomIds)) {
           await createManualBooking({
-            roomId,
-            guestName: formGuestName,
-            guestEmail: formGuestEmail,
-            guestPhone: formGuestPhone,
-            checkIn: formCheckIn,
-            checkOut: formCheckOut,
-            source: formSource,
-            status: formStatus,
+            roomId, guestName: formGuestName, guestEmail: formGuestEmail,
+            guestPhone: formGuestPhone, checkIn: formCheckIn, checkOut: formCheckOut,
+            source: formSource, status: formStatus,
             breakfastOrders: breakfasts.length > 0 ? breakfasts : undefined,
             rateMultiplier: localMultiplier
           })
         }
       } else {
         await createManualBooking({
-          venueId: formVenueId,
-          guestName: formGuestName,
-          guestEmail: formGuestEmail,
-          guestPhone: formGuestPhone,
-          checkIn: formCheckIn,
-          checkOut: formCheckIn,
-          source: formSource,
-          status: formStatus,
-          equipmentRentals: {
-            bigTableCount: formBigTable,
-            smallTableCount: formSmallTable,
-            chairCount: formChairs,
-            mineralWaterCount: formWater
-          },
-          eventAddons: {
-            fullBandAndLights: formBand,
-            stage: formStage,
-            ledWall: formLedWall
-          },
+          venueId: formVenueId, guestName: formGuestName, guestEmail: formGuestEmail,
+          guestPhone: formGuestPhone, checkIn: formCheckIn, checkOut: formCheckIn,
+          source: formSource, status: formStatus,
+          equipmentRentals: { bigTableCount: formBigTable, smallTableCount: formSmallTable, chairCount: formChairs, mineralWaterCount: formWater },
+          eventAddons: { fullBandAndLights: formBand, stage: formStage, ledWall: formLedWall },
           rateMultiplier: localMultiplier
         })
       }
-
       setShowManualForm(false)
-    } catch (err: any) {
-      setFormError(err.message || 'Overlap collision occurred. Try again.')
-    }
+    } catch (err: any) { setFormError(err.message || 'Overlap collision occurred.') }
   }
 
-  // Handle stay extension update
   const handleExtendStaySubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setExtendError('')
+    e.preventDefault(); setExtendError('')
     if (!selectedExtendBooking || !extendCheckoutDate) return
-
     try {
-      const isAvail = syncEngine.isRoomAvailable(
-        selectedExtendBooking.room_id!,
-        selectedExtendBooking.check_in,
-        extendCheckoutDate,
-        bookings,
-        selectedExtendBooking.id
-      )
-
-      if (!isAvail) {
-        setExtendError('Overlap Collision! This room is already reserved or blocked during these dates.')
-        return
+      if (!syncEngine.isRoomAvailable(selectedExtendBooking.room_id!, selectedExtendBooking.check_in, extendCheckoutDate, bookings, selectedExtendBooking.id)) {
+        setExtendError('Overlap collision — room already reserved.'); return
       }
-
-      // Calculate pricing
       const pricing = syncEngine.calculatePricing({
-        roomId: selectedExtendBooking.room_id,
-        checkIn: selectedExtendBooking.check_in,
-        checkOut: extendCheckoutDate,
-        guestEmail: selectedExtendBooking.guest_email,
-        breakfastOrders: selectedExtendBooking.breakfast_orders,
-        bookingsList: bookings
+        roomId: selectedExtendBooking.room_id, checkIn: selectedExtendBooking.check_in,
+        checkOut: extendCheckoutDate, guestEmail: selectedExtendBooking.guest_email,
+        breakfastOrders: selectedExtendBooking.breakfast_orders, bookingsList: bookings
       })
-
       const current = await syncEngine.getBookings()
-      const updated = current.map(b => {
-        if (b.id === selectedExtendBooking.id) {
-          return {
-            ...b,
-            check_out: extendCheckoutDate,
-            balance_due: pricing.balanceDue
-          }
-        }
-        return b
-      })
-
+      const updated = current.map(b => b.id === selectedExtendBooking.id ? { ...b, check_out: extendCheckoutDate, balance_due: pricing.balanceDue } : b)
       await syncEngine.saveBookings(updated)
       await queryClient.invalidateQueries({ queryKey: ['bookings'] })
       setSelectedExtendBooking(null)
-      alert('Chamber stay has been successfully extended!')
-    } catch (err: any) {
-      setExtendError(err.message || 'Overlap collision occurred.')
-    }
+      alert('Stay extended successfully!')
+    } catch (err: any) { setExtendError(err.message || 'Overlap collision.') }
   }
 
-  // Settle sync
   const handleTriggerSync = async () => {
     setSyncSuccessMsg('')
     try {
-      const addedCount = await triggerOTASync()
-      setSyncSuccessMsg(`Bilateral sync complete! Merged ${addedCount} reservations from Booking.com & Airbnb channels.`)
-      setTimeout(() => setSyncSuccessMsg(''), 6000)
-    } catch (err) {
-      alert('Sync failed.')
-    }
+      const n = await triggerOTASync()
+      setSyncSuccessMsg(`Sync complete — merged ${n} reservations.`)
+      setTimeout(() => setSyncSuccessMsg(''), 5000)
+    } catch { alert('Sync failed.') }
   }
 
-  // Save modified feeds
   const handleSaveFeeds = async () => {
-    try {
-      await updateFeedUrls(editingFeeds)
-      alert('iCal subscription feeds saved successfully!')
-    } catch (err) {
-      alert('Failed to save URLs.')
-    }
+    try { await updateFeedUrls(editingFeeds); alert('Feed URLs saved!') }
+    catch { alert('Failed to save URLs.') }
   }
 
   const handleFeedUrlChange = (feedId: string, url: string) => {
     setEditingFeeds(prev => prev.map(f => f.id === feedId ? { ...f, url } : f))
   }
 
-  // Format Helpers
-  const formatDateHeader = (date: Date) => {
-    const day = date.getDate()
-    const weekday = date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 1)
-    return { day, weekday }
-  }
+  /* ─── Helpers ─── */
 
-  const getMonthGridDates = (baseDate: Date) => {
-    const year = baseDate.getFullYear()
-    const month = baseDate.getMonth()
+  const formatDateHeader = (date: Date) => ({
+    day: date.getDate(),
+    weekday: date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 1),
+  })
 
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-
-    const startDayOfWeek = firstDay.getDay()
-    const daysInMonth = lastDay.getDate()
-
+  const getMonthGridDates = (base: Date) => {
+    const y = base.getFullYear(), m = base.getMonth()
+    const first = new Date(y, m, 1), last = new Date(y, m + 1, 0)
     const grid: (Date | null)[] = []
-
-    // Prefix empty slots
-    for (let i = 0; i < startDayOfWeek; i++) {
-      grid.push(null)
-    }
-
-    // Month days
-    for (let d = 1; d <= daysInMonth; d++) {
-      grid.push(new Date(year, month, d))
-    }
-
-    // Suffix empty slots to make it perfect multiple of 7
-    while (grid.length % 7 !== 0) {
-      grid.push(null)
-    }
-
+    for (let i = 0; i < first.getDay(); i++) grid.push(null)
+    for (let d = 1; d <= last.getDate(); d++) grid.push(new Date(y, m, d))
+    while (grid.length % 7 !== 0) grid.push(null)
     return grid
   }
 
-  const getBookingForDay = (roomId: string, date: Date): Booking | null => {
-    const formatted = date.toISOString().split('T')[0]
-    const list = bookings.filter(b => b.room_id === roomId)
-
-    const match = list.find(b => {
-      const start = b.check_in
-      const end = b.check_out
-      return formatted >= start && formatted < end
-    })
-
-    return match || null
-  }
-
-  const getBookingStyle = (booking: Booking) => {
-    if (booking.status === 'pending') {
-      return 'bg-amber-50 text-amber-800 border border-amber-200/60 animate-pulse cursor-pointer rounded-md'
-    }
-
-    switch (booking.source) {
-      case 'airbnb':
-        return 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-semibold cursor-pointer rounded-md'
-      case 'booking_com':
-        return 'bg-blue-50 text-blue-700 border border-blue-200/60 font-semibold cursor-pointer rounded-md'
-      case 'facebook':
-        return 'bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-semibold cursor-pointer rounded-md'
-      case 'google_maps':
-        return 'bg-orange-50 text-orange-700 border border-orange-200/60 font-semibold cursor-pointer rounded-md'
-      case 'website':
-        return 'bg-violet-50 text-violet-700 border border-violet-200/60 font-bold cursor-pointer rounded-md'
-      default:
-        return booking.status === 'blocked'
-          ? 'bg-slate-100 text-slate-400 border border-slate-200 font-light cursor-pointer line-through rounded-md'
-          : 'bg-slate-50 text-slate-700 border border-slate-200/80 font-medium cursor-pointer rounded-md'
+  const getBookingStyle = (b: Booking) => {
+    if (b.status === 'pending') return 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
+    if (b.status === 'blocked') return 'bg-slate-100 text-slate-400 border-slate-200 line-through'
+    switch (b.source) {
+      case 'airbnb':      return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      case 'booking_com': return 'bg-blue-50 text-blue-700 border-blue-200'
+      case 'facebook':    return 'bg-indigo-50 text-indigo-700 border-indigo-200'
+      case 'google_maps': return 'bg-orange-50 text-orange-700 border-orange-200'
+      case 'website':     return 'bg-violet-50 text-violet-700 border-violet-200'
+      default:            return 'bg-slate-50 text-slate-700 border-slate-200'
     }
   }
 
-  // ==========================================
-  // DYNAMIC PMS CONCIERGE STATISTICS
-  // ==========================================
+  /* ─── Computed stats ─── */
+
   const todayStr = new Date().toISOString().split('T')[0]
-
-  // A. Arrivals today
-  const arrivalsToday = bookings.filter(b => b.check_in === todayStr && b.status !== 'blocked')
-
-  // B. Departures today
+  const arrivalsToday   = bookings.filter(b => b.check_in === todayStr && b.status !== 'blocked')
   const departuresToday = bookings.filter(b => b.check_out === todayStr && b.status !== 'blocked')
-
-  // C. Current Checked-in Guests
-  const currentGuests = bookings.filter(b => b.status === 'confirmed' && todayStr >= b.check_in && todayStr < b.check_out)
-
-  // D. Room Occupancy %
+  const currentGuests   = bookings.filter(b => b.status === 'confirmed' && todayStr >= b.check_in && todayStr < b.check_out)
   const occupiedRoomIds = new Set(currentGuests.map(g => g.room_id).filter(Boolean))
   const roomOccupancyRate = Math.round((occupiedRoomIds.size / 10) * 100)
-
-  // E. Estimated monthly revenue
-  const totalRevenue = bookings
-    .filter(b => b.status === 'confirmed')
-    .reduce((sum, b) => sum + (b.downpayment_paid ?? 0) + ((b.balance_due ?? 0) - (b.security_deposit ?? 0)), 0)
-
-  // F. Guest loyalty lists
+  const totalRevenue = bookings.filter(b => b.status === 'confirmed').reduce((s, b) => s + (b.downpayment_paid ?? 0) + ((b.balance_due ?? 0) - (b.security_deposit ?? 0)), 0)
   const loyaltyRecords = syncEngine.getGuestRecords()
 
+  /* ─── Form pricing estimates ─── */
 
-
-  // ==========================================
-  // DYNAMIC ESTIMATES FOR MANUAL WALK-IN WIZARD
-  // ==========================================
-  const currentOccupancy = roomOccupancyRate
-  let rateStatus: 'low' | 'normal' | 'peak' = 'normal'
   let rateMultiplier = 1.0
-  let rateRecommendationText = ''
+  if (roomOccupancyRate < 40) rateMultiplier = 0.90
+  else if (roomOccupancyRate >= 80) rateMultiplier = 1.15
 
-  if (currentOccupancy < 40) {
-    rateStatus = 'low'
-    rateMultiplier = 0.90
-    rateRecommendationText = 'Low occupancy (<40%). Suggesting a last-minute perishable rate adjustment of -10%.'
-  } else if (currentOccupancy >= 80) {
-    rateStatus = 'peak'
-    rateMultiplier = 1.15
-    rateRecommendationText = 'High demand / Peak occupancy (≥80%). Suggesting a dynamic peak surge adjustment of +15%.'
-  } else {
-    rateStatus = 'normal'
-    rateMultiplier = 1.0
-    rateRecommendationText = 'Normal demand levels. Standard baseline pricing applies.'
-  }
-
-  const baseRoomOrVenuePrice = formPathway === 'room'
-    ? Array.from(formRoomIds).reduce((sum, id) => sum + (rooms.find(r => r.id === id)?.base_price ?? 0), 0)
+  const basePrice = formPathway === 'room'
+    ? Array.from(formRoomIds).reduce((s, id) => s + (rooms.find(r => r.id === id)?.base_price ?? 0), 0)
     : (venues.find(v => v.id === formVenueId)?.base_price ?? 0)
 
   const estNights = formPathway === 'room' && formCheckIn && formCheckOut
-    ? Math.max(1, Math.ceil((new Date(formCheckOut).getTime() - new Date(formCheckIn).getTime()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(1, Math.ceil((new Date(formCheckOut).getTime() - new Date(formCheckIn).getTime()) / 86400000))
     : 1
 
   const activeMultiplier = applySuggestedRate ? rateMultiplier : 1.0
-  const estBase = baseRoomOrVenuePrice * estNights * activeMultiplier
+  const estBase = basePrice * estNights * activeMultiplier
 
-  // Breakfast total estimate
-  let estBreakfastTotal = 0
-  if (formPathway === 'room') {
-    Object.values(formBreakfastQty).forEach(qty => {
-      estBreakfastTotal += 200 * qty
-    })
-  }
+  let estBreakfast = 0
+  if (formPathway === 'room') Object.values(formBreakfastQty).forEach(q => { estBreakfast += 200 * q })
+  let estRentals = 0
+  if (formPathway === 'venue') { estRentals = formBigTable * 150 + formSmallTable * 100 + formChairs * 15 + formWater * 35 }
+  let estAddons = 0
+  if (formPathway === 'venue') { if (formBand) estAddons += 2000; if (formStage) estAddons += 2000; if (formLedWall) estAddons += 5000 }
 
-  // Equipment rental total estimate
-  let estRentalsTotal = 0
-  if (formPathway === 'venue') {
-    estRentalsTotal += (formBigTable * 150)
-    estRentalsTotal += (formSmallTable * 100)
-    estRentalsTotal += (formChairs * 15)
-    estRentalsTotal += (formWater * 35)
-  }
+  const estTotal = estBase + estBreakfast + estRentals + estAddons
+  const estDown  = Math.round(estTotal * 0.5)
+  const estDue   = (estTotal - estDown) + (formStatus === 'blocked' ? 0 : 500)
 
-  // Event add-ons estimate
-  let estAddonsTotal = 0
-  if (formPathway === 'venue') {
-    if (formBand) estAddonsTotal += 2000
-    if (formStage) estAddonsTotal += 2000
-    if (formLedWall) estAddonsTotal += 5000
-  }
-
-  const estGrandTotal = estBase + estBreakfastTotal + estRentalsTotal + estAddonsTotal
-  const estDownpayment = Math.round(estGrandTotal * 0.5)
-  const estBalanceDue = (estGrandTotal - estDownpayment) + (formStatus === 'blocked' ? 0 : 500)
+  /* ═══════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════ */
 
   return (
-    <div className="min-h-screen pb-16 text-slate-800" style={{ background: '#F8FAFC' }}>
+    <div className="min-h-screen bg-slate-50 pb-20 md:pb-6">
 
-      {/* 1. Header Bar */}
-      <header className="bg-white border-b border-slate-200/80 sticky top-0 z-40" style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.06)' }}>
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 flex items-center justify-center bg-[#B89251] rounded-lg shadow-sm shadow-[#B89251]/20">
-              <Sparkles className="w-4.5 h-4.5 text-white" />
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 flex items-center justify-center bg-[#B89251] rounded-lg">
+              <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <div>
-              <h1 className="text-sm font-bold text-slate-900 leading-tight">Daweez Pension House</h1>
-              <p className="text-[10px] text-[#B89251] font-semibold tracking-wide uppercase">Property Management System</p>
+            <div className="leading-tight">
+              <h1 className="text-sm font-bold text-slate-900">Daweez PMS</h1>
+              <p className="text-[10px] text-[#B89251] font-medium hidden sm:block">Property Management</p>
             </div>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleTriggerSync}
-              className="text-xs font-semibold text-[#9A783E] border border-[#E5D5C0] bg-[#FDFBF7] hover:bg-[#B89251] hover:text-white hover:border-[#B89251] px-3.5 py-2 rounded-lg flex items-center space-x-1.5 transition-all duration-200"
-            >
+          <div className="flex items-center gap-2">
+            <button onClick={handleTriggerSync} className="flex items-center gap-1.5 text-xs font-medium text-[#9A783E] border border-[#E5D5C0] bg-[#FDFBF7] hover:bg-[#B89251] hover:text-white hover:border-[#B89251] px-3 py-1.5 rounded-lg transition-all">
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>OTA Sync</span>
+              <span className="hidden sm:inline">Sync</span>
             </button>
-            <button
-              onClick={onLogout}
-              className="text-xs font-semibold text-rose-700 border border-rose-200 bg-rose-50 hover:bg-rose-600 hover:text-white hover:border-rose-600 px-3.5 py-2 rounded-lg flex items-center space-x-1.5 transition-all duration-200 cursor-pointer"
-            >
+            <button onClick={onLogout} className="flex items-center gap-1.5 text-xs font-medium text-rose-600 border border-rose-200 bg-rose-50 hover:bg-rose-600 hover:text-white hover:border-rose-600 px-3 py-1.5 rounded-lg transition-all cursor-pointer">
               <LogOut className="w-3.5 h-3.5" />
-              <span>Log Out</span>
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* 2. Workspace Navigation tabs */}
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 mt-6">
-        {syncSuccessMsg && (
-          <div className="mb-5 p-3.5 bg-[#FDFBF7] border border-[#E5D5C0]/80 text-[#9A783E] text-xs flex items-center space-x-2.5 rounded-xl">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-[#B89251]" />
-            <span className="font-semibold">{syncSuccessMsg}</span>
+      {/* ── Sync toast ── */}
+      {syncSuccessMsg && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3">
+          <div className="flex items-center gap-2 p-3 bg-[#FDFBF7] border border-[#E5D5C0] text-[#9A783E] text-xs font-medium rounded-lg">
+            <Sparkles className="w-4 h-4 shrink-0" />
+            <span>{syncSuccessMsg}</span>
           </div>
-        )}
-
-        <div className="flex border-b border-slate-200 space-x-1 overflow-x-auto pb-0">
-          {(['scheduler', 'bookings', 'loyalty', 'channels'] as const).map(tab => {
-            const labels: Record<string, string> = {
-              scheduler: 'Grid Scheduler',
-              bookings: `Reservations (${bookings.length})`,
-              loyalty: 'Guest Loyalty',
-              channels: 'iCal Settings',
-            }
-            const isActive = activeTab === tab as any
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-all duration-150 ${isActive
-                  ? 'border-[#B89251] text-[#9A783E] bg-[#FDFBF7]/60'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
-                  } rounded-t-lg`}
-              >
-                {labels[tab]}
-              </button>
-            )
-          })}
         </div>
+      )}
 
-        {/* 3. SWITCHER WORKSPACE CONTENT */}
-        <div className="mt-6">
+      {/* ── Stats bar ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+        <div className="flex items-center gap-5 sm:gap-8 overflow-x-auto text-sm no-scrollbar">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Home className="w-3.5 h-3.5 text-[#B89251]" />
+            <span className="text-slate-400 text-xs">Occ.</span>
+            <span className="font-semibold text-slate-800">{roomOccupancyRate}%</span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <LogIn className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="text-slate-400 text-xs">In</span>
+            <span className="font-semibold text-slate-800">{arrivalsToday.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <LogOut className="w-3.5 h-3.5 text-rose-500" />
+            <span className="text-slate-400 text-xs">Out</span>
+            <span className="font-semibold text-slate-800">{departuresToday.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Users className="w-3.5 h-3.5 text-blue-500" />
+            <span className="text-slate-400 text-xs">Guests</span>
+            <span className="font-semibold text-slate-800">{currentGuests.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
+            <span className="text-slate-400 text-xs">Rev.</span>
+            <span className="font-semibold text-slate-800">₱{totalRevenue.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
 
-          {/* TAB A: CONCIERGE PMS WORKSPACE */}
-          {(activeTab as any) === 'pms' && (
-            <div className="space-y-6">
+      {/* ── Desktop tabs ── */}
+      <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex border-b border-slate-200 gap-1">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === t.id ? 'border-[#B89251] text-[#9A783E]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+              {t.label}{t.id === 'bookings' ? ` (${bookings.length})` : ''}
+            </button>
+          ))}
+        </div>
+      </div>
 
-              {/* Instant Search Bar */}
-              <div className="bg-white rounded-xl border border-slate-200/70 p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Quick search today's operations by guest name, room number, or venue..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-850 pl-10 pr-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] text-xs transition-colors"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-[#B89251] font-semibold"
-                    >
-                      Clear
+      {/* ── Tab content ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+
+        {/* ═══ CALENDAR TAB ═══ */}
+        {activeTab === 'calendar' && (
+          <div className="space-y-4">
+
+            {/* Controls bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                {/* Mode toggle */}
+                <div className="flex bg-slate-100 rounded-lg p-0.5 text-xs font-medium">
+                  <button onClick={() => setSchedulerMode('month')}
+                    className={`px-3 py-1.5 rounded-md transition-all ${schedulerMode === 'month' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                    Month
+                  </button>
+                  <button onClick={() => setSchedulerMode('timeline')}
+                    className={`px-3 py-1.5 rounded-md transition-all ${schedulerMode === 'timeline' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                    Timeline
+                  </button>
+                </div>
+
+                {/* Timeline date controls */}
+                {schedulerMode === 'timeline' && (
+                  <div className="flex items-center gap-2">
+                    <input type="date" value={schedulerStartDate.toISOString().split('T')[0]}
+                      onChange={e => setSchedulerStartDate(new Date(e.target.value))}
+                      className="bg-white border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-[#B89251]" />
+                    <button onClick={() => setSchedulerStartDate(new Date())}
+                      className="text-xs font-medium text-[#9A783E] border border-[#E5D5C0] bg-[#FDFBF7] hover:bg-[#B89251] hover:text-white px-2.5 py-1.5 rounded-lg transition-all">
+                      Today
                     </button>
-                  )}
-                </div>
-                <div className="text-right text-[10px] text-slate-400 font-medium">
-                  Active Filter: <span className="text-[#9A783E] font-bold">{searchQuery ? `"${searchQuery}"` : 'None'}</span>
-                </div>
+                  </div>
+                )}
               </div>
 
-              {/* Analytics Meters */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                {/* Occupancy card */}
-                <div className="bg-white rounded-xl border-t-[3px] border-t-[#B89251] border-x border-b border-slate-200/70 p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="w-8 h-8 bg-[#FDFBF7] rounded-lg flex items-center justify-center border border-[#E5D5C0]/60">
-                      <Home className="w-4 h-4 text-[#B89251]" />
-                    </div>
-                    {roomOccupancyRate >= 80 ? (
-                      <span className="text-[8px] uppercase tracking-wider font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100 animate-pulse">
-                        Peak Load
-                      </span>
-                    ) : roomOccupancyRate < 40 ? (
-                      <span className="text-[8px] uppercase tracking-wider font-extrabold text-[#9A783E] bg-[#FDFBF7] px-2 py-0.5 rounded-full border border-[#E5D5C0]">
-                        Low Load
-                      </span>
-                    ) : (
-                      <span className="text-[8px] uppercase tracking-wider font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                        Normal
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-2xl font-bold text-slate-900">{roomOccupancyRate}%</div>
-                  <div className="text-[11px] text-slate-500 font-medium mt-0.5">Room Occupancy</div>
+              <div className="flex items-center gap-2">
+                {schedulerMode === 'month' && (
+                  <button onClick={() => setShowRoomFilter(!showRoomFilter)}
+                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${showRoomFilter ? 'bg-[#FDFBF7] border-[#E5D5C0] text-[#9A783E]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                    <Filter className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Rooms</span>
+                    <span className="text-[10px] opacity-60">{selectedRoomIds.size}/{rooms.length}</span>
+                  </button>
+                )}
+                <button onClick={() => resetAndOpenManualForm('room', new Set(['room-1']))}
+                  className="flex items-center gap-1.5 bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">New Booking</span>
+                </button>
+              </div>
+            </div>
 
-                  {/* Luxury Visual Progress Bar */}
-                  <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
-                    <div
-                      className={`h-1.5 rounded-full transition-all duration-500 ${roomOccupancyRate >= 80
-                        ? 'bg-rose-500'
-                        : roomOccupancyRate < 40
-                          ? 'bg-[#B89251]'
-                          : 'bg-emerald-500'
-                        }`}
-                      style={{ width: `${Math.min(100, Math.max(0, roomOccupancyRate))}%` }}
-                    />
+            {/* Room filter panel (collapsible) */}
+            {schedulerMode === 'month' && showRoomFilter && (
+              <div className="bg-white border border-slate-200 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-slate-500">Filter by room</span>
+                  <div className="flex gap-3 text-xs">
+                    <button onClick={() => setSelectedRoomIds(new Set(rooms.map(r => r.id)))} className="text-[#9A783E] font-medium hover:underline">All</button>
+                    <button onClick={() => setSelectedRoomIds(new Set())} className="text-slate-400 font-medium hover:underline">None</button>
                   </div>
                 </div>
-                {/* Arrivals card */}
-                <div className="bg-white rounded-xl border-t-[3px] border-t-emerald-500 border-x border-b border-slate-200/70 p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
-                      <LogIn className="w-4 h-4 text-emerald-600" />
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold text-slate-900">{arrivalsToday.length}</div>
-                  <div className="text-[11px] text-slate-500 font-medium mt-0.5">Arrivals Today</div>
-                </div>
-                {/* Departures card */}
-                <div className="bg-white rounded-xl border-t-[3px] border-t-rose-500 border-x border-b border-slate-200/70 p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-8 h-8 bg-rose-50 rounded-lg flex items-center justify-center">
-                      <LogOut className="w-4 h-4 text-rose-600" />
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold text-slate-900">{departuresToday.length}</div>
-                  <div className="text-[11px] text-slate-500 font-medium mt-0.5">Departures Today</div>
-                </div>
-                {/* Current guests card */}
-                <div className="bg-white rounded-xl border-t-[3px] border-t-blue-500 border-x border-b border-slate-200/70 p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                      <Users className="w-4 h-4 text-blue-600" />
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold text-slate-900">{currentGuests.length}</div>
-                  <div className="text-[11px] text-slate-500 font-medium mt-0.5">Current Guests</div>
-                </div>
-                {/* Revenue card */}
-                <div className="bg-white rounded-xl border-t-[3px] border-t-amber-500 border-x border-b border-slate-200/70 p-4 shadow-sm col-span-2 sm:col-span-1">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
-                      <TrendingUp className="w-4 h-4 text-amber-600" />
-                    </div>
-                  </div>
-                  <div className="text-xl font-bold text-slate-900">₱{totalRevenue.toLocaleString()}</div>
-                  <div className="text-[11px] text-slate-500 font-medium mt-0.5">Est. Revenue</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {rooms.map(room => {
+                    const on = selectedRoomIds.has(room.id)
+                    const c = ROOM_COLORS[room.id] || ROOM_COLORS['room-10']
+                    return (
+                      <label key={room.id}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer select-none transition-all ${on ? `${c.bg} ${c.border} ${c.text} font-medium` : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+                        <input type="checkbox" checked={on} className="accent-[#B89251] w-3.5 h-3.5"
+                          onChange={() => { const n = new Set(selectedRoomIds); n.has(room.id) ? n.delete(room.id) : n.add(room.id); setSelectedRoomIds(n) }} />
+                        Room {room.room_number}
+                      </label>
+                    )
+                  })}
                 </div>
               </div>
+            )}
 
-              {/* Rooms & Housekeeping Registry Panel */}
-              <div className="bg-white border border-slate-200/70 rounded-xl shadow-sm overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-[#FDFBF7] border border-[#E5D5C0]/60 rounded-md flex items-center justify-center">
-                      <Settings className="w-3.5 h-3.5 text-[#B89251]" />
-                    </div>
-                    <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Rooms & Housekeeping Registry</h3>
+            {/* ─── MONTH CALENDAR VIEW ─── */}
+            {schedulerMode === 'month' && (
+              <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                {/* Month header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                  <h3 className="text-sm font-semibold text-slate-800">
+                    {currentMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+                  </h3>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => { const p = new Date(currentMonthDate); p.setMonth(p.getMonth() - 1); setCurrentMonthDate(p) }}
+                      className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-colors">
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => { const n = new Date(currentMonthDate); n.setMonth(n.getMonth() + 1); setCurrentMonthDate(n) }}
+                      className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-colors">
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setCurrentMonthDate(new Date())}
+                      className="text-xs font-medium text-[#9A783E] px-2 py-1 hover:bg-[#FDFBF7] rounded-lg transition-colors ml-1">
+                      Today
+                    </button>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-medium italic">Click housekeeping badge to cycle status</span>
                 </div>
-                <div className="p-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                    {rooms.map(room => {
-                      const todayStr = new Date().toISOString().split('T')[0]
-                      const activeBooking = bookings.find(b => b.room_id === room.id && b.status === 'confirmed' && todayStr >= b.check_in && todayStr < b.check_out)
-                      const isOccupied = Boolean(activeBooking)
-                      const cleanStatus = housekeepingStates[room.id] || 'Clean'
 
-                      return (
-                        <div key={room.id} className="p-3.5 bg-slate-50/50 border border-slate-200/60 hover:border-[#E5D5C0] rounded-xl transition-all duration-200 space-y-3">
-                          <div>
-                            <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Suite {room.room_number}</span>
-                            <span className="text-xs font-bold text-slate-900 block truncate" title={room.name}>{room.name}</span>
-                          </div>
+                {/* Week‑day header */}
+                <div className="grid grid-cols-7 text-center border-b border-slate-100 text-[10px] uppercase tracking-wider font-semibold text-slate-400 py-2">
+                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}
+                </div>
 
-                          <div className="flex items-center justify-between">
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${isOccupied
-                              ? 'bg-amber-50 text-amber-850 border-amber-200/40'
-                              : 'bg-slate-100 text-slate-500 border-slate-200/55'
-                              }`}>
-                              {isOccupied ? 'Occupied' : 'Vacant'}
-                            </span>
+                {/* Day cells */}
+                <div className="grid grid-cols-7">
+                  {getMonthGridDates(currentMonthDate).map((date, idx) => {
+                    if (!date) return <div key={idx} className="min-h-[80px] sm:min-h-[100px] bg-slate-50/40 border-b border-r border-slate-100" />
 
-                            <button
-                              onClick={() => handleToggleHousekeeping(room.id)}
-                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full border flex items-center space-x-1 transition-all ${cleanStatus === 'Clean'
-                                ? 'bg-emerald-50 text-emerald-750 border-emerald-200/40 hover:bg-emerald-100/50'
-                                : cleanStatus === 'Dirty'
-                                  ? 'bg-rose-50 text-rose-750 border-rose-200/40 hover:bg-rose-100/50 animate-pulse'
-                                  : 'bg-amber-50 text-amber-750 border-amber-200/40 hover:bg-amber-100/50'
-                                }`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${cleanStatus === 'Clean' ? 'bg-emerald-500' : cleanStatus === 'Dirty' ? 'bg-rose-500' : 'bg-amber-500'
-                                }`} />
-                              <span>{cleanStatus}</span>
-                            </button>
-                          </div>
-                          {isOccupied && activeBooking && (
-                            <div className="text-[9px] text-slate-400 truncate font-medium">
-                              Guest: {activeBooking.guest_name}
-                            </div>
+                    const fmtDate = date.toISOString().split('T')[0]
+                    const isToday = date.toDateString() === new Date().toDateString()
+                    const dayBookings = bookings.filter(b => {
+                      if (b.room_id && !selectedRoomIds.has(b.room_id)) return false
+                      if (b.room_id) return fmtDate >= b.check_in && fmtDate < b.check_out
+                      if (b.venue_id && b.check_in === fmtDate) return true
+                      return false
+                    })
+
+                    return (
+                      <div key={idx} onClick={() => setSelectedPreviewDate(date)}
+                        className={`group min-h-[80px] sm:min-h-[100px] p-1 sm:p-1.5 border-b border-r border-slate-100 flex flex-col cursor-pointer transition-colors ${isToday ? 'bg-[#FDFBF7]' : 'hover:bg-slate-50'}`}>
+                        {/* Day number + quick add */}
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-xs font-medium ${isToday ? 'bg-[#B89251] text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold' : 'text-slate-500'}`}>
+                            {date.getDate()}
+                          </span>
+                          <button type="button"
+                            onClick={e => { e.stopPropagation(); const t = new Date(date); t.setDate(t.getDate() + 1); resetAndOpenManualForm('room', new Set([rooms[0]?.id || 'room-1']), fmtDate, t.toISOString().split('T')[0]) }}
+                            className="opacity-0 group-hover:opacity-100 w-4 h-4 flex items-center justify-center text-[10px] text-slate-400 hover:bg-[#B89251] hover:text-white rounded transition-all cursor-pointer">
+                            +
+                          </button>
+                        </div>
+                        {/* Booking chips */}
+                        <div className="space-y-0.5 overflow-hidden flex-1">
+                          {dayBookings.slice(0, 3).map(b => {
+                            const room = rooms.find(r => r.id === b.room_id)
+                            const c = b.room_id ? (ROOM_COLORS[b.room_id] || ROOM_COLORS['room-10']) : VENUE_COLORS
+                            return (
+                              <div key={b.id}
+                                onClick={e => { e.stopPropagation(); if (b.status !== 'blocked') { setSelectedExtendBooking(b); setExtendCheckoutDate(b.check_out); setExtendError('') } }}
+                                className={`text-[8px] sm:text-[9px] font-semibold px-1 py-0.5 rounded border truncate cursor-pointer ${c.bg} ${c.text} ${c.border}`}
+                                title={`${room ? `Room ${room.room_number}` : 'Venue'} – ${b.guest_name}`}>
+                                {room ? `R${room.room_number}` : 'VN'} · {b.guest_name.split(' ')[0]}
+                              </div>
+                            )
+                          })}
+                          {dayBookings.length > 3 && (
+                            <div className="text-[8px] text-slate-400 font-medium text-center">+{dayBookings.length - 3} more</div>
                           )}
                         </div>
-                      )
-                    })}
-                  </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
+            )}
 
-              {/* Arrivals & Departures Monitor queues */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-                {/* 1. Arrivals table */}
-                <div className="bg-white border border-slate-200/70 rounded-xl shadow-sm overflow-hidden">
-                  <div className="px-5 py-3.5 border-b border-slate-100 flex items-center space-x-2 bg-slate-50/50">
-                    <div className="w-6 h-6 bg-emerald-100 rounded-md flex items-center justify-center">
-                      <LogIn className="w-3.5 h-3.5 text-emerald-600" />
-                    </div>
-                    <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Arrivals Today ({arrivalsToday.filter(filterBookingBySearch).length})
-                    </h3>
-                  </div>
-                  <div className="p-5 space-y-3">
-
-                    {arrivalsToday.filter(filterBookingBySearch).length === 0 ? (
-                      <p className="text-xs text-slate-400 italic py-4 text-center">
-                        {searchQuery ? 'No matching arrivals found.' : 'No arrivals scheduled for today.'}
-                      </p>
-                    ) : (
-                      <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                        {arrivalsToday.filter(filterBookingBySearch).map(b => {
-                          const room = rooms.find(r => r.id === b.room_id)
-                          const venue = venues.find(v => v.id === b.venue_id)
-
+            {/* ─── TIMELINE GRID VIEW ─── */}
+            {schedulerMode === 'timeline' && (
+              <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50">
+                        <th className="sticky left-0 z-20 bg-slate-50 border-b border-r border-slate-200 p-3 text-left text-xs text-slate-500 font-medium min-w-[160px]">
+                          Room
+                        </th>
+                        {daysList.map((day, i) => {
+                          const { day: num, weekday } = formatDateHeader(day)
+                          const isToday = day.toDateString() === new Date().toDateString()
                           return (
-                            <div key={b.id} className="flex justify-between items-start p-3 bg-slate-50/60 hover:bg-slate-100/50 border border-slate-200/60 transition-colors text-xs rounded-lg">
-                              <div className="space-y-0.5">
-                                <span className="font-semibold text-slate-900 block">{b.guest_name}</span>
-                                <span className="text-[10px] text-slate-400 block">
-                                  {room ? `Room ${room.room_number}` : venue?.name} · #{b.id}
-                                </span>
-                                <span className="text-[10px] text-[#9A783E] font-semibold block">
-                                  Balance: ₱{(b.balance_due ?? 0).toLocaleString()}
-                                </span>
-                              </div>
-
-                              {b.status === 'pending' ? (
-                                <button
-                                  onClick={() => confirmBooking(b.id)}
-                                  className="bg-[#B89251] hover:bg-[#9A783E] text-white font-semibold text-[9px] uppercase tracking-wider px-2.5 py-1.5 transition-colors rounded-md"
-                                >
-                                  Check-in
-                                </button>
-                              ) : (
-                                <span className="text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md font-bold uppercase tracking-wider">In-house</span>
-                              )}
-                            </div>
+                            <th key={i} className={`border-b border-slate-200 p-1.5 text-center text-[10px] min-w-[38px] font-mono ${isToday ? 'bg-[#FDFBF7] text-[#9A783E] font-semibold' : 'text-slate-400'}`}>
+                              <div>{weekday}</div>
+                              <div className={`text-xs font-semibold mt-0.5 ${isToday ? 'border-b border-[#B89251] pb-0.5' : ''}`}>{num}</div>
+                            </th>
                           )
                         })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* 2. Departures table */}
-                <div className="bg-white border border-slate-200/70 rounded-xl shadow-sm overflow-hidden">
-                  <div className="px-5 py-3.5 border-b border-slate-100 flex items-center space-x-2 bg-slate-50/50">
-                    <div className="w-6 h-6 bg-rose-100 rounded-md flex items-center justify-center">
-                      <LogOut className="w-3.5 h-3.5 text-rose-600" />
-                    </div>
-                    <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Departures Today ({departuresToday.filter(filterBookingBySearch).length})
-                    </h3>
-                  </div>
-                  <div className="p-5 space-y-3">
-
-                    {departuresToday.filter(filterBookingBySearch).length === 0 ? (
-                      <p className="text-xs text-slate-400 italic py-4 text-center">
-                        {searchQuery ? 'No matching departures found.' : 'No departures scheduled for today.'}
-                      </p>
-                    ) : (
-                      <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                        {departuresToday.filter(filterBookingBySearch).map(b => {
-                          const room = rooms.find(r => r.id === b.room_id)
-                          const venue = venues.find(v => v.id === b.venue_id)
-
-                          return (
-                            <div key={b.id} className="flex justify-between items-start p-3 bg-slate-50/60 hover:bg-slate-100/50 border border-slate-200/60 transition-colors text-xs rounded-lg">
-                              <div className="space-y-0.5">
-                                <span className="font-semibold text-slate-900 block">{b.guest_name}</span>
-                                <span className="text-[10px] text-slate-400 block">
-                                  {room ? `Room ${room.room_number}` : venue?.name} · #{b.id}
-                                </span>
-                                <span className="text-[10px] text-amber-600 block font-semibold">
-                                  Release ₱{b.security_deposit ?? 0} deposit
-                                </span>
-                              </div>
-
-                              <button
-                                onClick={() => cancelBooking(b.id)}
-                                className="bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-slate-600 font-semibold text-[9px] uppercase tracking-wider px-2.5 py-1.5 transition-colors border border-slate-200 rounded-md"
-                              >
-                                Check-out
-                              </button>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Concierge walk-in shortcut */}
-              <div className="bg-[#B89251] rounded-xl p-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" style={{ background: 'linear-gradient(135deg, #9A783E 0%, #B89251 100%)' }}>
-                <div>
-                  <h4 className="text-sm font-bold text-white">Resort Walk-In Booking Console</h4>
-                  <p className="text-xs text-[#FDFBF7]/80 mt-1 max-w-sm">
-                    Create manual room blocks, event gazebo rentals, and walk-in cash payments.
-                  </p>
-                </div>
-                <button
-                  onClick={() => resetAndOpenManualForm('room', new Set(['room-1']))}
-                  className="shrink-0 bg-white text-[#9A783E] hover:bg-[#FDFBF7] font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow-sm"
-                >
-                  + Walk-In Booking
-                </button>
-              </div>
-
-            </div>
-          )}
-
-          {/* TAB B: INTERACTIVE GRID & MONTH SCHEDULER */}
-          {activeTab === 'scheduler' && (
-            <div className="space-y-6">
-
-              {/* Scheduler Controls and View Toggles */}
-              <div className="bg-white border border-slate-200/80 shadow-sm rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center space-x-2">
-                  <div className="flex p-0.5 bg-slate-100 border border-slate-200/60 rounded-xl text-[10px] font-bold uppercase tracking-wider">
-                    <button
-                      onClick={() => setSchedulerMode('month')}
-                      className={`px-4 py-2.5 rounded-lg transition-all duration-200 ${schedulerMode === 'month'
-                        ? 'bg-[#B89251] text-white shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                    >
-                      Month Calendar
-                    </button>
-                    <button
-                      onClick={() => setSchedulerMode('timeline')}
-                      className={`px-4 py-2.5 rounded-lg transition-all duration-200 ${schedulerMode === 'timeline'
-                        ? 'bg-[#B89251] text-white shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                    >
-                      Grid Timeline
-                    </button>
-                  </div>
-
-
-
-                  {schedulerMode === 'timeline' && (
-                    <div className="flex items-center space-x-3 ml-4">
-                      <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Start Date:</span>
-                      <input
-                        type="date"
-                        value={schedulerStartDate.toISOString().split('T')[0]}
-                        onChange={(e) => setSchedulerStartDate(new Date(e.target.value))}
-                        className="bg-white border border-slate-200 text-slate-850 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] text-xs font-semibold"
-                      />
-                      <button
-                        onClick={() => setSchedulerStartDate(new Date())}
-                        className="text-[9px] border border-[#E5D5C0] bg-[#FDFBF7] text-[#9A783E] hover:bg-[#B89251] hover:text-white hover:border-[#B89251] px-3 py-1.5 rounded-lg transition-all duration-200 uppercase font-semibold"
-                      >
-                        Today
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => resetAndOpenManualForm('room', new Set(['room-1']))}
-                  className="bg-[#B89251] pl-2 pr-2 hover:bg-[#9A783E] justify-center text-white font-bold uppercase tracking-wider text-[10px] px-4.5 py-2.5 rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm shadow-[#B89251]/10"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Walk-in Booking</span>
-                </button>
-              </div>
-
-              {/* MONTH CALENDAR VIEW */}
-              {schedulerMode === 'month' && (
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-                  {/* Left Column: Interactive Room Multi-Filters */}
-                  <div className="lg:col-span-1 bg-white border border-slate-200/80 shadow-sm rounded-xl p-5 space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
-                        <Filter className="w-4 h-4 text-[#B89251]" />
-                        <span>Filter Suites</span>
-                      </h4>
-                      <span className="text-[10px] text-slate-400 font-semibold font-mono">
-                        {selectedRoomIds.size} / {rooms.length} Checked
-                      </span>
-                    </div>
-
-                    <div className="flex space-x-2 text-[9px] uppercase tracking-wider font-extrabold pb-1">
-                      <button
-                        onClick={() => setSelectedRoomIds(new Set(rooms.map(r => r.id)))}
-                        className="flex-1 bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 py-1.5 rounded-md transition-colors"
-                      >
-                        Select All
-                      </button>
-                      <button
-                        onClick={() => setSelectedRoomIds(new Set())}
-                        className="flex-1 bg-slate-50 border border-slate-200 text-rose-600 hover:text-rose-700 py-1.5 rounded-md transition-colors"
-                      >
-                        Clear All
-                      </button>
-                    </div>
-
-                    <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-                      {rooms.map(room => {
-                        const isChecked = selectedRoomIds.has(room.id)
-                        const scheme = ROOM_COLOR_SCHEMES[room.id] || { badgeBg: 'bg-slate-150', text: 'text-slate-700' }
-                        return (
-                          <label
-                            key={room.id}
-                            className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer select-none transition-all ${isChecked
-                              ? 'bg-[#FDFBF7]/40 border-[#E5D5C0] hover:bg-[#FDFBF7]/60'
-                              : 'bg-slate-50/50 border-slate-200 text-slate-400 hover:bg-slate-50'
-                              }`}
-                          >
-                            <div className="flex items-center space-x-2.5">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => {
-                                  const next = new Set(selectedRoomIds)
-                                  if (next.has(room.id)) {
-                                    next.delete(room.id)
-                                  } else {
-                                    next.add(room.id)
-                                  }
-                                  setSelectedRoomIds(next)
-                                }}
-                                className="accent-[#B89251] w-4 h-4 rounded"
-                              />
-                              <span className="font-bold text-slate-800">Suite {room.room_number}</span>
-                            </div>
-                            <span className={`text-[8px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${scheme.badgeBg} ${scheme.text}`}>
-                              {room.name.split(' ')[0]}
-                            </span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Right Column: Month Calendar Grid */}
-                  <div className="lg:col-span-3 bg-white border border-slate-200/80 shadow-md rounded-xl p-5 overflow-hidden">
-                    {/* Calendar Header / Month Control */}
-                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-150">
-                      <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                        {currentMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-                      </h3>
-                      <div className="flex items-center space-x-1.5">
-                        <button
-                          onClick={() => {
-                            const prev = new Date(currentMonthDate)
-                            prev.setMonth(currentMonthDate.getMonth() - 1)
-                            setCurrentMonthDate(prev)
-                          }}
-                          className="p-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            const next = new Date(currentMonthDate)
-                            next.setMonth(currentMonthDate.getMonth() + 1)
-                            setCurrentMonthDate(next)
-                          }}
-                          className="p-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setCurrentMonthDate(new Date())}
-                          className="text-[9px] font-extrabold uppercase tracking-wider text-[#9A783E] border border-[#E5D5C0] bg-[#FDFBF7] hover:bg-[#B89251] hover:text-white px-2.5 py-1.5 rounded-lg transition-all"
-                        >
-                          This Month
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Calendar Grid Header */}
-                    <div className="grid grid-cols-7 text-center border-b border-slate-150 pb-2 text-[9px] uppercase tracking-wider font-extrabold text-slate-400">
-                      <div>Sun</div>
-                      <div>Mon</div>
-                      <div>Tue</div>
-                      <div>Wed</div>
-                      <div>Thu</div>
-                      <div>Fri</div>
-                      <div>Sat</div>
-                    </div>
-
-                    {/* Days Blocks */}
-                    <div className="grid grid-cols-7 gap-1.5 mt-2">
-                      {(() => {
-                        const gridDates = getMonthGridDates(currentMonthDate)
-                        return gridDates.map((date, idx) => {
-                          if (!date) {
-                            return (
-                              <div key={idx} className="bg-slate-50/30 border border-slate-100 rounded-lg min-h-[90px] opacity-40" />
-                            )
-                          }
-
-                          const formattedDate = date.toISOString().split('T')[0]
-                          const isToday = date.toDateString() === new Date().toDateString()
-                          const dayBookings = bookings.filter(b => {
-                            const start = b.check_in
-                            const end = b.check_out
-
-                            // Check multi-filter
-                            if (b.room_id && !selectedRoomIds.has(b.room_id)) {
-                              return false
-                            }
-
-                            if (b.room_id) {
-                              return formattedDate >= start && formattedDate < end
-                            }
-                            if (b.venue_id && b.check_in === formattedDate) {
-                              return true
-                            }
-                            return false
-                          })
-
-                          return (
-                            <div
-                              key={idx}
-                              className={`group min-h-[95px] p-1.5 border rounded-lg flex flex-col justify-between transition-all duration-200 relative ${isToday
-                                ? 'bg-[#FDFBF7] border-[#B89251] shadow-inner'
-                                : 'bg-white border-slate-200/60 hover:bg-slate-50/30 hover:border-slate-300'
-                                }`}
-                            >
-                              {/* Day Header Row */}
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className={`text-[10px] font-mono font-bold ${isToday ? 'bg-[#B89251] text-white w-5 h-5 flex items-center justify-center rounded-full shadow-sm' : 'text-slate-500'
-                                  }`}>
-                                  {date.getDate()}
-                                </span>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const formattedDate = date.toISOString().split('T')[0]
-                                    const nextD = new Date(date)
-                                    nextD.setDate(date.getDate() + 1)
-                                    const formattedTomorrow = nextD.toISOString().split('T')[0]
-                                    resetAndOpenManualForm('room', new Set([rooms[0]?.id || 'room-1']), formattedDate, formattedTomorrow)
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 w-4.5 h-4.5 bg-slate-100 text-slate-500 hover:bg-[#B89251] hover:text-white rounded flex items-center justify-center transition-all duration-150 text-[10px]"
-                                  title="Add Booking"
-                                >
-                                  +
-                                </button>
-                              </div>
-
-                              {/* Booking List inside day square */}
-                              <div className="space-y-1 overflow-y-auto max-h-[70px] flex-1">
-                                {dayBookings.slice(0, 3).map(b => {
-                                  const room = rooms.find(r => r.id === b.room_id)
-                                  const scheme = b.room_id
-                                    ? ROOM_COLOR_SCHEMES[b.room_id] || { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-200' }
-                                    : VENUE_COLOR_SCHEME
-
-                                  return (
-                                    <div
-                                      key={b.id}
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        if (b.status !== 'blocked') {
-                                          setSelectedExtendBooking(b)
-                                          setExtendCheckoutDate(b.check_out)
-                                          setExtendError('')
-                                        }
-                                      }}
-                                      className={`text-[8px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded border leading-tight truncate cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-sm ${scheme.bg} ${scheme.text} ${scheme.border}`}
-                                      title={`${room ? `Suite ${room.room_number}` : 'Venue'} - ${b.guest_name}`}
-                                    >
-                                      {room ? `S-${room.room_number}` : 'VN'} · {b.guest_name.split(' ')[0]}
-                                    </div>
-                                  )
-                                })}
-
-                                {dayBookings.length > 3 && (
-                                  <div className="text-[7px] text-slate-400 font-extrabold uppercase text-center py-0.5 bg-slate-50 border border-slate-100 rounded leading-none">
-                                    + {dayBookings.length - 3} more
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rooms.map(room => (
+                        <tr key={room.id} className="border-b border-slate-100 hover:bg-slate-50/30">
+                          <td className="sticky left-0 z-20 bg-white border-r border-slate-200 p-3 min-w-[160px]">
+                            <span className="text-xs font-semibold text-slate-800 block">Room {room.room_number}</span>
+                            <span className="text-[10px] text-[#B89251]">₱{room.base_price.toLocaleString()}/night</span>
+                          </td>
+                          {daysList.map((day, dIdx) => {
+                            const fmtStr = day.toISOString().split('T')[0]
+                            const booking = bookings.filter(b => b.room_id === room.id).find(b => fmtStr >= b.check_in && fmtStr < b.check_out)
+                            if (booking) {
+                              const isStart = fmtStr === booking.check_in
+                              const tipId = `${room.id}-${dIdx}`
+                              return (
+                                <td key={dIdx} className="p-0 border-r border-slate-100 relative"
+                                  onMouseEnter={() => setActiveTooltip(tipId)} onMouseLeave={() => setActiveTooltip(null)}>
+                                  <div className={`h-7 mx-0.5 flex items-center justify-center text-[9px] font-semibold rounded-sm border cursor-pointer select-none ${getBookingStyle(booking)}`}>
+                                    {isStart ? <span className="px-0.5 truncate">{booking.guest_name.split(' ')[0]}</span> : <span className="opacity-0">.</span>}
                                   </div>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TIMELINE GRID VIEW */}
-              {schedulerMode === 'timeline' && (
-                <div className="bg-white border border-slate-200/80 shadow-md overflow-hidden rounded-xl">
-                  {/* Matrix Table */}
-                  <div className="overflow-x-auto relative">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50/80">
-                          <th className="sticky left-0 z-20 bg-slate-50/95 border-b border-r border-slate-200 p-4 text-left text-[10px] uppercase tracking-wider text-slate-500 font-bold min-w-[200px]">
-                            Rooms / Suites
-                          </th>
-                          {daysList.map((day, idx) => {
-                            const { day: num, weekday } = formatDateHeader(day)
-                            const isToday = day.toDateString() === new Date().toDateString()
+                                  {activeTooltip === tipId && (
+                                    <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-52 bg-white border border-slate-200 p-3 shadow-lg rounded-lg text-xs space-y-1.5 pointer-events-none">
+                                      <div className="font-semibold text-slate-800">{booking.guest_name}</div>
+                                      <div className="text-[10px] text-slate-400 font-mono">{booking.check_in} → {booking.check_out}</div>
+                                      <div className="text-[10px] text-slate-500">
+                                        {booking.guest_phone}<br />
+                                        <span className={booking.status === 'confirmed' ? 'text-emerald-600 font-medium' : 'text-amber-600'}>{booking.status}</span>
+                                        {' · '}{booking.source}
+                                      </div>
+                                    </div>
+                                  )}
+                                </td>
+                              )
+                            }
                             return (
-                              <th
-                                key={idx}
-                                className={`border-b border-slate-200/60 p-2 text-center text-[10px] min-w-[40px] font-mono ${isToday ? 'bg-[#FDFBF7] text-[#9A783E] font-bold' : 'text-slate-400'}`}
-                              >
-                                <div>{weekday}</div>
-                                <div className={`text-xs font-bold mt-0.5 ${isToday ? 'border-b border-[#B89251] pb-0.5' : ''}`}>{num}</div>
-                              </th>
+                              <td key={dIdx} onClick={() => handleCellClick(room.id, day)}
+                                className="border-r border-slate-100 p-0 h-8 hover:bg-[#FDFBF7]/60 cursor-cell transition-colors" />
                             )
                           })}
                         </tr>
-                      </thead>
-
-                      <tbody>
-                        {rooms.map((room) => (
-                          <tr key={room.id} className="hover:bg-slate-50/30 group border-b border-slate-100">
-                            <td className="sticky left-0 z-20 bg-white border-r border-slate-200 p-4 text-left min-w-[200px]">
-                              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Suite {room.room_number}</span>
-                              <span className="text-xs font-bold text-slate-900 font-sans block">{room.name}</span>
-                              <span className="text-[10px] font-medium text-[#B89251]">₱{room.base_price.toLocaleString()}/night</span>
-                            </td>
-
-                            {daysList.map((day, dIdx) => {
-                              const formattedStr = day.toISOString().split('T')[0]
-                              const roomList = bookings.filter(b => b.room_id === room.id)
-                              const booking = roomList.find(b => formattedStr >= b.check_in && formattedStr < b.check_out)
-
-                              if (booking) {
-                                const isCheckInDay = day.toISOString().split('T')[0] === booking.check_in
-                                const tooltipId = `${room.id}-${dIdx}`
-
-                                return (
-                                  <td
-                                    key={dIdx}
-                                    className="p-0 border-r border-slate-100/80 relative align-middle"
-                                    onMouseEnter={() => setActiveTooltip(tooltipId)}
-                                    onMouseLeave={() => setActiveTooltip(null)}
-                                  >
-                                    <div className={`h-8 mx-0.5 flex items-center justify-center text-[9px] uppercase tracking-wider overflow-hidden rounded-sm select-none border transition-all ${getBookingStyle(booking)}`}>
-                                      {isCheckInDay ? (
-                                        <span className="px-1 truncate font-bold">{booking.guest_name.split(' ')[0]}</span>
-                                      ) : (
-                                        <span className="opacity-0">.</span>
-                                      )}
-                                    </div>
-
-                                    {activeTooltip === tooltipId && (
-                                      <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-56 bg-white border border-slate-200 p-4 shadow-xl rounded-lg text-xs space-y-2 pointer-events-none">
-                                        <div className="font-bold border-b border-slate-100 pb-1 text-[#B89251] uppercase tracking-wider text-[9px]">
-                                          {booking.source} reservation
-                                        </div>
-                                        <div className="font-bold text-slate-800">{booking.guest_name}</div>
-                                        <div className="text-[10px] text-slate-400 font-medium font-mono">
-                                          {booking.check_in} to {booking.check_out}
-                                        </div>
-                                        <div className="text-[10px] text-slate-600">
-                                          Phone: {booking.guest_phone}<br />
-                                          Email: {booking.guest_email}<br />
-                                          Status: <span className={booking.status === 'confirmed' ? 'text-emerald-600 font-bold' : 'text-amber-600'}>{booking.status}</span>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </td>
-                                )
-                              }
-
-                              return (
-                                <td
-                                  key={dIdx}
-                                  onClick={() => handleCellClick(room.id, day)}
-                                  className="border-r border-slate-100 p-0 h-10 hover:bg-[#FDFBF7]/60 cursor-cell transition-colors"
-                                />
-                              )
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+        )}
 
-              {/* INLINE DETAILS & STAY EXTENSION DRAWER */}
-              {selectedExtendBooking && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
-                  <div className="w-full max-w-md relative bg-white border border-slate-200 shadow-2xl p-6 rounded-2xl">
-                    <button
-                      onClick={() => setSelectedExtendBooking(null)}
-                      className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+        {/* ═══ BOOKINGS TAB ═══ */}
+        {activeTab === 'bookings' && (
+          <div className="space-y-6">
 
-                    <div className="border-b border-slate-100 pb-3 mb-4">
-                      <span className="text-[8px] uppercase tracking-wider text-[#9A783E] font-bold block">Reservation Detailer</span>
-                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                        {selectedExtendBooking.guest_name}
-                      </h3>
-                    </div>
-
-                    <div className="space-y-4 text-xs font-medium">
-                      {extendError && (
-                        <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-[10px] flex items-center space-x-2 rounded-lg">
-                          <AlertCircle className="w-4 h-4 shrink-0" />
-                          <span>{extendError}</span>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200/50 rounded-xl">
-                        <div>
-                          <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-bold">Chamber Suite</span>
-                          <span className="text-slate-800 font-bold">
-                            {rooms.find(r => r.id === selectedExtendBooking.room_id)?.name || 'Event Venue'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-bold">Booking Source</span>
-                          <span className="text-slate-800 font-bold uppercase">{selectedExtendBooking.source}</span>
-                        </div>
-                        <div>
-                          <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-bold">Phone Number</span>
-                          <span className="text-slate-800 font-mono font-bold">{selectedExtendBooking.guest_phone}</span>
-                        </div>
-                        <div>
-                          <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-bold">Email Address</span>
-                          <span className="text-slate-850 truncate block font-bold" title={selectedExtendBooking.guest_email}>
-                            {selectedExtendBooking.guest_email}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Stay Extension Form */}
-                      <form onSubmit={handleExtendStaySubmit} className="space-y-3.5 border-t border-slate-100 pt-4">
-                        <span className="text-[9px] uppercase tracking-wider text-[#9A783E] font-bold block mb-1">
-                          Extend Stay Duration
-                        </span>
-
-                        <div className="grid grid-cols-2 gap-3 items-center">
-                          <div>
-                            <span className="text-[8px] uppercase text-slate-400 block font-bold">Check-in Reference</span>
-                            <input
-                              type="date"
-                              readOnly
-                              value={selectedExtendBooking.check_in}
-                              className="w-full bg-slate-100 border border-slate-200 text-slate-500 px-3 py-2 rounded-lg text-xs font-mono font-bold outline-none cursor-not-allowed"
-                            />
-                          </div>
-                          <div>
-                            <span className="text-[8px] uppercase text-[#B89251] block font-bold">Extend Checkout Date</span>
-                            <input
-                              type="date"
-                              required
-                              min={selectedExtendBooking.check_in}
-                              value={extendCheckoutDate}
-                              onChange={(e) => setExtendCheckoutDate(e.target.value)}
-                              className="w-full bg-white border border-slate-200 text-slate-850 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] text-xs font-mono font-bold"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Stay extension cost dynamic feedback */}
-                        {extendCheckoutDate && extendCheckoutDate !== selectedExtendBooking.check_out && (
-                          <div className="p-3.5 bg-[#FDFBF7] border border-[#E5D5C0] rounded-xl text-[10px] space-y-1.5 leading-relaxed text-[#9A783E] font-bold">
-                            <span className="uppercase text-[8px] tracking-wider block font-extrabold">Proposed Extension Summary</span>
-                            <div className="flex justify-between">
-                              <span>Nights extended:</span>
-                              <span className="font-mono">
-                                {Math.max(
-                                  0,
-                                  Math.ceil(
-                                    (new Date(extendCheckoutDate).getTime() - new Date(selectedExtendBooking.check_out).getTime()) /
-                                    (1000 * 60 * 60 * 24)
-                                  )
-                                )}{' '}
-                                additional night(s)
-                              </span>
-                            </div>
-                            <div className="flex justify-between text-slate-800">
-                              <span>Updated Balance Due:</span>
-                              <span className="font-mono">
-                                ₱
-                                {(() => {
-                                  try {
-                                    const pricing = syncEngine.calculatePricing({
-                                      roomId: selectedExtendBooking.room_id,
-                                      checkIn: selectedExtendBooking.check_in,
-                                      checkOut: extendCheckoutDate,
-                                      guestEmail: selectedExtendBooking.guest_email,
-                                      breakfastOrders: selectedExtendBooking.breakfast_orders,
-                                      bookingsList: bookings
-                                    })
-                                    return pricing.balanceDue.toLocaleString()
-                                  } catch {
-                                    return '0'
-                                  }
-                                })()}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex space-x-2 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedExtendBooking(null)}
-                            className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold uppercase tracking-wider text-[10px] py-3 rounded-lg border border-slate-200 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            disabled={extendCheckoutDate === selectedExtendBooking.check_out}
-                            className="flex-1 bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold uppercase tracking-wider text-[10px] py-3 rounded-lg transition-colors shadow-sm shadow-[#B89251]/10"
-                          >
-                            ✓ Save Extension
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            </div>
-          )}
-
-          {/* TAB C: RESERVATION QUEUE */}
-          {activeTab === 'bookings' && (
-            <div className="space-y-8">
-
-              {/* Queue A: Pending Approvals */}
-              <div className="bg-white border border-slate-200/80 p-6 space-y-4 rounded-xl shadow-sm">
-                <h3 className="text-xs uppercase tracking-wider text-slate-800 font-bold border-b border-slate-100 pb-2.5 flex items-center space-x-2">
-                  <Clock className="w-5 h-5 text-amber-500 animate-pulse" />
-                  <span>Pending downpayment checks ({bookings.filter(b => b.status === 'pending').length})</span>
-                </h3>
-
+            {/* Pending queue */}
+            <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <h3 className="text-sm font-semibold text-slate-800">Pending ({bookings.filter(b => b.status === 'pending').length})</h3>
+              </div>
+              <div className="p-4">
                 {bookings.filter(b => b.status === 'pending').length === 0 ? (
-                  <p className="text-xs text-slate-400 font-light italic">No pending client reservations at this moment.</p>
+                  <p className="text-xs text-slate-400 py-4 text-center">No pending reservations.</p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs font-light text-left border-collapse">
+                    <table className="w-full text-xs text-left">
                       <thead>
-                        <tr className="border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                          <th className="py-3 px-4">Booking ID</th>
-                          <th className="py-3 px-4">Resort Room/Venue</th>
-                          <th className="py-3 px-4">Guest Details</th>
-                          <th className="py-3 px-4">Reservation Dates</th>
-                          <th className="py-3 px-4">50% Downpayment</th>
-                          <th className="py-3 px-4">Actions</th>
+                        <tr className="border-b border-slate-100 text-slate-500 text-[10px] uppercase tracking-wider font-medium">
+                          <th className="py-2 px-3">ID</th><th className="py-2 px-3">Room</th><th className="py-2 px-3">Guest</th>
+                          <th className="py-2 px-3">Dates</th><th className="py-2 px-3">Downpay</th><th className="py-2 px-3">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {bookings.filter(b => b.status === 'pending').map((b) => {
+                        {bookings.filter(b => b.status === 'pending').map(b => {
                           const room = rooms.find(r => r.id === b.room_id)
                           const venue = venues.find(v => v.id === b.venue_id)
-
                           return (
-                            <tr key={b.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                              <td className="py-4 px-4 font-mono text-[10px] text-[#9A783E] font-semibold">{b.id}</td>
-                              <td className="py-4 px-4">
-                                <span className="font-bold text-slate-900 block">
-                                  {room ? `Room ${room.room_number}` : venue?.name}
-                                </span>
-                                <span className="text-[10px] text-slate-500 block">
-                                  {room ? room.name : 'Event Venue Rental'}
-                                </span>
+                            <tr key={b.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                              <td className="py-3 px-3 font-mono text-[10px] text-[#9A783E]">{b.id}</td>
+                              <td className="py-3 px-3">
+                                <span className="font-medium text-slate-800">{room ? `Room ${room.room_number}` : venue?.name}</span>
                               </td>
-                              <td className="py-4 px-4 space-y-0.5">
-                                <span className="font-bold text-slate-900 block">{b.guest_name}</span>
-                                <span className="text-[10px] text-slate-500 block">{b.guest_phone} | {b.guest_email}</span>
+                              <td className="py-3 px-3">
+                                <span className="font-medium text-slate-800 block">{b.guest_name}</span>
+                                <span className="text-[10px] text-slate-400">{b.guest_phone}</span>
                               </td>
-                              <td className="py-4 px-4 font-mono text-[10px] text-slate-600">
-                                {b.check_in} {room ? `to ${b.check_out}` : ''}
-                              </td>
-                              <td className="py-4 px-4 font-bold text-emerald-600">₱{(b.downpayment_paid ?? 0).toLocaleString()}</td>
-                              <td className="py-4 px-4 flex items-center space-x-3 pt-5">
-                                <button
-                                  onClick={() => setSelectedReceiptData(b)}
-                                  className="text-xs text-[#9A783E] hover:text-[#B89251] font-medium hover:underline flex items-center space-x-1.5"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                  <span>Verify Slip</span>
-                                </button>
-                                <button
-                                  onClick={() => confirmBooking(b.id)}
-                                  className="bg-[#B89251] hover:bg-[#9A783E] text-white font-bold text-[9px] uppercase tracking-wider px-3 py-1.5 transition-colors rounded-lg shadow-sm shadow-[#B89251]/10"
-                                >
-                                  Confirm
-                                </button>
-                                <button
-                                  onClick={() => cancelBooking(b.id)}
-                                  className="text-[9px] uppercase tracking-wider text-rose-600 hover:text-rose-700 font-bold"
-                                >
-                                  Release
-                                </button>
+                              <td className="py-3 px-3 font-mono text-[10px] text-slate-500">{b.check_in} {room ? `→ ${b.check_out}` : ''}</td>
+                              <td className="py-3 px-3 font-medium text-emerald-600">₱{(b.downpayment_paid ?? 0).toLocaleString()}</td>
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-2">
+                                  <button onClick={() => setSelectedReceiptData(b)} className="text-[#9A783E] hover:underline flex items-center gap-1">
+                                    <Eye className="w-3 h-3" /><span>Verify</span>
+                                  </button>
+                                  <button onClick={() => confirmBooking(b.id)}
+                                    className="bg-[#B89251] hover:bg-[#9A783E] text-white font-medium text-[10px] uppercase px-2 py-1 rounded-lg transition-colors">
+                                    Confirm
+                                  </button>
+                                  <button onClick={() => cancelBooking(b.id)} className="text-rose-500 hover:text-rose-700 font-medium">Release</button>
+                                </div>
                               </td>
                             </tr>
                           )
@@ -1525,67 +708,51 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Queue B: Confirmed Bookings */}
-              <div className="bg-white border border-slate-200/80 p-6 space-y-4 rounded-xl shadow-sm">
-                <h3 className="text-xs uppercase tracking-wider text-slate-800 font-bold border-b border-slate-100 pb-2.5 flex items-center space-x-2">
-                  <ClipboardCheck className="w-5 h-5 text-emerald-500" />
-                  <span>Active Confirmed Reservations ({bookings.filter(b => b.status === 'confirmed' || b.status === 'blocked').length})</span>
-                </h3>
-
+            {/* Confirmed reservations */}
+            <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                <ClipboardCheck className="w-4 h-4 text-emerald-500" />
+                <h3 className="text-sm font-semibold text-slate-800">Confirmed ({bookings.filter(b => b.status === 'confirmed' || b.status === 'blocked').length})</h3>
+              </div>
+              <div className="p-4">
                 {bookings.filter(b => b.status === 'confirmed' || b.status === 'blocked').length === 0 ? (
-                  <p className="text-xs text-slate-400 font-light italic">No confirmed reservations in the database.</p>
+                  <p className="text-xs text-slate-400 py-4 text-center">No confirmed reservations.</p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs font-light text-left border-collapse">
+                    <table className="w-full text-xs text-left">
                       <thead>
-                        <tr className="border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                          <th className="py-3 px-4">Room/Venue</th>
-                          <th className="py-3 px-4">Guest Info</th>
-                          <th className="py-3 px-4">Stay Date(s)</th>
-                          <th className="py-3 px-4">Payment tracking</th>
-                          <th className="py-3 px-4">Channel</th>
-                          <th className="py-3 px-4">Action</th>
+                        <tr className="border-b border-slate-100 text-slate-500 text-[10px] uppercase tracking-wider font-medium">
+                          <th className="py-2 px-3">Room</th><th className="py-2 px-3">Guest</th><th className="py-2 px-3">Dates</th>
+                          <th className="py-2 px-3">Payment</th><th className="py-2 px-3">Source</th><th className="py-2 px-3"></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {bookings.filter(b => b.status === 'confirmed' || b.status === 'blocked').map((b) => {
+                        {bookings.filter(b => b.status === 'confirmed' || b.status === 'blocked').map(b => {
                           const room = rooms.find(r => r.id === b.room_id)
                           const venue = venues.find(v => v.id === b.venue_id)
-                          const isSync = b.source === 'airbnb' || b.source === 'booking_com'
-
                           return (
-                            <tr key={b.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                              <td className="py-4 px-4">
-                                <span className="font-bold text-slate-900 block">
-                                  {room ? `Room ${room.room_number}` : venue?.name}
-                                </span>
-                                <span className="text-[10px] text-slate-500 block">{room ? room.name : 'Event Venue'}</span>
+                            <tr key={b.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                              <td className="py-3 px-3">
+                                <span className="font-medium text-slate-800">{room ? `Room ${room.room_number}` : venue?.name}</span>
                               </td>
-                              <td className="py-4 px-4 space-y-0.5">
-                                <span className="font-bold text-slate-900 block">{b.guest_name}</span>
-                                <span className="text-[10px] text-slate-500 block">{b.guest_phone}</span>
+                              <td className="py-3 px-3">
+                                <span className="font-medium text-slate-800 block">{b.guest_name}</span>
+                                <span className="text-[10px] text-slate-400">{b.guest_phone}</span>
                               </td>
-                              <td className="py-4 px-4 font-mono text-[10px] text-slate-600">
-                                {b.check_in} {room ? `to ${b.check_out}` : ''}
+                              <td className="py-3 px-3 font-mono text-[10px] text-slate-500">{b.check_in} {room ? `→ ${b.check_out}` : ''}</td>
+                              <td className="py-3 px-3 text-[10px] space-y-0.5">
+                                <div><span className="text-slate-400">Paid:</span> <span className="font-medium text-emerald-600">₱{(b.downpayment_paid ?? 0).toLocaleString()}</span></div>
+                                {b.status !== 'blocked' && <div><span className="text-slate-400">Due:</span> <span className="font-medium text-[#9A783E]">₱{(b.balance_due ?? 0).toLocaleString()}</span></div>}
                               </td>
-                              <td className="py-4 px-4 text-[10px] space-y-0.5">
-                                <div><span className="text-slate-500">Downpayment Paid:</span> <span className="font-bold text-emerald-600">₱{(b.downpayment_paid ?? 0).toLocaleString()}</span></div>
-                                {b.status !== 'blocked' && (
-                                  <div><span className="text-slate-500">Due at Check-in:</span> <span className="font-bold text-[#9A783E]">₱{(b.balance_due ?? 0).toLocaleString()}</span></div>
-                                )}
-                              </td>
-                              <td className="py-4 px-4 font-bold">
-                                <span className={`px-2 py-1 uppercase text-[9px] tracking-wider font-semibold rounded-md border ${isSync ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-[#9A783E] bg-[#FDFBF7] border-[#E5D5C0]'
-                                  }`}>
+                              <td className="py-3 px-3">
+                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded border ${b.source === 'airbnb' || b.source === 'booking_com' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-[#9A783E] bg-[#FDFBF7] border-[#E5D5C0]'}`}>
                                   {b.source}
                                 </span>
                               </td>
-                              <td className="py-4 px-4">
-                                <button
-                                  onClick={() => cancelBooking(b.id)}
-                                  className="text-slate-400 hover:text-rose-600 transition-colors p-1"
-                                >
+                              <td className="py-3 px-3">
+                                <button onClick={() => cancelBooking(b.id)} className="text-slate-300 hover:text-rose-500 transition-colors p-1">
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               </td>
@@ -1598,48 +765,41 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
                 )}
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* TAB D: CUSTOMER LOYALTY visit history logs */}
-          {activeTab === 'loyalty' && (
-            <div className="bg-white border border-slate-200/80 p-6 shadow-sm rounded-xl space-y-6">
-              <div className="border-b border-slate-100 pb-3.5">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
-                  <Sparkles className="w-5 h-5 text-[#B89251]" />
-                  <span>Customer Loyalty & Visit History register</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 font-light leading-relaxed">
-                  Daweez Pension House PMS silently matches guest email addresses during checkout. Stays with 1+ confirmed past stay are automatically flagged for a 10% automatic loyalty discount on nightly rates.
-                </p>
-              </div>
-
+        {/* ═══ GUESTS TAB ═══ */}
+        {activeTab === 'guests' && (
+          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-800">Guest Loyalty</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Guests with 1+ past stays get an automatic 10% loyalty discount.</p>
+            </div>
+            <div className="p-4">
               {loyaltyRecords.length === 0 ? (
-                <p className="text-xs text-slate-400 font-light italic">No confirmed guest records in database yet.</p>
+                <p className="text-xs text-slate-400 py-4 text-center">No guest records yet.</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs font-light text-left border-collapse">
+                  <table className="w-full text-xs text-left">
                     <thead>
-                      <tr className="border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="py-3 px-4">Guest Details</th>
-                        <th className="py-3 px-4">Contact Phone</th>
-                        <th className="py-3 px-4">Visits Count</th>
-                        <th className="py-3 px-4">Last Stay Date</th>
-                        <th className="py-3 px-4">Loyalty Status Badge</th>
+                      <tr className="border-b border-slate-100 text-slate-500 text-[10px] uppercase tracking-wider font-medium">
+                        <th className="py-2 px-3">Guest</th><th className="py-2 px-3">Phone</th>
+                        <th className="py-2 px-3">Visits</th><th className="py-2 px-3">Last Stay</th><th className="py-2 px-3">Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {loyaltyRecords.map((r, rIdx) => (
-                        <tr key={rIdx} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                          <td className="py-4 px-4">
-                            <span className="font-bold text-slate-900 block">{r.name}</span>
-                            <span className="text-[10px] text-slate-500 block">{r.email}</span>
+                      {loyaltyRecords.map((r, i) => (
+                        <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50">
+                          <td className="py-3 px-3">
+                            <span className="font-medium text-slate-800 block">{r.name}</span>
+                            <span className="text-[10px] text-slate-400">{r.email}</span>
                           </td>
-                          <td className="py-4 px-4 font-mono text-[10px] text-slate-600">{r.phone}</td>
-                          <td className="py-4 px-4 font-bold text-slate-900 text-center">{r.visit_count}</td>
-                          <td className="py-4 px-4 font-mono text-[10px] text-slate-600">{r.last_visit.split('T')[0]}</td>
-                          <td className="py-4 px-4">
-                            <span className="bg-[#FDFBF7] border border-[#E5D5C0] text-[#9A783E] px-3 py-1 rounded-full text-[9px] uppercase tracking-wider font-bold shadow-sm">
-                              ✓ 10% Auto Discount Active
+                          <td className="py-3 px-3 font-mono text-[10px] text-slate-500">{r.phone}</td>
+                          <td className="py-3 px-3 font-medium text-slate-800 text-center">{r.visit_count}</td>
+                          <td className="py-3 px-3 font-mono text-[10px] text-slate-500">{r.last_visit.split('T')[0]}</td>
+                          <td className="py-3 px-3">
+                            <span className="text-[10px] font-medium text-[#9A783E] bg-[#FDFBF7] border border-[#E5D5C0] px-2 py-0.5 rounded">
+                              10% Discount
                             </span>
                           </td>
                         </tr>
@@ -1649,251 +809,309 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
                 </div>
               )}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* TAB E: ICAL CHANNEL MANAGER */}
-          {activeTab === 'channels' && (
-            <div className="bg-white border border-slate-200/80 p-6 shadow-sm space-y-8 rounded-xl">
-              <div className="border-b border-slate-100 pb-4">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
-                  <Settings className="w-5 h-5 text-slate-700" />
-                  <span>Room iCal Feed Subscriptions Manager</span>
-                </h3>
-              </div>
-
-              <div className="space-y-6">
-                {rooms.map((room) => {
-                  const roomFeeds = editingFeeds.filter(f => f.room_id === room.id)
-                  const airbnbFeed = roomFeeds.find(f => f.channel === 'airbnb')
-                  const bookingComFeed = roomFeeds.find(f => f.channel === 'booking_com')
-
-                  return (
-                    <div key={room.id} className="border border-slate-100 bg-slate-50/30 p-5 space-y-4 rounded-xl">
-                      <div className="flex items-center justify-between border-b border-slate-200/40 pb-2 text-xs">
-                        <span className="font-bold text-slate-800">Suite {room.room_number}: {room.name}</span>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center text-xs">
-                        <span className="text-[10px] uppercase text-[#B89251] font-bold tracking-wider">Global Export URL:</span>
-                        <input
-                          type="text"
-                          readOnly
-                          value={`https://daweez-booking.vercel.app/api/ical/room/${room.room_number}.ics`}
-                          className="md:col-span-2 bg-slate-50 border border-slate-200 text-slate-500 p-2.5 rounded-lg select-all font-mono text-[10px] outline-none"
-                        />
-                      </div>
-
-                      <div className="space-y-3">
-                        {airbnbFeed && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center text-xs">
-                            <span className="text-[10px] uppercase text-emerald-600 font-bold tracking-wider">Airbnb Import Feed:</span>
-                            <input
-                              type="text"
-                              value={airbnbFeed.url}
-                              onChange={(e) => handleFeedUrlChange(airbnbFeed.id, e.target.value)}
-                              className="md:col-span-2 bg-white border border-slate-200 text-slate-800 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] font-mono text-[10px]"
-                            />
-                          </div>
-                        )}
-
-                        {bookingComFeed && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center text-xs">
-                            <span className="text-[10px] uppercase text-blue-600 font-bold tracking-wider">Booking.com Import:</span>
-                            <input
-                              type="text"
-                              value={bookingComFeed.url}
-                              onChange={(e) => handleFeedUrlChange(bookingComFeed.id, e.target.value)}
-                              className="md:col-span-2 bg-white border border-slate-200 text-slate-800 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] font-mono text-[10px]"
-                            />
-                          </div>
-                        )}
-                      </div>
+        {/* ═══ SETTINGS TAB ═══ */}
+        {activeTab === 'settings' && (
+          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-800">iCal Feed Subscriptions</h3>
+            </div>
+            <div className="p-4 space-y-5">
+              {rooms.map(room => {
+                const rf = editingFeeds.filter(f => f.room_id === room.id)
+                const air = rf.find(f => f.channel === 'airbnb')
+                const bk  = rf.find(f => f.channel === 'booking_com')
+                return (
+                  <div key={room.id} className="border border-slate-100 rounded-lg p-4 space-y-3">
+                    <div className="text-xs font-semibold text-slate-800 border-b border-slate-100 pb-2">
+                      Room {room.room_number}: {room.name}
                     </div>
-                  )
-                })}
-              </div>
-
-              <div className="border-t border-slate-100 pt-6 flex items-center justify-end">
-                <button
-                  onClick={handleSaveFeeds}
-                  className="bg-[#B89251] hover:bg-[#9A783E] text-white font-bold uppercase tracking-wider text-xs px-6 py-3 rounded-lg transition-colors shadow-sm shadow-[#B89251]/10"
-                >
+                    <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-2 items-center text-xs">
+                      <span className="text-[10px] text-[#B89251] font-medium">Export URL</span>
+                      <input readOnly value={`https://daweez-booking.vercel.app/api/ical/room/${room.room_number}.ics`}
+                        className="bg-slate-50 border border-slate-200 text-slate-500 p-2 rounded-lg font-mono text-[10px] w-full select-all outline-none" />
+                      <button onClick={() => copyToClipboard(`https://daweez-booking.vercel.app/api/ical/room/${room.room_number}.ics`, `export-${room.id}`)}
+                        className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1.5 rounded-lg border transition-all ${copiedFeedId === `export-${room.id}` ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                        {copiedFeedId === `export-${room.id}` ? <><Check className="w-3 h-3" />Copied</> : <><Copy className="w-3 h-3" />Copy</>}
+                      </button>
+                    </div>
+                    {air && (
+                      <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-2 items-center text-xs">
+                        <span className="text-[10px] text-emerald-600 font-medium">Airbnb Feed</span>
+                        <input value={air.url} onChange={e => handleFeedUrlChange(air.id, e.target.value)}
+                          className="bg-white border border-slate-200 text-slate-700 p-2 rounded-lg font-mono text-[10px] w-full focus:outline-none focus:border-[#B89251]" />
+                        <button onClick={() => copyToClipboard(air.url, `air-${room.id}`)}
+                          className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1.5 rounded-lg border transition-all ${copiedFeedId === `air-${room.id}` ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                          {copiedFeedId === `air-${room.id}` ? <><Check className="w-3 h-3" />Copied</> : <><Copy className="w-3 h-3" />Copy</>}
+                        </button>
+                      </div>
+                    )}
+                    {bk && (
+                      <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-2 items-center text-xs">
+                        <span className="text-[10px] text-blue-600 font-medium">Booking.com</span>
+                        <input value={bk.url} onChange={e => handleFeedUrlChange(bk.id, e.target.value)}
+                          className="bg-white border border-slate-200 text-slate-700 p-2 rounded-lg font-mono text-[10px] w-full focus:outline-none focus:border-[#B89251]" />
+                        <button onClick={() => copyToClipboard(bk.url, `bk-${room.id}`)}
+                          className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1.5 rounded-lg border transition-all ${copiedFeedId === `bk-${room.id}` ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                          {copiedFeedId === `bk-${room.id}` ? <><Check className="w-3 h-3" />Copied</> : <><Copy className="w-3 h-3" />Copy</>}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              <div className="flex justify-end pt-2 border-t border-slate-100">
+                <button onClick={handleSaveFeeds}
+                  className="bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-medium px-5 py-2.5 rounded-lg transition-colors">
                   Save Feed URLs
                 </button>
               </div>
             </div>
-          )}
-
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* 4. MODAL: Manual Entry Form Drawer (Walk-ins) */}
-      {showManualForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="w-full max-w-lg relative bg-white border border-slate-200 shadow-2xl p-6 max-h-[90vh] overflow-y-auto rounded-2xl">
-            <button
-              type="button"
-              onClick={() => setShowManualForm(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      {/* ── Mobile bottom nav ── */}
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 md:hidden">
+        <div className="flex">
+          {TABS.map(t => {
+            const Icon = t.Icon
+            const active = activeTab === t.id
+            return (
+              <button key={t.id} onClick={() => setActiveTab(t.id)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors ${active ? 'text-[#9A783E]' : 'text-slate-400'}`}>
+                <Icon className="w-5 h-5" />
+                <span>{t.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </nav>
 
-            <div className="border-b border-slate-100 pb-3 mb-5">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Resort Walk-In Booking Console
-              </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">Wizard-guided manual entry & revenue optimizer</p>
+      {/* ═══════════════════════════════════════════
+          MODALS
+          ═══════════════════════════════════════════ */}
+
+      {/* ── Day preview modal ── */}
+      {selectedPreviewDate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+              <div>
+                <span className="text-[10px] text-[#9A783E] font-medium block">Day Overview</span>
+                <h3 className="text-sm font-semibold text-slate-800">
+                  {selectedPreviewDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                </h3>
+              </div>
+              <button onClick={() => setSelectedPreviewDate(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
-
-            {/* Stepper indicators */}
-            <div className="flex items-center justify-between px-6 mb-6">
-              {[
-                { step: 1, label: 'Stay & Price' },
-                { step: 2, label: 'Guest Profile' },
-                { step: 3, label: 'Add-ons & Invoice' }
-              ].map((s, idx) => {
-                const isActive = formStep === s.step
-                const isCompleted = formStep > s.step
-                return (
-                  <React.Fragment key={s.step}>
-                    {idx > 0 && (
-                      <div className={`flex-1 h-0.5 mx-2 ${formStep > idx ? 'bg-[#B89251]' : 'bg-slate-100'}`} />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Let them jump backward only, or forward if validated
-                        if (s.step < formStep) {
-                          setFormStep(s.step)
-                        }
-                      }}
-                      className="flex flex-col items-center focus:outline-none"
-                    >
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all ${isActive
-                        ? 'bg-[#B89251] border-[#B89251] text-white ring-4 ring-[#B89251]/10'
-                        : isCompleted
-                          ? 'bg-[#FDFBF7] border-[#B89251] text-[#9A783E]'
-                          : 'bg-slate-50 border-slate-200 text-slate-400'
-                        }`}>
-                        {s.step}
+            <div className="p-5 space-y-2.5 max-h-[50vh] overflow-y-auto">
+              {(() => {
+                const fd = selectedPreviewDate.toISOString().split('T')[0]
+                const db = bookings.filter(b => {
+                  if (b.room_id && !selectedRoomIds.has(b.room_id)) return false
+                  if (b.room_id) return fd >= b.check_in && fd < b.check_out
+                  if (b.venue_id && b.check_in === fd) return true
+                  return false
+                })
+                if (db.length === 0) return <p className="text-xs text-slate-400 text-center py-6">No bookings on this day.</p>
+                return db.map(b => {
+                  const room = rooms.find(r => r.id === b.room_id)
+                  const c = b.room_id ? (ROOM_COLORS[b.room_id] || ROOM_COLORS['room-10']) : VENUE_COLORS
+                  return (
+                    <div key={b.id} className={`p-3 rounded-lg border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 ${c.bg} ${c.border}`}>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-semibold ${c.text}`}>{room ? `Room ${room.room_number}` : 'Event Venue'}</span>
+                          <span className="text-xs font-medium text-slate-800">{b.guest_name}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          {b.guest_phone} · {b.check_in} → {b.check_out} · {b.source}
+                        </div>
                       </div>
-                      <span className={`text-[8px] font-bold uppercase tracking-wider mt-1.5 whitespace-nowrap ${isActive ? 'text-[#9A783E]' : 'text-slate-400'
-                        }`}>
-                        {s.label}
-                      </span>
-                    </button>
-                  </React.Fragment>
-                )
-              })}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {b.status !== 'blocked' && (
+                          <button onClick={() => { setSelectedPreviewDate(null); setSelectedExtendBooking(b); setExtendCheckoutDate(b.check_out); setExtendError('') }}
+                            className="text-[10px] font-medium px-2.5 py-1 bg-[#B89251] hover:bg-[#9A783E] text-white rounded-lg transition-colors cursor-pointer">
+                            Manage
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              })()}
+            </div>
+            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100">
+              <button onClick={() => setSelectedPreviewDate(null)} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3 py-1.5 cursor-pointer">Close</button>
+              <button onClick={() => {
+                const d = selectedPreviewDate.toISOString().split('T')[0]; const t = new Date(selectedPreviewDate); t.setDate(t.getDate() + 1)
+                setSelectedPreviewDate(null); resetAndOpenManualForm('room', new Set([rooms[0]?.id || 'room-1']), d, t.toISOString().split('T')[0])
+              }} className="flex items-center gap-1 bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                <Plus className="w-3.5 h-3.5" />Add Booking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Booking detail / extension modal ── */}
+      {selectedExtendBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+              <div>
+                <span className="text-[10px] text-[#9A783E] font-medium block">Reservation Detail</span>
+                <h3 className="text-sm font-semibold text-slate-800">{selectedExtendBooking.guest_name}</h3>
+              </div>
+              <button onClick={() => setSelectedExtendBooking(null)} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {extendError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-100 text-rose-700 text-xs flex items-center gap-2 rounded-lg">
+                  <AlertCircle className="w-4 h-4 shrink-0" /><span>{extendError}</span>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-100 rounded-lg text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Room</span>
+                  <span className="font-medium text-slate-800">{rooms.find(r => r.id === selectedExtendBooking.room_id)?.name || 'Event Venue'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Source</span>
+                  <span className="font-medium text-slate-800">{selectedExtendBooking.source}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Phone</span>
+                  <span className="font-medium text-slate-800 font-mono">{selectedExtendBooking.guest_phone}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Email</span>
+                  <span className="font-medium text-slate-800 truncate block" title={selectedExtendBooking.guest_email}>{selectedExtendBooking.guest_email}</span>
+                </div>
+              </div>
+              <form onSubmit={handleExtendStaySubmit} className="space-y-3 border-t border-slate-100 pt-4">
+                <span className="text-xs font-medium text-[#9A783E] block">Extend Stay</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block mb-1">Check-in</span>
+                    <input type="date" readOnly value={selectedExtendBooking.check_in}
+                      className="w-full bg-slate-100 border border-slate-200 text-slate-500 px-2.5 py-2 rounded-lg text-xs font-mono cursor-not-allowed outline-none" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#B89251] block mb-1 font-medium">New checkout</span>
+                    <input type="date" required min={selectedExtendBooking.check_in} value={extendCheckoutDate}
+                      onChange={e => setExtendCheckoutDate(e.target.value)}
+                      className="w-full bg-white border border-slate-200 text-slate-800 px-2.5 py-2 rounded-lg text-xs font-mono focus:outline-none focus:border-[#B89251]" />
+                  </div>
+                </div>
+                {extendCheckoutDate && extendCheckoutDate !== selectedExtendBooking.check_out && (
+                  <div className="p-3 bg-[#FDFBF7] border border-[#E5D5C0] rounded-lg text-[10px] text-[#9A783E] font-medium space-y-1">
+                    <div className="flex justify-between">
+                      <span>Extra nights:</span>
+                      <span className="font-mono">{Math.max(0, Math.ceil((new Date(extendCheckoutDate).getTime() - new Date(selectedExtendBooking.check_out).getTime()) / 86400000))}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-800">
+                      <span>Updated balance:</span>
+                      <span className="font-mono">₱{(() => { try { return syncEngine.calculatePricing({ roomId: selectedExtendBooking.room_id, checkIn: selectedExtendBooking.check_in, checkOut: extendCheckoutDate, guestEmail: selectedExtendBooking.guest_email, breakfastOrders: selectedExtendBooking.breakfast_orders, bookingsList: bookings }).balanceDue.toLocaleString() } catch { return '0' } })()}</span>
+                    </div>
+                  </div>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <button type="button" onClick={() => setSelectedExtendBooking(null)}
+                    className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-medium py-2.5 rounded-lg border border-slate-200 transition-colors">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={extendCheckoutDate === selectedExtendBooking.check_out}
+                    className="flex-1 bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-medium py-2.5 rounded-lg transition-colors">
+                    Save Extension
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Walk-in booking form wizard ── */}
+      {showManualForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white rounded-lg shadow-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 sticky top-0 bg-white z-10">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">New Booking</h3>
+                <p className="text-[10px] text-slate-400">Step {formStep} of 3</p>
+              </div>
+              <button onClick={() => setShowManualForm(false)} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5" /></button>
             </div>
 
-            <form onSubmit={handleManualBookingSubmit} className="space-y-5">
+            {/* Step indicator */}
+            <div className="flex items-center px-5 py-3 gap-2">
+              {[1,2,3].map(s => (
+                <React.Fragment key={s}>
+                  {s > 1 && <div className={`flex-1 h-px ${formStep >= s ? 'bg-[#B89251]' : 'bg-slate-200'}`} />}
+                  <button type="button" onClick={() => { if (s < formStep) setFormStep(s) }}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold border transition-all ${
+                      formStep === s ? 'bg-[#B89251] border-[#B89251] text-white' : formStep > s ? 'bg-[#FDFBF7] border-[#B89251] text-[#9A783E]' : 'bg-slate-50 border-slate-200 text-slate-400'
+                    }`}>{s}</button>
+                </React.Fragment>
+              ))}
+            </div>
+
+            <form onSubmit={handleManualBookingSubmit} className="px-5 pb-5 space-y-4">
               {formError && (
-                <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs flex items-center space-x-2 rounded-lg animate-pulse">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{formError}</span>
+                <div className="p-2.5 bg-rose-50 border border-rose-100 text-rose-700 text-xs flex items-center gap-2 rounded-lg">
+                  <AlertCircle className="w-4 h-4 shrink-0" /><span>{formError}</span>
                 </div>
               )}
 
-              {/* STEP 1: Dates & Dynamic Revenue Pricing Recommendation */}
+              {/* STEP 1: Room/Venue + Dates + Pricing */}
               {formStep === 1 && (
                 <div className="space-y-4">
-                  {/* Pathway toggles Room vs Venue manually */}
-                  <div className="flex p-1 text-[9px] uppercase font-bold tracking-wider bg-slate-100 border border-slate-200 rounded-xl">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormPathway('room')
-                        setFormRoomIds(new Set([rooms[0]?.id || 'room-1']))
-                      }}
-                      className={`flex-1 py-2 text-center transition-all duration-200 rounded-lg ${formPathway === 'room' ? 'bg-[#B89251] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                    >
-                      Book a Room
+                  {/* Pathway toggle */}
+                  <div className="flex bg-slate-100 rounded-lg p-0.5 text-xs font-medium">
+                    <button type="button" onClick={() => { setFormPathway('room'); setFormRoomIds(new Set([rooms[0]?.id || 'room-1'])) }}
+                      className={`flex-1 py-2 text-center rounded-md transition-all ${formPathway === 'room' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
+                      Room
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormPathway('venue')
-                        setFormVenueId(venues[0]?.id || 'venue-gazebo')
-                      }}
-                      className={`flex-1 py-2 text-center transition-all duration-200 rounded-lg ${formPathway === 'venue' ? 'bg-[#B89251] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                    >
-                      Rent Event Venue
+                    <button type="button" onClick={() => { setFormPathway('venue'); setFormVenueId(venues[0]?.id || 'venue-gazebo') }}
+                      className={`flex-1 py-2 text-center rounded-md transition-all ${formPathway === 'venue' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
+                      Event Venue
                     </button>
                   </div>
 
-                  {/* Visual Interactive Room/Venue Selector Cards Grid */}
-                  <div className="space-y-2">
-                    <label className="block text-[8px] uppercase tracking-wider text-slate-500 font-extrabold">
-                      {formPathway === 'room' ? 'Select Suite / Room' : 'Select Event Venue'}
+                  {/* Room / Venue selector */}
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-medium block mb-1.5">
+                      {formPathway === 'room' ? 'Select room(s)' : 'Select venue'}
                     </label>
-
                     {formPathway === 'room' ? (
-                      <div className="grid grid-cols-2 gap-2 max-h-[180px] overflow-y-auto p-1 bg-slate-50/50 rounded-xl border border-slate-200/60 scrollbar-thin">
+                      <div className="grid grid-cols-2 gap-1.5 max-h-[160px] overflow-y-auto p-1 bg-slate-50 rounded-lg border border-slate-200">
                         {rooms.map(room => {
-                          const isSelected = formRoomIds.has(room.id)
+                          const sel = formRoomIds.has(room.id)
                           return (
-                            <div
-                              key={room.id}
-                              onClick={() => {
-                                const next = new Set(formRoomIds)
-                                if (next.has(room.id)) {
-                                  if (next.size > 1) {
-                                    next.delete(room.id)
-                                  }
-                                } else {
-                                  next.add(room.id)
-                                }
-                                setFormRoomIds(next)
-                              }}
-                              className={`p-2.5 rounded-xl border cursor-pointer select-none transition-all flex flex-col justify-between text-left space-y-1.5 ${isSelected
-                                ? 'bg-[#FDFBF7] border-[#B89251] ring-2 ring-[#B89251]/10 shadow-sm'
-                                : 'bg-white border-slate-200/80 text-slate-500 hover:border-slate-300 hover:bg-slate-50/30'
-                                }`}
-                            >
-                              <div className="flex justify-between items-start">
-                                <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded ${isSelected ? 'bg-[#E5D5C0]/50 text-[#9A783E]' : 'bg-slate-100 text-slate-400'
-                                  }`}>
-                                  Suite {room.room_number}
-                                </span>
-                                {isSelected && (
-                                  <span className="text-[#B89251] text-xs font-bold font-sans">✓</span>
-                                )}
+                            <div key={room.id} onClick={() => { const n = new Set(formRoomIds); n.has(room.id) ? (n.size > 1 && n.delete(room.id)) : n.add(room.id); setFormRoomIds(n) }}
+                              className={`p-2 rounded-lg border cursor-pointer select-none text-xs transition-all ${sel ? 'bg-[#FDFBF7] border-[#B89251]' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium text-slate-800">Room {room.room_number}</span>
+                                {sel && <span className="text-[#B89251] text-xs">✓</span>}
                               </div>
-                              <div>
-                                <span className="text-[10px] font-bold text-slate-800 block truncate leading-none mb-0.5">{room.name}</span>
-                                <span className="text-[9px] font-bold text-[#9A783E] block leading-none font-mono">₱{room.base_price.toLocaleString()}/night</span>
-                              </div>
+                              <span className="text-[10px] text-[#9A783E] font-mono">₱{room.base_price.toLocaleString()}/night</span>
                             </div>
                           )
                         })}
                       </div>
                     ) : (
-                      <div className="grid grid-cols-3 gap-2 p-1 bg-slate-50/50 rounded-xl border border-slate-200/60">
+                      <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-50 rounded-lg border border-slate-200">
                         {venues.map(v => {
-                          const isSelected = formVenueId === v.id
+                          const sel = formVenueId === v.id
                           return (
-                            <div
-                              key={v.id}
-                              onClick={() => setFormVenueId(v.id)}
-                              className={`p-2.5 rounded-xl border cursor-pointer select-none transition-all flex flex-col justify-between text-left space-y-1.5 ${isSelected
-                                ? 'bg-[#FDFBF7] border-[#B89251] ring-2 ring-[#B89251]/10 shadow-sm'
-                                : 'bg-white border-slate-200/80 text-slate-500 hover:border-slate-300 hover:bg-slate-50/30'
-                                }`}
-                            >
-                              <div className="flex justify-between items-start">
-                                <span className="opacity-0">.</span>
-                                {isSelected && (
-                                  <span className="text-[#B89251] text-xs font-bold">✓</span>
-                                )}
-                              </div>
-                              <div>
-                                <span className="text-[10px] font-bold text-slate-800 block truncate leading-none mb-0.5">{v.name}</span>
-                                <span className="text-[9px] font-bold text-[#9A783E] block leading-none font-mono">₱{v.base_price.toLocaleString()}</span>
-                              </div>
+                            <div key={v.id} onClick={() => setFormVenueId(v.id)}
+                              className={`p-2 rounded-lg border cursor-pointer select-none text-xs transition-all ${sel ? 'bg-[#FDFBF7] border-[#B89251]' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                              <span className="font-medium text-slate-800 block truncate">{v.name}</span>
+                              <span className="text-[10px] text-[#9A783E] font-mono">₱{v.base_price.toLocaleString()}</span>
                             </div>
                           )
                         })}
@@ -1901,256 +1119,151 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold mb-1.5">Reservation Source</label>
-                      <select
-                        value={formSource}
-                        onChange={(e) => setFormSource(e.target.value as BookingSource)}
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] text-xs font-semibold"
-                      >
-                        <option value="manual">Concierge Walk-in (Cash)</option>
-                        <option value="facebook">Facebook Page Chat</option>
-                        <option value="google_maps">Google Maps Chat</option>
-                      </select>
-                    </div>
+                  {/* Source */}
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-medium block mb-1.5">Booking source</label>
+                    <select value={formSource} onChange={e => setFormSource(e.target.value as BookingSource)}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-[#B89251]">
+                      <option value="manual">Walk-in (Cash)</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="google_maps">Google Maps</option>
+                    </select>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Dates */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold mb-1.5">
-                        {formPathway === 'room' ? 'Check-in Date' : 'Event Date'}
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={formCheckIn}
-                        onChange={(e) => setFormCheckIn(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] text-xs font-mono font-semibold"
-                      />
+                      <label className="text-[10px] text-slate-500 font-medium block mb-1.5">{formPathway === 'room' ? 'Check-in' : 'Event date'}</label>
+                      <input type="date" required value={formCheckIn} onChange={e => setFormCheckIn(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-mono focus:outline-none focus:border-[#B89251]" />
                     </div>
                     {formPathway === 'room' && (
                       <div>
-                        <label className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold mb-1.5">Check-out Date</label>
-                        <input
-                          type="date"
-                          required
-                          value={formCheckOut}
-                          onChange={(e) => setFormCheckOut(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] text-xs font-mono font-semibold"
-                        />
+                        <label className="text-[10px] text-slate-500 font-medium block mb-1.5">Check-out</label>
+                        <input type="date" required value={formCheckOut} onChange={e => setFormCheckOut(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-mono focus:outline-none focus:border-[#B89251]" />
                       </div>
                     )}
                   </div>
 
-                  {/* Revenue Optimizer Suggestion Panel */}
-                  <div className={`p-4 rounded-xl border text-xs leading-relaxed space-y-2.5 transition-all ${roomOccupancyRate < 40
-                    ? 'bg-amber-50/50 border-amber-200/60 text-amber-900'
-                    : roomOccupancyRate >= 80
-                      ? 'bg-rose-50/50 border-rose-200/60 text-rose-900'
-                      : 'bg-[#FDFBF7] border-[#E5D5C0]/85 text-slate-800'
-                    }`}>
+                  {/* Revenue optimizer */}
+                  <div className={`p-3 rounded-lg border text-xs space-y-2 ${roomOccupancyRate < 40 ? 'bg-amber-50/50 border-amber-200 text-amber-900' : roomOccupancyRate >= 80 ? 'bg-rose-50/50 border-rose-200 text-rose-900' : 'bg-[#FDFBF7] border-[#E5D5C0] text-slate-700'}`}>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 font-bold uppercase tracking-wider text-[9px]">
-                        <Sparkles className={`w-4 h-4 ${roomOccupancyRate >= 80 ? 'text-rose-500' : 'text-[#B89251]'}`} />
-                        <span>Dynamic Revenue Optimizer suggestion</span>
+                      <div className="flex items-center gap-1.5 font-medium text-[10px]">
+                        <Sparkles className="w-3.5 h-3.5 text-[#B89251]" />
+                        <span>Rate suggestion</span>
                       </div>
-                      <span className="text-[8px] font-bold bg-[#FDFBF7]/80 border border-[#E5D5C0]/60 text-[#9A783E] px-2 py-0.5 rounded-full">
-                        Occupancy: {roomOccupancyRate}%
-                      </span>
+                      <span className="text-[10px] font-mono opacity-60">{roomOccupancyRate}% occ.</span>
                     </div>
-
-                    <p className="text-[10px] leading-relaxed text-slate-500 font-medium">
-                      {roomOccupancyRate < 40
-                        ? 'Low occupancy (<40%) detected today. Suggesting a last-minute perishable rate adjustment of -10% to fill vacant rooms and cover fixed costs.'
-                        : roomOccupancyRate >= 80
-                          ? 'High demand / Peak occupancy (≥80%) detected today. Suggesting a dynamic peak demand rate adjustment of +15% to capture maximum margin.'
-                          : 'Normal occupancy load levels detected. Standard baseline reference pricing applies.'
-                      }
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      {roomOccupancyRate < 40 ? 'Low occupancy — suggesting -10% discount.' : roomOccupancyRate >= 80 ? 'Peak demand — suggesting +15% surge.' : 'Normal occupancy — standard pricing.'}
                     </p>
-
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 mt-2">
-                      <label className="inline-flex items-center space-x-2 text-[10px] text-slate-700 cursor-pointer font-bold select-none">
-                        <input
-                          type="checkbox"
-                          checked={applySuggestedRate}
-                          onChange={(e) => setApplySuggestedRate(e.target.checked)}
-                          className="accent-[#B89251] w-3.5 h-3.5"
-                        />
-                        <span>Apply optimization recommendation</span>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                      <label className="flex items-center gap-1.5 text-[10px] cursor-pointer font-medium">
+                        <input type="checkbox" checked={applySuggestedRate} onChange={e => setApplySuggestedRate(e.target.checked)} className="accent-[#B89251] w-3.5 h-3.5" />
+                        Apply suggestion
                       </label>
-                      <div className="text-[10px] font-bold text-slate-900">
-                        Suggest: <span className="text-[#9A783E] font-mono">
-                          ₱{(roomOccupancyRate < 40
-                            ? Math.round(baseRoomOrVenuePrice * 0.90)
-                            : roomOccupancyRate >= 80
-                              ? Math.round(baseRoomOrVenuePrice * 1.15)
-                              : baseRoomOrVenuePrice
-                          ).toLocaleString()}
-                        </span>
-                      </div>
+                      <span className="text-[10px] font-mono font-medium text-[#9A783E]">
+                        ₱{(roomOccupancyRate < 40 ? Math.round(basePrice * 0.90) : roomOccupancyRate >= 80 ? Math.round(basePrice * 1.15) : basePrice).toLocaleString()}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="flex justify-end pt-3">
-                    <button
-                      type="button"
-                      disabled={!formCheckIn || (formPathway === 'room' && !formCheckOut)}
-                      onClick={() => setFormStep(2)}
-                      className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-150 disabled:text-slate-400 text-white font-bold uppercase tracking-wider text-[10px] px-5 py-2.5 rounded-lg transition-colors shadow-sm"
-                    >
-                      Next: Guest Info →
+                  <div className="flex justify-end pt-2">
+                    <button type="button" disabled={!formCheckIn || (formPathway === 'room' && !formCheckOut)} onClick={() => setFormStep(2)}
+                      className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-medium px-5 py-2 rounded-lg transition-colors">
+                      Next →
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* STEP 2: Guest Details & Stay Category */}
+              {/* STEP 2: Guest details */}
               {formStep === 2 && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200/50 mb-3">
-                    <span className="text-[9px] uppercase font-bold tracking-wider text-slate-600">Console Block Type:</span>
-                    <div className="flex space-x-4">
-                      <label className="inline-flex items-center space-x-1.5 text-xs cursor-pointer text-slate-700 font-semibold">
-                        <input
-                          type="radio"
-                          checked={formStatus === 'confirmed'}
-                          onChange={() => setFormStatus('confirmed')}
-                          className="accent-[#B89251]"
-                        />
-                        <span>Active Booking</span>
+                  {/* Block type */}
+                  <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="text-[10px] text-slate-500 font-medium">Type:</span>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer font-medium text-slate-700">
+                        <input type="radio" checked={formStatus === 'confirmed'} onChange={() => setFormStatus('confirmed')} className="accent-[#B89251]" /> Booking
                       </label>
-                      <label className="inline-flex items-center space-x-1.5 text-xs cursor-pointer text-slate-700 font-semibold">
-                        <input
-                          type="radio"
-                          checked={formStatus === 'blocked'}
-                          onChange={() => setFormStatus('blocked')}
-                          className="accent-[#B89251]"
-                        />
-                        <span>Maintenance Block</span>
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer font-medium text-slate-700">
+                        <input type="radio" checked={formStatus === 'blocked'} onChange={() => setFormStatus('blocked')} className="accent-[#B89251]" /> Block
                       </label>
                     </div>
                   </div>
 
                   {formStatus === 'blocked' ? (
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs leading-relaxed text-slate-500 font-medium">
-                      <p className="font-bold text-slate-800">🛠️ Maintenance / Calendar Block Mode</p>
-                      <p>
-                        This will completely block off the chamber/venue calendar for housekeeping, repairs, or private closures. Guest information is omitted.
-                      </p>
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500 space-y-1">
+                      <p className="font-medium text-slate-700">Maintenance / Calendar Block</p>
+                      <p>Blocks this room for housekeeping, repairs, or private closures.</p>
                     </div>
                   ) : (
-                    <div className="space-y-4 animate-fadeIn">
-                      <div className="space-y-1">
-                        <label className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Guest Full Name</label>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-medium block mb-1.5">Guest name</label>
                         <div className="relative">
                           <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input
-                            type="text"
-                            required
-                            placeholder="Maria Clara"
-                            value={formGuestName}
-                            onChange={(e) => setFormGuestName(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 text-slate-850 pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] text-xs font-semibold"
-                          />
+                          <input type="text" required placeholder="Full name" value={formGuestName} onChange={e => setFormGuestName(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 pl-10 pr-3 py-2 rounded-lg text-xs focus:outline-none focus:border-[#B89251]" />
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Email Address</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-slate-500 font-medium block mb-1.5">Email</label>
                           <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                              type="email"
-                              required
-                              placeholder="maria@rizal.ph"
-                              value={formGuestEmail}
-                              onChange={(e) => setFormGuestEmail(e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-200 text-slate-850 pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] text-xs font-semibold"
-                            />
+                            <input type="email" required placeholder="email@example.com" value={formGuestEmail} onChange={e => setFormGuestEmail(e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-700 pl-10 pr-3 py-2 rounded-lg text-xs focus:outline-none focus:border-[#B89251]" />
                           </div>
                         </div>
-
-                        <div className="space-y-1">
-                          <label className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Mobile Phone</label>
+                        <div>
+                          <label className="text-[10px] text-slate-500 font-medium block mb-1.5">Phone</label>
                           <div className="relative">
                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                              type="text"
-                              required
-                              placeholder="0917-123-4567"
-                              value={formGuestPhone}
-                              onChange={(e) => setFormGuestPhone(e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-200 text-slate-855 pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] text-xs font-semibold"
-                            />
+                            <input type="text" required placeholder="0917-xxx-xxxx" value={formGuestPhone} onChange={e => setFormGuestPhone(e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-700 pl-10 pr-3 py-2 rounded-lg text-xs focus:outline-none focus:border-[#B89251]" />
                           </div>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  <div className="flex justify-between pt-3 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={() => setFormStep(1)}
-                      className="text-[10px] text-slate-500 hover:text-slate-700 font-bold uppercase tracking-wider"
-                    >
-                      ← Back
-                    </button>
+                  <div className="flex justify-between pt-2 border-t border-slate-100">
+                    <button type="button" onClick={() => setFormStep(1)} className="text-xs text-slate-500 hover:text-slate-700 font-medium">← Back</button>
                     {formStatus === 'blocked' ? (
-                      <button
-                        type="submit"
-                        className="bg-slate-700 hover:bg-slate-800 text-white font-bold uppercase tracking-wider text-[10px] px-6 py-2.5 rounded-lg transition-colors shadow-sm"
-                      >
-                        Create Calendar Block
+                      <button type="submit" className="bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium px-5 py-2 rounded-lg transition-colors">
+                        Create Block
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        disabled={!formGuestName && formStatus === 'confirmed'}
-                        onClick={() => setFormStep(3)}
-                        className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-150 disabled:text-slate-400 text-white font-bold uppercase tracking-wider text-[10px] px-5 py-2.5 rounded-lg transition-colors shadow-sm"
-                      >
-                        Next: Add-ons & Receipt →
+                      <button type="button" disabled={!formGuestName} onClick={() => setFormStep(3)}
+                        className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-medium px-5 py-2 rounded-lg transition-colors">
+                        Next →
                       </button>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* STEP 3: Add-ons & Live Billing Summary */}
+              {/* STEP 3: Add‑ons + Invoice */}
               {formStep === 3 && (
                 <div className="space-y-4">
 
-                  {/* Chamber Add-ons (Breakfasts) */}
+                  {/* Breakfast (rooms) */}
                   {formPathway === 'room' && (
-                    <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200/50">
-                      <span className="text-[9px] uppercase font-bold tracking-wider text-[#9A783E] block mb-1 flex items-center space-x-1.5">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Optional Gourmet Breakfast Selections (₱200/set)</span>
-                      </span>
-
-                      <div className="grid grid-cols-2 gap-3 text-xs">
-                        {Object.keys(formBreakfastQty).map((meal) => (
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2">
+                      <span className="text-[10px] text-[#9A783E] font-medium block">Breakfast (₱200/set)</span>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {Object.keys(formBreakfastQty).map(meal => (
                           <div key={meal} className="flex items-center justify-between bg-white border border-slate-100 p-2 rounded-lg">
-                            <span className="font-semibold text-slate-700">{meal}</span>
-                            <div className="flex items-center space-x-2">
-                              <button
-                                type="button"
-                                onClick={() => setFormBreakfastQty(prev => ({ ...prev, [meal]: Math.max(0, prev[meal] - 1) }))}
-                                className="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-bold text-slate-600 hover:bg-slate-200"
-                              >
-                                -
-                              </button>
-                              <span className="font-mono font-bold w-4 text-center">{formBreakfastQty[meal]}</span>
-                              <button
-                                type="button"
-                                onClick={() => setFormBreakfastQty(prev => ({ ...prev, [meal]: prev[meal] + 1 }))}
-                                className="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-bold text-slate-600 hover:bg-slate-200"
-                              >
-                                +
-                              </button>
+                            <span className="text-slate-700 font-medium">{meal}</span>
+                            <div className="flex items-center gap-1.5">
+                              <button type="button" onClick={() => setFormBreakfastQty(p => ({ ...p, [meal]: Math.max(0, p[meal] - 1) }))}
+                                className="w-5 h-5 bg-slate-100 rounded flex items-center justify-center text-slate-600 hover:bg-slate-200 font-bold">-</button>
+                              <span className="font-mono w-4 text-center font-semibold">{formBreakfastQty[meal]}</span>
+                              <button type="button" onClick={() => setFormBreakfastQty(p => ({ ...p, [meal]: p[meal] + 1 }))}
+                                className="w-5 h-5 bg-slate-100 rounded flex items-center justify-center text-slate-600 hover:bg-slate-200 font-bold">+</button>
                             </div>
                           </div>
                         ))}
@@ -2158,154 +1271,71 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
                     </div>
                   )}
 
-                  {/* Venue Add-ons & Rentals */}
+                  {/* Venue equipment + add‑ons */}
                   {formPathway === 'venue' && (
-                    <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200/50">
-                      <span className="text-[9px] uppercase font-bold tracking-wider text-[#9A783E] block mb-1">
-                        Venue Equipments & Add-ons (Optional)
-                      </span>
-
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-3">
+                      <span className="text-[10px] text-[#9A783E] font-medium block">Equipment & Add-ons</span>
                       <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                        <div className="bg-white border border-slate-100 p-2 rounded-lg">
-                          <span className="text-[8px] uppercase text-slate-400 block mb-1 font-bold">Big Table</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={formBigTable}
-                            onChange={(e) => setFormBigTable(Math.max(0, parseInt(e.target.value) || 0))}
-                            className="w-10 text-center bg-slate-50 border border-slate-200 text-slate-800 font-mono py-0.5 rounded focus:outline-none focus:border-[#B89251] font-bold"
-                          />
-                          <span className="text-[7px] text-slate-400 block mt-1">₱150/pc</span>
-                        </div>
-                        <div className="bg-white border border-slate-100 p-2 rounded-lg">
-                          <span className="text-[8px] uppercase text-slate-400 block mb-1 font-bold">Sm Table</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={formSmallTable}
-                            onChange={(e) => setFormSmallTable(Math.max(0, parseInt(e.target.value) || 0))}
-                            className="w-10 text-center bg-slate-50 border border-slate-200 text-slate-800 font-mono py-0.5 rounded focus:outline-none focus:border-[#B89251] font-bold"
-                          />
-                          <span className="text-[7px] text-slate-400 block mt-1">₱100/pc</span>
-                        </div>
-                        <div className="bg-white border border-slate-100 p-2 rounded-lg">
-                          <span className="text-[8px] uppercase text-slate-400 block mb-1 font-bold">Chairs</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={formChairs}
-                            onChange={(e) => setFormChairs(Math.max(0, parseInt(e.target.value) || 0))}
-                            className="w-10 text-center bg-slate-50 border border-slate-200 text-slate-800 font-mono py-0.5 rounded focus:outline-none focus:border-[#B89251] font-bold"
-                          />
-                          <span className="text-[7px] text-slate-400 block mt-1">₱15/pc</span>
-                        </div>
-                        <div className="bg-white border border-slate-100 p-2 rounded-lg">
-                          <span className="text-[8px] uppercase text-slate-400 block mb-1 font-bold">Water Disp</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={formWater}
-                            onChange={(e) => setFormWater(Math.max(0, parseInt(e.target.value) || 0))}
-                            className="w-10 text-center bg-slate-50 border border-slate-200 text-slate-800 font-mono py-0.5 rounded focus:outline-none focus:border-[#B89251] font-bold"
-                          />
-                          <span className="text-[7px] text-slate-400 block mt-1">₱35/pc</span>
-                        </div>
+                        {[
+                          { label: 'Big Table', value: formBigTable, set: setFormBigTable, price: 150 },
+                          { label: 'Sm Table', value: formSmallTable, set: setFormSmallTable, price: 100 },
+                          { label: 'Chairs', value: formChairs, set: setFormChairs, price: 15 },
+                          { label: 'Water', value: formWater, set: setFormWater, price: 35 },
+                        ].map(item => (
+                          <div key={item.label} className="bg-white border border-slate-100 p-2 rounded-lg">
+                            <span className="text-[9px] text-slate-400 block mb-1">{item.label}</span>
+                            <input type="number" min="0" value={item.value} onChange={e => item.set(Math.max(0, parseInt(e.target.value) || 0))}
+                              className="w-10 text-center bg-slate-50 border border-slate-200 text-slate-700 font-mono py-0.5 rounded focus:outline-none focus:border-[#B89251] text-xs" />
+                            <span className="text-[8px] text-slate-400 block mt-1">₱{item.price}/pc</span>
+                          </div>
+                        ))}
                       </div>
-
-                      <div className="flex justify-around pt-2.5 border-t border-slate-200/40 text-xs">
-                        <label className="flex items-center space-x-1.5 cursor-pointer text-slate-700 font-bold">
-                          <input type="checkbox" checked={formBand} onChange={(e) => setFormBand(e.target.checked)} className="accent-[#B89251]" />
-                          <span>Band & Lights (₱2,000)</span>
+                      <div className="flex flex-wrap gap-4 pt-2 border-t border-slate-200/40 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium">
+                          <input type="checkbox" checked={formBand} onChange={e => setFormBand(e.target.checked)} className="accent-[#B89251]" /> Band (₱2k)
                         </label>
-                        <label className="flex items-center space-x-1.5 cursor-pointer text-slate-700 font-bold">
-                          <input type="checkbox" checked={formStage} onChange={(e) => setFormStage(e.target.checked)} className="accent-[#B89251]" />
-                          <span>Stage Setup (₱2,000)</span>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium">
+                          <input type="checkbox" checked={formStage} onChange={e => setFormStage(e.target.checked)} className="accent-[#B89251]" /> Stage (₱2k)
                         </label>
-                        <label className="flex items-center space-x-1.5 cursor-pointer text-slate-700 font-bold">
-                          <input type="checkbox" checked={formLedWall} onChange={(e) => setFormLedWall(e.target.checked)} className="accent-[#B89251]" />
-                          <span>LED Wall (₱5,000)</span>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium">
+                          <input type="checkbox" checked={formLedWall} onChange={e => setFormLedWall(e.target.checked)} className="accent-[#B89251]" /> LED Wall (₱5k)
                         </label>
                       </div>
                     </div>
                   )}
 
-                  {/* Real-time Dynamic Invoice Receipt Slip */}
-                  <div className="bg-slate-900 text-[#FDFBF7] p-5 rounded-2xl space-y-3.5 font-mono text-[10px] border border-slate-800 shadow-xl">
-                    <div className="text-center border-b border-slate-800 pb-3">
-                      <div className="text-[8px] uppercase tracking-wider text-[#B89251] font-bold">Live Billing Summary</div>
-                      <div className="text-sm font-bold mt-0.5 text-white">DAWEEZ PENSION HOUSE PMS</div>
+                  {/* Invoice summary */}
+                  <div className="bg-slate-900 text-slate-100 p-4 rounded-lg font-mono text-[11px] space-y-2">
+                    <div className="text-center border-b border-slate-700 pb-2">
+                      <div className="text-[9px] text-[#B89251] font-semibold tracking-wide">BILLING SUMMARY</div>
+                      <div className="text-sm font-semibold text-white mt-0.5">DAWEEZ PENSION HOUSE</div>
                     </div>
-
-                    <div className="space-y-1 text-slate-350">
-                      <div className="flex justify-between">
-                        <span>Room/Venue rate:</span>
-                        <span>₱{baseRoomOrVenuePrice.toLocaleString()} / night</span>
-                      </div>
-
-                      {estNights > 1 && (
-                        <div className="flex justify-between">
-                          <span>Nights count:</span>
-                          <span>{estNights} nights</span>
-                        </div>
-                      )}
-
+                    <div className="space-y-1 text-slate-400">
+                      <div className="flex justify-between"><span>Rate:</span><span>₱{basePrice.toLocaleString()}/night</span></div>
+                      {estNights > 1 && <div className="flex justify-between"><span>Nights:</span><span>{estNights}</span></div>}
                       {applySuggestedRate && rateMultiplier !== 1.0 && (
-                        <div className="flex justify-between text-[#B89251] font-bold">
-                          <span>Revenue suggestion adjustment:</span>
-                          <span>{rateMultiplier === 1.15 ? '+15% Peak surge' : '-10% Low filler'}</span>
-                        </div>
+                        <div className="flex justify-between text-[#B89251]"><span>Rate adj.:</span><span>{rateMultiplier === 1.15 ? '+15%' : '-10%'}</span></div>
                       )}
-
-                      {estBreakfastTotal > 0 && (
-                        <div className="flex justify-between">
-                          <span>Breakfast selections:</span>
-                          <span>₱{estBreakfastTotal.toLocaleString()}</span>
-                        </div>
-                      )}
-
-                      {estRentalsTotal > 0 && (
-                        <div className="flex justify-between">
-                          <span>Equipment rentals:</span>
-                          <span>₱{estRentalsTotal.toLocaleString()}</span>
-                        </div>
-                      )}
-
-                      {estAddonsTotal > 0 && (
-                        <div className="flex justify-between">
-                          <span>Stage & lights:</span>
-                          <span>₱{estAddonsTotal.toLocaleString()}</span>
-                        </div>
-                      )}
+                      {estBreakfast > 0 && <div className="flex justify-between"><span>Breakfast:</span><span>₱{estBreakfast.toLocaleString()}</span></div>}
+                      {estRentals > 0 && <div className="flex justify-between"><span>Rentals:</span><span>₱{estRentals.toLocaleString()}</span></div>}
+                      {estAddons > 0 && <div className="flex justify-between"><span>Add-ons:</span><span>₱{estAddons.toLocaleString()}</span></div>}
                     </div>
-
-                    <div className="border-t border-slate-800 pt-3 space-y-1.5">
-                      <div className="flex justify-between font-bold text-white text-xs">
-                        <span>Downpayment Due (50%):</span>
-                        <span className="text-emerald-400">₱{estDownpayment.toLocaleString()}</span>
+                    <div className="border-t border-slate-700 pt-2 space-y-1">
+                      <div className="flex justify-between text-white font-semibold text-xs">
+                        <span>Downpayment (50%):</span><span className="text-emerald-400">₱{estDown.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between font-bold text-white text-xs">
-                        <span>Settle at Check-in:</span>
-                        <span className="text-[#B89251]">₱{estBalanceDue.toLocaleString()}</span>
+                      <div className="flex justify-between text-white font-semibold text-xs">
+                        <span>Due at check-in:</span><span className="text-[#B89251]">₱{estDue.toLocaleString()}</span>
                       </div>
-                      <div className="text-[8px] text-slate-500 text-center pt-2 italic">
-                        Includes ₱500 refundable security deposit
-                      </div>
+                      <div className="text-[9px] text-slate-500 text-center pt-1">Includes ₱500 refundable deposit</div>
                     </div>
                   </div>
 
-                  <div className="flex justify-between pt-3 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={() => setFormStep(2)}
-                      className="text-[10px] text-slate-500 hover:text-slate-700 font-bold uppercase tracking-wider"
-                    >
-                      ← Back
-                    </button>
-                    <button
-                      type="submit"
-                      className="bg-[#B89251] hover:bg-[#9A783E] text-white font-bold uppercase tracking-wider text-[10px] px-6 py-3 rounded-lg transition-colors shadow-sm shadow-[#B89251]/20"
-                    >
-                      ✓ Create Walk-In Booking
+                  <div className="flex justify-between pt-2 border-t border-slate-100">
+                    <button type="button" onClick={() => setFormStep(2)} className="text-xs text-slate-500 hover:text-slate-700 font-medium">← Back</button>
+                    <button type="submit"
+                      className="bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-medium px-5 py-2.5 rounded-lg transition-colors">
+                      Create Booking
                     </button>
                   </div>
                 </div>
@@ -2315,41 +1345,36 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
         </div>
       )}
 
-      {/* 5. MODAL: Receipt slip verification */}
+      {/* ── Receipt verification modal ── */}
       {selectedReceiptData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="w-full max-w-md relative bg-white border border-slate-200 shadow-2xl p-6 rounded-2xl">
-            <button onClick={() => setSelectedReceiptData(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-3.5 mb-4">
-              GCash Downpayment Slip Verification
-            </h3>
-
-            <div className="bg-slate-50 border border-slate-100 p-6 space-y-4 rounded-xl font-mono text-xs">
-              <div className="text-center border-b border-slate-200 pb-3">
-                <div className="text-[10px] uppercase font-bold tracking-wider text-[#B89251]">Payment Verified</div>
-                <div className="text-lg font-bold text-slate-900 mt-0.5">₱ {(selectedReceiptData.downpayment_paid ?? 0).toLocaleString()} PHP</div>
-                <div className="text-[10px] text-slate-400">Equivalent to 50% reservation policy</div>
-              </div>
-              <div className="space-y-1.5 text-[10px] text-slate-600">
-                <div><span className="text-slate-400">Booking ID:</span> {selectedReceiptData.id}</div>
-                <div><span className="text-slate-400">Guest:</span> {selectedReceiptData.guest_name}</div>
-                <div><span className="text-slate-400">Stay check-in:</span> {selectedReceiptData.check_in}</div>
-                <div><span className="text-slate-400">Gcash Reference:</span> 9988-7766-5544</div>
-              </div>
-              <div className="border-t border-slate-200 pt-3 text-center text-[9px] font-bold uppercase tracking-wider text-[#9A783E]">
-                ✓ Settle ₱{(selectedReceiptData.balance_due ?? 0).toLocaleString()} PHP at check-in
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-800">Payment Verification</h3>
+              <button onClick={() => setSelectedReceiptData(null)} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5" /></button>
             </div>
-
-            <button
-              onClick={() => setSelectedReceiptData(null)}
-              className="w-full mt-6 bg-[#B89251] hover:bg-[#9A783E] text-white font-bold uppercase tracking-wider text-xs py-3.5 rounded-lg transition-colors shadow-sm shadow-[#B89251]/20"
-            >
-              Close Receipt Proof
-            </button>
+            <div className="p-5">
+              <div className="bg-slate-50 border border-slate-100 p-5 rounded-lg font-mono text-xs space-y-3">
+                <div className="text-center border-b border-slate-200 pb-3">
+                  <div className="text-[10px] text-[#B89251] font-medium">PAYMENT VERIFIED</div>
+                  <div className="text-lg font-semibold text-slate-800 mt-0.5">₱{(selectedReceiptData.downpayment_paid ?? 0).toLocaleString()}</div>
+                  <div className="text-[10px] text-slate-400">50% reservation deposit</div>
+                </div>
+                <div className="space-y-1 text-[10px] text-slate-600">
+                  <div><span className="text-slate-400">ID:</span> {selectedReceiptData.id}</div>
+                  <div><span className="text-slate-400">Guest:</span> {selectedReceiptData.guest_name}</div>
+                  <div><span className="text-slate-400">Check-in:</span> {selectedReceiptData.check_in}</div>
+                  <div><span className="text-slate-400">Ref:</span> 9988-7766-5544</div>
+                </div>
+                <div className="border-t border-slate-200 pt-2 text-center text-[10px] font-medium text-[#9A783E]">
+                  Balance due: ₱{(selectedReceiptData.balance_due ?? 0).toLocaleString()} at check-in
+                </div>
+              </div>
+              <button onClick={() => setSelectedReceiptData(null)}
+                className="w-full mt-4 bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-medium py-2.5 rounded-lg transition-colors">
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
