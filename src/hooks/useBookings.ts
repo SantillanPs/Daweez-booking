@@ -190,7 +190,7 @@ export function useBookings() {
         room_id: roomId,
         venue_id: venueId,
         guest_name: guestName || (status === 'blocked' ? 'Admin Date Block' : 'Walk-in Guest'),
-        guest_email: guestEmail || 'admin@daweezpensionhouse.com',
+        guest_email: guestEmail || 'admin@daweez-booking.vercel.app',
         guest_phone: guestPhone || 'None',
         check_in: checkIn,
         check_out: checkOut,
