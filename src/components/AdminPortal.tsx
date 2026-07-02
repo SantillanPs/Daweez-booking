@@ -20,11 +20,7 @@ const ROOM_COLOR_SCHEMES: Record<string, { bg: string; text: string; border: str
 
 const VENUE_COLOR_SCHEME = { bg: 'bg-fuchsia-50', text: 'text-fuchsia-800', border: 'border-fuchsia-200/50', badgeBg: 'bg-fuchsia-200/50' }
 
-interface AdminPortalProps {
-  onNavigateToGuest: () => void
-}
-
-export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
+export function AdminPortal() {
   const queryClient = useQueryClient()
   const {
     rooms,
@@ -39,10 +35,7 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
     isLoading
   } = useBookings()
 
-  // 1. Authentication Gate State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
-  const [passcode, setPasscode] = useState<string>('')
-  const [authError, setAuthError] = useState<string>('')
+
 
   // 2. Tab Navigation
   const [activeTab, setActiveTab] = useState<'scheduler' | 'bookings' | 'loyalty' | 'channels'>('scheduler')
@@ -149,28 +142,31 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
     return () => document.body.classList.remove('admin-mode')
   }, [])
 
-  // Simple Passcode Verification
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (passcode === '12345') {
-      setIsAuthenticated(true)
-      setAuthError('')
-    } else {
-      setAuthError('Invalid administrator passcode. Hint: Use 12345.')
-    }
-  }
-
-  // Trigger automatic seeding of future mock bookings (June to Dec) on admin login
+  // Trigger automatic seeding of future mock bookings (June to Dec) on mount
   useEffect(() => {
-    if (isAuthenticated) {
-      syncEngine.seedFutureMockData().then((count) => {
-        if (count > 0) {
-          queryClient.invalidateQueries({ queryKey: ['bookings'] })
-          console.log(`Successfully seeded ${count} future mock bookings for June to December 2026!`)
-        }
+    syncEngine.seedFutureMockData().then((count) => {
+      if (count > 0) {
+        queryClient.invalidateQueries({ queryKey: ['bookings'] })
+        console.log(`Successfully seeded ${count} future mock bookings for June to December 2026!`)
+      }
+    })
+  }, [])
+
+  // Trigger automatic OTA Sync on mount, and then set up a periodic background sync every 60s
+  useEffect(() => {
+    triggerOTASync().catch((err) => {
+      console.error('Initial background OTA sync failed:', err)
+    })
+
+    const interval = setInterval(() => {
+      triggerOTASync().catch((err) => {
+        console.error('Periodic background OTA sync failed:', err)
       })
-    }
-  }, [isAuthenticated])
+    }, 60000)
+
+    return () => clearInterval(interval)
+  }, [triggerOTASync])
+
 
   const handleToggleHousekeeping = (roomId: string) => {
     const current = housekeepingStates[roomId] || 'Clean'
@@ -499,61 +495,7 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
   // F. Guest loyalty lists
   const loyaltyRecords = syncEngine.getGuestRecords()
 
-  // Render Auth Gate
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#FDFBF7' }}>
-        <div className="w-full max-w-md bg-white border border-[#E5D5C0] shadow-2xl shadow-slate-100 p-8 space-y-6 rounded-2xl">
-          <div className="text-center space-y-3">
-            <div className="w-14 h-14 flex items-center justify-center bg-[#B89251] mx-auto rounded-2xl shadow-lg shadow-[#B89251]/20">
-              <Sparkles className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">Daweez Pension House</h1>
-              <p className="text-xs text-[#9A783E] mt-0.5 font-semibold uppercase tracking-wider">Property Management System</p>
-            </div>
-          </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            {authError && (
-              <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 text-xs flex items-center space-x-2 rounded-lg">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{authError}</span>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label className="block text-xs text-slate-600 font-semibold">Admin Passcode</label>
-              <div className="relative">
-                <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="password"
-                  required
-                  placeholder="Enter passcode"
-                  value={passcode}
-                  onChange={(e) => setPasscode(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B89251]/20 focus:border-[#B89251] text-sm transition-colors"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-[#B89251] hover:bg-[#9A783E] text-white font-semibold text-sm py-3 rounded-xl transition-colors shadow-sm shadow-[#B89251]/20"
-            >
-              Sign In to Dashboard
-            </button>
-          </form>
-
-          <div className="text-center pt-2 border-t border-slate-100">
-            <button onClick={onNavigateToGuest} className="text-xs text-slate-400 hover:text-[#B89251] transition-colors font-medium">
-              ← Return to Guest Portal
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // ==========================================
   // DYNAMIC ESTIMATES FOR MANUAL WALK-IN WIZARD
@@ -640,12 +582,6 @@ export function AdminPortal({ onNavigateToGuest }: AdminPortalProps) {
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>OTA Sync</span>
-            </button>
-            <button
-              onClick={onNavigateToGuest}
-              className="text-xs font-semibold text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2 rounded-lg transition-colors"
-            >
-              Concierge View
             </button>
           </div>
         </div>
