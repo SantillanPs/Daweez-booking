@@ -40,6 +40,9 @@ This directory contains the React + TypeScript frontend codebase for the Daweez 
   - **Memoized Cell Wrappers**: Wrap individual grid cells or list items in a memoized component wrapper (`React.memo`) using strict custom equality comparators to bypass rendering. Ensure callbacks are stable or checked appropriately, converting $O(N)$ re-renders to $O(1)$ changes.
   - **Numeric Timestamp Operations**: Avoid using string parsing operations (like `.toDateString()` or `.toISOString()`) inside rendering loops. Convert dates to numeric timestamps via `.getTime()` for cheap integer comparisons.
   - **Keystroke Rendering Isolation**: Keep text field keystroke states isolated so typing in registry forms does not trigger re-calculations or re-renders of adjacent sidebar receipts and summaries.
+  - **Avoid Backdrop Filter Penalty**: Do not apply `backdrop-filter: blur(...)` styling to modals or overlay backdrops rendered on top of dense grids or tables. This triggers heavy GPU composition paint operations on every keypress or state change. Use solid or semi-transparent flat colors instead (e.g. `bg-slate-900/50`).
+  - **Debounced Hover Tooltips**: Details tooltips on dense timeline grids must be debounced with a short delay (e.g., `500ms`) using a `useRef` timeout to prevent rendering spam when moving the mouse across cells. Stale timeouts must be cleared on mouse leave and on component unmount.
+  - **Floating UI Alerts over Inline Banners**: Transient states (such as active scheduler selection status) must be presented in absolute/fixed floating elements (toasts) rather than inline blocks to avoid grid layout shifts, vertical screen clutter, and component displacement.
 
 ## Verification
 
