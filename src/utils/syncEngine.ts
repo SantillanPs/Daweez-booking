@@ -358,6 +358,46 @@ export async function saveBookings(bookings: Booking[]): Promise<void> {
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings))
 }
 
+// Single-row INSERT — use this for new bookings instead of read+upsert-all
+export async function insertBooking(booking: Booking): Promise<void> {
+  const record = {
+    id: booking.id,
+    room_id: booking.room_id || null,
+    venue_id: booking.venue_id || null,
+    guest_name: booking.guest_name,
+    guest_email: booking.guest_email,
+    guest_phone: booking.guest_phone,
+    check_in: booking.check_in,
+    check_out: booking.check_out,
+    source: booking.source,
+    status: booking.status,
+    downpayment_paid: booking.downpayment_paid,
+    balance_due: booking.balance_due,
+    security_deposit: booking.security_deposit,
+    breakfast_orders: booking.breakfast_orders || null,
+    equipment_rentals: booking.equipment_rentals || null,
+    event_addons: booking.event_addons || null,
+    companions: booking.companions || null,
+    expires_at: booking.expires_at || null
+  }
+
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('bookings').insert(record)
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase insertBooking Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  // LocalStorage fallback
+  initDB()
+  const data = localStorage.getItem(BOOKINGS_KEY)
+  const existing: Booking[] = data ? JSON.parse(data) : []
+  localStorage.setItem(BOOKINGS_KEY, JSON.stringify([...existing, booking]))
+}
+
 export async function getFeeds(): Promise<SyncFeed[]> {
   if (isSupabaseConfigured) {
     try {
@@ -617,9 +657,9 @@ END:VEVENT
 END:VCALENDAR
 `
 
-export async function runSimulatedOTASync(): Promise<number> {
-  const bookings = await getBookings()
-  const feeds = await getFeeds()
+export async function runSimulatedOTASync(currentBookings?: Booking[], currentFeeds?: SyncFeed[]): Promise<number> {
+  const bookings = currentBookings || await getBookings()
+  const feeds = currentFeeds || await getFeeds()
   
   const updatedBookings = bookings.filter(b => b.source === 'website' || b.source === 'manual' || b.source === 'facebook' || b.source === 'google_maps')
   let newSyncCount = 0
@@ -672,10 +712,34 @@ export async function runSimulatedOTASync(): Promise<number> {
     }
   })
 
-  await saveBookings(updatedBookings)
+  // Compare original OTA bookings with updated OTA bookings to determine if database writes are needed
+  const originalOtaKeys = new Set(
+    bookings
+      .filter(b => b.source === 'airbnb' || b.source === 'booking_com')
+      .map(b => `${b.room_id}-${b.check_in}-${b.check_out}`)
+  )
+  const updatedOtaKeys = new Set(
+    updatedBookings
+      .filter(b => b.source === 'airbnb' || b.source === 'booking_com')
+      .map(b => `${b.room_id}-${b.check_in}-${b.check_out}`)
+  )
 
-  const updatedFeeds = feeds.map(f => ({ ...f, last_synced: new Date().toISOString() }))
-  await saveFeeds(updatedFeeds)
+  let hasChanges = originalOtaKeys.size !== updatedOtaKeys.size
+  if (!hasChanges) {
+    for (const key of originalOtaKeys) {
+      if (!updatedOtaKeys.has(key)) {
+        hasChanges = true
+        break
+      }
+    }
+  }
+
+  // Only perform database writes if there is a change in the OTA sync bookings list
+  if (hasChanges) {
+    await saveBookings(updatedBookings)
+    const updatedFeeds = feeds.map(f => ({ ...f, last_synced: new Date().toISOString() }))
+    await saveFeeds(updatedFeeds)
+  }
 
   return newSyncCount
 }

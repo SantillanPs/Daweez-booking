@@ -114,3 +114,11 @@ VALUES
 (9, 'Bunk Bed 2', 1500.00, 2, 'Cozy shared space with two parallel bunk cabins, warm reading spots, and access to the executive wellness spa. Located near key transit spots in Pasay City.', 'https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=800&q=80'),
 (10, 'Bunk Bed 6', 2800.00, 6, 'Excellent block-booking bunk suite. Custom 6-sleeper modular bunk complex, dedicated central lounge area, and double private bathrooms. Ideal for group excursions in El Nido, Palawan.', 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&w=800&q=80')
 ON CONFLICT (room_number) DO NOTHING;
+
+-- ==========================================
+-- SUPABASE REALTIME
+-- Enable realtime change events for bookings
+-- so the frontend can subscribe via WebSocket
+-- instead of polling every 5 seconds.
+-- ==========================================
+ALTER PUBLICATION supabase_realtime ADD TABLE public.bookings;

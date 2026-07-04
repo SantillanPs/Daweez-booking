@@ -46,6 +46,8 @@ export function CalendarTab() {
   const [schedulerStartDate, setSchedulerStartDate] = useState<Date>(new Date())
   const [daysCount] = useState<number>(30)
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
+  const [timelineSelection, setTimelineSelection] = useState<{ roomId: string; checkIn: Date } | null>(null)
+  const [hoveredDate, setHoveredDate] = useState<Date | null>(null)
 
   // ── Booking detail / extension modal ──
   const [selectedExtendBooking, setSelectedExtendBooking] = useState<Booking | null>(null)
@@ -119,6 +121,23 @@ export function CalendarTab() {
     return list
   }, [schedulerStartDate, daysCount])
 
+  const isBlockedRange = useMemo(() => {
+    if (!timelineSelection || !hoveredDate) return false
+    const start = new Date(timelineSelection.checkIn)
+    const end = new Date(hoveredDate)
+    if (start >= end) return false
+    
+    const current = new Date(start)
+    while (current < end) {
+      const dStr = current.toISOString().split('T')[0]
+      if (bookingByRoomAndDate[`${timelineSelection.roomId}_${dStr}`]) {
+        return true
+      }
+      current.setDate(current.getDate() + 1)
+    }
+    return false
+  }, [timelineSelection, hoveredDate, bookingByRoomAndDate])
+
   const formatDateHeader = (date: Date) => ({
     day: date.getDate(),
     weekday: date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 1),
@@ -154,9 +173,35 @@ export function CalendarTab() {
   }
 
   const handleCellClick = (roomId: string, date: Date) => {
-    const d = date.toISOString().split('T')[0]
-    const next = new Date(date); next.setDate(date.getDate() + 1)
-    resetAndOpenManualForm('room', new Set([roomId]), d, next.toISOString().split('T')[0])
+    // If clicking the exact same check-in date again, cancel the selection
+    if (timelineSelection && timelineSelection.roomId === roomId && date.toDateString() === timelineSelection.checkIn.toDateString()) {
+      setTimelineSelection(null)
+      setHoveredDate(null)
+      return
+    }
+
+    if (!timelineSelection || timelineSelection.roomId !== roomId || date < timelineSelection.checkIn) {
+      // Start a new selection (Click 1, or room changed, or clicked earlier date)
+      setTimelineSelection({ roomId, checkIn: date })
+      setHoveredDate(null)
+    } else {
+      // Complete the selection (Click 2)
+      const checkInStr = timelineSelection.checkIn.toISOString().split('T')[0]
+      const checkOutStr = date.toISOString().split('T')[0]
+      
+      // Verify availability for the entire range
+      if (!syncEngine.isRoomAvailable(roomId, checkInStr, checkOutStr, bookings)) {
+        const roomNum = rooms.find(r => r.id === roomId)?.room_number || roomId
+        alert(`Overlap collision! Room ${roomNum} is already booked on some dates in this range.`)
+        setTimelineSelection(null)
+        setHoveredDate(null)
+        return
+      }
+
+      resetAndOpenManualForm('room', new Set([roomId]), checkInStr, checkOutStr)
+      setTimelineSelection(null)
+      setHoveredDate(null)
+    }
   }
 
   const handleExtendStaySubmit = async (e: React.FormEvent) => {
@@ -348,68 +393,171 @@ export function CalendarTab() {
 
       {/* ─── TIMELINE GRID VIEW ─── */}
       {schedulerMode === 'timeline' && (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-slate-50">
-                  <th className="sticky left-0 z-20 bg-slate-50 border-b border-r border-slate-200 p-3 text-left text-xs text-slate-500 font-medium min-w-[160px]">
-                    Room
-                  </th>
-                  {daysList.map((day, i) => {
-                    const { day: num, weekday } = formatDateHeader(day)
-                    const isToday = day.toDateString() === new Date().toDateString()
-                    return (
-                      <th key={i} className={`border-b border-slate-200 p-1.5 text-center text-[10px] min-w-[38px] font-mono ${isToday ? 'bg-[#FDFBF7] text-[#9A783E] font-semibold' : 'text-slate-400'}`}>
-                        <div>{weekday}</div>
-                        <div className={`text-xs font-semibold mt-0.5 ${isToday ? 'border-b border-[#B89251] pb-0.5' : ''}`}>{num}</div>
-                      </th>
-                    )
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {rooms.map(room => (
-                  <tr key={room.id} className="border-b border-slate-100 hover:bg-slate-50/30">
-                    <td className="sticky left-0 z-20 bg-white border-r border-slate-200 p-3 min-w-[160px]">
-                      <span className="text-xs font-semibold text-slate-800 block">Room {room.room_number}</span>
-                      <span className="text-[10px] text-[#B89251]">₱{room.base_price.toLocaleString()}/night</span>
-                    </td>
-                    {daysList.map((day, dIdx) => {
-                      const fmtStr = day.toISOString().split('T')[0]
-                      const booking = bookingByRoomAndDate[`${room.id}_${fmtStr}`]
-                      if (booking) {
-                        const isStart = fmtStr === booking.check_in
-                        const tipId = `${room.id}-${dIdx}`
-                        return (
-                          <td key={dIdx} className="p-0 border-r border-slate-100 relative"
-                            onMouseEnter={() => setActiveTooltip(tipId)} onMouseLeave={() => setActiveTooltip(null)}>
-                            <div className={`h-7 mx-0.5 flex items-center justify-center text-[9px] font-semibold rounded-sm border cursor-pointer select-none ${getBookingStyle(booking)}`}>
-                              {isStart ? <span className="px-0.5 truncate">{booking.guest_name.split(' ')[0]}</span> : <span className="opacity-0">.</span>}
-                            </div>
-                            {activeTooltip === tipId && (
-                              <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-52 bg-white border border-slate-200 p-3 shadow-lg rounded-lg text-xs space-y-1.5 pointer-events-none">
-                                <div className="font-semibold text-slate-800">{booking.guest_name}</div>
-                                <div className="text-[10px] text-slate-400 font-mono">{booking.check_in} → {booking.check_out}</div>
-                                <div className="text-[10px] text-slate-500">
-                                  {booking.guest_phone}<br />
-                                  <span className={booking.status === 'confirmed' ? 'text-emerald-600 font-medium' : 'text-amber-600'}>{booking.status}</span>
-                                  {' · '}{booking.source}
-                                </div>
-                              </div>
-                            )}
-                          </td>
-                        )
-                      }
+        <div className="space-y-2.5">
+          {timelineSelection && (
+            <div className={`border rounded-lg p-2.5 flex items-center justify-between text-xs shadow-sm animate-fade-in ${
+              isBlockedRange 
+                ? "bg-rose-50 border-rose-200 text-rose-800 animate-pulse" 
+                : "bg-amber-50 border-amber-200 text-amber-800"
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 relative">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isBlockedRange ? "bg-rose-400" : "bg-amber-400"}`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isBlockedRange ? "bg-rose-500" : "bg-amber-500"}`}></span>
+                </span>
+                <span>
+                  {isBlockedRange ? (
+                    <span>
+                      Selecting dates for <strong>Room {rooms.find(r => r.id === timelineSelection.roomId)?.room_number}</strong>. 
+                      ⚠️ <strong>Double Booking Warning:</strong> Overlaps with an existing reservation in between. Please select a different checkout date.
+                    </span>
+                  ) : (
+                    <span>
+                      Selecting stay dates for <strong>Room {rooms.find(r => r.id === timelineSelection.roomId)?.room_number}</strong>. 
+                      Check‑in: <strong>{timelineSelection.checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong>.
+                      {hoveredDate && hoveredDate > timelineSelection.checkIn ? (
+                        <span>
+                          {" "}Proposed Check‑out: <strong>{hoveredDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong>.
+                        </span>
+                      ) : (
+                        <span> Please hover and click on your desired check‑out date.</span>
+                      )}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => { setTimelineSelection(null); setHoveredDate(null); }}
+                className={`font-semibold hover:underline cursor-pointer ${isBlockedRange ? "text-rose-600 hover:text-rose-800" : "text-amber-600 hover:text-amber-800"}`}>
+                Cancel
+              </button>
+            </div>
+          )}
+          
+          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="sticky left-0 z-20 bg-slate-50 border-b border-r border-slate-200 p-3 text-left text-xs text-slate-500 font-medium min-w-[160px]">
+                      Room
+                    </th>
+                    {daysList.map((day, i) => {
+                      const { day: num, weekday } = formatDateHeader(day)
+                      const isToday = day.toDateString() === new Date().toDateString()
                       return (
-                        <td key={dIdx} onClick={() => handleCellClick(room.id, day)}
-                          className="border-r border-slate-100 p-0 h-8 hover:bg-[#FDFBF7]/60 cursor-cell transition-colors" />
+                        <th key={i} className={`border-b border-slate-200 p-1.5 text-center text-[10px] min-w-[38px] font-mono ${isToday ? 'bg-[#FDFBF7] text-[#9A783E] font-semibold' : 'text-slate-400'}`}>
+                          <div>{weekday}</div>
+                          <div className={`text-xs font-semibold mt-0.5 ${isToday ? 'border-b border-[#B89251] pb-0.5' : ''}`}>{num}</div>
+                        </th>
                       )
                     })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rooms.map(room => (
+                    <tr key={room.id} className="border-b border-slate-100 hover:bg-slate-50/30">
+                      <td className="sticky left-0 z-20 bg-white border-r border-slate-200 p-3 min-w-[160px]">
+                        <span className="text-xs font-semibold text-slate-800 block">Room {room.room_number}</span>
+                        <span className="text-[10px] text-[#B89251]">₱{room.base_price.toLocaleString()}/night</span>
+                      </td>
+                      {daysList.map((day, dIdx) => {
+                        const fmtStr = day.toISOString().split('T')[0]
+                        const booking = bookingByRoomAndDate[`${room.id}_${fmtStr}`]
+                        if (booking) {
+                          const isStart = fmtStr === booking.check_in
+                          const tipId = `${room.id}-${dIdx}`
+                          return (
+                            <td key={dIdx} className="p-0 border-r border-slate-100 relative"
+                              onMouseEnter={() => setActiveTooltip(tipId)} onMouseLeave={() => setActiveTooltip(null)}>
+                              <div className={`h-7 mx-0.5 flex items-center justify-center text-[9px] font-semibold rounded-sm border cursor-pointer select-none ${getBookingStyle(booking)}`}>
+                                {isStart ? <span className="px-0.5 truncate">{booking.guest_name.split(' ')[0]}</span> : <span className="opacity-0">.</span>}
+                              </div>
+                              {activeTooltip === tipId && (
+                                <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-52 bg-white border border-slate-200 p-3 shadow-lg rounded-lg text-xs space-y-1.5 pointer-events-none">
+                                  <div className="font-semibold text-slate-800">{booking.guest_name}</div>
+                                  <div className="text-[10px] text-slate-400 font-mono">{booking.check_in} → {booking.check_out}</div>
+                                  <div className="text-[10px] text-slate-500">
+                                    {booking.guest_phone}<br />
+                                    <span className={booking.status === 'confirmed' ? 'text-emerald-600 font-medium' : 'text-amber-600'}>{booking.status}</span>
+                                    {' · '}{booking.source}
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          )
+                        }
+                        
+                        const isDraftCheckIn = timelineSelection && timelineSelection.roomId === room.id && day.toDateString() === timelineSelection.checkIn.toDateString()
+                        const isDraftCheckOut = timelineSelection && timelineSelection.roomId === room.id && hoveredDate && day.toDateString() === hoveredDate.toDateString() && day > timelineSelection.checkIn
+                        const isDraftInBetween = timelineSelection && timelineSelection.roomId === room.id && hoveredDate && day > timelineSelection.checkIn && day < hoveredDate
+
+                        if (isDraftCheckIn) {
+                          const hasSelectedCheckout = hoveredDate && hoveredDate > timelineSelection.checkIn
+                          const capsuleBorder = hasSelectedCheckout ? "rounded-l-lg border-y-2 border-l-2" : "rounded-lg border-2"
+                          const bgStyle = isBlockedRange ? "bg-rose-500 border-rose-600 text-white" : "bg-[#B89251] border-[#9A783E] text-white"
+                          
+                          return (
+                            <td key={dIdx} 
+                              onClick={() => handleCellClick(room.id, day)}
+                              onMouseEnter={() => { if (timelineSelection && timelineSelection.roomId === room.id) setHoveredDate(day) }}
+                              onMouseLeave={() => setHoveredDate(null)}
+                              className={`p-0 h-8 relative cursor-cell transition-all ${capsuleBorder} ${bgStyle}`}>
+                              <div className="absolute inset-0 flex items-center justify-center text-[9px] font-bold uppercase tracking-wider">
+                                In
+                              </div>
+                            </td>
+                          )
+                        }
+
+                        if (isDraftCheckOut) {
+                          const bgStyle = isBlockedRange 
+                            ? "bg-rose-100 text-rose-800 border-y-2 border-r-2 border-dashed border-rose-400 rounded-r-lg" 
+                            : "bg-amber-100 text-amber-900 border-y-2 border-r-2 border-dashed border-amber-400 rounded-r-lg"
+                          return (
+                            <td key={dIdx} 
+                              onClick={() => handleCellClick(room.id, day)}
+                              onMouseEnter={() => { if (timelineSelection && timelineSelection.roomId === room.id) setHoveredDate(day) }}
+                              onMouseLeave={() => setHoveredDate(null)}
+                              className={`p-0 h-8 relative cursor-cell transition-all ${bgStyle}`}>
+                              <div className="absolute inset-0 flex items-center justify-center text-[9px] font-bold uppercase tracking-wider">
+                                {isBlockedRange ? "Blocked" : "Out?"}
+                              </div>
+                            </td>
+                          )
+                        }
+
+                        if (isDraftInBetween) {
+                          const bgStyle = isBlockedRange 
+                            ? "bg-rose-50/80 border-y-2 border-rose-200 text-rose-700" 
+                            : "bg-amber-50/80 border-y-2 border-amber-200 text-amber-800"
+                          return (
+                            <td key={dIdx} 
+                              onClick={() => handleCellClick(room.id, day)}
+                              onMouseEnter={() => { if (timelineSelection && timelineSelection.roomId === room.id) setHoveredDate(day) }}
+                              onMouseLeave={() => setHoveredDate(null)}
+                              className={`p-0 h-8 relative cursor-cell transition-all ${bgStyle}`}>
+                              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
+                                {isBlockedRange ? "×" : "→"}
+                              </div>
+                            </td>
+                          )
+                        }
+                        
+                        return (
+                          <td key={dIdx} 
+                            onClick={() => handleCellClick(room.id, day)}
+                            onMouseEnter={() => { if (timelineSelection && timelineSelection.roomId === room.id) setHoveredDate(day) }}
+                            onMouseLeave={() => setHoveredDate(null)}
+                            className="border-r border-slate-100 p-0 h-8 hover:bg-[#FDFBF7]/60 cursor-cell transition-colors" />
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -482,7 +630,7 @@ export function CalendarTab() {
 
       {/* ── Booking details / stay extension modal ── */}
       {selectedExtendBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="w-full max-w-sm bg-white rounded-lg shadow-lg overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
               <h3 className="text-sm font-semibold text-slate-800">Reservation Details</h3>
