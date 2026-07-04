@@ -518,10 +518,10 @@ export function calculatePricing(params: {
 
 // 10. iCal Scraper & Ingestion
 function parseiCalFeed(icsString: string): Omit<Booking, 'id' | 'room_id' | 'created_at' | 'expires_at' | 'downpayment_paid' | 'balance_due' | 'security_deposit'>[] {
-  const events: any[] = []
+  const events: Omit<Booking, 'id' | 'room_id' | 'created_at' | 'expires_at' | 'downpayment_paid' | 'balance_due' | 'security_deposit'>[] = []
   const lines = icsString.split(/\r?\n/)
   
-  let currentEvent: any = {}
+  let currentEvent: Record<string, string> = {}
   let inEvent = false
 
   for (let i = 0; i < lines.length; i++) {
@@ -543,7 +543,7 @@ function parseiCalFeed(icsString: string): Omit<Booking, 'id' | 'room_id' | 'cre
           guest_phone: 'None',
           check_in: currentEvent.check_in,
           check_out: currentEvent.check_out,
-          source: currentEvent.source || 'airbnb',
+          source: (currentEvent.source || 'airbnb') as BookingSource,
           status: 'confirmed'
         })
       }
@@ -552,13 +552,12 @@ function parseiCalFeed(icsString: string): Omit<Booking, 'id' | 'room_id' | 'cre
       if (!match) continue
 
       const name = match[1]
-      const params = match[2]
       const value = match[3]
 
       if (name === 'DTSTART') {
-        currentEvent.check_in = parseiCalDate(value, params)
+        currentEvent.check_in = parseiCalDate(value)
       } else if (name === 'DTEND') {
-        currentEvent.check_out = parseiCalDate(value, params)
+        currentEvent.check_out = parseiCalDate(value)
       } else if (name === 'SUMMARY') {
         currentEvent.guest_name = value.trim()
         if (value.toLowerCase().includes('airbnb')) {
@@ -572,7 +571,7 @@ function parseiCalFeed(icsString: string): Omit<Booking, 'id' | 'room_id' | 'cre
   return events
 }
 
-function parseiCalDate(value: string, params?: string): string {
+function parseiCalDate(value: string): string {
   const datePart = value.split('T')[0]
   if (datePart.length === 8) {
     const year = datePart.substring(0, 4)
@@ -622,7 +621,7 @@ export async function runSimulatedOTASync(): Promise<number> {
   const bookings = await getBookings()
   const feeds = await getFeeds()
   
-  let updatedBookings = bookings.filter(b => b.source === 'website' || b.source === 'manual' || b.source === 'facebook' || b.source === 'google_maps')
+  const updatedBookings = bookings.filter(b => b.source === 'website' || b.source === 'manual' || b.source === 'facebook' || b.source === 'google_maps')
   let newSyncCount = 0
 
   // Sync Room 2 Airbnb

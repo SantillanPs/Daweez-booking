@@ -47,7 +47,7 @@ serve(async (req) => {
     if (error) throw error
 
     // Formulate RFC 5545 iCal response
-    let ics = [
+    const ics = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//L\'Etoile Central Channel Manager//Boutique Suite//EN',
@@ -81,7 +81,8 @@ serve(async (req) => {
         "Content-Disposition": `attachment; filename="room-${roomNumberStr || roomId}.ics"`
       }
     })
-  } catch (err: any) {
-    return new Response(err.message, { status: 500 })
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Unknown error'
+    return new Response(errMsg, { status: 500 })
   }
 })

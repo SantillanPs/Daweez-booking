@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 function parseiCal(icsText: string) {
   const events = []
   const lines = icsText.split(/\r?\n/)
-  let currentEvent: any = {}
+  let currentEvent: Record<string, string> = {}
   let inEvent = false
 
   for (let i = 0; i < lines.length; i++) {
@@ -45,7 +45,7 @@ function parseDate(val: string): string {
   return `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`
 }
 
-serve(async (req) => {
+serve(async () => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -110,8 +110,9 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, syncedCount: totalSynced }), {
       headers: { "Content-Type": "application/json" },
     })
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Unknown error'
+    return new Response(JSON.stringify({ error: errMsg }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     })

@@ -7,16 +7,8 @@ import {
   X, 
   Send, 
   Sparkles, 
-  Calendar, 
-  Coffee, 
-  DollarSign, 
-  Clock, 
-  Building, 
-  Users, 
-  User, 
   Volume2, 
-  VolumeX,
-  Gift
+  VolumeX
 } from 'lucide-react'
 
 // Types for the Chatbot Messages
@@ -34,10 +26,29 @@ interface Message {
   buttons?: ChatButton[]
 }
 
+// Predefined Quick Replies
+const WELCOME_QUICK_REPLIES: ChatButton[] = [
+  { text: 'Chambers Available Today 🛌', action: 'reply', payload: 'check_available' },
+  { text: 'Standard Room Prices 💰', action: 'reply', payload: 'show_prices' },
+  { text: 'Breakfast Menu (Silog) 🍳', action: 'reply', payload: 'show_breakfast' },
+  { text: 'Event Venue Rentals 🏰', action: 'reply', payload: 'show_venues' },
+  { text: 'How do I pay? (GCash) 💸', action: 'reply', payload: 'show_payment' },
+  { text: 'Check-in & Check-out rules 🕒', action: 'reply', payload: 'show_rules' },
+  { text: 'Speak to Human Concierge 👤', action: 'reply', payload: 'speak_human' },
+]
+
 export function ChatbotWidget() {
-  const { rooms, venues, bookings } = useBookings()
+  const { rooms } = useBookings()
   const [isOpen, setIsOpen] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>(() => [
+    {
+      id: 'welcome',
+      sender: 'bot',
+      text: "Kamusta! Welcome to Daweez Pension House 🌴. I'm your digital concierge assistant. How can I brighten your day today?",
+      timestamp: new Date(),
+      buttons: WELCOME_QUICK_REPLIES
+    }
+  ])
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(true)
@@ -49,7 +60,9 @@ export function ChatbotWidget() {
   const playSound = (type: 'open' | 'send' | 'receive') => {
     if (!soundEnabled) return
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (!AudioContextClass) return
+      const audioCtx = new AudioContextClass()
       const osc = audioCtx.createOscillator()
       const gain = audioCtx.createGain()
       
@@ -78,33 +91,10 @@ export function ChatbotWidget() {
         osc.start()
         osc.stop(audioCtx.currentTime + 0.3)
       }
-    } catch (e) {
+    } catch {
       // Audio context blocked or not supported, ignore
     }
   }
-
-  // Predefined Quick Replies
-  const WELCOME_QUICK_REPLIES: ChatButton[] = [
-    { text: 'Chambers Available Today 🛌', action: 'reply', payload: 'check_available' },
-    { text: 'Standard Room Prices 💰', action: 'reply', payload: 'show_prices' },
-    { text: 'Breakfast Menu (Silog) 🍳', action: 'reply', payload: 'show_breakfast' },
-    { text: 'Event Venue Rentals 🏰', action: 'reply', payload: 'show_venues' },
-    { text: 'How do I pay? (GCash) 💸', action: 'reply', payload: 'show_payment' },
-    { text: 'Check-in & Check-out rules 🕒', action: 'reply', payload: 'show_rules' },
-    { text: 'Speak to Human Concierge 👤', action: 'reply', payload: 'speak_human' },
-  ]
-
-  // Initialize welcome message
-  useEffect(() => {
-    const welcomeMsg: Message = {
-      id: 'welcome',
-      sender: 'bot',
-      text: "Kamusta! Welcome to Daweez Pension House 🌴. I'm your digital concierge assistant. How can I brighten your day today?",
-      timestamp: new Date(),
-      buttons: WELCOME_QUICK_REPLIES
-    }
-    setMessages([welcomeMsg])
-  }, [])
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -150,7 +140,7 @@ export function ChatbotWidget() {
 
     // Simulate natural typing delay (800ms to 1200ms)
     setTimeout(() => {
-      let replyText = ''
+      let replyText: string
       let buttons: ChatButton[] | undefined = WELCOME_QUICK_REPLIES
 
       const normalized = userMessage.toLowerCase().trim()

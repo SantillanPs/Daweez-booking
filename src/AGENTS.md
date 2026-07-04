@@ -11,9 +11,15 @@ This directory contains the React + TypeScript frontend codebase for the Daweez 
 
 ## Local Contracts
 
-- **State Management**: Uses React state coupled with `@tanstack/react-query` to handle fetching, caching, and mutating application state (rooms, venues, bookings, feeds).
-- **Core Components**:
-  - [AdminPortal](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/AdminPortal.tsx) - Minimalist responsive staff dashboard. Four tabs: Calendar (month grid + timeline views with day-level drill-down preview and collapsible room filter), Bookings (pending/confirmed reservation tables), Guests (loyalty visit history), Settings (iCal feed management). Mobile bottom nav + desktop top tabs. Compact inline stats bar (occupancy, arrivals, departures, guests, revenue).
+- **State Management & Routing**: Uses React state coupled with `@tanstack/react-query` to handle fetching, caching, and mutating, `@tanstack/react-router` for view-tab routing and layout hierarchies, and `@tanstack/react-table` for sortable, searchable data grids.
+- **Core Components & Router Tree**:
+  - [router.tsx](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/router.tsx) - Sets up routes (`/login`, `/`, `/calendar`, `/bookings`, `/guests`, `/settings`) and runs auth redirects.
+  - [DashboardLayout](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/DashboardLayout.tsx) - Responsive PMS layout shell (header, inline statistics bar, desktop/mobile bottom tabs, context provider).
+  - [CalendarTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/CalendarTab.tsx) - Renders calendar grids, timelines, day preview overlays, stay extensions, and delegates walk-in bookings.
+  - [BookingsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/BookingsTab.tsx) - Headless table view for pending/confirmed reservations with sortable columns.
+  - [GuestsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/GuestsTab.tsx) - Headless table view for guest list records, loyalty visits, and search text-filtering.
+  - [SettingsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/SettingsTab.tsx) - Settings panel for OTA iCal URLs export & import feeds.
+  - [WalkInBookingForm](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/WalkInBookingForm.tsx) - Encapsulated walk-in booking/block creation wizard (Steps 1-3) to prevent main dashboard re-renders and lag on input keystrokes.
   - [LoginPortal](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/LoginPortal.tsx) - Staff passcode validation gate component ensuring only authorized users can access the dashboard.
   - [MainLayout](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/MainLayout.tsx) - Minimal wrapper providing the base page structure (no decorative elements).
 - **Data Operations**:

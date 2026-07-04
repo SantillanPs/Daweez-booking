@@ -62,23 +62,33 @@ ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ical_feeds ENABLE ROW LEVEL SECURITY;
 
 -- Rooms RLS: Public Read, Authenticated Write (Manager only)
+DROP POLICY IF EXISTS "Allow public read-only access to rooms" ON public.rooms;
 CREATE POLICY "Allow public read-only access to rooms" ON public.rooms
     FOR SELECT TO public USING (true);
 
+DROP POLICY IF EXISTS "Allow manager write access to rooms" ON public.rooms;
 CREATE POLICY "Allow manager write access to rooms" ON public.rooms
     FOR ALL TO authenticated USING (true);
 
--- Bookings RLS: Public Insert & Read (so guests can check availability), but Manager full access
+-- Bookings RLS: Public SELECT, INSERT, UPDATE, DELETE access (required since dashboard operates with public/anon key)
+DROP POLICY IF EXISTS "Allow public select of bookings for collision check" ON public.bookings;
 CREATE POLICY "Allow public select of bookings for collision check" ON public.bookings
     FOR SELECT TO public USING (true);
 
-CREATE POLICY "Allow public inserts of website pending bookings" ON public.bookings
-    FOR INSERT TO public WITH CHECK (status = 'pending');
+DROP POLICY IF EXISTS "Allow public full access to bookings" ON public.bookings;
+CREATE POLICY "Allow public full access to bookings" ON public.bookings
+    FOR ALL TO public USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow manager full access to bookings" ON public.bookings;
 CREATE POLICY "Allow manager full access to bookings" ON public.bookings
     FOR ALL TO authenticated USING (true);
 
--- iCal Feeds RLS: Locked to Authenticated Manager Only
+-- iCal Feeds RLS: Grant public full access (since dashboard operates with public/anon key)
+DROP POLICY IF EXISTS "Allow public full access to feeds" ON public.ical_feeds;
+CREATE POLICY "Allow public full access to feeds" ON public.ical_feeds
+    FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow manager full access to feeds" ON public.ical_feeds;
 CREATE POLICY "Allow manager full access to feeds" ON public.ical_feeds
     FOR ALL TO authenticated USING (true);
 

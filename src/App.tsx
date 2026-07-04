@@ -1,8 +1,6 @@
-import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MainLayout } from './components/MainLayout'
-import { AdminPortal } from './components/AdminPortal'
-import { LoginPortal } from './components/LoginPortal'
+import { RouterProvider } from '@tanstack/react-router'
+import { router } from './router'
 
 // 1. Initialise the global TanStack Query Client
 const queryClient = new QueryClient({
@@ -15,26 +13,9 @@ const queryClient = new QueryClient({
 })
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('daweez_pms_auth') === 'true'
-  })
-
-  const handleLogout = () => {
-    localStorage.removeItem('daweez_pms_auth')
-    setIsAuthenticated(false)
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
-      {isAuthenticated ? (
-        <MainLayout>
-          <AdminPortal onLogout={handleLogout} />
-        </MainLayout>
-      ) : (
-        <LoginPortal onLoginSuccess={() => setIsAuthenticated(true)} />
-      )}
+      <RouterProvider router={router} />
     </QueryClientProvider>
   )
 }
-
-

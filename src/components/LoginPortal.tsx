@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 
 interface LoginPortalProps {
   onLoginSuccess: () => void
@@ -84,5 +85,16 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
         </form>
       </div>
     </div>
+  )
+}
+
+export function LoginRoute() {
+  const navigate = useNavigate()
+  return (
+    <LoginPortal
+      onLoginSuccess={() => {
+        navigate({ to: '/calendar' })
+      }}
+    />
   )
 }
