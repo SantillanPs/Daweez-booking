@@ -290,6 +290,7 @@ export async function getBookings(): Promise<Booking[]> {
           breakfast_orders: b.breakfast_orders || undefined,
           equipment_rentals: b.equipment_rentals || undefined,
           event_addons: b.event_addons || undefined,
+          companions: b.companions || undefined,
           created_at: b.created_at,
           expires_at: b.expires_at || null
         }))
@@ -342,6 +343,7 @@ export async function saveBookings(bookings: Booking[]): Promise<void> {
         breakfast_orders: b.breakfast_orders || null,
         equipment_rentals: b.equipment_rentals || null,
         event_addons: b.event_addons || null,
+        companions: b.companions || null,
         expires_at: b.expires_at || null
       }))
 

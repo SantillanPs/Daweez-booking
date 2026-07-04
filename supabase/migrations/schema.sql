@@ -21,7 +21,8 @@ CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'blocked');
 
 CREATE TABLE IF NOT EXISTS public.bookings (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    room_id UUID REFERENCES public.rooms(id) ON DELETE CASCADE NOT NULL,
+    room_id UUID REFERENCES public.rooms(id) ON DELETE CASCADE, -- Nullable if booking a venue
+    venue_id VARCHAR(255) DEFAULT NULL, -- Nullable if booking a room
     guest_name VARCHAR(255) NOT NULL,
     guest_email VARCHAR(255) NOT NULL,
     guest_phone VARCHAR(50) NOT NULL,
@@ -29,6 +30,13 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     check_out DATE NOT NULL,
     source booking_source DEFAULT 'website'::booking_source NOT NULL,
     status booking_status DEFAULT 'pending'::booking_status NOT NULL,
+    downpayment_paid DECIMAL(10,2) DEFAULT 0.00 NOT NULL,
+    balance_due DECIMAL(10,2) DEFAULT 0.00 NOT NULL,
+    security_deposit DECIMAL(10,2) DEFAULT 500.00 NOT NULL,
+    breakfast_orders JSONB DEFAULT NULL,
+    equipment_rentals JSONB DEFAULT NULL,
+    event_addons JSONB DEFAULT NULL,
+    companions JSONB DEFAULT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     expires_at TIMESTAMP WITH TIME ZONE, -- 30-min locks
     CONSTRAINT check_dates CHECK (check_in < check_out)

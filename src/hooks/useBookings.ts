@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as syncEngine from '../utils/syncEngine'
-import { Booking, Room, Venue, SyncFeed, BookingSource, BreakfastOrder, EquipmentRental, EventAddons } from '../types/booking'
+import { Booking, Room, Venue, SyncFeed, BookingSource, BreakfastOrder, EquipmentRental, EventAddons, Companion } from '../types/booking'
 
 export function useBookings() {
   const queryClient = useQueryClient()
@@ -160,8 +160,9 @@ export function useBookings() {
       equipmentRentals?: EquipmentRental
       eventAddons?: EventAddons
       rateMultiplier?: number
+      companions?: Companion[]
     }) => {
-      const { roomId, venueId, guestName, guestEmail, guestPhone, checkIn, checkOut, source, status, breakfastOrders, equipmentRentals, eventAddons, rateMultiplier = 1.0 } = params
+      const { roomId, venueId, guestName, guestEmail, guestPhone, checkIn, checkOut, source, status, breakfastOrders, equipmentRentals, eventAddons, rateMultiplier = 1.0, companions } = params
 
       if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings)) {
         throw new Error('The room is already booked or blocked for these dates.')
@@ -202,6 +203,7 @@ export function useBookings() {
         breakfast_orders: breakfastOrders,
         equipment_rentals: equipmentRentals,
         event_addons: eventAddons,
+        companions,
         created_at: new Date().toISOString(),
         expires_at: null
       }

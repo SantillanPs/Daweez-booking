@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useBookings } from '../hooks/useBookings'
-import { Room, Venue, Booking, SyncFeed, BookingSource, BreakfastOrder } from '../types/booking'
+import { Room, Venue, Booking, SyncFeed, BookingSource, BreakfastOrder, Companion } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import {
   Calendar, User, Phone, Mail, Clock, RefreshCw, Plus, Settings,
@@ -87,6 +87,7 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
   const [formStatus, setFormStatus] = useState<'confirmed' | 'blocked'>('confirmed')
   const [formError, setFormError] = useState('')
   const [applySuggestedRate, setApplySuggestedRate] = useState(true)
+  const [formCompanions, setFormCompanions] = useState<Companion[]>([])
 
   // Add‑ons
   const [formBreakfastQty, setFormBreakfastQty] = useState<Record<string, number>>({ Bangsilog: 0, Lumpiasilog: 0, Cornsilog: 0, Hotsilog: 0 })
@@ -171,6 +172,7 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
     setFormBigTable(0); setFormSmallTable(0); setFormChairs(0); setFormWater(0)
     setFormBand(false); setFormStage(false); setFormLedWall(false)
     setFormStep(1); setApplySuggestedRate(true); setFormError('')
+    setFormCompanions([])
     setShowManualForm(true)
   }
 
@@ -208,7 +210,8 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
             guestPhone: formGuestPhone, checkIn: formCheckIn, checkOut: formCheckOut,
             source: formSource, status: formStatus,
             breakfastOrders: breakfasts.length > 0 ? breakfasts : undefined,
-            rateMultiplier: localMultiplier
+            rateMultiplier: localMultiplier,
+            companions: formCompanions.length > 0 ? formCompanions : undefined
           })
         }
       } else {
@@ -684,7 +687,14 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
                               </td>
                               <td className="py-3 px-3">
                                 <span className="font-medium text-slate-800 block">{b.guest_name}</span>
-                                <span className="text-[10px] text-slate-400">{b.guest_phone}</span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[10px] text-slate-400">{b.guest_phone}</span>
+                                  {b.companions && b.companions.length > 0 && (
+                                    <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200/60 px-1.5 py-0.25 rounded font-medium shrink-0">
+                                      {b.companions.length + 1} Guests
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="py-3 px-3 font-mono text-[10px] text-slate-500">{b.check_in} {room ? `→ ${b.check_out}` : ''}</td>
                               <td className="py-3 px-3 font-medium text-emerald-600">₱{(b.downpayment_paid ?? 0).toLocaleString()}</td>
@@ -739,7 +749,14 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
                               </td>
                               <td className="py-3 px-3">
                                 <span className="font-medium text-slate-800 block">{b.guest_name}</span>
-                                <span className="text-[10px] text-slate-400">{b.guest_phone}</span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[10px] text-slate-400">{b.guest_phone}</span>
+                                  {b.companions && b.companions.length > 0 && (
+                                    <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200/60 px-1.5 py-0.25 rounded font-medium shrink-0">
+                                      {b.companions.length + 1} Guests
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="py-3 px-3 font-mono text-[10px] text-slate-500">{b.check_in} {room ? `→ ${b.check_out}` : ''}</td>
                               <td className="py-3 px-3 text-[10px] space-y-0.5">
@@ -992,6 +1009,26 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
                   <span className="font-medium text-slate-800 truncate block" title={selectedExtendBooking.guest_email}>{selectedExtendBooking.guest_email}</span>
                 </div>
               </div>
+
+              {/* Companions Registry Display */}
+              {selectedExtendBooking.companions && selectedExtendBooking.companions.length > 0 && (
+                <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg text-xs space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-[#B89251]" /> Companions ({selectedExtendBooking.companions.length + 1} total guests)
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-[100px] overflow-y-auto pr-1">
+                    {selectedExtendBooking.companions.map((comp, idx) => (
+                      <div key={idx} className="flex justify-between items-center bg-white px-2.5 py-1.5 rounded border border-slate-200/40">
+                        <span className="font-medium text-slate-800">{comp.name}</span>
+                        <span className="text-[9px] uppercase font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{comp.gender}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <form onSubmit={handleExtendStaySubmit} className="space-y-3 border-t border-slate-100 pt-4">
                 <span className="text-xs font-medium text-[#9A783E] block">Extend Stay</span>
                 <div className="grid grid-cols-2 gap-3">
@@ -1226,6 +1263,68 @@ export function AdminPortal({ onLogout }: AdminPortalProps) {
                               className="w-full bg-slate-50 border border-slate-200 text-slate-700 pl-10 pr-3 py-2 rounded-lg text-xs focus:outline-none focus:border-[#B89251]" />
                           </div>
                         </div>
+                      </div>
+                      
+                      {/* Companion Registry */}
+                      <div className="pt-3 border-t border-slate-200/60">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5 text-[#B89251]" /> Companions / Roommates
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                            Guest Count: {formCompanions.length + 1}
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                          {formCompanions.length === 0 ? (
+                            <p className="text-[10px] text-slate-400 py-2 italic text-center bg-slate-50/50 rounded-lg border border-dashed border-slate-200">No companions registered yet.</p>
+                          ) : (
+                            formCompanions.map((comp, idx) => (
+                              <div key={idx} className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200/60">
+                                <input 
+                                  type="text" 
+                                  required 
+                                  placeholder="Companion full name" 
+                                  value={comp.name} 
+                                  onChange={e => {
+                                    const updated = [...formCompanions]
+                                    updated[idx].name = e.target.value
+                                    setFormCompanions(updated)
+                                  }} 
+                                  className="flex-1 bg-white border border-slate-200 text-slate-700 px-2.5 py-1.5 rounded focus:outline-none focus:border-[#B89251] text-[11px]" 
+                                />
+                                <select 
+                                  value={comp.gender} 
+                                  onChange={e => {
+                                    const updated = [...formCompanions]
+                                    updated[idx].gender = e.target.value as 'male' | 'female'
+                                    setFormCompanions(updated)
+                                  }} 
+                                  className="bg-white border border-slate-200 text-slate-700 px-2 py-1.5 rounded focus:outline-none focus:border-[#B89251] text-[11px]"
+                                >
+                                  <option value="male">Male</option>
+                                  <option value="female">Female</option>
+                                </select>
+                                <button 
+                                  type="button" 
+                                  onClick={() => setFormCompanions(formCompanions.filter((_, i) => i !== idx))} 
+                                  className="text-slate-400 hover:text-rose-500 transition-colors p-1 cursor-pointer shrink-0"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        <button 
+                          type="button" 
+                          onClick={() => setFormCompanions([...formCompanions, { name: '', gender: 'male' }])} 
+                          className="mt-2 text-[10px] text-[#B89251] hover:text-[#9A783E] font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" /> Add Companion
+                        </button>
                       </div>
                     </div>
                   )}

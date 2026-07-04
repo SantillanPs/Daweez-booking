@@ -51,6 +51,11 @@ export interface EventAddons {
   ledWall: boolean           // ₱5,000
 }
 
+export interface Companion {
+  name: string
+  gender: 'male' | 'female'
+}
+
 export interface Booking {
   id: string
   room_id?: string // Nullable if booking a venue
@@ -68,6 +73,7 @@ export interface Booking {
   breakfast_orders?: BreakfastOrder[]
   equipment_rentals?: EquipmentRental
   event_addons?: EventAddons
+  companions?: Companion[]
   created_at: string // ISO date-time
   expires_at: string | null // ISO date-time for 30-min website locks
 }
