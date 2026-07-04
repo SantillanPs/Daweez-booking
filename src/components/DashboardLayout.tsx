@@ -67,11 +67,41 @@ export function DashboardLayout() {
               <div className="w-8 h-8 flex items-center justify-center bg-[#B89251] rounded-lg">
                 <Sparkles className="w-4 h-4 text-white" />
               </div>
-              <div className="leading-tight">
+              <div className="leading-tight shrink-0">
                 <h1 className="text-sm font-bold text-slate-900">Daweez PMS</h1>
                 <p className="text-[10px] text-[#B89251] font-medium hidden sm:block">Property Management</p>
               </div>
             </div>
+
+            {/* Inline Header Stats for tablet/desktop */}
+            <div className="hidden sm:flex items-center gap-4 md:gap-6 text-xs border-l border-slate-200 pl-4 md:pl-6 my-1">
+              <div className="flex items-center gap-1 shrink-0">
+                <Home className="w-3.5 h-3.5 text-[#B89251]" />
+                <span className="text-slate-400">Occ:</span>
+                <span className="font-semibold text-slate-800">{roomOccupancyRate}%</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <LogIn className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="text-slate-400">In:</span>
+                <span className="font-semibold text-slate-800">{arrivalsToday.length}</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                <span className="text-slate-400">Out:</span>
+                <span className="font-semibold text-slate-800">{departuresToday.length}</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Users className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-slate-400">Guests:</span>
+                <span className="font-semibold text-slate-800">{currentGuests.length}</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-slate-400">Rev:</span>
+                <span className="font-semibold text-slate-800">₱{totalRevenue.toLocaleString()}</span>
+              </div>
+            </div>
+
             <div className="flex items-center gap-2">
               <button onClick={handleTriggerSync} className="flex items-center gap-1.5 text-xs font-medium text-[#9A783E] border border-[#E5D5C0] bg-[#FDFBF7] hover:bg-[#B89251] hover:text-white hover:border-[#B89251] px-3 py-1.5 rounded-lg transition-all cursor-pointer">
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -95,33 +125,28 @@ export function DashboardLayout() {
           </div>
         )}
 
-        {/* Stats bar */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
-          <div className="flex items-center gap-5 sm:gap-8 overflow-x-auto text-sm no-scrollbar">
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Home className="w-3.5 h-3.5 text-[#B89251]" />
-              <span className="text-slate-400 text-xs">Occ.</span>
-              <span className="font-semibold text-slate-800">{roomOccupancyRate}%</span>
+        {/* Mobile Stats Bar (Space efficient horizontal scroll below header) */}
+        <div className="sm:hidden bg-[#FDFBF7] border-b border-[#E5D5C0]/65 px-4 py-1.5">
+          <div className="flex items-center justify-between text-[10px] font-medium text-[#9A783E] overflow-x-auto no-scrollbar gap-4">
+            <div className="flex items-center gap-1 shrink-0">
+              <Home className="w-3 h-3 text-[#B89251]" />
+              <span>Occ: <strong className="text-slate-800">{roomOccupancyRate}%</strong></span>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <LogIn className="w-3.5 h-3.5 text-emerald-500" />
-              <span className="text-slate-400 text-xs">In</span>
-              <span className="font-semibold text-slate-800">{arrivalsToday.length}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <LogIn className="w-3 h-3 text-emerald-600" />
+              <span>In: <strong className="text-slate-800">{arrivalsToday.length}</strong></span>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <LogOut className="w-3.5 h-3.5 text-rose-500" />
-              <span className="text-slate-400 text-xs">Out</span>
-              <span className="font-semibold text-slate-800">{departuresToday.length}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <LogOut className="w-3 h-3 text-rose-600" />
+              <span>Out: <strong className="text-slate-800">{departuresToday.length}</strong></span>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Users className="w-3.5 h-3.5 text-blue-500" />
-              <span className="text-slate-400 text-xs">Guests</span>
-              <span className="font-semibold text-slate-800">{currentGuests.length}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <Users className="w-3 h-3 text-blue-600" />
+              <span>Guests: <strong className="text-slate-800">{currentGuests.length}</strong></span>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
-              <span className="text-slate-400 text-xs">Rev.</span>
-              <span className="font-semibold text-slate-800">₱{totalRevenue.toLocaleString()}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <TrendingUp className="w-3 h-3 text-amber-600" />
+              <span>Rev: <strong className="text-slate-800">₱{totalRevenue.toLocaleString()}</strong></span>
             </div>
           </div>
         </div>

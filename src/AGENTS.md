@@ -15,11 +15,11 @@ This directory contains the React + TypeScript frontend codebase for the Daweez 
 - **Core Components & Router Tree**:
   - [router.tsx](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/router.tsx) - Sets up routes (`/login`, `/`, `/calendar`, `/bookings`, `/guests`, `/settings`) and runs auth redirects.
   - [DashboardLayout](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/DashboardLayout.tsx) - Responsive PMS layout shell (header, inline statistics bar, desktop/mobile bottom tabs, context provider).
-  - [CalendarTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/CalendarTab.tsx) - Renders calendar grids, timelines, day preview overlays, stay extensions, and delegates walk-in bookings.
+  - [CalendarTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/CalendarTab.tsx) - Orchestrates the calendar and timeline grid layout, delegating rendering to modular subcomponents in `src/components/calendar/` (`MonthGridView`, `TimelineGrid`, `DayPreviewPanel`, `ExtendStayModal`).
   - [BookingsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/BookingsTab.tsx) - Headless table view for pending/confirmed reservations with sortable columns.
   - [GuestsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/GuestsTab.tsx) - Headless table view for guest list records, loyalty visits, and search text-filtering.
   - [SettingsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/SettingsTab.tsx) - Settings panel for OTA iCal URLs export & import feeds.
-  - [WalkInBookingForm](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/WalkInBookingForm.tsx) - Encapsulated single‑page scrollable walk‑in booking form with collapsible sections and sticky billing summary to eliminate step‑navigation lag and improve responsiveness.
+  - [WalkInBookingForm](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/WalkInBookingForm.tsx) - Orchestrates the progressive walk‑in booking wizard, delegating step fields and receipt estimation to modular subcomponents in `src/components/walk-in/` (`GuestDetailsForm`, `RoomDetailsForm`, `AmenitiesForm`, `BillingSummary`).
   - [LoginPortal](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/LoginPortal.tsx) - Staff passcode validation gate component ensuring only authorized users can access the dashboard.
   - [MainLayout](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/MainLayout.tsx) - Minimal wrapper providing the base page structure (no decorative elements).
 - **Data Operations**:
@@ -35,6 +35,11 @@ This directory contains the React + TypeScript frontend codebase for the Daweez 
 - **Offline / Local Fallback**: Code must check `isSupabaseConfigured` and seamlessly fallback to local storage DB endpoints (`l_etoile_bookings_db`, `l_etoile_feeds_db`) to guarantee runtime persistence without a live database.
 - **Background Calendar Sync**: Third-party bookings (Airbnb/Booking.com) must sync automatically via iCal feeds in the background upon mounting the application and at regular intervals (60 seconds) thereafter, with a manual OTA Sync trigger as a backup.
 - **Staff Passcode Authentication Gate**: The staff portal is protected by a client-side passcode authentication gate. Authorized passcodes include 'daweez2026' (case-insensitive), '8888', and any custom passcode defined in VITE_STAFF_PASSCODE. Successful authentication persists in localStorage as `daweez_pms_auth` until explicit logout.
+- **Performance Guardrails for Grids & Complex Views**:
+  - **State Isolation**: High-frequency states (e.g. mouse hover coordinates, hovered dates, range calculations) must live at the lowest leaf component level possible. Avoid placing hover states in orchestrators or context providers to prevent wide component trees from re-rendering.
+  - **Memoized Cell Wrappers**: Wrap individual grid cells or list items in a memoized component wrapper (`React.memo`) using strict custom equality comparators to bypass rendering. Ensure callbacks are stable or checked appropriately, converting $O(N)$ re-renders to $O(1)$ changes.
+  - **Numeric Timestamp Operations**: Avoid using string parsing operations (like `.toDateString()` or `.toISOString()`) inside rendering loops. Convert dates to numeric timestamps via `.getTime()` for cheap integer comparisons.
+  - **Keystroke Rendering Isolation**: Keep text field keystroke states isolated so typing in registry forms does not trigger re-calculations or re-renders of adjacent sidebar receipts and summaries.
 
 ## Verification
 
