@@ -294,7 +294,7 @@ export function CalendarTab() {
           rooms={rooms}
           currentMonthDate={currentMonthDate}
           selectedRoomIds={selectedRoomIds}
-          bookingsByDate={bookingsByDate}
+          bookings={bookings}
           ROOM_COLORS={ROOM_COLORS}
           VENUE_COLORS={VENUE_COLORS}
           setCurrentMonthDate={setCurrentMonthDate}
