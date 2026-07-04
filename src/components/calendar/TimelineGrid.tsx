@@ -30,6 +30,7 @@ interface TimelineCellProps {
   isoStr: string
   roomId: string
   booking: Booking | null
+  span: number
   isCheckIn: boolean
   getBookingStyle: (b: Booking) => string
   activeTooltip: string | null
@@ -48,6 +49,7 @@ const TimelineCell = React.memo(
     isoStr,
     roomId,
     booking,
+    span,
     isCheckIn,
     getBookingStyle,
     activeTooltip,
@@ -67,12 +69,13 @@ const TimelineCell = React.memo(
     }, [])
 
     if (booking) {
-      const isStart = isoStr === booking.check_in
       const tipId = `${roomId}-${dIdx}`
       const isTooltipActive = activeTooltip === tipId
 
       return (
-        <td className="p-0 border-r border-slate-100 relative"
+        <td 
+          colSpan={span}
+          className="p-0 border-r border-slate-100 relative align-middle"
           onMouseEnter={() => {
             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
             hoverTimeoutRef.current = setTimeout(() => {
@@ -85,7 +88,8 @@ const TimelineCell = React.memo(
               hoverTimeoutRef.current = null
             }
             setActiveTooltip(null)
-          }}>
+          }}
+        >
           <div 
             onClick={e => { 
               e.stopPropagation()
@@ -95,9 +99,16 @@ const TimelineCell = React.memo(
                 setExtendError('') 
               } 
             }}
-            className={`h-7 mx-0.5 flex items-center justify-center text-[9px] font-semibold rounded-sm border cursor-pointer select-none ${getBookingStyle(booking)}`}
+            className={`h-7 mx-0.5 flex items-center justify-between text-[9.5px] font-extrabold px-2.5 rounded-sm border cursor-pointer select-none transition-all hover:scale-[1.003] hover:shadow-sm ${getBookingStyle(booking)}`}
           >
-            {isStart ? <span className="px-0.5 truncate">{booking.guest_name.split(' ')[0]}</span> : <span className="opacity-0">.</span>}
+            <span className="truncate">
+              {booking.guest_name}
+            </span>
+            {span > 1 && (
+              <span className="text-[8px] opacity-65 font-mono shrink-0 pl-1.5">
+                {span} nites
+              </span>
+            )}
           </div>
           {isTooltipActive && (
             <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-52 bg-white border border-slate-200 p-3 shadow-lg rounded-lg text-xs space-y-1.5 pointer-events-none text-left">
@@ -118,7 +129,8 @@ const TimelineCell = React.memo(
       return (
         <td 
           onClick={() => onCellClick(roomId, date)}
-          className="p-0 h-8 relative cursor-cell rounded-lg border-2 bg-[#B89251] border-[#9A783E] text-white animate-fade-in">
+          className="p-0 h-8 relative cursor-cell rounded bg-[#B89251] border border-[#9A783E] text-white animate-fade-in align-middle"
+        >
           <div className="absolute inset-0 flex items-center justify-center text-[9px] font-bold uppercase tracking-wider">
             In
           </div>
@@ -129,13 +141,15 @@ const TimelineCell = React.memo(
     return (
       <td 
         onClick={() => onCellClick(roomId, date)}
-        className="border-r border-slate-100 p-0 h-8 cursor-cell" />
+        className="border-r border-slate-100 p-0 h-8 cursor-cell hover:bg-[#FDFBF7]/60 transition-colors" 
+      />
     )
   },
   // Custom memo comparator
   (prevProps, nextProps) => {
     return (
       prevProps.isCheckIn === nextProps.isCheckIn &&
+      prevProps.span === nextProps.span &&
       prevProps.activeTooltip === nextProps.activeTooltip &&
       prevProps.booking?.id === nextProps.booking?.id &&
       prevProps.booking?.status === nextProps.booking?.status
@@ -210,23 +224,57 @@ export const TimelineGrid = React.memo(
                 </tr>
               </thead>
               <tbody>
-                {rooms.map(room => (
-                  <tr key={room.id} className="border-b border-slate-100 hover:bg-slate-50/30">
-                    <td className="sticky left-0 z-20 bg-white border-r border-slate-200 p-3 min-w-[160px]">
-                      <span className="text-xs font-semibold text-slate-800 block">Room {room.room_number}</span>
-                      <span className="text-[10px] text-[#B89251]">₱{room.base_price.toLocaleString()}/night</span>
-                    </td>
-                    {daysList.map((dayInfo, dIdx) => {
-                      const booking = bookingByRoomAndDate[`${room.id}_${dayInfo.isoStr}`]
-                      const isDraftCheckIn = timelineSelection && timelineSelection.roomId === room.id && dayInfo.time === checkInTime
+                {rooms.map(room => {
+                  const cells: React.ReactNode[] = []
+                  let dIdx = 0
 
-                      return (
+                  while (dIdx < daysList.length) {
+                    const dayInfo = daysList[dIdx]
+                    const booking = bookingByRoomAndDate[`${room.id}_${dayInfo.isoStr}`]
+
+                    if (booking) {
+                      // Find the duration of this booking in the remaining days list
+                      let span = 1
+                      while (dIdx + span < daysList.length) {
+                        const nextDay = daysList[dIdx + span]
+                        const nextBooking = bookingByRoomAndDate[`${room.id}_${nextDay.isoStr}`]
+                        if (nextBooking && nextBooking.id === booking.id) {
+                          span++
+                        } else {
+                          break
+                        }
+                      }
+
+                      cells.push(
                         <TimelineCell
                           key={dIdx}
                           date={dayInfo.date}
                           isoStr={dayInfo.isoStr}
                           roomId={room.id}
-                          booking={booking || null}
+                          booking={booking}
+                          span={span}
+                          isCheckIn={false}
+                          getBookingStyle={getBookingStyle}
+                          activeTooltip={activeTooltip}
+                          setActiveTooltip={setActiveTooltip}
+                          onCellClick={handleCellClick}
+                          setSelectedExtendBooking={setSelectedExtendBooking}
+                          setExtendCheckoutDate={setExtendCheckoutDate}
+                          setExtendError={setExtendError}
+                          dIdx={dIdx}
+                        />
+                      )
+                      dIdx += span
+                    } else {
+                      const isDraftCheckIn = timelineSelection && timelineSelection.roomId === room.id && dayInfo.time === checkInTime
+                      cells.push(
+                        <TimelineCell
+                          key={dIdx}
+                          date={dayInfo.date}
+                          isoStr={dayInfo.isoStr}
+                          roomId={room.id}
+                          booking={null}
+                          span={1}
                           isCheckIn={!!isDraftCheckIn}
                           getBookingStyle={getBookingStyle}
                           activeTooltip={activeTooltip}
@@ -238,9 +286,20 @@ export const TimelineGrid = React.memo(
                           dIdx={dIdx}
                         />
                       )
-                    })}
-                  </tr>
-                ))}
+                      dIdx++
+                    }
+                  }
+
+                  return (
+                    <tr key={room.id} className="border-b border-slate-100 hover:bg-slate-50/30">
+                      <td className="sticky left-0 z-20 bg-white border-r border-slate-200 p-3 min-w-[160px]">
+                        <span className="text-xs font-semibold text-slate-800 block">Room {room.room_number}</span>
+                        <span className="text-[10px] text-[#B89251]">₱{room.base_price.toLocaleString()}/night</span>
+                      </td>
+                      {cells}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
