@@ -150,6 +150,7 @@ const TimelineCell = React.memo(
   },
   (prevProps, nextProps) => {
     return (
+      prevProps.onCellClick === nextProps.onCellClick &&
       prevProps.isCheckIn === nextProps.isCheckIn &&
       prevProps.span === nextProps.span &&
       prevProps.activeTooltip === nextProps.activeTooltip &&
