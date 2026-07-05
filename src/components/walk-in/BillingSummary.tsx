@@ -3,13 +3,11 @@ import { Room, Venue } from '../../types/booking'
 
 interface BillingSummaryProps {
   formStatus: 'confirmed' | 'blocked'
-  formPathway: 'room' | 'venue'
-  basePrice: number
   estNights: number
   formRoomIds: Set<string>
   rooms: Room[]
   venues: Venue[]
-  formVenueId: string
+  formVenueIds: Set<string>
   estBreakfast: number
   estRentals: number
   estAddons: number
@@ -18,19 +16,17 @@ interface BillingSummaryProps {
   estDue: number
 }
 
-// Compare Set contents to determine if selected rooms changed
+// Compare Set contents to determine if selected items changed
 const setsEqual = (a: Set<string>, b: Set<string>) => a.size === b.size && Array.from(a).every(x => b.has(x))
 
 export const BillingSummary = React.memo(
   ({
     formStatus,
-    formPathway,
-    basePrice,
     estNights,
     formRoomIds,
     rooms,
     venues,
-    formVenueId,
+    formVenueIds,
     estBreakfast,
     estRentals,
     estAddons,
@@ -38,6 +34,8 @@ export const BillingSummary = React.memo(
     estDown,
     estDue
   }: BillingSummaryProps) => {
+    const unitCount = formRoomIds.size + formVenueIds.size
+
     return (
       <div className="space-y-4 font-sans">
         <h4 className="text-[9px] font-bold text-[#9A783E] tracking-widest uppercase md:block hidden pb-0.5 border-b border-slate-200/40">
@@ -55,38 +53,44 @@ export const BillingSummary = React.memo(
             
             <div className="space-y-2 text-slate-600 font-medium">
               <div className="flex justify-between">
-                <span>Base Rate:</span>
-                <span className="font-mono font-semibold text-slate-800">₱{basePrice.toLocaleString()}{formPathway === 'room' ? '/night' : ''}</span>
+                <span>Nights:</span>
+                <span className="font-mono text-slate-800 font-semibold">{estNights} night{estNights > 1 ? 's' : ''}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Pathway:</span>
-                <span className="capitalize text-slate-800 font-semibold">{formPathway}</span>
-              </div>
-              {formPathway === 'room' && (
-                <div className="flex justify-between">
-                  <span>Nights:</span>
-                  <span className="font-mono text-slate-800 font-semibold">{estNights} night{estNights > 1 ? 's' : ''}</span>
-                </div>
+              
+              {formRoomIds.size > 0 && (
+                <>
+                  <div className="border-t border-dashed border-[#E5D5C0] my-2" />
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Rooms ({formRoomIds.size})</div>
+                  <div className="text-[10px] text-slate-500 pl-2 space-y-1 font-mono">
+                    {Array.from(formRoomIds).map(id => {
+                      const r = rooms.find(room => room.id === id)
+                      return r ? (
+                        <div key={id} className="flex justify-between">
+                          <span>Room {r.room_number} ({r.name}):</span>
+                          <span>₱{(r.base_price * estNights).toLocaleString()}</span>
+                        </div>
+                      ) : null
+                    })}
+                  </div>
+                </>
               )}
-              
-              <div className="border-t border-dashed border-[#E5D5C0] my-2" />
-              
-              {formPathway === 'room' ? (
-                <div className="text-[10px] text-slate-500 pl-2 space-y-1 font-mono">
-                  {Array.from(formRoomIds).map(id => {
-                    const r = rooms.find(room => room.id === id)
-                    return r ? (
-                      <div key={id} className="flex justify-between">
-                        <span>Room {r.room_number} ({r.name}):</span>
-                        <span>₱{r.base_price.toLocaleString()}</span>
-                      </div>
-                    ) : null
-                  })}
-                </div>
-              ) : (
-                <div className="text-[10px] text-slate-500 pl-2 font-mono">
-                  <span>{venues.find(v => v.id === formVenueId)?.name || 'Gazebo'}</span>
-                </div>
+
+              {formVenueIds.size > 0 && (
+                <>
+                  <div className="border-t border-dashed border-[#E5D5C0] my-2" />
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Event Venues ({formVenueIds.size})</div>
+                  <div className="text-[10px] text-slate-500 pl-2 space-y-1 font-mono">
+                    {Array.from(formVenueIds).map(id => {
+                      const v = venues.find(venue => venue.id === id)
+                      return v ? (
+                        <div key={id} className="flex justify-between">
+                          <span>{v.name}:</span>
+                          <span>₱{(v.base_price * estNights).toLocaleString()}</span>
+                        </div>
+                      ) : null
+                    })}
+                  </div>
+                </>
               )}
 
               {(estBreakfast > 0 || estRentals > 0 || estAddons > 0) && (
@@ -128,7 +132,7 @@ export const BillingSummary = React.memo(
                 <span className="font-mono text-[#9A783E] font-extrabold">₱{estDue.toLocaleString()}</span>
               </div>
               <div className="text-[9px] text-slate-400 text-center pt-2 italic leading-normal font-sans">
-                Includes ₱500 refundable security deposit
+                Includes ₱{(unitCount * 500).toLocaleString()} refundable security deposit (₱500/unit)
               </div>
             </div>
           </div>
@@ -149,11 +153,9 @@ export const BillingSummary = React.memo(
   (prevProps, nextProps) => {
     return (
       prevProps.formStatus === nextProps.formStatus &&
-      prevProps.formPathway === nextProps.formPathway &&
-      prevProps.basePrice === nextProps.basePrice &&
       prevProps.estNights === nextProps.estNights &&
       setsEqual(prevProps.formRoomIds, nextProps.formRoomIds) &&
-      prevProps.formVenueId === nextProps.formVenueId &&
+      setsEqual(prevProps.formVenueIds, nextProps.formVenueIds) &&
       prevProps.estBreakfast === nextProps.estBreakfast &&
       prevProps.estRentals === nextProps.estRentals &&
       prevProps.estAddons === nextProps.estAddons &&

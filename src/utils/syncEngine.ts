@@ -516,7 +516,7 @@ export function calculatePricing(params: {
     const venue = DEFAULT_VENUES.find(v => v.id === venueId)
     basePrice = venue ? venue.base_price : 0
     basePrice = Math.round(basePrice * rateMultiplier)
-    nights = 1 // Venue bookings are charged per day/event
+    nights = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
   }
 
   // B. Loyalty Program: 10% auto-deducted if guest has past completed stay

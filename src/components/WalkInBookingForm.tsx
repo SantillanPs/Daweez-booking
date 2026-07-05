@@ -31,6 +31,7 @@ interface WalkInBookingFormProps {
     rateMultiplier?: number
     companions?: Companion[]
   }) => Promise<Booking>
+  cancelBooking: (bookingId: string) => Promise<void>
   initialPathway: 'room' | 'venue'
   initialRoomIds: Set<string>
   initialVenueId?: string
@@ -44,6 +45,7 @@ export function WalkInBookingForm({
   venues,
   bookings,
   createManualBooking,
+  cancelBooking,
   initialPathway,
   initialRoomIds,
   initialVenueId,
@@ -53,9 +55,12 @@ export function WalkInBookingForm({
 }: WalkInBookingFormProps) {
   // ── Core wizard state ──
   const [formStep, setFormStep] = useState<number>(1)
-  const [formPathway, setFormPathway] = useState<'room' | 'venue'>(initialPathway)
-  const [formRoomIds, setFormRoomIds] = useState<Set<string>>(initialRoomIds)
-  const [formVenueId, setFormVenueId] = useState<string>(initialVenueId || venues[0]?.id || 'venue-gazebo')
+  const [formRoomIds, setFormRoomIds] = useState<Set<string>>(
+    initialPathway === 'room' ? initialRoomIds : new Set()
+  )
+  const [formVenueIds, setFormVenueIds] = useState<Set<string>>(
+    initialPathway === 'venue' && initialVenueId ? new Set([initialVenueId]) : new Set()
+  )
   const [formGuestName, setFormGuestName] = useState('')
   const [formGuestEmail, setFormGuestEmail] = useState('')
   const [formGuestPhone, setFormGuestPhone] = useState('')
@@ -78,30 +83,34 @@ export function WalkInBookingForm({
   const [formLedWall, setFormLedWall] = useState(false)
 
   // ── Collapsible toggles ──
-  const [showAddons, setShowAddons] = useState(true) 
   const [showCompanions, setShowCompanions] = useState(true)
 
+  const hasRooms = formRoomIds.size > 0
+  const hasVenues = formVenueIds.size > 0
+
   // ── Pricing calculations ──
-  const { basePrice, estNights, estBreakfast, estRentals, estAddons, estTotal, estDown, estDue } = useMemo(() => {
-    const bp = formPathway === 'room'
-      ? Array.from(formRoomIds).reduce((s, id) => s + (rooms.find(r => r.id === id)?.base_price ?? 0), 0)
-      : (venues.find(v => v.id === formVenueId)?.base_price ?? 0)
+  const { estNights, estBreakfast, estRentals, estAddons, estTotal, estDown, estDue } = useMemo(() => {
+    const bpRooms = Array.from(formRoomIds).reduce((s, id) => s + (rooms.find(r => r.id === id)?.base_price ?? 0), 0)
+    const bpVenues = Array.from(formVenueIds).reduce((s, id) => s + (venues.find(v => v.id === id)?.base_price ?? 0), 0)
 
     const nights = formCheckIn && formCheckOut
       ? Math.max(1, Math.ceil((new Date(formCheckOut).getTime() - new Date(formCheckIn).getTime()) / 86400000))
       : 1
 
-    const base = bp * nights
+    const base = (bpRooms * nights) + (bpVenues * nights)
+    
     let breakfast = 0
-    if (formPathway === 'room') {
+    if (formRoomIds.size > 0) {
       Object.values(formBreakfastQty).forEach(q => { breakfast += 200 * q })
     }
+    
     let rentals = 0
-    if (formPathway === 'venue') {
+    if (formVenueIds.size > 0) {
       rentals = formBigTable * 150 + formSmallTable * 100 + formChairs * 15 + formWater * 35
     }
+    
     let addons = 0
-    if (formPathway === 'venue') {
+    if (formVenueIds.size > 0) {
       if (formBand) addons += 2000
       if (formStage) addons += 2000
       if (formLedWall) addons += 5000
@@ -109,10 +118,12 @@ export function WalkInBookingForm({
 
     const total = base + breakfast + rentals + addons
     const down = Math.round(total * 0.5)
-    const due = (total - down) + (formStatus === 'blocked' ? 0 : 500)
+    
+    // Per-unit security deposit: ₱500 per room and venue
+    const unitCount = formRoomIds.size + formVenueIds.size
+    const due = (total - down) + (formStatus === 'blocked' ? 0 : 500 * unitCount)
 
     return {
-      basePrice: bp,
       estNights: nights,
       estBreakfast: breakfast,
       estRentals: rentals,
@@ -121,7 +132,7 @@ export function WalkInBookingForm({
       estDown: down,
       estDue: due
     }
-  }, [formPathway, formRoomIds, formVenueId, formCheckIn, formCheckOut,
+  }, [formRoomIds, formVenueIds, formCheckIn, formCheckOut,
     formBreakfastQty, formBigTable, formSmallTable, formChairs, formWater,
     formBand, formStage, formLedWall, formStatus, rooms, venues])
 
@@ -135,50 +146,91 @@ export function WalkInBookingForm({
     if (formCheckIn >= formCheckOut) {
       setFormError('Check-out date must be after check-in date.'); return
     }
+    if (formRoomIds.size === 0 && formVenueIds.size === 0) {
+      setFormError('Please select at least one room or event venue.'); return
+    }
     if (formStatus === 'confirmed' && !formGuestName) {
       setFormError('Guest name is required.'); return
     }
     setIsSubmitting(true)
+
+    // 1. Run collision checks for all selected units
+    const unavailRooms = Array.from(formRoomIds).filter(id => !syncEngine.isRoomAvailable(id, formCheckIn, formCheckOut, bookings))
+    if (unavailRooms.length > 0) {
+      setFormError(`${unavailRooms.map(id => rooms.find(r => r.id === id)?.name || id).join(', ')} already booked for these dates.`)
+      setIsSubmitting(false); return
+    }
+    const unavailVenues = Array.from(formVenueIds).filter(id => !syncEngine.isVenueRangeAvailable(id, formCheckIn, formCheckOut, bookings))
+    if (unavailVenues.length > 0) {
+      setFormError(`${unavailVenues.map(id => venues.find(v => v.id === id)?.name || id).join(', ')} already reserved for these dates.`)
+      setIsSubmitting(false); return
+    }
+
+    const createdBookings: Booking[] = []
     try {
       const breakfasts: BreakfastOrder[] = []
-      if (formPathway === 'room') {
-        Object.entries(formBreakfastQty).forEach(([meal, qty]) => {
-          if (qty > 0) breakfasts.push({ option: meal as BreakfastOrder['option'], quantity: qty, withCoffee: true })
-        })
-      }
-      if (formPathway === 'room') {
-        const unavail = Array.from(formRoomIds).filter(id => !syncEngine.isRoomAvailable(id, formCheckIn, formCheckOut, bookings))
-        if (unavail.length > 0) {
-          setFormError(`${unavail.map(id => rooms.find(r => r.id === id)?.name || id).join(', ')} already booked for these dates.`)
-          setIsSubmitting(false); return
-        }
-        for (const roomId of Array.from(formRoomIds)) {
-          await createManualBooking({
-            roomId, guestName: formGuestName, guestEmail: formGuestEmail,
-            guestPhone: formGuestPhone, checkIn: formCheckIn, checkOut: formCheckOut,
-            source: formSource, status: formStatus,
-            breakfastOrders: breakfasts.length > 0 ? breakfasts : undefined,
-            rateMultiplier: 1.0,
-            companions: formCompanions.length > 0 ? formCompanions : undefined
-          })
-        }
-      } else {
-        if (!syncEngine.isVenueRangeAvailable(formVenueId, formCheckIn, formCheckOut, bookings)) {
-          const venueName = venues.find(v => v.id === formVenueId)?.name || formVenueId
-          setFormError(`${venueName} is already reserved for these dates.`);
-          setIsSubmitting(false); return
-        }
-        await createManualBooking({
-          venueId: formVenueId, guestName: formGuestName, guestEmail: formGuestEmail,
+      Object.entries(formBreakfastQty).forEach(([meal, qty]) => {
+        if (qty > 0) breakfasts.push({ option: meal as BreakfastOrder['option'], quantity: qty, withCoffee: true })
+      })
+
+      // 2. Loop to create room bookings
+      let isFirstRoom = true
+      for (const roomId of Array.from(formRoomIds)) {
+        // Attach breakfasts only to the first room booking to prevent duplicate charges
+        const roomBreakfasts = isFirstRoom && breakfasts.length > 0 ? breakfasts : undefined
+        isFirstRoom = false
+
+        const b = await createManualBooking({
+          roomId, guestName: formGuestName, guestEmail: formGuestEmail,
           guestPhone: formGuestPhone, checkIn: formCheckIn, checkOut: formCheckOut,
           source: formSource, status: formStatus,
-          equipmentRentals: { bigTableCount: formBigTable, smallTableCount: formSmallTable, chairCount: formChairs, mineralWaterCount: formWater },
-          eventAddons: { fullBandAndLights: formBand, stage: formStage, ledWall: formLedWall },
+          breakfastOrders: roomBreakfasts,
+          rateMultiplier: 1.0,
+          companions: formCompanions.length > 0 ? formCompanions : undefined
+        })
+        createdBookings.push(b)
+      }
+
+      // 3. Loop to create venue bookings
+      let isFirstVenue = true
+      for (const venueId of Array.from(formVenueIds)) {
+        // Attach rentals and addons only to the first venue booking to prevent duplicate charges
+        const rentals = isFirstVenue ? {
+          bigTableCount: formBigTable,
+          smallTableCount: formSmallTable,
+          chairCount: formChairs,
+          mineralWaterCount: formWater
+        } : undefined
+
+        const addons = isFirstVenue ? {
+          fullBandAndLights: formBand,
+          stage: formStage,
+          ledWall: formLedWall
+        } : undefined
+
+        isFirstVenue = false
+
+        const b = await createManualBooking({
+          venueId, guestName: formGuestName, guestEmail: formGuestEmail,
+          guestPhone: formGuestPhone, checkIn: formCheckIn, checkOut: formCheckOut,
+          source: formSource, status: formStatus,
+          equipmentRentals: rentals,
+          eventAddons: addons,
           rateMultiplier: 1.0
         })
+        createdBookings.push(b)
       }
+
       onClose()
     } catch (err: unknown) {
+      // Rollback successfully created bookings on failure
+      for (const b of createdBookings) {
+        try {
+          await cancelBooking(b.id)
+        } catch (rollbackErr) {
+          console.error('Failed to rollback booking:', b.id, rollbackErr)
+        }
+      }
       setFormError(err instanceof Error ? err.message : 'Booking failed — possible date overlap.')
       setIsSubmitting(false)
     }
@@ -192,9 +244,9 @@ export function WalkInBookingForm({
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 shrink-0 bg-white">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 flex items-center justify-center bg-[#FDFBF7] border border-[#E5D5C0] rounded-md">
-              {formPathway === 'room'
-                ? <BedDouble className="w-3.5 h-3.5 text-[#B89251]" />
-                : <PartyPopper className="w-3.5 h-3.5 text-[#B89251]" />}
+              {hasVenues && !hasRooms
+                ? <PartyPopper className="w-3.5 h-3.5 text-[#B89251]" />
+                : <BedDouble className="w-3.5 h-3.5 text-[#B89251]" />}
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-800">New Reservation</h3>
@@ -253,12 +305,10 @@ export function WalkInBookingForm({
                     rooms={rooms}
                     venues={venues}
                     bookings={bookings}
-                    formPathway={formPathway}
-                    setFormPathway={setFormPathway}
                     formRoomIds={formRoomIds}
                     setFormRoomIds={setFormRoomIds}
-                    formVenueId={formVenueId}
-                    setFormVenueId={setFormVenueId}
+                    formVenueIds={formVenueIds}
+                    setFormVenueIds={setFormVenueIds}
                     formCheckIn={formCheckIn}
                     setFormCheckIn={setFormCheckIn}
                     formCheckOut={formCheckOut}
@@ -290,9 +340,8 @@ export function WalkInBookingForm({
                 {/* STEP 3: Add-ons & Services */}
                 {formStep === 3 && formStatus === 'confirmed' && (
                   <AmenitiesForm
-                    formPathway={formPathway}
-                    showAddons={showAddons}
-                    setShowAddons={setShowAddons}
+                    hasRooms={hasRooms}
+                    hasVenues={hasVenues}
                     hasAddons={hasAddons}
                     estBreakfast={estBreakfast}
                     estRentals={estRentals}
@@ -326,7 +375,7 @@ export function WalkInBookingForm({
                   ) : <div />}
                   
                   {formStep === 1 && (
-                    <button type="button" disabled={!formCheckIn || (formPathway === 'room' && !formCheckOut)} onClick={() => setFormStep(2)}
+                    <button type="button" disabled={!formCheckIn || !formCheckOut || (formRoomIds.size === 0 && formVenueIds.size === 0)} onClick={() => setFormStep(2)}
                       className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
                       Next &rarr;
                     </button>
@@ -358,13 +407,11 @@ export function WalkInBookingForm({
               {/* ── RIGHT COLUMN: Invoice Estimate ── */}
               <BillingSummary
                 formStatus={formStatus}
-                formPathway={formPathway}
-                basePrice={basePrice}
                 estNights={estNights}
                 formRoomIds={formRoomIds}
                 rooms={rooms}
                 venues={venues}
-                formVenueId={formVenueId}
+                formVenueIds={formVenueIds}
                 estBreakfast={estBreakfast}
                 estRentals={estRentals}
                 estAddons={estAddons}

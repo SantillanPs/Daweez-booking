@@ -43,7 +43,7 @@ const getBookingStyle = (b: Booking) => {
 
 export function CalendarTab() {
   const queryClient = useQueryClient()
-  const { rooms, venues, bookings, createManualBooking } = useDashboardData()
+  const { rooms, venues, bookings, createManualBooking, cancelBooking } = useDashboardData()
 
   // ── Timeline state ──
   const [schedulerStartDate, setSchedulerStartDate] = useState<Date>(new Date())
@@ -373,6 +373,7 @@ export function CalendarTab() {
           venues={venues}
           bookings={bookings}
           createManualBooking={createManualBooking}
+          cancelBooking={cancelBooking}
           initialPathway={formPathway}
           initialRoomIds={formRoomIds}
           initialVenueId={formVenueId}
