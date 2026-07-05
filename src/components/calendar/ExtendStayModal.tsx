@@ -1,11 +1,12 @@
 import React from 'react'
-import { Booking, Room } from '../../types/booking'
+import { Booking, Room, Venue } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
 import { X, Users, AlertCircle } from 'lucide-react'
 
 interface ExtendStayModalProps {
   booking: Booking
   rooms: Room[]
+  venues: Venue[]
   bookings: Booking[]
   extendCheckoutDate: string
   extendError: string
@@ -17,6 +18,7 @@ interface ExtendStayModalProps {
 export function ExtendStayModal({
   booking,
   rooms,
+  venues,
   bookings,
   extendCheckoutDate,
   extendError,
@@ -40,7 +42,7 @@ export function ExtendStayModal({
               <div>
                 <span className="text-slate-400 block">Unit:</span> 
                 <span className="font-medium text-slate-800">
-                  {rooms.find(r => r.id === booking.room_id)?.name || 'Event Venue'}
+                  {booking.room_id ? (rooms.find(r => r.id === booking.room_id)?.name || 'Room') : (venues.find(v => v.id === booking.venue_id)?.name || 'Event Venue')}
                 </span>
               </div>
               <div>
@@ -87,7 +89,7 @@ export function ExtendStayModal({
               <div>
                 <label className="text-[10px] text-slate-500 font-medium block mb-1">Check-in</label>
                 <input type="date" readOnly value={booking.check_in}
-                  className="w-full bg-slate-100 border border-slate-200 text-slate-500 px-2.5 py-1.5 rounded text-xs font-mono outline-none" />
+                   className="w-full bg-slate-100 border border-slate-200 text-slate-500 px-2.5 py-1.5 rounded text-xs font-mono outline-none" />
               </div>
               <div>
                 <label className="text-[10px] text-[#B89251] font-semibold block mb-1">Check-out (Extend)</label>
@@ -112,6 +114,7 @@ export function ExtendStayModal({
                       try {
                         return syncEngine.calculatePricing({
                           roomId: booking.room_id,
+                          venueId: booking.venue_id,
                           checkIn: booking.check_in,
                           checkOut: extendCheckoutDate,
                           guestEmail: booking.guest_email,

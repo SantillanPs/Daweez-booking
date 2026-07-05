@@ -58,8 +58,8 @@ export function useBookings() {
       if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings)) {
         throw new Error('This room is no longer available for the selected dates.')
       }
-      if (venueId && !syncEngine.isVenueAvailable(venueId, checkIn, bookings)) {
-        throw new Error('This event venue is already reserved for the selected date.')
+      if (venueId && !syncEngine.isVenueRangeAvailable(venueId, checkIn, checkOut, bookings)) {
+        throw new Error('This event venue is already reserved for the selected date(s).')
       }
 
       const pricing = syncEngine.calculatePricing({
@@ -174,8 +174,8 @@ export function useBookings() {
       if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings)) {
         throw new Error('The room is already booked or blocked for these dates.')
       }
-      if (venueId && !syncEngine.isVenueAvailable(venueId, checkIn, bookings)) {
-        throw new Error('This venue is already reserved for the selected date.')
+      if (venueId && !syncEngine.isVenueRangeAvailable(venueId, checkIn, checkOut, bookings)) {
+        throw new Error('This venue is already reserved for the selected date(s).')
       }
 
       const pricing = syncEngine.calculatePricing({

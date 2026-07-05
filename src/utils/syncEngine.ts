@@ -467,6 +467,21 @@ export function isVenueAvailable(venueId: string, eventDateStr: string, bookings
   })
 }
 
+export function isVenueRangeAvailable(venueId: string, checkInStr: string, checkOutStr: string, bookingsList: Booking[] = [], skipBookingId?: string): boolean {
+  const checkIn = new Date(checkInStr)
+  const checkOut = new Date(checkOutStr)
+  if (checkIn >= checkOut) return false
+
+  return !bookingsList.some(booking => {
+    if (booking.venue_id !== venueId) return false
+    if (booking.id === skipBookingId) return false
+    
+    const bStart = new Date(booking.check_in)
+    const bEnd = new Date(booking.check_out)
+    return checkIn < bEnd && checkOut > bStart
+  })
+}
+
 // 7. Silent Loyalty Verification (10% discount trigger)
 export function checkGuestLoyalty(email: string, bookingsList: Booking[] = []): boolean {
   // Check if guest has at least 1 confirmed past stay in the system under this email

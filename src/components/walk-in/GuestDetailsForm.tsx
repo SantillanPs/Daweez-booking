@@ -140,20 +140,18 @@ export const GuestDetailsForm = React.memo(
               className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-2.5 py-1.5 rounded text-xs font-mono focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] transition-all" 
             />
           </div>
-          {formPathway === 'room' && (
-            <div>
-              <label className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mb-1">
-                <CalendarDays className="w-3.5 h-3.5 text-slate-400" /> Check-out
-              </label>
-              <input 
-                type="date" 
-                required 
-                value={formCheckOut} 
-                onChange={e => setFormCheckOut(e.target.value)}
-                className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-2.5 py-1.5 rounded text-xs font-mono focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] transition-all" 
-              />
-            </div>
-          )}
+          <div>
+            <label className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mb-1">
+              <CalendarDays className="w-3.5 h-3.5 text-slate-400" /> Check-out
+            </label>
+            <input 
+              type="date" 
+              required 
+              value={formCheckOut} 
+              onChange={e => setFormCheckOut(e.target.value)}
+              className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-2.5 py-1.5 rounded text-xs font-mono focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] transition-all" 
+            />
+          </div>
         </div>
 
         {/* Channel & Status Types */}

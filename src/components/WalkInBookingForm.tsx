@@ -33,6 +33,7 @@ interface WalkInBookingFormProps {
   }) => Promise<Booking>
   initialPathway: 'room' | 'venue'
   initialRoomIds: Set<string>
+  initialVenueId?: string
   initialCheckIn: string
   initialCheckOut: string
   onClose: () => void
@@ -45,6 +46,7 @@ export function WalkInBookingForm({
   createManualBooking,
   initialPathway,
   initialRoomIds,
+  initialVenueId,
   initialCheckIn,
   initialCheckOut,
   onClose
@@ -53,7 +55,7 @@ export function WalkInBookingForm({
   const [formStep, setFormStep] = useState<number>(1)
   const [formPathway, setFormPathway] = useState<'room' | 'venue'>(initialPathway)
   const [formRoomIds, setFormRoomIds] = useState<Set<string>>(initialRoomIds)
-  const [formVenueId, setFormVenueId] = useState<string>(venues[0]?.id || 'venue-gazebo')
+  const [formVenueId, setFormVenueId] = useState<string>(initialVenueId || venues[0]?.id || 'venue-gazebo')
   const [formGuestName, setFormGuestName] = useState('')
   const [formGuestEmail, setFormGuestEmail] = useState('')
   const [formGuestPhone, setFormGuestPhone] = useState('')
@@ -85,7 +87,7 @@ export function WalkInBookingForm({
       ? Array.from(formRoomIds).reduce((s, id) => s + (rooms.find(r => r.id === id)?.base_price ?? 0), 0)
       : (venues.find(v => v.id === formVenueId)?.base_price ?? 0)
 
-    const nights = formPathway === 'room' && formCheckIn && formCheckOut
+    const nights = formCheckIn && formCheckOut
       ? Math.max(1, Math.ceil((new Date(formCheckOut).getTime() - new Date(formCheckIn).getTime()) / 86400000))
       : 1
 
@@ -127,8 +129,11 @@ export function WalkInBookingForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setFormError('')
-    if (!formCheckIn || (formPathway === 'room' && !formCheckOut)) {
+    if (!formCheckIn || !formCheckOut) {
       setFormError('Please select active check-in and check-out dates.'); return
+    }
+    if (formCheckIn >= formCheckOut) {
+      setFormError('Check-out date must be after check-in date.'); return
     }
     if (formStatus === 'confirmed' && !formGuestName) {
       setFormError('Guest name is required.'); return
@@ -158,9 +163,14 @@ export function WalkInBookingForm({
           })
         }
       } else {
+        if (!syncEngine.isVenueRangeAvailable(formVenueId, formCheckIn, formCheckOut, bookings)) {
+          const venueName = venues.find(v => v.id === formVenueId)?.name || formVenueId
+          setFormError(`${venueName} is already reserved for these dates.`);
+          setIsSubmitting(false); return
+        }
         await createManualBooking({
           venueId: formVenueId, guestName: formGuestName, guestEmail: formGuestEmail,
-          guestPhone: formGuestPhone, checkIn: formCheckIn, checkOut: formCheckIn,
+          guestPhone: formGuestPhone, checkIn: formCheckIn, checkOut: formCheckOut,
           source: formSource, status: formStatus,
           equipmentRentals: { bigTableCount: formBigTable, smallTableCount: formSmallTable, chairCount: formChairs, mineralWaterCount: formWater },
           eventAddons: { fullBandAndLights: formBand, stage: formStage, ledWall: formLedWall },
