@@ -5,7 +5,7 @@ import { Booking, Room } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { WalkInBookingForm } from './WalkInBookingForm'
 import {
-  Calendar, Filter, Plus, ChevronLeft, ChevronRight
+  Calendar, Filter, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react'
 
 // Import modular subcomponents
@@ -250,28 +250,32 @@ export function CalendarTab() {
   return (
     <div className="space-y-4 font-sans">
       {/* Upper header controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-lg border border-slate-200">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Spanned Month Header */}
-          <h2 className="text-base font-bold text-slate-800 tracking-tight">
-            {spannedMonthHeader}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 md:p-3.5 rounded-lg border border-slate-200">
+        {/* Left Side: Title */}
+        <div>
+          <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-[#B89251]" />
+            <span>{spannedMonthHeader}</span>
           </h2>
-          
-          {/* Navigation controls */}
-          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200/60 flex-wrap">
+        </div>
+
+        {/* Right Side: Controls and Actions */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Compact Navigation controls */}
+          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200/60">
             {/* Double-left chevron: Shift by 30 days */}
             <button 
               onClick={() => { const p = new Date(schedulerStartDate); p.setDate(p.getDate() - 30); setSchedulerStartDate(p) }}
               title="Prev 30 days"
-              className="p-1.5 text-slate-400 hover:text-slate-700 rounded transition-colors cursor-pointer"
+              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 rounded transition-all cursor-pointer"
             >
-              <span className="text-xs font-bold font-mono">&lt;&lt;</span>
+              <ChevronsLeft className="w-4 h-4" />
             </button>
             {/* Single-left chevron: Shift by 7 days */}
             <button 
               onClick={() => { const p = new Date(schedulerStartDate); p.setDate(p.getDate() - 7); setSchedulerStartDate(p) }}
               title="Prev 7 days"
-              className="p-1.5 text-slate-400 hover:text-slate-700 rounded transition-colors cursor-pointer"
+              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 rounded transition-all cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -286,14 +290,14 @@ export function CalendarTab() {
                   setSchedulerStartDate(new Date(y, m - 1, d))
                 }
               }}
-              className="bg-white border border-[#B89251] text-slate-800 text-xs px-2 py-0.5 rounded outline-none font-mono focus:ring-1 focus:ring-[#e6c280] cursor-pointer"
+              className="bg-white border border-slate-200 text-slate-700 text-xs px-1.5 py-0.5 rounded outline-none font-mono focus:ring-1 focus:ring-[#B89251] focus:border-[#B89251] cursor-pointer w-[115px] text-center"
             />
             
             {/* Single-right chevron: Shift by 7 days */}
             <button 
               onClick={() => { const n = new Date(schedulerStartDate); n.setDate(n.getDate() + 7); setSchedulerStartDate(n) }}
               title="Next 7 days"
-              className="p-1.5 text-slate-400 hover:text-slate-700 rounded transition-colors cursor-pointer"
+              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 rounded transition-all cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -301,27 +305,29 @@ export function CalendarTab() {
             <button 
               onClick={() => { const n = new Date(schedulerStartDate); n.setDate(n.getDate() + 30); setSchedulerStartDate(n) }}
               title="Next 30 days"
-              className="p-1.5 text-slate-400 hover:text-slate-700 rounded transition-colors cursor-pointer"
+              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 rounded transition-all cursor-pointer"
             >
-              <span className="text-xs font-bold font-mono">&gt;&gt;</span>
+              <ChevronsRight className="w-4 h-4" />
             </button>
+            
+            <div className="h-4 w-px bg-slate-200 mx-1" />
             
             {/* Today */}
             <button 
               onClick={() => setSchedulerStartDate(new Date())}
-              className="text-xs font-semibold text-[#9A783E] px-2 py-1 hover:bg-white rounded transition-all cursor-pointer"
+              className="text-xs font-semibold text-[#9A783E] px-2 py-0.5 hover:bg-white hover:shadow-sm rounded transition-all cursor-pointer"
             >
               Today
             </button>
           </div>
-        </div>
 
-        <div>
-          <button onClick={() => resetAndOpenManualForm('room', new Set(['room-1']))}
-            className="flex items-center gap-1.5 bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Booking</span>
-          </button>
+          <div>
+            <button onClick={() => resetAndOpenManualForm('room', new Set(['room-1']))}
+              className="flex items-center gap-1.5 bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-sm">
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Booking</span>
+            </button>
+          </div>
         </div>
       </div>
 

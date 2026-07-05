@@ -62,7 +62,7 @@ export function DashboardLayout() {
       <div className="min-h-screen bg-slate-50 pb-20 md:pb-6">
         {/* Header */}
         <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 flex items-center justify-center bg-[#B89251] rounded-lg">
                 <Sparkles className="w-4 h-4 text-white" />
@@ -117,7 +117,7 @@ export function DashboardLayout() {
 
         {/* Sync toast */}
         {syncSuccessMsg && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-3">
             <div className="flex items-center gap-2 p-3 bg-[#FDFBF7] border border-[#E5D5C0] text-[#9A783E] text-xs font-medium rounded-lg">
               <Sparkles className="w-4 h-4 shrink-0" />
               <span>{syncSuccessMsg}</span>
@@ -152,7 +152,7 @@ export function DashboardLayout() {
         </div>
 
         {/* Desktop tabs */}
-        <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="hidden md:block max-w-[1600px] mx-auto px-4 sm:px-6">
           <div className="flex border-b border-slate-200 gap-1">
             {TABS.map(t => (
               <Link key={t.id} to={t.to}
@@ -165,7 +165,7 @@ export function DashboardLayout() {
         </div>
 
         {/* Tab content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-4">
           <Outlet />
         </div>
 
