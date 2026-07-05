@@ -104,7 +104,7 @@ export const RoomDetailsForm = React.memo(
                 <Users className="w-3.5 h-3.5 text-[#B89251]" /> Roommates / Companions
                 {formCompanions.length > 0 && (
                   <span className="bg-[#FDFBF7] border border-[#E5D5C0] text-[#9A783E] text-[9px] font-bold px-2 py-0.5 rounded ml-1">
-                    {formCompanions.length + 1} Guests
+                    {formCompanions.length} Companion{formCompanions.length !== 1 ? 's' : ''}
                   </span>
                 )}
               </span>
