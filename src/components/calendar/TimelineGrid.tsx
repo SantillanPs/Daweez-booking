@@ -218,7 +218,7 @@ export const TimelineGrid = React.memo(
     }, [timelineSelection, rooms, venues])
 
     return (
-      <div className="space-y-2.5">
+      <div className="space-y-2.5 flex-1 min-h-0 flex flex-col overflow-hidden">
         {timelineSelection && (
           <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 max-w-xs bg-[#FDFBF7]/95 backdrop-blur-md border border-[#E5D5C0] text-slate-800 rounded-lg p-3.5 shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 font-sans">
             <span className="flex h-2.5 w-2.5 relative mt-1 shrink-0">
@@ -246,8 +246,8 @@ export const TimelineGrid = React.memo(
           </div>
         )}
         
-        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-          <div className="overflow-auto max-h-[480px] sm:max-h-[540px] md:max-h-[600px] lg:max-h-[650px] relative">
+        <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0 overflow-auto relative">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-slate-50">

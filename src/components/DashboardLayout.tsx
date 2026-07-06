@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link, Outlet, useNavigate } from '@tanstack/react-router'
+import { Link, Outlet, useNavigate, useLocation } from '@tanstack/react-router'
 import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
 import {
@@ -17,6 +17,7 @@ const TABS = [
 
 export function DashboardLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const {
     rooms, venues, bookings, feeds,
     confirmBooking, cancelBooking, createManualBooking,
@@ -24,6 +25,7 @@ export function DashboardLayout() {
   } = useBookings()
 
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('')
+  const isCalendarTab = location.pathname === '/calendar' || location.pathname === '/'
 
   const handleLogout = () => {
     localStorage.removeItem('daweez_pms_auth')
@@ -60,9 +62,9 @@ export function DashboardLayout() {
       confirmBooking, cancelBooking, createManualBooking,
       triggerOTASync, updateFeedUrls, onLogout: handleLogout
     }}>
-      <div className="min-h-screen bg-slate-50 pb-20 md:pb-6">
+      <div className={isCalendarTab ? "h-screen bg-slate-50 flex flex-col overflow-hidden pb-[56px] md:pb-0" : "min-h-screen bg-slate-50 pb-20 md:pb-6"}>
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
+        <header className={`sticky top-0 z-40 bg-white border-b border-slate-200 ${isCalendarTab ? 'flex-shrink-0' : ''}`}>
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 flex items-center justify-center bg-[#B89251] rounded-lg">
@@ -118,7 +120,7 @@ export function DashboardLayout() {
 
         {/* Sync toast */}
         {syncSuccessMsg && (
-          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-3">
+          <div className={`max-w-[1600px] w-full mx-auto px-4 sm:px-6 pt-3 ${isCalendarTab ? 'flex-shrink-0' : ''}`}>
             <div className="flex items-center gap-2 p-3 bg-[#FDFBF7] border border-[#E5D5C0] text-[#9A783E] text-xs font-medium rounded-lg">
               <Sparkles className="w-4 h-4 shrink-0" />
               <span>{syncSuccessMsg}</span>
@@ -127,7 +129,7 @@ export function DashboardLayout() {
         )}
 
         {/* Mobile Stats Bar (Space efficient horizontal scroll below header) */}
-        <div className="sm:hidden bg-[#FDFBF7] border-b border-[#E5D5C0]/65 px-4 py-1.5">
+        <div className={`sm:hidden bg-[#FDFBF7] border-b border-[#E5D5C0]/65 px-4 py-1.5 ${isCalendarTab ? 'flex-shrink-0' : ''}`}>
           <div className="flex items-center justify-between text-[10px] font-medium text-[#9A783E] overflow-x-auto no-scrollbar gap-4">
             <div className="flex items-center gap-1 shrink-0">
               <Home className="w-3 h-3 text-[#B89251]" />
@@ -153,7 +155,7 @@ export function DashboardLayout() {
         </div>
 
         {/* Desktop tabs */}
-        <div className="hidden md:block max-w-[1600px] mx-auto px-4 sm:px-6">
+        <div className={`hidden md:block max-w-[1600px] w-full mx-auto px-4 sm:px-6 ${isCalendarTab ? 'flex-shrink-0' : ''}`}>
           <div className="flex border-b border-slate-200 gap-1">
             {TABS.map(t => (
               <Link key={t.id} to={t.to}
@@ -166,7 +168,10 @@ export function DashboardLayout() {
         </div>
 
         {/* Tab content */}
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-4">
+        <div className={isCalendarTab 
+          ? "max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-4 flex-1 min-h-0 flex flex-col overflow-hidden" 
+          : "max-w-[1600px] mx-auto px-4 sm:px-6 py-4"
+        }>
           <Outlet />
         </div>
 

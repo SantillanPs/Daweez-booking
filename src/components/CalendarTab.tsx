@@ -252,9 +252,9 @@ export function CalendarTab() {
   const datePickerValue = getYYYYMMDD(schedulerStartDate)
 
   return (
-    <div className="space-y-4 font-sans">
+    <div className="space-y-4 font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Upper header controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 md:p-3.5 rounded-lg border border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 md:p-3.5 rounded-lg border border-slate-200 flex-shrink-0">
         {/* Left Side: Title */}
         <div>
           <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
@@ -336,7 +336,7 @@ export function CalendarTab() {
       </div>
 
       {/* Unified Timeline Grid */}
-      <div className="block">
+      <div className="flex-grow min-h-0 flex flex-col overflow-hidden">
         <TimelineGrid
           rooms={rooms}
           venues={venues}
