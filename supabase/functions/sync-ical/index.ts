@@ -72,42 +72,49 @@ serve(async (req) => {
 
     // 2. Loop and scrape feeds
     for (const feed of feeds) {
-      const response = await fetch(feed.url)
-      if (!response.ok) continue
-      
-      const icsString = await response.text()
-      const parsedEvents = parseiCal(icsString)
+      if (!feed.url) continue // Skip feeds that have no URL configured
 
-      // 3. Delete past sync blocks for this room & channel to avoid stale blocks
-      const sourceChannel = feed.channel === 'airbnb' ? 'airbnb' : 'booking_com'
-      await supabase
-        .from('bookings')
-        .delete()
-        .eq('room_id', feed.room_id)
-        .eq('source', sourceChannel)
+      try {
+        const response = await fetch(feed.url)
+        if (!response.ok) continue
+        
+        const icsString = await response.text()
+        const parsedEvents = parseiCal(icsString)
 
-      // 4. Insert fresh blocks
-      for (const evt of parsedEvents) {
+        // 3. Delete past sync blocks for this room & channel to avoid stale blocks
+        const sourceChannel = feed.channel === 'airbnb' ? 'airbnb' : 'booking_com'
         await supabase
           .from('bookings')
-          .insert({
-            room_id: feed.room_id,
-            guest_name: evt.summary || 'External Synced Booking',
-            guest_email: 'sync@external.ota',
-            guest_phone: 'None',
-            check_in: evt.start,
-            check_out: evt.end,
-            source: sourceChannel,
-            status: 'confirmed'
-          })
-        totalSynced++
-      }
+          .delete()
+          .eq('room_id', feed.room_id)
+          .eq('source', sourceChannel)
 
-      // Update feed timestamp
-      await supabase
-        .from('ical_feeds')
-        .update({ last_synced: new Date().toISOString() })
-        .eq('id', feed.id)
+        // 4. Insert fresh blocks
+        for (const evt of parsedEvents) {
+          await supabase
+            .from('bookings')
+            .insert({
+              room_id: feed.room_id,
+              guest_name: evt.summary || 'External Synced Booking',
+              guest_email: 'sync@external.ota',
+              guest_phone: 'None',
+              check_in: evt.start,
+              check_out: evt.end,
+              source: sourceChannel,
+              status: 'confirmed'
+            })
+          totalSynced++
+        }
+
+        // Update feed timestamp
+        await supabase
+          .from('ical_feeds')
+          .update({ last_synced: new Date().toISOString() })
+          .eq('id', feed.id)
+      } catch (feedErr) {
+        console.error(`Failed to sync feed ${feed.id} for room ${feed.room_id}:`, feedErr)
+        continue
+      }
     }
 
     // 5. Clean up expired website bookings
