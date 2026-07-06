@@ -11,6 +11,7 @@ import { DashboardLayout } from './components/DashboardLayout'
 import { CalendarTab } from './components/CalendarTab'
 import { BookingsTab } from './components/BookingsTab'
 import { GuestsTab } from './components/GuestsTab'
+import { AnalyticsTab } from './components/AnalyticsTab'
 import { SettingsTab } from './components/SettingsTab'
 
 // 1. Create a Root Route
@@ -76,6 +77,12 @@ const settingsRoute = createRoute({
   component: SettingsTab
 })
 
+const analyticsRoute = createRoute({
+  getParentRoute: () => dashboardRoute,
+  path: '/analytics',
+  component: AnalyticsTab
+})
+
 // 5. Construct Route Tree
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -84,6 +91,7 @@ const routeTree = rootRoute.addChildren([
     calendarRoute,
     bookingsRoute,
     guestsRoute,
+    analyticsRoute,
     settingsRoute
   ])
 ])

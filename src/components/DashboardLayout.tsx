@@ -3,7 +3,7 @@ import { Link, Outlet, useNavigate } from '@tanstack/react-router'
 import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
 import {
-  Sparkles, RefreshCw, LogOut, Home, LogIn, Users, TrendingUp,
+  Sparkles, RefreshCw, LogOut, Home, LogIn, Users, TrendingUp, BarChart3,
   Calendar, ClipboardCheck, Settings
 } from 'lucide-react'
 
@@ -11,6 +11,7 @@ const TABS = [
   { id: 'calendar',  label: 'Calendar',  Icon: Calendar, to: '/calendar' },
   { id: 'bookings',  label: 'Bookings',  Icon: ClipboardCheck, to: '/bookings' },
   { id: 'guests',    label: 'Guests',    Icon: Users, to: '/guests' },
+  { id: 'analytics', label: 'Analytics', Icon: BarChart3, to: '/analytics' },
   { id: 'settings',  label: 'Settings',  Icon: Settings, to: '/settings' },
 ]
 
