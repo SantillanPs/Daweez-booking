@@ -5,7 +5,7 @@
       "destination": "https://ctbqxcxqfsrbgzfcmntw.supabase.co/functions/v1/export-ical?room_number=:room_number"
     },
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
