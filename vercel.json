@@ -3,6 +3,10 @@
     {
       "source": "/api/ical/room/:room_number.ics",
       "destination": "https://ctbqxcxqfsrbgzfcmntw.supabase.co/functions/v1/export-ical?room_number=:room_number"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
