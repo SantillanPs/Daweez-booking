@@ -204,7 +204,8 @@ export function AnalyticsTab() {
         equipmentRentals: b.equipment_rentals,
         eventAddons: b.event_addons,
         bookingsList: bookings,
-        companions: b.companions
+        companions: b.companions,
+        source: b.source
       })
 
       // Stay details

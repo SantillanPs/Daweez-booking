@@ -183,12 +183,14 @@ export const GuestDetailsForm = React.memo(
               onChange={e => setFormSource(e.target.value as BookingSource)}
               className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-700 px-2.5 py-1.5 rounded text-xs focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] transition-all"
             >
-              <option value="manual">Walk-in (Cash)</option>
+              <option value="manual">Walk-in / Phone Reservation</option>
               <option value="facebook">Facebook Messenger</option>
               <option value="google_maps">Google Maps</option>
             </select>
-            {formSource === 'manual' && formStatus === 'confirmed' && (
-              <p className="text-[9px] text-[#9A783E] font-semibold mt-1.5 animate-in fade-in">✓ 20% walk-in applied</p>
+            {(formSource === 'manual' || formSource === 'facebook') && formStatus === 'confirmed' && (
+              <p className="text-[9px] text-[#9A783E] font-semibold mt-1.5 animate-in fade-in">
+                ✓ 20% direct discount applied
+              </p>
             )}
           </div>
           <div>
@@ -228,7 +230,7 @@ export const GuestDetailsForm = React.memo(
                 />
                 <span className="text-xs font-bold text-slate-400 font-mono shrink-0">%</span>
               </div>
-              {formSource === 'manual' && formAdditionalDiscount > 0 && (
+              {(formSource === 'manual' || formSource === 'facebook') && formAdditionalDiscount > 0 && (
                 <p className="text-[9px] text-slate-400 mt-1.5 font-medium">Total: {20 + formAdditionalDiscount}% off</p>
               )}
             </div>

@@ -512,8 +512,12 @@ export function calculatePricing(params: {
   bookingsList?: Booking[]
   rateMultiplier?: number
   companions?: Companion[]
+  source?: BookingSource
 }) {
-  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier = 1.0, companions } = params
+  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier, companions, source } = params
+
+  const defaultMultiplier = (source === 'manual' || source === 'facebook') ? 0.8 : 1.0
+  const finalMultiplier = rateMultiplier !== undefined ? rateMultiplier : defaultMultiplier
 
   let basePrice = 0
   let nights = 0
@@ -522,12 +526,12 @@ export function calculatePricing(params: {
   if (roomId) {
     const room = DEFAULT_ROOMS.find(r => r.id === roomId)
     basePrice = room ? room.base_price : 0
-    basePrice = Math.round(basePrice * rateMultiplier)
+    basePrice = Math.round(basePrice * finalMultiplier)
     nights = Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
   } else if (venueId) {
     const venue = DEFAULT_VENUES.find(v => v.id === normalizeVenueId(venueId))
     basePrice = venue ? venue.base_price : 0
-    basePrice = Math.round(basePrice * rateMultiplier)
+    basePrice = Math.round(basePrice * finalMultiplier)
     nights = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
   }
 

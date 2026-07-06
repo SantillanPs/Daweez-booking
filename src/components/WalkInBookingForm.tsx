@@ -119,7 +119,7 @@ export function WalkInBookingForm({
     let breakfast = 0
     let rentals = 0
 
-    const baselineDiscount = formSource === 'manual' ? 20 : 0
+    const baselineDiscount = (formSource === 'manual' || formSource === 'facebook') ? 20 : 0
     const totalDiscount = baselineDiscount + formAdditionalDiscount
     const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
 

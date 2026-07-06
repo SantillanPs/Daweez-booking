@@ -48,7 +48,7 @@ export const BillingSummary = React.memo(
       return sum + price * nights
     }, 0)
 
-    const walkInPercent = formSource === 'manual' ? 20 : 0
+    const walkInPercent = (formSource === 'manual' || formSource === 'facebook') ? 20 : 0
     const walkInAmount = Math.round(undiscountedBaseTotal * (walkInPercent / 100))
     const additionalPercent = formAdditionalDiscount
     const additionalAmount = Math.round(undiscountedBaseTotal * (additionalPercent / 100))
@@ -147,7 +147,7 @@ export const BillingSummary = React.memo(
               </div>
               {walkInPercent > 0 && (
                 <div className="flex justify-between text-rose-600 font-semibold text-xs animate-in fade-in">
-                  <span>Walk-in Discount (20%):</span>
+                  <span>{formSource === 'facebook' ? 'Facebook Booking Discount (20%):' : 'Direct Booking Discount (20%):'}</span>
                   <span className="font-mono">-₱{walkInAmount.toLocaleString()}</span>
                 </div>
               )}
