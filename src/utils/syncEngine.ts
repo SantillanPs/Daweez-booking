@@ -516,7 +516,7 @@ export function calculatePricing(params: {
 }) {
   const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier, companions, source } = params
 
-  const defaultMultiplier = (source === 'manual' || source === 'facebook') ? 0.8 : 1.0
+  const defaultMultiplier = (source === 'manual' || source === 'facebook' || source === 'website') ? 0.8 : 1.0
   const finalMultiplier = rateMultiplier !== undefined ? rateMultiplier : defaultMultiplier
 
   let basePrice = 0

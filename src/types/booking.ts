@@ -52,9 +52,10 @@ export interface EquipmentRental {
 }
 
 export interface EventAddons {
-  fullBandAndLights: boolean // ₱2,000
-  stage: boolean             // ₱2,000
-  ledWall: boolean           // ₱5,000
+  fullBandAndLights?: boolean // ₱2,000
+  stage?: boolean             // ₱2,000
+  ledWall?: boolean           // ₱5,000
+  payment_reference?: string
 }
 
 export interface Companion {

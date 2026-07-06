@@ -21,7 +21,7 @@ export function DashboardLayout() {
   const {
     rooms, venues, bookings, feeds,
     confirmBooking, cancelBooking, createManualBooking,
-    triggerOTASync, updateFeedUrls, isLoading
+    triggerOTASync, updateFeedUrls, isLoading, isConfirmingBooking
   } = useBookings()
 
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('')
@@ -59,6 +59,7 @@ export function DashboardLayout() {
   return (
     <DashboardDataContext.Provider value={{
       rooms, venues, bookings, feeds, isLoading,
+      isConfirming: isConfirmingBooking,
       confirmBooking, cancelBooking, createManualBooking,
       triggerOTASync, updateFeedUrls, onLogout: handleLogout
     }}>

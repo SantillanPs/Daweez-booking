@@ -43,7 +43,7 @@ const getBookingStyle = (b: Booking) => {
 
 export function CalendarTab() {
   const queryClient = useQueryClient()
-  const { rooms, venues, bookings, createManualBooking, cancelBooking } = useDashboardData()
+  const { rooms, venues, bookings, createManualBooking, cancelBooking, confirmBooking, isConfirming } = useDashboardData()
 
   // ── Timeline state ──
   const [schedulerStartDate, setSchedulerStartDate] = useState<Date>(new Date())
@@ -366,6 +366,15 @@ export function CalendarTab() {
           onClose={() => setSelectedExtendBooking(null)}
           onExtendStaySubmit={handleExtendStaySubmit}
           setExtendCheckoutDate={setExtendCheckoutDate}
+          onConfirmReservation={async (id) => {
+            try {
+              await confirmBooking(id)
+              setSelectedExtendBooking(null)
+            } catch (err) {
+              setExtendError('Failed to confirm reservation.')
+            }
+          }}
+          isConfirming={isConfirming}
         />
       )}
 

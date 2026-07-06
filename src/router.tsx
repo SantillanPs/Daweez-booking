@@ -13,6 +13,7 @@ import { BookingsTab } from './components/BookingsTab'
 import { GuestsTab } from './components/GuestsTab'
 import { AnalyticsTab } from './components/AnalyticsTab'
 import { SettingsTab } from './components/SettingsTab'
+import { PublicReservePortal } from './components/PublicReservePortal'
 
 // 1. Create a Root Route
 const rootRoute = createRootRoute({
@@ -27,6 +28,12 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: LoginRoute
+})
+
+const reserveRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reserve',
+  component: PublicReservePortal
 })
 
 // 3. Create Dashboard Layout Route with Auth Guard
@@ -86,6 +93,7 @@ const analyticsRoute = createRoute({
 // 5. Construct Route Tree
 const routeTree = rootRoute.addChildren([
   loginRoute,
+  reserveRoute,
   dashboardRoute.addChildren([
     dashboardIndexRoute,
     calendarRoute,

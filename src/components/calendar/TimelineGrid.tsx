@@ -117,13 +117,21 @@ const TimelineCell = React.memo(
             )}
           </div>
           {isTooltipActive && (
-            <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-52 bg-white border border-slate-200 p-3 shadow-lg rounded-lg text-xs space-y-1.5 pointer-events-none text-left">
+            <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-52 bg-white border border-slate-200 p-3 shadow-lg rounded-lg text-xs space-y-1.5 pointer-events-none text-left font-sans">
               <div className="font-semibold text-slate-800">{booking.guest_name}</div>
               <div className="text-[10px] text-slate-400 font-mono">{booking.check_in} → {booking.check_out}</div>
-              <div className="text-[10px] text-slate-500 font-sans">
+              <div className="text-[10px] text-slate-500">
                 {booking.guest_phone}<br />
                 <span className={booking.status === 'confirmed' ? 'text-emerald-600 font-medium' : 'text-amber-600'}>{booking.status}</span>
                 {' · '}{booking.source}
+                {booking.event_addons?.payment_reference && (
+                  <>
+                    <br />
+                    <span className="text-[9.5px] text-[#9A783E] font-bold">
+                      Ref: {booking.event_addons.payment_reference}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           )}

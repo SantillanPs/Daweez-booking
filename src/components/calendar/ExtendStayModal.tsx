@@ -13,6 +13,8 @@ interface ExtendStayModalProps {
   onClose: () => void
   onExtendStaySubmit: (e: React.FormEvent) => void
   setExtendCheckoutDate: (date: string) => void
+  onConfirmReservation?: (id: string) => void
+  isConfirming?: boolean
 }
 
 export function ExtendStayModal({
@@ -24,7 +26,9 @@ export function ExtendStayModal({
   extendError,
   onClose,
   onExtendStaySubmit,
-  setExtendCheckoutDate
+  setExtendCheckoutDate,
+  onConfirmReservation,
+  isConfirming = false
 }: ExtendStayModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
@@ -61,6 +65,14 @@ export function ExtendStayModal({
               </div>
             </div>
           </div>
+
+          {/* GCash Reference Code Display */}
+          {booking.event_addons?.payment_reference && (
+            <div className="bg-[#FAF6EE] p-3 rounded-lg border border-[#EADFC9] text-xs space-y-1">
+              <span className="text-slate-550 font-medium block">GCash Reference Code:</span>
+              <strong className="text-sm font-mono text-[#9A783E] block">{booking.event_addons.payment_reference}</strong>
+            </div>
+          )}
 
           {/* Companions Registry Display */}
           {booking.companions && booking.companions.length > 0 && (
@@ -159,10 +171,21 @@ export function ExtendStayModal({
                 className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-medium py-2.5 rounded-lg border border-slate-200 transition-colors cursor-pointer">
                 Cancel
               </button>
-              <button type="submit" disabled={extendCheckoutDate === booking.check_out}
-                className="flex-1 bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-medium py-2.5 rounded-lg transition-colors cursor-pointer">
-                Save Extension
-              </button>
+              {booking.status === 'pending' ? (
+                <button 
+                  type="button" 
+                  disabled={isConfirming}
+                  onClick={() => onConfirmReservation && onConfirmReservation(booking.id)}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 text-white text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm select-none"
+                >
+                  {isConfirming ? 'Confirming...' : 'Confirm Reservation'}
+                </button>
+              ) : (
+                <button type="submit" disabled={extendCheckoutDate === booking.check_out}
+                  className="flex-1 bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-medium py-2.5 rounded-lg transition-colors cursor-pointer">
+                  Save Extension
+                </button>
+              )}
             </div>
           </form>
         </div>

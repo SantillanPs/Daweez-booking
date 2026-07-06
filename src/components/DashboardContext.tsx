@@ -7,6 +7,7 @@ export interface DashboardDataContextValue {
   bookings: Booking[]
   feeds: SyncFeed[]
   isLoading: boolean
+  isConfirming?: boolean
   confirmBooking: (id: string) => Promise<void>
   cancelBooking: (id: string) => Promise<void>
   createManualBooking: (params: {
