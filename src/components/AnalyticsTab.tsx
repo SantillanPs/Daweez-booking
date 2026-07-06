@@ -39,7 +39,7 @@ export function AnalyticsTab() {
   })
 
   // 2. Booking Status Filter state
-  const [confirmedOnly, setConfirmedOnly] = useState<boolean>(true)
+  const [includePending, setIncludePending] = useState<boolean>(false)
 
   // 3. Hover state for tooltips
   const [hoveredBar, setHoveredBar] = useState<{
@@ -98,7 +98,7 @@ export function AnalyticsTab() {
     if (isLoading) return null
 
     // Filter relevant bookings based on status
-    const statusSet = confirmedOnly ? ['confirmed'] : ['confirmed', 'pending']
+    const statusSet = includePending ? ['confirmed', 'pending'] : ['confirmed']
     const relevantBookings = bookings.filter(b => statusSet.includes(b.status))
 
     let totalRevenue = 0
@@ -292,7 +292,7 @@ export function AnalyticsTab() {
       revpar,
       trendSlots
     }
-  }, [isLoading, bookings, venues, dateRange, confirmedOnly, timeframe])
+  }, [isLoading, bookings, venues, dateRange, includePending, timeframe])
 
   // Custom donut calculations
   const donutSegments = useMemo(() => {
@@ -380,16 +380,16 @@ export function AnalyticsTab() {
         {/* Status Toggle */}
         <div className="flex items-center gap-2.5 justify-end">
           <span className="text-xs font-medium text-slate-500">
-            {confirmedOnly ? 'Confirmed Bookings Only' : 'Include Pending Projections'}
+            Include Pending Projections
           </span>
           <button 
-            onClick={() => setConfirmedOnly(prev => !prev)}
+            onClick={() => setIncludePending(prev => !prev)}
             className="text-slate-600 hover:text-[#B89251] transition-all cursor-pointer"
           >
-            {confirmedOnly ? (
-              <ToggleLeft className="w-8 h-8 text-slate-400" />
-            ) : (
+            {includePending ? (
               <ToggleRight className="w-8 h-8 text-[#B89251]" />
+            ) : (
+              <ToggleLeft className="w-8 h-8 text-slate-400" />
             )}
           </button>
         </div>
