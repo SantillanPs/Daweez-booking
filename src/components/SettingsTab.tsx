@@ -14,9 +14,32 @@ export function SettingsTab() {
   // Adjust state when feeds are loaded/updated from Query
   if (feeds !== prevFeeds) {
     setPrevFeeds(feeds)
-    if (editingFeeds.length === 0) {
-      setEditingFeeds(feeds)
-    }
+    
+    // Ensure every room has an Airbnb and Booking.com feed placeholder in the editor
+    const completeFeeds: SyncFeed[] = []
+    rooms.forEach(room => {
+      const roomFeeds = feeds.filter(f => f.room_id === room.id)
+      
+      const airFeed = roomFeeds.find(f => f.channel === 'airbnb')
+      completeFeeds.push(airFeed || {
+        id: `feed-ab-${room.id}`,
+        room_id: room.id,
+        channel: 'airbnb',
+        url: '',
+        last_synced: null
+      })
+      
+      const bcFeed = roomFeeds.find(f => f.channel === 'booking_com')
+      completeFeeds.push(bcFeed || {
+        id: `feed-bc-${room.id}`,
+        room_id: room.id,
+        channel: 'booking_com',
+        url: '',
+        last_synced: null
+      })
+    })
+    
+    setEditingFeeds(completeFeeds)
   }
 
   const copyToClipboard = (text: string, id: string) => {

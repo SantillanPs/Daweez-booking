@@ -32,9 +32,8 @@ interface WalkInBookingFormProps {
     companions?: Companion[]
   }) => Promise<Booking>
   cancelBooking: (bookingId: string) => Promise<void>
-  initialPathway: 'room' | 'venue'
   initialRoomIds: Set<string>
-  initialVenueId?: string
+  initialVenueIds: Set<string>
   initialCheckIn: string
   initialCheckOut: string
   onClose: () => void
@@ -46,107 +45,130 @@ export function WalkInBookingForm({
   bookings,
   createManualBooking,
   cancelBooking,
-  initialPathway,
   initialRoomIds,
-  initialVenueId,
+  initialVenueIds,
   initialCheckIn,
   initialCheckOut,
   onClose
 }: WalkInBookingFormProps) {
   // ── Core wizard state ──
   const [formStep, setFormStep] = useState<number>(1)
-  const [formRoomIds, setFormRoomIds] = useState<Set<string>>(
-    initialPathway === 'room' ? initialRoomIds : new Set()
-  )
-  const [formVenueIds, setFormVenueIds] = useState<Set<string>>(
-    initialPathway === 'venue' && initialVenueId ? new Set([initialVenueId]) : new Set()
-  )
+  
+  // Staggered Date Selection Map per selected Room/Venue
+  const [unitSelections, setUnitSelections] = useState<Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>>(() => {
+    const initial: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }> = {}
+    initialRoomIds.forEach(id => {
+      initial[id] = { checkIn: initialCheckIn, checkOut: initialCheckOut, type: 'room' }
+    })
+    initialVenueIds.forEach(id => {
+      initial[id] = { checkIn: initialCheckIn, checkOut: initialCheckOut, type: 'venue' }
+    })
+    return initial
+  })
+
   const [formGuestName, setFormGuestName] = useState('')
   const [formGuestEmail, setFormGuestEmail] = useState('')
   const [formGuestPhone, setFormGuestPhone] = useState('')
-  const [formCheckIn, setFormCheckIn] = useState(initialCheckIn)
-  const [formCheckOut, setFormCheckOut] = useState(initialCheckOut)
   const [formSource, setFormSource] = useState<BookingSource>('manual')
   const [formStatus, setFormStatus] = useState<'confirmed' | 'blocked'>('confirmed')
   const [formError, setFormError] = useState('')
   const [formCompanions, setFormCompanions] = useState<Companion[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formAdditionalDiscount, setFormAdditionalDiscount] = useState(0)
 
   // ── Add-ons state ──
-  const [formBreakfastQty, setFormBreakfastQty] = useState<Record<string, number>>({ Bangsilog: 0, Lumpiasilog: 0, Cornsilog: 0, Hotsilog: 0 })
-  const [formBigTable, setFormBigTable] = useState(0)
-  const [formSmallTable, setFormSmallTable] = useState(0)
   const [formChairs, setFormChairs] = useState(0)
-  const [formWater, setFormWater] = useState(0)
-  const [formBand, setFormBand] = useState(false)
-  const [formStage, setFormStage] = useState(false)
-  const [formLedWall, setFormLedWall] = useState(false)
+  const [formExtraFoam, setFormExtraFoam] = useState(0)
+  const [formExtraPillow, setFormExtraPillow] = useState(0)
+  const [formExtraBlanket, setFormExtraBlanket] = useState(0)
+  const [formExtraTowel, setFormExtraTowel] = useState(0)
+  const [formEventTable, setFormEventTable] = useState(0)
+  const [formEventTent, setFormEventTent] = useState(0)
 
   // ── Collapsible toggles ──
   const [showCompanions, setShowCompanions] = useState(true)
 
+  const formRoomIds = useMemo(() => {
+    const s = new Set<string>()
+    Object.entries(unitSelections).forEach(([id, sel]) => {
+      if (sel.type === 'room') s.add(id)
+    })
+    return s
+  }, [unitSelections])
+
+  const formVenueIds = useMemo(() => {
+    const s = new Set<string>()
+    Object.entries(unitSelections).forEach(([id, sel]) => {
+      if (sel.type === 'venue') s.add(id)
+    })
+    return s
+  }, [unitSelections])
+
   const hasRooms = formRoomIds.size > 0
   const hasVenues = formVenueIds.size > 0
 
+  const isValidDates = useMemo(() => {
+    const entries = Object.values(unitSelections)
+    if (entries.length === 0) return false
+    return entries.every(sel => sel.checkIn && sel.checkOut && sel.checkIn < sel.checkOut)
+  }, [unitSelections])
+
   // ── Pricing calculations ──
-  const { estNights, estBreakfast, estRentals, estAddons, estTotal, estDown, estDue } = useMemo(() => {
-    const bpRooms = Array.from(formRoomIds).reduce((s, id) => s + (rooms.find(r => r.id === id)?.base_price ?? 0), 0)
-    const bpVenues = Array.from(formVenueIds).reduce((s, id) => s + (venues.find(v => v.id === id)?.base_price ?? 0), 0)
-
-    const nights = formCheckIn && formCheckOut
-      ? Math.max(1, Math.ceil((new Date(formCheckOut).getTime() - new Date(formCheckIn).getTime()) / 86400000))
-      : 1
-
-    const base = (bpRooms * nights) + (bpVenues * nights)
-    
+  const { estBreakfast, estRentals, estAddons, estTotal, estDown, estDue } = useMemo(() => {
+    let base = 0
     let breakfast = 0
-    if (formRoomIds.size > 0) {
-      Object.values(formBreakfastQty).forEach(q => { breakfast += 200 * q })
-    }
-    
     let rentals = 0
-    if (formVenueIds.size > 0) {
-      rentals = formBigTable * 150 + formSmallTable * 100 + formChairs * 15 + formWater * 35
-    }
-    
-    let addons = 0
-    if (formVenueIds.size > 0) {
-      if (formBand) addons += 2000
-      if (formStage) addons += 2000
-      if (formLedWall) addons += 5000
+
+    const baselineDiscount = formSource === 'manual' ? 20 : 0
+    const totalDiscount = baselineDiscount + formAdditionalDiscount
+    const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
+
+    Object.entries(unitSelections).forEach(([id, sel]) => {
+      const price = sel.type === 'room'
+        ? (rooms.find(r => r.id === id)?.base_price ?? 0)
+        : (venues.find(v => v.id === id)?.base_price ?? 0)
+      
+      const n = sel.checkIn && sel.checkOut
+        ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
+        : 1
+      
+      base += Math.round(price * rateMultiplier) * n
+
+      if (sel.type === 'room') {
+        breakfast += 150 * (1 + formCompanions.length) * n
+        rentals += (formExtraFoam * 200 + formExtraPillow * 50 + formExtraBlanket * 50 + formExtraTowel * 50) * n
+      }
+    })
+
+    if (hasVenues) {
+      rentals += formEventTable * 150 + formEventTent * 500 + formChairs * 15
     }
 
-    const total = base + breakfast + rentals + addons
+    const total = base + breakfast + rentals
     const down = Math.round(total * 0.5)
     
     // Per-unit security deposit: ₱500 per room and venue
-    const unitCount = formRoomIds.size + formVenueIds.size
+    const unitCount = Object.keys(unitSelections).length
     const due = (total - down) + (formStatus === 'blocked' ? 0 : 500 * unitCount)
 
     return {
-      estNights: nights,
       estBreakfast: breakfast,
       estRentals: rentals,
-      estAddons: addons,
+      estAddons: 0,
       estTotal: total,
       estDown: down,
       estDue: due
     }
-  }, [formRoomIds, formVenueIds, formCheckIn, formCheckOut,
-    formBreakfastQty, formBigTable, formSmallTable, formChairs, formWater,
-    formBand, formStage, formLedWall, formStatus, rooms, venues])
+  }, [unitSelections, formSource, formAdditionalDiscount, formCompanions.length, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues])
 
   const hasAddons = estBreakfast > 0 || estRentals > 0 || estAddons > 0
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setFormError('')
-    if (!formCheckIn || !formCheckOut) {
-      setFormError('Please select active check-in and check-out dates.'); return
+    if (!isValidDates) {
+      setFormError('Please select valid check-in and check-out dates for all units.'); return
     }
-    if (formCheckIn >= formCheckOut) {
-      setFormError('Check-out date must be after check-in date.'); return
-    }
-    if (formRoomIds.size === 0 && formVenueIds.size === 0) {
+    if (Object.keys(unitSelections).length === 0) {
       setFormError('Please select at least one room or event venue.'); return
     }
     if (formStatus === 'confirmed' && !formGuestName) {
@@ -154,38 +176,51 @@ export function WalkInBookingForm({
     }
     setIsSubmitting(true)
 
-    // 1. Run collision checks for all selected units
-    const unavailRooms = Array.from(formRoomIds).filter(id => !syncEngine.isRoomAvailable(id, formCheckIn, formCheckOut, bookings))
-    if (unavailRooms.length > 0) {
-      setFormError(`${unavailRooms.map(id => rooms.find(r => r.id === id)?.name || id).join(', ')} already booked for these dates.`)
-      setIsSubmitting(false); return
+    // 1. Run collision checks for all selected units on their respective dates
+    for (const [id, sel] of Object.entries(unitSelections)) {
+      const isRoom = sel.type === 'room'
+      if (isRoom) {
+        if (!syncEngine.isRoomAvailable(id, sel.checkIn, sel.checkOut, bookings)) {
+          const roomNum = rooms.find(r => r.id === id)?.room_number || id
+          setFormError(`Room ${roomNum} is already booked for the selected dates.`)
+          setIsSubmitting(false); return
+        }
+      } else {
+        if (!syncEngine.isVenueRangeAvailable(id, sel.checkIn, sel.checkOut, bookings)) {
+          const venueName = venues.find(v => v.id === id)?.name || id
+          setFormError(`Venue ${venueName} is already reserved for the selected dates.`)
+          setIsSubmitting(false); return
+        }
+      }
     }
-    const unavailVenues = Array.from(formVenueIds).filter(id => !syncEngine.isVenueRangeAvailable(id, formCheckIn, formCheckOut, bookings))
-    if (unavailVenues.length > 0) {
-      setFormError(`${unavailVenues.map(id => venues.find(v => v.id === id)?.name || id).join(', ')} already reserved for these dates.`)
-      setIsSubmitting(false); return
-    }
+
+    const totalDiscount = (formSource === 'manual' ? 20 : 0) + formAdditionalDiscount
+    const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
 
     const createdBookings: Booking[] = []
     try {
-      const breakfasts: BreakfastOrder[] = []
-      Object.entries(formBreakfastQty).forEach(([meal, qty]) => {
-        if (qty > 0) breakfasts.push({ option: meal as BreakfastOrder['option'], quantity: qty, withCoffee: true })
-      })
-
       // 2. Loop to create room bookings
       let isFirstRoom = true
       for (const roomId of Array.from(formRoomIds)) {
-        // Attach breakfasts only to the first room booking to prevent duplicate charges
-        const roomBreakfasts = isFirstRoom && breakfasts.length > 0 ? breakfasts : undefined
+        const sel = unitSelections[roomId]
+        const rentals = isFirstRoom ? {
+          bigTableCount: 0,
+          smallTableCount: 0,
+          chairCount: 0,
+          mineralWaterCount: 0,
+          extraFoamCount: formExtraFoam,
+          extraPillowCount: formExtraPillow,
+          extraBlanketCount: formExtraBlanket,
+          extraTowelCount: formExtraTowel
+        } : undefined
         isFirstRoom = false
 
         const b = await createManualBooking({
           roomId, guestName: formGuestName, guestEmail: formGuestEmail,
-          guestPhone: formGuestPhone, checkIn: formCheckIn, checkOut: formCheckOut,
+          guestPhone: formGuestPhone, checkIn: sel.checkIn, checkOut: sel.checkOut,
           source: formSource, status: formStatus,
-          breakfastOrders: roomBreakfasts,
-          rateMultiplier: 1.0,
+          equipmentRentals: rentals,
+          rateMultiplier,
           companions: formCompanions.length > 0 ? formCompanions : undefined
         })
         createdBookings.push(b)
@@ -194,29 +229,24 @@ export function WalkInBookingForm({
       // 3. Loop to create venue bookings
       let isFirstVenue = true
       for (const venueId of Array.from(formVenueIds)) {
-        // Attach rentals and addons only to the first venue booking to prevent duplicate charges
+        const sel = unitSelections[venueId]
         const rentals = isFirstVenue ? {
-          bigTableCount: formBigTable,
-          smallTableCount: formSmallTable,
+          bigTableCount: 0,
+          smallTableCount: 0,
           chairCount: formChairs,
-          mineralWaterCount: formWater
+          mineralWaterCount: 0,
+          tableCount: formEventTable,
+          tentCount: formEventTent
         } : undefined
-
-        const addons = isFirstVenue ? {
-          fullBandAndLights: formBand,
-          stage: formStage,
-          ledWall: formLedWall
-        } : undefined
-
         isFirstVenue = false
 
         const b = await createManualBooking({
           venueId, guestName: formGuestName, guestEmail: formGuestEmail,
-          guestPhone: formGuestPhone, checkIn: formCheckIn, checkOut: formCheckOut,
+          guestPhone: formGuestPhone, checkIn: sel.checkIn, checkOut: sel.checkOut,
           source: formSource, status: formStatus,
           equipmentRentals: rentals,
-          eventAddons: addons,
-          rateMultiplier: 1.0
+          rateMultiplier,
+          companions: formCompanions.length > 0 ? formCompanions : undefined
         })
         createdBookings.push(b)
       }
@@ -305,18 +335,14 @@ export function WalkInBookingForm({
                     rooms={rooms}
                     venues={venues}
                     bookings={bookings}
-                    formRoomIds={formRoomIds}
-                    setFormRoomIds={setFormRoomIds}
-                    formVenueIds={formVenueIds}
-                    setFormVenueIds={setFormVenueIds}
-                    formCheckIn={formCheckIn}
-                    setFormCheckIn={setFormCheckIn}
-                    formCheckOut={formCheckOut}
-                    setFormCheckOut={setFormCheckOut}
+                    unitSelections={unitSelections}
+                    setUnitSelections={setUnitSelections}
                     formSource={formSource}
                     setFormSource={setFormSource}
                     formStatus={formStatus}
                     setFormStatus={setFormStatus}
+                    formAdditionalDiscount={formAdditionalDiscount}
+                    setFormAdditionalDiscount={setFormAdditionalDiscount}
                   />
                 )}
 
@@ -334,6 +360,7 @@ export function WalkInBookingForm({
                     setFormCompanions={setFormCompanions}
                     showCompanions={showCompanions}
                     setShowCompanions={setShowCompanions}
+                    hasRooms={hasRooms}
                   />
                 )}
 
@@ -343,25 +370,22 @@ export function WalkInBookingForm({
                     hasRooms={hasRooms}
                     hasVenues={hasVenues}
                     hasAddons={hasAddons}
-                    estBreakfast={estBreakfast}
                     estRentals={estRentals}
                     estAddons={estAddons}
-                    formBreakfastQty={formBreakfastQty}
-                    setFormBreakfastQty={setFormBreakfastQty}
-                    formBigTable={formBigTable}
-                    setFormBigTable={setFormBigTable}
-                    formSmallTable={formSmallTable}
-                    setFormSmallTable={setFormSmallTable}
                     formChairs={formChairs}
                     setFormChairs={setFormChairs}
-                    formWater={formWater}
-                    setFormWater={setFormWater}
-                    formBand={formBand}
-                    setFormBand={setFormBand}
-                    formStage={formStage}
-                    setFormStage={setFormStage}
-                    formLedWall={formLedWall}
-                    setFormLedWall={setFormLedWall}
+                    formExtraFoam={formExtraFoam}
+                    setFormExtraFoam={setFormExtraFoam}
+                    formExtraPillow={formExtraPillow}
+                    setFormExtraPillow={setFormExtraPillow}
+                    formExtraBlanket={formExtraBlanket}
+                    setFormExtraBlanket={setFormExtraBlanket}
+                    formExtraTowel={formExtraTowel}
+                    setFormExtraTowel={setFormExtraTowel}
+                    formEventTable={formEventTable}
+                    setFormEventTable={setFormEventTable}
+                    formEventTent={formEventTent}
+                    setFormEventTent={setFormEventTent}
                   />
                 )}
 
@@ -375,7 +399,7 @@ export function WalkInBookingForm({
                   ) : <div />}
                   
                   {formStep === 1 && (
-                    <button type="button" disabled={!formCheckIn || !formCheckOut || (formRoomIds.size === 0 && formVenueIds.size === 0)} onClick={() => setFormStep(2)}
+                    <button type="button" disabled={!isValidDates} onClick={() => setFormStep(2)}
                       className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
                       Next &rarr;
                     </button>
@@ -407,17 +431,18 @@ export function WalkInBookingForm({
               {/* ── RIGHT COLUMN: Invoice Estimate ── */}
               <BillingSummary
                 formStatus={formStatus}
-                estNights={estNights}
-                formRoomIds={formRoomIds}
+                unitSelections={unitSelections}
                 rooms={rooms}
                 venues={venues}
-                formVenueIds={formVenueIds}
                 estBreakfast={estBreakfast}
                 estRentals={estRentals}
                 estAddons={estAddons}
                 estTotal={estTotal}
                 estDown={estDown}
                 estDue={estDue}
+                formSource={formSource}
+                formAdditionalDiscount={formAdditionalDiscount}
+                guestEmail={formGuestEmail}
               />
 
             </div>

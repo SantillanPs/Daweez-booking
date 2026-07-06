@@ -181,7 +181,7 @@ export function useBookings() {
       const pricing = syncEngine.calculatePricing({
         roomId, venueId, checkIn, checkOut, guestEmail,
         breakfastOrders, equipmentRentals, eventAddons,
-        bookingsList: bookings, rateMultiplier
+        bookingsList: bookings, rateMultiplier, companions
       })
 
       const newBooking: Booking = {

@@ -1,4 +1,4 @@
-import { Room, Venue, Booking, SyncFeed, BookingSource, BookingStatus, BreakfastOrder, EquipmentRental, EventAddons, GuestRecord } from '../types/booking'
+import { Room, Venue, Booking, SyncFeed, BookingSource, BookingStatus, BreakfastOrder, EquipmentRental, EventAddons, GuestRecord, Companion } from '../types/booking'
 import { supabase, isSupabaseConfigured } from './supabaseClient'
 
 // Helper: Generate UUID
@@ -12,7 +12,7 @@ export const DEFAULT_ROOMS: Room[] = [
     id: 'room-1',
     room_number: 1,
     name: 'Full Double Deluxe',
-    base_price: 1050,
+    base_price: 1755,
     capacity: 2,
     description: 'A large and comfortable room with a double bed, nice seating area, and a private balcony with a view of the city skyline.',
     image_url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80'
@@ -21,7 +21,7 @@ export const DEFAULT_ROOMS: Room[] = [
     id: 'room-2',
     room_number: 2,
     name: 'Full Double',
-    base_price: 950,
+    base_price: 1625,
     capacity: 2,
     description: 'A clean and quiet room with a double bed and a desk. Perfect for work or relaxation.',
     image_url: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=800&q=80'
@@ -30,7 +30,7 @@ export const DEFAULT_ROOMS: Room[] = [
     id: 'room-3',
     room_number: 3,
     name: 'Full Double',
-    base_price: 950,
+    base_price: 1625,
     capacity: 2,
     description: 'A cozy interior room with a double bed and warm, soft lighting. Safe and quiet.',
     image_url: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80'
@@ -39,7 +39,7 @@ export const DEFAULT_ROOMS: Room[] = [
     id: 'room-4',
     room_number: 4,
     name: 'Full Double',
-    base_price: 950,
+    base_price: 1625,
     capacity: 2,
     description: 'A high room with a double bed, simple design, and a nice view of Manila Bay.',
     image_url: 'https://images.unsplash.com/photo-1591088398332-8a7791972843?auto=format&fit=crop&w=800&q=80'
@@ -48,7 +48,7 @@ export const DEFAULT_ROOMS: Room[] = [
     id: 'room-5',
     room_number: 5,
     name: 'Matrimonial',
-    base_price: 1200,
+    base_price: 1950,
     capacity: 2,
     description: 'A nice room for couples. It has a queen bed, warm lighting, and a large private bathtub.',
     image_url: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=800&q=80'
@@ -57,7 +57,7 @@ export const DEFAULT_ROOMS: Room[] = [
     id: 'room-6',
     room_number: 6,
     name: 'Family Room',
-    base_price: 1800,
+    base_price: 2730,
     capacity: 5,
     description: 'A big room for families. It has two double beds, one single roll-away bed, and a dining table.',
     image_url: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=800&q=80'
@@ -66,7 +66,7 @@ export const DEFAULT_ROOMS: Room[] = [
     id: 'room-7',
     room_number: 7,
     name: 'Bunk Bed 3',
-    base_price: 1100,
+    base_price: 2015,
     capacity: 3,
     description: 'A shared room with three comfortable bunk bed spaces, curtains for privacy, and power plugs.',
     image_url: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=800&q=80'
@@ -75,7 +75,7 @@ export const DEFAULT_ROOMS: Room[] = [
     id: 'room-8',
     room_number: 8,
     name: 'Double',
-    base_price: 850,
+    base_price: 1495,
     capacity: 2,
     description: 'A simple studio room with a double bed, private bathroom, and bright windows.',
     image_url: 'https://images.unsplash.com/photo-1611891404724-5f9a241e243b?auto=format&fit=crop&w=800&q=80'
@@ -84,7 +84,7 @@ export const DEFAULT_ROOMS: Room[] = [
     id: 'room-9',
     room_number: 9,
     name: 'Bunk Bed 2',
-    base_price: 900,
+    base_price: 1560,
     capacity: 2,
     description: 'A cozy shared room with two parallel bunk bed spaces and warm lighting.',
     image_url: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=800&q=80'
@@ -93,7 +93,7 @@ export const DEFAULT_ROOMS: Room[] = [
     id: 'room-10',
     room_number: 10,
     name: 'Bunk Bed 6',
-    base_price: 2400,
+    base_price: 4290,
     capacity: 6,
     description: 'A large group suite with six comfortable bunk bed spaces and two private bathrooms.',
     image_url: 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&w=800&q=80'
@@ -304,7 +304,7 @@ export async function getBookings(): Promise<Booking[]> {
   initDB()
   const data = localStorage.getItem(BOOKINGS_KEY)
   if (!data) return []
-  
+
   const bookings: Booking[] = JSON.parse(data)
   const now = new Date()
   const activeBookings = bookings.filter(b => {
@@ -318,7 +318,7 @@ export async function getBookings(): Promise<Booking[]> {
   if (activeBookings.length !== bookings.length) {
     localStorage.setItem(BOOKINGS_KEY, JSON.stringify(activeBookings))
   }
-  
+
   return activeBookings
 }
 
@@ -452,7 +452,7 @@ export function isRoomAvailable(roomId: string, checkInStr: string, checkOutStr:
   return !bookingsList.some(booking => {
     if (booking.room_id !== roomId) return false
     if (booking.id === skipBookingId) return false
-    
+
     const bStart = new Date(booking.check_in)
     const bEnd = new Date(booking.check_out)
     return checkIn < bEnd && checkOut > bStart
@@ -475,7 +475,7 @@ export function isVenueRangeAvailable(venueId: string, checkInStr: string, check
   return !bookingsList.some(booking => {
     if (booking.venue_id !== venueId) return false
     if (booking.id === skipBookingId) return false
-    
+
     const bStart = new Date(booking.check_in)
     const bEnd = new Date(booking.check_out)
     return checkIn < bEnd && checkOut > bStart
@@ -500,12 +500,13 @@ export function calculatePricing(params: {
   eventAddons?: EventAddons
   bookingsList?: Booking[]
   rateMultiplier?: number
+  companions?: Companion[]
 }) {
-  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier = 1.0 } = params
-  
+  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier = 1.0, companions } = params
+
   let basePrice = 0
   let nights = 0
-  
+
   // A. Nightly Room vs Daily Venue rate mapping
   if (roomId) {
     const room = DEFAULT_ROOMS.find(r => r.id === roomId)
@@ -525,21 +526,38 @@ export function calculatePricing(params: {
   const subtotal = basePrice * nights * discountMultiplier
   const grandTotal = subtotal
 
-  // C. Breakfast Add-ons (₱200/set)
+  // C. Breakfast is always included for room bookings (₱150/guest/night)
   let breakfastTotal = 0
-  if (breakfastOrders && breakfastOrders.length > 0) {
+  if (roomId) {
+    const guestCount = 1 + (companions?.length || 0)
+    breakfastTotal = 150 * guestCount * nights
+  } else if (breakfastOrders && breakfastOrders.length > 0) {
+    // Venue bookings: use stored orders if present
     breakfastOrders.forEach(order => {
-      breakfastTotal += 200 * order.quantity
+      breakfastTotal += 150 * order.quantity
     })
   }
 
-  // D. Equipment Rentals (Big Table: 150, Small Table: 100, Chair: 15, Water: 35)
+  // D. Equipment Rentals (Table: 150, Chairs: 15, Tent: 500, Extra Foam: 200, Extra Pillow: 50, Extra Blanket: 50, Extra Towel: 50)
   let rentalsTotal = 0
   if (equipmentRentals) {
-    rentalsTotal += (equipmentRentals.bigTableCount * 150)
-    rentalsTotal += (equipmentRentals.smallTableCount * 100)
-    rentalsTotal += (equipmentRentals.chairCount * 15)
-    rentalsTotal += (equipmentRentals.mineralWaterCount * 35)
+    if (roomId) {
+      // Room nightly rentals
+      const nightlyRentals =
+        ((equipmentRentals.extraFoamCount || 0) * 200) +
+        ((equipmentRentals.extraPillowCount || 0) * 50) +
+        ((equipmentRentals.extraBlanketCount || 0) * 50) +
+        ((equipmentRentals.extraTowelCount || 0) * 50)
+      rentalsTotal += nightlyRentals * nights
+    } else {
+      // Venue flat rentals
+      rentalsTotal += ((equipmentRentals.bigTableCount || 0) * 150)
+      rentalsTotal += ((equipmentRentals.smallTableCount || 0) * 100)
+      rentalsTotal += ((equipmentRentals.chairCount || 0) * 15)
+      rentalsTotal += ((equipmentRentals.mineralWaterCount || 0) * 35)
+      rentalsTotal += ((equipmentRentals.tableCount || 0) * 150)
+      rentalsTotal += ((equipmentRentals.tentCount || 0) * 500)
+    }
   }
 
   // E. Event Add-ons (Band: 2000, Stage: 2000, LED Wall: 5000)
@@ -575,7 +593,7 @@ export function calculatePricing(params: {
 function parseiCalFeed(icsString: string): Omit<Booking, 'id' | 'room_id' | 'created_at' | 'expires_at' | 'downpayment_paid' | 'balance_due' | 'security_deposit'>[] {
   const events: Omit<Booking, 'id' | 'room_id' | 'created_at' | 'expires_at' | 'downpayment_paid' | 'balance_due' | 'security_deposit'>[] = []
   const lines = icsString.split(/\r?\n/)
-  
+
   let currentEvent: Record<string, string> = {}
   let inEvent = false
 
@@ -673,9 +691,19 @@ END:VCALENDAR
 `
 
 export async function runSimulatedOTASync(currentBookings?: Booking[], currentFeeds?: SyncFeed[]): Promise<number> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-ical')
+      if (error) throw error
+      return data?.syncedCount ?? 0
+    } catch (err) {
+      console.error('Failed to invoke sync-ical edge function, falling back to local simulation:', err)
+    }
+  }
+
   const bookings = currentBookings || await getBookings()
   const feeds = currentFeeds || await getFeeds()
-  
+
   const updatedBookings = bookings.filter(b => b.source === 'website' || b.source === 'manual' || b.source === 'facebook' || b.source === 'google_maps')
   let newSyncCount = 0
 
@@ -767,7 +795,7 @@ export function getGuestRecords(bookingsList: Booking[] = []): GuestRecord[] {
   bookings.forEach(b => {
     const key = b.guest_email.toLowerCase()
     const current = map.get(key)
-    
+
     if (current) {
       current.visit_count += 1
       if (b.created_at > current.last_visit) {
@@ -1514,13 +1542,13 @@ export async function seedFutureMockData(): Promise<number> {
 
   const current = await getBookings()
   const currentIds = new Set(current.map(b => b.id))
-  
+
   // Only add if not already seeded
   const toAdd = futureBookings.filter(b => !currentIds.has(b.id))
-  
+
   if (toAdd.length > 0) {
     await saveBookings([...current, ...toAdd])
   }
-  
+
   return toAdd.length
 }

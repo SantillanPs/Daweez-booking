@@ -1,40 +1,57 @@
 import React from 'react'
-import { Room, Venue } from '../../types/booking'
+import { Room, Venue, BookingSource } from '../../types/booking'
+import { Mail, Printer } from 'lucide-react'
 
 interface BillingSummaryProps {
   formStatus: 'confirmed' | 'blocked'
-  estNights: number
-  formRoomIds: Set<string>
+  unitSelections: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
   rooms: Room[]
   venues: Venue[]
-  formVenueIds: Set<string>
   estBreakfast: number
   estRentals: number
   estAddons: number
   estTotal: number
   estDown: number
   estDue: number
+  formSource: BookingSource
+  formAdditionalDiscount: number
+  guestEmail?: string
 }
-
-// Compare Set contents to determine if selected items changed
-const setsEqual = (a: Set<string>, b: Set<string>) => a.size === b.size && Array.from(a).every(x => b.has(x))
 
 export const BillingSummary = React.memo(
   ({
     formStatus,
-    estNights,
-    formRoomIds,
+    unitSelections,
     rooms,
     venues,
-    formVenueIds,
     estBreakfast,
     estRentals,
     estAddons,
     estTotal,
     estDown,
-    estDue
+    estDue,
+    formSource,
+    formAdditionalDiscount,
+    guestEmail
   }: BillingSummaryProps) => {
-    const unitCount = formRoomIds.size + formVenueIds.size
+    const unitCount = Object.keys(unitSelections).length
+    const hasRooms = Object.values(unitSelections).some(s => s.type === 'room')
+    const hasVenues = Object.values(unitSelections).some(s => s.type === 'venue')
+
+    const undiscountedBaseTotal = Object.entries(unitSelections).reduce((sum, [id, sel]) => {
+      const price = sel.type === 'room'
+        ? (rooms.find(r => r.id === id)?.base_price ?? 0)
+        : (venues.find(v => v.id === id)?.base_price ?? 0)
+      const nights = sel.checkIn && sel.checkOut
+        ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
+        : 1
+      return sum + price * nights
+    }, 0)
+
+    const walkInPercent = formSource === 'manual' ? 20 : 0
+    const walkInAmount = Math.round(undiscountedBaseTotal * (walkInPercent / 100))
+    const additionalPercent = formAdditionalDiscount
+    const additionalAmount = Math.round(undiscountedBaseTotal * (additionalPercent / 100))
 
     return (
       <div className="space-y-4 font-sans">
@@ -53,21 +70,24 @@ export const BillingSummary = React.memo(
             
             <div className="space-y-2 text-slate-600 font-medium">
               <div className="flex justify-between">
-                <span>Nights:</span>
-                <span className="font-mono text-slate-800 font-semibold">{estNights} night{estNights > 1 ? 's' : ''}</span>
+                <span>Selected Units:</span>
+                <span className="font-mono text-slate-800 font-semibold">{unitCount} unit{unitCount > 1 ? 's' : ''}</span>
               </div>
               
-              {formRoomIds.size > 0 && (
+              {hasRooms && (
                 <>
                   <div className="border-t border-dashed border-[#E5D5C0] my-2" />
-                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Rooms ({formRoomIds.size})</div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Rooms</div>
                   <div className="text-[10px] text-slate-500 pl-2 space-y-1 font-mono">
-                    {Array.from(formRoomIds).map(id => {
+                    {Object.entries(unitSelections).filter(([_, s]) => s.type === 'room').map(([id, sel]) => {
                       const r = rooms.find(room => room.id === id)
+                      const nights = sel.checkIn && sel.checkOut
+                        ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
+                        : 1
                       return r ? (
                         <div key={id} className="flex justify-between">
-                          <span>Room {r.room_number} ({r.name}):</span>
-                          <span>₱{(r.base_price * estNights).toLocaleString()}</span>
+                          <span>Room {r.room_number} ({nights} nite{nights > 1 ? 's' : ''}):</span>
+                          <span>₱{(r.base_price * nights).toLocaleString()}</span>
                         </div>
                       ) : null
                     })}
@@ -75,17 +95,20 @@ export const BillingSummary = React.memo(
                 </>
               )}
 
-              {formVenueIds.size > 0 && (
+              {hasVenues && (
                 <>
                   <div className="border-t border-dashed border-[#E5D5C0] my-2" />
-                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Event Venues ({formVenueIds.size})</div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Event Venues</div>
                   <div className="text-[10px] text-slate-500 pl-2 space-y-1 font-mono">
-                    {Array.from(formVenueIds).map(id => {
+                    {Object.entries(unitSelections).filter(([_, s]) => s.type === 'venue').map(([id, sel]) => {
                       const v = venues.find(venue => venue.id === id)
+                      const nights = sel.checkIn && sel.checkOut
+                        ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
+                        : 1
                       return v ? (
                         <div key={id} className="flex justify-between">
-                          <span>{v.name}:</span>
-                          <span>₱{(v.base_price * estNights).toLocaleString()}</span>
+                          <span>{v.name} ({nights} day{nights > 1 ? 's' : ''}):</span>
+                          <span>₱{(v.base_price * nights).toLocaleString()}</span>
                         </div>
                       ) : null
                     })}
@@ -104,7 +127,7 @@ export const BillingSummary = React.memo(
                   )}
                   {estRentals > 0 && (
                     <div className="flex justify-between">
-                      <span>Equipment Rentals:</span>
+                      <span>Rentals &amp; Amenities:</span>
                       <span className="font-mono text-slate-800 font-semibold">₱{estRentals.toLocaleString()}</span>
                     </div>
                   )}
@@ -117,9 +140,24 @@ export const BillingSummary = React.memo(
                 </>
               )}
             </div>
-            
-            <div className="border-t border-dashed border-[#E5D5C0] pt-4 space-y-2">
-              <div className="flex justify-between text-slate-800 font-extrabold text-xs">
+                <div className="border-t border-dashed border-[#E5D5C0] pt-4 space-y-2">
+              <div className="flex justify-between text-slate-500 font-medium text-xs">
+                <span>Original Rate:</span>
+                <span className="font-mono">₱{undiscountedBaseTotal.toLocaleString()}</span>
+              </div>
+              {walkInPercent > 0 && (
+                <div className="flex justify-between text-rose-600 font-semibold text-xs animate-in fade-in">
+                  <span>Walk-in Discount (20%):</span>
+                  <span className="font-mono">-₱{walkInAmount.toLocaleString()}</span>
+                </div>
+              )}
+              {additionalPercent > 0 && (
+                <div className="flex justify-between text-rose-600 font-semibold text-xs animate-in fade-in">
+                  <span>Additional Discount ({additionalPercent}%):</span>
+                  <span className="font-mono">-₱{additionalAmount.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-slate-800 font-extrabold text-xs border-t border-dashed border-[#E5D5C0]/60 pt-2">
                 <span>Subtotal:</span>
                 <span className="font-mono text-slate-900">₱{estTotal.toLocaleString()}</span>
               </div>
@@ -133,6 +171,29 @@ export const BillingSummary = React.memo(
               </div>
               <div className="text-[9px] text-slate-400 text-center pt-2 italic leading-normal font-sans">
                 Includes ₱{(unitCount * 500).toLocaleString()} refundable security deposit (₱500/unit)
+              </div>
+              
+              <div className="border-t border-[#E5D5C0] pt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    alert("This feature is under development.")
+                  }}
+                  className="flex-1 bg-white hover:bg-slate-50 text-[#9A783E] border border-[#E5D5C0] text-[10px] font-bold py-1.5 px-2.5 rounded flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none"
+                >
+                  <Mail className="w-3.5 h-3.5 text-[#B89251]" />
+                  Email Invoice
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    alert("This feature is under development.")
+                  }}
+                  className="flex-1 bg-white hover:bg-slate-50 text-[#9A783E] border border-[#E5D5C0] text-[10px] font-bold py-1.5 px-2.5 rounded flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none"
+                >
+                  <Printer className="w-3.5 h-3.5 text-[#B89251]" />
+                  Print Invoice
+                </button>
               </div>
             </div>
           </div>
@@ -151,11 +212,20 @@ export const BillingSummary = React.memo(
     )
   },
   (prevProps, nextProps) => {
+    // Compare selection records
+    const prevKeys = Object.keys(prevProps.unitSelections)
+    const nextKeys = Object.keys(nextProps.unitSelections)
+    if (prevKeys.length !== nextKeys.length) return false
+    
+    const selectionsMatch = prevKeys.every(k => {
+      const p = prevProps.unitSelections[k]
+      const n = nextProps.unitSelections[k]
+      return n && p.checkIn === n.checkIn && p.checkOut === n.checkOut && p.type === n.type
+    })
+
     return (
+      selectionsMatch &&
       prevProps.formStatus === nextProps.formStatus &&
-      prevProps.estNights === nextProps.estNights &&
-      setsEqual(prevProps.formRoomIds, nextProps.formRoomIds) &&
-      setsEqual(prevProps.formVenueIds, nextProps.formVenueIds) &&
       prevProps.estBreakfast === nextProps.estBreakfast &&
       prevProps.estRentals === nextProps.estRentals &&
       prevProps.estAddons === nextProps.estAddons &&
@@ -163,7 +233,10 @@ export const BillingSummary = React.memo(
       prevProps.estDown === nextProps.estDown &&
       prevProps.estDue === nextProps.estDue &&
       prevProps.rooms === nextProps.rooms &&
-      prevProps.venues === nextProps.venues
+      prevProps.venues === nextProps.venues &&
+      prevProps.formSource === nextProps.formSource &&
+      prevProps.formAdditionalDiscount === nextProps.formAdditionalDiscount &&
+      prevProps.guestEmail === nextProps.guestEmail
     )
   }
 )

@@ -58,9 +58,8 @@ export function CalendarTab() {
 
   // ── Walk‑in form wizard ──
   const [showManualForm, setShowManualForm] = useState(false)
-  const [formPathway, setFormPathway] = useState<'room' | 'venue'>('room')
   const [formRoomIds, setFormRoomIds] = useState<Set<string>>(new Set(['room-1']))
-  const [formVenueId, setFormVenueId] = useState<string>('')
+  const [formVenueIds, setFormVenueIds] = useState<Set<string>>(new Set())
   const [formCheckIn, setFormCheckIn] = useState('')
   const [formCheckOut, setFormCheckOut] = useState('')
 
@@ -128,10 +127,11 @@ export function CalendarTab() {
     return list
   }, [schedulerStartDate, daysCount])
 
-  const resetAndOpenManualForm = useCallback((pathway: 'room' | 'venue', roomIds: Set<string>, checkIn = '', checkOut = '', venueId = '') => {
-    setFormPathway(pathway); setFormRoomIds(roomIds)
-    setFormCheckIn(checkIn); setFormCheckOut(checkOut)
-    setFormVenueId(venueId)
+  const resetAndOpenManualForm = useCallback((roomIds: Set<string>, venueIds: Set<string>, checkIn = '', checkOut = '') => {
+    setFormRoomIds(roomIds)
+    setFormVenueIds(venueIds)
+    setFormCheckIn(checkIn)
+    setFormCheckOut(checkOut)
     setShowManualForm(true)
   }, [])
 
@@ -139,49 +139,53 @@ export function CalendarTab() {
     const isRoom = type === 'room'
     const selIdKey = isRoom ? 'roomId' : 'venueId'
     
-    // If selection type changed or id changed, reset selection
-    if (timelineSelection && (
-      (isRoom && !timelineSelection.roomId) ||
-      (!isRoom && !timelineSelection.venueId) ||
-      (timelineSelection[selIdKey] !== id)
-    )) {
-      setTimelineSelection({ [selIdKey]: id, checkIn: date })
-      return
-    }
-
     // If clicking the exact same check-in date again, cancel the selection
     if (timelineSelection && timelineSelection[selIdKey] === id && date.toDateString() === timelineSelection.checkIn.toDateString()) {
       setTimelineSelection(null)
       return
     }
 
-    if (!timelineSelection || timelineSelection[selIdKey] !== id || date < timelineSelection.checkIn) {
-      // Start a new selection (Click 1, or room/venue changed, or clicked earlier date)
+    if (!timelineSelection || date < timelineSelection.checkIn) {
+      // Start a new selection (Click 1, or clicked earlier date)
       setTimelineSelection({ [selIdKey]: id, checkIn: date })
     } else {
       // Complete the selection (Click 2)
       const checkInStr = timelineSelection.checkIn.toISOString().split('T')[0]
       const checkOutStr = date.toISOString().split('T')[0]
       
-      // Verify availability for the entire range
+      const roomIdsToBook = new Set<string>()
+      const venueIdsToBook = new Set<string>()
+
+      // Add first clicked unit
+      if (timelineSelection.roomId) roomIdsToBook.add(timelineSelection.roomId)
+      if (timelineSelection.venueId) venueIdsToBook.add(timelineSelection.venueId)
+
+      // Add second clicked unit
       if (isRoom) {
-        if (!syncEngine.isRoomAvailable(id, checkInStr, checkOutStr, bookings)) {
-          const roomNum = rooms.find(r => r.id === id)?.room_number || id
-          alert(`Overlap collision! Room ${roomNum} is already booked on some dates in this range.`)
-          setTimelineSelection(null)
-          return
-        }
-        resetAndOpenManualForm('room', new Set([id]), checkInStr, checkOutStr)
+        roomIdsToBook.add(id)
       } else {
-        if (!syncEngine.isVenueRangeAvailable(id, checkInStr, checkOutStr, bookings)) {
-          const venueName = venues.find(v => v.id === id)?.name || id
-          alert(`Overlap collision! Venue ${venueName} is already booked on some dates in this range.`)
-          setTimelineSelection(null)
-          return
-        }
-        resetAndOpenManualForm('venue', new Set(), checkInStr, checkOutStr, id)
+        venueIdsToBook.add(id)
       }
 
+      // Verify availability for all rooms
+      const unavailRooms = Array.from(roomIdsToBook).filter(rid => !syncEngine.isRoomAvailable(rid, checkInStr, checkOutStr, bookings))
+      if (unavailRooms.length > 0) {
+        const roomNames = unavailRooms.map(rid => rooms.find(r => r.id === rid)?.room_number || rid).join(', ')
+        alert(`Overlap collision! Rooms [${roomNames}] are already booked on some dates in this range.`)
+        setTimelineSelection(null)
+        return
+      }
+
+      // Verify availability for all venues
+      const unavailVenues = Array.from(venueIdsToBook).filter(vid => !syncEngine.isVenueRangeAvailable(vid, checkInStr, checkOutStr, bookings))
+      if (unavailVenues.length > 0) {
+        const venueNames = unavailVenues.map(vid => venues.find(v => v.id === vid)?.name || vid).join(', ')
+        alert(`Overlap collision! Venues [${venueNames}] are already reserved on some dates in this range.`)
+        setTimelineSelection(null)
+        return
+      }
+
+      resetAndOpenManualForm(roomIdsToBook, venueIdsToBook, checkInStr, checkOutStr)
       setTimelineSelection(null)
     }
   }, [timelineSelection, bookings, rooms, venues, resetAndOpenManualForm])
@@ -322,7 +326,7 @@ export function CalendarTab() {
           </div>
 
           <div>
-            <button onClick={() => resetAndOpenManualForm('room', new Set(['room-1']))}
+            <button onClick={() => resetAndOpenManualForm(new Set(['room-1']), new Set())}
               className="flex items-center gap-1.5 bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-sm">
               <Plus className="w-3.5 h-3.5" />
               <span>New Booking</span>
@@ -368,15 +372,14 @@ export function CalendarTab() {
       {/* ── Walk-in booking form wizard ── */}
       {showManualForm && (
         <WalkInBookingForm
-          key={`${formPathway}-${Array.from(formRoomIds).join(',')}-${formVenueId}-${formCheckIn}-${formCheckOut}`}
+          key={`${Array.from(formRoomIds).join(',')}-${Array.from(formVenueIds).join(',')}-${formCheckIn}-${formCheckOut}`}
           rooms={rooms}
           venues={venues}
           bookings={bookings}
           createManualBooking={createManualBooking}
           cancelBooking={cancelBooking}
-          initialPathway={formPathway}
           initialRoomIds={formRoomIds}
-          initialVenueId={formVenueId}
+          initialVenueIds={formVenueIds}
           initialCheckIn={formCheckIn}
           initialCheckOut={formCheckOut}
           onClose={() => setShowManualForm(false)}

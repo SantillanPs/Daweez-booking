@@ -20,6 +20,7 @@ interface TimelineGridProps {
   setActiveTooltip: (id: string | null) => void
   timelineSelection: { roomId?: string; venueId?: string; checkIn: Date } | null
   setTimelineSelection: (val: { roomId?: string; venueId?: string; checkIn: Date } | null) => void
+  groupSelection?: Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null
   handleCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
   setSelectedExtendBooking: (booking: Booking) => void
   setExtendCheckoutDate: (date: string) => void
@@ -34,6 +35,7 @@ interface TimelineCellProps {
   booking: Booking | null
   span: number
   isCheckIn: boolean
+  isHighlighted: boolean
   getBookingStyle: (b: Booking) => string
   activeTooltip: string | null
   setActiveTooltip: (id: string | null) => void
@@ -54,6 +56,7 @@ const TimelineCell = React.memo(
     booking,
     span,
     isCheckIn,
+    isHighlighted,
     getBookingStyle,
     activeTooltip,
     setActiveTooltip,
@@ -132,11 +135,22 @@ const TimelineCell = React.memo(
       return (
         <td 
           onClick={() => onCellClick(id, type, date)}
-          className="p-0 h-8 relative cursor-cell rounded bg-[#B89251] border border-[#9A783E] text-white animate-fade-in align-middle"
+          className="p-0.5 h-8 relative cursor-cell align-middle"
         >
-          <div className="absolute inset-0 flex items-center justify-center text-[9px] font-bold uppercase tracking-wider">
+          <div className="w-full h-full rounded bg-[#B89251] text-white flex items-center justify-center text-[9px] font-bold uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-150 border border-[#9A783E]">
             In
           </div>
+        </td>
+      )
+    }
+
+    if (isHighlighted) {
+      return (
+        <td 
+          onClick={() => onCellClick(id, type, date)}
+          className="p-0 h-8 cursor-cell relative align-middle transition-all bg-gradient-to-r from-[#FAF0DD]/60 to-[#F5E6CC]/50 hover:from-[#FAF0DD]/80 hover:to-[#F5E6CC]/70"
+        >
+          <div className="absolute inset-0 border-y border-dashed border-[#B89251]/40" />
         </td>
       )
     }
@@ -152,6 +166,7 @@ const TimelineCell = React.memo(
     return (
       prevProps.onCellClick === nextProps.onCellClick &&
       prevProps.isCheckIn === nextProps.isCheckIn &&
+      prevProps.isHighlighted === nextProps.isHighlighted &&
       prevProps.span === nextProps.span &&
       prevProps.activeTooltip === nextProps.activeTooltip &&
       prevProps.booking?.id === nextProps.booking?.id &&
@@ -171,6 +186,7 @@ export const TimelineGrid = React.memo(
     setActiveTooltip,
     timelineSelection,
     setTimelineSelection,
+    groupSelection,
     handleCellClick,
     setSelectedExtendBooking,
     setExtendCheckoutDate,
@@ -178,6 +194,17 @@ export const TimelineGrid = React.memo(
   }: TimelineGridProps) {
     
     const checkInTime = React.useMemo(() => timelineSelection ? timelineSelection.checkIn.getTime() : 0, [timelineSelection])
+    const selectionRanges = React.useMemo(() => {
+      if (!groupSelection) return {}
+      const ranges: Record<string, { start: number; end: number }> = {}
+      Object.entries(groupSelection).forEach(([id, sel]) => {
+        ranges[id] = {
+          start: sel.checkIn.getTime(),
+          end: sel.checkOut.getTime()
+        }
+      })
+      return ranges
+    }, [groupSelection])
 
     const selectionName = React.useMemo(() => {
       if (!timelineSelection) return ''
@@ -193,43 +220,43 @@ export const TimelineGrid = React.memo(
     return (
       <div className="space-y-2.5">
         {timelineSelection && (
-          <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 max-w-xs bg-slate-950/95 backdrop-blur-sm border border-slate-800 text-slate-100 rounded-lg p-3.5 shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 font-sans">
+          <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 max-w-xs bg-[#FDFBF7]/95 backdrop-blur-md border border-[#E5D5C0] text-slate-800 rounded-lg p-3.5 shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 font-sans">
             <span className="flex h-2.5 w-2.5 relative mt-1 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-amber-400"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-[#B89251]"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#B89251]"></span>
             </span>
             <div className="flex-1 text-xs">
-              <p className="font-bold text-white">Date Selection Active</p>
-              <p className="text-slate-400 mt-1 leading-normal">
+              <p className="font-bold text-[#9A783E]">Date Selection Active</p>
+              <p className="text-slate-650 mt-1 leading-normal">
                 Selecting <strong>{selectionName}</strong>.
               </p>
-              <p className="text-slate-400 leading-normal">
-                Check‑in: <strong>{timelineSelection.checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>.
+              <p className="text-slate-650 leading-normal">
+                Check‑in: <strong className="text-[#9A783E]">{timelineSelection.checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>.
               </p>
-              <p className="text-[11px] text-amber-400/90 font-medium mt-1.5">
+              <p className="text-[11px] text-[#B89251] font-semibold mt-1.5 animate-pulse">
                 Click checkout date on the grid.
               </p>
             </div>
             <button 
               type="button" 
               onClick={() => setTimelineSelection(null)}
-              className="text-[10px] font-bold text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-800 hover:border-slate-650 px-2 py-1 rounded bg-slate-900">
+              className="text-[10px] font-bold text-slate-500 hover:text-slate-800 transition-all cursor-pointer border border-[#E5D5C0] hover:border-slate-350 px-2 py-1 rounded bg-white hover:bg-slate-50 shadow-sm">
               Cancel
             </button>
           </div>
         )}
         
         <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[480px] sm:max-h-[540px] md:max-h-[600px] lg:max-h-[650px] relative">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-slate-50">
-                  <th className="sticky left-0 z-20 bg-slate-50 border-b border-r border-slate-200 p-3 text-left text-xs text-slate-500 font-medium min-w-[160px]">
+                  <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-r border-slate-200 p-3 text-left text-xs text-slate-500 font-medium min-w-[160px]">
                     Room / Venue
                   </th>
                   {daysList.map((dayInfo, i) => {
                     return (
-                      <th key={i} className={`border-b border-slate-200 p-1.5 text-center text-[10px] min-w-[38px] font-mono ${dayInfo.isToday ? 'bg-[#FDFBF7] text-[#9A783E] font-semibold' : 'text-slate-400'}`}>
+                      <th key={i} className={`sticky top-0 z-10 border-b border-slate-200 p-1.5 text-center text-[10px] min-w-[38px] font-mono ${dayInfo.isToday ? 'bg-[#FDFBF7] text-[#9A783E] font-semibold' : 'bg-slate-50 text-slate-400'}`}>
                         <div>{dayInfo.weekday}</div>
                         <div className={`text-xs font-semibold mt-0.5 ${dayInfo.isToday ? 'border-b border-[#B89251] pb-0.5' : ''}`}>{dayInfo.dayNum}</div>
                       </th>
@@ -268,6 +295,7 @@ export const TimelineGrid = React.memo(
                           booking={booking}
                           span={span}
                           isCheckIn={false}
+                          isHighlighted={false}
                           getBookingStyle={getBookingStyle}
                           activeTooltip={activeTooltip}
                           setActiveTooltip={setActiveTooltip}
@@ -281,6 +309,12 @@ export const TimelineGrid = React.memo(
                       dIdx += span
                     } else {
                       const isDraftCheckIn = timelineSelection && timelineSelection.roomId === room.id && dayInfo.time === checkInTime
+                      const range = selectionRanges[room.id]
+                      const isHighlighted = !!(
+                        range &&
+                        dayInfo.time >= range.start &&
+                        dayInfo.time <= range.end
+                      )
                       cells.push(
                         <TimelineCell
                           key={dIdx}
@@ -291,6 +325,7 @@ export const TimelineGrid = React.memo(
                           booking={null}
                           span={1}
                           isCheckIn={!!isDraftCheckIn}
+                          isHighlighted={isHighlighted}
                           getBookingStyle={getBookingStyle}
                           activeTooltip={activeTooltip}
                           setActiveTooltip={setActiveTooltip}
@@ -352,6 +387,7 @@ export const TimelineGrid = React.memo(
                           booking={booking}
                           span={span}
                           isCheckIn={false}
+                          isHighlighted={false}
                           getBookingStyle={(b) => {
                             if (b.status === 'blocked') return 'bg-slate-100 text-slate-400 border-slate-200 line-through'
                             if (b.status === 'pending') return 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
@@ -369,6 +405,12 @@ export const TimelineGrid = React.memo(
                       dIdx += span
                     } else {
                       const isDraftCheckIn = timelineSelection && timelineSelection.venueId === venue.id && dayInfo.time === checkInTime
+                      const range = selectionRanges[venue.id]
+                      const isHighlighted = !!(
+                        range &&
+                        dayInfo.time >= range.start &&
+                        dayInfo.time <= range.end
+                      )
                       cells.push(
                         <TimelineCell
                           key={dIdx}
@@ -379,6 +421,7 @@ export const TimelineGrid = React.memo(
                           booking={null}
                           span={1}
                           isCheckIn={!!isDraftCheckIn}
+                          isHighlighted={isHighlighted}
                           getBookingStyle={getBookingStyle}
                           activeTooltip={activeTooltip}
                           setActiveTooltip={setActiveTooltip}

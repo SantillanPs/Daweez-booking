@@ -1,7 +1,7 @@
 import React from 'react'
 import { Booking, Room, Venue } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
-import { X, Users, AlertCircle } from 'lucide-react'
+import { X, Users, AlertCircle, Mail, Printer } from 'lucide-react'
 
 interface ExtendStayModalProps {
   booking: Booking
@@ -119,6 +119,7 @@ export function ExtendStayModal({
                           checkOut: extendCheckoutDate,
                           guestEmail: booking.guest_email,
                           breakfastOrders: booking.breakfast_orders,
+                          companions: booking.companions,
                           bookingsList: bookings
                         }).balanceDue.toLocaleString()
                       } catch {
@@ -129,6 +130,29 @@ export function ExtendStayModal({
                 </div>
               </div>
             )}
+
+            <div className="border-t border-slate-100 pt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  alert("This feature is under development.")
+                }}
+                className="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-[10px] font-bold py-1.5 px-2 rounded flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none"
+              >
+                <Mail className="w-3.5 h-3.5 text-[#B89251]" />
+                Email Invoice
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  alert("This feature is under development.")
+                }}
+                className="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-[10px] font-bold py-1.5 px-2 rounded flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none"
+              >
+                <Printer className="w-3.5 h-3.5 text-[#B89251]" />
+                Print Invoice
+              </button>
+            </div>
 
             <div className="flex gap-2 pt-2">
               <button type="button" onClick={onClose}

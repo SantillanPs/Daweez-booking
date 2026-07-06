@@ -43,6 +43,12 @@ export interface EquipmentRental {
   smallTableCount: number // ₱100
   chairCount: number     // ₱15
   mineralWaterCount: number // ₱35
+  extraFoamCount?: number // ₱200
+  extraPillowCount?: number // ₱50
+  extraBlanketCount?: number // ₱50
+  extraTowelCount?: number // ₱50
+  tableCount?: number     // ₱150
+  tentCount?: number      // ₱500
 }
 
 export interface EventAddons {

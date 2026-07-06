@@ -1,29 +1,26 @@
 import React, { useState } from 'react'
-import { Coffee, Armchair, ChevronDown } from 'lucide-react'
+import { Armchair, ChevronDown } from 'lucide-react'
 
 interface AmenitiesFormProps {
   hasRooms: boolean
   hasVenues: boolean
   hasAddons: boolean
-  estBreakfast: number
   estRentals: number
   estAddons: number
-  formBreakfastQty: Record<string, number>
-  setFormBreakfastQty: React.Dispatch<React.SetStateAction<Record<string, number>>>
-  formBigTable: number
-  setFormBigTable: (val: number) => void
-  formSmallTable: number
-  setFormSmallTable: (val: number) => void
   formChairs: number
   setFormChairs: (val: number) => void
-  formWater: number
-  setFormWater: (val: number) => void
-  formBand: boolean
-  setFormBand: (val: boolean) => void
-  formStage: boolean
-  setFormStage: (val: boolean) => void
-  formLedWall: boolean
-  setFormLedWall: (val: boolean) => void
+  formExtraFoam: number
+  setFormExtraFoam: (val: number) => void
+  formExtraPillow: number
+  setFormExtraPillow: (val: number) => void
+  formExtraBlanket: number
+  setFormExtraBlanket: (val: number) => void
+  formExtraTowel: number
+  setFormExtraTowel: (val: number) => void
+  formEventTable: number
+  setFormEventTable: (val: number) => void
+  formEventTent: number
+  setFormEventTent: (val: number) => void
 }
 
 export const AmenitiesForm = React.memo(
@@ -31,27 +28,23 @@ export const AmenitiesForm = React.memo(
     hasRooms,
     hasVenues,
     hasAddons,
-    estBreakfast,
     estRentals,
     estAddons,
-    formBreakfastQty,
-    setFormBreakfastQty,
-    formBigTable,
-    setFormBigTable,
-    formSmallTable,
-    setFormSmallTable,
     formChairs,
     setFormChairs,
-    formWater,
-    setFormWater,
-    formBand,
-    setFormBand,
-    formStage,
-    setFormStage,
-    formLedWall,
-    setFormLedWall
+    formExtraFoam,
+    setFormExtraFoam,
+    formExtraPillow,
+    setFormExtraPillow,
+    formExtraBlanket,
+    setFormExtraBlanket,
+    formExtraTowel,
+    setFormExtraTowel,
+    formEventTable,
+    setFormEventTable,
+    formEventTent,
+    setFormEventTent
   }: AmenitiesFormProps) => {
-    const [showBreakfast, setShowBreakfast] = useState(true)
     const [showVenueAddons, setShowVenueAddons] = useState(true)
 
     // Counter Component
@@ -81,120 +74,79 @@ export const AmenitiesForm = React.memo(
           <span>3. Amenities &amp; Services</span>
           {hasAddons && (
             <span className="bg-[#FDFBF7] border border-[#E5D5C0] text-[#9A783E] text-[9px] font-bold px-2 py-0.5 rounded animate-fade-in normal-case tracking-normal">
-              +₱{(estBreakfast + estRentals + estAddons).toLocaleString()}
+              +₱{(estRentals + estAddons).toLocaleString()}
             </span>
           )}
         </h4>
-        
-        {/* Breakfast Section */}
+
+        {/* Room Extras & Amenities Section */}
         {hasRooms && (
           <div className="space-y-3">
-            <button 
-              type="button" 
-              onClick={() => setShowBreakfast(!showBreakfast)}
-              className="flex items-center justify-between w-full text-[10px] text-slate-500 font-semibold uppercase tracking-wider hover:text-slate-700 transition-colors py-1 cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5 font-bold">
-                <Coffee className="w-3.5 h-3.5 text-[#B89251]" /> Breakfast Orders
-              </span>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showBreakfast ? 'rotate-180' : ''}`} />
-            </button>
-
-            {showBreakfast && (
-              <div className="space-y-2 pt-1 animate-in slide-in-from-top-1 duration-150">
-                {Object.keys(formBreakfastQty).map(meal => (
-                  <div key={meal} className="flex items-center justify-between bg-slate-50/60 px-3 py-1.5 rounded border border-slate-100">
-                    <div>
-                      <span className="text-xs font-semibold text-slate-700">{meal}</span>
-                      <span className="text-[10px] text-slate-400 ml-2">₱200/set</span>
-                    </div>
-                    <Counter 
-                      value={formBreakfastQty[meal]} 
-                      onChange={v => setFormBreakfastQty(p => ({ ...p, [meal]: v }))} 
-                    />
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+              Room Extras &amp; Bedding (Nightly rates)
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'Extra Foam', value: formExtraFoam, set: setFormExtraFoam, price: 200 },
+                { label: 'Extra Pillow', value: formExtraPillow, set: setFormExtraPillow, price: 50 },
+                { label: 'Extra Blanket', value: formExtraBlanket, set: setFormExtraBlanket, price: 50 },
+                { label: 'Extra Towel', value: formExtraTowel, set: setFormExtraTowel, price: 50 },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between bg-[#FDFBF7] px-3 py-1.5 rounded border border-[#E5D5C0]/65">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-700">{item.label}</span>
+                    <span className="text-[10px] text-slate-400 ml-1.5 font-mono">₱{item.price}/night</span>
                   </div>
-                ))}
-              </div>
-            )}
+                  <Counter value={item.value} onChange={item.set} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Venue Equipment & Add-ons Section */}
-        {hasVenues && (
-          <div className="space-y-3 pt-2 border-t border-slate-100">
-            <button 
-              type="button" 
-              onClick={() => setShowVenueAddons(!showVenueAddons)}
-              className="flex items-center justify-between w-full text-[10px] text-slate-500 font-semibold uppercase tracking-wider hover:text-slate-700 transition-colors py-1 cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5 font-bold">
-                <Armchair className="w-3.5 h-3.5 text-[#B89251]" /> Equipment &amp; Event Add-ons
-              </span>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showVenueAddons ? 'rotate-180' : ''}`} />
-            </button>
+        {/* Divider if both exist */}
+        {hasRooms && hasVenues && <div className="border-t border-slate-100 my-4" />}
 
-            {showVenueAddons && (
-              <div className="space-y-3.5 pt-1 animate-in slide-in-from-top-1 duration-150">
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { label: 'Big Table', value: formBigTable, set: setFormBigTable, price: 150 },
-                    { label: 'Small Table', value: formSmallTable, set: setFormSmallTable, price: 100 },
-                    { label: 'Chairs', value: formChairs, set: setFormChairs, price: 15 },
-                    { label: 'Water Pot', value: formWater, set: setFormWater, price: 35 },
-                  ].map(item => (
-                    <div key={item.label} className="flex items-center justify-between bg-slate-50/60 px-3 py-1.5 rounded border border-slate-100">
-                      <div>
-                        <span className="text-xs font-semibold text-slate-700">{item.label}</span>
-                        <span className="text-[10px] text-slate-400 ml-1.5 font-mono">₱{item.price}</span>
-                      </div>
-                      <Counter value={item.value} onChange={item.set} />
-                    </div>
-                  ))}
+        {/* Venue Equipment Section */}
+        {hasVenues && (
+          <div className="space-y-3">
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+              Venue Equipment &amp; Rentals (Flat rates)
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'Table', value: formEventTable, set: setFormEventTable, price: 150 },
+                { label: 'Tent', value: formEventTent, set: setFormEventTent, price: 500 },
+                { label: 'Chairs', value: formChairs, set: setFormChairs, price: 15 },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between bg-slate-50/60 px-3 py-1.5 rounded border border-slate-100">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-700">{item.label}</span>
+                    <span className="text-[10px] text-slate-400 ml-1.5 font-mono">₱{item.price}</span>
+                  </div>
+                  <Counter value={item.value} onChange={item.set} />
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-2 pt-2 border-t border-slate-100 text-xs">
-                  {[
-                    { label: 'Band & Lights', price: '₱2k', checked: formBand, set: setFormBand },
-                    { label: 'Stage setup', price: '₱2k', checked: formStage, set: setFormStage },
-                    { label: 'LED Wall 9x12', price: '₱5k', checked: formLedWall, set: setFormLedWall },
-                  ].map(item => (
-                    <label key={item.label} className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-semibold select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={item.checked} 
-                        onChange={e => item.set(e.target.checked)} 
-                        className="accent-[#B89251] rounded cursor-pointer" 
-                      />
-                      <span>{item.label}</span> 
-                      <span className="text-[10px] text-slate-400 font-mono">({item.price})</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         )}
       </div>
     )
   },
   (prevProps, nextProps) => {
-    const breakfastQtyEqual = Object.keys(prevProps.formBreakfastQty).every(
-      k => prevProps.formBreakfastQty[k] === nextProps.formBreakfastQty[k]
-    )
     return (
       prevProps.hasRooms === nextProps.hasRooms &&
       prevProps.hasVenues === nextProps.hasVenues &&
       prevProps.hasAddons === nextProps.hasAddons &&
-      prevProps.estBreakfast === nextProps.estBreakfast &&
       prevProps.estRentals === nextProps.estRentals &&
       prevProps.estAddons === nextProps.estAddons &&
-      prevProps.formBigTable === nextProps.formBigTable &&
-      prevProps.formSmallTable === nextProps.formSmallTable &&
       prevProps.formChairs === nextProps.formChairs &&
-      prevProps.formWater === nextProps.formWater &&
-      prevProps.formBand === nextProps.formBand &&
-      prevProps.formStage === nextProps.formStage &&
-      prevProps.formLedWall === nextProps.formLedWall &&
-      breakfastQtyEqual
+      prevProps.formExtraFoam === nextProps.formExtraFoam &&
+      prevProps.formExtraPillow === nextProps.formExtraPillow &&
+      prevProps.formExtraBlanket === nextProps.formExtraBlanket &&
+      prevProps.formExtraTowel === nextProps.formExtraTowel &&
+      prevProps.formEventTable === nextProps.formEventTable &&
+      prevProps.formEventTent === nextProps.formEventTent
     )
   }
 )

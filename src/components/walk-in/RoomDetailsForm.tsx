@@ -14,6 +14,7 @@ interface RoomDetailsFormProps {
   setFormCompanions: (val: Companion[]) => void
   showCompanions: boolean
   setShowCompanions: (val: boolean) => void
+  hasRooms: boolean
 }
 
 export const RoomDetailsForm = React.memo(
@@ -28,7 +29,8 @@ export const RoomDetailsForm = React.memo(
     formCompanions,
     setFormCompanions,
     showCompanions,
-    setShowCompanions
+    setShowCompanions,
+    hasRooms
   }: RoomDetailsFormProps) => {
     if (formStatus === 'blocked') {
       return (
@@ -163,6 +165,8 @@ export const RoomDetailsForm = React.memo(
               </div>
             )}
           </div>
+
+          {/* Breakfast is always included for room bookings — no opt-in needed */}
         </div>
       </div>
     )
@@ -177,6 +181,8 @@ export const RoomDetailsForm = React.memo(
       prevProps.formGuestEmail === nextProps.formGuestEmail &&
       prevProps.formGuestPhone === nextProps.formGuestPhone &&
       prevProps.showCompanions === nextProps.showCompanions &&
+
+      prevProps.hasRooms === nextProps.hasRooms &&
       compsEqual
     )
   }
