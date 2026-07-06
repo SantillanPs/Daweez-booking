@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This directory contains the React + TypeScript frontend codebase for the Daweez Pension House property management system (PMS) staff dashboard. The guest booking portal has been removed.
+This directory contains the React + TypeScript frontend codebase for the Daweez Pension House property management system (PMS) staff dashboard and the guest-facing direct reservation portal.
 
 ## Ownership
 
@@ -13,15 +13,16 @@ This directory contains the React + TypeScript frontend codebase for the Daweez 
 
 - **State Management & Routing**: Uses React state coupled with `@tanstack/react-query` to handle fetching, caching, and mutating, `@tanstack/react-router` for view-tab routing and layout hierarchies, and `@tanstack/react-table` for sortable, searchable data grids. Booking data is synchronized instantly over a WebSocket using a Supabase Realtime subscription via `useRealtimeBookings.ts` to replace high-frequency polling.
 - **Core Components & Router Tree**:
-  - [router.tsx](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/router.tsx) - Sets up routes (`/login`, `/`, `/calendar`, `/bookings`, `/guests`, `/settings`) and runs auth redirects.
+  - [router.tsx](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/router.tsx) - Sets up routes (`/login`, `/reserve`, `/`, `/calendar`, `/bookings`, `/guests`, `/settings`, `/analytics`) and handles redirects.
+  - [PublicReservePortal](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/PublicReservePortal.tsx) - Guest-facing reservation page with live availability checking, 20% discount pricing, and GCash downpayment submission.
   - [DashboardLayout](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/DashboardLayout.tsx) - Responsive PMS layout shell (header, inline statistics bar, desktop/mobile bottom tabs, context provider).
-  - [CalendarTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/CalendarTab.tsx) - Orchestrates the scheduling timeline grid layout and Group Selection Mode, delegating rendering to modular subcomponents in `src/components/calendar/` (`TimelineGrid`, `ExtendStayModal`).
+  - [CalendarTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/CalendarTab.tsx) - Orchestrates the scheduling timeline grid layout, delegating rendering to subcomponents (`TimelineGrid`, `ExtendStayModal`).
   - [BookingsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/BookingsTab.tsx) - Headless table view for pending/confirmed reservations with sortable columns.
-  - [GuestsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/GuestsTab.tsx) - Headless table view for guest list records, loyalty visits, and search text-filtering.
+  - [GuestsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/GuestsTab.tsx) - Headless table view for guest list records.
   - [SettingsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/SettingsTab.tsx) - Settings panel for OTA iCal URLs export & import feeds.
-  - [WalkInBookingForm](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/WalkInBookingForm.tsx) - Orchestrates the progressive walk‑in booking wizard, allowing concurrent booking of multiple rooms and event venues in a single transaction with automatic rollback error-handling, and delegating step fields and receipt estimation to modular subcomponents in `src/components/walk-in/` (`GuestDetailsForm`, `RoomDetailsForm`, `AmenitiesForm`, `BillingSummary`).
-  - [LoginPortal](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/LoginPortal.tsx) - Staff passcode validation gate component ensuring only authorized users can access the dashboard.
-  - [MainLayout](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/MainLayout.tsx) - Minimal wrapper providing the base page structure (no decorative elements).
+  - [WalkInBookingForm](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/WalkInBookingForm.tsx) - Orchestrates the progressive walk‑in booking wizard.
+  - [LoginPortal](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/LoginPortal.tsx) - Staff passcode validation gate component.
+  - [MainLayout](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/MainLayout.tsx) - Wrapper providing basic container styling.
 - **Data Operations**:
   - [syncEngine.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/syncEngine.ts) implements client-side calculations, pricing policy rules (10% loyalty discount, 50% reservation deposit, flat ₱500 security deposit), collision detection logic (`isRoomAvailable`, `isVenueRangeAvailable`), and local storage fallback synchronization when Supabase is unconfigured.
   - [useBookings.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/hooks/useBookings.ts) custom React hook orchestrating all React Query operations.
