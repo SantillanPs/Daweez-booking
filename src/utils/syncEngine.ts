@@ -6,6 +6,17 @@ export function generateUUID(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
 }
 
+// Helper: Normalize Venue ID
+export function normalizeVenueId(vid: string | undefined | null): string | undefined {
+  if (!vid) return undefined
+  if (vid.startsWith('venue-')) return vid
+  const lower = vid.toLowerCase()
+  if (lower.includes('vacation')) return 'venue-vacation'
+  if (lower.includes('garden')) return 'venue-garden'
+  if (lower.includes('gazebo')) return 'venue-gazebo'
+  return vid
+}
+
 // 1. Initial Prepopulated Rooms List (Philippine Peso PMS Rates)
 export const DEFAULT_ROOMS: Room[] = [
   {
@@ -473,7 +484,7 @@ export function isVenueRangeAvailable(venueId: string, checkInStr: string, check
   if (checkIn >= checkOut) return false
 
   return !bookingsList.some(booking => {
-    if (booking.venue_id !== venueId) return false
+    if (normalizeVenueId(booking.venue_id) !== normalizeVenueId(venueId)) return false
     if (booking.id === skipBookingId) return false
 
     const bStart = new Date(booking.check_in)
@@ -514,7 +525,7 @@ export function calculatePricing(params: {
     basePrice = Math.round(basePrice * rateMultiplier)
     nights = Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
   } else if (venueId) {
-    const venue = DEFAULT_VENUES.find(v => v.id === venueId)
+    const venue = DEFAULT_VENUES.find(v => v.id === normalizeVenueId(venueId))
     basePrice = venue ? venue.base_price : 0
     basePrice = Math.round(basePrice * rateMultiplier)
     nights = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))

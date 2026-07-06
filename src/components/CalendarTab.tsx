@@ -91,7 +91,7 @@ export function CalendarTab() {
   const bookingByRoomAndDate = useMemo(() => {
     const map: Record<string, Booking> = {}
     bookings.forEach(b => {
-      const keyId = b.room_id || b.venue_id
+      const keyId = b.room_id || syncEngine.normalizeVenueId(b.venue_id)
       if (keyId) {
         const start = parseUTCDate(b.check_in)
         const current = new Date(start)
