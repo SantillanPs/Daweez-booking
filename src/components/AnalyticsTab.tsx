@@ -236,18 +236,16 @@ export function AnalyticsTab() {
             totalPensionRentals += nightlyRentals
             roomNightsBooked++
           } else if (b.venue_id) {
-            const venue = venues.find(v => v.id === b.venue_id)
-            if (venue) {
-              if (venue.name === 'Vacation House') {
-                category = 'vacationHouse'
-                totalVacationHouse += nightlyTotal
-              } else if (venue.name === 'Garden Area') {
-                category = 'gardenArea'
-                totalGardenArea += nightlyTotal
-              } else if (venue.name === 'Gazebo') {
-                category = 'gazebo'
-                totalGazebo += nightlyTotal
-              }
+            const vid = b.venue_id.toLowerCase()
+            if (vid.includes('vacation')) {
+              category = 'vacationHouse'
+              totalVacationHouse += nightlyTotal
+            } else if (vid.includes('garden')) {
+              category = 'gardenArea'
+              totalGardenArea += nightlyTotal
+            } else if (vid.includes('gazebo')) {
+              category = 'gazebo'
+              totalGazebo += nightlyTotal
             }
           }
 
@@ -397,76 +395,80 @@ export function AnalyticsTab() {
         </div>
       </div>
 
-      {/* Statistics Cards Grid */}
+      {/* Main Income Breakdown Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Gross Sales */}
-        <div className="bg-[#FDFBF7]/80 backdrop-blur-sm border border-[#E5D5C0] rounded-xl p-4 flex flex-col justify-between">
+        {/* Card 1: Pension Income */}
+        <div className="bg-[#FDFBF7]/85 border-2 border-[#E5D5C0] rounded-xl p-4 flex flex-col justify-between shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-semibold text-[#9A783E] uppercase tracking-wider">Gross Sales</span>
-            <DollarSign className="w-4 h-4 text-[#B89251]" />
-          </div>
-          <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-bold text-slate-900">₱{calculations.totalRevenue.toLocaleString()}</h3>
-            <p className="text-[10px] text-slate-400 mt-1">Confirmed + Add-ons</p>
-          </div>
-        </div>
-
-        {/* Card 2: Pension Sales */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Pension (Rms 1-10)</span>
+            <span className="text-[10px] sm:text-xs font-bold text-[#9A783E] uppercase tracking-wider">Pension (Rms 1-10)</span>
             <Home className="w-4 h-4 text-[#B89251]" />
           </div>
           <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-bold text-slate-900">₱{calculations.totalPension.toLocaleString()}</h3>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">₱{calculations.totalPension.toLocaleString()}</h3>
             <p className="text-[10px] text-slate-400 mt-1">
-              Base: ₱{calculations.totalPensionBase.toLocaleString()} | Bf: ₱{calculations.totalPensionBreakfast.toLocaleString()}
+              Base: ₱{calculations.totalPensionBase.toLocaleString()} | Breakfast: ₱{calculations.totalPensionBreakfast.toLocaleString()}
             </p>
           </div>
         </div>
 
-        {/* Card 3: Venue Sales */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
+        {/* Card 2: Vacation House Income */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Venue Rentals</span>
-            <TrendingUp className="w-4 h-4 text-slate-400" />
+            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Vacation House</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#4A90E2]"></span>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-bold text-slate-900">
-              ₱{(calculations.totalVacationHouse + calculations.totalGardenArea + calculations.totalGazebo).toLocaleString()}
-            </h3>
-            <p className="text-[10px] text-slate-400 mt-1">
-              VH: ₱{calculations.totalVacationHouse.toLocaleString()} | Gdns: ₱{calculations.totalGardenArea.toLocaleString()}
-            </p>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">₱{calculations.totalVacationHouse.toLocaleString()}</h3>
+            <p className="text-[10px] text-slate-400 mt-1">Property Rental + Add-ons</p>
           </div>
         </div>
 
-        {/* Card 4: Addons & Extras */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
+        {/* Card 3: Garden Area Income */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Add-ons & Rentals</span>
-            <Sparkles className="w-4 h-4 text-amber-500" />
+            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Garden Area</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#2ECC71]"></span>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-bold text-slate-900">₱{calculations.totalAddonsRentals.toLocaleString()}</h3>
-            <p className="text-[10px] text-slate-400 mt-1">Foams, Pillows, bands, LED</p>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">₱{calculations.totalGardenArea.toLocaleString()}</h3>
+            <p className="text-[10px] text-slate-400 mt-1">Event Venue + Equipment</p>
+          </div>
+        </div>
+
+        {/* Card 4: Gazebo Income */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Gazebo</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#F39C12]"></span>
+          </div>
+          <div className="mt-3">
+            <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">₱{calculations.totalGazebo.toLocaleString()}</h3>
+            <p className="text-[10px] text-slate-400 mt-1">Event Venue + Equipment</p>
           </div>
         </div>
       </div>
 
-      {/* Sub-KPI stats (ADR, Occupancy, RevPAR) */}
-      <div className="grid grid-cols-3 gap-4 bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-center">
-        <div>
-          <span className="text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Occupancy Rate</span>
-          <p className="text-sm sm:text-base font-bold text-slate-800 mt-0.5">{calculations.roomOccupancyRate}%</p>
+      {/* Summary KPI Banner */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+        <div className="col-span-2 md:col-span-1 border-b md:border-b-0 md:border-r border-slate-200 pb-3 md:pb-0 text-left md:text-center">
+          <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold block">Gross Sales (Total)</span>
+          <p className="text-base sm:text-lg font-black text-[#B89251] mt-0.5">₱{calculations.totalRevenue.toLocaleString()}</p>
         </div>
-        <div className="border-x border-slate-200">
-          <span className="text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-wider font-semibold">ADR (Rooms)</span>
-          <p className="text-sm sm:text-base font-bold text-slate-800 mt-0.5">₱{calculations.adr.toLocaleString()}</p>
+        <div className="border-b md:border-b-0 md:border-r border-slate-200 pb-3 md:pb-0">
+          <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold block">Add-ons & Rentals</span>
+          <p className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">₱{calculations.totalAddonsRentals.toLocaleString()}</p>
+        </div>
+        <div className="border-r border-slate-200">
+          <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold block">Occupancy Rate</span>
+          <p className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">{calculations.roomOccupancyRate}%</p>
+        </div>
+        <div className="border-r border-slate-200">
+          <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold block">ADR (Rooms)</span>
+          <p className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">₱{calculations.adr.toLocaleString()}</p>
         </div>
         <div>
-          <span className="text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-wider font-semibold">RevPAR</span>
-          <p className="text-sm sm:text-base font-bold text-slate-800 mt-0.5">₱{calculations.revpar.toLocaleString()}</p>
+          <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold block">RevPAR</span>
+          <p className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">₱{calculations.revpar.toLocaleString()}</p>
         </div>
       </div>
 
