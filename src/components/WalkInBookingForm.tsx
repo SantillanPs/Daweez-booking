@@ -697,16 +697,18 @@ export function WalkInBookingForm({
                               : (venues.find(v => v.id === id)?.base_price || 0)
                             
                             return (
-                              <div key={id} className="bg-[#FDFBF7] border border-[#E5D5C0] rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm animate-in fade-in">
+                              <div key={id} className="bg-[#FDFBF7] border border-[#E5D5C0] rounded-md px-2 py-1 flex items-center gap-1.5 shadow-sm text-[11px] animate-in fade-in select-none">
                                 <span className="font-bold text-slate-700">{name}</span>
-                                <span className="text-[10px] text-slate-400">|</span>
+                                <span className="text-slate-300">|</span>
                                 {contractedPrice !== undefined && contractedPrice !== null ? (
-                                  <span className="text-xs font-extrabold text-[#9A783E]">
-                                    ₱{contractedPrice.toLocaleString()} <span className="text-[8px] text-slate-400 font-normal">(Negotiated Rate)</span>
+                                  <span className="font-extrabold text-[#9A783E] flex items-center gap-1">
+                                    ₱{contractedPrice.toLocaleString()}
+                                    <span className="text-[8px] text-[#9A783E] font-bold bg-[#9A783E]/10 px-1 py-0.5 rounded uppercase">Neg</span>
                                   </span>
                                 ) : (
-                                  <span className="text-xs font-semibold text-slate-500">
-                                    ₱{basePrice.toLocaleString()} <span className="text-[8px] text-slate-400 font-normal">(Standard Rate)</span>
+                                  <span className="font-semibold text-slate-500 flex items-center gap-1">
+                                    ₱{basePrice.toLocaleString()}
+                                    <span className="text-[8px] text-slate-400 font-bold bg-slate-100 px-1 py-0.5 rounded uppercase">Std</span>
                                   </span>
                                 )}
                               </div>
