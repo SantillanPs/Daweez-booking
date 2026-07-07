@@ -121,8 +121,8 @@ export const BillingSummary = React.memo(
             
             <div className="space-y-2 text-slate-600 font-medium">
               <div className="flex justify-between">
-                <span>Selected Units:</span>
-                <span className="font-mono text-slate-800 font-semibold">{unitCount} unit{unitCount > 1 ? 's' : ''}</span>
+                <span>Selected Rooms:</span>
+                <span className="font-mono text-slate-800 font-semibold">{unitCount} room{unitCount > 1 ? 's' : ''}</span>
               </div>
               
               {hasRooms && (
@@ -229,7 +229,7 @@ export const BillingSummary = React.memo(
                 <span className="font-mono text-[#9A783E] font-extrabold">₱{estDue.toLocaleString()}</span>
               </div>
               <div className="text-[9px] text-slate-400 text-center pt-2 italic leading-normal font-sans">
-                Includes ₱{(unitCount * 500).toLocaleString()} refundable security deposit (₱500/unit)
+                Includes ₱{(unitCount * 500).toLocaleString()} refundable security deposit (₱500/room)
               </div>
               
               <div className="border-t border-[#E5D5C0] pt-3 flex gap-2">

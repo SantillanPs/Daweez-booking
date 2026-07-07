@@ -681,9 +681,9 @@ export function WalkInBookingForm({
                         </div>
                       </div>
 
-                      {/* 3. Selected Units Display (Read-Only) */}
+                      {/* 3. Selected Rooms Display (Read-Only) */}
                       <div>
-                        <label className="text-[10px] text-[#9A783E] font-bold block mb-1.5 uppercase tracking-wider">Selected Units</label>
+                        <label className="text-[10px] text-[#9A783E] font-bold block mb-1.5 uppercase tracking-wider">Selected Rooms</label>
                         <div className="flex flex-wrap gap-2.5">
                           {Object.entries(unitSelections).map(([id, sel]) => {
                             const isRoom = sel.type === 'room'
