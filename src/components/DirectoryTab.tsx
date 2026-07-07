@@ -236,6 +236,9 @@ export function DirectoryTab() {
                 <Plus className="w-3.5 h-3.5" />
                 Add Partner Preset
               </button>
+            )}
+          </div>
+
           <div className="p-4">
             {isAdding ? (
               <form onSubmit={handleSavePartner} className="space-y-4 w-full max-w-5xl">
