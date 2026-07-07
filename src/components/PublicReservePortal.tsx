@@ -296,10 +296,9 @@ export function PublicReservePortal() {
                     <div className="text-center py-6 text-xs text-slate-400">Verifying availability calendars...</div>
                   ) : availableRooms.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {availableRooms.map(room => (
-                        {
-                          const isAvailable = roomAvailability[room.id]
-                          return (
+                      {availableRooms.map(room => {
+                        const isAvailable = roomAvailability[room.id]
+                        return (
                             <div key={room.id} className={`bg-white border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-all group ${isAvailable ? 'hover:border-[#B89251] border-slate-200/80' : 'opacity-70 grayscale-[20%] border-slate-200'}`}>
                               <div className="h-44 overflow-hidden relative">
                                 <img src={room.image_url} alt={room.name} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-350" />
@@ -351,7 +350,7 @@ export function PublicReservePortal() {
                             </div>
                           )
                         }
-                      ))}
+                      })}
                     </div>
                   ) : (
                     <div className="bg-slate-50 border border-slate-200/50 p-6 rounded-2xl text-center text-xs text-slate-400">
