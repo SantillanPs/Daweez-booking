@@ -648,7 +648,7 @@ export function calculatePricing(params: {
   }
 
   // F. Balance & Deposit Sums
-  const securityDeposit = 500 // Flat rate
+  const securityDeposit = 0
   const calculatedGrand = grandTotal + breakfastTotal + rentalsTotal + addonsTotal
   const downpayment = Math.round(calculatedGrand * 0.50) // 50% reservation policy
   const balanceDue = (calculatedGrand - downpayment) + securityDeposit

@@ -366,10 +366,6 @@ export function PrintInvoiceModal({
                 <span>Add-ons / rentals:</span>
                 <span className="font-mono">₱{(pricing.breakfastTotal + pricing.rentalsTotal).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-slate-500">
-                <span>Refundable security deposit (₱500):</span>
-                <span className="font-mono">₱{pricing.securityDeposit.toLocaleString()}</span>
-              </div>
               <div className="flex justify-between text-slate-900 border-t border-slate-100 pt-2 font-bold">
                 <span>Grand Total Statement:</span>
                 <span className="font-mono text-[13px] text-slate-950 font-extrabold">₱{pricing.grandTotal.toLocaleString()}</span>

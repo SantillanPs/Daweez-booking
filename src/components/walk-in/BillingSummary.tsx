@@ -213,17 +213,9 @@ export const BillingSummary = React.memo(
                   <span className="font-mono">-₱{additionalAmount.toLocaleString()}</span>
                 </div>
               )}
-              <div className="flex justify-between text-slate-600 font-semibold text-xs border-t border-dashed border-[#E5D5C0]/60 pt-2">
-                <span>Subtotal:</span>
-                <span className="font-mono text-slate-800">₱{estTotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-slate-650 font-medium text-xs">
-                <span>Refundable Security Deposit:</span>
-                <span className="font-mono text-slate-800">₱{(unitCount * 500).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-slate-900 font-extrabold text-xs border-t border-[#E5D5C0]/60 pt-2">
+              <div className="flex justify-between text-slate-800 font-extrabold text-xs border-t border-dashed border-[#E5D5C0]/60 pt-2">
                 <span>Grand Total:</span>
-                <span className="font-mono text-slate-950">₱{(estTotal + unitCount * 500).toLocaleString()}</span>
+                <span className="font-mono text-slate-900">₱{estTotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-slate-800 font-bold text-xs border-t border-dashed border-[#E5D5C0]/60 pt-2">
                 <span>Downpayment (50%):</span>
@@ -232,9 +224,6 @@ export const BillingSummary = React.memo(
               <div className="flex justify-between text-slate-800 font-bold text-xs">
                 <span>Due at Check-in:</span>
                 <span className="font-mono text-[#9A783E] font-extrabold">₱{estDue.toLocaleString()}</span>
-              </div>
-              <div className="text-[9px] text-slate-400 text-center pt-2 italic leading-normal font-sans">
-                Includes ₱{(unitCount * 500).toLocaleString()} refundable security deposit (₱500/room)
               </div>
 
               <div className="border-t border-[#E5D5C0] pt-3 flex gap-2">
