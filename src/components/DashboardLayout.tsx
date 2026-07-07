@@ -10,7 +10,7 @@ import {
 const TABS = [
   { id: 'calendar',  label: 'Calendar',  Icon: Calendar, to: '/calendar' },
   { id: 'bookings',  label: 'Bookings',  Icon: ClipboardCheck, to: '/bookings' },
-  { id: 'guests',    label: 'Guests',    Icon: Users, to: '/guests' },
+  { id: 'guests',    label: 'Guests & Partners', Icon: Users, to: '/guests' },
   { id: 'analytics', label: 'Analytics', Icon: BarChart3, to: '/analytics' },
   { id: 'settings',  label: 'Settings',  Icon: Settings, to: '/settings' },
 ]
@@ -19,9 +19,10 @@ export function DashboardLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const {
-    rooms, venues, bookings, feeds,
+    rooms, venues, bookings, feeds, partnerDeals,
     confirmBooking, cancelBooking, createManualBooking,
-    triggerOTASync, updateFeedUrls, isLoading, isConfirmingBooking
+    triggerOTASync, updateFeedUrls, isLoading, isConfirmingBooking,
+    createPartnerDeal, savePartnerDeals, deletePartnerDeal
   } = useBookings()
 
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('')
@@ -58,10 +59,10 @@ export function DashboardLayout() {
 
   return (
     <DashboardDataContext.Provider value={{
-      rooms, venues, bookings, feeds, isLoading,
+      rooms, venues, bookings, feeds, partnerDeals, isLoading,
       isConfirming: isConfirmingBooking,
       confirmBooking, cancelBooking, createManualBooking,
-      triggerOTASync, updateFeedUrls, onLogout: handleLogout
+      triggerOTASync, updateFeedUrls, createPartnerDeal, savePartnerDeals, deletePartnerDeal, onLogout: handleLogout
     }}>
       <div className={isCalendarTab ? "h-screen bg-slate-50 flex flex-col overflow-hidden pb-[56px] md:pb-0" : "min-h-screen bg-slate-50 pb-20 md:pb-6"}>
         {/* Header */}

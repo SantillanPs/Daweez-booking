@@ -12,9 +12,10 @@ This directory contains the database migration schema definitions and Supabase E
 ## Local Contracts
 
 - **Database Schema**:
-  - [schema.sql](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/supabase/migrations/schema.sql) defines the tables:
+  - [schema.sql](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/supabase/migrations/schema.sql) and [01_agency_deals_and_billing.sql](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/supabase/migrations/01_agency_deals_and_billing.sql) define the tables:
     - `rooms`: Store hotel room configuration, capacity, pricing, and images.
-    - `bookings`: Active and pending customer bookings. Includes table constraints like `check_in < check_out` and status values.
+    - `bookings`: Active and pending customer bookings. Includes table constraints like `check_in < check_out`, status values, sequential invoice numbers, and corporate partner deal fields.
+    - `partner_deals`: Store corporate company, travel agency, and government contract profiles, default breakfast inclusions, default invoice styles, and room/venue rate overrides.
     - `ical_feeds`: Subscribed iCal URLs for syncing Airbnb and Booking.com channels.
 - **Row-Level Security (RLS)**:
   - Public can select `rooms`.

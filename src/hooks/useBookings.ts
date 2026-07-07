@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as syncEngine from '../utils/syncEngine'
-import { Booking, Room, Venue, SyncFeed, BookingSource, BreakfastOrder, EquipmentRental, EventAddons, Companion } from '../types/booking'
+import { Booking, Room, Venue, SyncFeed, BookingSource, BreakfastOrder, EquipmentRental, EventAddons, Companion, PartnerDeal } from '../types/booking'
 import { useRealtimeBookings } from './useRealtimeBookings'
 
 type MutationContext = { previous: Booking[] | undefined }
@@ -40,6 +40,15 @@ export function useBookings() {
     queryKey: ['feeds'],
     queryFn: async () => {
       return await syncEngine.getFeeds()
+    },
+    staleTime: Infinity,
+  })
+
+  // 4b. Fetch Partner Deals Preset List
+  const { data: partnerDeals = [], isLoading: isLoadingPartners } = useQuery<PartnerDeal[]>({
+    queryKey: ['partnerDeals'],
+    queryFn: async () => {
+      return await syncEngine.getPartnerDeals()
     },
     staleTime: Infinity,
   })
@@ -166,11 +175,14 @@ export function useBookings() {
     source: BookingSource; status: 'confirmed' | 'blocked'
     breakfastOrders?: BreakfastOrder[]; equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons; rateMultiplier?: number; companions?: Companion[]
+    partnerDealId?: string; companyName?: string; vehiclePlate?: string
+    invoiceType?: 'folio' | 'billing'; breakfastIncluded?: boolean; contractRateOverride?: number
   }, MutationContext>({
     mutationFn: async (params) => {
       const { roomId, venueId, guestName, guestEmail, guestPhone, checkIn, checkOut,
         source, status, breakfastOrders, equipmentRentals, eventAddons,
-        rateMultiplier = 1.0, companions } = params
+        rateMultiplier = 1.0, companions,
+        partnerDealId, companyName, vehiclePlate, invoiceType, breakfastIncluded, contractRateOverride } = params
 
       if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings)) {
         throw new Error('The room is already booked or blocked for these dates.')
@@ -182,7 +194,8 @@ export function useBookings() {
       const pricing = syncEngine.calculatePricing({
         roomId, venueId, checkIn, checkOut, guestEmail,
         breakfastOrders, equipmentRentals, eventAddons,
-        bookingsList: bookings, rateMultiplier, companions
+        bookingsList: bookings, rateMultiplier, companions,
+        contractRateOverride
       })
 
       const newBooking: Booking = {
@@ -194,13 +207,19 @@ export function useBookings() {
         guest_phone: guestPhone || 'None',
         check_in: checkIn, check_out: checkOut,
         source, status,
-        downpayment_paid: status === 'blocked' ? 0 : pricing.downpayment,
-        balance_due: status === 'blocked' ? 0 : pricing.balanceDue,
+        downpayment_paid: status === 'blocked' ? 0 : (partnerDealId ? 0 : pricing.downpayment),
+        balance_due: status === 'blocked' ? 0 : (partnerDealId ? (pricing.grandTotal + pricing.securityDeposit) : pricing.balanceDue),
         security_deposit: status === 'blocked' ? 0 : pricing.securityDeposit,
         breakfast_orders: breakfastOrders, equipment_rentals: equipmentRentals,
         event_addons: eventAddons, companions,
         created_at: new Date().toISOString(),
-        expires_at: null
+        expires_at: null,
+        partner_deal_id: partnerDealId,
+        company_name: companyName,
+        vehicle_plate: vehiclePlate,
+        invoice_type: invoiceType,
+        breakfast_included: !!breakfastIncluded,
+        contract_rate_override: contractRateOverride
       }
 
       // Single INSERT — no read+upsert-all round-trip
@@ -223,7 +242,13 @@ export function useBookings() {
         source: params.source, status: params.status,
         downpayment_paid: 0, balance_due: 0, security_deposit: 0,
         created_at: new Date().toISOString(),
-        expires_at: null
+        expires_at: null,
+        partner_deal_id: params.partnerDealId,
+        company_name: params.companyName,
+        vehicle_plate: params.vehiclePlate,
+        invoice_type: params.invoiceType,
+        breakfast_included: !!params.breakfastIncluded,
+        contract_rate_override: params.contractRateOverride
       }
       queryClient.setQueryData<Booking[]>(['bookings'], old => [...(old ?? []), optimistic])
       return { previous }
@@ -264,12 +289,43 @@ export function useBookings() {
     }
   })
 
+  // 11. Mutation: Create Partner Deal
+  const createPartnerDealMutation = useMutation({
+    mutationFn: async (deal: PartnerDeal) => {
+      await syncEngine.insertPartnerDeal(deal)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partnerDeals'] })
+    }
+  })
+
+  // 12. Mutation: Save Partner Deals
+  const savePartnerDealsMutation = useMutation({
+    mutationFn: async (deals: PartnerDeal[]) => {
+      await syncEngine.savePartnerDeals(deals)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partnerDeals'] })
+    }
+  })
+
+  // 13. Mutation: Delete Partner Deal
+  const deletePartnerDealMutation = useMutation({
+    mutationFn: async (dealId: string) => {
+      await syncEngine.deletePartnerDeal(dealId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partnerDeals'] })
+    }
+  })
+
   return {
     rooms,
     venues,
     bookings,
     feeds,
-    isLoading: isLoadingRooms || isLoadingVenues || isLoadingBookings || isLoadingFeeds,
+    partnerDeals,
+    isLoading: isLoadingRooms || isLoadingVenues || isLoadingBookings || isLoadingFeeds || isLoadingPartners,
 
     // Mutations
     createPendingBooking: createPendingBookingMutation.mutateAsync,
@@ -288,6 +344,10 @@ export function useBookings() {
     isSyncingOTA: triggerOTASyncMutation.isPending,
 
     updateFeedUrls: updateFeedUrlsMutation.mutateAsync,
-    isUpdatingFeeds: updateFeedUrlsMutation.isPending
+    isUpdatingFeeds: updateFeedUrlsMutation.isPending,
+
+    createPartnerDeal: createPartnerDealMutation.mutateAsync,
+    savePartnerDeals: savePartnerDealsMutation.mutateAsync,
+    deletePartnerDeal: deletePartnerDealMutation.mutateAsync
   }
 }

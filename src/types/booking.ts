@@ -83,6 +83,28 @@ export interface Booking {
   companions?: Companion[]
   created_at: string // ISO date-time
   expires_at: string | null // ISO date-time for 30-min website locks
+  partner_deal_id?: string
+  company_name?: string
+  vehicle_plate?: string
+  invoice_number?: string
+  invoice_type?: 'folio' | 'billing'
+  breakfast_included?: boolean
+  contract_rate_override?: number
+}
+
+export interface PartnerDeal {
+  id: string
+  name: string
+  type: 'agency' | 'company' | 'government' | 'university' | 'other'
+  tin?: string
+  address?: string
+  contact_no?: string
+  email?: string
+  vehicle_plate?: string
+  invoice_type: 'folio' | 'billing'
+  breakfast_default: 'w/o' | 'with'
+  contracted_rates: Record<string, number>
+  created_at: string
 }
 
 export interface SyncFeed {

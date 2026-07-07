@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Booking, Room, Venue } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
 import { X, Users, AlertCircle, Mail, Printer } from 'lucide-react'
+import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 
 interface ExtendStayModalProps {
   booking: Booking
@@ -30,6 +31,8 @@ export function ExtendStayModal({
   onConfirmReservation,
   isConfirming = false
 }: ExtendStayModalProps) {
+  const [showPrintModal, setShowPrintModal] = useState(false)
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="w-full max-w-sm bg-white rounded-lg shadow-lg overflow-hidden">
@@ -154,10 +157,10 @@ export function ExtendStayModal({
                 <Mail className="w-3.5 h-3.5 text-[#B89251]" />
                 Email Invoice
               </button>
-              <button
+               <button
                 type="button"
                 onClick={() => {
-                  alert("This feature is under development.")
+                  setShowPrintModal(true)
                 }}
                 className="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-[10px] font-bold py-1.5 px-2 rounded flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none"
               >
@@ -190,6 +193,16 @@ export function ExtendStayModal({
           </form>
         </div>
       </div>
+
+      {showPrintModal && (
+        <PrintInvoiceModal
+          booking={booking}
+          rooms={rooms}
+          venues={venues}
+          bookingsList={bookings}
+          onClose={() => setShowPrintModal(false)}
+        />
+      )}
     </div>
   )
 }

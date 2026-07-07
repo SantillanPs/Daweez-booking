@@ -18,14 +18,15 @@ This directory contains the React + TypeScript frontend codebase for the Daweez 
   - [DashboardLayout](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/DashboardLayout.tsx) - Responsive PMS layout shell (header, inline statistics bar, desktop/mobile bottom tabs, context provider).
   - [CalendarTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/CalendarTab.tsx) - Orchestrates the scheduling timeline grid layout, delegating rendering to subcomponents (`TimelineGrid`, `ExtendStayModal`).
   - [BookingsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/BookingsTab.tsx) - Headless table view for pending/confirmed reservations with sortable columns.
-  - [GuestsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/GuestsTab.tsx) - Headless table view for guest list records.
-  - [SettingsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/SettingsTab.tsx) - Settings panel for OTA iCal URLs export & import feeds.
-  - [WalkInBookingForm](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/WalkInBookingForm.tsx) - Orchestrates the progressive walk‑in booking wizard.
+  - [DirectoryTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/DirectoryTab.tsx) - Guests & Partners listing for guest stay records and agency/partner contract presets.
+  - [SettingsTab](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/SettingsTab.tsx) - Settings panel for OTA iCal feeds and Agency/Partner presets configuration.
+  - [WalkInBookingForm](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/WalkInBookingForm.tsx) - Orchestrates the progressive walk‑in booking wizard, integrating preset deal overrides and a tab-based single-screen Quick Corporate Booking form.
+  - [PrintInvoiceModal](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/billing/PrintInvoiceModal.tsx) - A print-ready document modal rendering conditional billing statements (GRB/GRF) with custom CSS media print overrides.
   - [LoginPortal](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/LoginPortal.tsx) - Staff passcode validation gate component.
   - [MainLayout](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/MainLayout.tsx) - Wrapper providing basic container styling.
 - **Data Operations**:
-  - [syncEngine.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/syncEngine.ts) implements client-side calculations, pricing policy rules (10% loyalty discount, 50% reservation deposit, flat ₱500 security deposit), collision detection logic (`isRoomAvailable`, `isVenueRangeAvailable`), and local storage fallback synchronization when Supabase is unconfigured.
-  - [useBookings.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/hooks/useBookings.ts) custom React hook orchestrating all React Query operations.
+  - [syncEngine.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/syncEngine.ts) implements client-side calculations, pricing policy rules (10% loyalty discount, 50% reservation deposit, flat ₱500 security deposit), corporate contract rate overrides, sequential invoice generation, and local storage fallback synchronization when Supabase is unconfigured.
+  - [useBookings.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/hooks/useBookings.ts) custom React hook orchestrating all React Query operations, exposing partner preset deals and CRUD mutations.
   - [useRealtimeBookings.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/hooks/useRealtimeBookings.ts) hook that listens to PostgreSQL replication changes over WebSockets and updates the React Query bookings cache in real-time.
 
 ## Work Guidance

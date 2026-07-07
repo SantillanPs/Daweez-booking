@@ -1,4 +1,4 @@
-import { Room, Venue, Booking, SyncFeed, BookingSource, BookingStatus, BreakfastOrder, EquipmentRental, EventAddons, GuestRecord, Companion } from '../types/booking'
+import { Room, Venue, Booking, SyncFeed, BookingSource, BookingStatus, BreakfastOrder, EquipmentRental, EventAddons, GuestRecord, Companion, PartnerDeal } from '../types/booking'
 import { supabase, isSupabaseConfigured } from './supabaseClient'
 
 // Helper: Generate UUID
@@ -157,6 +157,7 @@ export const DEFAULT_VENUES: Venue[] = [
 // 3. Local Storage Database Keys
 const BOOKINGS_KEY = 'l_etoile_bookings_db'
 const FEEDS_KEY = 'l_etoile_feeds_db'
+const PARTNERS_KEY = 'l_etoile_partners_db'
 
 // 4. Initialization
 function initDB() {
@@ -256,6 +257,10 @@ function initDB() {
     ])
     localStorage.setItem(FEEDS_KEY, JSON.stringify(initialFeeds))
   }
+
+  if (!localStorage.getItem(PARTNERS_KEY)) {
+    localStorage.setItem(PARTNERS_KEY, JSON.stringify([]))
+  }
 }
 
 // 5. Booking Operations
@@ -303,7 +308,14 @@ export async function getBookings(): Promise<Booking[]> {
           event_addons: b.event_addons || undefined,
           companions: b.companions || undefined,
           created_at: b.created_at,
-          expires_at: b.expires_at || null
+          expires_at: b.expires_at || null,
+          partner_deal_id: b.partner_deal_id || undefined,
+          company_name: b.company_name || undefined,
+          vehicle_plate: b.vehicle_plate || undefined,
+          invoice_number: b.invoice_number || undefined,
+          invoice_type: b.invoice_type as any || undefined,
+          breakfast_included: !!b.breakfast_included,
+          contract_rate_override: b.contract_rate_override ? Number(b.contract_rate_override) : undefined
         }))
       }
     } catch (err) {
@@ -355,7 +367,14 @@ export async function saveBookings(bookings: Booking[]): Promise<void> {
         equipment_rentals: b.equipment_rentals || null,
         event_addons: b.event_addons || null,
         companions: b.companions || null,
-        expires_at: b.expires_at || null
+        expires_at: b.expires_at || null,
+        partner_deal_id: b.partner_deal_id || null,
+        company_name: b.company_name || null,
+        vehicle_plate: b.vehicle_plate || null,
+        invoice_number: b.invoice_number || null,
+        invoice_type: b.invoice_type || null,
+        breakfast_included: !!b.breakfast_included,
+        contract_rate_override: b.contract_rate_override || null
       }))
 
       const { error } = await supabase.from('bookings').upsert(records)
@@ -371,6 +390,33 @@ export async function saveBookings(bookings: Booking[]): Promise<void> {
 
 // Single-row INSERT — use this for new bookings instead of read+upsert-all
 export async function insertBooking(booking: Booking): Promise<void> {
+  // Generate invoice number if not already present
+  if (!booking.invoice_number && booking.status !== 'blocked') {
+    const allBookings = await getBookings()
+    const checkInDate = booking.check_in
+    const prefixYearMonth = checkInDate.substring(0, 7) // "YYYY-MM"
+    const prefixDocType = booking.invoice_type === 'billing' ? 'GRB' : 'GRF'
+    
+    const sameMonthBookings = allBookings.filter(b => 
+      b.invoice_number && 
+      b.invoice_number.startsWith(`${prefixDocType}-${prefixYearMonth}-`)
+    )
+    
+    let nextSeq = 1
+    if (sameMonthBookings.length > 0) {
+      const seqs = sameMonthBookings.map(b => {
+        const parts = b.invoice_number!.split('-')
+        const lastPart = parts[parts.length - 1]
+        const num = parseInt(lastPart, 10)
+        return isNaN(num) ? 0 : num
+      })
+      nextSeq = Math.max(...seqs) + 1
+    }
+    
+    const paddedSeq = String(nextSeq).padStart(4, '0')
+    booking.invoice_number = `${prefixDocType}-${prefixYearMonth}-${paddedSeq}`
+  }
+
   const record = {
     id: booking.id,
     room_id: booking.room_id || null,
@@ -389,7 +435,14 @@ export async function insertBooking(booking: Booking): Promise<void> {
     equipment_rentals: booking.equipment_rentals || null,
     event_addons: booking.event_addons || null,
     companions: booking.companions || null,
-    expires_at: booking.expires_at || null
+    expires_at: booking.expires_at || null,
+    partner_deal_id: booking.partner_deal_id || null,
+    company_name: booking.company_name || null,
+    vehicle_plate: booking.vehicle_plate || null,
+    invoice_number: booking.invoice_number || null,
+    invoice_type: booking.invoice_type || null,
+    breakfast_included: !!booking.breakfast_included,
+    contract_rate_override: booking.contract_rate_override || null
   }
 
   if (isSupabaseConfigured) {
@@ -513,8 +566,9 @@ export function calculatePricing(params: {
   rateMultiplier?: number
   companions?: Companion[]
   source?: BookingSource
+  contractRateOverride?: number
 }) {
-  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier, companions, source } = params
+  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier, companions, source, contractRateOverride } = params
 
   const defaultMultiplier = (source === 'manual' || source === 'facebook' || source === 'website') ? 0.8 : 1.0
   const finalMultiplier = rateMultiplier !== undefined ? rateMultiplier : defaultMultiplier
@@ -523,7 +577,12 @@ export function calculatePricing(params: {
   let nights = 0
 
   // A. Nightly Room vs Daily Venue rate mapping
-  if (roomId) {
+  if (contractRateOverride !== undefined && contractRateOverride !== null) {
+    basePrice = contractRateOverride
+    nights = roomId
+      ? Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
+      : Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
+  } else if (roomId) {
     const room = DEFAULT_ROOMS.find(r => r.id === roomId)
     basePrice = room ? room.base_price : 0
     basePrice = Math.round(basePrice * finalMultiplier)
@@ -538,7 +597,9 @@ export function calculatePricing(params: {
   // B. Loyalty Program: 10% auto-deducted if guest has past completed stay
   const hasLoyalty = checkGuestLoyalty(guestEmail, bookingsList)
   const discountMultiplier = hasLoyalty ? 0.90 : 1.0
-  const subtotal = basePrice * nights * discountMultiplier
+  const subtotal = (contractRateOverride !== undefined && contractRateOverride !== null)
+    ? basePrice * nights
+    : basePrice * nights * discountMultiplier
   const grandTotal = subtotal
 
   // C. Breakfast is always included for room bookings (₱150/guest/night)
@@ -1566,4 +1627,122 @@ export async function seedFutureMockData(): Promise<number> {
   }
 
   return toAdd.length
+}
+
+// ── Partner Deals Operations ──
+
+export async function getPartnerDeals(): Promise<PartnerDeal[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('partner_deals')
+        .select('*')
+        .order('name', { ascending: true })
+      if (error) throw error
+
+      if (data) {
+        return data.map(d => ({
+          id: d.id,
+          name: d.name,
+          type: d.type as any,
+          tin: d.tin || undefined,
+          address: d.address || undefined,
+          contact_no: d.contact_no || undefined,
+          email: d.email || undefined,
+          vehicle_plate: d.vehicle_plate || undefined,
+          invoice_type: d.invoice_type as any,
+          breakfast_default: d.breakfast_default as any,
+          contracted_rates: d.contracted_rates || {},
+          created_at: d.created_at
+        }))
+      }
+    } catch (err) {
+      console.error('Supabase getPartnerDeals Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  initDB()
+  const data = localStorage.getItem(PARTNERS_KEY)
+  if (!data) return []
+  return JSON.parse(data)
+}
+
+export async function savePartnerDeals(deals: PartnerDeal[]): Promise<void> {
+  if (isSupabaseConfigured) {
+    try {
+      const records = deals.map(d => ({
+        id: d.id,
+        name: d.name,
+        type: d.type,
+        tin: d.tin || null,
+        address: d.address || null,
+        contact_no: d.contact_no || null,
+        email: d.email || null,
+        vehicle_plate: d.vehicle_plate || null,
+        invoice_type: d.invoice_type,
+        breakfast_default: d.breakfast_default,
+        contracted_rates: d.contracted_rates,
+        created_at: d.created_at
+      }))
+
+      const { error } = await supabase.from('partner_deals').upsert(records)
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase savePartnerDeals Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  localStorage.setItem(PARTNERS_KEY, JSON.stringify(deals))
+}
+
+export async function insertPartnerDeal(deal: PartnerDeal): Promise<void> {
+  if (isSupabaseConfigured) {
+    try {
+      const record = {
+        id: deal.id,
+        name: deal.name,
+        type: deal.type,
+        tin: deal.tin || null,
+        address: deal.address || null,
+        contact_no: deal.contact_no || null,
+        email: deal.email || null,
+        vehicle_plate: deal.vehicle_plate || null,
+        invoice_type: deal.invoice_type,
+        breakfast_default: deal.breakfast_default,
+        contracted_rates: deal.contracted_rates,
+        created_at: deal.created_at
+      }
+
+      const { error } = await supabase.from('partner_deals').insert(record)
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase insertPartnerDeal Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  initDB()
+  const data = localStorage.getItem(PARTNERS_KEY)
+  const existing: PartnerDeal[] = data ? JSON.parse(data) : []
+  localStorage.setItem(PARTNERS_KEY, JSON.stringify([...existing, deal]))
+}
+
+export async function deletePartnerDeal(dealId: string): Promise<void> {
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('partner_deals').delete().eq('id', dealId)
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase deletePartnerDeal Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  initDB()
+  const data = localStorage.getItem(PARTNERS_KEY)
+  if (data) {
+    const existing: PartnerDeal[] = JSON.parse(data)
+    localStorage.setItem(PARTNERS_KEY, JSON.stringify(existing.filter(d => d.id !== dealId)))
+  }
 }

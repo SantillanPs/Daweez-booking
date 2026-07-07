@@ -1,5 +1,5 @@
 import React from 'react'
-import { Companion } from '../../types/booking'
+import { Companion, PartnerDeal } from '../../types/booking'
 import { User, Phone, Mail, Users, ChevronDown, Trash2, Plus, CheckCircle2 } from 'lucide-react'
 
 interface RoomDetailsFormProps {
@@ -15,6 +15,20 @@ interface RoomDetailsFormProps {
   showCompanions: boolean
   setShowCompanions: (val: boolean) => void
   hasRooms: boolean
+  partnerDeals: PartnerDeal[]
+  formPartnerDealId: string
+  setFormPartnerDealId: (val: string) => void
+  formCompanyName: string
+  setFormCompanyName: (val: string) => void
+  formVehiclePlate: string
+  setFormVehiclePlate: (val: string) => void
+  formTIN: string
+  setFormTIN: (val: string) => void
+  formAddress: string
+  setFormAddress: (val: string) => void
+  formInvoiceType: 'folio' | 'billing'
+  setFormInvoiceType: (val: 'folio' | 'billing') => void
+  onSelectPartnerDeal: (deal: PartnerDeal | null) => void
 }
 
 export const RoomDetailsForm = React.memo(
@@ -30,7 +44,20 @@ export const RoomDetailsForm = React.memo(
     setFormCompanions,
     showCompanions,
     setShowCompanions,
-    hasRooms
+    hasRooms,
+    partnerDeals,
+    formPartnerDealId,
+    formCompanyName,
+    setFormCompanyName,
+    formVehiclePlate,
+    setFormVehiclePlate,
+    formTIN,
+    setFormTIN,
+    formAddress,
+    setFormAddress,
+    formInvoiceType,
+    setFormInvoiceType,
+    onSelectPartnerDeal
   }: RoomDetailsFormProps) => {
     if (formStatus === 'blocked') {
       return (
@@ -52,6 +79,29 @@ export const RoomDetailsForm = React.memo(
         </h4>
         
         <div className="space-y-3">
+          {/* Preset Deals Selection */}
+          <div>
+            <label className="text-[10px] text-slate-500 font-medium block mb-1">Preset Deal / Corporate Account</label>
+            <div className="relative">
+              <select
+                value={formPartnerDealId || ''}
+                onChange={e => {
+                  const id = e.target.value
+                  const selected = partnerDeals.find(d => d.id === id) || null
+                  onSelectPartnerDeal(selected)
+                }}
+                className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 pl-3 pr-8 py-1.5 rounded text-xs focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] transition-all font-medium appearance-none cursor-pointer"
+              >
+                <option value="">-- Personal / Individual Booking --</option>
+                {partnerDeals.map(d => (
+                  <option key={d.id} value={d.id}>{d.name} ({d.type})</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Primary Guest Name */}
           <div>
             <label className="text-[10px] text-slate-500 font-medium block mb-1">Primary Guest Name</label>
             <div className="relative">
@@ -66,7 +116,66 @@ export const RoomDetailsForm = React.memo(
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+          {/* Corporate Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+            <div>
+              <label className="text-[10px] text-slate-500 font-medium block mb-1">Company / Agency Name</label>
+              <input 
+                type="text" 
+                placeholder="e.g. GETZ PHARMA" 
+                value={formCompanyName || ''} 
+                onChange={e => setFormCompanyName(e.target.value)}
+                className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-1.5 rounded text-xs focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] transition-all font-medium" 
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-500 font-medium block mb-1">TIN (Taxpayer Identification No)</label>
+              <input 
+                type="text" 
+                placeholder="e.g. 000-123-456-000" 
+                value={formTIN || ''} 
+                onChange={e => setFormTIN(e.target.value)}
+                className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-1.5 rounded text-xs focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] transition-all font-medium" 
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="text-[10px] text-slate-500 font-medium block mb-1">Billing Address</label>
+              <input 
+                type="text" 
+                placeholder="e.g. Pasig City, Metro Manila" 
+                value={formAddress || ''} 
+                onChange={e => setFormAddress(e.target.value)}
+                className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-1.5 rounded text-xs focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] transition-all font-medium" 
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-500 font-medium block mb-1">Vehicle Plate No.</label>
+              <input 
+                type="text" 
+                placeholder="e.g. ABC-1234" 
+                value={formVehiclePlate || ''} 
+                onChange={e => setFormVehiclePlate(e.target.value)}
+                className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-1.5 rounded text-xs focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] transition-all font-medium" 
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-500 font-medium block mb-1">Default Invoice Style</label>
+              <div className="relative">
+                <select
+                  value={formInvoiceType || 'folio'}
+                  onChange={e => setFormInvoiceType(e.target.value as 'folio' | 'billing')}
+                  className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 pl-3 pr-8 py-1.5 rounded text-xs focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] transition-all font-medium appearance-none cursor-pointer"
+                >
+                  <option value="folio">Guest Folio (No payment block)</option>
+                  <option value="billing">Guest Registration & Billing (Show GCash/Landbank info)</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
             <div>
               <label className="text-[10px] text-slate-500 font-medium block mb-1">Email Address</label>
               <div className="relative">

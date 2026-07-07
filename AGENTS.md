@@ -76,7 +76,9 @@ Default section order:
 
 ## User Preferences
 
-When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
+### Communication & Language Style
+- **Always Use Simple Language**: Avoid overly complex, academic, or technical jargon in both explanations (responses) and user interface design (labels, tabs, links, and route names).
+- **Clear & Direct Vocabulary**: Prefer plain terms (e.g., "Guests & Partners") over technical terms (e.g., "Directory" or "Registry").
 
 ## Child DOX Index
 

@@ -10,7 +10,7 @@ import { LoginRoute } from './components/LoginPortal'
 import { DashboardLayout } from './components/DashboardLayout'
 import { CalendarTab } from './components/CalendarTab'
 import { BookingsTab } from './components/BookingsTab'
-import { GuestsTab } from './components/GuestsTab'
+import { DirectoryTab } from './components/DirectoryTab'
 import { AnalyticsTab } from './components/AnalyticsTab'
 import { SettingsTab } from './components/SettingsTab'
 import { PublicReservePortal } from './components/PublicReservePortal'
@@ -75,7 +75,7 @@ const bookingsRoute = createRoute({
 const guestsRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/guests',
-  component: GuestsTab
+  component: DirectoryTab
 })
 
 const settingsRoute = createRoute({

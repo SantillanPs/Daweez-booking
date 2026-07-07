@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react'
-import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons } from '../types/booking'
+import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
+import { useDashboardData } from './DashboardContext'
 import {
-  X, AlertCircle, BedDouble, PartyPopper
+  X, AlertCircle, BedDouble, PartyPopper, CheckCircle2
 } from 'lucide-react'
+import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
 
 // Import modular subcomponents
 import { GuestDetailsForm } from './walk-in/GuestDetailsForm'
@@ -30,6 +32,12 @@ interface WalkInBookingFormProps {
     eventAddons?: EventAddons
     rateMultiplier?: number
     companions?: Companion[]
+    partnerDealId?: string
+    companyName?: string
+    vehiclePlate?: string
+    invoiceType?: 'folio' | 'billing'
+    breakfastIncluded?: boolean
+    contractRateOverride?: number
   }) => Promise<Booking>
   cancelBooking: (bookingId: string) => Promise<void>
   initialRoomIds: Set<string>
@@ -53,6 +61,38 @@ export function WalkInBookingForm({
 }: WalkInBookingFormProps) {
   // ── Core wizard state ──
   const [formStep, setFormStep] = useState<number>(1)
+  const [bookingType, setBookingType] = useState<'individual' | 'partner'>('individual')
+
+  // ── Corporate / Partner presets state ──
+  const { partnerDeals } = useDashboardData()
+  const [formPartnerDealId, setFormPartnerDealId] = useState('')
+  const [formCompanyName, setFormCompanyName] = useState('')
+  const [formVehiclePlate, setFormVehiclePlate] = useState('')
+  const [formTIN, setFormTIN] = useState('')
+  const [formAddress, setFormAddress] = useState('')
+  const [formInvoiceType, setFormInvoiceType] = useState<'folio' | 'billing'>('folio')
+
+  const handleSelectPartnerDeal = (deal: PartnerDeal | null) => {
+    if (deal) {
+      setFormPartnerDealId(deal.id)
+      setFormCompanyName(deal.name)
+      setFormTIN(deal.tin || '')
+      setFormAddress(deal.address || '')
+      setFormVehiclePlate(deal.vehicle_plate || '')
+      setFormInvoiceType(deal.invoice_type)
+    } else {
+      setFormPartnerDealId('')
+      setFormCompanyName('')
+      setFormTIN('')
+      setFormAddress('')
+      setFormVehiclePlate('')
+      setFormInvoiceType('folio')
+    }
+  }
+
+  // Local check-in / check-out dates for quick partner form
+  const [formCheckIn, setFormCheckIn] = useState(initialCheckIn || '')
+  const [formCheckOut, setFormCheckOut] = useState(initialCheckOut || '')
   
   // Staggered Date Selection Map per selected Room/Venue
   const [unitSelections, setUnitSelections] = useState<Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>>(() => {
@@ -66,6 +106,40 @@ export function WalkInBookingForm({
     return initial
   })
 
+  const handlePartnerDateChange = (field: 'checkIn' | 'checkOut', value: string) => {
+    if (field === 'checkIn') {
+      setFormCheckIn(value)
+      setUnitSelections(prev => {
+        const next = { ...prev }
+        Object.keys(next).forEach(k => {
+          next[k] = { ...next[k], checkIn: value }
+        })
+        return next
+      })
+    } else {
+      setFormCheckOut(value)
+      setUnitSelections(prev => {
+        const next = { ...prev }
+        Object.keys(next).forEach(k => {
+          next[k] = { ...next[k], checkOut: value }
+        })
+        return next
+      })
+    }
+  }
+
+  const handleTogglePartnerUnit = (id: string, type: 'room' | 'venue') => {
+    setUnitSelections(prev => {
+      const next = { ...prev }
+      if (next[id]) {
+        delete next[id]
+      } else {
+        next[id] = { checkIn: formCheckIn, checkOut: formCheckOut, type }
+      }
+      return next
+    })
+  }
+
   const [formGuestName, setFormGuestName] = useState('')
   const [formGuestEmail, setFormGuestEmail] = useState('')
   const [formGuestPhone, setFormGuestPhone] = useState('')
@@ -75,6 +149,8 @@ export function WalkInBookingForm({
   const [formCompanions, setFormCompanions] = useState<Companion[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formAdditionalDiscount, setFormAdditionalDiscount] = useState(0)
+  const [createdBookingList, setCreatedBookingList] = useState<Booking[]>([])
+  const [printTargetBooking, setPrintTargetBooking] = useState<Booking | null>(null)
 
   // ── Add-ons state ──
   const [formChairs, setFormChairs] = useState(0)
@@ -124,18 +200,34 @@ export function WalkInBookingForm({
     const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
 
     Object.entries(unitSelections).forEach(([id, sel]) => {
-      const price = sel.type === 'room'
-        ? (rooms.find(r => r.id === id)?.base_price ?? 0)
-        : (venues.find(v => v.id === id)?.base_price ?? 0)
+      const deal = partnerDeals.find(d => d.id === formPartnerDealId)
+      const contractedRate = deal?.contracted_rates[id]
+
+      const price = contractedRate !== undefined && contractedRate !== null
+        ? contractedRate
+        : sel.type === 'room'
+          ? (rooms.find(r => r.id === id)?.base_price ?? 0)
+          : (venues.find(v => v.id === id)?.base_price ?? 0)
       
       const n = sel.checkIn && sel.checkOut
         ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
         : 1
       
-      base += Math.round(price * rateMultiplier) * n
+      // If contracted price is active, bypass regular multiplier discount
+      const finalRate = contractedRate !== undefined && contractedRate !== null
+        ? price
+        : Math.round(price * rateMultiplier)
+      
+      base += finalRate * n
 
+      // Breakfast: check if it's default included in partner deal
+      const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
       if (sel.type === 'room') {
-        breakfast += 150 * (1 + formCompanions.length) * n
+        // If breakfast is pre-negotiated w/o breakfast, price is 150/guest/night.
+        // If it's pre-negotiated w/ breakfast (included), we count breakfast cost as 0 (it's already in the room rate override!)
+        if (!isBreakfastIncluded) {
+          breakfast += 150 * (1 + formCompanions.length) * n
+        }
         rentals += (formExtraFoam * 200 + formExtraPillow * 50 + formExtraBlanket * 50 + formExtraTowel * 50) * n
       }
     })
@@ -145,11 +237,13 @@ export function WalkInBookingForm({
     }
 
     const total = base + breakfast + rentals
-    const down = Math.round(total * 0.5)
+    const down = bookingType === 'partner' ? 0 : Math.round(total * 0.5)
     
     // Per-unit security deposit: ₱500 per room and venue
     const unitCount = Object.keys(unitSelections).length
-    const due = (total - down) + (formStatus === 'blocked' ? 0 : 500 * unitCount)
+    const due = bookingType === 'partner'
+      ? (total + 500 * unitCount)
+      : (total - down) + (formStatus === 'blocked' ? 0 : 500 * unitCount)
 
     return {
       estBreakfast: breakfast,
@@ -159,7 +253,7 @@ export function WalkInBookingForm({
       estDown: down,
       estDue: due
     }
-  }, [unitSelections, formSource, formAdditionalDiscount, formCompanions.length, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues])
+  }, [unitSelections, formSource, formAdditionalDiscount, formCompanions.length, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, bookingType])
 
   const hasAddons = estBreakfast > 0 || estRentals > 0 || estAddons > 0
 
@@ -194,6 +288,11 @@ export function WalkInBookingForm({
       }
     }
 
+    const cleanGuestName = formGuestName.trim() || (bookingType === 'partner' && formPartnerDealId ? `${partnerDeals.find(d => d.id === formPartnerDealId)?.name || 'Corporate'} Guest` : '')
+    if (formStatus === 'confirmed' && !cleanGuestName && bookingType === 'individual') {
+      setFormError('Guest name is required.'); return
+    }
+
     const totalDiscount = (formSource === 'manual' ? 20 : 0) + formAdditionalDiscount
     const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
 
@@ -203,7 +302,7 @@ export function WalkInBookingForm({
       let isFirstRoom = true
       for (const roomId of Array.from(formRoomIds)) {
         const sel = unitSelections[roomId]
-        const rentals = isFirstRoom ? {
+        const rentals = (bookingType === 'partner' || !isFirstRoom) ? undefined : {
           bigTableCount: 0,
           smallTableCount: 0,
           chairCount: 0,
@@ -212,16 +311,31 @@ export function WalkInBookingForm({
           extraPillowCount: formExtraPillow,
           extraBlanketCount: formExtraBlanket,
           extraTowelCount: formExtraTowel
-        } : undefined
+        }
         isFirstRoom = false
 
+        const deal = partnerDeals.find(d => d.id === formPartnerDealId)
+        const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
+        const contractedPrice = deal?.contracted_rates[roomId]
+
         const b = await createManualBooking({
-          roomId, guestName: formGuestName, guestEmail: formGuestEmail,
-          guestPhone: formGuestPhone, checkIn: sel.checkIn, checkOut: sel.checkOut,
-          source: formSource, status: formStatus,
+          roomId,
+          guestName: cleanGuestName,
+          guestEmail: bookingType === 'partner' ? (deal?.email || 'admin@daweez-booking.vercel.app') : formGuestEmail,
+          guestPhone: bookingType === 'partner' ? (deal?.contact_no || 'None') : formGuestPhone,
+          checkIn: sel.checkIn,
+          checkOut: sel.checkOut,
+          source: bookingType === 'partner' ? 'manual' : formSource,
+          status: bookingType === 'partner' ? 'confirmed' : formStatus,
           equipmentRentals: rentals,
           rateMultiplier,
-          companions: formCompanions.length > 0 ? formCompanions : undefined
+          companions: bookingType === 'partner' ? undefined : (formCompanions.length > 0 ? formCompanions : undefined),
+          partnerDealId: formPartnerDealId || undefined,
+          companyName: formCompanyName || undefined,
+          vehiclePlate: formVehiclePlate || undefined,
+          invoiceType: formInvoiceType,
+          breakfastIncluded: isBreakfastIncluded,
+          contractRateOverride: contractedPrice || undefined
         })
         createdBookings.push(b)
       }
@@ -230,28 +344,41 @@ export function WalkInBookingForm({
       let isFirstVenue = true
       for (const venueId of Array.from(formVenueIds)) {
         const sel = unitSelections[venueId]
-        const rentals = isFirstVenue ? {
+        const rentals = (bookingType === 'partner' || !isFirstVenue) ? undefined : {
           bigTableCount: 0,
           smallTableCount: 0,
           chairCount: formChairs,
           mineralWaterCount: 0,
           tableCount: formEventTable,
           tentCount: formEventTent
-        } : undefined
+        }
         isFirstVenue = false
 
+        const deal = partnerDeals.find(d => d.id === formPartnerDealId)
+        const contractedPrice = deal?.contracted_rates[venueId]
+
         const b = await createManualBooking({
-          venueId, guestName: formGuestName, guestEmail: formGuestEmail,
-          guestPhone: formGuestPhone, checkIn: sel.checkIn, checkOut: sel.checkOut,
-          source: formSource, status: formStatus,
+          venueId,
+          guestName: cleanGuestName,
+          guestEmail: bookingType === 'partner' ? (deal?.email || 'admin@daweez-booking.vercel.app') : formGuestEmail,
+          guestPhone: bookingType === 'partner' ? (deal?.contact_no || 'None') : formGuestPhone,
+          checkIn: sel.checkIn,
+          checkOut: sel.checkOut,
+          source: bookingType === 'partner' ? 'manual' : formSource,
+          status: bookingType === 'partner' ? 'confirmed' : formStatus,
           equipmentRentals: rentals,
           rateMultiplier,
-          companions: formCompanions.length > 0 ? formCompanions : undefined
+          companions: bookingType === 'partner' ? undefined : (formCompanions.length > 0 ? formCompanions : undefined),
+          partnerDealId: formPartnerDealId || undefined,
+          companyName: formCompanyName || undefined,
+          vehiclePlate: formVehiclePlate || undefined,
+          invoiceType: formInvoiceType,
+          contractRateOverride: contractedPrice || undefined
         })
         createdBookings.push(b)
       }
 
-      onClose()
+      setCreatedBookingList(createdBookings)
     } catch (err: unknown) {
       // Rollback successfully created bookings on failure
       for (const b of createdBookings) {
@@ -264,6 +391,69 @@ export function WalkInBookingForm({
       setFormError(err instanceof Error ? err.message : 'Booking failed — possible date overlap.')
       setIsSubmitting(false)
     }
+  }
+
+  if (createdBookingList.length > 0) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        <div className="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden font-sans p-6 text-center space-y-5 border border-slate-100" onClick={e => e.stopPropagation()}>
+          <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-100/50">
+            <CheckCircle2 className="w-7 h-7" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-800">Booking Saved Successfully!</h3>
+            <p className="text-xs text-slate-400 mt-1 leading-normal font-medium">
+              Sequential invoice(s) generated for check-in records:
+            </p>
+          </div>
+          
+          <div className="bg-slate-50 border border-slate-100/60 p-4 rounded-xl space-y-2.5 text-xs text-left max-h-[220px] overflow-y-auto">
+            {createdBookingList.map(b => (
+              <div key={b.id} className="flex justify-between items-center border-b border-slate-200/40 pb-2.5 last:border-b-0 last:pb-0">
+                <div>
+                  <span className="font-bold text-slate-700 block">
+                    {b.room_id ? `Room ${rooms.find(r => r.id === b.room_id)?.room_number}` : (venues.find(v => v.id === b.venue_id)?.name || 'Venue')}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block font-mono">
+                    Check-in: {b.check_in}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono font-bold text-[#9A783E] block text-[11px]">{b.invoice_number}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPrintTargetBooking(b)}
+                    className="text-[#B89251] hover:text-[#9A783E] text-[10px] font-bold underline select-none cursor-pointer mt-0.5 bg-transparent border-none p-0"
+                  >
+                    Print Statement
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-semibold py-2.5 rounded-lg transition-colors cursor-pointer"
+            >
+              Close & Return to Calendar
+            </button>
+          </div>
+        </div>
+        
+        {printTargetBooking && (
+          <PrintInvoiceModal
+            booking={printTargetBooking}
+            rooms={rooms}
+            venues={venues}
+            bookingsList={bookings}
+            onClose={() => setPrintTargetBooking(null)}
+          />
+        )}
+      </div>
+    )
   }
 
   return (
@@ -281,7 +471,7 @@ export function WalkInBookingForm({
             <div>
               <h3 className="text-sm font-bold text-slate-800">New Reservation</h3>
               <p className="text-[10px] text-slate-400 font-medium">
-                Step {formStep} of {formStatus === 'blocked' ? 2 : 3}
+                {bookingType === 'partner' ? 'Quick Partner Booking' : `Step ${formStep} of ${formStatus === 'blocked' ? 2 : 3}`}
               </p>
             </div>
           </div>
@@ -290,38 +480,60 @@ export function WalkInBookingForm({
           </button>
         </div>
 
+        {/* ── Booking Type Toggle (Only if not successfully submitted yet) ── */}
+        {createdBookingList.length === 0 && (
+          <div className="flex border-b border-slate-100 px-5 py-2 bg-slate-50/50 gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => { setBookingType('individual'); setFormStep(1); }}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${bookingType === 'individual' ? 'bg-[#B89251] text-white border-[#B89251] shadow-sm font-bold' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+            >
+              Walk-in Guest
+            </button>
+            <button
+              type="button"
+              onClick={() => { setBookingType('partner'); }}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${bookingType === 'partner' ? 'bg-[#B89251] text-white border-[#B89251] shadow-sm font-bold' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+            >
+              Corporate Partner / Agency
+            </button>
+          </div>
+        )}
+
         {/* ── Step Progress Indicator ── */}
-        <div className="flex items-center px-5 py-2.5 border-b border-slate-100 shrink-0 bg-slate-50/50">
-          {[1, 2, 3].map(s => {
-            if (s === 3 && formStatus === 'blocked') return null
-            const isActive = formStep === s
-            const isCompleted = formStep > s
-            return (
-              <React.Fragment key={s}>
-                {s > 1 && (
-                  <div className={`flex-1 h-0.5 transition-all duration-300 ${isCompleted ? 'bg-[#B89251]' : 'bg-slate-200'}`} />
-                )}
-                <button type="button" disabled={s > formStep} onClick={() => setFormStep(s)}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-[#B89251] border-[#B89251] text-white shadow-sm'
-                      : isCompleted
-                        ? 'bg-[#FDFBF7] border-[#B89251] text-[#9A783E] font-semibold'
-                        : 'bg-white border-slate-200 text-slate-400 disabled:cursor-not-allowed'
-                  }`}>
-                  {s}
-                </button>
-              </React.Fragment>
-            )
-          })}
-        </div>
+        {bookingType === 'individual' && (
+          <div className="flex items-center px-5 py-2.5 border-b border-slate-100 shrink-0 bg-slate-50/50">
+            {[1, 2, 3].map(s => {
+              if (s === 3 && formStatus === 'blocked') return null
+              const isActive = formStep === s
+              const isCompleted = formStep > s
+              return (
+                <React.Fragment key={s}>
+                  {s > 1 && (
+                    <div className={`flex-1 h-0.5 transition-all duration-300 ${isCompleted ? 'bg-[#B89251]' : 'bg-slate-200'}`} />
+                  )}
+                  <button type="button" disabled={s > formStep} onClick={() => setFormStep(s)}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-[#B89251] border-[#B89251] text-white shadow-sm'
+                        : isCompleted
+                          ? 'bg-[#FDFBF7] border-[#B89251] text-[#9A783E] font-semibold'
+                          : 'bg-white border-slate-200 text-slate-400 disabled:cursor-not-allowed'
+                    }`}>
+                    {s}
+                  </button>
+                </React.Fragment>
+              )
+            })}
+          </div>
+        )}
 
         {/* ── Scrollable Body ── */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="overflow-y-auto flex-1 p-5 bg-slate-50/30">
             <div className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr] gap-6">
 
-              {/* ── LEFT COLUMN: Progressive Wizard Fields ── */}
+              {/* ── LEFT COLUMN: Progressive Wizard / Quick Form Fields ── */}
               <div className="space-y-4">
                 {formError && (
                   <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs flex items-center gap-2 rounded-md animate-in fade-in">
@@ -329,103 +541,282 @@ export function WalkInBookingForm({
                   </div>
                 )}
 
-                {/* STEP 1: Resource Schedule & Type Selection */}
-                {formStep === 1 && (
-                  <GuestDetailsForm
-                    rooms={rooms}
-                    venues={venues}
-                    bookings={bookings}
-                    unitSelections={unitSelections}
-                    setUnitSelections={setUnitSelections}
-                    formSource={formSource}
-                    setFormSource={setFormSource}
-                    formStatus={formStatus}
-                    setFormStatus={setFormStatus}
-                    formAdditionalDiscount={formAdditionalDiscount}
-                    setFormAdditionalDiscount={setFormAdditionalDiscount}
-                  />
+                {bookingType === 'partner' ? (
+                  <div className="space-y-4 font-sans bg-white border border-slate-200/60 rounded-xl p-5 shadow-sm">
+                    <div className="border-b border-slate-100 pb-3">
+                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Corporate / Agency details
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                        Select a partner account to automatically populate contract rates, invoices, and contact info.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3.5 text-xs">
+                      {/* 1. Select Partner */}
+                      <div>
+                        <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Partner Account</label>
+                        <select
+                          required
+                          value={formPartnerDealId}
+                          onChange={e => {
+                            const deal = partnerDeals.find(d => d.id === e.target.value) || null
+                            handleSelectPartnerDeal(deal)
+                            if (deal) {
+                              setFormGuestName(`${deal.name} Representative`)
+                            } else {
+                              setFormGuestName('')
+                            }
+                          }}
+                          className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold cursor-pointer"
+                        >
+                          <option value="">-- Select Partner Account --</option>
+                          {partnerDeals.map(d => (
+                            <option key={d.id} value={d.id}>{d.name} ({d.type})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* 2. Dates Row */}
+                      <div className="grid grid-cols-2 gap-3.5">
+                        <div>
+                          <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Check-in</label>
+                          <input
+                            type="date"
+                            required
+                            value={formCheckIn}
+                            onChange={e => handlePartnerDateChange('checkIn', e.target.value)}
+                            className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-mono font-medium"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Check-out</label>
+                          <input
+                            type="date"
+                            required
+                            value={formCheckOut}
+                            onChange={e => handlePartnerDateChange('checkOut', e.target.value)}
+                            className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-mono font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 3. Rooms/Venues Checklist */}
+                      <div>
+                        <label className="text-[10px] text-[#9A783E] font-bold block mb-2 uppercase tracking-wider">Rooms & Venues</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[180px] overflow-y-auto pr-1">
+                          {rooms.map(r => {
+                            const isChecked = !!unitSelections[r.id]
+                            const deal = partnerDeals.find(d => d.id === formPartnerDealId)
+                            const contractedPrice = deal?.contracted_rates[r.id]
+                            return (
+                              <label
+                                key={r.id}
+                                className={`border rounded-lg p-2.5 flex items-start gap-2 cursor-pointer transition-all ${isChecked ? 'border-[#B89251] bg-[#FDFBF7] shadow-sm' : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleTogglePartnerUnit(r.id, 'room')}
+                                  className="mt-0.5 rounded text-[#B89251] focus:ring-[#B89251] border-slate-350 cursor-pointer"
+                                />
+                                <div className="leading-tight">
+                                  <span className="text-[10px] font-bold text-slate-700 block">Room {r.room_number}</span>
+                                  {contractedPrice !== undefined && contractedPrice !== null ? (
+                                    <span className="text-[9px] text-[#9A783E] font-bold block mt-0.5">₱{contractedPrice.toLocaleString()}</span>
+                                  ) : (
+                                    <span className="text-[9px] text-slate-400 block mt-0.5">₱{r.base_price.toLocaleString()}</span>
+                                  )}
+                                </div>
+                              </label>
+                            )
+                          })}
+                          {venues.map(v => {
+                            const isChecked = !!unitSelections[v.id]
+                            const deal = partnerDeals.find(d => d.id === formPartnerDealId)
+                            const contractedPrice = deal?.contracted_rates[v.id]
+                            return (
+                              <label
+                                key={v.id}
+                                className={`border rounded-lg p-2.5 flex items-start gap-2 cursor-pointer transition-all ${isChecked ? 'border-[#B89251] bg-[#FDFBF7] shadow-sm' : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleTogglePartnerUnit(v.id, 'venue')}
+                                  className="mt-0.5 rounded text-[#B89251] focus:ring-[#B89251] border-slate-350 cursor-pointer"
+                                />
+                                <div className="leading-tight">
+                                  <span className="text-[10px] font-bold text-slate-700 block truncate max-w-[80px]">{v.name}</span>
+                                  {contractedPrice !== undefined && contractedPrice !== null ? (
+                                    <span className="text-[9px] text-[#9A783E] font-bold block mt-0.5">₱{contractedPrice.toLocaleString()}</span>
+                                  ) : (
+                                    <span className="text-[9px] text-slate-400 block mt-0.5">₱{v.base_price.toLocaleString()}</span>
+                                  )}
+                                </div>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 4. Guest Name */}
+                      <div>
+                        <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Representative Guest Name (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="Defaults to Partner Representative"
+                          value={formGuestName}
+                          onChange={e => setFormGuestName(e.target.value)}
+                          className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold"
+                        />
+                      </div>
+
+                      {/* 5. Vehicle Plate */}
+                      <div>
+                        <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Vehicle Plate No (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="Defaults to Partner default"
+                          value={formVehiclePlate}
+                          onChange={e => setFormVehiclePlate(e.target.value)}
+                          className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold uppercase font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-4 border-t border-slate-100 mt-4 shrink-0 bg-white">
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-xs text-slate-500 font-bold px-3 py-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 transition-all cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting || !formPartnerDealId || Object.keys(unitSelections).length === 0}
+                        className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm"
+                      >
+                        {isSubmitting ? 'Booking...' : 'Confirm Corporate Booking'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* STEP 1: Resource Schedule & Type Selection */}
+                    {formStep === 1 && (
+                      <GuestDetailsForm
+                        rooms={rooms}
+                        venues={venues}
+                        bookings={bookings}
+                        unitSelections={unitSelections}
+                        setUnitSelections={setUnitSelections}
+                        formSource={formSource}
+                        setFormSource={setFormSource}
+                        formStatus={formStatus}
+                        setFormStatus={setFormStatus}
+                        formAdditionalDiscount={formAdditionalDiscount}
+                        setFormAdditionalDiscount={setFormAdditionalDiscount}
+                      />
+                    )}
+
+                    {/* STEP 2: Guest Details & Companions */}
+                    {formStep === 2 && (
+                      <RoomDetailsForm
+                        formStatus={formStatus}
+                        formGuestName={formGuestName}
+                        setFormGuestName={setFormGuestName}
+                        formGuestEmail={formGuestEmail}
+                        setFormGuestEmail={setFormGuestEmail}
+                        formGuestPhone={formGuestPhone}
+                        setFormGuestPhone={setFormGuestPhone}
+                        formCompanions={formCompanions}
+                        setFormCompanions={setFormCompanions}
+                        showCompanions={showCompanions}
+                        setShowCompanions={setShowCompanions}
+                        hasRooms={hasRooms}
+                        partnerDeals={partnerDeals}
+                        formPartnerDealId={formPartnerDealId}
+                        setFormPartnerDealId={setFormPartnerDealId}
+                        formCompanyName={formCompanyName}
+                        setFormCompanyName={setFormCompanyName}
+                        formVehiclePlate={formVehiclePlate}
+                        setFormVehiclePlate={setFormVehiclePlate}
+                        formTIN={formTIN}
+                        setFormTIN={setFormTIN}
+                        formAddress={formAddress}
+                        setFormAddress={setFormAddress}
+                        formInvoiceType={formInvoiceType}
+                        setFormInvoiceType={setFormInvoiceType}
+                        onSelectPartnerDeal={handleSelectPartnerDeal}
+                      />
+                    )}
+
+                    {/* STEP 3: Add-ons & Services */}
+                    {formStep === 3 && formStatus === 'confirmed' && (
+                      <AmenitiesForm
+                        hasRooms={hasRooms}
+                        hasVenues={hasVenues}
+                        hasAddons={hasAddons}
+                        estRentals={estRentals}
+                        estAddons={estAddons}
+                        formChairs={formChairs}
+                        setFormChairs={setFormChairs}
+                        formExtraFoam={formExtraFoam}
+                        setFormExtraFoam={setFormExtraFoam}
+                        formExtraPillow={formExtraPillow}
+                        setFormExtraPillow={setFormExtraPillow}
+                        formExtraBlanket={formExtraBlanket}
+                        setFormExtraBlanket={setFormExtraBlanket}
+                        formExtraTowel={formExtraTowel}
+                        setFormExtraTowel={setFormExtraTowel}
+                        formEventTable={formEventTable}
+                        setFormEventTable={setFormEventTable}
+                        formEventTent={formEventTent}
+                        setFormEventTent={setFormEventTent}
+                      />
+                    )}
+
+                    {/* ── Step-by-Step Navigation Buttons ── */}
+                    <div className="flex justify-between items-center pt-4 border-t border-slate-200/60 mt-5 shrink-0 bg-white">
+                      {formStep > 1 ? (
+                        <button type="button" onClick={() => setFormStep(formStep - 1)}
+                          className="text-xs text-[#9A783E] hover:text-[#B89251] font-bold px-3 py-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 transition-all cursor-pointer">
+                          &larr; Back
+                        </button>
+                      ) : <div />}
+                      
+                      {formStep === 1 && (
+                        <button type="button" disabled={!isValidDates} onClick={() => setFormStep(2)}
+                          className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
+                          Next &rarr;
+                        </button>
+                      )}
+
+                      {formStep === 2 && formStatus === 'confirmed' && (
+                        <button type="button" disabled={!formGuestName} onClick={() => setFormStep(3)}
+                          className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
+                          Next &rarr;
+                        </button>
+                      )}
+
+                      {formStep === 2 && formStatus === 'blocked' && (
+                        <button type="submit" disabled={isSubmitting}
+                          className="bg-slate-700 hover:bg-slate-800 disabled:bg-slate-200 text-white disabled:text-slate-400 text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
+                          {isSubmitting ? 'Creating...' : 'Create Block'}
+                        </button>
+                      )}
+
+                      {formStep === 3 && (
+                        <button type="submit" disabled={isSubmitting}
+                          className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-semibold px-6 py-2.5 rounded transition-all cursor-pointer shadow-sm">
+                          {isSubmitting ? 'Creating...' : 'Confirm Booking'}
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
-
-                {/* STEP 2: Guest Details & Companions */}
-                {formStep === 2 && (
-                  <RoomDetailsForm
-                    formStatus={formStatus}
-                    formGuestName={formGuestName}
-                    setFormGuestName={setFormGuestName}
-                    formGuestEmail={formGuestEmail}
-                    setFormGuestEmail={setFormGuestEmail}
-                    formGuestPhone={formGuestPhone}
-                    setFormGuestPhone={setFormGuestPhone}
-                    formCompanions={formCompanions}
-                    setFormCompanions={setFormCompanions}
-                    showCompanions={showCompanions}
-                    setShowCompanions={setShowCompanions}
-                    hasRooms={hasRooms}
-                  />
-                )}
-
-                {/* STEP 3: Add-ons & Services */}
-                {formStep === 3 && formStatus === 'confirmed' && (
-                  <AmenitiesForm
-                    hasRooms={hasRooms}
-                    hasVenues={hasVenues}
-                    hasAddons={hasAddons}
-                    estRentals={estRentals}
-                    estAddons={estAddons}
-                    formChairs={formChairs}
-                    setFormChairs={setFormChairs}
-                    formExtraFoam={formExtraFoam}
-                    setFormExtraFoam={setFormExtraFoam}
-                    formExtraPillow={formExtraPillow}
-                    setFormExtraPillow={setFormExtraPillow}
-                    formExtraBlanket={formExtraBlanket}
-                    setFormExtraBlanket={setFormExtraBlanket}
-                    formExtraTowel={formExtraTowel}
-                    setFormExtraTowel={setFormExtraTowel}
-                    formEventTable={formEventTable}
-                    setFormEventTable={setFormEventTable}
-                    formEventTent={formEventTent}
-                    setFormEventTent={setFormEventTent}
-                  />
-                )}
-
-                {/* ── Step-by-Step Navigation Buttons ── */}
-                <div className="flex justify-between items-center pt-4 border-t border-slate-200/60 mt-5 shrink-0 bg-white">
-                  {formStep > 1 ? (
-                    <button type="button" onClick={() => setFormStep(formStep - 1)}
-                      className="text-xs text-[#9A783E] hover:text-[#B89251] font-bold px-3 py-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 transition-all cursor-pointer">
-                      &larr; Back
-                    </button>
-                  ) : <div />}
-                  
-                  {formStep === 1 && (
-                    <button type="button" disabled={!isValidDates} onClick={() => setFormStep(2)}
-                      className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
-                      Next &rarr;
-                    </button>
-                  )}
-
-                  {formStep === 2 && formStatus === 'confirmed' && (
-                    <button type="button" disabled={!formGuestName} onClick={() => setFormStep(3)}
-                      className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
-                      Next &rarr;
-                    </button>
-                  )}
-
-                  {formStep === 2 && formStatus === 'blocked' && (
-                    <button type="submit" disabled={isSubmitting}
-                      className="bg-slate-700 hover:bg-slate-800 disabled:bg-slate-200 text-white disabled:text-slate-400 text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
-                      {isSubmitting ? 'Creating...' : 'Create Block'}
-                    </button>
-                  )}
-
-                  {formStep === 3 && (
-                    <button type="submit" disabled={isSubmitting}
-                      className="bg-[#B89251] hover:bg-[#9A783E] disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-semibold px-6 py-2.5 rounded transition-all cursor-pointer shadow-sm">
-                      {isSubmitting ? 'Creating...' : 'Confirm Booking'}
-                    </button>
-                  )}
-                </div>
               </div>
 
               {/* ── RIGHT COLUMN: Invoice Estimate ── */}
