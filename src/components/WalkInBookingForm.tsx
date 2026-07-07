@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { useDashboardData } from './DashboardContext'
@@ -89,6 +89,30 @@ export function WalkInBookingForm({
       setFormInvoiceType('folio')
     }
   }
+
+  // ── Searchable Partner Selector state ──
+  const [partnerSearchQuery, setPartnerSearchQuery] = useState('')
+  const [isPartnerDropdownOpen, setIsPartnerDropdownOpen] = useState(false)
+  const partnerDropdownRef = useRef<HTMLDivElement>(null)
+
+  const filteredDeals = useMemo(() => {
+    const q = partnerSearchQuery.toLowerCase().trim()
+    if (!q) return partnerDeals
+    return partnerDeals.filter(d => 
+      d.name.toLowerCase().includes(q) || 
+      d.type.toLowerCase().includes(q)
+    )
+  }, [partnerSearchQuery, partnerDeals])
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (partnerDropdownRef.current && !partnerDropdownRef.current.contains(event.target as Node)) {
+        setIsPartnerDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Local check-in / check-out dates for quick partner form
   const [formCheckIn, setFormCheckIn] = useState(initialCheckIn || '')
@@ -553,28 +577,57 @@ export function WalkInBookingForm({
                     </div>
 
                     <div className="space-y-3.5 text-xs">
-                      {/* 1. Select Partner */}
-                      <div>
+                      {/* 1. Searchable Partner Selector */}
+                      <div className="relative" ref={partnerDropdownRef}>
                         <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Partner Account</label>
-                        <select
-                          required
-                          value={formPartnerDealId}
-                          onChange={e => {
-                            const deal = partnerDeals.find(d => d.id === e.target.value) || null
-                            handleSelectPartnerDeal(deal)
-                            if (deal) {
-                              setFormGuestName(`${deal.name} Representative`)
-                            } else {
-                              setFormGuestName('')
-                            }
-                          }}
-                          className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold cursor-pointer"
+                        <div
+                          onClick={() => setIsPartnerDropdownOpen(!isPartnerDropdownOpen)}
+                          className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold cursor-pointer flex justify-between items-center shadow-sm select-none"
                         >
-                          <option value="">-- Select Partner Account --</option>
-                          {partnerDeals.map(d => (
-                            <option key={d.id} value={d.id}>{d.name} ({d.type})</option>
-                          ))}
-                        </select>
+                          <span className={formCompanyName ? 'text-slate-800' : 'text-slate-400 font-normal'}>
+                            {formCompanyName || '-- Search & Select Partner --'}
+                          </span>
+                          <span className="text-[10px] text-slate-400">▼</span>
+                        </div>
+
+                        {isPartnerDropdownOpen && (
+                          <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-60" onClick={e => e.stopPropagation()}>
+                            <div className="p-2 border-b border-slate-100 bg-slate-50">
+                              <input
+                                type="text"
+                                placeholder="Type to search agency..."
+                                value={partnerSearchQuery}
+                                onChange={e => setPartnerSearchQuery(e.target.value)}
+                                className="w-full bg-white border border-slate-200 text-slate-800 px-2.5 py-1.5 rounded text-xs focus:outline-none focus:border-[#B89251]"
+                                autoFocus
+                              />
+                            </div>
+                            <div className="overflow-y-auto flex-1 py-1 max-h-48">
+                              {filteredDeals.length > 0 ? (
+                                filteredDeals.map(d => (
+                                  <button
+                                    key={d.id}
+                                    type="button"
+                                    onClick={() => {
+                                      handleSelectPartnerDeal(d)
+                                      setFormGuestName(`${d.name} Representative`)
+                                      setIsPartnerDropdownOpen(false)
+                                      setPartnerSearchQuery('')
+                                    }}
+                                    className="w-full text-left px-3 py-2 hover:bg-[#FDFBF7] hover:text-[#9A783E] text-xs font-semibold text-slate-700 flex justify-between items-center transition-colors border-none bg-transparent cursor-pointer"
+                                  >
+                                    <span>{d.name}</span>
+                                    <span className="text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded uppercase font-bold shrink-0">{d.type}</span>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="px-3 py-3 text-center text-xs text-slate-400 font-medium">
+                                  No matching partner accounts
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* 2. Dates Row */}
@@ -601,60 +654,35 @@ export function WalkInBookingForm({
                         </div>
                       </div>
 
-                      {/* 3. Rooms/Venues Checklist */}
+                      {/* 3. Selected Units Display (Read-Only) */}
                       <div>
-                        <label className="text-[10px] text-[#9A783E] font-bold block mb-2 uppercase tracking-wider">Rooms & Venues</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[180px] overflow-y-auto pr-1">
-                          {rooms.map(r => {
-                            const isChecked = !!unitSelections[r.id]
+                        <label className="text-[10px] text-[#9A783E] font-bold block mb-1.5 uppercase tracking-wider">Selected Units</label>
+                        <div className="flex flex-wrap gap-2.5">
+                          {Object.entries(unitSelections).map(([id, sel]) => {
+                            const isRoom = sel.type === 'room'
+                            const name = isRoom 
+                              ? `Room ${rooms.find(r => r.id === id)?.room_number || id}`
+                              : (venues.find(v => v.id === id)?.name || id)
                             const deal = partnerDeals.find(d => d.id === formPartnerDealId)
-                            const contractedPrice = deal?.contracted_rates[r.id]
+                            const contractedPrice = deal?.contracted_rates[id]
+                            const basePrice = isRoom 
+                              ? (rooms.find(r => r.id === id)?.base_price || 0)
+                              : (venues.find(v => v.id === id)?.base_price || 0)
+                            
                             return (
-                              <label
-                                key={r.id}
-                                className={`border rounded-lg p-2.5 flex items-start gap-2 cursor-pointer transition-all ${isChecked ? 'border-[#B89251] bg-[#FDFBF7] shadow-sm' : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'}`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => handleTogglePartnerUnit(r.id, 'room')}
-                                  className="mt-0.5 rounded text-[#B89251] focus:ring-[#B89251] border-slate-350 cursor-pointer"
-                                />
-                                <div className="leading-tight">
-                                  <span className="text-[10px] font-bold text-slate-700 block">Room {r.room_number}</span>
-                                  {contractedPrice !== undefined && contractedPrice !== null ? (
-                                    <span className="text-[9px] text-[#9A783E] font-bold block mt-0.5">₱{contractedPrice.toLocaleString()}</span>
-                                  ) : (
-                                    <span className="text-[9px] text-slate-400 block mt-0.5">₱{r.base_price.toLocaleString()}</span>
-                                  )}
-                                </div>
-                              </label>
-                            )
-                          })}
-                          {venues.map(v => {
-                            const isChecked = !!unitSelections[v.id]
-                            const deal = partnerDeals.find(d => d.id === formPartnerDealId)
-                            const contractedPrice = deal?.contracted_rates[v.id]
-                            return (
-                              <label
-                                key={v.id}
-                                className={`border rounded-lg p-2.5 flex items-start gap-2 cursor-pointer transition-all ${isChecked ? 'border-[#B89251] bg-[#FDFBF7] shadow-sm' : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'}`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => handleTogglePartnerUnit(v.id, 'venue')}
-                                  className="mt-0.5 rounded text-[#B89251] focus:ring-[#B89251] border-slate-350 cursor-pointer"
-                                />
-                                <div className="leading-tight">
-                                  <span className="text-[10px] font-bold text-slate-700 block truncate max-w-[80px]">{v.name}</span>
-                                  {contractedPrice !== undefined && contractedPrice !== null ? (
-                                    <span className="text-[9px] text-[#9A783E] font-bold block mt-0.5">₱{contractedPrice.toLocaleString()}</span>
-                                  ) : (
-                                    <span className="text-[9px] text-slate-400 block mt-0.5">₱{v.base_price.toLocaleString()}</span>
-                                  )}
-                                </div>
-                              </label>
+                              <div key={id} className="bg-[#FDFBF7] border border-[#E5D5C0] rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm animate-in fade-in">
+                                <span className="font-bold text-slate-700">{name}</span>
+                                <span className="text-[10px] text-slate-400">|</span>
+                                {contractedPrice !== undefined && contractedPrice !== null ? (
+                                  <span className="text-xs font-extrabold text-[#9A783E]">
+                                    ₱{contractedPrice.toLocaleString()} <span className="text-[8px] text-slate-400 font-normal">(Negotiated Rate)</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-xs font-semibold text-slate-500">
+                                    ₱{basePrice.toLocaleString()} <span className="text-[8px] text-slate-400 font-normal">(Standard Rate)</span>
+                                  </span>
+                                )}
+                              </div>
                             )
                           })}
                         </div>
