@@ -57,7 +57,7 @@ export const BillingSummary = React.memo(
       const stdPrice = isRoom
         ? (rooms.find(r => r.id === id)?.base_price ?? 0)
         : (venues.find(v => v.id === id)?.base_price ?? 0)
-      
+
       const nights = sel.checkIn && sel.checkOut
         ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
         : 1
@@ -84,7 +84,7 @@ export const BillingSummary = React.memo(
         <h4 className="text-[9px] font-bold text-[#9A783E] tracking-widest uppercase md:block hidden pb-0.5 border-b border-slate-200/40">
           Statement Estimate
         </h4>
-        
+
         {formStatus === 'confirmed' ? (
           <div className="bg-[#FDFBF7] border border-[#E5D5C0] p-5 rounded-md text-xs space-y-4 shadow-sm relative overflow-hidden text-[#9A783E] animate-fade-in">
             <div className="absolute top-0 inset-x-0 h-1.5 bg-[#B89251]" />
@@ -118,13 +118,13 @@ export const BillingSummary = React.memo(
                 )}
               </div>
             )}
-            
+
             <div className="space-y-2 text-slate-600 font-medium">
               <div className="flex justify-between">
                 <span>Selected Rooms:</span>
                 <span className="font-mono text-slate-800 font-semibold">{unitCount} room{unitCount > 1 ? 's' : ''}</span>
               </div>
-              
+
               {hasRooms && (
                 <>
                   <div className="border-t border-dashed border-[#E5D5C0] my-2" />
@@ -141,7 +141,7 @@ export const BillingSummary = React.memo(
                         : (r?.base_price ?? 0)
                       return r ? (
                         <div key={id} className="flex justify-between">
-                          <span>Room {r.room_number} ({nights} nite{nights > 1 ? 's' : ''}):</span>
+                          <span>Room {r.room_number} ({nights} night{nights > 1 ? 's' : ''}):</span>
                           <span>₱{(displayPrice * nights).toLocaleString()}</span>
                         </div>
                       ) : null
@@ -199,7 +199,7 @@ export const BillingSummary = React.memo(
                 </>
               )}
             </div>
-                <div className="border-t border-dashed border-[#E5D5C0] pt-4 space-y-2">
+            <div className="border-t border-dashed border-[#E5D5C0] pt-4 space-y-2">
               <div className="flex justify-between text-slate-500 font-medium text-xs">
                 <span>Original Rate:</span>
                 <span className="font-mono">₱{undiscountedBaseTotal.toLocaleString()}</span>
@@ -231,7 +231,7 @@ export const BillingSummary = React.memo(
               <div className="text-[9px] text-slate-400 text-center pt-2 italic leading-normal font-sans">
                 Includes ₱{(unitCount * 500).toLocaleString()} refundable security deposit (₱500/room)
               </div>
-              
+
               <div className="border-t border-[#E5D5C0] pt-3 flex gap-2">
                 <button
                   type="button"
@@ -275,7 +275,7 @@ export const BillingSummary = React.memo(
     const prevKeys = Object.keys(prevProps.unitSelections)
     const nextKeys = Object.keys(nextProps.unitSelections)
     if (prevKeys.length !== nextKeys.length) return false
-    
+
     const selectionsMatch = prevKeys.every(k => {
       const p = prevProps.unitSelections[k]
       const n = nextProps.unitSelections[k]

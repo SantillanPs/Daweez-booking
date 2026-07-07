@@ -262,10 +262,7 @@ export function WalkInBookingForm({
         ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
         : 1
       
-      // If contracted price is active, bypass regular multiplier discount
-      const finalRate = contractedRate !== undefined && contractedRate !== null
-        ? price
-        : Math.round(price * rateMultiplier)
+      const finalRate = Math.round(price * rateMultiplier)
       
       base += finalRate * n
 

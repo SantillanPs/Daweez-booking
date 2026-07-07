@@ -79,7 +79,7 @@ const TimelineCell = React.memo(
       const isTooltipActive = activeTooltip === tipId
 
       return (
-        <td 
+        <td
           colSpan={span}
           className="p-0 border-r border-slate-100 relative align-middle"
           onMouseEnter={() => {
@@ -96,14 +96,14 @@ const TimelineCell = React.memo(
             setActiveTooltip(null)
           }}
         >
-          <div 
-            onClick={e => { 
+          <div
+            onClick={e => {
               e.stopPropagation()
-              if (booking.status !== 'blocked') { 
+              if (booking.status !== 'blocked') {
                 setSelectedExtendBooking(booking)
                 setExtendCheckoutDate(booking.check_out)
-                setExtendError('') 
-              } 
+                setExtendError('')
+              }
             }}
             className={`h-7 mx-0.5 flex items-center justify-between text-[9.5px] font-extrabold px-2.5 rounded-sm border cursor-pointer select-none transition-all hover:scale-[1.003] hover:shadow-sm ${getBookingStyle(booking)}`}
           >
@@ -112,7 +112,7 @@ const TimelineCell = React.memo(
             </span>
             {span > 1 && (
               <span className="text-[8px] opacity-65 font-mono shrink-0 pl-1.5">
-                {span} nites
+                {span} nights
               </span>
             )}
           </div>
@@ -141,7 +141,7 @@ const TimelineCell = React.memo(
 
     if (isCheckIn) {
       return (
-        <td 
+        <td
           onClick={() => onCellClick(id, type, date)}
           className="p-0.5 h-8 relative cursor-cell align-middle"
         >
@@ -154,7 +154,7 @@ const TimelineCell = React.memo(
 
     if (isHighlighted) {
       return (
-        <td 
+        <td
           onClick={() => onCellClick(id, type, date)}
           className="p-0 h-8 cursor-cell relative align-middle transition-all bg-gradient-to-r from-[#FAF0DD]/60 to-[#F5E6CC]/50 hover:from-[#FAF0DD]/80 hover:to-[#F5E6CC]/70"
         >
@@ -162,11 +162,11 @@ const TimelineCell = React.memo(
         </td>
       )
     }
-    
+
     return (
-      <td 
+      <td
         onClick={() => onCellClick(id, type, date)}
-        className="border-r border-slate-100 p-0 h-8 cursor-cell hover:bg-[#FDFBF7]/60 transition-colors" 
+        className="border-r border-slate-100 p-0 h-8 cursor-cell hover:bg-[#FDFBF7]/60 transition-colors"
       />
     )
   },
@@ -200,7 +200,7 @@ export const TimelineGrid = React.memo(
     setExtendCheckoutDate,
     setExtendError
   }: TimelineGridProps) {
-    
+
     const checkInTime = React.useMemo(() => timelineSelection ? timelineSelection.checkIn.getTime() : 0, [timelineSelection])
     const selectionRanges = React.useMemo(() => {
       if (!groupSelection) return {}
@@ -245,15 +245,15 @@ export const TimelineGrid = React.memo(
                 Click checkout date on the grid.
               </p>
             </div>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setTimelineSelection(null)}
               className="text-[10px] font-bold text-slate-500 hover:text-slate-800 transition-all cursor-pointer border border-[#E5D5C0] hover:border-slate-350 px-2 py-1 rounded bg-white hover:bg-slate-50 shadow-sm">
               Cancel
             </button>
           </div>
         )}
-        
+
         <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col">
           <div className="flex-1 min-h-0 overflow-auto relative">
             <table className="w-full border-collapse">

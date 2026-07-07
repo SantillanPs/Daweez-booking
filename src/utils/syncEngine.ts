@@ -578,7 +578,7 @@ export function calculatePricing(params: {
 
   // A. Nightly Room vs Daily Venue rate mapping
   if (contractRateOverride !== undefined && contractRateOverride !== null) {
-    basePrice = contractRateOverride
+    basePrice = Math.round(contractRateOverride * finalMultiplier)
     nights = roomId
       ? Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
       : Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
