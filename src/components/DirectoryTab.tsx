@@ -426,60 +426,88 @@ export function DirectoryTab() {
                 <table className="w-full text-xs text-left text-slate-500">
                   <thead className="text-[10px] uppercase bg-slate-50/70 text-slate-400 tracking-wider">
                     <tr>
-                      <th className="px-4 py-2.5">Name</th>
-                      <th className="px-4 py-2.5">Type</th>
-                      <th className="px-4 py-2.5">Contact Details</th>
-                      <th className="px-4 py-2.5">Billing Preference</th>
-                      <th className="px-4 py-2.5">Contract Rates Override</th>
-                      <th className="px-4 py-2.5 text-right">Actions</th>
+                      <th className="px-5 py-3">Partner Name</th>
+                      <th className="px-5 py-3">Type</th>
+                      <th className="px-5 py-3">Contact Details</th>
+                      <th className="px-5 py-3">Billing & Breakfast</th>
+                      <th className="px-5 py-3">Contract Rates Override</th>
+                      <th className="px-5 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {partnerDeals.map(d => (
-                      <tr key={d.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3 font-semibold text-slate-800">{d.name}</td>
-                        <td className="px-4 py-3 capitalize text-slate-500">{d.type}</td>
-                        <td className="px-4 py-3">
-                          {d.email && <div className="text-slate-600">{d.email}</div>}
-                          {d.contact_no && <div className="text-slate-400 text-[10px]">{d.contact_no}</div>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="capitalize text-slate-600">{d.invoice_type} invoice</div>
-                          <div className="text-[10px] text-slate-400 font-medium">Breakfast: {d.breakfast_default}</div>
-                        </td>
-                        <td className="px-4 py-3 max-w-[200px]">
-                          <div className="flex flex-wrap gap-1">
-                            {Object.entries(d.contracted_rates || {}).map(([rid, rate]) => {
-                              const roomNum = rooms.find(r => r.id === rid)?.room_number || venues.find(v => v.id === rid)?.name || rid
-                              return (
-                                <span key={rid} className="bg-slate-100 text-slate-600 text-[9px] px-1.5 py-0.5 rounded font-mono">
-                                  {typeof roomNum === 'number' ? `Rm ${roomNum}` : roomNum}: ₱{rate}
+                  <tbody className="divide-y divide-slate-150">
+                    {partnerDeals.map(d => {
+                      // Style badges for partner types
+                      const typeStyles = 
+                        d.type === 'agency' ? 'bg-blue-50 text-blue-700 border-blue-200/50' :
+                        d.type === 'company' ? 'bg-purple-50 text-purple-700 border-purple-200/50' :
+                        d.type === 'government' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' :
+                        d.type === 'university' ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
+                        'bg-slate-50 text-slate-600 border-slate-200';
+
+                      return (
+                        <tr key={d.id} className="hover:bg-slate-50/30">
+                          <td className="px-5 py-3.5 font-bold text-slate-800 text-[13px]">{d.name}</td>
+                          <td className="px-5 py-3.5">
+                            <span className={`inline-flex capitalize text-[10px] font-bold px-2 py-0.5 rounded-full border ${typeStyles}`}>
+                              {d.type}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 space-y-0.5">
+                            {d.email && <div className="text-slate-600 font-medium">{d.email}</div>}
+                            {d.contact_no && <div className="text-slate-400 text-[10px] font-mono">{d.contact_no}</div>}
+                          </td>
+                          <td className="px-5 py-3.5 space-y-1.5">
+                            <div className="font-semibold text-slate-700 text-[10px] uppercase tracking-wider">
+                              {d.invoice_type === 'billing' ? 'Billing Statement (GRB)' : 'Guest Folio (GRF)'}
+                            </div>
+                            <div>
+                              {d.breakfast_default === 'with' ? (
+                                <span className="inline-flex items-center text-[9px] font-bold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-150">
+                                  Breakfast Included
                                 </span>
-                              )
-                            })}
-                            {Object.keys(d.contracted_rates || {}).length === 0 && (
-                              <span className="text-slate-400 text-[10px]">None (standard rates)</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex justify-end gap-1.5">
-                            <button
-                              onClick={() => startEdit(d)}
-                              className="p-1.5 text-slate-500 hover:text-[#B89251] transition-colors border border-slate-100 rounded hover:border-[#B89251]/20 cursor-pointer"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeletePartner(d.id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors border border-slate-100 rounded hover:border-rose-100 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              ) : (
+                                <span className="inline-flex items-center text-[9px] font-semibold bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200/60">
+                                  No Breakfast
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5 max-w-[420px]">
+                            <div className="flex flex-wrap gap-1.5">
+                              {Object.entries(d.contracted_rates || {}).map(([rid, rate]) => {
+                                const roomNum = rooms.find(r => r.id === rid)?.room_number || venues.find(v => v.id === rid)?.name || rid
+                                return (
+                                  <span key={rid} className="inline-flex items-center gap-1.5 bg-[#FDFBF7] border border-[#E5D5C0] text-[#9A783E] text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm">
+                                    <span>{typeof roomNum === 'number' ? `Room ${roomNum}` : roomNum}</span>
+                                    <span className="text-[8px] text-slate-350">|</span>
+                                    <span className="font-extrabold text-slate-800">₱{rate.toLocaleString()}</span>
+                                  </span>
+                                )
+                              })}
+                              {Object.keys(d.contracted_rates || {}).length === 0 && (
+                                <span className="text-slate-400 text-[10px]">None (standard rates)</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5 text-right">
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                onClick={() => startEdit(d)}
+                                className="p-1.5 text-slate-500 hover:text-[#B89251] transition-colors border border-slate-200 rounded-lg hover:border-[#B89251]/20 cursor-pointer bg-white"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeletePartner(d.id)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors border border-slate-200 rounded-lg hover:border-rose-100 cursor-pointer bg-white"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
