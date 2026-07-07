@@ -123,12 +123,12 @@ export function DirectoryTab() {
   const labelCls = "text-[11px] text-slate-400 font-semibold uppercase tracking-wide block mb-1.5"
 
   return (
-    <div className="max-w-[1600px] mx-auto px-6 py-6 font-sans space-y-6 animate-in fade-in duration-200">
+    <div className="max-w-[1600px] mx-auto px-6 py-4 font-sans space-y-4 animate-in fade-in duration-200">
 
       {/* Page Header */}
-      <div className="flex justify-between items-center gap-4 border-b border-slate-200 pb-4">
+      <div className="flex justify-between items-center gap-4 border-b border-slate-200 pb-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 tracking-tight">Guests & Partners</h2>
+          <h2 className="text-base font-bold text-slate-800 tracking-tight">Guests & Partners</h2>
           <p className="text-xs text-slate-400 mt-0.5">Guest records, loyalty status, and corporate deal presets.</p>
         </div>
         <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
@@ -219,9 +219,9 @@ export function DirectoryTab() {
 
           {/* Form Panel */}
           {isAdding ? (
-            <form onSubmit={handleSavePartner} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <form onSubmit={handleSavePartner} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden max-h-[calc(100vh-140px)] overflow-y-auto">
               {/* Form Header */}
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#FDFBF7] to-white">
+              <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#FDFBF7] to-white sticky top-0 z-10">
                 <div>
                   <h3 className="text-sm font-bold text-slate-800">
                     {editingDealId ? 'Edit Partner Preset' : 'New Partner Preset'}
@@ -233,10 +233,10 @@ export function DirectoryTab() {
                 </button>
               </div>
 
-              <div className="p-6 grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8 items-start">
+              <div className="p-4 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
 
                 {/* LEFT: Partner Details */}
-                <div className="space-y-6">
+                <div className="space-y-4">
 
                   {/* Company Name — most important, gets prominence */}
                   <div>
@@ -247,7 +247,7 @@ export function DirectoryTab() {
                       placeholder="e.g. Agoda Bohol Agency"
                       value={pName}
                       onChange={e => setPName(e.target.value)}
-                      className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-4 py-3 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-2 focus:ring-[#B89251]/10 font-semibold text-base transition-all placeholder:text-slate-300"
+                      className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-2 focus:ring-[#B89251]/10 font-semibold text-sm transition-all placeholder:text-slate-300"
                     />
                   </div>
 
@@ -301,7 +301,7 @@ export function DirectoryTab() {
                             key={opt.value}
                             type="button"
                             onClick={() => setPInvoiceType(opt.value as any)}
-                            className={`text-left p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
+                            className={`text-left p-2.5 rounded-lg border-2 transition-all cursor-pointer ${
                               active
                                 ? 'border-[#B89251] bg-[#FDFBF7]'
                                 : 'border-slate-200 bg-white hover:border-slate-300'
@@ -333,7 +333,7 @@ export function DirectoryTab() {
                             key={opt.value}
                             type="button"
                             onClick={() => setPBreakfastDefault(opt.value as any)}
-                            className={`text-left p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
+                            className={`text-left p-2.5 rounded-lg border-2 transition-all cursor-pointer ${
                               active
                                 ? 'border-[#B89251] bg-[#FDFBF7]'
                                 : 'border-slate-200 bg-white hover:border-slate-300'
@@ -352,7 +352,7 @@ export function DirectoryTab() {
                 </div>
 
                 {/* RIGHT: Contracted Rates */}
-                <div className="bg-[#FDFBF7] border border-[#E5D5C0] rounded-xl p-5 space-y-4 self-start">
+                <div className="bg-[#FDFBF7] border border-[#E5D5C0] rounded-xl p-3.5 space-y-3 self-start">
                   <div>
                     <h4 className="text-xs font-bold text-[#9A783E] uppercase tracking-wide">Contracted Rates</h4>
                     <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
@@ -366,7 +366,7 @@ export function DirectoryTab() {
                     </div>
                   )}
 
-                  <div className="max-h-[460px] overflow-y-auto pr-0.5 space-y-3">
+                  <div className="max-h-[calc(100vh-380px)] min-h-[120px] overflow-y-auto pr-0.5 space-y-2.5">
                     {/* Rooms section */}
                     {rooms.length > 0 && (
                       <div className="space-y-1.5">
@@ -378,7 +378,7 @@ export function DirectoryTab() {
                               <div
                                 key={r.id}
                                 onClick={() => toggleUnit(r.id)}
-                                className={`rounded-lg p-2.5 cursor-pointer transition-all select-none ${
+                                className={`rounded-lg p-2 cursor-pointer transition-all select-none ${
                                   included
                                     ? 'bg-white border-2 border-[#B89251] shadow-sm'
                                     : 'bg-white/60 border border-slate-200/60 hover:border-slate-300 opacity-60 hover:opacity-80'
@@ -429,7 +429,7 @@ export function DirectoryTab() {
                               <div
                                 key={v.id}
                                 onClick={() => toggleUnit(v.id)}
-                                className={`rounded-lg p-2.5 cursor-pointer transition-all select-none ${
+                                className={`rounded-lg p-2 cursor-pointer transition-all select-none ${
                                   included
                                     ? 'bg-white border-2 border-[#B89251] shadow-sm'
                                     : 'bg-white/60 border border-slate-200/60 hover:border-slate-300 opacity-60 hover:opacity-80'
@@ -473,17 +473,17 @@ export function DirectoryTab() {
               </div>
 
               {/* Form Footer */}
-              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30 flex gap-3 justify-end">
+              <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/30 flex gap-2 justify-end sticky bottom-0">
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-5 py-2.5 rounded-lg border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-white transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-white transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-lg bg-[#B89251] hover:bg-[#9A783E] text-white text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
+                  className="px-5 py-2 rounded-lg bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                 >
                   <Save className="w-4 h-4" />
                   Save Preset
