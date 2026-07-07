@@ -201,10 +201,10 @@ export function PublicReservePortal() {
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 flex items-center justify-center bg-[#FDFBF7] border border-[#B89251] rounded-lg">
-              <span className="text-[#B89251] font-bold text-sm">LÉ</span>
+              <span className="text-[#B89251] font-bold text-sm">DP</span>
             </div>
             <div>
-              <h1 className="text-sm font-bold text-slate-800 tracking-wide uppercase">L'Étoile Central</h1>
+              <h1 className="text-sm font-bold text-slate-800 tracking-wide uppercase">Daweez Pension Hotel</h1>
               <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Direct Reservation Portal</p>
             </div>
           </div>
@@ -518,7 +518,7 @@ export function PublicReservePortal() {
                   <div className="bg-white p-3 rounded-lg border border-[#EADFC9]/60 flex items-center justify-between text-xs font-mono text-slate-700 max-w-sm">
                     <div>
                       <span className="text-slate-400 text-[10px] block">GCash Account Name:</span>
-                      <strong>L'ETOILE HOTEL CENTRAL</strong>
+                      <strong>DAWEEZ PENSION HOTEL</strong>
                     </div>
                     <div>
                       <span className="text-slate-400 text-[10px] block">GCash Number:</span>
