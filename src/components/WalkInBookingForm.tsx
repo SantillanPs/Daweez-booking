@@ -82,6 +82,23 @@ export function WalkInBookingForm({
       setFormInvoiceType(deal.invoice_type)
       setFormGuestEmail(deal.email || '')
       setFormGuestPhone(deal.contact_no || '')
+
+      // Auto-select all rooms/venues that have contracted rates in this partner deal
+      const initial: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }> = {}
+      if (deal.contracted_rates) {
+        Object.entries(deal.contracted_rates).forEach(([id, rate]) => {
+          if (rate > 0) {
+            const isRoom = rooms.some(r => r.id === id)
+            const isVenue = venues.some(v => v.id === id)
+            if (isRoom) {
+              initial[id] = { checkIn: formCheckIn || initialCheckIn, checkOut: formCheckOut || initialCheckOut, type: 'room' }
+            } else if (isVenue) {
+              initial[id] = { checkIn: formCheckIn || initialCheckIn, checkOut: formCheckOut || initialCheckOut, type: 'venue' }
+            }
+          }
+        })
+      }
+      setUnitSelections(initial)
     } else {
       setFormPartnerDealId('')
       setFormCompanyName('')
@@ -91,6 +108,7 @@ export function WalkInBookingForm({
       setFormInvoiceType('folio')
       setFormGuestEmail('')
       setFormGuestPhone('')
+      setUnitSelections({})
     }
   }
 
@@ -177,6 +195,7 @@ export function WalkInBookingForm({
   const [formCompanions, setFormCompanions] = useState<Companion[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formAdditionalDiscount, setFormAdditionalDiscount] = useState(0)
+  const [formWalkInDiscount, setFormWalkInDiscount] = useState(true)
   const [createdBookingList, setCreatedBookingList] = useState<Booking[]>([])
   const [printTargetBooking, setPrintTargetBooking] = useState<Booking | null>(null)
 
@@ -223,7 +242,7 @@ export function WalkInBookingForm({
     let breakfast = 0
     let rentals = 0
 
-    const baselineDiscount = (formSource === 'manual' || formSource === 'facebook') ? 20 : 0
+    const baselineDiscount = formWalkInDiscount ? 20 : 0
     const totalDiscount = baselineDiscount + formAdditionalDiscount
     const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
 
@@ -281,7 +300,7 @@ export function WalkInBookingForm({
       estDown: down,
       estDue: due
     }
-  }, [unitSelections, formSource, formAdditionalDiscount, formCompanions.length, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, bookingType])
+  }, [unitSelections, formSource, formAdditionalDiscount, formWalkInDiscount, formCompanions.length, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, bookingType])
 
   const hasAddons = estBreakfast > 0 || estRentals > 0 || estAddons > 0
 
@@ -321,7 +340,7 @@ export function WalkInBookingForm({
       setFormError('Guest name is required.'); return
     }
 
-    const totalDiscount = (formSource === 'manual' ? 20 : 0) + formAdditionalDiscount
+    const totalDiscount = (bookingType === 'partner' ? 0 : (formWalkInDiscount ? 20 : 0)) + formAdditionalDiscount
     const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
 
     const createdBookings: Booking[] = []
@@ -692,41 +711,6 @@ export function WalkInBookingForm({
                         </div>
                       </div>
 
-                      {/* 4. Guest Name */}
-                      <div>
-                        <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Representative Guest Name (Optional)</label>
-                        <input
-                          type="text"
-                          placeholder="Defaults to Partner Representative"
-                          value={formGuestName}
-                          onChange={e => setFormGuestName(e.target.value)}
-                          className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold"
-                        />
-                      </div>
-
-                      {/* 5. Guest Contact details */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Contact No. (Optional)</label>
-                          <input
-                            type="text"
-                            placeholder="Defaults to Partner Contact"
-                            value={formGuestPhone}
-                            onChange={e => setFormGuestPhone(e.target.value)}
-                            className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Email Address (Optional)</label>
-                          <input
-                            type="email"
-                            placeholder="Defaults to Partner Email"
-                            value={formGuestEmail}
-                            onChange={e => setFormGuestEmail(e.target.value)}
-                            className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold"
-                          />
-                        </div>
-                      </div>
                     </div>
 
                     <div className="flex justify-between items-center pt-4 border-t border-slate-100 mt-4 shrink-0 bg-white">
@@ -762,6 +746,8 @@ export function WalkInBookingForm({
                         setFormStatus={setFormStatus}
                         formAdditionalDiscount={formAdditionalDiscount}
                         setFormAdditionalDiscount={setFormAdditionalDiscount}
+                        formWalkInDiscount={formWalkInDiscount}
+                        setFormWalkInDiscount={setFormWalkInDiscount}
                       />
                     )}
 
