@@ -311,7 +311,7 @@ export function PublicReservePortal() {
                                   </span>
                                 ) : (
                                   <span className="absolute bottom-3 right-3 bg-rose-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider animate-in fade-in">
-                                    Unavailable
+                                    Occupied
                                   </span>
                                 )}
                               </div>
@@ -342,7 +342,7 @@ export function PublicReservePortal() {
                                       disabled
                                       className="bg-slate-100 text-slate-400 text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 cursor-not-allowed border border-slate-200"
                                     >
-                                      Unavailable
+                                      Occupied
                                     </button>
                                   )}
                                 </div>
@@ -382,7 +382,7 @@ export function PublicReservePortal() {
                                 </span>
                               ) : (
                                 <span className="absolute bottom-3 right-3 bg-rose-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider animate-in fade-in">
-                                  Unavailable
+                                  Occupied
                                 </span>
                               )}
                             </div>
@@ -413,7 +413,7 @@ export function PublicReservePortal() {
                                     disabled
                                     className="bg-slate-100 text-slate-400 text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 cursor-not-allowed border border-slate-200"
                                   >
-                                    Unavailable
+                                    Occupied
                                   </button>
                                 )}
                               </div>
