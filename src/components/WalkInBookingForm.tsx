@@ -536,14 +536,32 @@ export function WalkInBookingForm({
           <div className="flex border-b border-slate-100 px-5 py-2 bg-slate-50/50 gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => { setBookingType('individual'); setFormStep(1); }}
+              onClick={() => {
+                setBookingType('individual');
+                setFormStep(1);
+                setFormWalkInDiscount(true);
+                const initial: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }> = {}
+                initialRoomIds.forEach(id => {
+                  initial[id] = { checkIn: initialCheckIn, checkOut: initialCheckOut, type: 'room' }
+                })
+                initialVenueIds.forEach(id => {
+                  initial[id] = { checkIn: initialCheckIn, checkOut: initialCheckOut, type: 'venue' }
+                })
+                setUnitSelections(initial);
+              }}
               className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${bookingType === 'individual' ? 'bg-[#B89251] text-white border-[#B89251] shadow-sm font-bold' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
             >
               Walk-in Guest
             </button>
             <button
               type="button"
-              onClick={() => { setBookingType('partner'); }}
+              onClick={() => {
+                setBookingType('partner');
+                setFormWalkInDiscount(false);
+                setFormPartnerDealId('');
+                setFormCompanyName('');
+                setUnitSelections({});
+              }}
               className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${bookingType === 'partner' ? 'bg-[#B89251] text-white border-[#B89251] shadow-sm font-bold' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
             >
               Corporate Partner / Agency
