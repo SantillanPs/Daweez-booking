@@ -80,6 +80,8 @@ export function WalkInBookingForm({
       setFormAddress(deal.address || '')
       setFormVehiclePlate(deal.vehicle_plate || '')
       setFormInvoiceType(deal.invoice_type)
+      setFormGuestEmail(deal.email || '')
+      setFormGuestPhone(deal.contact_no || '')
     } else {
       setFormPartnerDealId('')
       setFormCompanyName('')
@@ -87,6 +89,8 @@ export function WalkInBookingForm({
       setFormAddress('')
       setFormVehiclePlate('')
       setFormInvoiceType('folio')
+      setFormGuestEmail('')
+      setFormGuestPhone('')
     }
   }
 
@@ -345,8 +349,8 @@ export function WalkInBookingForm({
         const b = await createManualBooking({
           roomId,
           guestName: cleanGuestName,
-          guestEmail: bookingType === 'partner' ? (deal?.email || 'admin@daweez-booking.vercel.app') : formGuestEmail,
-          guestPhone: bookingType === 'partner' ? (deal?.contact_no || 'None') : formGuestPhone,
+          guestEmail: formGuestEmail || (deal?.email || 'admin@daweez-booking.vercel.app'),
+          guestPhone: formGuestPhone || (deal?.contact_no || 'None'),
           checkIn: sel.checkIn,
           checkOut: sel.checkOut,
           source: bookingType === 'partner' ? 'manual' : formSource,
@@ -384,8 +388,8 @@ export function WalkInBookingForm({
         const b = await createManualBooking({
           venueId,
           guestName: cleanGuestName,
-          guestEmail: bookingType === 'partner' ? (deal?.email || 'admin@daweez-booking.vercel.app') : formGuestEmail,
-          guestPhone: bookingType === 'partner' ? (deal?.contact_no || 'None') : formGuestPhone,
+          guestEmail: formGuestEmail || (deal?.email || 'admin@daweez-booking.vercel.app'),
+          guestPhone: formGuestPhone || (deal?.contact_no || 'None'),
           checkIn: sel.checkIn,
           checkOut: sel.checkOut,
           source: bookingType === 'partner' ? 'manual' : formSource,
@@ -700,16 +704,28 @@ export function WalkInBookingForm({
                         />
                       </div>
 
-                      {/* 5. Vehicle Plate */}
-                      <div>
-                        <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Vehicle Plate No (Optional)</label>
-                        <input
-                          type="text"
-                          placeholder="Defaults to Partner default"
-                          value={formVehiclePlate}
-                          onChange={e => setFormVehiclePlate(e.target.value)}
-                          className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold uppercase font-mono"
-                        />
+                      {/* 5. Guest Contact details */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Contact No. (Optional)</label>
+                          <input
+                            type="text"
+                            placeholder="Defaults to Partner Contact"
+                            value={formGuestPhone}
+                            onChange={e => setFormGuestPhone(e.target.value)}
+                            className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-[#9A783E] font-bold block mb-1 uppercase tracking-wider">Email Address (Optional)</label>
+                          <input
+                            type="email"
+                            placeholder="Defaults to Partner Email"
+                            value={formGuestEmail}
+                            onChange={e => setFormGuestEmail(e.target.value)}
+                            className="w-full bg-[#FCFBF9] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold"
+                          />
+                        </div>
                       </div>
                     </div>
 

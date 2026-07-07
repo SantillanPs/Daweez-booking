@@ -278,11 +278,6 @@ export function DirectoryTab() {
                     <div className="grid grid-cols-2 gap-3">
                       <input type="email" placeholder="Email address" value={pEmail} onChange={e => setPEmail(e.target.value)} className={inputCls} />
                       <input type="text" placeholder="Phone number" value={pContactNo} onChange={e => setPContactNo(e.target.value)} className={inputCls} />
-                      <input type="text" placeholder="TIN (optional)" value={pTIN} onChange={e => setPTIN(e.target.value)} className={inputCls} />
-                      <input type="text" placeholder="Vehicle plate (optional)" value={pVehiclePlate} onChange={e => setPVehiclePlate(e.target.value)} className={inputCls} />
-                      <div className="col-span-2">
-                        <input type="text" placeholder="Billing address (optional)" value={pAddress} onChange={e => setPAddress(e.target.value)} className={inputCls} />
-                      </div>
                     </div>
                   </div>
 
