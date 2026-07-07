@@ -89,10 +89,35 @@ export const BillingSummary = React.memo(
           <div className="bg-[#FDFBF7] border border-[#E5D5C0] p-5 rounded-md text-xs space-y-4 shadow-sm relative overflow-hidden text-[#9A783E] animate-fade-in">
             <div className="absolute top-0 inset-x-0 h-1.5 bg-[#B89251]" />
             <div className="text-center border-b border-dashed border-[#E5D5C0] pb-4">
-              <div className="text-[9px] text-[#9A783E] font-bold tracking-widest uppercase mb-1 font-sans">Estimated Invoice</div>
+              <div className="text-[9px] text-[#9A783E] font-bold tracking-widest uppercase mb-1 font-sans">
+                {bookingType === 'partner' ? 'Guest Registration & Billing' : 'Estimated Invoice'}
+              </div>
               <h5 className="text-sm font-extrabold text-slate-800 tracking-tight uppercase font-sans">Daweez Pension House</h5>
-              <span className="text-[8px] font-mono text-slate-400 block mt-0.5">VOUCHER #WALK-IN</span>
+              <span className="text-[8px] font-mono text-slate-400 block mt-0.5">
+                {bookingType === 'partner' ? `VOUCHER #${deal?.name.replace(/\s+/g, '-').toUpperCase() || 'PARTNER'}` : 'VOUCHER #WALK-IN'}
+              </span>
             </div>
+
+            {bookingType === 'partner' && deal && (
+              <div className="border-b border-dashed border-[#E5D5C0] pb-3 text-[10px] space-y-1 text-slate-600 font-medium">
+                <div className="flex justify-between">
+                  <span className="text-slate-400 uppercase font-semibold">COMPANY:</span>
+                  <span className="font-bold text-slate-800">{deal.name}</span>
+                </div>
+                {deal.contact_no && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 uppercase font-semibold">CONTACT NO:</span>
+                    <span className="font-mono text-slate-800">{deal.contact_no}</span>
+                  </div>
+                )}
+                {deal.email && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 uppercase font-semibold">EMAIL ADDRESS:</span>
+                    <span className="text-slate-800 break-all">{deal.email}</span>
+                  </div>
+                )}
+              </div>
+            )}
             
             <div className="space-y-2 text-slate-600 font-medium">
               <div className="flex justify-between">
@@ -110,10 +135,14 @@ export const BillingSummary = React.memo(
                       const nights = sel.checkIn && sel.checkOut
                         ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
                         : 1
+                      const contractedRate = deal?.contracted_rates[id]
+                      const displayPrice = contractedRate !== undefined && contractedRate !== null
+                        ? contractedRate
+                        : (r?.base_price ?? 0)
                       return r ? (
                         <div key={id} className="flex justify-between">
                           <span>Room {r.room_number} ({nights} nite{nights > 1 ? 's' : ''}):</span>
-                          <span>₱{(r.base_price * nights).toLocaleString()}</span>
+                          <span>₱{(displayPrice * nights).toLocaleString()}</span>
                         </div>
                       ) : null
                     })}
@@ -131,10 +160,14 @@ export const BillingSummary = React.memo(
                       const nights = sel.checkIn && sel.checkOut
                         ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
                         : 1
+                      const contractedRate = deal?.contracted_rates[id]
+                      const displayPrice = contractedRate !== undefined && contractedRate !== null
+                        ? contractedRate
+                        : (v?.base_price ?? 0)
                       return v ? (
                         <div key={id} className="flex justify-between">
                           <span>{v.name} ({nights} day{nights > 1 ? 's' : ''}):</span>
-                          <span>₱{(v.base_price * nights).toLocaleString()}</span>
+                          <span>₱{(displayPrice * nights).toLocaleString()}</span>
                         </div>
                       ) : null
                     })}
