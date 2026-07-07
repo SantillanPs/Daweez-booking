@@ -1,5 +1,5 @@
 import React from 'react'
-import { Room, Venue, BookingSource } from '../../types/booking'
+import { Room, Venue, BookingSource, PartnerDeal } from '../../types/booking'
 import { Mail, Printer } from 'lucide-react'
 
 interface BillingSummaryProps {
@@ -16,6 +16,10 @@ interface BillingSummaryProps {
   formSource: BookingSource
   formAdditionalDiscount: number
   guestEmail?: string
+  bookingType: 'individual' | 'partner'
+  formWalkInDiscount: boolean
+  partnerDeals?: PartnerDeal[]
+  formPartnerDealId?: string
 }
 
 export const BillingSummary = React.memo(
@@ -32,26 +36,48 @@ export const BillingSummary = React.memo(
     estDue,
     formSource,
     formAdditionalDiscount,
-    guestEmail
+    guestEmail,
+    bookingType,
+    formWalkInDiscount,
+    partnerDeals,
+    formPartnerDealId
   }: BillingSummaryProps) => {
     const unitCount = Object.keys(unitSelections).length
     const hasRooms = Object.values(unitSelections).some(s => s.type === 'room')
     const hasVenues = Object.values(unitSelections).some(s => s.type === 'venue')
 
-    const undiscountedBaseTotal = Object.entries(unitSelections).reduce((sum, [id, sel]) => {
-      const price = sel.type === 'room'
+    const deal = partnerDeals?.find(d => d.id === formPartnerDealId)
+
+    let undiscountedBaseTotal = 0
+    let walkInAmount = 0
+    let additionalAmount = 0
+
+    Object.entries(unitSelections).forEach(([id, sel]) => {
+      const isRoom = sel.type === 'room'
+      const stdPrice = isRoom
         ? (rooms.find(r => r.id === id)?.base_price ?? 0)
         : (venues.find(v => v.id === id)?.base_price ?? 0)
+      
       const nights = sel.checkIn && sel.checkOut
         ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
         : 1
-      return sum + price * nights
-    }, 0)
 
-    const walkInPercent = (formSource === 'manual' || formSource === 'facebook') ? 20 : 0
-    const walkInAmount = Math.round(undiscountedBaseTotal * (walkInPercent / 100))
-    const additionalPercent = formAdditionalDiscount
-    const additionalAmount = Math.round(undiscountedBaseTotal * (additionalPercent / 100))
+      const contractedRate = deal?.contracted_rates[id]
+      const hasContract = contractedRate !== undefined && contractedRate !== null
+
+      if (hasContract) {
+        // Negotiated rate has no walk-in or additional discount applied
+        undiscountedBaseTotal += contractedRate * nights
+      } else {
+        undiscountedBaseTotal += stdPrice * nights
+        if (formWalkInDiscount) {
+          walkInAmount += Math.round(stdPrice * 0.2) * nights
+        }
+        if (formAdditionalDiscount > 0) {
+          additionalAmount += Math.round(stdPrice * (formAdditionalDiscount / 100)) * nights
+        }
+      }
+    })
 
     return (
       <div className="space-y-4 font-sans">
@@ -145,15 +171,15 @@ export const BillingSummary = React.memo(
                 <span>Original Rate:</span>
                 <span className="font-mono">₱{undiscountedBaseTotal.toLocaleString()}</span>
               </div>
-              {walkInPercent > 0 && (
+              {formWalkInDiscount && walkInAmount > 0 && (
                 <div className="flex justify-between text-rose-600 font-semibold text-xs animate-in fade-in">
-                  <span>{formSource === 'facebook' ? 'Facebook Booking Discount (20%):' : 'Direct Booking Discount (20%):'}</span>
+                  <span>Direct Booking Discount (20%):</span>
                   <span className="font-mono">-₱{walkInAmount.toLocaleString()}</span>
                 </div>
               )}
-              {additionalPercent > 0 && (
+              {additionalAmount > 0 && (
                 <div className="flex justify-between text-rose-600 font-semibold text-xs animate-in fade-in">
-                  <span>Additional Discount ({additionalPercent}%):</span>
+                  <span>Additional Discount ({formAdditionalDiscount}%):</span>
                   <span className="font-mono">-₱{additionalAmount.toLocaleString()}</span>
                 </div>
               )}
@@ -236,7 +262,10 @@ export const BillingSummary = React.memo(
       prevProps.venues === nextProps.venues &&
       prevProps.formSource === nextProps.formSource &&
       prevProps.formAdditionalDiscount === nextProps.formAdditionalDiscount &&
-      prevProps.guestEmail === nextProps.guestEmail
+      prevProps.guestEmail === nextProps.guestEmail &&
+      prevProps.bookingType === nextProps.bookingType &&
+      prevProps.formWalkInDiscount === nextProps.formWalkInDiscount &&
+      prevProps.formPartnerDealId === nextProps.formPartnerDealId
     )
   }
 )

@@ -340,7 +340,7 @@ export function WalkInBookingForm({
       setFormError('Guest name is required.'); return
     }
 
-    const totalDiscount = (bookingType === 'partner' ? 0 : (formWalkInDiscount ? 20 : 0)) + formAdditionalDiscount
+    const totalDiscount = (formWalkInDiscount ? 20 : 0) + formAdditionalDiscount
     const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
 
     const createdBookings: Booking[] = []
@@ -711,6 +711,19 @@ export function WalkInBookingForm({
                         </div>
                       </div>
 
+                      {/* Walk-in Discount Checkbox */}
+                      <div className="pt-2 border-t border-slate-100">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={formWalkInDiscount}
+                            onChange={e => setFormWalkInDiscount(e.target.checked)}
+                            className="rounded text-[#B89251] focus:ring-[#B89251] w-3.5 h-3.5 cursor-pointer accent-[#B89251]"
+                          />
+                          <span className="text-[10px] text-[#9A783E] font-bold uppercase tracking-wider">Apply 20% Walk-in Discount</span>
+                        </label>
+                      </div>
+
                     </div>
 
                     <div className="flex justify-between items-center pt-4 border-t border-slate-100 mt-4 shrink-0 bg-white">
@@ -864,6 +877,10 @@ export function WalkInBookingForm({
                 formSource={formSource}
                 formAdditionalDiscount={formAdditionalDiscount}
                 guestEmail={formGuestEmail}
+                bookingType={bookingType}
+                formWalkInDiscount={formWalkInDiscount}
+                partnerDeals={partnerDeals}
+                formPartnerDealId={formPartnerDealId}
               />
 
             </div>
