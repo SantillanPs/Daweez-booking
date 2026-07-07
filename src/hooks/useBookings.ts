@@ -40,7 +40,8 @@ export function useBookings() {
     queryKey: ['feeds'],
     queryFn: async () => {
       return await syncEngine.getFeeds()
-    }
+    },
+    staleTime: Infinity,
   })
 
   // Subscribe to Supabase Realtime — patches cache on INSERT/UPDATE/DELETE, no polling needed
