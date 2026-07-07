@@ -63,19 +63,16 @@ export const BillingSummary = React.memo(
         : 1
 
       const contractedRate = deal?.contracted_rates[id]
-      const hasContract = contractedRate !== undefined && contractedRate !== null
+      const price = contractedRate !== undefined && contractedRate !== null
+        ? contractedRate
+        : stdPrice
 
-      if (hasContract) {
-        // Negotiated rate has no walk-in or additional discount applied
-        undiscountedBaseTotal += contractedRate * nights
-      } else {
-        undiscountedBaseTotal += stdPrice * nights
-        if (formWalkInDiscount) {
-          walkInAmount += Math.round(stdPrice * 0.2) * nights
-        }
-        if (formAdditionalDiscount > 0) {
-          additionalAmount += Math.round(stdPrice * (formAdditionalDiscount / 100)) * nights
-        }
+      undiscountedBaseTotal += price * nights
+      if (formWalkInDiscount) {
+        walkInAmount += Math.round(price * 0.2) * nights
+      }
+      if (formAdditionalDiscount > 0) {
+        additionalAmount += Math.round(price * (formAdditionalDiscount / 100)) * nights
       }
     })
 

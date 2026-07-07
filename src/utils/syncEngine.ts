@@ -574,33 +574,36 @@ export function calculatePricing(params: {
   const finalMultiplier = rateMultiplier !== undefined ? rateMultiplier : defaultMultiplier
 
   let basePrice = 0
+  let undiscountedBasePrice = 0
   let nights = 0
 
   // A. Nightly Room vs Daily Venue rate mapping
   if (contractRateOverride !== undefined && contractRateOverride !== null) {
+    undiscountedBasePrice = contractRateOverride
     basePrice = Math.round(contractRateOverride * finalMultiplier)
     nights = roomId
       ? Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
       : Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
   } else if (roomId) {
     const room = DEFAULT_ROOMS.find(r => r.id === roomId)
-    basePrice = room ? room.base_price : 0
-    basePrice = Math.round(basePrice * finalMultiplier)
+    undiscountedBasePrice = room ? room.base_price : 0
+    basePrice = Math.round(undiscountedBasePrice * finalMultiplier)
     nights = Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
   } else if (venueId) {
     const venue = DEFAULT_VENUES.find(v => v.id === normalizeVenueId(venueId))
-    basePrice = venue ? venue.base_price : 0
-    basePrice = Math.round(basePrice * finalMultiplier)
+    undiscountedBasePrice = venue ? venue.base_price : 0
+    basePrice = Math.round(undiscountedBasePrice * finalMultiplier)
     nights = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
   }
 
   // B. Loyalty Program: 10% auto-deducted if guest has past completed stay
   const hasLoyalty = checkGuestLoyalty(guestEmail, bookingsList)
   const discountMultiplier = hasLoyalty ? 0.90 : 1.0
-  const subtotal = (contractRateOverride !== undefined && contractRateOverride !== null)
-    ? basePrice * nights
-    : basePrice * nights * discountMultiplier
-  const grandTotal = subtotal
+  const subtotal = basePrice * nights
+  const undiscountedSubtotal = undiscountedBasePrice * nights
+  const discountAmount = undiscountedSubtotal - subtotal
+  const discountPercent = Math.round((1 - finalMultiplier) * 100)
+  const grandTotal = subtotal * ((contractRateOverride !== undefined && contractRateOverride !== null) ? 1 : discountMultiplier)
 
   // C. Breakfast is always included for room bookings (₱150/guest/night)
   let breakfastTotal = 0
@@ -652,6 +655,9 @@ export function calculatePricing(params: {
 
   return {
     subtotal: Math.round(subtotal),
+    undiscountedSubtotal: Math.round(undiscountedSubtotal),
+    discountAmount: Math.round(discountAmount),
+    discountPercent,
     hasLoyalty,
     breakfastTotal,
     rentalsTotal,

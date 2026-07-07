@@ -283,13 +283,11 @@ export function WalkInBookingForm({
     }
 
     const total = base + breakfast + rentals
-    const down = bookingType === 'partner' ? 0 : Math.round(total * 0.5)
+    const down = Math.round(total * 0.5)
     
     // Per-unit security deposit: ₱500 per room and venue
     const unitCount = Object.keys(unitSelections).length
-    const due = bookingType === 'partner'
-      ? (total + 500 * unitCount)
-      : (total - down) + (formStatus === 'blocked' ? 0 : 500 * unitCount)
+    const due = (total - down) + (formStatus === 'blocked' ? 0 : 500 * unitCount)
 
     return {
       estBreakfast: breakfast,

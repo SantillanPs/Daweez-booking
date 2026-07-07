@@ -38,13 +38,68 @@ export function PrintInvoiceModal({
     ? (rooms.find(r => r.id === unitId)?.name || `Room ${rooms.find(r => r.id === unitId)?.room_number || ''}`)
     : (venues.find(v => v.id === unitId)?.name || 'Event Venue')
 
-  const basePrice = isRoom
-    ? (rooms.find(r => r.id === unitId)?.base_price ?? 0)
-    : (venues.find(v => v.id === unitId)?.base_price ?? 0)
-
   const nights = booking.check_in && booking.check_out
     ? Math.max(1, Math.ceil((new Date(booking.check_out).getTime() - new Date(booking.check_in).getTime()) / 86400000))
     : 1
+
+  // 1. Calculate breakfast, rentals, addons to deduce base room stay total
+  let breakfastTotal = 0
+  if (isRoom) {
+    const guestCount = 1 + (booking.companions?.length || 0)
+    const deal = bookingsList.find(b => b.id === booking.id)?.partner_deal_id
+      ? partnerDeals.find(d => d.id === booking.partner_deal_id)
+      : undefined
+    const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : booking.breakfast_included
+    if (!isBreakfastIncluded) {
+      breakfastTotal = 150 * guestCount * nights
+    }
+  } else if (booking.breakfast_orders) {
+    booking.breakfast_orders.forEach(order => {
+      breakfastTotal += 150 * order.quantity
+    })
+  }
+
+  let rentalsTotal = 0
+  if (booking.equipment_rentals) {
+    if (isRoom) {
+      const nightlyRentals =
+        ((booking.equipment_rentals.extraFoamCount || 0) * 200) +
+        ((booking.equipment_rentals.extraPillowCount || 0) * 50) +
+        ((booking.equipment_rentals.extraBlanketCount || 0) * 50) +
+        ((booking.equipment_rentals.extraTowelCount || 0) * 50)
+      rentalsTotal += nightlyRentals * nights
+    } else {
+      rentalsTotal += ((booking.equipment_rentals.bigTableCount || 0) * 150)
+      rentalsTotal += ((booking.equipment_rentals.smallTableCount || 0) * 100)
+      rentalsTotal += ((booking.equipment_rentals.chairCount || 0) * 15)
+      rentalsTotal += ((booking.equipment_rentals.mineralWaterCount || 0) * 35)
+      rentalsTotal += ((booking.equipment_rentals.tableCount || 0) * 150)
+      rentalsTotal += ((booking.equipment_rentals.tentCount || 0) * 500)
+    }
+  }
+
+  let addonsTotal = 0
+  if (booking.event_addons) {
+    if (booking.event_addons.fullBandAndLights) addonsTotal += 2000
+    if (booking.event_addons.stage) addonsTotal += 2000
+    if (booking.event_addons.ledWall) addonsTotal += 5000
+  }
+
+  // 2. Deduce actual base room subtotal from database booking values
+  const actualSubtotal = Number(booking.downpayment_paid) + Number(booking.balance_due) - Number(booking.security_deposit) - (breakfastTotal + rentalsTotal + addonsTotal)
+
+  // 3. Get undiscounted base rate subtotal
+  const basePrice = booking.contract_rate_override !== undefined && booking.contract_rate_override !== null
+    ? booking.contract_rate_override
+    : isRoom
+      ? (rooms.find(r => r.id === booking.room_id)?.base_price || 0)
+      : (venues.find(v => v.id === booking.venue_id)?.base_price || 0)
+  const undiscountedSubtotal = basePrice * nights
+
+  // 4. Derive rate multiplier
+  const derivedMultiplier = undiscountedSubtotal > 0
+    ? Math.min(1.0, Math.max(0.0, actualSubtotal / undiscountedSubtotal))
+    : 1.0
 
   // Use calculated pricing
   const pricing = syncEngine.calculatePricing({
@@ -58,6 +113,7 @@ export function PrintInvoiceModal({
     eventAddons: booking.event_addons,
     companions: booking.companions,
     bookingsList,
+    rateMultiplier: derivedMultiplier,
     contractRateOverride: booking.contract_rate_override
   })
 
@@ -293,6 +349,16 @@ export function PrintInvoiceModal({
             {/* Price Ledger summary */}
             <div className="space-y-2 text-xs font-medium">
               <div className="flex justify-between text-slate-500">
+                <span>Original Room/Venue Rate:</span>
+                <span className="font-mono">₱{pricing.undiscountedSubtotal.toLocaleString()}</span>
+              </div>
+              {pricing.discountAmount > 0 && (
+                <div className="flex justify-between text-rose-600 font-semibold">
+                  <span>Direct Booking Discount ({pricing.discountPercent}%):</span>
+                  <span className="font-mono">-₱{pricing.discountAmount.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-slate-500 border-t border-slate-100 pt-1.5">
                 <span>Subtotal amount:</span>
                 <span className="font-mono">₱{pricing.subtotal.toLocaleString()}</span>
               </div>
