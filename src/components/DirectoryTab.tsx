@@ -22,6 +22,7 @@ export function DirectoryTab() {
   const [pInvoiceType, setPInvoiceType] = useState<'folio' | 'billing'>('folio')
   const [pBreakfastDefault, setPBreakfastDefault] = useState<'w/o' | 'with'>('w/o')
   const [pRates, setPRates] = useState<Record<string, number>>({})
+  const [selectedUnits, setSelectedUnits] = useState<Set<string>>(new Set())
 
   const guestRecords = useMemo(() => syncEngine.getGuestRecords(bookings), [bookings])
 
@@ -39,6 +40,7 @@ export function DirectoryTab() {
     setPName(''); setPType('company'); setPTIN(''); setPAddress('')
     setPContactNo(''); setPEmail(''); setPVehiclePlate('')
     setPInvoiceType('folio'); setPBreakfastDefault('w/o'); setPRates({})
+    setSelectedUnits(new Set())
     setEditingDealId(null); setIsAdding(false)
   }
 
@@ -47,7 +49,23 @@ export function DirectoryTab() {
     setPAddress(deal.address || ''); setPContactNo(deal.contact_no || '')
     setPEmail(deal.email || ''); setPVehiclePlate(deal.vehicle_plate || '')
     setPInvoiceType(deal.invoice_type); setPBreakfastDefault(deal.breakfast_default)
-    setPRates(deal.contracted_rates || {}); setEditingDealId(deal.id); setIsAdding(true)
+    const rates = deal.contracted_rates || {}
+    setPRates(rates)
+    setSelectedUnits(new Set(Object.keys(rates).filter(k => (rates[k] ?? 0) > 0)))
+    setEditingDealId(deal.id); setIsAdding(true)
+  }
+
+  const toggleUnit = (id: string) => {
+    setSelectedUnits(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+        setPRates(r => { const n = { ...r }; delete n[id]; return n })
+      } else {
+        next.add(id)
+      }
+      return next
+    })
   }
 
   const handleSavePartner = async (e: React.FormEvent) => {
@@ -337,66 +355,116 @@ export function DirectoryTab() {
                 <div className="bg-[#FDFBF7] border border-[#E5D5C0] rounded-xl p-5 space-y-4 self-start">
                   <div>
                     <h4 className="text-xs font-bold text-[#9A783E] uppercase tracking-wide">Contracted Rates</h4>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Override nightly rate per unit. Leave blank to use standard price.</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+                      Click a room or venue to <strong className="text-slate-500">include it</strong> in this deal, then enter its rate.
+                    </p>
                   </div>
 
-                  <div className="max-h-[460px] overflow-y-auto pr-0.5 space-y-1.5">
+                  {selectedUnits.size > 0 && (
+                    <div className="text-[10px] font-semibold text-[#9A783E] bg-[#9A783E]/8 border border-[#E5D5C0] rounded-lg px-3 py-2">
+                      {selectedUnits.size} unit{selectedUnits.size !== 1 ? 's' : ''} included in this deal
+                    </div>
+                  )}
+
+                  <div className="max-h-[460px] overflow-y-auto pr-0.5 space-y-3">
                     {/* Rooms section */}
                     {rooms.length > 0 && (
                       <div className="space-y-1.5">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide py-1">Rooms</div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide pb-1">Rooms</div>
                         <div className="grid grid-cols-2 gap-1.5">
-                          {rooms.map(r => (
-                            <div key={r.id} className="bg-white border border-slate-200/60 rounded-lg p-2.5 shadow-sm">
-                              <div className="flex items-baseline justify-between mb-1.5">
-                                <span className="text-xs font-bold text-slate-700">Room {r.room_number}</span>
-                                <span className="text-[9px] text-slate-400">Std ₱{r.base_price.toLocaleString()}</span>
+                          {rooms.map(r => {
+                            const included = selectedUnits.has(r.id)
+                            return (
+                              <div
+                                key={r.id}
+                                onClick={() => toggleUnit(r.id)}
+                                className={`rounded-lg p-2.5 cursor-pointer transition-all select-none ${
+                                  included
+                                    ? 'bg-white border-2 border-[#B89251] shadow-sm'
+                                    : 'bg-white/60 border border-slate-200/60 hover:border-slate-300 opacity-60 hover:opacity-80'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className={`text-xs font-bold ${included ? 'text-slate-800' : 'text-slate-500'}`}>Room {r.room_number}</span>
+                                  <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                    included ? 'bg-[#B89251] border-[#B89251]' : 'border-slate-300'
+                                  }`}>
+                                    {included && <span className="text-white text-[8px] font-black leading-none">✓</span>}
+                                  </div>
+                                </div>
+                                <div className={`text-[9px] font-medium mb-2 ${included ? 'text-slate-400' : 'text-slate-300'}`}>
+                                  Std ₱{r.base_price.toLocaleString()}
+                                </div>
+                                {included && (
+                                  <div className="relative" onClick={e => e.stopPropagation()}>
+                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₱</span>
+                                    <input
+                                      type="number"
+                                      placeholder={String(r.base_price)}
+                                      value={pRates[r.id] || ''}
+                                      onChange={e => {
+                                        const val = e.target.value
+                                        setPRates(prev => ({ ...prev, [r.id]: val === '' ? 0 : Number(val) }))
+                                      }}
+                                      className="w-full bg-[#fcf9f5] border border-[#E5D5C0] text-slate-800 pl-6 pr-2 py-1.5 rounded-md text-xs focus:outline-none focus:border-[#B89251] focus:ring-2 focus:ring-[#B89251]/10 font-bold transition-all"
+                                      autoFocus
+                                    />
+                                  </div>
+                                )}
                               </div>
-                              <div className="relative">
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₱</span>
-                                <input
-                                  type="number"
-                                  placeholder="—"
-                                  value={pRates[r.id] || ''}
-                                  onChange={e => {
-                                    const val = e.target.value
-                                    setPRates(prev => ({ ...prev, [r.id]: val === '' ? 0 : Number(val) }))
-                                  }}
-                                  className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 pl-6 pr-2 py-1.5 rounded-md text-xs focus:outline-none focus:border-[#B89251] focus:ring-2 focus:ring-[#B89251]/10 font-bold transition-all"
-                                />
-                              </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       </div>
                     )}
 
                     {/* Venues section */}
                     {venues.length > 0 && (
-                      <div className="space-y-1.5 pt-1">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide py-1">Venues</div>
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide pb-1">Venues</div>
                         <div className="grid grid-cols-2 gap-1.5">
-                          {venues.map(v => (
-                            <div key={v.id} className="bg-white border border-slate-200/60 rounded-lg p-2.5 shadow-sm">
-                              <div className="flex items-baseline justify-between mb-1.5">
-                                <span className="text-xs font-bold text-slate-700 truncate pr-1">{v.name}</span>
-                                <span className="text-[9px] text-slate-400 shrink-0">Std ₱{v.base_price.toLocaleString()}</span>
+                          {venues.map(v => {
+                            const included = selectedUnits.has(v.id)
+                            return (
+                              <div
+                                key={v.id}
+                                onClick={() => toggleUnit(v.id)}
+                                className={`rounded-lg p-2.5 cursor-pointer transition-all select-none ${
+                                  included
+                                    ? 'bg-white border-2 border-[#B89251] shadow-sm'
+                                    : 'bg-white/60 border border-slate-200/60 hover:border-slate-300 opacity-60 hover:opacity-80'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className={`text-xs font-bold truncate pr-1 ${included ? 'text-slate-800' : 'text-slate-500'}`}>{v.name}</span>
+                                  <div className={`w-3.5 h-3.5 shrink-0 rounded-full border-2 flex items-center justify-center transition-all ${
+                                    included ? 'bg-[#B89251] border-[#B89251]' : 'border-slate-300'
+                                  }`}>
+                                    {included && <span className="text-white text-[8px] font-black leading-none">✓</span>}
+                                  </div>
+                                </div>
+                                <div className={`text-[9px] font-medium mb-2 ${included ? 'text-slate-400' : 'text-slate-300'}`}>
+                                  Std ₱{v.base_price.toLocaleString()}
+                                </div>
+                                {included && (
+                                  <div className="relative" onClick={e => e.stopPropagation()}>
+                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₱</span>
+                                    <input
+                                      type="number"
+                                      placeholder={String(v.base_price)}
+                                      value={pRates[v.id] || ''}
+                                      onChange={e => {
+                                        const val = e.target.value
+                                        setPRates(prev => ({ ...prev, [v.id]: val === '' ? 0 : Number(val) }))
+                                      }}
+                                      className="w-full bg-[#fcf9f5] border border-[#E5D5C0] text-slate-800 pl-6 pr-2 py-1.5 rounded-md text-xs focus:outline-none focus:border-[#B89251] focus:ring-2 focus:ring-[#B89251]/10 font-bold transition-all"
+                                      autoFocus
+                                    />
+                                  </div>
+                                )}
                               </div>
-                              <div className="relative">
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₱</span>
-                                <input
-                                  type="number"
-                                  placeholder="—"
-                                  value={pRates[v.id] || ''}
-                                  onChange={e => {
-                                    const val = e.target.value
-                                    setPRates(prev => ({ ...prev, [v.id]: val === '' ? 0 : Number(val) }))
-                                  }}
-                                  className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 pl-6 pr-2 py-1.5 rounded-md text-xs focus:outline-none focus:border-[#B89251] focus:ring-2 focus:ring-[#B89251]/10 font-bold transition-all"
-                                />
-                              </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       </div>
                     )}
