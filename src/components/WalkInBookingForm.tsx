@@ -242,7 +242,9 @@ export function WalkInBookingForm({
     let breakfast = 0
     let rentals = 0
 
-    const baselineDiscount = formWalkInDiscount ? 20 : 0
+    const baselineDiscount = bookingType === 'partner'
+      ? (formWalkInDiscount ? 20 : 0)
+      : ((formSource === 'manual' || formSource === 'facebook') ? 20 : 0)
     const totalDiscount = baselineDiscount + formAdditionalDiscount
     const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
 
@@ -340,7 +342,9 @@ export function WalkInBookingForm({
       setFormError('Guest name is required.'); return
     }
 
-    const totalDiscount = (formWalkInDiscount ? 20 : 0) + formAdditionalDiscount
+    const totalDiscount = (bookingType === 'partner'
+      ? (formWalkInDiscount ? 20 : 0)
+      : ((formSource === 'manual' || formSource === 'facebook') ? 20 : 0)) + formAdditionalDiscount
     const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
 
     const createdBookings: Booking[] = []
@@ -759,8 +763,6 @@ export function WalkInBookingForm({
                         setFormStatus={setFormStatus}
                         formAdditionalDiscount={formAdditionalDiscount}
                         setFormAdditionalDiscount={setFormAdditionalDiscount}
-                        formWalkInDiscount={formWalkInDiscount}
-                        setFormWalkInDiscount={setFormWalkInDiscount}
                       />
                     )}
 

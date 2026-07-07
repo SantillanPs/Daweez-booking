@@ -14,8 +14,6 @@ interface GuestDetailsFormProps {
   setFormStatus: (val: 'confirmed' | 'blocked') => void
   formAdditionalDiscount: number
   setFormAdditionalDiscount: (val: number) => void
-  formWalkInDiscount: boolean
-  setFormWalkInDiscount: (val: boolean) => void
 }
 
 export const GuestDetailsForm = React.memo(
@@ -30,9 +28,7 @@ export const GuestDetailsForm = React.memo(
     formStatus,
     setFormStatus,
     formAdditionalDiscount,
-    setFormAdditionalDiscount,
-    formWalkInDiscount,
-    setFormWalkInDiscount
+    setFormAdditionalDiscount
   }: GuestDetailsFormProps) => {
 
     const formRoomIds = useMemo(() => {
@@ -191,16 +187,10 @@ export const GuestDetailsForm = React.memo(
               <option value="facebook">Facebook Messenger</option>
               <option value="google_maps">Google Maps</option>
             </select>
-            {formStatus === 'confirmed' && (
-              <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={formWalkInDiscount}
-                  onChange={e => setFormWalkInDiscount(e.target.checked)}
-                  className="rounded text-[#B89251] focus:ring-[#B89251] w-3.5 h-3.5 cursor-pointer accent-[#B89251]"
-                />
-                <span className="text-[10px] text-[#9A783E] font-bold">20% Walk-in Discount</span>
-              </label>
+            {(formSource === 'manual' || formSource === 'facebook') && formStatus === 'confirmed' && (
+              <p className="text-[9px] text-[#9A783E] font-semibold mt-1.5 animate-in fade-in">
+                ✓ 20% direct discount applied
+              </p>
             )}
           </div>
           <div>
@@ -240,10 +230,8 @@ export const GuestDetailsForm = React.memo(
                 />
                 <span className="text-xs font-bold text-slate-400 font-mono shrink-0">%</span>
               </div>
-              {formStatus === 'confirmed' && (formWalkInDiscount || formAdditionalDiscount > 0) && (
-                <p className="text-[9px] text-slate-400 mt-1.5 font-medium">
-                  Total: {(formWalkInDiscount ? 20 : 0) + formAdditionalDiscount}% off
-                </p>
+              {(formSource === 'manual' || formSource === 'facebook') && formAdditionalDiscount > 0 && (
+                <p className="text-[9px] text-slate-400 mt-1.5 font-medium">Total: {20 + formAdditionalDiscount}% off</p>
               )}
             </div>
           )}
