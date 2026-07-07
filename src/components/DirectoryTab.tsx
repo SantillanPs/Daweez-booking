@@ -236,12 +236,9 @@ export function DirectoryTab() {
                 <Plus className="w-3.5 h-3.5" />
                 Add Partner Preset
               </button>
-            )}
-          </div>
-
           <div className="p-4">
             {isAdding ? (
-              <form onSubmit={handleSavePartner} className="space-y-4 max-w-2xl">
+              <form onSubmit={handleSavePartner} className="space-y-4 w-full max-w-5xl">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h4 className="text-xs font-bold text-[#9A783E] uppercase tracking-wider">
                     {editingDealId ? 'Edit Partner Preset' : 'New Partner Preset'}
@@ -255,162 +252,175 @@ export function DirectoryTab() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-medium block mb-1">Company / Agency Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. GETZ PHARMA (PHIL.), INC."
-                      value={pName}
-                      onChange={e => setPName(e.target.value)}
-                      className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
-                    />
+                <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-6 items-start">
+                  
+                  {/* LEFT COLUMN: General Partner Information */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-medium block mb-1">Company / Agency Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. GETZ PHARMA (PHIL.), INC."
+                          value={pName}
+                          onChange={e => setPName(e.target.value)}
+                          className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-medium block mb-1">Partner Type</label>
+                        <select
+                          value={pType}
+                          onChange={e => setPType(e.target.value as any)}
+                          className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium appearance-none cursor-pointer"
+                        >
+                          <option value="company">Corporate Company</option>
+                          <option value="agency">Travel Agency</option>
+                          <option value="government">Government Department</option>
+                          <option value="university">University / School</option>
+                          <option value="other">Other / Custom</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-medium block mb-1">TIN (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 000-123-456-000"
+                          value={pTIN}
+                          onChange={e => setPTIN(e.target.value)}
+                          className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-550 font-medium block mb-1">Contact No. (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 0917-xxx-xxxx"
+                          value={pContactNo}
+                          onChange={e => setPContactNo(e.target.value)}
+                          className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-medium block mb-1">Email Address (Optional)</label>
+                        <input
+                          type="email"
+                          placeholder="e.g. finance@getzpharma.com"
+                          value={pEmail}
+                          onChange={e => setPEmail(e.target.value)}
+                          className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-medium block mb-1">Default Vehicle Plate (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. N/A or ABC-1234"
+                          value={pVehiclePlate}
+                          onChange={e => setPVehiclePlate(e.target.value)}
+                          className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="text-[10px] text-slate-500 font-medium block mb-1">Billing Address (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. BGC, Pasig City, Metro Manila"
+                          value={pAddress}
+                          onChange={e => setPAddress(e.target.value)}
+                          className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-medium block mb-1">Default Invoice Style</label>
+                        <select
+                          value={pInvoiceType}
+                          onChange={e => setPInvoiceType(e.target.value as any)}
+                          className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium appearance-none cursor-pointer"
+                        >
+                          <option value="folio">Guest Folio (No payment ledger)</option>
+                          <option value="billing">Guest Registration & Billing (Show GCash/Landbank)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-medium block mb-1">Breakfast Inclusions</label>
+                        <select
+                          value={pBreakfastDefault}
+                          onChange={e => setPBreakfastDefault(e.target.value as any)}
+                          className="w-full bg-[#fcf9f5] border border-[#E5D5C0] text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] font-semibold appearance-none cursor-pointer"
+                        >
+                          <option value="w/o">Without Breakfast (breakfast order costs ₱150/night)</option>
+                          <option value="with">With Breakfast (included in room contracted rate)</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-medium block mb-1">Partner Type</label>
-                    <select
-                      value={pType}
-                      onChange={e => setPType(e.target.value as any)}
-                      className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium appearance-none cursor-pointer"
-                    >
-                      <option value="company">Corporate Company</option>
-                      <option value="agency">Travel Agency</option>
-                      <option value="government">Government Department</option>
-                      <option value="university">University / School</option>
-                      <option value="other">Other / Custom</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-medium block mb-1">TIN (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 000-123-456-000"
-                      value={pTIN}
-                      onChange={e => setPTIN(e.target.value)}
-                      className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-550 font-medium block mb-1">Contact No. (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 0917-xxx-xxxx"
-                      value={pContactNo}
-                      onChange={e => setPContactNo(e.target.value)}
-                      className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-medium block mb-1">Email Address (Optional)</label>
-                    <input
-                      type="email"
-                      placeholder="e.g. finance@getzpharma.com"
-                      value={pEmail}
-                      onChange={e => setPEmail(e.target.value)}
-                      className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-medium block mb-1">Default Vehicle Plate (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. N/A or ABC-1234"
-                      value={pVehiclePlate}
-                      onChange={e => setPVehiclePlate(e.target.value)}
-                      className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="text-[10px] text-slate-500 font-medium block mb-1">Billing Address (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. BGC, Pasig City, Metro Manila"
-                      value={pAddress}
-                      onChange={e => setPAddress(e.target.value)}
-                      className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-medium block mb-1">Default Invoice Style</label>
-                    <select
-                      value={pInvoiceType}
-                      onChange={e => setPInvoiceType(e.target.value as any)}
-                      className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium appearance-none cursor-pointer"
-                    >
-                      <option value="folio">Guest Folio (No payment ledger)</option>
-                      <option value="billing">Guest Registration & Billing (Show GCash/Landbank)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-medium block mb-1">Breakfast Inclusions</label>
-                    <select
-                      value={pBreakfastDefault}
-                      onChange={e => setPBreakfastDefault(e.target.value as any)}
-                      className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#B89251] focus:ring-1 focus:ring-[#e6c280] font-medium appearance-none cursor-pointer"
-                    >
-                      <option value="w/o">Without Breakfast (breakfast order costs ₱150/night)</option>
-                      <option value="with">With Breakfast (included in room contracted rate)</option>
-                    </select>
-                  </div>
-                </div>
 
-                {/* contracted price mapping */}
-                <div className="pt-2">
-                  <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-2">Pre-negotiated Room Rates (PHP)</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {rooms.map(r => (
-                      <div key={r.id} className="border border-slate-100 rounded-lg p-2.5 bg-slate-50/50 flex flex-col justify-between">
-                        <span className="text-[10px] font-bold text-slate-700">Room {r.room_number}</span>
-                        <span className="text-[9px] text-slate-400 font-medium block mb-1.5">Std: ₱{r.base_price.toLocaleString()}</span>
-                        <input
-                          type="number"
-                          placeholder="Default standard"
-                          value={pRates[r.id] || ''}
-                          onChange={e => {
-                            const val = e.target.value
-                            setPRates(prev => ({
-                              ...prev,
-                              [r.id]: val === '' ? 0 : Number(val)
-                            }))
-                          }}
-                          className="w-full bg-white border border-slate-200 text-slate-800 px-2 py-1 rounded text-xs focus:outline-none focus:border-[#B89251]"
-                        />
-                      </div>
-                    ))}
-                    {venues.map(v => (
-                      <div key={v.id} className="border border-slate-100 rounded-lg p-2.5 bg-slate-50/50 flex flex-col justify-between">
-                        <span className="text-[10px] font-bold text-slate-700">{v.name}</span>
-                        <span className="text-[9px] text-slate-400 font-medium block mb-1.5">Std: ₱{v.base_price.toLocaleString()}</span>
-                        <input
-                          type="number"
-                          placeholder="Default standard"
-                          value={pRates[v.id] || ''}
-                          onChange={e => {
-                            const val = e.target.value
-                            setPRates(prev => ({
-                              ...prev,
-                              [v.id]: val === '' ? 0 : Number(val)
-                            }))
-                          }}
-                          className="w-full bg-white border border-slate-200 text-slate-800 px-2 py-1 rounded text-xs focus:outline-none focus:border-[#B89251]"
-                        />
-                      </div>
-                    ))}
+                  {/* RIGHT COLUMN: Pre-negotiated Room Rates list */}
+                  <div className="bg-[#FDFBF7] border border-[#E5D5C0] p-4.5 rounded-xl space-y-3.5">
+                    <div>
+                      <label className="text-[10px] text-[#9A783E] font-bold uppercase tracking-wider block">Pre-negotiated Room & Venue Rates</label>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-normal">
+                        Enter override nightly/daily rates for this partner (leave blank to use standard rates).
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+                      {rooms.map(r => (
+                        <div key={r.id} className="border border-slate-200/60 rounded-lg p-2.5 bg-white flex flex-col justify-between shadow-sm">
+                          <span className="text-[10px] font-bold text-slate-700">Room {r.room_number}</span>
+                          <span className="text-[9px] text-slate-400 font-medium block mb-1">Std: ₱{r.base_price.toLocaleString()}</span>
+                          <input
+                            type="number"
+                            placeholder="Default standard"
+                            value={pRates[r.id] || ''}
+                            onChange={e => {
+                              const val = e.target.value
+                              setPRates(prev => ({
+                                ...prev,
+                                [r.id]: val === '' ? 0 : Number(val)
+                              }))
+                            }}
+                            className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-2 py-1 rounded text-xs focus:outline-none focus:border-[#B89251] font-semibold"
+                          />
+                        </div>
+                      ))}
+                      {venues.map(v => (
+                        <div key={v.id} className="border border-slate-200/60 rounded-lg p-2.5 bg-white flex flex-col justify-between shadow-sm">
+                          <span className="text-[10px] font-bold text-slate-700">{v.name}</span>
+                          <span className="text-[9px] text-slate-400 font-medium block mb-1">Std: ₱{v.base_price.toLocaleString()}</span>
+                          <input
+                            type="number"
+                            placeholder="Default standard"
+                            value={pRates[v.id] || ''}
+                            onChange={e => {
+                              const val = e.target.value
+                              setPRates(prev => ({
+                                ...prev,
+                                [v.id]: val === '' ? 0 : Number(val)
+                              }))
+                            }}
+                            className="w-full bg-[#fcf9f5] border border-slate-200 text-slate-800 px-2 py-1 rounded text-xs focus:outline-none focus:border-[#B89251] font-semibold"
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
+                  
                 </div>
 
                 <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="border border-slate-200 text-slate-500 text-xs font-semibold px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="border border-slate-200 text-slate-500 text-xs font-semibold px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer bg-white"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-semibold px-5 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-semibold px-5 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                   >
                     <Save className="w-3.5 h-3.5" />
                     Save Preset
