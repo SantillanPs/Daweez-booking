@@ -219,9 +219,9 @@ export function DirectoryTab() {
 
           {/* Form Panel */}
           {isAdding ? (
-            <form onSubmit={handleSavePartner} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden max-h-[calc(100vh-140px)] overflow-y-auto">
+            <form onSubmit={handleSavePartner} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
               {/* Form Header */}
-              <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#FDFBF7] to-white sticky top-0 z-10">
+              <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#FDFBF7] to-white">
                 <div>
                   <h3 className="text-sm font-bold text-slate-800">
                     {editingDealId ? 'Edit Partner Preset' : 'New Partner Preset'}
@@ -366,7 +366,7 @@ export function DirectoryTab() {
                     </div>
                   )}
 
-                  <div className="max-h-[calc(100vh-380px)] min-h-[120px] overflow-y-auto pr-0.5 space-y-2.5">
+                  <div className="pr-0.5 space-y-2.5">
                     {/* Rooms section */}
                     {rooms.length > 0 && (
                       <div className="space-y-1.5">
@@ -473,7 +473,7 @@ export function DirectoryTab() {
               </div>
 
               {/* Form Footer */}
-              <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/30 flex gap-2 justify-end sticky bottom-0">
+              <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/30 flex gap-2 justify-end">
                 <button
                   type="button"
                   onClick={resetForm}
