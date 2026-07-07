@@ -59,20 +59,34 @@ export function PublicReservePortal() {
     return Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
   }, [checkIn, checkOut])
 
-  // Filter available units
-  const availableRooms = useMemo(() => {
-    if (nights <= 0) return []
-    return syncEngine.DEFAULT_ROOMS.filter(r => 
-      syncEngine.isRoomAvailable(r.id, checkIn, checkOut, bookings)
-    )
+  // Track availability maps
+  const roomAvailability = useMemo(() => {
+    const map: Record<string, boolean> = {}
+    syncEngine.DEFAULT_ROOMS.forEach(r => {
+      map[r.id] = (nights > 0 && checkIn && checkOut)
+        ? syncEngine.isRoomAvailable(r.id, checkIn, checkOut, bookings)
+        : true
+    })
+    return map
   }, [checkIn, checkOut, bookings, nights])
 
-  const availableVenues = useMemo(() => {
-    if (nights <= 0) return []
-    return syncEngine.DEFAULT_VENUES.filter(v => 
-      syncEngine.isVenueRangeAvailable(v.id, checkIn, checkOut, bookings)
-    )
+  const venueAvailability = useMemo(() => {
+    const map: Record<string, boolean> = {}
+    syncEngine.DEFAULT_VENUES.forEach(v => {
+      map[v.id] = (nights > 0 && checkIn && checkOut)
+        ? syncEngine.isVenueRangeAvailable(v.id, checkIn, checkOut, bookings)
+        : true
+    })
+    return map
   }, [checkIn, checkOut, bookings, nights])
+
+  const availableRooms = useMemo(() => {
+    return syncEngine.DEFAULT_ROOMS
+  }, [])
+
+  const availableVenues = useMemo(() => {
+    return syncEngine.DEFAULT_VENUES
+  }, [])
 
   const selectedUnit = useMemo(() => {
     if (!selectedUnitId) return null
@@ -283,40 +297,60 @@ export function PublicReservePortal() {
                   ) : availableRooms.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {availableRooms.map(room => (
-                        <div key={room.id} className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm flex flex-col hover:border-[#B89251] transition-all group">
-                          <div className="h-44 overflow-hidden relative">
-                            <img src={room.image_url} alt={room.name} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-350" />
-                            <span className="absolute top-3 left-3 bg-white/95 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
-                              Room {room.room_number}
-                            </span>
-                            <span className="absolute bottom-3 right-3 bg-[#B89251] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
-                              20% OFF
-                            </span>
-                          </div>
-                          <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                            <div className="space-y-1.5">
-                              <h4 className="text-sm font-bold text-slate-800">{room.name}</h4>
-                              <p className="text-[11px] text-slate-400 leading-relaxed truncate">{room.description}</p>
-                              <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
-                                <Users className="w-3.5 h-3.5 text-slate-400" /> Max Guests: {room.capacity}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between border-t border-slate-100 pt-3 shrink-0">
-                              <div>
-                                <span className="text-[10px] text-slate-400 line-through block font-mono">₱{room.base_price.toLocaleString()}</span>
-                                <span className="text-sm font-extrabold text-[#9A783E] font-mono">
-                                  ₱{Math.round(room.base_price * 0.8).toLocaleString()}<span className="text-[10px] text-slate-500 font-normal">/night</span>
+                        {
+                          const isAvailable = roomAvailability[room.id]
+                          return (
+                            <div key={room.id} className={`bg-white border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-all group ${isAvailable ? 'hover:border-[#B89251] border-slate-200/80' : 'opacity-70 grayscale-[20%] border-slate-200'}`}>
+                              <div className="h-44 overflow-hidden relative">
+                                <img src={room.image_url} alt={room.name} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-350" />
+                                <span className="absolute top-3 left-3 bg-white/95 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
+                                  Room {room.room_number}
                                 </span>
+                                {isAvailable ? (
+                                  <span className="absolute bottom-3 right-3 bg-[#B89251] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
+                                    20% OFF
+                                  </span>
+                                ) : (
+                                  <span className="absolute bottom-3 right-3 bg-rose-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider animate-in fade-in">
+                                    Unavailable
+                                  </span>
+                                )}
                               </div>
-                              <button
-                                onClick={() => handleSelectUnit(room.id, 'room')}
-                                className="bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                              >
-                                Reserve <ArrowRight className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                                <div className="space-y-1.5">
+                                  <h4 className="text-sm font-bold text-slate-800">{room.name}</h4>
+                                  <p className="text-[11px] text-slate-400 leading-relaxed truncate">{room.description}</p>
+                                  <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                                    <Users className="w-3.5 h-3.5 text-slate-400" /> Max Guests: {room.capacity}
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between border-t border-slate-100 pt-3 shrink-0">
+                                  <div>
+                                    <span className="text-[10px] text-slate-400 line-through block font-mono">₱{room.base_price.toLocaleString()}</span>
+                                    <span className="text-sm font-extrabold text-[#9A783E] font-mono">
+                                      ₱{Math.round(room.base_price * 0.8).toLocaleString()}<span className="text-[10px] text-slate-500 font-normal">/night</span>
+                                    </span>
+                                  </div>
+                                  {isAvailable ? (
+                                    <button
+                                      onClick={() => handleSelectUnit(room.id, 'room')}
+                                      className="bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                                    >
+                                      Reserve <ArrowRight className="w-3.5 h-3.5" />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      disabled
+                                      className="bg-slate-100 text-slate-400 text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 cursor-not-allowed border border-slate-200"
+                                    >
+                                      Unavailable
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
+                          )
+                        }
                       ))}
                     </div>
                   ) : (
@@ -335,42 +369,60 @@ export function PublicReservePortal() {
                     <div className="text-center py-6 text-xs text-slate-400">Verifying availability calendars...</div>
                   ) : availableVenues.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {availableVenues.map(venue => (
-                        <div key={venue.id} className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm flex flex-col hover:border-[#B89251] transition-all group">
-                          <div className="h-44 overflow-hidden relative">
-                            <img src={venue.image_url} alt={venue.name} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-350" />
-                            <span className="absolute top-3 left-3 bg-[#B89251] text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
-                              Venue
-                            </span>
-                            <span className="absolute bottom-3 right-3 bg-[#B89251] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
-                              20% OFF
-                            </span>
-                          </div>
-                          <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                            <div className="space-y-1.5">
-                              <h4 className="text-sm font-bold text-slate-800">{venue.name}</h4>
-                              <p className="text-[11px] text-slate-400 leading-relaxed truncate">{venue.description}</p>
-                              <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
-                                <Users className="w-3.5 h-3.5 text-slate-400" /> Max Capacity: {venue.capacity}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between border-t border-slate-100 pt-3 shrink-0">
-                              <div>
-                                <span className="text-[10px] text-slate-400 line-through block font-mono">₱{venue.base_price.toLocaleString()}</span>
-                                <span className="text-sm font-extrabold text-[#9A783E] font-mono">
-                                  ₱{Math.round(venue.base_price * 0.8).toLocaleString()}<span className="text-[10px] text-slate-500 font-normal">/day</span>
+                      {availableVenues.map(venue => {
+                        const isAvailable = venueAvailability[venue.id]
+                        return (
+                          <div key={venue.id} className={`bg-white border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-all group ${isAvailable ? 'hover:border-[#B89251] border-slate-200/80' : 'opacity-70 grayscale-[20%] border-slate-200'}`}>
+                            <div className="h-44 overflow-hidden relative">
+                              <img src={venue.image_url} alt={venue.name} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-350" />
+                              <span className="absolute top-3 left-3 bg-white/95 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
+                                Venue
+                              </span>
+                              {isAvailable ? (
+                                <span className="absolute bottom-3 right-3 bg-[#B89251] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
+                                  20% OFF
                                 </span>
+                              ) : (
+                                <span className="absolute bottom-3 right-3 bg-rose-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider animate-in fade-in">
+                                  Unavailable
+                                </span>
+                              )}
+                            </div>
+                            <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                              <div className="space-y-1.5">
+                                <h4 className="text-sm font-bold text-slate-800">{venue.name}</h4>
+                                <p className="text-[11px] text-slate-400 leading-relaxed truncate">{venue.description}</p>
+                                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                                  <Users className="w-3.5 h-3.5 text-slate-400" /> Max Capacity: {venue.capacity}
+                                </div>
                               </div>
-                              <button
-                                onClick={() => handleSelectUnit(venue.id, 'venue')}
-                                className="bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                              >
-                                Reserve <ArrowRight className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center justify-between border-t border-slate-100 pt-3 shrink-0">
+                                <div>
+                                  <span className="text-[10px] text-slate-400 line-through block font-mono">₱{venue.base_price.toLocaleString()}</span>
+                                  <span className="text-sm font-extrabold text-[#9A783E] font-mono">
+                                    ₱{Math.round(venue.base_price * 0.8).toLocaleString()}<span className="text-[10px] text-slate-500 font-normal">/day</span>
+                                  </span>
+                                </div>
+                                {isAvailable ? (
+                                  <button
+                                    onClick={() => handleSelectUnit(venue.id, 'venue')}
+                                    className="bg-[#B89251] hover:bg-[#9A783E] text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                                  >
+                                    Reserve <ArrowRight className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : (
+                                  <button
+                                    disabled
+                                    className="bg-slate-100 text-slate-400 text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 cursor-not-allowed border border-slate-200"
+                                  >
+                                    Unavailable
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   ) : (
                     <div className="bg-slate-50 border border-slate-200/50 p-6 rounded-2xl text-center text-xs text-slate-400">
