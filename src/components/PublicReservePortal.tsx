@@ -349,8 +349,7 @@ export function PublicReservePortal() {
                               </div>
                             </div>
                           )
-                        }
-                      })}
+                        })}
                     </div>
                   ) : (
                     <div className="bg-slate-50 border border-slate-200/50 p-6 rounded-2xl text-center text-xs text-slate-400">
