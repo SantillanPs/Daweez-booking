@@ -122,3 +122,46 @@ ON CONFLICT (room_number) DO NOTHING;
 -- instead of polling every 5 seconds.
 -- ==========================================
 ALTER PUBLICATION supabase_realtime ADD TABLE public.bookings;
+
+-- ==========================================
+-- 4. Create Expense Categories Table
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.expense_categories (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ==========================================
+-- 5. Create Expenses Table
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.expenses (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    category_id UUID REFERENCES public.expense_categories(id) ON DELETE RESTRICT,
+    amount DECIMAL(10,2) NOT NULL,
+    expense_date DATE NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ==========================================
+-- ROW LEVEL SECURITY (RLS) FOR EXPENSES
+-- ==========================================
+ALTER TABLE public.expense_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
+
+-- Expense Categories RLS
+DROP POLICY IF EXISTS "Allow public full access to expense categories" ON public.expense_categories;
+CREATE POLICY "Allow public full access to expense categories" ON public.expense_categories
+    FOR ALL TO public USING (true) WITH CHECK (true);
+
+-- Expenses RLS
+DROP POLICY IF EXISTS "Allow public full access to expenses" ON public.expenses;
+CREATE POLICY "Allow public full access to expenses" ON public.expenses
+    FOR ALL TO public USING (true) WITH CHECK (true);
+
+-- ==========================================
+-- EXPENSES REALTIME
+-- ==========================================
+ALTER PUBLICATION supabase_realtime ADD TABLE public.expense_categories;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.expenses;

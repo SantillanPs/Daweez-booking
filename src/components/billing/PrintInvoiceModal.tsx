@@ -130,29 +130,29 @@ export function PrintInvoiceModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:bg-white print:p-0 print:static overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:bg-card print:p-0 print:static overflow-y-auto">
       {/* Print Wrapper Container */}
-      <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col my-8 print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none">
+      <div className="bg-card w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col my-8 print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none">
         
         {/* Modal Controls (Hidden during print) */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0 print:hidden font-sans">
           <div className="flex items-center gap-2">
-            <span className="bg-[#B89251] text-xs font-bold px-2 py-0.5 rounded text-slate-900 uppercase">
+            <span className="bg-brand-primary text-xs font-bold px-2 py-0.5 rounded text-main uppercase">
               {invoiceType === 'billing' ? 'GRB Bill Statement' : 'Guest Folio'}
             </span>
-            <span className="text-xs font-mono text-slate-400">{displayInvoiceNumber}</span>
+            <span className="text-xs font-mono text-muted">{displayInvoiceNumber}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="bg-[#B89251] hover:bg-[#9A783E] text-slate-950 font-bold text-xs px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="bg-brand-primary hover:bg-brand-text text-slate-950 font-bold text-xs px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               Print
             </button>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-white transition-colors p-1"
+              className="text-muted hover:text-white transition-colors p-1"
             >
               <X className="w-5 h-5" />
             </button>
@@ -160,101 +160,101 @@ export function PrintInvoiceModal({
         </div>
 
         {/* Invoice Body (Printed Area) */}
-        <div className="p-8 md:p-12 overflow-y-auto print:p-0 print:overflow-visible flex-1 bg-white font-sans text-slate-800 leading-relaxed print:static">
+        <div className="p-8 md:p-12 overflow-y-auto print:p-0 print:overflow-visible flex-1 bg-card font-sans text-main leading-relaxed print:static">
           
           {/* Header section */}
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b-2 border-slate-200 pb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b-2 border-soft pb-6">
             <div>
               <h1 className="text-2xl font-extrabold text-slate-950 tracking-tight font-serif uppercase">
                 Daweez Pension Hotel
               </h1>
-              <p className="text-xs text-slate-500 font-medium mt-1">
+              <p className="text-xs text-muted font-medium mt-1">
                 Panglao Island, Bohol, Philippines
               </p>
-              <p className="text-xs text-slate-400 font-medium">
+              <p className="text-xs text-muted font-medium">
                 Email: reservations@daweezpensionhotel.com | Contact: +63 917 889 8978
               </p>
             </div>
             <div className="text-left sm:text-right">
-              <h2 className="text-sm font-extrabold text-[#9A783E] uppercase tracking-wider">
+              <h2 className="text-sm font-extrabold text-brand-text uppercase tracking-wider">
                 {isBilling ? 'GUEST REGISTRATION AND BILLING' : 'GUEST FOLIO'}
               </h2>
-              <div className="mt-2 text-xs font-medium space-y-0.5 text-slate-600">
-                <div><span className="text-slate-400">Invoice No:</span> <strong className="font-mono text-slate-950">{displayInvoiceNumber}</strong></div>
-                <div><span className="text-slate-400">Date Issued:</span> <span className="font-mono">{new Date(booking.created_at).toLocaleDateString()}</span></div>
-                <div><span className="text-slate-400">Status:</span> <span className="uppercase text-emerald-600 font-bold">{booking.status}</span></div>
+              <div className="mt-2 text-xs font-medium space-y-0.5 text-muted">
+                <div><span className="text-muted">Invoice No:</span> <strong className="font-mono text-slate-950">{displayInvoiceNumber}</strong></div>
+                <div><span className="text-muted">Date Issued:</span> <span className="font-mono">{new Date(booking.created_at).toLocaleDateString()}</span></div>
+                <div><span className="text-muted">Status:</span> <span className="uppercase text-emerald-600 font-bold">{booking.status}</span></div>
               </div>
             </div>
           </div>
 
           {/* Guest Registry Info Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-b border-slate-100 text-xs">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-b border-soft text-xs">
             <div>
-              <span className="text-slate-400 font-semibold block mb-0.5">PRIMARY GUEST</span>
-              <strong className="text-slate-900 text-[13px]">{booking.guest_name}</strong>
+              <span className="text-muted font-semibold block mb-0.5">PRIMARY GUEST</span>
+              <strong className="text-main text-[13px]">{booking.guest_name}</strong>
             </div>
             <div>
-              <span className="text-slate-400 font-semibold block mb-0.5">CONTACT NO</span>
-              <span className="text-slate-800 font-mono font-medium">{booking.guest_phone || 'None'}</span>
+              <span className="text-muted font-semibold block mb-0.5">CONTACT NO</span>
+              <span className="text-main font-mono font-medium">{booking.guest_phone || 'None'}</span>
             </div>
             <div>
-              <span className="text-slate-400 font-semibold block mb-0.5">EMAIL ADDRESS</span>
-              <span className="text-slate-850 font-medium break-all">{booking.guest_email || 'None'}</span>
+              <span className="text-muted font-semibold block mb-0.5">EMAIL ADDRESS</span>
+              <span className="text-main font-medium break-all">{booking.guest_email || 'None'}</span>
             </div>
             <div>
-              <span className="text-slate-400 font-semibold block mb-0.5">VEHICLE PLATE</span>
-              <span className="text-slate-850 font-mono font-semibold uppercase">{booking.vehicle_plate || 'N/A'}</span>
+              <span className="text-muted font-semibold block mb-0.5">VEHICLE PLATE</span>
+              <span className="text-main font-mono font-semibold uppercase">{booking.vehicle_plate || 'N/A'}</span>
             </div>
 
             {booking.company_name && (
               <div className="col-span-2">
-                <span className="text-slate-400 font-semibold block mb-0.5">COMPANY / AGENCY</span>
-                <strong className="text-slate-800 font-semibold">{booking.company_name}</strong>
+                <span className="text-muted font-semibold block mb-0.5">COMPANY / AGENCY</span>
+                <strong className="text-main font-semibold">{booking.company_name}</strong>
               </div>
             )}
             {deal?.tin && (
               <div>
-                <span className="text-slate-400 font-semibold block mb-0.5">TAX IDENTIFICATION NO (TIN)</span>
-                <span className="text-slate-850 font-mono font-medium">{deal.tin}</span>
+                <span className="text-muted font-semibold block mb-0.5">TAX IDENTIFICATION NO (TIN)</span>
+                <span className="text-main font-mono font-medium">{deal.tin}</span>
               </div>
             )}
             {deal?.address && (
               <div className="col-span-2">
-                <span className="text-slate-400 font-semibold block mb-0.5">BILLING ADDRESS</span>
-                <span className="text-slate-700 font-medium">{deal.address}</span>
+                <span className="text-muted font-semibold block mb-0.5">BILLING ADDRESS</span>
+                <span className="text-main font-medium">{deal.address}</span>
               </div>
             )}
           </div>
 
           {/* Stay schedule Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-b border-slate-100 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-b border-soft text-xs">
             <div>
-              <span className="text-slate-400 font-semibold block mb-0.5">CHECK-IN DATE</span>
-              <strong className="text-slate-900 font-mono">{new Date(booking.check_in).toLocaleDateString()}</strong>
+              <span className="text-muted font-semibold block mb-0.5">CHECK-IN DATE</span>
+              <strong className="text-main font-mono">{new Date(booking.check_in).toLocaleDateString()}</strong>
             </div>
             <div>
-              <span className="text-slate-400 font-semibold block mb-0.5">CHECK-OUT DATE</span>
-              <strong className="text-slate-900 font-mono">{new Date(booking.check_out).toLocaleDateString()}</strong>
+              <span className="text-muted font-semibold block mb-0.5">CHECK-OUT DATE</span>
+              <strong className="text-main font-mono">{new Date(booking.check_out).toLocaleDateString()}</strong>
             </div>
             <div>
-              <span className="text-slate-400 font-semibold block mb-0.5">DURATION</span>
-              <strong className="text-slate-900">{nights} {isRoom ? 'Night' : 'Day'}{nights > 1 ? 's' : ''}</strong>
+              <span className="text-muted font-semibold block mb-0.5">DURATION</span>
+              <strong className="text-main">{nights} {isRoom ? 'Night' : 'Day'}{nights > 1 ? 's' : ''}</strong>
             </div>
             <div>
-              <span className="text-slate-400 font-semibold block mb-0.5">UNIT DETAILS</span>
-              <strong className="text-slate-900">{unitName}</strong>
+              <span className="text-muted font-semibold block mb-0.5">UNIT DETAILS</span>
+              <strong className="text-main">{unitName}</strong>
             </div>
           </div>
 
           {/* Companions Section */}
           {booking.companions && booking.companions.length > 0 && (
-            <div className="py-4 border-b border-slate-100 text-xs">
-              <span className="text-slate-400 font-semibold block mb-2 uppercase tracking-wider">Registered Roommates / Companions</span>
+            <div className="py-4 border-b border-soft text-xs">
+              <span className="text-muted font-semibold block mb-2 uppercase tracking-wider">Registered Roommates / Companions</span>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {booking.companions.map((c, i) => (
-                  <div key={i} className="bg-slate-50 p-2 rounded border border-slate-100/60 font-medium flex justify-between">
-                    <span className="text-slate-800">{c.name}</span>
-                    <span className="text-slate-400 text-[10px] capitalize">{c.gender}</span>
+                  <div key={i} className="bg-page p-2 rounded border border-soft/60 font-medium flex justify-between">
+                    <span className="text-main">{c.name}</span>
+                    <span className="text-muted text-[10px] capitalize">{c.gender}</span>
                   </div>
                 ))}
               </div>
@@ -263,20 +263,20 @@ export function PrintInvoiceModal({
 
           {/* Statement Items Table */}
           <div className="mt-6">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Itemized Ledger</h3>
+            <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Itemized Ledger</h3>
             <table className="w-full text-xs text-left">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-400 font-semibold bg-slate-550/5">
+                <tr className="border-b border-soft text-muted font-semibold bg-slate-550/5">
                   <th className="py-2">Item Description</th>
                   <th className="py-2 text-right">Quantity / Nights</th>
                   <th className="py-2 text-right">Unit Price</th>
                   <th className="py-2 text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody className="divide-y divide-slate-100 text-main">
                 {/* 1. Base Room or Venue stay */}
                 <tr>
-                  <td className="py-3 font-semibold text-slate-900">
+                  <td className="py-3 font-semibold text-main">
                     {unitName} - Base Rate stay
                     {booking.contract_rate_override ? ' (Corporate Preset Rate)' : ''}
                   </td>
@@ -284,7 +284,7 @@ export function PrintInvoiceModal({
                   <td className="py-3 text-right font-mono">
                     ₱{(booking.contract_rate_override || basePrice).toLocaleString()}
                   </td>
-                  <td className="py-3 text-right font-mono font-semibold text-slate-900">
+                  <td className="py-3 text-right font-mono font-semibold text-main">
                     ₱{((booking.contract_rate_override || basePrice) * nights).toLocaleString()}
                   </td>
                 </tr>
@@ -297,7 +297,7 @@ export function PrintInvoiceModal({
                       {booking.companions ? booking.companions.length + 1 : 1} guest(s) × {nights} nights
                     </td>
                     <td className="py-3 text-right font-mono">₱150</td>
-                    <td className="py-3 text-right font-mono font-semibold text-slate-900">
+                    <td className="py-3 text-right font-mono font-semibold text-main">
                       ₱{pricing.breakfastTotal.toLocaleString()}
                     </td>
                   </tr>
@@ -309,7 +309,7 @@ export function PrintInvoiceModal({
                     <td className="py-3">Extra foam / pillows / linens rentals</td>
                     <td className="py-3 text-right font-mono">—</td>
                     <td className="py-3 text-right font-mono">—</td>
-                    <td className="py-3 text-right font-mono font-semibold text-slate-900">
+                    <td className="py-3 text-right font-mono font-semibold text-main">
                       ₱{pricing.rentalsTotal.toLocaleString()}
                     </td>
                   </tr>
@@ -319,28 +319,28 @@ export function PrintInvoiceModal({
           </div>
 
           {/* Calculations / Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 pt-6 border-t-2 border-slate-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 pt-6 border-t-2 border-soft">
             {/* GCash / Landbank billing details (GRB ONLY) */}
             <div>
               {isBilling ? (
-                <div className="bg-[#FAF7F2] border border-[#EBE1D1] rounded-xl p-4 text-[11px] text-[#9A783E] space-y-2 leading-relaxed">
+                <div className="bg-[#FAF7F2] border border-[#EBE1D1] rounded-xl p-4 text-[11px] text-brand-text space-y-2 leading-relaxed">
                   <strong className="text-xs uppercase tracking-wider block font-bold">Bank Transfer & Digital Payments</strong>
                   <p>To settle balances, please transfer to either of the following official channels:</p>
                   <div className="border-t border-[#EBE1D1] pt-2 space-y-1 font-medium">
                     <div>
-                      <span className="text-slate-400 block font-bold">GCASH ACCOUNT:</span>
-                      <strong className="text-[#9A783E] text-xs font-mono font-bold">DAWEEZ PENSION HOTEL</strong>
-                      <span className="text-slate-500 font-mono block">Number: 0917-889-8978</span>
+                      <span className="text-muted block font-bold">GCASH ACCOUNT:</span>
+                      <strong className="text-brand-text text-xs font-mono font-bold">DAWEEZ PENSION HOTEL</strong>
+                      <span className="text-muted font-mono block">Number: 0917-889-8978</span>
                     </div>
                     <div className="pt-1.5">
-                      <span className="text-slate-400 block font-bold">LANDBANK ACCOUNT:</span>
-                      <strong className="text-[#9A783E] text-xs font-mono font-bold">DAWEEZ PENSION HOTEL</strong>
-                      <span className="text-slate-500 font-mono block">Account No: 1234-5678-90</span>
+                      <span className="text-muted block font-bold">LANDBANK ACCOUNT:</span>
+                      <strong className="text-brand-text text-xs font-mono font-bold">DAWEEZ PENSION HOTEL</strong>
+                      <span className="text-muted font-mono block">Account No: 1234-5678-90</span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-[11px] text-slate-400 italic">
+                <div className="text-[11px] text-muted italic">
                   Note: This guest folio excludes payment account disclosures. Contact frontdesk administration for billing questions.
                 </div>
               )}
@@ -348,7 +348,7 @@ export function PrintInvoiceModal({
 
             {/* Price Ledger summary */}
             <div className="space-y-2 text-xs font-medium">
-              <div className="flex justify-between text-slate-500">
+              <div className="flex justify-between text-muted">
                 <span>Original Room/Venue Rate:</span>
                 <span className="font-mono">₱{pricing.undiscountedSubtotal.toLocaleString()}</span>
               </div>
@@ -358,38 +358,38 @@ export function PrintInvoiceModal({
                   <span className="font-mono">-₱{pricing.discountAmount.toLocaleString()}</span>
                 </div>
               )}
-              <div className="flex justify-between text-slate-500 border-t border-slate-100 pt-1.5">
+              <div className="flex justify-between text-muted border-t border-soft pt-1.5">
                 <span>Subtotal amount:</span>
                 <span className="font-mono">₱{pricing.subtotal.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-slate-500">
+              <div className="flex justify-between text-muted">
                 <span>Add-ons / rentals:</span>
                 <span className="font-mono">₱{(pricing.breakfastTotal + pricing.rentalsTotal).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-slate-900 border-t border-slate-100 pt-2 font-bold">
+              <div className="flex justify-between text-main border-t border-soft pt-2 font-bold">
                 <span>Grand Total Statement:</span>
                 <span className="font-mono text-[13px] text-slate-950 font-extrabold">₱{pricing.grandTotal.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-slate-650 border-t border-slate-100 pt-2">
+              <div className="flex justify-between text-slate-650 border-t border-soft pt-2">
                 <span>Downpayment Paid:</span>
                 <span className="font-mono text-emerald-600 font-bold">-₱{booking.downpayment_paid.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-[#9A783E] border-t border-slate-200/60 pt-2 font-bold text-[13px]">
+              <div className="flex justify-between text-brand-text border-t border-soft/60 pt-2 font-bold text-[13px]">
                 <span>Remaining Balance Due:</span>
-                <span className="font-mono text-[15px] text-[#9A783E] font-extrabold">₱{booking.balance_due.toLocaleString()}</span>
+                <span className="font-mono text-[15px] text-brand-text font-extrabold">₱{booking.balance_due.toLocaleString()}</span>
               </div>
             </div>
           </div>
 
           {/* Signatures */}
-          <div className="grid grid-cols-2 gap-12 mt-16 pt-8 border-t border-dashed border-slate-200 text-center text-xs">
+          <div className="grid grid-cols-2 gap-12 mt-16 pt-8 border-t border-dashed border-soft text-center text-xs">
             <div className="flex flex-col justify-end h-16">
               <div className="border-b border-slate-400 mx-auto w-3/4"></div>
-              <span className="text-slate-400 font-semibold uppercase tracking-wider block mt-2">PREPARED BY (STAFF)</span>
+              <span className="text-muted font-semibold uppercase tracking-wider block mt-2">PREPARED BY (STAFF)</span>
             </div>
             <div className="flex flex-col justify-end h-16">
               <div className="border-b border-slate-400 mx-auto w-3/4"></div>
-              <span className="text-slate-400 font-semibold uppercase tracking-wider block mt-2">RECEIVED BY (GUEST SIGNATURE)</span>
+              <span className="text-muted font-semibold uppercase tracking-wider block mt-2">RECEIVED BY (GUEST SIGNATURE)</span>
             </div>
           </div>
 

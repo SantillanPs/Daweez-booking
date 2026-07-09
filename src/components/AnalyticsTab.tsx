@@ -4,7 +4,7 @@ import { calculatePricing } from '../utils/syncEngine'
 import { Booking } from '../types/booking'
 import { 
   TrendingUp, Home, DollarSign, Calendar, Info, 
-  ChevronRight, ToggleLeft, ToggleRight, Sparkles 
+  ChevronRight, ChevronDown, ToggleLeft, ToggleRight, Sparkles 
 } from 'lucide-react'
 
 // Helper: check if a date is within start and end strings (YYYY-MM-DD)
@@ -25,7 +25,7 @@ function getStayDates(checkIn: string, checkOut: string): string[] {
 }
 
 export function AnalyticsTab() {
-  const { bookings, rooms, venues, isLoading } = useDashboardData()
+  const { bookings, rooms, venues, expenses, isLoading } = useDashboardData()
 
   // 1. Timeframe Filter state
   const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'>('monthly')
@@ -40,6 +40,9 @@ export function AnalyticsTab() {
 
   // 2. Booking Status Filter state
   const [includePending, setIncludePending] = useState<boolean>(false)
+  
+  // Accordion state
+  const [isPensionExpanded, setIsPensionExpanded] = useState<boolean>(false)
 
   // 3. Hover state for tooltips
   const [hoveredBar, setHoveredBar] = useState<{
@@ -110,6 +113,14 @@ export function AnalyticsTab() {
     let totalGardenArea = 0
     let totalGazebo = 0
     let totalAddonsRentals = 0
+    
+    let totalExpenses = 0
+
+    // Individual room revenues
+    const roomRevenues: Record<string, { id: string, name: string, base: number, breakfast: number, rentals: number, total: number }> = {}
+    rooms.forEach(r => {
+      roomRevenues[r.id] = { id: r.id, name: r.name, base: 0, breakfast: 0, rentals: 0, total: 0 }
+    })
 
     // For room occupancy: count booked room-nights
     let roomNightsBooked = 0
@@ -236,6 +247,13 @@ export function AnalyticsTab() {
             totalPensionBreakfast += nightlyBreakfast
             totalPensionRentals += nightlyRentals
             roomNightsBooked++
+            
+            if (roomRevenues[b.room_id]) {
+              roomRevenues[b.room_id].base += nightlyBase
+              roomRevenues[b.room_id].breakfast += nightlyBreakfast
+              roomRevenues[b.room_id].rentals += nightlyRentals
+              roomRevenues[b.room_id].total += nightlyTotal
+            }
           } else if (b.venue_id) {
             const vid = b.venue_id.toLowerCase()
             if (vid.includes('vacation')) {
@@ -260,6 +278,13 @@ export function AnalyticsTab() {
       })
     })
 
+    // 2. Calculate expenses in range
+    expenses.forEach(e => {
+      if (isDateBetween(e.expense_date, dateRange.start, dateRange.end)) {
+        totalExpenses += e.amount
+      }
+    })
+
     // Calculate room occupancy rate (10 rooms available per night)
     const numDays = allRangeDates.length
     const totalAvailableRoomNights = numDays * 10
@@ -280,6 +305,8 @@ export function AnalyticsTab() {
 
     return {
       totalRevenue: Math.round(totalRevenue),
+      totalExpenses: Math.round(totalExpenses),
+      netProfit: Math.round(totalRevenue - totalExpenses),
       totalPension: Math.round(totalPensionRevenue),
       totalPensionBase: Math.round(totalPensionBase),
       totalPensionBreakfast: Math.round(totalPensionBreakfast),
@@ -291,9 +318,10 @@ export function AnalyticsTab() {
       roomOccupancyRate,
       adr,
       revpar,
-      trendSlots
+      trendSlots,
+      roomRevenues: Object.values(roomRevenues).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
     }
-  }, [isLoading, bookings, venues, dateRange, includePending, timeframe])
+  }, [isLoading, bookings, venues, rooms, expenses, dateRange, includePending, timeframe])
 
   // Custom donut calculations
   const donutSegments = useMemo(() => {
@@ -309,23 +337,25 @@ export function AnalyticsTab() {
       { name: 'Gazebo', value: totalGazebo, color: '#F39C12' }
     ]
 
-    let cumulativePercentage = 0
+    let exactCumulative = 0
     return segments.map(seg => {
-      const percentage = seg.value / sum
+      const exactPercent = (seg.value / sum) * 100
+      const roundedPercent = Math.round(exactPercent)
       const item = {
         ...seg,
-        percentage: Math.round(percentage * 100),
-        startPercent: cumulativePercentage
+        percentage: roundedPercent,
+        renderPercent: exactPercent,
+        renderStartPercent: exactCumulative
       }
-      cumulativePercentage += percentage
+      exactCumulative += exactPercent
       return item
     })
   }, [calculations])
 
   if (isLoading || !calculations) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 text-slate-500">
-        <Sparkles className="w-8 h-8 text-[#B89251] animate-spin" />
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 text-muted">
+        <Sparkles className="w-8 h-8 text-brand-primary animate-spin" />
         <p className="text-xs font-medium">Analyzing PMS profits & records...</p>
       </div>
     )
@@ -340,17 +370,17 @@ export function AnalyticsTab() {
   return (
     <div className="space-y-6">
       {/* Filters Toolbar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 sm:flex items-center justify-between gap-4">
+      <div className="bg-card border border-soft rounded-xl p-4 sm:flex items-center justify-between gap-4">
         {/* Timeframe selector */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-slate-100 sm:border-0 pb-3 sm:pb-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-soft sm:border-0 pb-3 sm:pb-0">
           {(['daily', 'weekly', 'monthly', 'yearly', 'custom'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTimeframe(t)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider cursor-pointer transition-all shrink-0 ${
                 timeframe === t 
-                  ? 'bg-[#B89251] text-white' 
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
+                  ? 'bg-brand-primary text-white' 
+                  : 'bg-page hover:bg-softbg text-muted'
               }`}
             >
               {t}
@@ -361,36 +391,36 @@ export function AnalyticsTab() {
         {/* Dynamic Custom Date Inputs */}
         {timeframe === 'custom' && (
           <div className="flex items-center gap-2 my-3 sm:my-0">
-            <Calendar className="w-3.5 h-3.5 text-[#B89251] shrink-0" />
+            <Calendar className="w-3.5 h-3.5 text-brand-primary shrink-0" />
             <input
               type="date"
               value={customStart}
               onChange={e => setCustomStart(e.target.value)}
-              className="text-xs font-medium bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 focus:outline-none focus:border-[#B89251]"
+              className="text-xs font-medium bg-page border border-soft rounded px-2.5 py-1.5 focus:outline-none focus:border-brand-primary"
             />
-            <span className="text-slate-400 text-xs">to</span>
+            <span className="text-muted text-xs">to</span>
             <input
               type="date"
               value={customEnd}
               onChange={e => setCustomEnd(e.target.value)}
-              className="text-xs font-medium bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 focus:outline-none focus:border-[#B89251]"
+              className="text-xs font-medium bg-page border border-soft rounded px-2.5 py-1.5 focus:outline-none focus:border-brand-primary"
             />
           </div>
         )}
 
         {/* Status Toggle */}
         <div className="flex items-center gap-2.5 justify-end">
-          <span className="text-xs font-medium text-slate-500">
+          <span className="text-xs font-medium text-muted">
             Include Pending Projections
           </span>
           <button 
             onClick={() => setIncludePending(prev => !prev)}
-            className="text-slate-600 hover:text-[#B89251] transition-all cursor-pointer"
+            className="text-muted hover:text-brand-primary transition-all cursor-pointer"
           >
             {includePending ? (
-              <ToggleRight className="w-8 h-8 text-[#B89251]" />
+              <ToggleRight className="w-8 h-8 text-brand-primary" />
             ) : (
-              <ToggleLeft className="w-8 h-8 text-slate-400" />
+              <ToggleLeft className="w-8 h-8 text-muted" />
             )}
           </button>
         </div>
@@ -399,91 +429,95 @@ export function AnalyticsTab() {
       {/* Main Income Breakdown Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Pension Income */}
-        <div className="bg-[#FDFBF7]/85 border-2 border-[#E5D5C0] rounded-xl p-4 flex flex-col justify-between shadow-sm">
+        <div className="bg-brand-bg/85 border-2 border-brand-border rounded-xl p-4 flex flex-col justify-between shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-bold text-[#9A783E] uppercase tracking-wider">Pension (Rms 1-10)</span>
-            <Home className="w-4 h-4 text-[#B89251]" />
+            <span className="text-[10px] sm:text-xs font-bold text-brand-text uppercase tracking-wider">Pension (Rms 1-10)</span>
+            <Home className="w-4 h-4 text-brand-primary" />
           </div>
           <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">₱{calculations.totalPension.toLocaleString()}</h3>
-            <p className="text-[10px] text-slate-400 mt-1">
+            <h3 className="text-xl sm:text-2xl font-extrabold text-main">₱{calculations.totalPension.toLocaleString()}</h3>
+            <p className="text-[10px] text-muted mt-1">
               Base: ₱{calculations.totalPensionBase.toLocaleString()} | Breakfast: ₱{calculations.totalPensionBreakfast.toLocaleString()}
             </p>
           </div>
         </div>
 
         {/* Card 2: Vacation House Income */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-sm">
+        <div className="bg-card border border-soft rounded-xl p-4 flex flex-col justify-between shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Vacation House</span>
+            <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider">Vacation House</span>
             <span className="w-2.5 h-2.5 rounded-full bg-[#4A90E2]"></span>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">₱{calculations.totalVacationHouse.toLocaleString()}</h3>
-            <p className="text-[10px] text-slate-400 mt-1">Property Rental + Add-ons</p>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-main">₱{calculations.totalVacationHouse.toLocaleString()}</h3>
+            <p className="text-[10px] text-muted mt-1">Property Rental + Add-ons</p>
           </div>
         </div>
 
         {/* Card 3: Garden Area Income */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-sm">
+        <div className="bg-card border border-soft rounded-xl p-4 flex flex-col justify-between shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Garden Area</span>
+            <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider">Garden Area</span>
             <span className="w-2.5 h-2.5 rounded-full bg-[#2ECC71]"></span>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">₱{calculations.totalGardenArea.toLocaleString()}</h3>
-            <p className="text-[10px] text-slate-400 mt-1">Event Venue + Equipment</p>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-main">₱{calculations.totalGardenArea.toLocaleString()}</h3>
+            <p className="text-[10px] text-muted mt-1">Event Venue + Equipment</p>
           </div>
         </div>
 
         {/* Card 4: Gazebo Income */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-sm">
+        <div className="bg-card border border-soft rounded-xl p-4 flex flex-col justify-between shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Gazebo</span>
+            <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider">Gazebo</span>
             <span className="w-2.5 h-2.5 rounded-full bg-[#F39C12]"></span>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">₱{calculations.totalGazebo.toLocaleString()}</h3>
-            <p className="text-[10px] text-slate-400 mt-1">Event Venue + Equipment</p>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-main">₱{calculations.totalGazebo.toLocaleString()}</h3>
+            <p className="text-[10px] text-muted mt-1">Event Venue + Equipment</p>
           </div>
         </div>
       </div>
 
       {/* Summary KPI Banner */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-        <div className="col-span-2 md:col-span-1 border-b md:border-b-0 md:border-r border-slate-200 pb-3 md:pb-0 text-left md:text-center">
-          <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold block">Gross Sales (Total)</span>
-          <p className="text-base sm:text-lg font-black text-[#B89251] mt-0.5">₱{calculations.totalRevenue.toLocaleString()}</p>
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 bg-page border border-soft rounded-xl p-4 text-center">
+        <div className="border-b md:border-b-0 md:border-r border-soft pb-3 md:pb-0 text-left md:text-center">
+          <span className="text-[9px] text-muted uppercase tracking-wider font-bold block">Gross Sales</span>
+          <p className="text-base sm:text-lg font-bold text-main mt-0.5">₱{calculations.totalRevenue.toLocaleString()}</p>
         </div>
-        <div className="border-b md:border-b-0 md:border-r border-slate-200 pb-3 md:pb-0">
-          <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold block">Add-ons & Rentals</span>
-          <p className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">₱{calculations.totalAddonsRentals.toLocaleString()}</p>
+        <div className="border-b md:border-b-0 md:border-r border-soft pb-3 md:pb-0 text-left md:text-center">
+          <span className="text-[9px] text-rose-500 uppercase tracking-wider font-bold block">Expenses</span>
+          <p className="text-base sm:text-lg font-bold text-rose-600 mt-0.5">₱{calculations.totalExpenses.toLocaleString()}</p>
         </div>
-        <div className="border-r border-slate-200">
-          <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold block">Occupancy Rate</span>
-          <p className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">{calculations.roomOccupancyRate}%</p>
+        <div className="col-span-2 md:col-span-1 border-b md:border-b-0 md:border-r border-soft pb-3 md:pb-0 text-left md:text-center">
+          <span className="text-[9px] text-brand-primary uppercase tracking-wider font-bold block">Net Profit</span>
+          <p className="text-base sm:text-lg font-black text-brand-primary mt-0.5">₱{calculations.netProfit.toLocaleString()}</p>
         </div>
-        <div className="border-r border-slate-200">
-          <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold block">ADR (Rooms)</span>
-          <p className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">₱{calculations.adr.toLocaleString()}</p>
+        <div className="border-r border-soft">
+          <span className="text-[9px] text-muted uppercase tracking-wider font-bold block">Occupancy Rate</span>
+          <p className="text-base sm:text-lg font-bold text-main mt-0.5">{calculations.roomOccupancyRate}%</p>
+        </div>
+        <div className="border-r border-soft">
+          <span className="text-[9px] text-muted uppercase tracking-wider font-bold block">ADR (Rooms)</span>
+          <p className="text-base sm:text-lg font-bold text-main mt-0.5">₱{calculations.adr.toLocaleString()}</p>
         </div>
         <div>
-          <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold block">RevPAR</span>
-          <p className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">₱{calculations.revpar.toLocaleString()}</p>
+          <span className="text-[9px] text-muted uppercase tracking-wider font-bold block">RevPAR</span>
+          <p className="text-base sm:text-lg font-bold text-main mt-0.5">₱{calculations.revpar.toLocaleString()}</p>
         </div>
       </div>
 
       {/* Visual Analytics Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Trend Bar Chart */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 lg:col-span-2 flex flex-col justify-between relative">
+        <div className="bg-card border border-soft rounded-xl p-4 lg:col-span-2 flex flex-col justify-between relative">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h4 className="text-xs sm:text-sm font-bold text-slate-900">Revenue Split Over Time</h4>
-              <p className="text-[10px] text-slate-400">Nightly apportioned profit breakdown</p>
+              <h4 className="text-xs sm:text-sm font-bold text-main">Revenue Split Over Time</h4>
+              <p className="text-[10px] text-muted">Nightly apportioned profit breakdown</p>
             </div>
-            <div className="flex gap-2.5 text-[9px] font-semibold text-slate-500">
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#B89251]"></span>Pension</span>
+            <div className="flex gap-2.5 text-[9px] font-semibold text-muted">
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-brand-primary"></span>Pension</span>
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#4A90E2]"></span>House</span>
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#2ECC71]"></span>Garden</span>
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#F39C12]"></span>Gazebo</span>
@@ -676,23 +710,23 @@ export function AnalyticsTab() {
         </div>
 
         {/* Contribution Donut Chart */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
+        <div className="bg-card border border-soft rounded-xl p-4 flex flex-col justify-between">
           <div>
-            <h4 className="text-xs sm:text-sm font-bold text-slate-900">Profit Share</h4>
-            <p className="text-[10px] text-slate-400">Percentage split of hotel revenues</p>
+            <h4 className="text-xs sm:text-sm font-bold text-main">Profit Share</h4>
+            <p className="text-[10px] text-muted">Percentage split of hotel revenues</p>
           </div>
 
           <div className="flex items-center justify-center py-4 relative">
             {donutSegments.length === 0 ? (
-              <p className="text-slate-400 text-xs font-semibold">No revenue data</p>
+              <p className="text-muted text-xs font-semibold">No revenue data</p>
             ) : (
               <div className="relative w-40 h-40">
                 <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90">
                   {donutSegments.map((seg, idx) => {
                     const radius = 70
                     const circumference = 2 * Math.PI * radius
-                    const dashArray = `${seg.percentage * (circumference / 100)} ${circumference}`
-                    const dashOffset = `-${seg.startPercent * (circumference / 100)}`
+                    const dashArray = `${seg.renderPercent * (circumference / 100)} ${circumference}`
+                    const dashOffset = `-${seg.renderStartPercent * (circumference / 100)}`
 
                     return (
                       <circle
@@ -714,10 +748,10 @@ export function AnalyticsTab() {
                 </svg>
                 {/* Text overlay in the middle of donut */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">
+                  <span className="text-[9px] uppercase tracking-wider text-muted font-semibold">
                     {hoveredDonutSegment ? hoveredDonutSegment.split(' ')[0] : 'Total'}
                   </span>
-                  <span className="text-sm sm:text-base font-bold text-slate-800 mt-0.5">
+                  <span className="text-sm sm:text-base font-bold text-main mt-0.5">
                     {hoveredDonutSegment 
                       ? `${donutSegments.find(s => s.name === hoveredDonutSegment)?.percentage}%`
                       : '100%'
@@ -729,16 +763,16 @@ export function AnalyticsTab() {
           </div>
 
           {/* Donut Legend */}
-          <div className="space-y-1.5 border-t border-slate-100 pt-3">
+          <div className="space-y-1.5 border-t border-soft pt-3">
             {donutSegments.map((seg, idx) => (
               <div key={idx} className="flex items-center justify-between text-[10px] font-medium">
-                <div className="flex items-center gap-1.5 text-slate-600">
+                <div className="flex items-center gap-1.5 text-muted">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: seg.color }}></span>
                   <span>{seg.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400">₱{Math.round(seg.value).toLocaleString()}</span>
-                  <span className="font-bold text-slate-800">{seg.percentage}%</span>
+                  <span className="text-muted">₱{Math.round(seg.value).toLocaleString()}</span>
+                  <span className="font-bold text-main">{seg.percentage}%</span>
                 </div>
               </div>
             ))}
@@ -747,18 +781,18 @@ export function AnalyticsTab() {
       </div>
 
       {/* Detailed Revenue Table (Aggregated Breakdown) */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+      <div className="bg-card border border-soft rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-soft flex items-center justify-between">
           <div>
-            <h4 className="text-xs sm:text-sm font-bold text-slate-900">Financial Breakdown Statement</h4>
-            <p className="text-[10px] text-slate-400">Itemized revenue calculations split by property category</p>
+            <h4 className="text-xs sm:text-sm font-bold text-main">Financial Breakdown Statement</h4>
+            <p className="text-[10px] text-muted">Itemized revenue calculations split by property category</p>
           </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase tracking-wider font-semibold">
+              <tr className="bg-page border-b border-soft text-muted uppercase tracking-wider font-semibold">
                 <th className="p-3">Category Name</th>
                 <th className="p-3 text-right">Apportioned Sales</th>
                 <th className="p-3 text-right">Breakfast Share</th>
@@ -767,33 +801,53 @@ export function AnalyticsTab() {
                 <th className="p-3 text-right">Revenue share</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+            <tbody className="divide-y divide-slate-100 text-main font-medium">
               {/* Row 1: Pension */}
-              <tr>
-                <td className="p-3 font-semibold text-slate-800 flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#B89251] shrink-0"></span>
+              <tr 
+                className="cursor-pointer hover:bg-page transition-colors"
+                onClick={() => setIsPensionExpanded(!isPensionExpanded)}
+              >
+                <td className="p-3 font-semibold text-main flex items-center gap-2">
+                  {isPensionExpanded ? <ChevronDown className="w-4 h-4 text-muted" /> : <ChevronRight className="w-4 h-4 text-muted" />}
+                  <span className="w-2.5 h-2.5 rounded-full bg-brand-primary shrink-0"></span>
                   Pension (Rooms 1-10)
                 </td>
                 <td className="p-3 text-right font-mono">₱{calculations.totalPensionBase.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-slate-500">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-slate-500">₱{calculations.totalPensionRentals.toLocaleString()}</td>
+                <td className="p-3 text-right font-mono text-muted">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
+                <td className="p-3 text-right font-mono text-muted">₱{calculations.totalPensionRentals.toLocaleString()}</td>
                 <td className="p-3 text-right font-mono text-slate-950 font-bold">₱{calculations.totalPension.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono font-bold text-[#B89251]">
+                <td className="p-3 text-right font-mono font-bold text-brand-primary">
                   {calculations.totalRevenue > 0 ? Math.round((calculations.totalPension / calculations.totalRevenue) * 100) : 0}%
                 </td>
               </tr>
 
+              {/* Pension Individual Rooms */}
+              {isPensionExpanded && calculations.roomRevenues.map(room => (
+                <tr key={room.id} className="bg-page/50 hover:bg-page transition-colors">
+                  <td className="p-3 pl-12 font-medium text-muted text-[11px] flex items-center gap-2">
+                    {room.name}
+                  </td>
+                  <td className="p-3 text-right font-mono text-[11px]">₱{Math.round(room.base).toLocaleString()}</td>
+                  <td className="p-3 text-right font-mono text-muted text-[11px]">₱{Math.round(room.breakfast).toLocaleString()}</td>
+                  <td className="p-3 text-right font-mono text-muted text-[11px]">₱{Math.round(room.rentals).toLocaleString()}</td>
+                  <td className="p-3 text-right font-mono text-main font-bold text-[11px]">₱{Math.round(room.total).toLocaleString()}</td>
+                  <td className="p-3 text-right font-mono font-bold text-brand-primary text-[11px]">
+                    {calculations.totalRevenue > 0 ? Math.round((room.total / calculations.totalRevenue) * 100) : 0}%
+                  </td>
+                </tr>
+              ))}
+
               {/* Row 2: Vacation House */}
               <tr>
-                <td className="p-3 font-semibold text-slate-800 flex items-center gap-2">
+                <td className="p-3 font-semibold text-main flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#4A90E2] shrink-0"></span>
                   Vacation House
                 </td>
                 <td className="p-3 text-right font-mono">
                   ₱{Math.round(calculations.totalVacationHouse).toLocaleString()}
                 </td>
-                <td className="p-3 text-right font-mono text-slate-400">₱0</td>
-                <td className="p-3 text-right font-mono text-slate-400">Apportioned</td>
+                <td className="p-3 text-right font-mono text-muted">₱0</td>
+                <td className="p-3 text-right font-mono text-muted">Apportioned</td>
                 <td className="p-3 text-right font-mono text-slate-950 font-bold">
                   ₱{calculations.totalVacationHouse.toLocaleString()}
                 </td>
@@ -804,15 +858,15 @@ export function AnalyticsTab() {
 
               {/* Row 3: Garden Area */}
               <tr>
-                <td className="p-3 font-semibold text-slate-800 flex items-center gap-2">
+                <td className="p-3 font-semibold text-main flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#2ECC71] shrink-0"></span>
                   Garden Area
                 </td>
                 <td className="p-3 text-right font-mono">
                   ₱{Math.round(calculations.totalGardenArea).toLocaleString()}
                 </td>
-                <td className="p-3 text-right font-mono text-slate-400">₱0</td>
-                <td className="p-3 text-right font-mono text-slate-400">Apportioned</td>
+                <td className="p-3 text-right font-mono text-muted">₱0</td>
+                <td className="p-3 text-right font-mono text-muted">Apportioned</td>
                 <td className="p-3 text-right font-mono text-slate-950 font-bold">
                   ₱{calculations.totalGardenArea.toLocaleString()}
                 </td>
@@ -823,15 +877,15 @@ export function AnalyticsTab() {
 
               {/* Row 4: Gazebo */}
               <tr>
-                <td className="p-3 font-semibold text-slate-800 flex items-center gap-2">
+                <td className="p-3 font-semibold text-main flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#F39C12] shrink-0"></span>
                   Gazebo
                 </td>
                 <td className="p-3 text-right font-mono">
                   ₱{Math.round(calculations.totalGazebo).toLocaleString()}
                 </td>
-                <td className="p-3 text-right font-mono text-slate-400">₱0</td>
-                <td className="p-3 text-right font-mono text-slate-400">Apportioned</td>
+                <td className="p-3 text-right font-mono text-muted">₱0</td>
+                <td className="p-3 text-right font-mono text-muted">Apportioned</td>
                 <td className="p-3 text-right font-mono text-slate-950 font-bold">
                   ₱{calculations.totalGazebo.toLocaleString()}
                 </td>
@@ -839,17 +893,38 @@ export function AnalyticsTab() {
                   {calculations.totalRevenue > 0 ? Math.round((calculations.totalGazebo / calculations.totalRevenue) * 100) : 0}%
                 </td>
               </tr>
+              {/* Row 5: Expenses */}
+              <tr className="bg-rose-50/50">
+                <td className="p-3 font-semibold text-rose-700 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+                  Total Expenses
+                </td>
+                <td className="p-3 text-right font-mono text-muted">-</td>
+                <td className="p-3 text-right font-mono text-muted">-</td>
+                <td className="p-3 text-right font-mono text-muted">-</td>
+                <td className="p-3 text-right font-mono text-rose-600 font-bold">
+                  -₱{calculations.totalExpenses.toLocaleString()}
+                </td>
+                <td className="p-3 text-right font-mono font-bold text-rose-500">
+                  -
+                </td>
+              </tr>
             </tbody>
             <tfoot>
-              <tr className="bg-slate-50 font-bold text-slate-900 border-t border-slate-200">
-                <td className="p-3 font-bold">Total Summary</td>
+              <tr className="bg-page font-bold text-main border-t border-soft">
+                <td className="p-3 font-bold">Gross Sales Summary</td>
                 <td className="p-3 text-right font-mono">
                   ₱{(calculations.totalPensionBase + calculations.totalVacationHouse + calculations.totalGardenArea + calculations.totalGazebo).toLocaleString()}
                 </td>
-                <td className="p-3 text-right font-mono text-slate-600">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-slate-600">₱{calculations.totalAddonsRentals.toLocaleString()}</td>
+                <td className="p-3 text-right font-mono text-muted">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
+                <td className="p-3 text-right font-mono text-muted">₱{calculations.totalAddonsRentals.toLocaleString()}</td>
                 <td className="p-3 text-right font-mono text-slate-950 text-sm font-extrabold">₱{calculations.totalRevenue.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-[#9A783E] text-sm font-extrabold">100%</td>
+                <td className="p-3 text-right font-mono text-brand-text text-sm font-extrabold">100%</td>
+              </tr>
+              <tr className="bg-softbg font-bold text-main border-t-2 border-soft">
+                <td className="p-3 font-black text-brand-primary uppercase tracking-wider" colSpan={4}>Net Profit (Gross Sales - Expenses)</td>
+                <td className="p-3 text-right font-mono text-brand-primary text-base font-black">₱{calculations.netProfit.toLocaleString()}</td>
+                <td className="p-3 text-right"></td>
               </tr>
             </tfoot>
           </table>

@@ -332,7 +332,7 @@ export function ChatbotWidget() {
         className={`fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
           isOpen 
             ? 'bg-slate-800 text-white rotate-90' 
-            : 'bg-[#B89251] hover:bg-[#9A783E] text-white shadow-[#B89251]/30'
+            : 'bg-brand-primary hover:bg-brand-text text-white shadow-[#B89251]/30'
         }`}
         aria-label="Open digital concierge chat"
       >
@@ -352,26 +352,26 @@ export function ChatbotWidget() {
 
       {/* 2. Messenger Phone Screen Simulator Box */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[calc(100vh-8rem)] bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[calc(100vh-8rem)] bg-card border border-soft rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-300">
           
           {/* Header */}
-          <div className="px-4 py-3.5 bg-[#FDFBF7] border-b border-[#E5D5C0] flex items-center justify-between">
+          <div className="px-4 py-3.5 bg-brand-bg border-b border-brand-border flex items-center justify-between">
             <div className="flex items-center gap-3">
               {/* Concierge Avatar */}
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#9A783E] to-[#E5D5C0] p-[1.5px]">
-                  <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                    <Sparkles className="w-5 h-5 text-[#B89251]" />
+                  <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
+                    <Sparkles className="w-5 h-5 text-brand-primary" />
                   </div>
                 </div>
                 <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
               </div>
               
               <div>
-                <h3 className="font-semibold text-sm text-slate-800 flex items-center gap-1.5 leading-none">
+                <h3 className="font-semibold text-sm text-main flex items-center gap-1.5 leading-none">
                   Daweez Concierge
                 </h3>
-                <span className="text-[10px] text-slate-400">Active Now • Virtual Assistant</span>
+                <span className="text-[10px] text-muted">Active Now • Virtual Assistant</span>
               </div>
             </div>
 
@@ -379,14 +379,14 @@ export function ChatbotWidget() {
             <div className="flex items-center gap-1.5">
               <button 
                 onClick={() => setSoundEnabled(!soundEnabled)} 
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#B89251] transition-colors"
+                className="p-1.5 rounded-lg hover:bg-softbg text-muted hover:text-brand-primary transition-colors"
                 title={soundEnabled ? "Mute sounds" : "Unmute sounds"}
               >
                 {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </button>
               <button 
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-rose-500 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-softbg text-muted hover:text-rose-500 transition-colors"
               >
                 <X className="w-4.5 h-4.5" />
               </button>
@@ -394,7 +394,7 @@ export function ChatbotWidget() {
           </div>
 
           {/* Chat Messages Body */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-page/50">
             {messages.map((msg) => (
               <div 
                 key={msg.id} 
@@ -406,15 +406,15 @@ export function ChatbotWidget() {
                 <div 
                   className={`px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line shadow-sm border ${
                     msg.sender === 'user'
-                      ? 'bg-[#B89251] text-white border-transparent rounded-tr-none font-medium'
-                      : 'bg-white text-slate-800 border-slate-100 rounded-tl-none font-normal'
+                      ? 'bg-brand-primary text-white border-transparent rounded-tr-none font-medium'
+                      : 'bg-card text-main border-soft rounded-tl-none font-normal'
                   }`}
                 >
                   {msg.text}
                 </div>
                 
                 {/* Timestamp */}
-                <span className="text-[9px] text-slate-400 mt-1 px-1">
+                <span className="text-[9px] text-muted mt-1 px-1">
                   {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
 
@@ -425,7 +425,7 @@ export function ChatbotWidget() {
                       <button
                         key={index}
                         onClick={() => handleQuickReplyClick(btn)}
-                        className="px-3 py-2 bg-white hover:bg-[#FDFBF7] border border-slate-200 hover:border-[#E5D5C0] text-slate-700 hover:text-[#9A783E] rounded-xl text-[10px] font-semibold transition-all transform hover:scale-[1.02] active:scale-95 shadow-sm"
+                        className="px-3 py-2 bg-card hover:bg-brand-bg border border-soft hover:border-brand-border text-main hover:text-brand-text rounded-xl text-[10px] font-semibold transition-all transform hover:scale-[1.02] active:scale-95 shadow-sm"
                       >
                         {btn.text}
                       </button>
@@ -437,10 +437,10 @@ export function ChatbotWidget() {
 
             {/* Typing Indicator */}
             {isTyping && (
-              <div className="flex items-center gap-1.5 bg-white px-3.5 py-2.5 rounded-2xl border border-slate-100 rounded-tl-none max-w-[60px] mr-auto shadow-sm">
-                <span className="w-1.5 h-1.5 bg-[#B89251] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-1.5 h-1.5 bg-[#B89251] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-1.5 h-1.5 bg-[#B89251] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="flex items-center gap-1.5 bg-card px-3.5 py-2.5 rounded-2xl border border-soft rounded-tl-none max-w-[60px] mr-auto shadow-sm">
+                <span className="w-1.5 h-1.5 bg-brand-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 bg-brand-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 bg-brand-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             )}
             
@@ -450,22 +450,22 @@ export function ChatbotWidget() {
           {/* Chat Input Footer */}
           <form 
             onSubmit={handleSendMessage}
-            className="p-3 bg-white border-t border-slate-200/80 flex items-center gap-2"
+            className="p-3 bg-card border-t border-soft/80 flex items-center gap-2"
           >
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Ask about rooms, Silogs, payment..."
-              className="flex-1 bg-slate-50 border border-slate-200 focus:border-[#B89251] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#B89251]/20"
+              className="flex-1 bg-page border border-soft focus:border-brand-primary rounded-xl px-3 py-2 text-xs text-main placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#B89251]/20"
             />
             <button
               type="submit"
               disabled={!inputValue.trim()}
               className={`p-2 rounded-xl border transition-all ${
                 inputValue.trim()
-                  ? 'bg-[#B89251] text-white border-transparent hover:scale-105 active:scale-95 shadow-sm shadow-[#B89251]/10'
-                  : 'bg-slate-100 text-slate-400 border-transparent cursor-not-allowed'
+                  ? 'bg-brand-primary text-white border-transparent hover:scale-105 active:scale-95 shadow-sm shadow-[#B89251]/10'
+                  : 'bg-softbg text-muted border-transparent cursor-not-allowed'
               }`}
             >
               <Send className="w-3.5 h-3.5" />

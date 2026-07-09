@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import { Room, Venue, Booking, SyncFeed, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal } from '../types/booking'
+import { Expense, ExpenseCategory } from '../types/expense'
 
 export interface DashboardDataContextValue {
   rooms: Room[]
@@ -7,6 +8,8 @@ export interface DashboardDataContextValue {
   bookings: Booking[]
   feeds: SyncFeed[]
   partnerDeals: PartnerDeal[]
+  expenses: Expense[]
+  expenseCategories: ExpenseCategory[]
   isLoading: boolean
   isConfirming?: boolean
   confirmBooking: (id: string) => Promise<void>
@@ -38,6 +41,11 @@ export interface DashboardDataContextValue {
   createPartnerDeal: (deal: PartnerDeal) => Promise<void>
   savePartnerDeals: (deals: PartnerDeal[]) => Promise<void>
   deletePartnerDeal: (dealId: string) => Promise<void>
+  createExpenseCategory: (category: Omit<ExpenseCategory, 'created_at'> & { created_at?: string }) => Promise<void>
+  updateExpenseCategory: (category: ExpenseCategory) => Promise<void>
+  deleteExpenseCategory: (categoryId: string) => Promise<void>
+  createExpense: (expense: Omit<Expense, 'created_at'> & { created_at?: string }) => Promise<void>
+  deleteExpense: (expenseId: string) => Promise<void>
   onLogout: () => void
 }
 

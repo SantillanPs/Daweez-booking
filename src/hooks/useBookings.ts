@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as syncEngine from '../utils/syncEngine'
 import { Booking, Room, Venue, SyncFeed, BookingSource, BreakfastOrder, EquipmentRental, EventAddons, Companion, PartnerDeal } from '../types/booking'
+import { Expense, ExpenseCategory } from '../types/expense'
 import { useRealtimeBookings } from './useRealtimeBookings'
 
 type MutationContext = { previous: Booking[] | undefined }
@@ -49,6 +50,24 @@ export function useBookings() {
     queryKey: ['partnerDeals'],
     queryFn: async () => {
       return await syncEngine.getPartnerDeals()
+    },
+    staleTime: Infinity,
+  })
+
+  // 4c. Fetch Expense Categories
+  const { data: expenseCategories = [], isLoading: isLoadingExpenseCategories } = useQuery<ExpenseCategory[]>({
+    queryKey: ['expenseCategories'],
+    queryFn: async () => {
+      return await syncEngine.getExpenseCategories()
+    },
+    staleTime: Infinity,
+  })
+
+  // 4d. Fetch Expenses
+  const { data: expenses = [], isLoading: isLoadingExpenses } = useQuery<Expense[]>({
+    queryKey: ['expenses'],
+    queryFn: async () => {
+      return await syncEngine.getExpenses()
     },
     staleTime: Infinity,
   })
@@ -319,13 +338,65 @@ export function useBookings() {
     }
   })
 
+  // 14. Mutation: Create Expense Category
+  const createExpenseCategoryMutation = useMutation({
+    mutationFn: async (category: Omit<ExpenseCategory, 'created_at'> & { created_at?: string }) => {
+      await syncEngine.insertExpenseCategory(category)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenseCategories'] })
+    }
+  })
+
+  // 15. Mutation: Update Expense Category
+  const updateExpenseCategoryMutation = useMutation({
+    mutationFn: async (category: ExpenseCategory) => {
+      await syncEngine.updateExpenseCategory(category)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenseCategories'] })
+    }
+  })
+
+  // 16. Mutation: Delete Expense Category
+  const deleteExpenseCategoryMutation = useMutation({
+    mutationFn: async (categoryId: string) => {
+      await syncEngine.deleteExpenseCategory(categoryId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenseCategories'] })
+    }
+  })
+
+  // 17. Mutation: Create Expense
+  const createExpenseMutation = useMutation({
+    mutationFn: async (expense: Omit<Expense, 'created_at'> & { created_at?: string }) => {
+      await syncEngine.insertExpense(expense)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+    }
+  })
+
+  // 18. Mutation: Delete Expense
+  const deleteExpenseMutation = useMutation({
+    mutationFn: async (expenseId: string) => {
+      await syncEngine.deleteExpense(expenseId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+    }
+  })
+
   return {
     rooms,
     venues,
     bookings,
     feeds,
     partnerDeals,
-    isLoading: isLoadingRooms || isLoadingVenues || isLoadingBookings || isLoadingFeeds || isLoadingPartners,
+    expenseCategories,
+    expenses,
+    isLoading: isLoadingRooms || isLoadingVenues || isLoadingBookings || isLoadingFeeds || isLoadingPartners || isLoadingExpenseCategories || isLoadingExpenses,
 
     // Mutations
     createPendingBooking: createPendingBookingMutation.mutateAsync,
@@ -348,6 +419,12 @@ export function useBookings() {
 
     createPartnerDeal: createPartnerDealMutation.mutateAsync,
     savePartnerDeals: savePartnerDealsMutation.mutateAsync,
-    deletePartnerDeal: deletePartnerDealMutation.mutateAsync
+    deletePartnerDeal: deletePartnerDealMutation.mutateAsync,
+
+    createExpenseCategory: createExpenseCategoryMutation.mutateAsync,
+    updateExpenseCategory: updateExpenseCategoryMutation.mutateAsync,
+    deleteExpenseCategory: deleteExpenseCategoryMutation.mutateAsync,
+    createExpense: createExpenseMutation.mutateAsync,
+    deleteExpense: deleteExpenseMutation.mutateAsync
   }
 }

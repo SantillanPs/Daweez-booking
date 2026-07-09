@@ -1,4 +1,5 @@
 import { Room, Venue, Booking, SyncFeed, BookingSource, BookingStatus, BreakfastOrder, EquipmentRental, EventAddons, GuestRecord, Companion, PartnerDeal } from '../types/booking'
+import { Expense, ExpenseCategory } from '../types/expense'
 import { supabase, isSupabaseConfigured } from './supabaseClient'
 
 // Helper: Generate UUID
@@ -546,12 +547,6 @@ export function isVenueRangeAvailable(venueId: string, checkInStr: string, check
   })
 }
 
-// 7. Silent Loyalty Verification (10% discount trigger)
-export function checkGuestLoyalty(email: string, bookingsList: Booking[] = []): boolean {
-  // Check if guest has at least 1 confirmed past stay in the system under this email
-  return bookingsList.some(b => b.guest_email.toLowerCase() === email.toLowerCase() && b.status === 'confirmed')
-}
-
 // 8. Dynamic Invoice Calculations
 export function calculatePricing(params: {
   roomId?: string
@@ -596,14 +591,12 @@ export function calculatePricing(params: {
     nights = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
   }
 
-  // B. Loyalty Program: 10% auto-deducted if guest has past completed stay
-  const hasLoyalty = checkGuestLoyalty(guestEmail, bookingsList)
-  const discountMultiplier = hasLoyalty ? 0.90 : 1.0
+  // B. Subtotals
   const subtotal = basePrice * nights
   const undiscountedSubtotal = undiscountedBasePrice * nights
   const discountAmount = undiscountedSubtotal - subtotal
   const discountPercent = Math.round((1 - finalMultiplier) * 100)
-  const grandTotal = subtotal * ((contractRateOverride !== undefined && contractRateOverride !== null) ? 1 : discountMultiplier)
+  const grandTotal = subtotal * ((contractRateOverride !== undefined && contractRateOverride !== null) ? 1 : 1.0)
 
   // C. Breakfast is always included for room bookings (₱150/guest/night)
   let breakfastTotal = 0
@@ -658,7 +651,7 @@ export function calculatePricing(params: {
     undiscountedSubtotal: Math.round(undiscountedSubtotal),
     discountAmount: Math.round(discountAmount),
     discountPercent,
-    hasLoyalty,
+    hasLoyalty: false,
     breakfastTotal,
     rentalsTotal,
     addonsTotal,
@@ -867,34 +860,6 @@ export async function runSimulatedOTASync(currentBookings?: Booking[], currentFe
   }
 
   return newSyncCount
-}
-
-// 12. Retrieve visit logs stats for PMS Loyalty Tab
-export function getGuestRecords(bookingsList: Booking[] = []): GuestRecord[] {
-  const bookings = bookingsList.filter(b => b.status === 'confirmed')
-  const map = new Map<string, GuestRecord>()
-
-  bookings.forEach(b => {
-    const key = b.guest_email.toLowerCase()
-    const current = map.get(key)
-
-    if (current) {
-      current.visit_count += 1
-      if (b.created_at > current.last_visit) {
-        current.last_visit = b.created_at
-      }
-    } else {
-      map.set(key, {
-        email: b.guest_email,
-        name: b.guest_name,
-        phone: b.guest_phone,
-        visit_count: 1,
-        last_visit: b.created_at
-      })
-    }
-  })
-
-  return Array.from(map.values())
 }
 
 // 13. Seed Future Mock Data (June - Dec 2026) for testing
@@ -1751,4 +1716,113 @@ export async function deletePartnerDeal(dealId: string): Promise<void> {
     const existing: PartnerDeal[] = JSON.parse(data)
     localStorage.setItem(PARTNERS_KEY, JSON.stringify(existing.filter(d => d.id !== dealId)))
   }
+}
+
+// ==========================================
+// EXPENSE TRACKING
+// ==========================================
+
+const EXPENSE_CATEGORIES_KEY = 'l_etoile_expense_categories_db'
+const EXPENSES_KEY = 'l_etoile_expenses_db'
+
+export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('expense_categories').select('*').order('name')
+      if (error) throw error
+      if (data) return data
+    } catch (err) {
+      console.error('Supabase getExpenseCategories Error:', err)
+    }
+  }
+  const data = localStorage.getItem(EXPENSE_CATEGORIES_KEY)
+  return data ? JSON.parse(data) : []
+}
+
+export async function insertExpenseCategory(category: Omit<ExpenseCategory, 'created_at'> & { created_at?: string }): Promise<ExpenseCategory> {
+  const newCat = { ...category, created_at: category.created_at || new Date().toISOString() } as ExpenseCategory
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('expense_categories').insert(newCat)
+      if (error) throw error
+      return newCat
+    } catch (err) {
+      console.error('Supabase insertExpenseCategory Error:', err)
+    }
+  }
+  const existing = await getExpenseCategories()
+  localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify([...existing, newCat]))
+  return newCat
+}
+
+export async function updateExpenseCategory(category: ExpenseCategory): Promise<void> {
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('expense_categories').update({ name: category.name }).eq('id', category.id)
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase updateExpenseCategory Error:', err)
+    }
+  }
+  const existing = await getExpenseCategories()
+  localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(existing.map(c => c.id === category.id ? category : c)))
+}
+
+export async function deleteExpenseCategory(id: string): Promise<void> {
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('expense_categories').delete().eq('id', id)
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase deleteExpenseCategory Error:', err)
+    }
+  }
+  const existing = await getExpenseCategories()
+  localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(existing.filter(c => c.id !== id)))
+}
+
+export async function getExpenses(): Promise<Expense[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('expenses').select('*').order('expense_date', { ascending: false })
+      if (error) throw error
+      if (data) return data
+    } catch (err) {
+      console.error('Supabase getExpenses Error:', err)
+    }
+  }
+  const data = localStorage.getItem(EXPENSES_KEY)
+  return data ? JSON.parse(data) : []
+}
+
+export async function insertExpense(expense: Omit<Expense, 'created_at'> & { created_at?: string }): Promise<Expense> {
+  const newExp = { ...expense, created_at: expense.created_at || new Date().toISOString() } as Expense
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('expenses').insert(newExp)
+      if (error) throw error
+      return newExp
+    } catch (err) {
+      console.error('Supabase insertExpense Error:', err)
+    }
+  }
+  const existing = await getExpenses()
+  localStorage.setItem(EXPENSES_KEY, JSON.stringify([...existing, newExp]))
+  return newExp
+}
+
+export async function deleteExpense(id: string): Promise<void> {
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('expenses').delete().eq('id', id)
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase deleteExpense Error:', err)
+    }
+  }
+  const existing = await getExpenses()
+  localStorage.setItem(EXPENSES_KEY, JSON.stringify(existing.filter(e => e.id !== id)))
 }

@@ -81,7 +81,7 @@ const TimelineCell = React.memo(
       return (
         <td
           colSpan={span}
-          className="p-0 border-r border-slate-100 relative align-middle"
+          className="p-0 border-r border-soft relative align-middle"
           onMouseEnter={() => {
             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
             hoverTimeoutRef.current = setTimeout(() => {
@@ -117,17 +117,17 @@ const TimelineCell = React.memo(
             )}
           </div>
           {isTooltipActive && (
-            <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-52 bg-white border border-slate-200 p-3 shadow-lg rounded-lg text-xs space-y-1.5 pointer-events-none text-left font-sans">
-              <div className="font-semibold text-slate-800">{booking.guest_name}</div>
-              <div className="text-[10px] text-slate-400 font-mono">{booking.check_in} → {booking.check_out}</div>
-              <div className="text-[10px] text-slate-500">
+            <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-52 bg-card border border-soft p-3 shadow-lg rounded-lg text-xs space-y-1.5 pointer-events-none text-left font-sans">
+              <div className="font-semibold text-main">{booking.guest_name}</div>
+              <div className="text-[10px] text-muted font-mono">{booking.check_in} → {booking.check_out}</div>
+              <div className="text-[10px] text-muted">
                 {booking.guest_phone}<br />
                 <span className={booking.status === 'confirmed' ? 'text-emerald-600 font-medium' : 'text-amber-600'}>{booking.status}</span>
                 {' · '}{booking.source}
                 {booking.event_addons?.payment_reference && (
                   <>
                     <br />
-                    <span className="text-[9.5px] text-[#9A783E] font-bold">
+                    <span className="text-[9.5px] text-brand-text font-bold">
                       Ref: {booking.event_addons.payment_reference}
                     </span>
                   </>
@@ -145,7 +145,7 @@ const TimelineCell = React.memo(
           onClick={() => onCellClick(id, type, date)}
           className="p-0.5 h-8 relative cursor-cell align-middle"
         >
-          <div className="w-full h-full rounded bg-[#B89251] text-white flex items-center justify-center text-[9px] font-bold uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-150 border border-[#9A783E]">
+          <div className="w-full h-full rounded bg-brand-primary text-white flex items-center justify-center text-[9px] font-bold uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-150 border border-[#9A783E]">
             In
           </div>
         </td>
@@ -158,7 +158,7 @@ const TimelineCell = React.memo(
           onClick={() => onCellClick(id, type, date)}
           className="p-0 h-8 cursor-cell relative align-middle transition-all bg-gradient-to-r from-[#FAF0DD]/60 to-[#F5E6CC]/50 hover:from-[#FAF0DD]/80 hover:to-[#F5E6CC]/70"
         >
-          <div className="absolute inset-0 border-y border-dashed border-[#B89251]/40" />
+          <div className="absolute inset-0 border-y border-dashed border-brand-primary/40" />
         </td>
       )
     }
@@ -166,7 +166,7 @@ const TimelineCell = React.memo(
     return (
       <td
         onClick={() => onCellClick(id, type, date)}
-        className="border-r border-slate-100 p-0 h-8 cursor-cell hover:bg-[#FDFBF7]/60 transition-colors"
+        className="border-r border-soft p-0 h-8 cursor-cell hover:bg-brand-bg/60 transition-colors"
       />
     )
   },
@@ -228,45 +228,45 @@ export const TimelineGrid = React.memo(
     return (
       <div className="space-y-2.5 flex-1 min-h-0 flex flex-col overflow-hidden">
         {timelineSelection && (
-          <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 max-w-xs bg-[#FDFBF7]/95 backdrop-blur-md border border-[#E5D5C0] text-slate-800 rounded-lg p-3.5 shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 font-sans">
+          <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 max-w-xs bg-brand-bg/95 backdrop-blur-md border border-brand-border text-main rounded-lg p-3.5 shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 font-sans">
             <span className="flex h-2.5 w-2.5 relative mt-1 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-[#B89251]"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#B89251]"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-brand-primary"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-primary"></span>
             </span>
             <div className="flex-1 text-xs">
-              <p className="font-bold text-[#9A783E]">Date Selection Active</p>
+              <p className="font-bold text-brand-text">Date Selection Active</p>
               <p className="text-slate-650 mt-1 leading-normal">
                 Selecting <strong>{selectionName}</strong>.
               </p>
               <p className="text-slate-650 leading-normal">
-                Check‑in: <strong className="text-[#9A783E]">{timelineSelection.checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>.
+                Check‑in: <strong className="text-brand-text">{timelineSelection.checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>.
               </p>
-              <p className="text-[11px] text-[#B89251] font-semibold mt-1.5 animate-pulse">
+              <p className="text-[11px] text-brand-primary font-semibold mt-1.5 animate-pulse">
                 Click checkout date on the grid.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setTimelineSelection(null)}
-              className="text-[10px] font-bold text-slate-500 hover:text-slate-800 transition-all cursor-pointer border border-[#E5D5C0] hover:border-slate-350 px-2 py-1 rounded bg-white hover:bg-slate-50 shadow-sm">
+              className="text-[10px] font-bold text-muted hover:text-main transition-all cursor-pointer border border-brand-border hover:border-slate-350 px-2 py-1 rounded bg-card hover:bg-page shadow-sm">
               Cancel
             </button>
           </div>
         )}
 
-        <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 bg-card border border-soft rounded-lg overflow-hidden flex flex-col">
           <div className="flex-1 min-h-0 overflow-auto relative">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-slate-50">
-                  <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-r border-slate-200 p-3 text-left text-xs text-slate-500 font-medium min-w-[160px]">
+                <tr className="bg-page">
+                  <th className="sticky top-0 left-0 z-30 bg-page border-b border-r border-soft p-3 text-left text-xs text-muted font-medium min-w-[160px]">
                     Room / Venue
                   </th>
                   {daysList.map((dayInfo, i) => {
                     return (
-                      <th key={i} className={`sticky top-0 z-10 border-b border-slate-200 p-1.5 text-center text-[10px] min-w-[38px] font-mono ${dayInfo.isToday ? 'bg-[#FDFBF7] text-[#9A783E] font-semibold' : 'bg-slate-50 text-slate-400'}`}>
+                      <th key={i} className={`sticky top-0 z-10 border-b border-soft p-1.5 text-center text-[10px] min-w-[38px] font-mono ${dayInfo.isToday ? 'bg-brand-bg text-brand-text font-semibold' : 'bg-page text-muted'}`}>
                         <div>{dayInfo.weekday}</div>
-                        <div className={`text-xs font-semibold mt-0.5 ${dayInfo.isToday ? 'border-b border-[#B89251] pb-0.5' : ''}`}>{dayInfo.dayNum}</div>
+                        <div className={`text-xs font-semibold mt-0.5 ${dayInfo.isToday ? 'border-b border-brand-primary pb-0.5' : ''}`}>{dayInfo.dayNum}</div>
                       </th>
                     )
                   })}
@@ -349,18 +349,18 @@ export const TimelineGrid = React.memo(
                   }
 
                   return (
-                    <tr key={room.id} className="border-b border-slate-100 hover:bg-slate-50/30">
-                      <td className="sticky left-0 z-20 bg-white border-r border-slate-200 p-3 min-w-[160px]">
-                        <span className="text-xs font-semibold text-slate-800 block">Room {room.room_number}</span>
-                        <span className="text-[10px] text-[#B89251]">₱{room.base_price.toLocaleString()}/night</span>
+                    <tr key={room.id} className="border-b border-soft hover:bg-page/30">
+                      <td className="sticky left-0 z-20 bg-card border-r border-soft p-3 min-w-[160px]">
+                        <span className="text-xs font-semibold text-main block">Room {room.room_number}</span>
+                        <span className="text-[10px] text-brand-primary">₱{room.base_price.toLocaleString()}/night</span>
                       </td>
                       {cells}
                     </tr>
                   )
                 })}
 
-                <tr className="bg-slate-100/50">
-                  <td colSpan={daysList.length + 1} className="sticky left-0 z-20 bg-slate-100/70 border-b border-slate-200 p-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 text-left">
+                <tr className="bg-softbg/50">
+                  <td colSpan={daysList.length + 1} className="sticky left-0 z-20 bg-softbg/70 border-b border-soft p-2 text-[10px] font-bold uppercase tracking-wider text-muted text-left">
                     Event Venues
                   </td>
                 </tr>
@@ -397,7 +397,7 @@ export const TimelineGrid = React.memo(
                           isCheckIn={false}
                           isHighlighted={false}
                           getBookingStyle={(b) => {
-                            if (b.status === 'blocked') return 'bg-slate-100 text-slate-400 border-slate-200 line-through'
+                            if (b.status === 'blocked') return 'bg-softbg text-muted border-soft line-through'
                             if (b.status === 'pending') return 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
                             return 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200'
                           }}
@@ -445,10 +445,10 @@ export const TimelineGrid = React.memo(
                   }
 
                   return (
-                    <tr key={venue.id} className="border-b border-slate-100 hover:bg-slate-50/30">
-                      <td className="sticky left-0 z-20 bg-white border-r border-slate-200 p-3 min-w-[160px]">
-                        <span className="text-xs font-semibold text-slate-800 block">{venue.name}</span>
-                        <span className="text-[10px] text-[#B89251]">₱{venue.base_price.toLocaleString()}/day</span>
+                    <tr key={venue.id} className="border-b border-soft hover:bg-page/30">
+                      <td className="sticky left-0 z-20 bg-card border-r border-soft p-3 min-w-[160px]">
+                        <span className="text-xs font-semibold text-main block">{venue.name}</span>
+                        <span className="text-[10px] text-brand-primary">₱{venue.base_price.toLocaleString()}/day</span>
                       </td>
                       {cells}
                     </tr>

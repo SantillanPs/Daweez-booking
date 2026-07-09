@@ -9,10 +9,10 @@ import { MainLayout } from './components/MainLayout'
 import { LoginRoute } from './components/LoginPortal'
 import { DashboardLayout } from './components/DashboardLayout'
 import { CalendarTab } from './components/CalendarTab'
-import { BookingsTab } from './components/BookingsTab'
 import { DirectoryTab } from './components/DirectoryTab'
 import { AnalyticsTab } from './components/AnalyticsTab'
 import { SettingsTab } from './components/SettingsTab'
+import { ExpensesTab } from './components/ExpensesTab'
 import { PublicReservePortal } from './components/PublicReservePortal'
 
 // 1. Create a Root Route
@@ -66,12 +66,6 @@ const calendarRoute = createRoute({
   component: CalendarTab
 })
 
-const bookingsRoute = createRoute({
-  getParentRoute: () => dashboardRoute,
-  path: '/bookings',
-  component: BookingsTab
-})
-
 const guestsRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/guests',
@@ -90,6 +84,12 @@ const analyticsRoute = createRoute({
   component: AnalyticsTab
 })
 
+const expensesRoute = createRoute({
+  getParentRoute: () => dashboardRoute,
+  path: '/expenses',
+  component: ExpensesTab
+})
+
 // 5. Construct Route Tree
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -97,9 +97,9 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute.addChildren([
     dashboardIndexRoute,
     calendarRoute,
-    bookingsRoute,
     guestsRoute,
     analyticsRoute,
+    expensesRoute,
     settingsRoute
   ])
 ])
