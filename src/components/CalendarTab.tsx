@@ -267,7 +267,7 @@ export function CalendarTab() {
             <button 
               onClick={() => { const p = new Date(schedulerStartDate); p.setDate(p.getDate() - 30); setSchedulerStartDate(p) }}
               title="Prev 30 days"
-              className="p-1 text-muted hover:text-main hover:bg-slate-200/50 rounded transition-all cursor-pointer"
+              className="p-1 text-muted hover:text-main hover:bg-softbg rounded transition-all cursor-pointer"
             >
               <ChevronsLeft className="w-4 h-4" />
             </button>
@@ -275,7 +275,7 @@ export function CalendarTab() {
             <button 
               onClick={() => { const p = new Date(schedulerStartDate); p.setDate(p.getDate() - 7); setSchedulerStartDate(p) }}
               title="Prev 7 days"
-              className="p-1 text-muted hover:text-main hover:bg-slate-200/50 rounded transition-all cursor-pointer"
+              className="p-1 text-muted hover:text-main hover:bg-softbg rounded transition-all cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -297,7 +297,7 @@ export function CalendarTab() {
             <button 
               onClick={() => { const n = new Date(schedulerStartDate); n.setDate(n.getDate() + 7); setSchedulerStartDate(n) }}
               title="Next 7 days"
-              className="p-1 text-muted hover:text-main hover:bg-slate-200/50 rounded transition-all cursor-pointer"
+              className="p-1 text-muted hover:text-main hover:bg-softbg rounded transition-all cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -305,12 +305,12 @@ export function CalendarTab() {
             <button 
               onClick={() => { const n = new Date(schedulerStartDate); n.setDate(n.getDate() + 30); setSchedulerStartDate(n) }}
               title="Next 30 days"
-              className="p-1 text-muted hover:text-main hover:bg-slate-200/50 rounded transition-all cursor-pointer"
+              className="p-1 text-muted hover:text-main hover:bg-softbg rounded transition-all cursor-pointer"
             >
               <ChevronsRight className="w-4 h-4" />
             </button>
             
-            <div className="h-4 w-px bg-slate-200 mx-1" />
+            <div className="h-4 w-px bg-soft mx-1" />
             
             {/* Today */}
             <button 

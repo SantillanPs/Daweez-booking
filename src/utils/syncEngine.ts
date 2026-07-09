@@ -1736,7 +1736,17 @@ export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
     }
   }
   const data = localStorage.getItem(EXPENSE_CATEGORIES_KEY)
-  return data ? JSON.parse(data) : []
+  if (data) return JSON.parse(data)
+  
+  const defaultCats: ExpenseCategory[] = [
+    { id: 'cat-1', name: 'Maintenance & Repairs', created_at: new Date().toISOString() },
+    { id: 'cat-2', name: 'Utilities (Water/Electricity)', created_at: new Date().toISOString() },
+    { id: 'cat-3', name: 'Salaries & Wages', created_at: new Date().toISOString() },
+    { id: 'cat-4', name: 'Supplies & Toiletries', created_at: new Date().toISOString() },
+    { id: 'cat-5', name: 'Marketing & Promos', created_at: new Date().toISOString() }
+  ]
+  localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(defaultCats))
+  return defaultCats
 }
 
 export async function insertExpenseCategory(category: Omit<ExpenseCategory, 'created_at'> & { created_at?: string }): Promise<ExpenseCategory> {
@@ -1794,7 +1804,20 @@ export async function getExpenses(): Promise<Expense[]> {
     }
   }
   const data = localStorage.getItem(EXPENSES_KEY)
-  return data ? JSON.parse(data) : []
+  if (data) return JSON.parse(data)
+  
+  const today = new Date()
+  const yesterday = new Date(today.getTime() - 86400000)
+  const lastWeek = new Date(today.getTime() - 86400000 * 7)
+
+  const defaultExpenses: Expense[] = [
+    { id: 'exp-1', amount: 12500, category_id: 'cat-3', expense_date: today.toISOString().split('T')[0], notes: 'Weekly Staff Payroll', created_at: today.toISOString() },
+    { id: 'exp-2', amount: 4500, category_id: 'cat-2', expense_date: yesterday.toISOString().split('T')[0], notes: 'Electric Bill', created_at: yesterday.toISOString() },
+    { id: 'exp-3', amount: 1200, category_id: 'cat-4', expense_date: yesterday.toISOString().split('T')[0], notes: 'Restock soap and shampoo', created_at: yesterday.toISOString() },
+    { id: 'exp-4', amount: 3500, category_id: 'cat-1', expense_date: lastWeek.toISOString().split('T')[0], notes: 'Aircon cleaning service (Rooms 1-4)', created_at: lastWeek.toISOString() }
+  ]
+  localStorage.setItem(EXPENSES_KEY, JSON.stringify(defaultExpenses))
+  return defaultExpenses
 }
 
 export async function insertExpense(expense: Omit<Expense, 'created_at'> & { created_at?: string }): Promise<Expense> {

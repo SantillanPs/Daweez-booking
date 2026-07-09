@@ -176,7 +176,7 @@ export function ExpensesTab() {
         <div className="flex-1 overflow-auto bg-card">
           {expenses.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-8 text-muted">
-              <Wallet className="w-12 h-12 mb-3 text-slate-200" />
+              <Wallet className="w-12 h-12 mb-3 text-muted opacity-30" />
               <p className="text-sm font-medium">No expenses logged yet</p>
               <p className="text-xs mt-1">Expenses you log will appear here.</p>
             </div>
@@ -191,7 +191,7 @@ export function ExpensesTab() {
                   <th className="px-4 py-3 font-medium text-right w-16"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-soft">
                 {expenses.map((expense) => {
                   const category = expenseCategories.find(c => c.id === expense.category_id)
                   return (
@@ -205,7 +205,7 @@ export function ExpensesTab() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted truncate max-w-[200px]">
-                        {expense.notes || <span className="text-slate-300 italic">No notes</span>}
+                        {expense.notes || <span className="text-muted opacity-50 italic">No notes</span>}
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-rose-600 whitespace-nowrap">
                         -₱{expense.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -213,7 +213,7 @@ export function ExpensesTab() {
                       <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => handleDelete(expense.id)}
-                          className="text-slate-300 hover:text-rose-500 transition-colors p-1 rounded hover:bg-rose-50 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          className="text-muted hover:text-rose-500 transition-colors p-1 rounded hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 focus:opacity-100"
                           title="Delete Expense"
                         >
                           <Trash2 className="w-4 h-4" />

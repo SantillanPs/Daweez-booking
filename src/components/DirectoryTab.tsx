@@ -104,7 +104,7 @@ export function DirectoryTab() {
     other: 'bg-page text-muted border-soft',
   }
 
-  const inputCls = "w-full bg-brand-bg border border-soft text-main px-3 py-2.5 rounded-lg focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-[#B89251]/10 font-medium text-sm transition-all placeholder:text-slate-300"
+  const inputCls = "w-full bg-brand-bg border border-soft text-main px-3 py-2.5 rounded-lg focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-[#B89251]/10 font-medium text-sm transition-all placeholder:text-muted placeholder:opacity-50"
   const labelCls = "text-[11px] text-muted font-semibold uppercase tracking-wide block mb-1.5"
 
   return (
@@ -150,7 +150,7 @@ export function DirectoryTab() {
                     placeholder="e.g. Agoda Bohol Agency"
                     value={pName}
                     onChange={e => setPName(e.target.value)}
-                    className="w-full bg-brand-bg border border-soft text-main px-3 py-2 rounded-lg focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-[#B89251]/10 font-semibold text-sm transition-all placeholder:text-slate-300"
+                    className="w-full bg-brand-bg border border-soft text-main px-3 py-2 rounded-lg focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-[#B89251]/10 font-semibold text-sm transition-all placeholder:text-muted placeholder:opacity-50"
                   />
                 </div>
 
@@ -165,7 +165,7 @@ export function DirectoryTab() {
                         onClick={() => setPType(t.value)}
                         className={`px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
                           pType === t.value
-                            ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
+                            ? 'bg-main text-page border-main shadow-sm'
                             : 'bg-card text-muted border-soft hover:border-soft hover:text-main'
                         }`}
                       >
@@ -290,7 +290,7 @@ export function DirectoryTab() {
                                   {included && <span className="text-white text-[8px] font-black leading-none">✓</span>}
                                 </div>
                               </div>
-                              <div className={`text-[9px] font-medium mb-2 ${included ? 'text-muted' : 'text-slate-300'}`}>
+                              <div className={`text-[9px] font-medium mb-2 ${included ? 'text-muted' : 'text-muted opacity-50'}`}>
                                 Std ₱{r.base_price.toLocaleString()}
                               </div>
                               {included && (
@@ -341,7 +341,7 @@ export function DirectoryTab() {
                                   {included && <span className="text-white text-[8px] font-black leading-none">✓</span>}
                                 </div>
                               </div>
-                              <div className={`text-[9px] font-medium mb-2 ${included ? 'text-muted' : 'text-slate-300'}`}>
+                              <div className={`text-[9px] font-medium mb-2 ${included ? 'text-muted' : 'text-muted opacity-50'}`}>
                                 Std ₱{v.base_price.toLocaleString()}
                               </div>
                               {included && (
@@ -407,9 +407,9 @@ export function DirectoryTab() {
           <div className="bg-card border border-soft rounded-xl overflow-hidden shadow-sm">
             {partnerDeals.length === 0 ? (
               <div className="text-center py-16">
-                <Building className="w-8 h-8 text-slate-200 mx-auto mb-3" />
+                <Building className="w-8 h-8 text-muted opacity-30 mx-auto mb-3" />
                 <p className="text-sm font-semibold text-muted">No partner presets yet</p>
-                <p className="text-xs text-slate-300 mt-1">Add your first agency or corporate deal above.</p>
+                <p className="text-xs text-muted opacity-50 mt-1">Add your first agency or corporate deal above.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -423,7 +423,7 @@ export function DirectoryTab() {
                       <th className="px-6 py-3.5 text-right text-[11px] font-semibold text-muted uppercase tracking-wide">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
+                  <tbody className="divide-y divide-soft">
                     {partnerDeals.map(d => (
                       <tr key={d.id} className="hover:bg-page/40 transition-colors">
                         <td className="px-6 py-4">
@@ -435,7 +435,7 @@ export function DirectoryTab() {
                         <td className="px-6 py-4">
                           {d.email && <div className="text-muted text-sm">{d.email}</div>}
                           {d.contact_no && <div className="text-muted text-xs font-mono mt-0.5">{d.contact_no}</div>}
-                          {!d.email && !d.contact_no && <span className="text-slate-300 text-xs">—</span>}
+                          {!d.email && !d.contact_no && <span className="text-muted opacity-50 text-xs">—</span>}
                         </td>
                         <td className="px-6 py-4 space-y-1.5">
                           <div className="text-xs font-semibold text-main">
@@ -458,13 +458,13 @@ export function DirectoryTab() {
                               return (
                                 <span key={rid} className="inline-flex items-center gap-1 bg-brand-bg border border-brand-border text-brand-text text-[10px] font-bold px-2 py-0.5 rounded-md">
                                   <span>{typeof roomNum === 'number' ? `Rm ${roomNum}` : roomNum}</span>
-                                  <span className="text-slate-300">·</span>
+                                  <span className="text-muted opacity-50">·</span>
                                   <span className="font-extrabold text-main">₱{Number(rate).toLocaleString()}</span>
                                 </span>
                               )
                             })}
                             {Object.keys(d.contracted_rates || {}).length === 0 && (
-                              <span className="text-slate-300 text-xs">Standard rates</span>
+                              <span className="text-muted opacity-50 text-xs">Standard rates</span>
                             )}
                           </div>
                         </td>
@@ -478,7 +478,7 @@ export function DirectoryTab() {
                             </button>
                             <button
                               onClick={() => handleDeletePartner(d.id)}
-                              className="p-2 text-muted hover:text-rose-600 transition-colors border border-soft rounded-lg hover:border-rose-200 cursor-pointer bg-card hover:bg-rose-50"
+                              className="p-2 text-muted hover:text-rose-600 transition-colors border border-soft rounded-lg hover:border-rose-200 cursor-pointer bg-card hover:bg-rose-500/10"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>

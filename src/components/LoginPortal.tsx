@@ -70,7 +70,7 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
               }}
               disabled={isSubmitting}
               placeholder="Enter staff passcode"
-              className="w-full px-3.5 py-2.5 bg-page border border-soft rounded-lg text-main outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400/20 text-sm transition-all placeholder-slate-400"
+              className="w-full px-3.5 py-2.5 bg-page border border-soft rounded-lg text-main outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 text-sm transition-all placeholder:text-muted placeholder:opacity-50"
             />
             {error && <p className="text-xs text-rose-600 font-medium mt-1">{error}</p>}
           </div>
@@ -78,7 +78,7 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
           <button
             type="submit"
             disabled={isSubmitting || !passcode}
-            className="w-full py-2.5 bg-brand-primary hover:bg-[#a27e43] disabled:bg-slate-300 disabled:text-muted text-white font-medium text-sm rounded-lg transition-all cursor-pointer"
+            className="w-full py-2.5 bg-brand-primary hover:bg-[#a27e43] disabled:bg-softbg disabled:text-muted text-white font-medium text-sm rounded-lg transition-all cursor-pointer"
           >
             {isSubmitting ? 'Verifying...' : 'Login'}
           </button>

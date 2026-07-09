@@ -235,10 +235,10 @@ export const TimelineGrid = React.memo(
             </span>
             <div className="flex-1 text-xs">
               <p className="font-bold text-brand-text">Date Selection Active</p>
-              <p className="text-slate-650 mt-1 leading-normal">
+              <p className="text-muted mt-1 leading-normal">
                 Selecting <strong>{selectionName}</strong>.
               </p>
-              <p className="text-slate-650 leading-normal">
+              <p className="text-muted leading-normal">
                 Check‑in: <strong className="text-brand-text">{timelineSelection.checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>.
               </p>
               <p className="text-[11px] text-brand-primary font-semibold mt-1.5 animate-pulse">
@@ -248,7 +248,7 @@ export const TimelineGrid = React.memo(
             <button
               type="button"
               onClick={() => setTimelineSelection(null)}
-              className="text-[10px] font-bold text-muted hover:text-main transition-all cursor-pointer border border-brand-border hover:border-slate-350 px-2 py-1 rounded bg-card hover:bg-page shadow-sm">
+              className="text-[10px] font-bold text-muted hover:text-main transition-all cursor-pointer border border-brand-border hover:border-brand-primary px-2 py-1 rounded bg-card hover:bg-page shadow-sm">
               Cancel
             </button>
           </div>

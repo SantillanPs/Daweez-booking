@@ -533,8 +533,8 @@ export function AnalyticsTab() {
                 const val = Math.round(maxTrendVal * ratio)
                 return (
                   <g key={idx} className="opacity-40">
-                    <line x1="45" y1={y} x2="580" y2={y} stroke="#E2E8F0" strokeDasharray="3,3" />
-                    <text x="35" y={y + 3} textAnchor="end" className="text-[9px] fill-slate-400 font-semibold font-mono">
+                    <line x1="45" y1={y} x2="580" y2={y} stroke="var(--border-soft)" strokeDasharray="3,3" />
+                    <text x="35" y={y + 3} textAnchor="end" className="text-[9px] fill-current text-muted font-semibold font-mono">
                       ₱{val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
                     </text>
                   </g>
@@ -567,7 +567,7 @@ export function AnalyticsTab() {
                 return (
                   <g key={slotIdx}>
                     {/* X Label */}
-                    <text x={xCenter} y="220" textAnchor="middle" className="text-[9px] font-semibold fill-slate-400">
+                    <text x={xCenter} y="220" textAnchor="middle" className="text-[9px] font-semibold fill-current text-muted">
                       {slot.label}
                     </text>
 
@@ -671,20 +671,20 @@ export function AnalyticsTab() {
               })}
 
               {/* Baseline */}
-              <line x1="45" y1="200" x2="580" y2="200" stroke="#CBD5E1" strokeWidth="1" />
+              <line x1="45" y1="200" x2="580" y2="200" stroke="var(--border-soft)" strokeWidth="1" />
             </svg>
           </div>
 
           {/* Interactive Tooltip Portal */}
           {hoveredBar && (
             <div 
-              className="absolute z-50 bg-[#1E293B] text-white p-2.5 rounded-lg text-[10px] space-y-1 shadow-xl leading-normal w-40 pointer-events-none"
+              className="absolute z-50 bg-[#1E293B] text-white p-2.5 rounded-lg text-[10px] space-y-1 shadow-xl leading-normal w-40 pointer-events-none border border-white/10"
               style={{
                 left: `${hoveredBar.x - window.innerWidth / 12}px`,
                 top: `30px`
               }}
             >
-              <div className="font-bold border-b border-slate-700 pb-1 mb-1 text-[#E5D5C0]">{hoveredBar.label}</div>
+              <div className="font-bold border-b border-white/10 pb-1 mb-1 text-[#E5D5C0]">{hoveredBar.label}</div>
               <div className="flex justify-between">
                 <span>Pension:</span>
                 <span className="font-mono font-bold">₱{Math.round(hoveredBar.pension).toLocaleString()}</span>
@@ -801,7 +801,7 @@ export function AnalyticsTab() {
                 <th className="p-3 text-right">Revenue share</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-main font-medium">
+            <tbody className="divide-y divide-soft text-main font-medium">
               {/* Row 1: Pension */}
               <tr 
                 className="cursor-pointer hover:bg-page transition-colors"
@@ -815,7 +815,7 @@ export function AnalyticsTab() {
                 <td className="p-3 text-right font-mono">₱{calculations.totalPensionBase.toLocaleString()}</td>
                 <td className="p-3 text-right font-mono text-muted">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
                 <td className="p-3 text-right font-mono text-muted">₱{calculations.totalPensionRentals.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-slate-950 font-bold">₱{calculations.totalPension.toLocaleString()}</td>
+                <td className="p-3 text-right font-mono text-main font-bold">₱{calculations.totalPension.toLocaleString()}</td>
                 <td className="p-3 text-right font-mono font-bold text-brand-primary">
                   {calculations.totalRevenue > 0 ? Math.round((calculations.totalPension / calculations.totalRevenue) * 100) : 0}%
                 </td>
@@ -848,7 +848,7 @@ export function AnalyticsTab() {
                 </td>
                 <td className="p-3 text-right font-mono text-muted">₱0</td>
                 <td className="p-3 text-right font-mono text-muted">Apportioned</td>
-                <td className="p-3 text-right font-mono text-slate-950 font-bold">
+                <td className="p-3 text-right font-mono text-main font-bold">
                   ₱{calculations.totalVacationHouse.toLocaleString()}
                 </td>
                 <td className="p-3 text-right font-mono font-bold text-[#4A90E2]">
@@ -867,7 +867,7 @@ export function AnalyticsTab() {
                 </td>
                 <td className="p-3 text-right font-mono text-muted">₱0</td>
                 <td className="p-3 text-right font-mono text-muted">Apportioned</td>
-                <td className="p-3 text-right font-mono text-slate-950 font-bold">
+                <td className="p-3 text-right font-mono text-main font-bold">
                   ₱{calculations.totalGardenArea.toLocaleString()}
                 </td>
                 <td className="p-3 text-right font-mono font-bold text-[#2ECC71]">
@@ -886,7 +886,7 @@ export function AnalyticsTab() {
                 </td>
                 <td className="p-3 text-right font-mono text-muted">₱0</td>
                 <td className="p-3 text-right font-mono text-muted">Apportioned</td>
-                <td className="p-3 text-right font-mono text-slate-950 font-bold">
+                <td className="p-3 text-right font-mono text-main font-bold">
                   ₱{calculations.totalGazebo.toLocaleString()}
                 </td>
                 <td className="p-3 text-right font-mono font-bold text-[#F39C12]">
@@ -894,7 +894,7 @@ export function AnalyticsTab() {
                 </td>
               </tr>
               {/* Row 5: Expenses */}
-              <tr className="bg-rose-50/50">
+              <tr className="bg-rose-500/10">
                 <td className="p-3 font-semibold text-rose-700 flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
                   Total Expenses
@@ -918,7 +918,7 @@ export function AnalyticsTab() {
                 </td>
                 <td className="p-3 text-right font-mono text-muted">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
                 <td className="p-3 text-right font-mono text-muted">₱{calculations.totalAddonsRentals.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-slate-950 text-sm font-extrabold">₱{calculations.totalRevenue.toLocaleString()}</td>
+                <td className="p-3 text-right font-mono text-main text-sm font-extrabold">₱{calculations.totalRevenue.toLocaleString()}</td>
                 <td className="p-3 text-right font-mono text-brand-text text-sm font-extrabold">100%</td>
               </tr>
               <tr className="bg-softbg font-bold text-main border-t-2 border-soft">

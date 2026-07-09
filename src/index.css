@@ -4,21 +4,43 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
+  :root {
+    --bg-page: #fdfbf7;
+    --bg-card: #ffffff;
+    --bg-softbg: #f8fafc;
+    --border-soft: rgba(229, 213, 192, 0.65);
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --brand-primary: #b89251;
+    --brand-text: #9a783e;
+    --brand-border: #e5d5c0;
+    --brand-bg: #fdfbf7;
+    --brand-ring: #e6c280;
+    --body-bg: #f1f5f9;
+  }
+
+  .dark {
+    --bg-page: #181614;
+    --bg-card: #22201d;
+    --bg-softbg: #1d1b18;
+    --border-soft: rgba(229, 213, 192, 0.04);
+    --text-main: #e0dcd3;
+    --text-muted: #8f8a81;
+    --brand-primary: #b89251;
+    --brand-text: #d9af62;
+    --brand-border: rgba(184, 146, 81, 0.2);
+    --brand-bg: #211c14;
+    --brand-ring: #b89251;
+    --body-bg: #12100e;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-800 font-sans antialiased;
+    background-color: var(--body-bg);
+    color: var(--text-main);
+    @apply font-sans antialiased transition-colors duration-200;
     min-height: 100vh;
     overflow-x: hidden;
   }
-
-  /* Admin portal resets dark theme (kept for fallback) */
-  body.admin-mode {
-    background: #F1F5F9 !important;
-    background-image: none !important;
-    background-attachment: initial !important;
-    color: #0F172A;
-  }
-}
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
@@ -26,20 +48,16 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #F1F5F9;
+  background: var(--bg-softbg);
 }
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: var(--border-soft);
   border: 1px solid transparent;
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: var(--brand-primary);
 }
-
-body.admin-mode ::-webkit-scrollbar-track { background: #F1F5F9; }
-body.admin-mode ::-webkit-scrollbar-thumb { background: #CBD5E1; border-color: transparent; }
-body.admin-mode ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
 /* Custom Animation Classes */
 @keyframes gold-shimmer {

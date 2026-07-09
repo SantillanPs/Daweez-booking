@@ -121,11 +121,17 @@ export function SettingsTab() {
         {/* iCal Feed Subscriptions Card */}
         {activeTab === 'channels' && (
           <div className="bg-card border border-soft rounded-lg overflow-hidden font-sans shadow-sm">
-            <div className="px-5 py-4 border-b border-soft">
-              <h3 className="text-sm font-semibold text-main">iCal Feed Subscriptions</h3>
-              <p className="text-xs text-muted mt-1">Manage import and export calendar links for your rooms.</p>
+            <div className="px-5 py-4 border-b border-soft flex justify-between items-center">
+              <div>
+                <h3 className="text-sm font-semibold text-main">iCal Feed Subscriptions</h3>
+                <p className="text-xs text-muted mt-1">Manage import and export calendar links for your rooms.</p>
+              </div>
+              <button onClick={handleSaveFeeds}
+                className="bg-brand-primary hover:bg-brand-text text-white text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm">
+                Save Feed URLs
+              </button>
             </div>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-soft">
               {rooms.map(room => {
                 const rf = editingFeeds.filter(f => f.room_id === room.id)
                 const air = rf.find(f => f.channel === 'airbnb')
@@ -193,12 +199,6 @@ export function SettingsTab() {
                   </div>
                 )
               })}
-              <div className="flex justify-end p-4 bg-page border-t border-soft rounded-b-lg">
-                <button onClick={handleSaveFeeds}
-                  className="bg-brand-primary hover:bg-brand-text text-white text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer">
-                  Save Feed URLs
-                </button>
-              </div>
             </div>
           </div>
         )}
@@ -239,13 +239,13 @@ export function SettingsTab() {
                         <th className="px-4 py-3 font-medium text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-soft">
                       {expenseCategories.map(cat => (
                         <tr key={cat.id} className="hover:bg-page">
                           <td className="px-4 py-3 text-main font-medium">{cat.name}</td>
                           <td className="px-4 py-3 text-right">
                             <button onClick={() => handleDeleteCategory(cat.id)}
-                              className="text-muted hover:text-rose-500 transition-colors p-1 rounded hover:bg-rose-50 cursor-pointer">
+                              className="text-muted hover:text-rose-500 transition-colors p-1 rounded hover:bg-rose-500/10 cursor-pointer">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </td>

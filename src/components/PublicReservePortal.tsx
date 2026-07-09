@@ -238,7 +238,7 @@ export function PublicReservePortal() {
               <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold ${step >= 1 ? 'bg-brand-primary text-white' : 'bg-softbg text-muted'}`}>1</div>
               <span className={`font-semibold ${step === 1 ? 'text-main' : 'text-muted'}`}>Select Dates & Unit</span>
             </div>
-            <div className="h-[2px] bg-slate-200 flex-1 mx-3" />
+            <div className="h-[2px] bg-soft flex-1 mx-3" />
             <div className="flex items-center gap-2">
               <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold ${step >= 2 ? 'bg-brand-primary text-white' : 'bg-softbg text-muted'}`}>2</div>
               <span className={`font-semibold ${step === 2 ? 'text-main' : 'text-muted'}`}>Guest Details</span>
@@ -584,7 +584,7 @@ export function PublicReservePortal() {
                       value={paymentRef}
                       onChange={e => setPaymentRef(e.target.value)}
                       placeholder="Enter 13-digit Reference Code"
-                      className="w-full bg-card border border-[#EADFC9] text-main px-3.5 py-2.5 rounded-lg text-xs outline-none focus:border-brand-primary font-mono placeholder-slate-300 font-bold"
+                      className="w-full bg-card border border-[#EADFC9] text-main px-3.5 py-2.5 rounded-lg text-xs outline-none focus:border-brand-primary font-mono placeholder:text-muted placeholder:opacity-50 font-bold"
                     />
                   </div>
                 </div>
@@ -595,14 +595,14 @@ export function PublicReservePortal() {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="flex-1 bg-page hover:bg-softbg text-slate-650 text-xs font-semibold py-2.5 rounded-xl border border-soft transition-colors cursor-pointer"
+                  className="flex-1 bg-page hover:bg-softbg text-muted text-xs font-semibold py-2.5 rounded-xl border border-soft transition-colors cursor-pointer"
                 >
                   &larr; Change Dates / Unit
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex-1 bg-brand-primary hover:bg-brand-text text-white text-xs font-bold py-2.5 rounded-xl transition-colors shadow-sm disabled:bg-slate-200 disabled:text-muted cursor-pointer"
+                  className="flex-1 bg-brand-primary hover:bg-brand-text text-white text-xs font-bold py-2.5 rounded-xl transition-colors shadow-sm disabled:bg-softbg disabled:text-muted cursor-pointer"
                 >
                   {isSaving ? 'Submitting...' : 'Submit Reservation'}
                 </button>

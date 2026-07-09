@@ -72,7 +72,7 @@ export function ExtendStayModal({
           {/* GCash Reference Code Display */}
           {booking.event_addons?.payment_reference && (
             <div className="bg-[#FAF6EE] p-3 rounded-lg border border-[#EADFC9] text-xs space-y-1">
-              <span className="text-slate-550 font-medium block">GCash Reference Code:</span>
+              <span className="text-muted font-medium block">GCash Reference Code:</span>
               <strong className="text-sm font-mono text-brand-text block">{booking.event_addons.payment_reference}</strong>
             </div>
           )}
