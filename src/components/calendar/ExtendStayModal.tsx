@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Booking, Room, Venue } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
 import { X, Users, AlertCircle, Mail, Printer } from 'lucide-react'
@@ -15,6 +16,7 @@ interface ExtendStayModalProps {
   onExtendStaySubmit: (e: React.FormEvent) => void
   setExtendCheckoutDate: (date: string) => void
   onConfirmReservation?: (id: string) => void
+  onCancelBooking?: (id: string) => void
   isConfirming?: boolean
 }
 
@@ -29,11 +31,12 @@ export function ExtendStayModal({
   onExtendStaySubmit,
   setExtendCheckoutDate,
   onConfirmReservation,
+  onCancelBooking,
   isConfirming = false
 }: ExtendStayModalProps) {
   const [showPrintModal, setShowPrintModal] = useState(false)
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="w-full max-w-sm bg-card rounded-lg shadow-lg overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-soft">
@@ -170,10 +173,19 @@ export function ExtendStayModal({
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button type="button" onClick={onClose}
-                className="flex-1 bg-page hover:bg-softbg text-muted text-xs font-medium py-2.5 rounded-lg border border-soft transition-colors cursor-pointer">
-                Cancel
-              </button>
+              {onCancelBooking && (
+                <button type="button" 
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to cancel this booking? This action cannot be undone.")) {
+                      onCancelBooking(booking.id)
+                      onClose()
+                    }
+                  }}
+                  className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-medium py-2.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel Booking
+                </button>
+              )}
               {booking.status === 'pending' ? (
                 <button 
                   type="button" 
@@ -205,4 +217,6 @@ export function ExtendStayModal({
       )}
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

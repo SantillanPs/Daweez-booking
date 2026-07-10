@@ -20,6 +20,12 @@ interface BillingSummaryProps {
   formWalkInDiscount: boolean
   partnerDeals?: PartnerDeal[]
   formPartnerDealId?: string
+  formPaymentMethod?: string
+  setFormPaymentMethod?: (val: string) => void
+  formPaymentReference?: string
+  setFormPaymentReference?: (val: string) => void
+  formVenueExcessHours?: number
+  onPrintInvoice?: () => void
 }
 
 export const BillingSummary = React.memo(
@@ -40,7 +46,13 @@ export const BillingSummary = React.memo(
     bookingType,
     formWalkInDiscount,
     partnerDeals,
-    formPartnerDealId
+    formPartnerDealId,
+    formPaymentMethod,
+    setFormPaymentMethod,
+    formPaymentReference,
+    setFormPaymentReference,
+    formVenueExcessHours,
+    onPrintInvoice
   }: BillingSummaryProps) => {
     const unitCount = Object.keys(unitSelections).length
     const hasRooms = Object.values(unitSelections).some(s => s.type === 'room')
@@ -79,7 +91,7 @@ export const BillingSummary = React.memo(
     return (
       <div className="space-y-4 font-sans">
         <h4 className="text-[9px] font-bold text-brand-text tracking-widest uppercase md:block hidden pb-0.5 border-b border-soft/40">
-          Statement Estimate
+          Price Estimate
         </h4>
 
         {formStatus === 'confirmed' ? (
@@ -89,11 +101,11 @@ export const BillingSummary = React.memo(
             {/* Header */}
             <div className="text-center border-b border-brand-border/40 pb-3">
               <div className="text-[10px] text-brand-text font-bold tracking-widest uppercase mb-0.5">
-                {bookingType === 'partner' ? 'Guest Registration & Billing' : 'Estimated Invoice'}
+                {bookingType === 'partner' ? 'Corporate Booking Cost' : 'Estimated Cost'}
               </div>
               <h5 className="text-[13px] font-black text-main tracking-tight uppercase">Daweez Pension House</h5>
               <span className="text-[8px] font-bold text-muted block mt-0.5 uppercase tracking-wider">
-                {bookingType === 'partner' ? `Vouch #${deal?.name.replace(/\s+/g, '-').toUpperCase() || 'PARTNER'}` : 'Vouch #WALK-IN'}
+                {bookingType === 'partner' ? `${deal?.name.replace(/\s+/g, '-').toUpperCase() || 'PARTNER'} Booking` : 'Walk-in Booking'}
               </span>
             </div>
             
@@ -122,7 +134,7 @@ export const BillingSummary = React.memo(
             {/* Selected Rooms / Items List */}
             <div className="space-y-2.5 text-slate-650 font-medium">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-muted uppercase tracking-wider text-[9px]">Selected Rooms</span>
+                <span className="font-bold text-muted uppercase tracking-wider text-[9px]">Rooms</span>
                 <span className="font-bold text-main bg-[#FAF7F2] border border-brand-border/40 px-2 py-0.5 rounded-full">{unitCount} room{unitCount > 1 ? 's' : ''}</span>
               </div>
 
@@ -139,14 +151,12 @@ export const BillingSummary = React.memo(
                       : (r?.base_price ?? 0)
                     return r ? (
                       <div key={id} className="flex justify-between items-center text-slate-750 font-medium py-1">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-main">Room {r.room_number}</span>
-                            <span className="text-[9px] bg-softbg text-muted font-bold px-1 py-0.5 rounded">{nights} night{nights > 1 ? 's' : ''}</span>
-                          </div>
-                          <span className="text-[10px] text-muted block font-mono mt-0.5">{sel.checkIn} to {sel.checkOut}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-main text-[11px] whitespace-nowrap">Room {r.room_number}</span>
+                          <span className="text-[9px] bg-softbg border border-soft/50 text-muted px-1 rounded font-mono">{sel.checkIn.substring(5)} to {sel.checkOut.substring(5)}</span>
+                          <span className="text-[9px] text-muted font-bold whitespace-nowrap">({nights}N)</span>
                         </div>
-                        <span className="font-extrabold text-emerald-600 font-mono">₱{(displayPrice * nights).toLocaleString()}</span>
+                        <span className="font-extrabold text-emerald-600 font-mono text-[11px]">₱{(displayPrice * nights).toLocaleString()}</span>
                       </div>
                     ) : null
                   })}
@@ -166,14 +176,12 @@ export const BillingSummary = React.memo(
                       : (v?.base_price ?? 0)
                     return v ? (
                       <div key={id} className="flex justify-between items-center text-slate-750 font-medium py-1">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-main">{v.name}</span>
-                            <span className="text-[9px] bg-softbg text-muted font-bold px-1 py-0.5 rounded">{nights} day{nights > 1 ? 's' : ''}</span>
-                          </div>
-                          <span className="text-[10px] text-muted block font-mono mt-0.5">{sel.checkIn} to {sel.checkOut}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-main text-[11px] whitespace-nowrap max-w-[80px] truncate">{v.name}</span>
+                          <span className="text-[9px] bg-softbg border border-soft/50 text-muted px-1 rounded font-mono">{sel.checkIn.substring(5)} to {sel.checkOut.substring(5)}</span>
+                          <span className="text-[9px] text-muted font-bold whitespace-nowrap">({nights}D)</span>
                         </div>
-                        <span className="font-extrabold text-emerald-600 font-mono">₱{(displayPrice * nights).toLocaleString()}</span>
+                        <span className="font-extrabold text-emerald-600 font-mono text-[11px]">₱{(displayPrice * nights).toLocaleString()}</span>
                       </div>
                     ) : null
                   })}
@@ -184,19 +192,19 @@ export const BillingSummary = React.memo(
                 <div className="space-y-1.5 border-t border-dashed border-brand-border/40 pt-2">
                   {estBreakfast > 0 && (
                     <div className="flex justify-between items-center text-slate-750 font-medium">
-                      <span>Breakfast Order</span>
+                      <span>Breakfast</span>
                       <span className="font-extrabold text-emerald-600 font-mono">₱{estBreakfast.toLocaleString()}</span>
                     </div>
                   )}
                   {estRentals > 0 && (
                     <div className="flex justify-between items-center text-slate-750 font-medium">
-                      <span>Rentals &amp; Amenities</span>
+                      <span>Extras</span>
                       <span className="font-extrabold text-emerald-600 font-mono">₱{estRentals.toLocaleString()}</span>
                     </div>
                   )}
                   {estAddons > 0 && (
                     <div className="flex justify-between items-center text-slate-750 font-medium">
-                      <span>Venue Add-ons</span>
+                      <span>Venue Extras</span>
                       <span className="font-extrabold text-emerald-600 font-mono">₱{estAddons.toLocaleString()}</span>
                     </div>
                   )}
@@ -207,7 +215,7 @@ export const BillingSummary = React.memo(
             {/* Discounts and Rates */}
             <div className="border-t border-brand-border/40 pt-3.5 space-y-2">
               <div className="flex justify-between text-muted font-semibold text-[11px]">
-                <span>Original Rate</span>
+                <span>Standard Price</span>
                 <span className="font-mono text-emerald-600 font-bold">₱{undiscountedBaseTotal.toLocaleString()}</span>
               </div>
               
@@ -226,45 +234,53 @@ export const BillingSummary = React.memo(
 
               {/* Grand Total */}
               <div className="flex justify-between items-center text-main border-t border-brand-border/40 pt-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Grand Total</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Total Cost</span>
                 <span className="text-[17px] font-black text-emerald-600 font-mono">₱{estTotal.toLocaleString()}</span>
               </div>
 
               {/* Split Payment Cards Grid */}
               <div className="grid grid-cols-2 gap-2.5 border-t border-brand-border/40 pt-3.5">
                 <div className="bg-emerald-50/60 border border-emerald-100/80 rounded-md p-2 text-center animate-in fade-in">
-                  <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider block">Downpayment (50%)</span>
+                  <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider block">Pay Now (50%)</span>
                   <span className="text-[13px] font-black text-emerald-700 block mt-0.5 font-mono">₱{estDown.toLocaleString()}</span>
                 </div>
                 <div className="bg-[#FAF7F2]/80 border border-brand-border/40 rounded-md p-2 text-center animate-in fade-in">
-                  <span className="text-[9px] text-brand-text font-bold uppercase tracking-wider block">Due at Check-in</span>
+                  <span className="text-[9px] text-brand-text font-bold uppercase tracking-wider block">Pay at Check-in</span>
                   <span className="text-[13px] font-black text-brand-text block mt-0.5 font-mono">₱{estDue.toLocaleString()}</span>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="pt-3.5 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    alert("This feature is under development.")
-                  }}
-                  className="flex-1 bg-card hover:bg-page text-brand-text border border-brand-border text-[10px] font-bold py-2 px-2 rounded flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none shadow-sm"
-                >
-                  <Mail className="w-3.5 h-3.5 text-brand-primary" />
-                  Email Invoice
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    alert("This feature is under development.")
-                  }}
-                  className="flex-1 bg-brand-primary hover:bg-brand-text text-white text-[10px] font-bold py-2 px-2 rounded flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none shadow-sm"
-                >
-                  <Printer className="w-3.5 h-3.5 text-white" />
-                  Print Invoice
-                </button>
-              </div>
+              {/* Payment Details */}
+              {(setFormPaymentMethod && setFormPaymentReference) && (
+                <div className="border-t border-brand-border/40 pt-3.5 mt-3 space-y-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1">Payment Details</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-main">Method</label>
+                      <select
+                        value={formPaymentMethod || ''}
+                        onChange={e => setFormPaymentMethod(e.target.value)}
+                        className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors cursor-pointer appearance-none"
+                      >
+                        <option value="">Select...</option>
+                        <option value="Cash">Cash</option>
+                        <option value="GCash">GCash</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-main">Reference / Date</label>
+                      <input
+                        type="text"
+                        value={formPaymentReference || ''}
+                        onChange={e => setFormPaymentReference(e.target.value)}
+                        placeholder="e.g. 123456789"
+                        className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -274,7 +290,7 @@ export const BillingSummary = React.memo(
               <h5 className="text-sm font-extrabold text-main tracking-tight uppercase">DAWEEZ PENSION HOUSE</h5>
             </div>
             <p className="text-muted text-center text-[10px] py-4 leading-normal font-medium">
-              No billing charge generated.<br />Room status will be marked as blocked.
+              This reservation will be marked as <strong className="text-brand-text">Blocked</strong>. No prices or payments will be recorded.
             </p>
           </div>
         )}

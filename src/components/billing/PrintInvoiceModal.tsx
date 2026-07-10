@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Booking, Room, Venue } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
 import { X, Printer } from 'lucide-react'
@@ -129,10 +130,10 @@ export function PrintInvoiceModal({
     window.print()
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:bg-card print:p-0 print:static overflow-y-auto">
+  const modalContent = (
+    <div className="fixed inset-0 z-50 p-3 sm:p-4 bg-slate-900/50 print:bg-white print:p-0 print:static overflow-y-auto">
       {/* Print Wrapper Container */}
-      <div className="bg-card w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col my-8 print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none">
+      <div className="bg-card w-full max-w-3xl mx-auto rounded-xl shadow-2xl overflow-hidden flex flex-col my-8 print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none">
         
         {/* Modal Controls (Hidden during print) */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0 print:hidden font-sans">
@@ -187,62 +188,77 @@ export function PrintInvoiceModal({
             </div>
           </div>
 
-          {/* Guest Registry Info Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-b border-soft text-xs">
-            <div>
-              <span className="text-muted font-semibold block mb-0.5">PRIMARY GUEST</span>
-              <strong className="text-main text-[13px]">{booking.guest_name}</strong>
+          {/* Billed To Section (For Agency/Billing) */}
+          {(booking.company_name || deal) && (
+            <div className="py-6 border-b border-soft text-xs">
+              <h3 className="text-muted font-bold uppercase tracking-wider mb-2">Bill To:</h3>
+              <div className="space-y-1">
+                <strong className="text-main text-[14px] uppercase block">{booking.company_name || deal?.name}</strong>
+                {deal?.tin && <div><span className="text-muted">TIN:</span> <span className="font-mono font-medium">{deal.tin}</span></div>}
+                {deal?.address && <div><span className="text-muted">Address:</span> <span className="font-medium">{deal.address}</span></div>}
+              </div>
             </div>
+          )}
+
+          {/* Unified Guest & Stay Info Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6 border-b border-soft text-xs">
+            {/* Left Column: Guest Info */}
             <div>
-              <span className="text-muted font-semibold block mb-0.5">CONTACT NO</span>
-              <span className="text-main font-mono font-medium">{booking.guest_phone || 'None'}</span>
-            </div>
-            <div>
-              <span className="text-muted font-semibold block mb-0.5">EMAIL ADDRESS</span>
-              <span className="text-main font-medium break-all">{booking.guest_email || 'None'}</span>
-            </div>
-            <div>
-              <span className="text-muted font-semibold block mb-0.5">VEHICLE PLATE</span>
-              <span className="text-main font-mono font-semibold uppercase">{booking.vehicle_plate || 'N/A'}</span>
+              <h3 className="text-[10px] font-bold text-muted uppercase tracking-wider mb-3">Guest Information</h3>
+              <div className="grid grid-cols-[120px_1fr] gap-y-1.5 items-center">
+                <span className="text-muted font-semibold">Primary Guest</span>
+                <strong className="text-main text-[13px]">{booking.guest_name}</strong>
+                
+                <span className="text-muted font-semibold">Contact No</span>
+                <span className="text-main font-mono font-medium">{booking.guest_phone || 'None'}</span>
+                
+                <span className="text-muted font-semibold">Email Address</span>
+                <span className="text-main font-medium truncate">{booking.guest_email || 'None'}</span>
+                
+                <span className="text-muted font-semibold">Vehicle Plate</span>
+                <span className="text-main font-mono font-semibold uppercase">{booking.vehicle_plate || 'N/A'}</span>
+                
+                {!isBilling && booking.company_name && (
+                  <>
+                    <span className="text-muted font-semibold mt-2">Company / Agency</span>
+                    <strong className="text-main font-semibold mt-2">{booking.company_name}</strong>
+                  </>
+                )}
+                {!isBilling && deal?.tin && (
+                  <>
+                    <span className="text-muted font-semibold">TIN</span>
+                    <span className="text-main font-mono font-medium">{deal.tin}</span>
+                  </>
+                )}
+                {!isBilling && deal?.address && (
+                  <>
+                    <span className="text-muted font-semibold self-start mt-0.5">Billing Address</span>
+                    <span className="text-main font-medium">{deal.address}</span>
+                  </>
+                )}
+              </div>
             </div>
 
-            {booking.company_name && (
-              <div className="col-span-2">
-                <span className="text-muted font-semibold block mb-0.5">COMPANY / AGENCY</span>
-                <strong className="text-main font-semibold">{booking.company_name}</strong>
+            {/* Right Column: Stay Info */}
+            <div>
+              <h3 className="text-[10px] font-bold text-muted uppercase tracking-wider mb-3">Stay Details</h3>
+              <div className="grid grid-cols-[120px_1fr] gap-y-2 items-center">
+                <span className="text-muted font-semibold">Unit Details</span>
+                <strong className="text-main text-[13px] bg-page px-2 py-0.5 rounded border border-soft/60 inline-flex w-fit">{unitName}</strong>
+                
+                <span className="text-muted font-semibold">Check-in Date</span>
+                <strong className="text-main font-mono bg-emerald-50 px-2 py-0.5 rounded text-emerald-700 inline-flex w-fit border border-emerald-100/50">
+                  {booking.check_in ? new Date(booking.check_in).toLocaleDateString() : 'TBD'}
+                </strong>
+                
+                <span className="text-muted font-semibold">Check-out Date</span>
+                <strong className="text-main font-mono bg-rose-50 px-2 py-0.5 rounded text-rose-700 inline-flex w-fit border border-rose-100/50">
+                  {booking.check_out ? new Date(booking.check_out).toLocaleDateString() : 'TBD'}
+                </strong>
+                
+                <span className="text-muted font-semibold">Duration</span>
+                <span className="text-main font-bold">{nights} {isRoom ? 'Night' : 'Day'}{nights > 1 ? 's' : ''}</span>
               </div>
-            )}
-            {deal?.tin && (
-              <div>
-                <span className="text-muted font-semibold block mb-0.5">TAX IDENTIFICATION NO (TIN)</span>
-                <span className="text-main font-mono font-medium">{deal.tin}</span>
-              </div>
-            )}
-            {deal?.address && (
-              <div className="col-span-2">
-                <span className="text-muted font-semibold block mb-0.5">BILLING ADDRESS</span>
-                <span className="text-main font-medium">{deal.address}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Stay schedule Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-b border-soft text-xs">
-            <div>
-              <span className="text-muted font-semibold block mb-0.5">CHECK-IN DATE</span>
-              <strong className="text-main font-mono">{new Date(booking.check_in).toLocaleDateString()}</strong>
-            </div>
-            <div>
-              <span className="text-muted font-semibold block mb-0.5">CHECK-OUT DATE</span>
-              <strong className="text-main font-mono">{new Date(booking.check_out).toLocaleDateString()}</strong>
-            </div>
-            <div>
-              <span className="text-muted font-semibold block mb-0.5">DURATION</span>
-              <strong className="text-main">{nights} {isRoom ? 'Night' : 'Day'}{nights > 1 ? 's' : ''}</strong>
-            </div>
-            <div>
-              <span className="text-muted font-semibold block mb-0.5">UNIT DETAILS</span>
-              <strong className="text-main">{unitName}</strong>
             </div>
           </div>
 
@@ -263,7 +279,7 @@ export function PrintInvoiceModal({
 
           {/* Statement Items Table */}
           <div className="mt-6">
-            <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Itemized Ledger</h3>
+            <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Charges Breakdown</h3>
             <table className="w-full text-xs text-left">
               <thead>
                 <tr className="border-b border-soft text-muted font-semibold bg-slate-550/5">
@@ -349,7 +365,7 @@ export function PrintInvoiceModal({
             {/* Price Ledger summary */}
             <div className="space-y-2 text-xs font-medium">
               <div className="flex justify-between text-muted">
-                <span>Original Room/Venue Rate:</span>
+                <span>Room Rate:</span>
                 <span className="font-mono">₱{pricing.undiscountedSubtotal.toLocaleString()}</span>
               </div>
               {pricing.discountAmount > 0 && (
@@ -359,7 +375,7 @@ export function PrintInvoiceModal({
                 </div>
               )}
               <div className="flex justify-between text-muted border-t border-soft pt-1.5">
-                <span>Subtotal amount:</span>
+                <span>Total Before Discounts:</span>
                 <span className="font-mono">₱{pricing.subtotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-muted">
@@ -367,7 +383,7 @@ export function PrintInvoiceModal({
                 <span className="font-mono">₱{(pricing.breakfastTotal + pricing.rentalsTotal).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-main border-t border-soft pt-2 font-bold">
-                <span>Grand Total Statement:</span>
+                <span>Total Amount:</span>
                 <span className="font-mono text-[13px] text-slate-950 font-extrabold">₱{pricing.grandTotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-slate-650 border-t border-soft pt-2">
@@ -375,7 +391,7 @@ export function PrintInvoiceModal({
                 <span className="font-mono text-emerald-600 font-bold">-₱{booking.downpayment_paid.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-brand-text border-t border-soft/60 pt-2 font-bold text-[13px]">
-                <span>Remaining Balance Due:</span>
+                <span>Amount to Pay:</span>
                 <span className="font-mono text-[15px] text-brand-text font-extrabold">₱{booking.balance_due.toLocaleString()}</span>
               </div>
             </div>
@@ -423,4 +439,6 @@ export function PrintInvoiceModal({
       `}</style>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

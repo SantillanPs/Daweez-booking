@@ -170,8 +170,7 @@ export function useBookings() {
   // 7. Mutation: Delete/Cancel Booking
   const cancelBookingMutation = useMutation<void, Error, string, MutationContext>({
     mutationFn: async (bookingId: string) => {
-      const current = await syncEngine.getBookings()
-      await syncEngine.saveBookings(current.filter(b => b.id !== bookingId))
+      await syncEngine.deleteBooking(bookingId)
     },
     onMutate: async (bookingId) => {
       await queryClient.cancelQueries({ queryKey: ['bookings'] })
@@ -196,12 +195,14 @@ export function useBookings() {
     eventAddons?: EventAddons; rateMultiplier?: number; companions?: Companion[]
     partnerDealId?: string; companyName?: string; vehiclePlate?: string
     invoiceType?: 'folio' | 'billing'; breakfastIncluded?: boolean; contractRateOverride?: number
+    paymentMethod?: string; paymentReference?: string; venueExcessHours?: number
   }, MutationContext>({
     mutationFn: async (params) => {
       const { roomId, venueId, guestName, guestEmail, guestPhone, checkIn, checkOut,
         source, status, breakfastOrders, equipmentRentals, eventAddons,
         rateMultiplier = 1.0, companions,
-        partnerDealId, companyName, vehiclePlate, invoiceType, breakfastIncluded, contractRateOverride } = params
+        partnerDealId, companyName, vehiclePlate, invoiceType, breakfastIncluded, contractRateOverride,
+        paymentMethod, paymentReference, venueExcessHours = 0 } = params
 
       if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings)) {
         throw new Error('The room is already booked or blocked for these dates.')
@@ -214,7 +215,7 @@ export function useBookings() {
         roomId, venueId, checkIn, checkOut, guestEmail,
         breakfastOrders, equipmentRentals, eventAddons,
         bookingsList: bookings, rateMultiplier, companions,
-        contractRateOverride
+        contractRateOverride, venueExcessHours
       })
 
       const newBooking: Booking = {
@@ -227,6 +228,9 @@ export function useBookings() {
         check_in: checkIn, check_out: checkOut,
         source, status,
         downpayment_paid: status === 'blocked' ? 0 : pricing.downpayment,
+        payment_method: paymentMethod,
+        payment_reference: paymentReference,
+        venue_excess_hours: venueExcessHours,
         balance_due: status === 'blocked' ? 0 : pricing.balanceDue,
         security_deposit: status === 'blocked' ? 0 : pricing.securityDeposit,
         breakfast_orders: breakfastOrders, equipment_rentals: equipmentRentals,

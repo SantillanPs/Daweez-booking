@@ -27,3 +27,4 @@ dist-ssr
 
 # Compound Engineering
 .compound-engineering/*.local.yaml
+real-invoice.json

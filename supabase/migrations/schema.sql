@@ -31,12 +31,15 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     source booking_source DEFAULT 'website'::booking_source NOT NULL,
     status booking_status DEFAULT 'pending'::booking_status NOT NULL,
     downpayment_paid DECIMAL(10,2) DEFAULT 0.00 NOT NULL,
+    payment_method VARCHAR(50) DEFAULT NULL,
+    payment_reference VARCHAR(255) DEFAULT NULL,
     balance_due DECIMAL(10,2) DEFAULT 0.00 NOT NULL,
     security_deposit DECIMAL(10,2) DEFAULT 500.00 NOT NULL,
     breakfast_orders JSONB DEFAULT NULL,
     equipment_rentals JSONB DEFAULT NULL,
     event_addons JSONB DEFAULT NULL,
     companions JSONB DEFAULT NULL,
+    venue_excess_hours INTEGER DEFAULT 0 NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     expires_at TIMESTAMP WITH TIME ZONE, -- 30-min locks
     CONSTRAINT check_dates CHECK (check_in < check_out)

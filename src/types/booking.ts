@@ -75,12 +75,15 @@ export interface Booking {
   source: BookingSource
   status: BookingStatus
   downpayment_paid: number // 50% downpayment
+  payment_method?: string
+  payment_reference?: string
   balance_due: number      // Remaining 50% + rentals/addons + security deposit
   security_deposit: number // ₱500 flat
   breakfast_orders?: BreakfastOrder[]
   equipment_rentals?: EquipmentRental
   event_addons?: EventAddons
   companions?: Companion[]
+  venue_excess_hours: number
   created_at: string // ISO date-time
   expires_at: string | null // ISO date-time for 30-min website locks
   partner_deal_id?: string

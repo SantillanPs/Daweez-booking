@@ -448,6 +448,7 @@ export function CalendarTab() {
               setExtendError('Failed to confirm reservation.')
             }
           }}
+          onCancelBooking={cancelBooking}
           isConfirming={isConfirming}
         />
       )}

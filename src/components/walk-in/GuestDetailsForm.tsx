@@ -63,12 +63,12 @@ export const GuestDetailsForm = React.memo(
     return (
       <div className="bg-card p-4 rounded-md border border-soft/60 shadow-sm space-y-4 font-sans animate-fade-in">
         <h4 className="text-[9px] font-bold text-brand-text tracking-widest uppercase border-b border-soft pb-1.5">
-          1. Resource &amp; Schedule
+          1. Rooms &amp; Dates
         </h4>
         
         {/* Rooms Selection */}
         <div>
-          <span className="text-[10px] text-muted font-semibold block mb-1">Select Room(s):</span>
+          <span className="text-[10px] text-muted font-semibold block mb-1">Choose Room(s):</span>
           <div className="flex flex-wrap gap-1.5">
             {rooms.map(room => {
               const sel = formRoomIds.has(room.id)
@@ -93,7 +93,7 @@ export const GuestDetailsForm = React.memo(
 
         {/* Venues Selection */}
         <div className="pt-1">
-          <span className="text-[10px] text-muted font-semibold block mb-1">Select Gazebo/Venue(s):</span>
+          <span className="text-[10px] text-muted font-semibold block mb-1">Add a Venue:</span>
           <div className="flex flex-wrap gap-1.5">
             {venues.map(v => {
               const sel = formVenueIds.has(v.id)
@@ -118,7 +118,7 @@ export const GuestDetailsForm = React.memo(
         {/* Individual Staggered Stay Dates */}
         {Object.keys(unitSelections).length > 0 && (
           <div className="space-y-2 pt-2 border-t border-soft">
-            <span className="text-[10px] text-muted font-semibold block mb-1.5">Stay Dates per Selected Unit:</span>
+            <span className="text-[10px] text-muted font-semibold block mb-1.5">Dates for Selection:</span>
             <div className="border border-soft/60 rounded-lg overflow-hidden divide-y divide-slate-150 bg-page/15">
               {Object.entries(unitSelections).map(([id, sel]) => {
                 const name = sel.type === 'room'
@@ -137,7 +137,7 @@ export const GuestDetailsForm = React.memo(
                       <span className="text-xs font-bold text-main block leading-tight">{name}</span>
                       {isOverlapping && (
                         <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-100 px-1 rounded block mt-0.5 max-w-max animate-pulse">
-                          Overlap Collision
+                          Dates Overlap
                         </span>
                       )}
                     </div>
@@ -177,14 +177,14 @@ export const GuestDetailsForm = React.memo(
         {/* Channel, Status & Discount Types in a highly space-efficient grid */}
         <div className={`grid gap-3 pt-1 border-t border-soft ${formStatus === 'confirmed' ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'}`}>
           <div>
-            <label className="text-[10px] text-muted font-medium block mb-1">Booking Channel</label>
+            <label className="text-[10px] text-muted font-medium block mb-1">Booking Source</label>
             <select 
               value={formSource} 
               onChange={e => setFormSource(e.target.value as BookingSource)}
               className="w-full bg-brand-bg border border-soft text-main px-2.5 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all"
             >
-              <option value="manual">Walk-in / Phone Reservation</option>
-              <option value="facebook">Facebook Messenger</option>
+              <option value="manual">Walk-in / Phone</option>
+              <option value="facebook">Facebook</option>
               <option value="google_maps">Google Maps</option>
             </select>
             {(formSource === 'manual' || formSource === 'facebook') && formStatus === 'confirmed' && (
@@ -194,7 +194,7 @@ export const GuestDetailsForm = React.memo(
             )}
           </div>
           <div>
-            <label className="text-[10px] text-muted font-medium block mb-1">Status Type</label>
+            <label className="text-[10px] text-muted font-medium block mb-1">Action</label>
             <div className="flex bg-softbg rounded rounded-md p-0.5 h-[32px]">
               <button 
                 type="button" 
@@ -214,7 +214,7 @@ export const GuestDetailsForm = React.memo(
           </div>
           {formStatus === 'confirmed' && (
             <div className="animate-in fade-in duration-200">
-              <label className="text-[10px] text-muted font-medium block mb-1">Add'l Discount</label>
+              <label className="text-[10px] text-muted font-medium block mb-1">Extra Discount</label>
               <div className="flex items-center gap-1.5">
                 <input 
                   type="number"

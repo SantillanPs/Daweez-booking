@@ -63,10 +63,10 @@ export const RoomDetailsForm = React.memo(
       return (
         <div className="p-4 bg-page border border-soft/60 rounded text-xs text-muted space-y-1.5 font-sans">
           <p className="font-bold text-main flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-brand-primary" /> Maintenance / Date Block
+            <CheckCircle2 className="w-4 h-4 text-brand-primary" /> Block Dates
           </p>
           <p className="text-[11px] leading-normal">
-            This action places an administrative block on the schedule. No guests or invoice statements will be created.
+            This will block out the calendar. It won't create a real booking or charge money.
           </p>
         </div>
       )
@@ -75,35 +75,15 @@ export const RoomDetailsForm = React.memo(
     return (
       <div className="bg-card p-4 rounded-md border border-soft/60 shadow-sm space-y-3.5 animate-in fade-in duration-200 font-sans">
         <h4 className="text-[9px] font-bold text-brand-text tracking-widest uppercase border-b border-soft pb-1.5">
-          2. Guest Registry
+          2. Guest Details
         </h4>
         
         <div className="space-y-3">
-          {/* Preset Deals Selection */}
-          <div>
-            <label className="text-[10px] text-muted font-medium block mb-1">Preset Deal / Corporate Account</label>
-            <div className="relative">
-              <select
-                value={formPartnerDealId || ''}
-                onChange={e => {
-                  const id = e.target.value
-                  const selected = partnerDeals.find(d => d.id === id) || null
-                  onSelectPartnerDeal(selected)
-                }}
-                className="w-full bg-brand-bg border border-soft text-main pl-3 pr-8 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium appearance-none cursor-pointer"
-              >
-                <option value="">-- Personal / Individual Booking --</option>
-                {partnerDeals.map(d => (
-                  <option key={d.id} value={d.id}>{d.name} ({d.type})</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-            </div>
-          </div>
+
 
           {/* Primary Guest Name */}
           <div>
-            <label className="text-[10px] text-muted font-medium block mb-1">Primary Guest Name</label>
+            <label className="text-[10px] text-muted font-medium block mb-1">Guest Name</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
               <input 
@@ -117,63 +97,6 @@ export const RoomDetailsForm = React.memo(
             </div>
           </div>
 
-          {/* Corporate Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-soft">
-            <div>
-              <label className="text-[10px] text-muted font-medium block mb-1">Company / Agency Name</label>
-              <input 
-                type="text" 
-                placeholder="e.g. GETZ PHARMA" 
-                value={formCompanyName || ''} 
-                onChange={e => setFormCompanyName(e.target.value)}
-                className="w-full bg-brand-bg border border-soft text-main px-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium" 
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-muted font-medium block mb-1">TIN (Taxpayer Identification No)</label>
-              <input 
-                type="text" 
-                placeholder="e.g. 000-123-456-000" 
-                value={formTIN || ''} 
-                onChange={e => setFormTIN(e.target.value)}
-                className="w-full bg-brand-bg border border-soft text-main px-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium" 
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-[10px] text-muted font-medium block mb-1">Billing Address</label>
-              <input 
-                type="text" 
-                placeholder="e.g. Pasig City, Metro Manila" 
-                value={formAddress || ''} 
-                onChange={e => setFormAddress(e.target.value)}
-                className="w-full bg-brand-bg border border-soft text-main px-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium" 
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-muted font-medium block mb-1">Vehicle Plate No.</label>
-              <input 
-                type="text" 
-                placeholder="e.g. ABC-1234" 
-                value={formVehiclePlate || ''} 
-                onChange={e => setFormVehiclePlate(e.target.value)}
-                className="w-full bg-brand-bg border border-soft text-main px-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium" 
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-muted font-medium block mb-1">Default Invoice Style</label>
-              <div className="relative">
-                <select
-                  value={formInvoiceType || 'folio'}
-                  onChange={e => setFormInvoiceType(e.target.value as 'folio' | 'billing')}
-                  className="w-full bg-brand-bg border border-soft text-main pl-3 pr-8 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium appearance-none cursor-pointer"
-                >
-                  <option value="folio">Guest Folio (No payment block)</option>
-                  <option value="billing">Guest Registration & Billing (Show GCash/Landbank info)</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-              </div>
-            </div>
-          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-soft">
             <div>
@@ -212,10 +135,10 @@ export const RoomDetailsForm = React.memo(
               className="flex items-center justify-between w-full text-[10px] text-muted font-semibold uppercase tracking-wider hover:text-main transition-colors py-1 cursor-pointer"
             >
               <span className="flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-brand-primary" /> Roommates / Companions
+                <Users className="w-3.5 h-3.5 text-brand-primary" /> Other Guests
                 {formCompanions.length > 0 && (
                   <span className="bg-brand-bg border border-brand-border text-brand-text text-[9px] font-bold px-2 py-0.5 rounded ml-1">
-                    {formCompanions.length} Companion{formCompanions.length !== 1 ? 's' : ''}
+                    {formCompanions.length} Guest{formCompanions.length !== 1 ? 's' : ''}
                   </span>
                 )}
               </span>
@@ -226,7 +149,7 @@ export const RoomDetailsForm = React.memo(
               <div className="space-y-2 pt-2 animate-in slide-in-from-top-1 duration-150">
                 {formCompanions.length === 0 && (
                   <p className="text-[10px] text-muted py-3 italic text-center bg-page/50 rounded border border-dashed border-soft">
-                    No roommates registered. Click below to add.
+                    No other guests added. Click below to add.
                   </p>
                 )}
                 {formCompanions.map((comp, idx) => (
@@ -269,7 +192,7 @@ export const RoomDetailsForm = React.memo(
                   onClick={() => setFormCompanions([...formCompanions, { name: '', gender: 'male' }])}
                   className="text-[10px] text-brand-primary hover:text-brand-text font-bold flex items-center gap-1 transition-colors mt-1 select-none cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add Companion Record
+                  <Plus className="w-3.5 h-3.5" /> Add Guest
                 </button>
               </div>
             )}

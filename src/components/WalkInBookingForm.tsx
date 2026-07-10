@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { useDashboardData } from './DashboardContext'
@@ -200,6 +201,11 @@ export function WalkInBookingForm({
   const [formExtraTowel, setFormExtraTowel] = useState(0)
   const [formEventTable, setFormEventTable] = useState(0)
   const [formEventTent, setFormEventTent] = useState(0)
+  const [formVenueExcessHours, setFormVenueExcessHours] = useState(0)
+
+  // ── Payment Details ──
+  const [formPaymentMethod, setFormPaymentMethod] = useState('')
+  const [formPaymentReference, setFormPaymentReference] = useState('')
 
   // ── Collapsible toggles ──
   const [showCompanions, setShowCompanions] = useState(true)
@@ -372,7 +378,9 @@ export function WalkInBookingForm({
           vehiclePlate: formVehiclePlate || undefined,
           invoiceType: formInvoiceType,
           breakfastIncluded: isBreakfastIncluded,
-          contractRateOverride: contractedPrice || undefined
+          contractRateOverride: contractedPrice || undefined,
+          paymentMethod: formPaymentMethod || undefined,
+          paymentReference: formPaymentReference || undefined
         })
         createdBookings.push(b)
       }
@@ -409,8 +417,11 @@ export function WalkInBookingForm({
           partnerDealId: formPartnerDealId || undefined,
           companyName: formCompanyName || undefined,
           vehiclePlate: formVehiclePlate || undefined,
-          invoiceType: formInvoiceType,
-          contractRateOverride: contractedPrice || undefined
+          invoiceType: bookingType === 'partner' ? 'billing' : 'folio',
+          contractRateOverride: contractedPrice || undefined,
+          paymentMethod: formPaymentMethod || undefined,
+          paymentReference: formPaymentReference || undefined,
+          venueExcessHours: formVenueExcessHours
         })
         createdBookings.push(b)
       }
@@ -431,7 +442,7 @@ export function WalkInBookingForm({
   }
 
   if (createdBookingList.length > 0) {
-    return (
+    const successModalContent = (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
         <div className="w-full max-w-md bg-card rounded-xl shadow-2xl overflow-hidden font-sans p-6 text-center space-y-5 border border-soft" onClick={e => e.stopPropagation()}>
           <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-100/50">
@@ -491,9 +502,10 @@ export function WalkInBookingForm({
         )}
       </div>
     )
+    return createPortal(successModalContent, document.body)
   }
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 font-sans" onClick={onClose}>
       <div className="w-full max-w-md md:max-w-4xl bg-card rounded-lg border border-soft shadow-xl flex flex-col max-h-[92vh] md:max-h-[85vh] overflow-hidden transition-all duration-300" onClick={e => e.stopPropagation()}>
 
@@ -555,18 +567,25 @@ export function WalkInBookingForm({
               if (s === 3 && formStatus === 'blocked') return null
               const isActive = formStep === s
               const isCompleted = formStep > s
+              const isNextStepReady = 
+                (s === 2 && isValidDates) || 
+                (s === 3 && isValidDates && !!formGuestName)
+              const isUnlocked = s <= formStep || isNextStepReady
+
               return (
                 <React.Fragment key={s}>
                   {s > 1 && (
                     <div className={`flex-1 h-0.5 transition-all duration-300 ${isCompleted ? 'bg-brand-primary' : 'bg-slate-200'}`} />
                   )}
-                  <button type="button" disabled={s > formStep} onClick={() => setFormStep(s)}
+                  <button type="button" disabled={!isUnlocked} onClick={() => setFormStep(s)}
                     className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-brand-primary border-brand-primary text-white shadow-sm'
+                        ? 'bg-brand-primary border-brand-primary text-white shadow-sm ring-2 ring-brand-primary/20'
                         : isCompleted
-                          ? 'bg-brand-bg border-brand-primary text-brand-text font-semibold'
-                          : 'bg-card border-soft text-muted disabled:cursor-not-allowed'
+                          ? 'bg-brand-bg border-brand-primary text-brand-text font-semibold hover:bg-brand-primary hover:text-white'
+                          : isUnlocked
+                            ? 'bg-card border-brand-primary text-brand-primary shadow-sm hover:bg-brand-primary hover:text-white animate-pulse'
+                            : 'bg-card border-soft text-muted disabled:cursor-not-allowed opacity-50'
                     }`}>
                     {s}
                   </button>
@@ -725,82 +744,104 @@ export function WalkInBookingForm({
                           />
                           <span className="text-[10px] text-brand-text font-bold uppercase tracking-wider">Apply 20% Walk-in Discount</span>
                         </label>
+                        <div className="pt-4 border-t border-soft/60 mt-4 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={onClose}
+                            className="text-xs text-muted font-bold px-4 py-3 rounded-md border border-soft bg-card hover:bg-page transition-all cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isSubmitting || !formPartnerDealId || Object.keys(unitSelections).length === 0}
+                            className="flex-1 bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-bold py-3 rounded-md transition-all cursor-pointer shadow-sm"
+                          >
+                            {isSubmitting ? 'Booking...' : 'Confirm Corporate Booking'}
+                          </button>
+                        </div>
                       </div>
-
-                    </div>
-
-                    <div className="flex justify-between items-center pt-4 border-t border-soft mt-4 shrink-0 bg-card">
-                      <button
-                        type="button"
-                        onClick={onClose}
-                        className="text-xs text-muted font-bold px-3 py-1.5 rounded border border-soft bg-card hover:bg-page transition-all cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={isSubmitting || !formPartnerDealId || Object.keys(unitSelections).length === 0}
-                        className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm"
-                      >
-                        {isSubmitting ? 'Booking...' : 'Confirm Corporate Booking'}
-                      </button>
                     </div>
                   </div>
                 ) : (
                   <>
                     {/* STEP 1: Resource Schedule & Type Selection */}
                     {formStep === 1 && (
-                      <GuestDetailsForm
-                        rooms={rooms}
-                        venues={venues}
-                        bookings={bookings}
-                        unitSelections={unitSelections}
-                        setUnitSelections={setUnitSelections}
-                        formSource={formSource}
-                        setFormSource={setFormSource}
-                        formStatus={formStatus}
-                        setFormStatus={setFormStatus}
-                        formAdditionalDiscount={formAdditionalDiscount}
-                        setFormAdditionalDiscount={setFormAdditionalDiscount}
-                      />
+                      <div className="space-y-4">
+                        <GuestDetailsForm
+                          rooms={rooms}
+                          venues={venues}
+                          bookings={bookings}
+                          unitSelections={unitSelections}
+                          setUnitSelections={setUnitSelections}
+                          formSource={formSource}
+                          setFormSource={setFormSource}
+                          formStatus={formStatus}
+                          setFormStatus={setFormStatus}
+                          formAdditionalDiscount={formAdditionalDiscount}
+                          setFormAdditionalDiscount={setFormAdditionalDiscount}
+                        />
+                        <div className="flex justify-end pt-2">
+                          <button type="button" disabled={!isValidDates} onClick={() => setFormStep(2)} className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
+                            Next Step &rarr;
+                          </button>
+                        </div>
+                      </div>
                     )}
 
                     {/* STEP 2: Guest Details & Companions */}
                     {formStep === 2 && (
-                      <RoomDetailsForm
-                        formStatus={formStatus}
-                        formGuestName={formGuestName}
-                        setFormGuestName={setFormGuestName}
-                        formGuestEmail={formGuestEmail}
-                        setFormGuestEmail={setFormGuestEmail}
-                        formGuestPhone={formGuestPhone}
-                        setFormGuestPhone={setFormGuestPhone}
-                        formCompanions={formCompanions}
-                        setFormCompanions={setFormCompanions}
-                        showCompanions={showCompanions}
-                        setShowCompanions={setShowCompanions}
-                        hasRooms={hasRooms}
-                        partnerDeals={partnerDeals}
-                        formPartnerDealId={formPartnerDealId}
-                        setFormPartnerDealId={setFormPartnerDealId}
-                        formCompanyName={formCompanyName}
-                        setFormCompanyName={setFormCompanyName}
-                        formVehiclePlate={formVehiclePlate}
-                        setFormVehiclePlate={setFormVehiclePlate}
-                        formTIN={formTIN}
-                        setFormTIN={setFormTIN}
-                        formAddress={formAddress}
-                        setFormAddress={setFormAddress}
-                        formInvoiceType={formInvoiceType}
-                        setFormInvoiceType={setFormInvoiceType}
-                        onSelectPartnerDeal={handleSelectPartnerDeal}
-                      />
+                      <div className="space-y-4">
+                        <RoomDetailsForm
+                          formStatus={formStatus}
+                          formGuestName={formGuestName}
+                          setFormGuestName={setFormGuestName}
+                          formGuestEmail={formGuestEmail}
+                          setFormGuestEmail={setFormGuestEmail}
+                          formGuestPhone={formGuestPhone}
+                          setFormGuestPhone={setFormGuestPhone}
+                          formCompanions={formCompanions}
+                          setFormCompanions={setFormCompanions}
+                          showCompanions={showCompanions}
+                          setShowCompanions={setShowCompanions}
+                          hasRooms={hasRooms}
+                          partnerDeals={partnerDeals}
+                          formPartnerDealId={formPartnerDealId}
+                          setFormPartnerDealId={setFormPartnerDealId}
+                          formCompanyName={formCompanyName}
+                          setFormCompanyName={setFormCompanyName}
+                          formVehiclePlate={formVehiclePlate}
+                          setFormVehiclePlate={setFormVehiclePlate}
+                          formTIN={formTIN}
+                          setFormTIN={setFormTIN}
+                          formAddress={formAddress}
+                          setFormAddress={setFormAddress}
+                          formInvoiceType={formInvoiceType}
+                          setFormInvoiceType={setFormInvoiceType}
+                          onSelectPartnerDeal={handleSelectPartnerDeal}
+                        />
+                        {formStatus === 'blocked' ? (
+                          <div className="pt-2">
+                            <button type="submit" disabled={isSubmitting} className="w-full bg-slate-700 hover:bg-slate-800 disabled:bg-slate-200 text-white disabled:text-muted text-xs font-bold py-3 rounded-md transition-all cursor-pointer shadow-sm">
+                              {isSubmitting ? 'Creating...' : 'Create Block'}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center pt-2">
+                            <button type="button" onClick={() => setFormStep(1)} className="text-xs text-brand-text hover:text-brand-primary font-bold px-4 py-2 hover:bg-page rounded transition-colors cursor-pointer">&larr; Back</button>
+                            <button type="button" disabled={!formGuestName} onClick={() => setFormStep(3)} className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
+                              Next Step &rarr;
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     {/* STEP 3: Add-ons & Services */}
                     {formStep === 3 && formStatus === 'confirmed' && (
-                      <AmenitiesForm
-                        hasRooms={hasRooms}
+                      <div className="space-y-4">
+                        <AmenitiesForm
+                          hasRooms={hasRooms}
                         hasVenues={hasVenues}
                         hasAddons={hasAddons}
                         estRentals={estRentals}
@@ -819,76 +860,114 @@ export function WalkInBookingForm({
                         setFormEventTable={setFormEventTable}
                         formEventTent={formEventTent}
                         setFormEventTent={setFormEventTent}
+                        formVenueExcessHours={formVenueExcessHours}
+                        setFormVenueExcessHours={setFormVenueExcessHours}
                       />
+                      <div className="flex justify-between items-center pt-2">
+                          <button type="button" onClick={() => setFormStep(2)} className="text-xs text-brand-text hover:text-brand-primary font-bold px-4 py-2 hover:bg-page rounded transition-colors cursor-pointer">&larr; Back</button>
+                          <button type="submit" disabled={isSubmitting} className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-bold px-6 py-2.5 rounded transition-all cursor-pointer shadow-sm">
+                            {isSubmitting ? 'Creating...' : 'Confirm Booking'}
+                          </button>
+                      </div>
+                    </div>
                     )}
 
-                    {/* ── Step-by-Step Navigation Buttons ── */}
-                    <div className="flex justify-between items-center pt-4 border-t border-soft/60 mt-5 shrink-0 bg-card">
-                      {formStep > 1 ? (
-                        <button type="button" onClick={() => setFormStep(formStep - 1)}
-                          className="text-xs text-brand-text hover:text-brand-primary font-bold px-3 py-1.5 rounded border border-soft bg-card hover:bg-page transition-all cursor-pointer">
-                          &larr; Back
-                        </button>
-                      ) : <div />}
-                      
-                      {formStep === 1 && (
-                        <button type="button" disabled={!isValidDates} onClick={() => setFormStep(2)}
-                          className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
-                          Next &rarr;
-                        </button>
-                      )}
 
-                      {formStep === 2 && formStatus === 'confirmed' && (
-                        <button type="button" disabled={!formGuestName} onClick={() => setFormStep(3)}
-                          className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
-                          Next &rarr;
-                        </button>
-                      )}
-
-                      {formStep === 2 && formStatus === 'blocked' && (
-                        <button type="submit" disabled={isSubmitting}
-                          className="bg-slate-700 hover:bg-slate-800 disabled:bg-slate-200 text-white disabled:text-muted text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
-                          {isSubmitting ? 'Creating...' : 'Create Block'}
-                        </button>
-                      )}
-
-                      {formStep === 3 && (
-                        <button type="submit" disabled={isSubmitting}
-                          className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-semibold px-6 py-2.5 rounded transition-all cursor-pointer shadow-sm">
-                          {isSubmitting ? 'Creating...' : 'Confirm Booking'}
-                        </button>
-                      )}
-                    </div>
                   </>
                 )}
               </div>
 
-              {/* ── RIGHT COLUMN: Invoice Estimate ── */}
-              <BillingSummary
-                formStatus={formStatus}
-                unitSelections={unitSelections}
-                rooms={rooms}
-                venues={venues}
-                estBreakfast={estBreakfast}
-                estRentals={estRentals}
-                estAddons={estAddons}
-                estTotal={estTotal}
-                estDown={estDown}
-                estDue={estDue}
-                formSource={formSource}
-                formAdditionalDiscount={formAdditionalDiscount}
-                guestEmail={formGuestEmail}
-                bookingType={bookingType}
-                formWalkInDiscount={formWalkInDiscount}
-                partnerDeals={partnerDeals}
-                formPartnerDealId={formPartnerDealId}
-              />
-
+              {/* ── RIGHT COLUMN: Invoice Estimate & Navigation ── */}
+              <div className="flex flex-col gap-4">
+                <BillingSummary
+                  formStatus={formStatus}
+                  unitSelections={unitSelections}
+                  rooms={rooms}
+                  venues={venues}
+                  estBreakfast={estBreakfast}
+                  estRentals={estRentals}
+                  estAddons={estAddons}
+                  estTotal={estTotal}
+                  estDown={estDown}
+                  estDue={estDue}
+                  formSource={formSource}
+                  formAdditionalDiscount={formAdditionalDiscount}
+                  guestEmail={formGuestEmail}
+                  bookingType={bookingType}
+                  formWalkInDiscount={formWalkInDiscount}
+                  partnerDeals={partnerDeals}
+                  formPartnerDealId={formPartnerDealId}
+                  formPaymentMethod={formPaymentMethod}
+                  setFormPaymentMethod={setFormPaymentMethod}
+                  formPaymentReference={formPaymentReference}
+                  setFormPaymentReference={setFormPaymentReference}
+                  formVenueExcessHours={formVenueExcessHours}
+                  onPrintInvoice={() => {
+                    const firstUnitId = Object.keys(unitSelections)[0]
+                    if (!firstUnitId) return
+                    const sel = unitSelections[firstUnitId]
+                    const isRoom = sel.type === 'room'
+                    const deal = partnerDeals?.find(d => d.id === formPartnerDealId)
+                    const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
+                
+                    const rentals = isRoom ? {
+                      extraFoamCount: formExtraFoam,
+                      extraPillowCount: formExtraPillow,
+                      extraBlanketCount: formExtraBlanket,
+                      extraTowelCount: formExtraTowel
+                    } : {
+                      bigTableCount: 0,
+                      smallTableCount: 0,
+                      chairCount: formChairs,
+                      mineralWaterCount: 0,
+                      tableCount: formEventTable,
+                      tentCount: formEventTent
+                    }
+                
+                    const dummyBooking: Booking = {
+                      id: 'preview',
+                      room_id: isRoom ? firstUnitId : undefined,
+                      venue_id: !isRoom ? firstUnitId : undefined,
+                      guest_name: formGuestName || 'Guest Name',
+                      guest_email: formGuestEmail || '',
+                      guest_phone: formGuestPhone || '',
+                      check_in: sel.checkIn,
+                      check_out: sel.checkOut,
+                      status: 'pending',
+                      source: formSource,
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                      breakfast_included: isBreakfastIncluded,
+                      invoice_type: formInvoiceType,
+                      equipment_rentals: rentals,
+                      downpayment_paid: estDown,
+                      balance_due: estDue,
+                      security_deposit: 0,
+                      contract_rate_override: deal?.contracted_rates?.[firstUnitId],
+                      partner_deal_id: formPartnerDealId,
+                      company_name: formCompanyName || deal?.name
+                    }
+                    
+                    setPrintTargetBooking(dummyBooking)
+                  }}
+                />
+              </div>
             </div>
           </div>
         </form>
 
+        {printTargetBooking && createdBookingList.length === 0 && (
+          <PrintInvoiceModal
+            booking={printTargetBooking}
+            rooms={rooms}
+            venues={venues}
+            bookingsList={[]} // not fully needed for preview
+            onClose={() => setPrintTargetBooking(null)}
+          />
+        )}
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

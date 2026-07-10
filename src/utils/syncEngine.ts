@@ -463,6 +463,24 @@ export async function insertBooking(booking: Booking): Promise<void> {
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify([...existing, booking]))
 }
 
+export async function deleteBooking(bookingId: string): Promise<void> {
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('bookings').delete().eq('id', bookingId)
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase deleteBooking Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  // LocalStorage fallback
+  initDB()
+  const data = localStorage.getItem(BOOKINGS_KEY)
+  const existing: Booking[] = data ? JSON.parse(data) : []
+  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(existing.filter(b => b.id !== bookingId)))
+}
+
 export async function getFeeds(): Promise<SyncFeed[]> {
   if (isSupabaseConfigured) {
     try {
@@ -562,8 +580,9 @@ export function calculatePricing(params: {
   companions?: Companion[]
   source?: BookingSource
   contractRateOverride?: number
+  venueExcessHours?: number
 }) {
-  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier, companions, source, contractRateOverride } = params
+  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier, companions, source, contractRateOverride, venueExcessHours = 0 } = params
 
   const defaultMultiplier = (source === 'manual' || source === 'facebook' || source === 'website') ? 0.8 : 1.0
   const finalMultiplier = rateMultiplier !== undefined ? rateMultiplier : defaultMultiplier
@@ -629,7 +648,10 @@ export function calculatePricing(params: {
       rentalsTotal += ((equipmentRentals.mineralWaterCount || 0) * 35)
       rentalsTotal += ((equipmentRentals.tableCount || 0) * 150)
       rentalsTotal += ((equipmentRentals.tentCount || 0) * 500)
+      rentalsTotal += (venueExcessHours * 500)
     }
+  } else if (venueExcessHours > 0) {
+    rentalsTotal += (venueExcessHours * 500)
   }
 
   // E. Event Add-ons (Band: 2000, Stage: 2000, LED Wall: 5000)

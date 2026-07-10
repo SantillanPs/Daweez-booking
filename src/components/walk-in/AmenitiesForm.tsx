@@ -21,6 +21,8 @@ interface AmenitiesFormProps {
   setFormEventTable: (val: number) => void
   formEventTent: number
   setFormEventTent: (val: number) => void
+  formVenueExcessHours: number
+  setFormVenueExcessHours: (val: number) => void
 }
 
 export const AmenitiesForm = React.memo(
@@ -43,7 +45,9 @@ export const AmenitiesForm = React.memo(
     formEventTable,
     setFormEventTable,
     formEventTent,
-    setFormEventTent
+    setFormEventTent,
+    formVenueExcessHours,
+    setFormVenueExcessHours
   }: AmenitiesFormProps) => {
     const [showVenueAddons, setShowVenueAddons] = useState(true)
 
@@ -71,7 +75,7 @@ export const AmenitiesForm = React.memo(
     return (
       <div className="bg-card p-4 rounded-md border border-soft/60 shadow-sm space-y-4 animate-in fade-in duration-200 font-sans">
         <h4 className="text-[9px] font-bold text-brand-text tracking-widest uppercase border-b border-soft pb-1.5 flex justify-between items-center">
-          <span>3. Amenities &amp; Services</span>
+          <span>3. Extras</span>
           {hasAddons && (
             <span className="bg-brand-bg border border-brand-border text-brand-text text-[9px] font-bold px-2 py-0.5 rounded animate-fade-in normal-case tracking-normal">
               +₱{(estRentals + estAddons).toLocaleString()}
@@ -79,11 +83,10 @@ export const AmenitiesForm = React.memo(
           )}
         </h4>
 
-        {/* Room Extras & Amenities Section */}
         {hasRooms && (
           <div className="space-y-3">
             <span className="text-[10px] text-muted font-bold uppercase tracking-wider block">
-              Room Extras &amp; Bedding (Nightly rates)
+              Room Extras (per night)
             </span>
             <div className="grid grid-cols-2 gap-2">
               {[
@@ -107,17 +110,17 @@ export const AmenitiesForm = React.memo(
         {/* Divider if both exist */}
         {hasRooms && hasVenues && <div className="border-t border-soft my-4" />}
 
-        {/* Venue Equipment Section */}
         {hasVenues && (
           <div className="space-y-3">
             <span className="text-[10px] text-muted font-bold uppercase tracking-wider block">
-              Venue Equipment &amp; Rentals (Flat rates)
+              Venue Rentals (one-time fee)
             </span>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { label: 'Table', value: formEventTable, set: setFormEventTable, price: 150 },
                 { label: 'Tent', value: formEventTent, set: setFormEventTent, price: 500 },
                 { label: 'Chairs', value: formChairs, set: setFormChairs, price: 15 },
+                { label: 'Excess Hours', value: formVenueExcessHours, set: setFormVenueExcessHours, price: 500 },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between bg-page/60 px-3 py-1.5 rounded border border-soft">
                   <div>
@@ -146,7 +149,8 @@ export const AmenitiesForm = React.memo(
       prevProps.formExtraBlanket === nextProps.formExtraBlanket &&
       prevProps.formExtraTowel === nextProps.formExtraTowel &&
       prevProps.formEventTable === nextProps.formEventTable &&
-      prevProps.formEventTent === nextProps.formEventTent
+      prevProps.formEventTent === nextProps.formEventTent &&
+      prevProps.formVenueExcessHours === nextProps.formVenueExcessHours
     )
   }
 )
