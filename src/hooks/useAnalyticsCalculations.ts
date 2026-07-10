@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { Booking, Room, Venue, Expense } from '../types/booking'
+import { Booking, Room, Venue } from '../types/booking'
+import { Expense } from '../types/expense'
 import { calculatePricing } from '../utils/syncEngine'
 
 // Helper: check if a date is within start and end strings (YYYY-MM-DD)

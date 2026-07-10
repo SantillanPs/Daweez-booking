@@ -39,6 +39,9 @@ interface WalkInBookingFormProps {
     invoiceType?: 'folio' | 'billing'
     breakfastIncluded?: boolean
     contractRateOverride?: number
+    paymentMethod?: string
+    paymentReference?: string
+    venueExcessHours?: number
   }) => Promise<Booking>
   cancelBooking: (bookingId: string) => Promise<void>
   initialSelections: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
@@ -911,6 +914,10 @@ export function WalkInBookingForm({
                     const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
                 
                     const rentals = isRoom ? {
+                      bigTableCount: 0,
+                      smallTableCount: 0,
+                      chairCount: 0,
+                      mineralWaterCount: 0,
                       extraFoamCount: formExtraFoam,
                       extraPillowCount: formExtraPillow,
                       extraBlanketCount: formExtraBlanket,
@@ -936,10 +943,11 @@ export function WalkInBookingForm({
                       status: 'pending',
                       source: formSource,
                       created_at: new Date().toISOString(),
-                      updated_at: new Date().toISOString(),
+                      expires_at: null,
                       breakfast_included: isBreakfastIncluded,
                       invoice_type: formInvoiceType,
                       equipment_rentals: rentals,
+                      venue_excess_hours: formVenueExcessHours,
                       downpayment_paid: estDown,
                       balance_due: estDue,
                       security_deposit: 0,

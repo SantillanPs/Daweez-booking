@@ -83,7 +83,7 @@ export interface Booking {
   equipment_rentals?: EquipmentRental
   event_addons?: EventAddons
   companions?: Companion[]
-  venue_excess_hours: number
+  venue_excess_hours?: number
   created_at: string // ISO date-time
   expires_at: string | null // ISO date-time for 30-min website locks
   partner_deal_id?: string
