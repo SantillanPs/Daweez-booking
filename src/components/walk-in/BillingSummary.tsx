@@ -146,7 +146,7 @@ export const BillingSummary = React.memo(
                           </div>
                           <span className="text-[10px] text-muted block font-mono mt-0.5">{sel.checkIn} to {sel.checkOut}</span>
                         </div>
-                        <span className="font-extrabold text-main font-mono">₱{(displayPrice * nights).toLocaleString()}</span>
+                        <span className="font-extrabold text-emerald-600 font-mono">₱{(displayPrice * nights).toLocaleString()}</span>
                       </div>
                     ) : null
                   })}
@@ -173,7 +173,7 @@ export const BillingSummary = React.memo(
                           </div>
                           <span className="text-[10px] text-muted block font-mono mt-0.5">{sel.checkIn} to {sel.checkOut}</span>
                         </div>
-                        <span className="font-extrabold text-main font-mono">₱{(displayPrice * nights).toLocaleString()}</span>
+                        <span className="font-extrabold text-emerald-600 font-mono">₱{(displayPrice * nights).toLocaleString()}</span>
                       </div>
                     ) : null
                   })}
@@ -185,19 +185,19 @@ export const BillingSummary = React.memo(
                   {estBreakfast > 0 && (
                     <div className="flex justify-between items-center text-slate-750 font-medium">
                       <span>Breakfast Order</span>
-                      <span className="font-extrabold text-main font-mono">₱{estBreakfast.toLocaleString()}</span>
+                      <span className="font-extrabold text-emerald-600 font-mono">₱{estBreakfast.toLocaleString()}</span>
                     </div>
                   )}
                   {estRentals > 0 && (
                     <div className="flex justify-between items-center text-slate-750 font-medium">
                       <span>Rentals &amp; Amenities</span>
-                      <span className="font-extrabold text-main font-mono">₱{estRentals.toLocaleString()}</span>
+                      <span className="font-extrabold text-emerald-600 font-mono">₱{estRentals.toLocaleString()}</span>
                     </div>
                   )}
                   {estAddons > 0 && (
                     <div className="flex justify-between items-center text-slate-750 font-medium">
                       <span>Venue Add-ons</span>
-                      <span className="font-extrabold text-main font-mono">₱{estAddons.toLocaleString()}</span>
+                      <span className="font-extrabold text-emerald-600 font-mono">₱{estAddons.toLocaleString()}</span>
                     </div>
                   )}
                 </div>
@@ -208,7 +208,7 @@ export const BillingSummary = React.memo(
             <div className="border-t border-brand-border/40 pt-3.5 space-y-2">
               <div className="flex justify-between text-muted font-semibold text-[11px]">
                 <span>Original Rate</span>
-                <span className="font-mono text-main">₱{undiscountedBaseTotal.toLocaleString()}</span>
+                <span className="font-mono text-emerald-600 font-bold">₱{undiscountedBaseTotal.toLocaleString()}</span>
               </div>
               
               {formWalkInDiscount && walkInAmount > 0 && (
@@ -227,7 +227,7 @@ export const BillingSummary = React.memo(
               {/* Grand Total */}
               <div className="flex justify-between items-center text-main border-t border-brand-border/40 pt-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Grand Total</span>
-                <span className="text-[17px] font-black text-main font-mono">₱{estTotal.toLocaleString()}</span>
+                <span className="text-[17px] font-black text-emerald-600 font-mono">₱{estTotal.toLocaleString()}</span>
               </div>
 
               {/* Split Payment Cards Grid */}

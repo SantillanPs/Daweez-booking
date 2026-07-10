@@ -1,10 +1,13 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { AnimatedNumber } from './AnimatedNumber'
+import { AnimatedRect } from './AnimatedRect'
 import { useDashboardData } from './DashboardContext'
 import { calculatePricing } from '../utils/syncEngine'
 import { Booking } from '../types/booking'
 import { 
-  TrendingUp, Home, DollarSign, Calendar, Info, 
-  ChevronRight, ChevronDown, ToggleLeft, ToggleRight, Sparkles 
+  TrendingUp, DollarSign, Calendar, Info, 
+  ChevronRight, ChevronDown, ToggleLeft, ToggleRight, Sparkles,
+  Table, BarChart2
 } from 'lucide-react'
 
 // Helper: check if a date is within start and end strings (YYYY-MM-DD)
@@ -28,6 +31,7 @@ export function AnalyticsTab() {
   const { bookings, rooms, venues, expenses, isLoading } = useDashboardData()
 
   // 1. Timeframe Filter state
+  const [viewMode, setViewMode] = useState<'spreadsheet' | 'visuals'>('visuals')
   const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'>('monthly')
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date()
@@ -56,6 +60,13 @@ export function AnalyticsTab() {
   } | null>(null)
 
   const [hoveredDonutSegment, setHoveredDonutSegment] = useState<string | null>(null)
+
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => {
+    // Small delay ensures the browser paints the initial 0 state before animating to target
+    const timer = setTimeout(() => setIsMounted(true), 50)
+    return () => clearTimeout(timer)
+  }, [])
 
   // 4. Resolve date ranges based on chosen timeframe
   const dateRange = useMemo(() => {
@@ -362,80 +373,108 @@ export function AnalyticsTab() {
   }
 
   // Find max value in trendSlots for SVG height scaling
+  // We check the max of individual bars, not the sum, since they are grouped side-by-side
   const maxTrendVal = Math.max(
     1000, 
-    ...calculations.trendSlots.map(s => s.pension + s.vacationHouse + s.gardenArea + s.gazebo)
+    ...calculations.trendSlots.map(s => Math.max(s.pension, s.vacationHouse, s.gardenArea, s.gazebo))
   )
 
   return (
     <div className="space-y-6">
       {/* Filters Toolbar */}
-      <div className="bg-card border border-soft rounded-xl p-4 sm:flex items-center justify-between gap-4">
-        {/* Timeframe selector */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-soft sm:border-0 pb-3 sm:pb-0">
-          {(['daily', 'weekly', 'monthly', 'yearly', 'custom'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTimeframe(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider cursor-pointer transition-all shrink-0 ${
-                timeframe === t 
-                  ? 'bg-brand-primary text-white' 
-                  : 'bg-page hover:bg-softbg text-muted'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+      <div className="bg-card border border-soft rounded-xl p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        
+        {/* Left Side: Timeframes and Dates */}
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Timeframe selector */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {(['daily', 'weekly', 'monthly', 'yearly', 'custom'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setTimeframe(t)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider cursor-pointer transition-all shrink-0 ${
+                  timeframe === t 
+                    ? 'bg-brand-primary text-white' 
+                    : 'bg-page hover:bg-softbg text-muted'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          {/* Dynamic Custom Date Inputs */}
+          {timeframe === 'custom' && (
+            <div className="flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+              <input
+                type="date"
+                value={customStart}
+                onChange={e => setCustomStart(e.target.value)}
+                className="text-xs font-medium bg-page border border-soft rounded px-2.5 py-1.5 focus:outline-none focus:border-brand-primary"
+              />
+              <span className="text-muted text-xs">to</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={e => setCustomEnd(e.target.value)}
+                className="text-xs font-medium bg-page border border-soft rounded px-2.5 py-1.5 focus:outline-none focus:border-brand-primary"
+              />
+            </div>
+          )}
         </div>
 
-        {/* Dynamic Custom Date Inputs */}
-        {timeframe === 'custom' && (
-          <div className="flex items-center gap-2 my-3 sm:my-0">
-            <Calendar className="w-3.5 h-3.5 text-brand-primary shrink-0" />
-            <input
-              type="date"
-              value={customStart}
-              onChange={e => setCustomStart(e.target.value)}
-              className="text-xs font-medium bg-page border border-soft rounded px-2.5 py-1.5 focus:outline-none focus:border-brand-primary"
-            />
-            <span className="text-muted text-xs">to</span>
-            <input
-              type="date"
-              value={customEnd}
-              onChange={e => setCustomEnd(e.target.value)}
-              className="text-xs font-medium bg-page border border-soft rounded px-2.5 py-1.5 focus:outline-none focus:border-brand-primary"
-            />
-          </div>
-        )}
-
-        {/* Status Toggle */}
-        <div className="flex items-center gap-2.5 justify-end">
-          <span className="text-xs font-medium text-muted">
-            Include Pending Projections
-          </span>
-          <button 
-            onClick={() => setIncludePending(prev => !prev)}
-            className="text-muted hover:text-brand-primary transition-all cursor-pointer"
+        {/* Right Side: View Mode Toggle & Status Toggle */}
+        <div className="flex flex-wrap items-center gap-4 xl:justify-end">
+          {/* View Mode Toggle */}
+          <button
+            onClick={() => setViewMode(prev => prev === 'spreadsheet' ? 'visuals' : 'spreadsheet')}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest cursor-pointer transition-all bg-white border-2 border-slate-100 hover:border-brand-primary/30 hover:bg-slate-50 text-slate-600 shadow-sm"
           >
-            {includePending ? (
-              <ToggleRight className="w-8 h-8 text-brand-primary" />
+            {viewMode === 'spreadsheet' ? (
+              <>
+                <BarChart2 className="w-4 h-4 text-brand-primary" />
+                Switch to Visuals
+              </>
             ) : (
-              <ToggleLeft className="w-8 h-8 text-muted" />
+              <>
+                <Table className="w-4 h-4 text-brand-primary" />
+                Switch to Spreadsheet
+              </>
             )}
           </button>
+
+          {/* Status Toggle */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span className="text-xs font-medium text-muted whitespace-nowrap">
+              Include Pending Bookings
+            </span>
+            <button 
+              onClick={() => setIncludePending(prev => !prev)}
+              className="text-muted hover:text-brand-primary transition-all cursor-pointer"
+            >
+              {includePending ? (
+                <ToggleRight className="w-8 h-8 text-brand-primary" />
+              ) : (
+                <ToggleLeft className="w-8 h-8 text-muted" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Income Breakdown Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {viewMode === 'visuals' && (
+        <>
+          {/* Main Income Breakdown Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Pension Income */}
-        <div className="bg-brand-bg/85 border-2 border-brand-border rounded-xl p-4 flex flex-col justify-between shadow-sm">
+        <div className="bg-card border border-soft rounded-xl p-4 flex flex-col justify-between shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-bold text-brand-text uppercase tracking-wider">Pension (Rms 1-10)</span>
-            <Home className="w-4 h-4 text-brand-primary" />
+            <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider">Pension (Rms 1-10)</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-brand-primary"></span>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-extrabold text-main">₱{calculations.totalPension.toLocaleString()}</h3>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-emerald-600"><AnimatedNumber prefix="₱" value={calculations.totalPension} /></h3>
             <p className="text-[10px] text-muted mt-1">
               Base: ₱{calculations.totalPensionBase.toLocaleString()} | Breakfast: ₱{calculations.totalPensionBreakfast.toLocaleString()}
             </p>
@@ -449,7 +488,7 @@ export function AnalyticsTab() {
             <span className="w-2.5 h-2.5 rounded-full bg-[#4A90E2]"></span>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-extrabold text-main">₱{calculations.totalVacationHouse.toLocaleString()}</h3>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-emerald-600"><AnimatedNumber prefix="₱" value={calculations.totalVacationHouse} /></h3>
             <p className="text-[10px] text-muted mt-1">Property Rental + Add-ons</p>
           </div>
         </div>
@@ -461,7 +500,7 @@ export function AnalyticsTab() {
             <span className="w-2.5 h-2.5 rounded-full bg-[#2ECC71]"></span>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-extrabold text-main">₱{calculations.totalGardenArea.toLocaleString()}</h3>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-emerald-600"><AnimatedNumber prefix="₱" value={calculations.totalGardenArea} /></h3>
             <p className="text-[10px] text-muted mt-1">Event Venue + Equipment</p>
           </div>
         </div>
@@ -473,39 +512,12 @@ export function AnalyticsTab() {
             <span className="w-2.5 h-2.5 rounded-full bg-[#F39C12]"></span>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl sm:text-2xl font-extrabold text-main">₱{calculations.totalGazebo.toLocaleString()}</h3>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-emerald-600"><AnimatedNumber prefix="₱" value={calculations.totalGazebo} /></h3>
             <p className="text-[10px] text-muted mt-1">Event Venue + Equipment</p>
           </div>
         </div>
       </div>
 
-      {/* Summary KPI Banner */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 bg-page border border-soft rounded-xl p-4 text-center">
-        <div className="border-b md:border-b-0 md:border-r border-soft pb-3 md:pb-0 text-left md:text-center">
-          <span className="text-[9px] text-muted uppercase tracking-wider font-bold block">Gross Sales</span>
-          <p className="text-base sm:text-lg font-bold text-main mt-0.5">₱{calculations.totalRevenue.toLocaleString()}</p>
-        </div>
-        <div className="border-b md:border-b-0 md:border-r border-soft pb-3 md:pb-0 text-left md:text-center">
-          <span className="text-[9px] text-rose-500 uppercase tracking-wider font-bold block">Expenses</span>
-          <p className="text-base sm:text-lg font-bold text-rose-600 mt-0.5">₱{calculations.totalExpenses.toLocaleString()}</p>
-        </div>
-        <div className="col-span-2 md:col-span-1 border-b md:border-b-0 md:border-r border-soft pb-3 md:pb-0 text-left md:text-center">
-          <span className="text-[9px] text-brand-primary uppercase tracking-wider font-bold block">Net Profit</span>
-          <p className="text-base sm:text-lg font-black text-brand-primary mt-0.5">₱{calculations.netProfit.toLocaleString()}</p>
-        </div>
-        <div className="border-r border-soft">
-          <span className="text-[9px] text-muted uppercase tracking-wider font-bold block">Occupancy Rate</span>
-          <p className="text-base sm:text-lg font-bold text-main mt-0.5">{calculations.roomOccupancyRate}%</p>
-        </div>
-        <div className="border-r border-soft">
-          <span className="text-[9px] text-muted uppercase tracking-wider font-bold block">ADR (Rooms)</span>
-          <p className="text-base sm:text-lg font-bold text-main mt-0.5">₱{calculations.adr.toLocaleString()}</p>
-        </div>
-        <div>
-          <span className="text-[9px] text-muted uppercase tracking-wider font-bold block">RevPAR</span>
-          <p className="text-base sm:text-lg font-bold text-main mt-0.5">₱{calculations.revpar.toLocaleString()}</p>
-        </div>
-      </div>
 
       {/* Visual Analytics Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -513,8 +525,8 @@ export function AnalyticsTab() {
         <div className="bg-card border border-soft rounded-xl p-4 lg:col-span-2 flex flex-col justify-between relative">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h4 className="text-xs sm:text-sm font-bold text-main">Revenue Split Over Time</h4>
-              <p className="text-[10px] text-muted">Nightly apportioned profit breakdown</p>
+              <h4 className="text-xs sm:text-sm font-bold text-main">Income Over Time</h4>
+              <p className="text-[10px] text-muted">Daily earnings breakdown</p>
             </div>
             <div className="flex gap-2.5 text-[9px] font-semibold text-muted">
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-brand-primary"></span>Pension</span>
@@ -525,16 +537,16 @@ export function AnalyticsTab() {
           </div>
 
           {/* SVG Bar Chart */}
-          <div className="relative h-64 w-full">
-            <svg viewBox="0 0 600 240" className="w-full h-full overflow-visible">
+          <div className="relative flex-1 w-full min-h-[250px] mt-4">
+            <svg width="100%" height="100%" className="overflow-visible">
               {/* Y Grid Lines & Labels */}
               {[0, 0.25, 0.5, 0.75, 1.0].map((ratio, idx) => {
-                const y = 200 - ratio * 180
+                const yPct = 90 - ratio * 88 // From 90% (bottom) to 2% (top)
                 const val = Math.round(maxTrendVal * ratio)
                 return (
                   <g key={idx} className="opacity-40">
-                    <line x1="45" y1={y} x2="580" y2={y} stroke="var(--border-soft)" strokeDasharray="3,3" />
-                    <text x="35" y={y + 3} textAnchor="end" className="text-[9px] fill-current text-muted font-semibold font-mono">
+                    <line x1="45" y1={`${yPct}%`} x2="100%" y2={`${yPct}%`} stroke="var(--border-soft)" strokeDasharray="3,3" />
+                    <text x="35" y={`${yPct}%`} dy="3" textAnchor="end" className="text-[9px] fill-current text-muted font-semibold font-mono">
                       ₱{val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
                     </text>
                   </g>
@@ -542,136 +554,146 @@ export function AnalyticsTab() {
               })}
 
               {/* X Grid Labels & Grouped Columns */}
-              {calculations.trendSlots.map((slot, slotIdx) => {
-                const totalSlots = calculations.trendSlots.length
-                const slotWidth = 500 / totalSlots
-                const xStart = 50 + slotIdx * slotWidth
-                const xCenter = xStart + slotWidth / 2
+              <svg x="50" y="2%" width="calc(100% - 50px)" height="88%" className="overflow-visible">
+                {calculations.trendSlots.map((slot, slotIdx) => {
+                  const totalSlots = calculations.trendSlots.length
+                  const slotWidth = 100 / totalSlots // width in %
+                  const xCenter = slotIdx * slotWidth + slotWidth / 2
 
-                // Calculate heights
-                const maxBarHeight = 170
-                const pHeight = (slot.pension / maxTrendVal) * maxBarHeight
-                const vHeight = (slot.vacationHouse / maxTrendVal) * maxBarHeight
-                const gHeight = (slot.gardenArea / maxTrendVal) * maxBarHeight
-                const zHeight = (slot.gazebo / maxTrendVal) * maxBarHeight
+                  // Calculate heights in percentages (0 to 100%)
+                  const pHeightPct = (slot.pension / maxTrendVal) * 100 || 0
+                  const vHeightPct = (slot.vacationHouse / maxTrendVal) * 100 || 0
+                  const gHeightPct = (slot.gardenArea / maxTrendVal) * 100 || 0
+                  const zHeightPct = (slot.gazebo / maxTrendVal) * 100 || 0
 
-                // Bar X coordinates (grouped together inside the slot)
-                const barSpacing = slotWidth > 60 ? 4 : 1
-                const barW = Math.max(2, (slotWidth - 20) / 4)
+                  // Bar X coordinates in %
+                  const barSpacing = slotWidth > 15 ? 1 : 0.5
+                  const barW = Math.max(1, (slotWidth - 4) / 4)
 
-                const px = xCenter - (barW * 2 + barSpacing * 1.5)
-                const vx = xCenter - (barW + barSpacing * 0.5)
-                const gx = xCenter + barSpacing * 0.5
-                const zx = xCenter + barW + barSpacing * 1.5
+                  const px = xCenter - (barW * 2 + barSpacing * 1.5)
+                  const vx = xCenter - (barW + barSpacing * 0.5)
+                  const gx = xCenter + barSpacing * 0.5
+                  const zx = xCenter + barW + barSpacing * 1.5
 
-                return (
-                  <g key={slotIdx}>
-                    {/* X Label */}
-                    <text x={xCenter} y="220" textAnchor="middle" className="text-[9px] font-semibold fill-current text-muted">
+                  return (
+                    <g key={slotIdx}>
+                      {/* Pension Bar */}
+                      <AnimatedRect
+                        x={`${px}%`}
+                        targetY={100 - pHeightPct}
+                        width={`${barW}%`}
+                        targetHeight={pHeightPct}
+                        fill="#B89251"
+                        rx="2"
+                        className="cursor-pointer transition-opacity hover:opacity-85"
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          setHoveredBar({
+                            label: slot.label,
+                            pension: slot.pension,
+                            vacationHouse: slot.vacationHouse,
+                            gardenArea: slot.gardenArea,
+                            gazebo: slot.gazebo,
+                            x: rect.left + rect.width / 2,
+                            y: rect.top - 80
+                          })
+                        }}
+                        onMouseLeave={() => setHoveredBar(null)}
+                      />
+
+                      {/* Vacation House Bar */}
+                      <AnimatedRect
+                        x={`${vx}%`}
+                        targetY={100 - vHeightPct}
+                        width={`${barW}%`}
+                        targetHeight={vHeightPct}
+                        fill="#4A90E2"
+                        rx="2"
+                        className="cursor-pointer transition-opacity hover:opacity-85"
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          setHoveredBar({
+                            label: slot.label,
+                            pension: slot.pension,
+                            vacationHouse: slot.vacationHouse,
+                            gardenArea: slot.gardenArea,
+                            gazebo: slot.gazebo,
+                            x: rect.left + rect.width / 2,
+                            y: rect.top - 80
+                          })
+                        }}
+                        onMouseLeave={() => setHoveredBar(null)}
+                      />
+
+                      {/* Garden Area Bar */}
+                      <AnimatedRect
+                        x={`${gx}%`}
+                        targetY={100 - gHeightPct}
+                        width={`${barW}%`}
+                        targetHeight={gHeightPct}
+                        fill="#2ECC71"
+                        rx="2"
+                        className="cursor-pointer transition-opacity hover:opacity-85"
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          setHoveredBar({
+                            label: slot.label,
+                            pension: slot.pension,
+                            vacationHouse: slot.vacationHouse,
+                            gardenArea: slot.gardenArea,
+                            gazebo: slot.gazebo,
+                            x: rect.left + rect.width / 2,
+                            y: rect.top - 80
+                          })
+                        }}
+                        onMouseLeave={() => setHoveredBar(null)}
+                      />
+
+                      {/* Gazebo Bar */}
+                      <AnimatedRect
+                        x={`${zx}%`}
+                        targetY={100 - zHeightPct}
+                        width={`${barW}%`}
+                        targetHeight={zHeightPct}
+                        fill="#F39C12"
+                        rx="2"
+                        className="cursor-pointer transition-opacity hover:opacity-85"
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          setHoveredBar({
+                            label: slot.label,
+                            pension: slot.pension,
+                            vacationHouse: slot.vacationHouse,
+                            gardenArea: slot.gardenArea,
+                            gazebo: slot.gazebo,
+                            x: rect.left + rect.width / 2,
+                            y: rect.top - 80
+                          })
+                        }}
+                        onMouseLeave={() => setHoveredBar(null)}
+                      />
+                    </g>
+                  )
+                })}
+              </svg>
+
+              {/* X Labels (placed at 90% downwards) */}
+              <svg x="50" y="90%" width="calc(100% - 50px)" height="10%" className="overflow-visible">
+                {calculations.trendSlots.map((slot, slotIdx) => {
+                  const totalSlots = calculations.trendSlots.length
+                  const slotWidth = 100 / totalSlots
+                  const xCenter = slotIdx * slotWidth + slotWidth / 2
+                  
+                  return (
+                    <text key={slotIdx} x={`${xCenter}%`} y="20" textAnchor="middle" className="text-[9px] font-semibold fill-current text-muted">
                       {slot.label}
                     </text>
-
-                    {/* Pension Bar */}
-                    <rect
-                      x={px}
-                      y={200 - pHeight}
-                      width={barW}
-                      height={pHeight}
-                      fill="#B89251"
-                      rx="1"
-                      className="cursor-pointer transition-all hover:opacity-85"
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        setHoveredBar({
-                          label: slot.label,
-                          pension: slot.pension,
-                          vacationHouse: slot.vacationHouse,
-                          gardenArea: slot.gardenArea,
-                          gazebo: slot.gazebo,
-                          x: rect.left + rect.width / 2,
-                          y: rect.top - 80
-                        })
-                      }}
-                      onMouseLeave={() => setHoveredBar(null)}
-                    />
-
-                    {/* Vacation House Bar */}
-                    <rect
-                      x={vx}
-                      y={200 - vHeight}
-                      width={barW}
-                      height={vHeight}
-                      fill="#4A90E2"
-                      rx="1"
-                      className="cursor-pointer transition-all hover:opacity-85"
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        setHoveredBar({
-                          label: slot.label,
-                          pension: slot.pension,
-                          vacationHouse: slot.vacationHouse,
-                          gardenArea: slot.gardenArea,
-                          gazebo: slot.gazebo,
-                          x: rect.left + rect.width / 2,
-                          y: rect.top - 80
-                        })
-                      }}
-                      onMouseLeave={() => setHoveredBar(null)}
-                    />
-
-                    {/* Garden Area Bar */}
-                    <rect
-                      x={gx}
-                      y={200 - gHeight}
-                      width={barW}
-                      height={gHeight}
-                      fill="#2ECC71"
-                      rx="1"
-                      className="cursor-pointer transition-all hover:opacity-85"
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        setHoveredBar({
-                          label: slot.label,
-                          pension: slot.pension,
-                          vacationHouse: slot.vacationHouse,
-                          gardenArea: slot.gardenArea,
-                          gazebo: slot.gazebo,
-                          x: rect.left + rect.width / 2,
-                          y: rect.top - 80
-                        })
-                      }}
-                      onMouseLeave={() => setHoveredBar(null)}
-                    />
-
-                    {/* Gazebo Bar */}
-                    <rect
-                      x={zx}
-                      y={200 - zHeight}
-                      width={barW}
-                      height={zHeight}
-                      fill="#F39C12"
-                      rx="1"
-                      className="cursor-pointer transition-all hover:opacity-85"
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        setHoveredBar({
-                          label: slot.label,
-                          pension: slot.pension,
-                          vacationHouse: slot.vacationHouse,
-                          gardenArea: slot.gardenArea,
-                          gazebo: slot.gazebo,
-                          x: rect.left + rect.width / 2,
-                          y: rect.top - 80
-                        })
-                      }}
-                      onMouseLeave={() => setHoveredBar(null)}
-                    />
-                  </g>
-                )
-              })}
+                  )
+                })}
+              </svg>
 
               {/* Baseline */}
-              <line x1="45" y1="200" x2="580" y2="200" stroke="var(--border-soft)" strokeWidth="1" />
+              <line x1="45" y1="90%" x2="100%" y2="90%" stroke="var(--border-soft)" strokeWidth="1" />
             </svg>
           </div>
 
@@ -712,20 +734,20 @@ export function AnalyticsTab() {
         {/* Contribution Donut Chart */}
         <div className="bg-card border border-soft rounded-xl p-4 flex flex-col justify-between">
           <div>
-            <h4 className="text-xs sm:text-sm font-bold text-main">Profit Share</h4>
-            <p className="text-[10px] text-muted">Percentage split of hotel revenues</p>
+            <h4 className="text-xs sm:text-sm font-bold text-main">Earnings Share</h4>
+            <p className="text-[10px] text-muted">Breakdown of where your money comes from</p>
           </div>
 
           <div className="flex items-center justify-center py-4 relative">
             {donutSegments.length === 0 ? (
-              <p className="text-muted text-xs font-semibold">No revenue data</p>
+              <p className="text-muted text-xs font-semibold">No earnings data</p>
             ) : (
-              <div className="relative w-40 h-40">
+              <div className="relative w-48 h-48 sm:w-56 sm:h-56">
                 <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90">
                   {donutSegments.map((seg, idx) => {
-                    const radius = 70
+                    const radius = 80
                     const circumference = 2 * Math.PI * radius
-                    const dashArray = `${seg.renderPercent * (circumference / 100)} ${circumference}`
+                    const dashArray = isMounted ? `${seg.renderPercent * (circumference / 100)} ${circumference}` : `0 ${circumference}`
                     const dashOffset = `-${seg.renderStartPercent * (circumference / 100)}`
 
                     return (
@@ -736,10 +758,10 @@ export function AnalyticsTab() {
                         r={radius}
                         fill="transparent"
                         stroke={seg.color}
-                        strokeWidth="24"
+                        strokeWidth="28"
                         strokeDasharray={dashArray}
                         strokeDashoffset={dashOffset}
-                        className="cursor-pointer transition-all hover:stroke-[28]"
+                        className="cursor-pointer transition-all duration-1000 ease-out hover:stroke-[34]"
                         onMouseEnter={() => setHoveredDonutSegment(seg.name)}
                         onMouseLeave={() => setHoveredDonutSegment(null)}
                       />
@@ -748,10 +770,10 @@ export function AnalyticsTab() {
                 </svg>
                 {/* Text overlay in the middle of donut */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-[9px] uppercase tracking-wider text-muted font-semibold">
+                  <span className="text-[10px] uppercase tracking-wider text-muted font-bold">
                     {hoveredDonutSegment ? hoveredDonutSegment.split(' ')[0] : 'Total'}
                   </span>
-                  <span className="text-sm sm:text-base font-bold text-main mt-0.5">
+                  <span className="text-lg sm:text-xl font-extrabold text-emerald-600 mt-0.5">
                     {hoveredDonutSegment 
                       ? `${donutSegments.find(s => s.name === hoveredDonutSegment)?.percentage}%`
                       : '100%'
@@ -771,165 +793,180 @@ export function AnalyticsTab() {
                   <span>{seg.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-muted">₱{Math.round(seg.value).toLocaleString()}</span>
-                  <span className="font-bold text-main">{seg.percentage}%</span>
+                  <span className="text-emerald-600 font-bold"><AnimatedNumber prefix="₱" value={seg.value} /></span>
+                  <span className="font-semibold text-muted">{seg.percentage}%</span>
                 </div>
               </div>
             ))}
           </div>
         </div>
       </div>
+        </>
+      )}
 
-      {/* Detailed Revenue Table (Aggregated Breakdown) */}
-      <div className="bg-card border border-soft rounded-xl overflow-hidden">
+      {viewMode === 'spreadsheet' && (
+        <div className="bg-card border border-soft rounded-xl overflow-hidden">
         <div className="p-4 border-b border-soft flex items-center justify-between">
           <div>
-            <h4 className="text-xs sm:text-sm font-bold text-main">Financial Breakdown Statement</h4>
-            <p className="text-[10px] text-muted">Itemized revenue calculations split by property category</p>
+            <h4 className="text-xs sm:text-sm font-bold text-main">Earnings Report</h4>
+            <p className="text-[10px] text-muted">Detailed breakdown of where your money comes from</p>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
-              <tr className="bg-page border-b border-soft text-muted uppercase tracking-wider font-semibold">
-                <th className="p-3">Category Name</th>
-                <th className="p-3 text-right">Apportioned Sales</th>
-                <th className="p-3 text-right">Breakfast Share</th>
-                <th className="p-3 text-right">Add-ons & Rentals</th>
-                <th className="p-3 text-right">Total Net Revenue</th>
-                <th className="p-3 text-right">Revenue share</th>
+              <tr className="bg-slate-100/50 border-b-2 border-slate-200 text-slate-500 uppercase tracking-wider font-bold text-[11px]">
+                <th className="py-4 px-5">Area / Room</th>
+                <th className="py-4 px-5 text-right">Room Rate</th>
+                <th className="py-4 px-5 text-right">Breakfast</th>
+                <th className="py-4 px-5 text-right">Extras</th>
+                <th className="py-4 px-5 text-right">% of Total</th>
+                <th className="py-4 px-5 text-right text-slate-800">Total Earned</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-soft text-main font-medium">
+            <tbody className="divide-y divide-slate-100 text-main text-sm">
               {/* Row 1: Pension */}
               <tr 
-                className="cursor-pointer hover:bg-page transition-colors"
+                className="cursor-pointer hover:bg-slate-50 transition-colors group"
                 onClick={() => setIsPensionExpanded(!isPensionExpanded)}
               >
-                <td className="p-3 font-semibold text-main flex items-center gap-2">
-                  {isPensionExpanded ? <ChevronDown className="w-4 h-4 text-muted" /> : <ChevronRight className="w-4 h-4 text-muted" />}
-                  <span className="w-2.5 h-2.5 rounded-full bg-brand-primary shrink-0"></span>
-                  Pension (Rooms 1-10)
+                <td className="py-4 px-5 font-semibold flex items-center gap-3">
+                  <div className="p-1 rounded bg-slate-100 group-hover:bg-slate-200 transition-colors">
+                    {isPensionExpanded ? <ChevronDown className="w-4 h-4 text-slate-600" /> : <ChevronRight className="w-4 h-4 text-slate-600" />}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-brand-primary"></span>
+                    <span className="text-slate-800">Pension <span className="text-slate-500 font-normal">(Rooms 1-10)</span></span>
+                  </div>
                 </td>
-                <td className="p-3 text-right font-mono">₱{calculations.totalPensionBase.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-muted">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-muted">₱{calculations.totalPensionRentals.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-main font-bold">₱{calculations.totalPension.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono font-bold text-brand-primary">
+                <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">₱{calculations.totalPensionBase.toLocaleString()}</td>
+                <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
+                <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">₱{calculations.totalPensionRentals.toLocaleString()}</td>
+                <td className="py-4 px-5 text-right font-mono font-bold text-brand-primary">
                   {calculations.totalRevenue > 0 ? Math.round((calculations.totalPension / calculations.totalRevenue) * 100) : 0}%
                 </td>
+                <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700"><AnimatedNumber prefix="₱" value={calculations.totalPension} /></td>
               </tr>
 
               {/* Pension Individual Rooms */}
-              {isPensionExpanded && calculations.roomRevenues.map(room => (
-                <tr key={room.id} className="bg-page/50 hover:bg-page transition-colors">
-                  <td className="p-3 pl-12 font-medium text-muted text-[11px] flex items-center gap-2">
+              {isPensionExpanded && calculations.roomRevenues.map((room, idx) => (
+                <tr key={room.id} className={`hover:bg-slate-50 transition-colors ${idx % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
+                  <td className="py-3 px-5 pl-[52px] text-[13px] font-semibold text-slate-800 flex items-center gap-2 relative">
+                    <div className="absolute left-[30px] top-0 bottom-0 w-px bg-slate-200"></div>
+                    <div className="absolute left-[30px] top-1/2 w-3 h-px bg-slate-200"></div>
                     {room.name}
                   </td>
-                  <td className="p-3 text-right font-mono text-[11px]">₱{Math.round(room.base).toLocaleString()}</td>
-                  <td className="p-3 text-right font-mono text-muted text-[11px]">₱{Math.round(room.breakfast).toLocaleString()}</td>
-                  <td className="p-3 text-right font-mono text-muted text-[11px]">₱{Math.round(room.rentals).toLocaleString()}</td>
-                  <td className="p-3 text-right font-mono text-main font-bold text-[11px]">₱{Math.round(room.total).toLocaleString()}</td>
-                  <td className="p-3 text-right font-mono font-bold text-brand-primary text-[11px]">
-                    {calculations.totalRevenue > 0 ? Math.round((room.total / calculations.totalRevenue) * 100) : 0}%
+                  <td className="py-3 px-5 text-right font-mono text-[13px] font-semibold text-slate-800">
+                    {room.base > 0 ? `₱${Math.round(room.base).toLocaleString()}` : <span className="text-slate-300 font-normal">-</span>}
+                  </td>
+                  <td className="py-3 px-5 text-right font-mono text-[13px] font-semibold text-slate-800">
+                    {room.breakfast > 0 ? `₱${Math.round(room.breakfast).toLocaleString()}` : <span className="text-slate-300 font-normal">-</span>}
+                  </td>
+                  <td className="py-3 px-5 text-right font-mono text-[13px] font-semibold text-slate-800">
+                    {room.rentals > 0 ? `₱${Math.round(room.rentals).toLocaleString()}` : <span className="text-slate-300 font-normal">-</span>}
+                  </td>
+                  <td className="py-3 px-5 text-right font-mono font-medium text-[13px] text-slate-500">
+                    {calculations.totalRevenue > 0 && room.total > 0 ? `${Math.round((room.total / calculations.totalRevenue) * 100)}%` : <span className="text-slate-300">-</span>}
+                  </td>
+                  <td className="py-3 px-5 text-right font-mono font-bold text-[13px] text-emerald-700">
+                    {room.total > 0 ? <AnimatedNumber prefix="₱" value={room.total} /> : <span className="text-slate-300 font-normal">-</span>}
                   </td>
                 </tr>
               ))}
 
               {/* Row 2: Vacation House */}
-              <tr>
-                <td className="p-3 font-semibold text-main flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#4A90E2] shrink-0"></span>
-                  Vacation House
+              <tr className="hover:bg-slate-50 transition-colors">
+                <td className="py-4 px-5 font-semibold flex items-center gap-2 pl-[44px]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#4A90E2]"></span>
+                  <span className="text-slate-800">Vacation House</span>
                 </td>
-                <td className="p-3 text-right font-mono">
+                <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">
                   ₱{Math.round(calculations.totalVacationHouse).toLocaleString()}
                 </td>
-                <td className="p-3 text-right font-mono text-muted">₱0</td>
-                <td className="p-3 text-right font-mono text-muted">Apportioned</td>
-                <td className="p-3 text-right font-mono text-main font-bold">
-                  ₱{calculations.totalVacationHouse.toLocaleString()}
-                </td>
-                <td className="p-3 text-right font-mono font-bold text-[#4A90E2]">
+                <td className="py-4 px-5 text-right font-mono font-medium text-slate-300">-</td>
+                <td className="py-4 px-5 text-right font-mono font-semibold text-slate-500 text-xs italic">Included</td>
+                <td className="py-4 px-5 text-right font-mono font-bold text-[#4A90E2]">
                   {calculations.totalRevenue > 0 ? Math.round((calculations.totalVacationHouse / calculations.totalRevenue) * 100) : 0}%
+                </td>
+                <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700">
+                  <AnimatedNumber prefix="₱" value={calculations.totalVacationHouse} />
                 </td>
               </tr>
 
               {/* Row 3: Garden Area */}
-              <tr>
-                <td className="p-3 font-semibold text-main flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#2ECC71] shrink-0"></span>
-                  Garden Area
+              <tr className="hover:bg-slate-50 transition-colors">
+                <td className="py-4 px-5 font-semibold flex items-center gap-2 pl-[44px]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#2ECC71]"></span>
+                  <span className="text-slate-800">Garden Area</span>
                 </td>
-                <td className="p-3 text-right font-mono">
+                <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">
                   ₱{Math.round(calculations.totalGardenArea).toLocaleString()}
                 </td>
-                <td className="p-3 text-right font-mono text-muted">₱0</td>
-                <td className="p-3 text-right font-mono text-muted">Apportioned</td>
-                <td className="p-3 text-right font-mono text-main font-bold">
-                  ₱{calculations.totalGardenArea.toLocaleString()}
-                </td>
-                <td className="p-3 text-right font-mono font-bold text-[#2ECC71]">
+                <td className="py-4 px-5 text-right font-mono font-medium text-slate-300">-</td>
+                <td className="py-4 px-5 text-right font-mono font-semibold text-slate-500 text-xs italic">Included</td>
+                <td className="py-4 px-5 text-right font-mono font-bold text-[#2ECC71]">
                   {calculations.totalRevenue > 0 ? Math.round((calculations.totalGardenArea / calculations.totalRevenue) * 100) : 0}%
+                </td>
+                <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700">
+                  <AnimatedNumber prefix="₱" value={calculations.totalGardenArea} />
                 </td>
               </tr>
 
               {/* Row 4: Gazebo */}
-              <tr>
-                <td className="p-3 font-semibold text-main flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#F39C12] shrink-0"></span>
-                  Gazebo
+              <tr className="hover:bg-slate-50 transition-colors">
+                <td className="py-4 px-5 font-semibold flex items-center gap-2 pl-[44px]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#F39C12]"></span>
+                  <span className="text-slate-800">Gazebo</span>
                 </td>
-                <td className="p-3 text-right font-mono">
+                <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">
                   ₱{Math.round(calculations.totalGazebo).toLocaleString()}
                 </td>
-                <td className="p-3 text-right font-mono text-muted">₱0</td>
-                <td className="p-3 text-right font-mono text-muted">Apportioned</td>
-                <td className="p-3 text-right font-mono text-main font-bold">
-                  ₱{calculations.totalGazebo.toLocaleString()}
-                </td>
-                <td className="p-3 text-right font-mono font-bold text-[#F39C12]">
+                <td className="py-4 px-5 text-right font-mono font-medium text-slate-300">-</td>
+                <td className="py-4 px-5 text-right font-mono font-semibold text-slate-500 text-xs italic">Included</td>
+                <td className="py-4 px-5 text-right font-mono font-bold text-[#F39C12]">
                   {calculations.totalRevenue > 0 ? Math.round((calculations.totalGazebo / calculations.totalRevenue) * 100) : 0}%
                 </td>
-              </tr>
-              {/* Row 5: Expenses */}
-              <tr className="bg-rose-500/10">
-                <td className="p-3 font-semibold text-rose-700 flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
-                  Total Expenses
-                </td>
-                <td className="p-3 text-right font-mono text-muted">-</td>
-                <td className="p-3 text-right font-mono text-muted">-</td>
-                <td className="p-3 text-right font-mono text-muted">-</td>
-                <td className="p-3 text-right font-mono text-rose-600 font-bold">
-                  -₱{calculations.totalExpenses.toLocaleString()}
-                </td>
-                <td className="p-3 text-right font-mono font-bold text-rose-500">
-                  -
+                <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700">
+                  <AnimatedNumber prefix="₱" value={calculations.totalGazebo} />
                 </td>
               </tr>
+
             </tbody>
             <tfoot>
-              <tr className="bg-page font-bold text-main border-t border-soft">
-                <td className="p-3 font-bold">Gross Sales Summary</td>
-                <td className="p-3 text-right font-mono">
+              <tr className="border-t-2 border-slate-200 bg-slate-50 text-slate-800">
+                <td className="py-5 px-5 font-bold text-[13px] uppercase tracking-wider">Total Money In</td>
+                <td className="py-5 px-5 text-right font-mono font-bold">
                   ₱{(calculations.totalPensionBase + calculations.totalVacationHouse + calculations.totalGardenArea + calculations.totalGazebo).toLocaleString()}
                 </td>
-                <td className="p-3 text-right font-mono text-muted">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-muted">₱{calculations.totalAddonsRentals.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-main text-sm font-extrabold">₱{calculations.totalRevenue.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-brand-text text-sm font-extrabold">100%</td>
+                <td className="py-5 px-5 text-right font-mono font-bold text-slate-500">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
+                <td className="py-5 px-5 text-right font-mono font-bold text-slate-500">₱{calculations.totalPensionRentals.toLocaleString()}</td>
+                <td className="py-5 px-5 text-right font-mono font-black text-brand-primary text-[17px]">100%</td>
+                <td className="py-5 px-5 text-right font-mono font-black text-emerald-700 text-[17px]"><AnimatedNumber prefix="₱" value={calculations.totalRevenue} /></td>
               </tr>
-              <tr className="bg-softbg font-bold text-main border-t-2 border-soft">
-                <td className="p-3 font-black text-brand-primary uppercase tracking-wider" colSpan={4}>Net Profit (Gross Sales - Expenses)</td>
-                <td className="p-3 text-right font-mono text-brand-primary text-base font-black">₱{calculations.netProfit.toLocaleString()}</td>
-                <td className="p-3 text-right"></td>
+              <tr className="border-t border-slate-200 bg-rose-50/50 text-rose-800">
+                <td className="py-4 px-5 font-bold text-[13px] uppercase tracking-wider text-rose-600" colSpan={4}>Total Money Out (Expenses)</td>
+                <td className="py-4 px-5 text-right"></td>
+                <td className="py-4 px-5 text-right font-mono font-black text-rose-600 text-[17px]">
+                  -<AnimatedNumber prefix="₱" value={calculations.totalExpenses} />
+                </td>
+              </tr>
+              <tr className="bg-slate-900 text-white shadow-xl relative overflow-hidden">
+                <td className="py-6 px-6 font-black tracking-widest text-[15px] uppercase relative z-10" colSpan={4}>
+                  Your Profit <span className="font-medium text-slate-400 text-xs ml-2 tracking-normal">(Money In - Money Out)</span>
+                </td>
+                <td className="py-6 px-6 text-right relative z-10"></td>
+                <td className="py-6 px-6 text-right font-mono font-black text-3xl text-emerald-400 relative z-10">
+                  <AnimatedNumber prefix="₱" value={calculations.netProfit} />
+                </td>
+                {/* Decorative background element for the profit row */}
+                <div className="absolute top-0 right-0 bottom-0 w-1/2 bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none"></div>
               </tr>
             </tfoot>
           </table>
         </div>
       </div>
+      )}
     </div>
   )
 }

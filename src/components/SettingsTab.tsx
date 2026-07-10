@@ -1,19 +1,17 @@
 import React, { useState } from 'react'
 import { useDashboardData } from './DashboardContext'
-import { generateUUID } from '../utils/syncEngine'
 import { SyncFeed } from '../types/booking'
-import { Copy, Check, Plus, Trash2, Tag, RefreshCw, ChevronDown } from 'lucide-react'
+import { Copy, Check, RefreshCw, ChevronDown } from 'lucide-react'
 
 export function SettingsTab() {
-  const { rooms, feeds, updateFeedUrls, expenseCategories, createExpenseCategory, deleteExpenseCategory, expenses } = useDashboardData()
+  const { rooms, feeds, updateFeedUrls } = useDashboardData()
 
   // Local settings states
+  const [activeTab, setActiveTab] = useState('channels')
   const [editingFeeds, setEditingFeeds] = useState<SyncFeed[]>([])
   const [copiedFeedId, setCopiedFeedId] = useState<string | null>(null)
   const [prevFeeds, setPrevFeeds] = useState<SyncFeed[]>([])
   
-  const [newCategoryName, setNewCategoryName] = useState('')
-
   // Adjust state when feeds are loaded/updated from Query
   if (feeds !== prevFeeds) {
     setPrevFeeds(feeds)
@@ -65,33 +63,6 @@ export function SettingsTab() {
     }
   }
 
-  const handleAddCategory = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newCategoryName.trim()) return
-    try {
-      await createExpenseCategory({ id: `cat-${generateUUID()}`, name: newCategoryName.trim() })
-      setNewCategoryName('')
-    } catch {
-      alert('Failed to add category.')
-    }
-  }
-
-  const handleDeleteCategory = async (id: string) => {
-    const isUsed = expenses.some(exp => exp.category_id === id)
-    if (isUsed) {
-      alert('Cannot delete this category because it is used by existing expenses. Please re-categorize or delete those expenses first.')
-      return
-    }
-    if (confirm('Are you sure you want to delete this category?')) {
-      try {
-        await deleteExpenseCategory(id)
-      } catch {
-        alert('Failed to delete category.')
-      }
-    }
-  }
-
-  const [activeTab, setActiveTab] = useState<'channels' | 'expenses'>('channels')
   const [expandedRoomId, setExpandedRoomId] = useState<string | null>(rooms.length > 0 ? rooms[0].id : null)
 
   return (
@@ -100,18 +71,10 @@ export function SettingsTab() {
       <div className="w-full md:w-56 shrink-0">
         <nav className="flex md:flex-col gap-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
           <button 
-            onClick={() => setActiveTab('channels')} 
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${activeTab === 'channels' ? 'bg-brand-primary text-white shadow-sm' : 'text-muted hover:bg-softbg'}`}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg bg-brand-primary text-white shadow-sm whitespace-nowrap"
           >
             <RefreshCw className="w-4 h-4" />
             OTA Channels
-          </button>
-          <button 
-            onClick={() => setActiveTab('expenses')} 
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${activeTab === 'expenses' ? 'bg-brand-primary text-white shadow-sm' : 'text-muted hover:bg-softbg'}`}
-          >
-            <Tag className="w-4 h-4" />
-            Expense Categories
           </button>
         </nav>
       </div>
@@ -199,66 +162,6 @@ export function SettingsTab() {
                   </div>
                 )
               })}
-            </div>
-          </div>
-        )}
-
-        {/* Expense Categories Card */}
-        {activeTab === 'expenses' && (
-          <div className="bg-card border border-soft rounded-lg overflow-hidden font-sans shadow-sm">
-            <div className="px-5 py-4 border-b border-soft flex justify-between items-center">
-              <div>
-                <h3 className="text-sm font-semibold text-main flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-brand-primary" />
-                  Expense Categories
-                </h3>
-                <p className="text-xs text-muted mt-1">Define custom categories for logging your hotel expenses.</p>
-              </div>
-            </div>
-            <div className="p-5 space-y-5">
-              <form onSubmit={handleAddCategory} className="flex gap-2">
-                <input
-                  type="text"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="e.g. Maintenance, Salary, Supplies"
-                  className="flex-1 bg-card border border-soft text-main p-2 rounded-lg text-sm focus:outline-none focus:border-brand-primary"
-                />
-                <button type="submit" disabled={!newCategoryName.trim()}
-                  className="bg-brand-primary hover:bg-brand-text text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
-                  <Plus className="w-4 h-4" /> Add
-                </button>
-              </form>
-
-              {expenseCategories.length > 0 ? (
-                <div className="border border-soft rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-page text-muted text-xs uppercase">
-                      <tr>
-                        <th className="px-4 py-3 font-medium">Category Name</th>
-                        <th className="px-4 py-3 font-medium text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-soft">
-                      {expenseCategories.map(cat => (
-                        <tr key={cat.id} className="hover:bg-page">
-                          <td className="px-4 py-3 text-main font-medium">{cat.name}</td>
-                          <td className="px-4 py-3 text-right">
-                            <button onClick={() => handleDeleteCategory(cat.id)}
-                              className="text-muted hover:text-rose-500 transition-colors p-1 rounded hover:bg-rose-500/10 cursor-pointer">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-6 bg-page rounded-lg border border-soft border-dashed text-sm text-muted">
-                  No expense categories defined yet. Add one above to start categorizing hotel expenses.
-                </div>
-              )}
             </div>
           </div>
         )}

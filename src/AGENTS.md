@@ -53,6 +53,7 @@ This directory contains the React + TypeScript frontend codebase for the Daweez 
 
 - **Code Validation**: Verify TypeScript build compatibility using `npm run build` or checking Vite compile output.
 - **Responsive Views**: Check that all UI elements adapt correctly on mobile, tablet, and desktop viewports.
+- **Desktop Build**: Verify that you can compile the native desktop client using Deno by running `C:\Users\dev4s\.deno\bin\deno.exe task desktop:build` and checking that the resulting folder structure is generated at `dist/DaweezPMS/`.
 
 ## Child DOX Index
 

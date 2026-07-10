@@ -114,7 +114,7 @@ export function DirectoryTab() {
       <div className="flex justify-between items-center gap-4 border-b border-soft pb-3">
         <div>
           <h2 className="text-base font-bold text-main tracking-tight">Corporate Partners</h2>
-          <p className="text-xs text-muted mt-0.5">Manage agency and corporate deal presets, billing rules, and contracted rates.</p>
+          <p className="text-xs text-muted mt-0.5">Manage your partners, payment rules, and custom prices.</p>
         </div>
       </div>
 
@@ -127,9 +127,9 @@ export function DirectoryTab() {
             <div className="px-5 py-3 border-b border-soft flex items-center justify-between bg-gradient-to-r from-[#FDFBF7] to-white">
               <div>
                 <h3 className="text-sm font-bold text-main">
-                  {editingDealId ? 'Edit Partner Preset' : 'New Partner Preset'}
+                  {editingDealId ? 'Edit Partner' : 'New Partner'}
                 </h3>
-                <p className="text-xs text-muted mt-0.5">Configure deal terms, billing rules, and contracted rates.</p>
+                <p className="text-xs text-muted mt-0.5">Set up custom prices and payment rules.</p>
               </div>
               <button type="button" onClick={resetForm} className="p-2 text-muted hover:text-muted hover:bg-softbg rounded-lg transition-colors cursor-pointer">
                 <X className="w-4 h-4" />
@@ -189,8 +189,8 @@ export function DirectoryTab() {
                   <label className={labelCls}>Default Invoice Style</label>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { value: 'billing', icon: Receipt, title: 'Billing Statement', sub: 'Shows GCash & Landbank details (GRB)' },
-                      { value: 'folio', icon: FileText, title: 'Guest Folio', sub: 'No payment ledger shown (GRF)' },
+                      { value: 'billing', icon: Receipt, title: 'Send Bill to Company', sub: 'Shows hotel bank details' },
+                      { value: 'folio', icon: FileText, title: 'Guest Pays Directly', sub: 'Shows no bank details' },
                     ].map(opt => {
                       const Icon = opt.icon
                       const active = pInvoiceType === opt.value
@@ -221,7 +221,7 @@ export function DirectoryTab() {
                   <label className={labelCls}>Breakfast Inclusions</label>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { value: 'with', icon: Coffee, title: 'Breakfast Included', sub: 'Built into contracted rate' },
+                      { value: 'with', icon: Coffee, title: 'Breakfast Included', sub: 'Built into custom price' },
                       { value: 'w/o', icon: Ban, title: 'No Breakfast', sub: 'Ordered separately (₱150/night)' },
                     ].map(opt => {
                       const Icon = opt.icon
@@ -252,7 +252,7 @@ export function DirectoryTab() {
               {/* RIGHT: Contracted Rates */}
               <div className="bg-brand-bg border border-brand-border rounded-xl p-3.5 space-y-3 self-start">
                 <div>
-                  <h4 className="text-xs font-bold text-brand-text uppercase tracking-wide">Contracted Rates</h4>
+                  <h4 className="text-xs font-bold text-brand-text uppercase tracking-wide">Custom Prices</h4>
                   <p className="text-[10px] text-muted mt-0.5 leading-relaxed">
                     Click a room or venue to <strong className="text-muted">include it</strong> in this deal, then enter its rate.
                   </p>
@@ -384,20 +384,20 @@ export function DirectoryTab() {
                 className="px-5 py-2 rounded-lg bg-brand-primary hover:bg-brand-text text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
               >
                 <Save className="w-4 h-4" />
-                Save Preset
+                Save Partner
               </button>
             </div>
           </form>
         ) : (
           /* Partners List Header */
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted font-medium">{partnerDeals.length} partner preset{partnerDeals.length !== 1 ? 's' : ''} configured</p>
+            <p className="text-xs text-muted font-medium">{partnerDeals.length} partner{partnerDeals.length !== 1 ? 's' : ''} added</p>
             <button
               onClick={() => setIsAdding(true)}
               className="bg-brand-primary hover:bg-brand-text text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
-              Add Partner Preset
+              Add Partner
             </button>
           </div>
         )}
@@ -408,8 +408,8 @@ export function DirectoryTab() {
             {partnerDeals.length === 0 ? (
               <div className="text-center py-16">
                 <Building className="w-8 h-8 text-muted opacity-30 mx-auto mb-3" />
-                <p className="text-sm font-semibold text-muted">No partner presets yet</p>
-                <p className="text-xs text-muted opacity-50 mt-1">Add your first agency or corporate deal above.</p>
+                <p className="text-sm font-semibold text-muted">No partners yet</p>
+                <p className="text-xs text-muted opacity-50 mt-1">Add your first partner above.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -418,8 +418,8 @@ export function DirectoryTab() {
                     <tr className="border-b border-soft bg-page/40">
                       <th className="px-6 py-3.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Partner</th>
                       <th className="px-6 py-3.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Contact</th>
-                      <th className="px-6 py-3.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Billing & Breakfast</th>
-                      <th className="px-6 py-3.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Contracted Rates</th>
+                      <th className="px-6 py-3.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Payment & Breakfast</th>
+                      <th className="px-6 py-3.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Custom Prices</th>
                       <th className="px-6 py-3.5 text-right text-[11px] font-semibold text-muted uppercase tracking-wide">Actions</th>
                     </tr>
                   </thead>
@@ -439,7 +439,7 @@ export function DirectoryTab() {
                         </td>
                         <td className="px-6 py-4 space-y-1.5">
                           <div className="text-xs font-semibold text-main">
-                            {d.invoice_type === 'billing' ? 'Billing Statement (GRB)' : 'Guest Folio (GRF)'}
+                            {d.invoice_type === 'billing' ? 'Send Bill to Company' : 'Guest Pays Directly'}
                           </div>
                           {d.breakfast_default === 'with' ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-200/60">

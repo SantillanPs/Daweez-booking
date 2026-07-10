@@ -1,16 +1,59 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { generateUUID } from '../utils/syncEngine'
-import { TrendingDown, Plus, Trash2, Calendar, FileText, Tag, DollarSign, Wallet } from 'lucide-react'
+import { TrendingDown, Plus, Trash2, Calendar, FileText, Tag, Wallet, X } from 'lucide-react'
 
 export function ExpensesTab() {
-  const { expenses, expenseCategories, createExpense, deleteExpense, isLoading } = useDashboardData()
+  const { expenses, expenseCategories, createExpense, deleteExpense, createExpenseCategory, deleteExpenseCategory, isLoading } = useDashboardData()
   
   const [amount, setAmount] = useState('')
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0])
   const [categoryId, setCategoryId] = useState('')
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false)
+
+  // Category management
+  const [newCategoryName, setNewCategoryName] = useState('')
+
+  // Custom Category Selector State
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Find currently selected category details
+  const selectedCategory = useMemo(() => {
+    return expenseCategories.find(c => c.id === categoryId)
+  }, [categoryId, expenseCategories])
+
+  // Filter categories based on search input
+  const filteredCategories = useMemo(() => {
+    return expenseCategories.filter(cat =>
+      cat.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }, [expenseCategories, searchQuery])
+
+  // Calculate the top 5 most frequently logged categories, fallback to first 5
+  const popularCategories = useMemo(() => {
+    if (expenseCategories.length === 0) return []
+    const counts: Record<string, number> = {}
+    expenses.forEach(exp => {
+      counts[exp.category_id] = (counts[exp.category_id] || 0) + 1
+    })
+    const sorted = [...expenseCategories].sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0))
+    return sorted.slice(0, 5)
+  }, [expenses, expenseCategories])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,6 +88,28 @@ export function ExpensesTab() {
     }
   }
 
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newCategoryName.trim()) return
+    try {
+      await createExpenseCategory({ id: `cat-${generateUUID()}`, name: newCategoryName.trim() })
+      setNewCategoryName('')
+    } catch {
+      alert('Failed to add category.')
+    }
+  }
+
+  const handleDeleteCategory = async (id: string) => {
+    const isUsed = expenses.some(exp => exp.category_id === id)
+    if (isUsed) {
+      alert('Cannot delete: this category is used by existing expenses.')
+      return
+    }
+    if (confirm('Delete this category?')) {
+      try { await deleteExpenseCategory(id) } catch { alert('Failed to delete category.') }
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -75,8 +140,8 @@ export function ExpensesTab() {
             <div>
               <label className="block text-xs font-medium text-main mb-1">Amount (₱)</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <DollarSign className="w-4 h-4 text-muted" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <span className="text-muted text-sm font-medium">₱</span>
                 </div>
                 <input
                   type="number"
@@ -93,24 +158,106 @@ export function ExpensesTab() {
 
             <div>
               <label className="block text-xs font-medium text-main mb-1">Category</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Tag className="w-4 h-4 text-muted" />
-                </div>
-                <select
-                  required
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2 border border-soft rounded-lg text-sm focus:ring-2 focus:ring-[#B89251] focus:border-transparent"
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center justify-between w-full pl-3 pr-3 py-2 border border-soft rounded-lg text-sm bg-card hover:bg-page transition-colors text-left focus:ring-2 focus:ring-[#B89251] focus:border-transparent cursor-pointer"
                 >
-                  <option value="" disabled>Select a category</option>
-                  {expenseCategories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
+                  <div className="flex items-center gap-2 text-main">
+                    <Tag className="w-4 h-4 text-brand-primary shrink-0" />
+                    {selectedCategory ? (
+                      <span className="font-medium text-sm text-main">{selectedCategory.name}</span>
+                    ) : (
+                      <span className="text-muted opacity-60">Select a category</span>
+                    )}
+                  </div>
+                  <div className="text-muted shrink-0 ml-2">
+                    <svg className={`w-4 h-4 fill-current opacity-75 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20">
+                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                    </svg>
+                  </div>
+                </button>
+
+                {isDropdownOpen && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-card border border-soft rounded-lg shadow-lg overflow-hidden flex flex-col max-h-[220px]">
+                    <div className="p-2 border-b border-soft bg-page">
+                      <input
+                        type="text"
+                        placeholder="Search categories..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-xs border border-soft rounded bg-card focus:outline-none focus:ring-1 focus:ring-[#B89251] text-main"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="overflow-y-auto flex-1 py-1">
+                      {filteredCategories.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted text-center italic">
+                          No categories found
+                        </div>
+                      ) : (
+                        filteredCategories.map((cat) => {
+                          const isSelected = cat.id === categoryId;
+                          return (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => {
+                                setCategoryId(cat.id);
+                                setIsDropdownOpen(false);
+                                setSearchQuery('');
+                              }}
+                              className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-page transition-colors cursor-pointer ${
+                                isSelected ? 'bg-softbg font-semibold text-[#B89251]' : 'text-main'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-brand-primary' : 'bg-[#B89251]/40'}`} />
+                                <span>{cat.name}</span>
+                              </div>
+                              {isSelected && (
+                                <svg className="w-3.5 h-3.5 text-brand-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Quick Select Chips */}
+              {expenseCategories.length > 0 && (
+                <div className="mt-2">
+                  <div className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-1">Quick Select:</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {popularCategories.map((cat) => {
+                      const isSelected = cat.id === categoryId;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setCategoryId(cat.id)}
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all border cursor-pointer ${
+                            isSelected
+                              ? 'bg-brand-primary text-white border-brand-primary shadow-sm scale-[1.02]'
+                              : 'bg-page hover:bg-softbg text-muted border-soft hover:text-main'
+                          }`}
+                        >
+                          {cat.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {expenseCategories.length === 0 && (
-                <p className="text-[10px] text-amber-600 mt-1">Please add categories in Settings first.</p>
+                <p className="text-[10px] text-amber-600 mt-1">No categories yet. Add one in the ledger header below.</p>
               )}
             </div>
 
@@ -166,11 +313,19 @@ export function ExpensesTab() {
 
       {/* Right Column: List */}
       <div className="flex-1 bg-card rounded-xl border border-soft shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-        <div className="px-5 py-4 border-b border-soft bg-page flex justify-between items-center shrink-0">
-          <h3 className="text-sm font-semibold text-main">Expense Ledger</h3>
-          <span className="text-xs font-medium text-muted bg-card px-2 py-1 rounded border border-soft">
-            {expenses.length} records
-          </span>
+        <div className="px-5 py-3.5 border-b border-soft bg-page flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-semibold text-main">Expense Ledger</h3>
+            <span className="text-xs font-medium text-muted bg-card px-2 py-1 rounded border border-soft">
+              {expenses.length} records
+            </span>
+            <button 
+              onClick={() => setIsCategoryManagerOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-brand-primary hover:bg-brand-text rounded-md shadow-sm transition-colors ml-2 cursor-pointer"
+            >
+              <Tag className="w-3.5 h-3.5" /> Manage Categories
+            </button>
+          </div>
         </div>
         
         <div className="flex-1 overflow-auto bg-card">
@@ -227,6 +382,58 @@ export function ExpensesTab() {
           )}
         </div>
       </div>
+      
+      {/* Category Management Modal */}
+      {isCategoryManagerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-md rounded-xl border border-soft shadow-xl overflow-hidden flex flex-col">
+            <div className="px-5 py-4 border-b border-soft flex items-center justify-between bg-page">
+              <div className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-brand-primary" />
+                <h3 className="text-sm font-semibold text-main">Manage Expense Categories</h3>
+              </div>
+              <button 
+                onClick={() => setIsCategoryManagerOpen(false)}
+                className="text-muted hover:text-main transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto max-h-[50vh]">
+              {expenseCategories.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {expenseCategories.map(cat => (
+                    <span key={cat.id} className="inline-flex items-center gap-1.5 bg-page border border-soft text-main text-xs font-medium px-3 py-1.5 rounded-full transition-colors hover:border-rose-300/60 hover:bg-rose-500/5">
+                      {cat.name}
+                      <button type="button" onClick={() => handleDeleteCategory(cat.id)} className="text-muted/40 hover:text-rose-500 transition-colors cursor-pointer" title="Remove"><Trash2 className="w-3 h-3" /></button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted text-center py-4">No categories yet. Add one below.</p>
+              )}
+            </div>
+            
+            <div className="p-5 border-t border-soft bg-page">
+              <form onSubmit={handleAddCategory} className="flex gap-2">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="New category name..."
+                  className="flex-1 bg-card border border-soft text-main px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-brand-primary"
+                />
+                <button type="submit" disabled={!newCategoryName.trim()}
+                  className="bg-brand-primary hover:bg-brand-text text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shrink-0">
+                  <Plus className="w-4 h-4" /> Add
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,0 +1,15 @@
+{
+  "desktop": {
+    "backend": "webview",
+    "app": {
+      "name": "Daweez PMS",
+      "deepLinks": [
+        "daweezpms"
+      ]
+    }
+  },
+  "tasks": {
+    "desktop:dev": "deno desktop --hmr .",
+    "desktop:build": "deno desktop --allow-net --allow-read --allow-write --output dist/DaweezPMS.exe ."
+  }
+}

@@ -124,9 +124,9 @@ export function DashboardLayout() {
                 <span className="font-semibold text-main">{currentGuests.length}</span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
-                <span className="text-muted">Rev:</span>
-                <span className="font-semibold text-main">₱{totalRevenue.toLocaleString()}</span>
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="text-muted">Earned:</span>
+                <span className="font-bold text-emerald-600">₱{totalRevenue.toLocaleString()}</span>
               </div>
             </div>
 
@@ -187,8 +187,8 @@ export function DashboardLayout() {
               <span>Guests: <strong className="text-main">{currentGuests.length}</strong></span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <TrendingUp className="w-3 h-3 text-amber-600" />
-              <span>Rev: <strong className="text-main">₱{totalRevenue.toLocaleString()}</strong></span>
+              <TrendingUp className="w-3 h-3 text-emerald-500" />
+              <span>Earned: <strong className="text-emerald-600">₱{totalRevenue.toLocaleString()}</strong></span>
             </div>
           </div>
         </div>

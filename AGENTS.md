@@ -79,6 +79,8 @@ Default section order:
 ### Communication & Language Style
 - **Always Use Simple Language**: Avoid overly complex, academic, or technical jargon in both explanations (responses) and user interface design (labels, tabs, links, and route names).
 - **Clear & Direct Vocabulary**: Prefer plain terms (e.g., "Guests & Partners") over technical terms (e.g., "Directory" or "Registry").
+- **Financial & Spreadsheet Terms**: Never use standard accounting jargon (e.g., "Apportioned Sales", "Gross Revenue", "Net Profit", "Financial Breakdown Statement"). Always use highly simplified, everyday English (e.g., "Earnings Report", "Room Rate", "Total Money In", "Total Money Out", "Your Profit").
+- **Profit Visibility**: Ensure bottom-line profit displays trigger a "reward feeling" or "dopamine hit" (e.g., using clear visibility, bold typography, and rewarding colors like vibrant green) rather than flat theme colors.
 
 ## Child DOX Index
 
