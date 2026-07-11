@@ -13,6 +13,7 @@ import { DirectoryTab } from './components/DirectoryTab'
 import { AnalyticsTab } from './components/AnalyticsTab'
 import { SettingsTab } from './components/SettingsTab'
 import { ExpensesTab } from './components/ExpensesTab'
+import { BookingsListTab } from './components/BookingsListTab'
 import { PublicReservePortal } from './components/PublicReservePortal'
 
 // 1. Create a Root Route
@@ -90,6 +91,12 @@ const expensesRoute = createRoute({
   component: ExpensesTab
 })
 
+const bookingsRoute = createRoute({
+  getParentRoute: () => dashboardRoute,
+  path: '/bookings',
+  component: BookingsListTab
+})
+
 // 5. Construct Route Tree
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -97,10 +104,11 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute.addChildren([
     dashboardIndexRoute,
     calendarRoute,
+    bookingsRoute,
     guestsRoute,
     analyticsRoute,
-    expensesRoute,
-    settingsRoute
+    settingsRoute,
+    expensesRoute
   ])
 ])
 

@@ -4,11 +4,12 @@ import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
 import {
   Sparkles, RefreshCw, LogOut, Home, LogIn, Users, TrendingUp, BarChart3,
-  Calendar, Settings, Building, Moon, Sun
+  Calendar, Settings, Building, Moon, Sun, BookOpen
 } from 'lucide-react'
 
 const TABS = [
   { id: 'calendar',  label: 'Calendar',  Icon: Calendar, to: '/calendar' },
+  { id: 'bookings',  label: 'Bookings',  Icon: BookOpen, to: '/bookings' },
   { id: 'guests',    label: 'Corporate Partners', Icon: Building, to: '/guests' },
   { id: 'analytics', label: 'Analytics', Icon: BarChart3, to: '/analytics' },
   { id: 'expenses',  label: 'Expenses',  Icon: TrendingUp, to: '/expenses' },

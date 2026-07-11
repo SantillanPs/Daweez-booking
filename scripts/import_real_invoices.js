@@ -5,26 +5,32 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321'
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlZmF1bHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY3OTIzOTg0MiwiZXhwIjoxOTk0ODE1ODQyfQ'
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-// Normalize room names to IDs based on your DEFAULT_ROOMS / DEFAULT_VENUES
 const ROOM_MAP = {
-  'Rm 1': 'rm-1',
-  'Rm 2': 'rm-2',
-  'Rm 3': 'rm-3',
-  'Rm 4': 'rm-4',
-  'Rm 5': 'rm-5',
-  'Rm 6': 'rm-6',
-  'Rm 7': 'rm-7',
-  'Rm 8': 'rm-8',
-  'Rm 9': 'rm-9',
-  'Rm 10': 'rm-10',
-  'Bunk Bed 1': 'bunk-1',
-  'Bunk Bed 2': 'bunk-2',
-  'Bunk Bed 3': 'bunk-3',
-  'Bunk Bed 4': 'bunk-4',
-  'Bunk Bed 5': 'bunk-5',
-  'Bunk Bed 6': 'bunk-6',
-  'Gazebo': 'gazebo-1',
-  'Garden': 'garden-1'
+  'Rm 1': 'room-1',
+  'Rm 2': 'room-2',
+  'Rm 3': 'room-3',
+  'Rm 4': 'room-4',
+  'Rm 5': 'room-5',
+  'Rm 6': 'room-6',
+  'Rm 7': 'room-7',
+  'Rm 8': 'room-8',
+  'Rm 9': 'room-9',
+  'Rm 10': 'room-10',
+  'Bunk Bed 1': 'room-7',
+  'Bunk Bed 2': 'room-9',
+  'Bunk Bed 3': 'room-7',
+  'Bunk Bed 4': 'room-9',
+  'Bunk Bed 5': 'room-10',
+  'Bunk Bed 6': 'room-10',
+  'Bunk Bed 10': 'room-10',
+  'Matrimonial Room 5': 'room-5',
+  'Gazebo': 'venue-gazebo',
+  'Garden': 'venue-garden',
+  'Garden Only': 'venue-garden',
+  'Parking Garden': 'venue-garden',
+  'Vacation House': 'venue-vacation',
+  'Vacation House Only': 'venue-vacation',
+  'V-House': 'venue-vacation'
 }
 
 function normalizeDate(dateStr) {
@@ -55,6 +61,9 @@ function generateUUID() {
 }
 
 async function main() {
+  console.log('Clearing old imported bookings...')
+  await supabase.from('bookings').delete().like('id', 'imported-%')
+  
   const data = JSON.parse(fs.readFileSync('real-invoice.json', 'utf-8'))
   const bookings = []
 
@@ -95,7 +104,7 @@ async function main() {
 
     let unitIndex = 1
     for (const rt of roomTypes) {
-      const isVenue = rt.toLowerCase().includes('gazebo') || rt.toLowerCase().includes('garden')
+      const isVenue = rt.toLowerCase().includes('gazebo') || rt.toLowerCase().includes('garden') || rt.toLowerCase().includes('vacation') || rt.toLowerCase().includes('v-house')
       const roomId = isVenue ? undefined : ROOM_MAP[rt]
       const venueId = isVenue ? ROOM_MAP[rt] : undefined
 
