@@ -18,7 +18,6 @@ export function EditBookingModal({ booking, onClose, onSave }: EditBookingModalP
     status: booking.status,
     source: booking.source,
     invoice_number: booking.invoice_number || '',
-    invoice_type: booking.invoice_type || 'folio',
     downpayment_paid: booking.downpayment_paid,
     balance_due: booking.balance_due,
     security_deposit: booking.security_deposit,
@@ -58,7 +57,6 @@ export function EditBookingModal({ booking, onClose, onSave }: EditBookingModalP
         status: formData.status as Booking['status'],
         source: formData.source as Booking['source'],
         invoice_number: formData.invoice_number || undefined,
-        invoice_type: formData.invoice_type as 'folio' | 'billing',
         downpayment_paid: formData.downpayment_paid,
         balance_due: formData.balance_due,
         security_deposit: formData.security_deposit,
@@ -154,19 +152,11 @@ export function EditBookingModal({ booking, onClose, onSave }: EditBookingModalP
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="text-xs text-muted font-medium block mb-1">Invoice Number</label>
                   <input type="text" name="invoice_number" value={formData.invoice_number} onChange={handleChange}
                      className="w-full bg-white dark:bg-card border border-soft text-main px-3 py-2 rounded-lg text-sm font-mono focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted font-medium block mb-1">Invoice Type</label>
-                  <select name="invoice_type" value={formData.invoice_type} onChange={handleChange}
-                    className="w-full bg-white dark:bg-card border border-soft text-main px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none">
-                    <option value="folio">Guest Folio (GRF)</option>
-                    <option value="billing">Billing (GRB)</option>
-                  </select>
                 </div>
               </div>
             </div>

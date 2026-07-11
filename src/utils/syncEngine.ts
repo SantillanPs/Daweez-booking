@@ -314,7 +314,6 @@ export async function getBookings(): Promise<Booking[]> {
           company_name: b.company_name || undefined,
           vehicle_plate: b.vehicle_plate || undefined,
           invoice_number: b.invoice_number || undefined,
-          invoice_type: b.invoice_type as any || undefined,
           breakfast_included: !!b.breakfast_included,
           contract_rate_override: b.contract_rate_override ? Number(b.contract_rate_override) : undefined
         }))
@@ -373,7 +372,6 @@ export async function saveBookings(bookings: Booking[]): Promise<void> {
         company_name: b.company_name || null,
         vehicle_plate: b.vehicle_plate || null,
         invoice_number: b.invoice_number || null,
-        invoice_type: b.invoice_type || null,
         breakfast_included: !!b.breakfast_included,
         contract_rate_override: b.contract_rate_override || null
       }))
@@ -396,7 +394,7 @@ export async function insertBooking(booking: Booking): Promise<void> {
     const allBookings = await getBookings()
     const checkInDate = booking.check_in
     const prefixYearMonth = checkInDate.substring(0, 7) // "YYYY-MM"
-    const prefixDocType = booking.invoice_type === 'billing' ? 'GRB' : 'GRF'
+    const prefixDocType = 'GRF'
     
     const sameMonthBookings = allBookings.filter(b => 
       b.invoice_number && 
@@ -441,7 +439,6 @@ export async function insertBooking(booking: Booking): Promise<void> {
     company_name: booking.company_name || null,
     vehicle_plate: booking.vehicle_plate || null,
     invoice_number: booking.invoice_number || null,
-    invoice_type: booking.invoice_type || null,
     breakfast_included: !!booking.breakfast_included,
     contract_rate_override: booking.contract_rate_override || null
   }
@@ -488,7 +485,6 @@ export async function updateBooking(booking: Booking): Promise<void> {
     company_name: booking.company_name || null,
     vehicle_plate: booking.vehicle_plate || null,
     invoice_number: booking.invoice_number || null,
-    invoice_type: booking.invoice_type || null,
     breakfast_included: !!booking.breakfast_included,
     contract_rate_override: booking.contract_rate_override || null
   }
@@ -1691,7 +1687,6 @@ export async function getPartnerDeals(): Promise<PartnerDeal[]> {
           contact_no: d.contact_no || undefined,
           email: d.email || undefined,
           vehicle_plate: d.vehicle_plate || undefined,
-          invoice_type: d.invoice_type as any,
           breakfast_default: d.breakfast_default as any,
           contracted_rates: d.contracted_rates || {},
           created_at: d.created_at
@@ -1720,7 +1715,6 @@ export async function savePartnerDeals(deals: PartnerDeal[]): Promise<void> {
         contact_no: d.contact_no || null,
         email: d.email || null,
         vehicle_plate: d.vehicle_plate || null,
-        invoice_type: d.invoice_type,
         breakfast_default: d.breakfast_default,
         contracted_rates: d.contracted_rates,
         created_at: d.created_at
@@ -1749,7 +1743,6 @@ export async function insertPartnerDeal(deal: PartnerDeal): Promise<void> {
         contact_no: deal.contact_no || null,
         email: deal.email || null,
         vehicle_plate: deal.vehicle_plate || null,
-        invoice_type: deal.invoice_type,
         breakfast_default: deal.breakfast_default,
         contracted_rates: deal.contracted_rates,
         created_at: deal.created_at

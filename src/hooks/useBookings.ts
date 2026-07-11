@@ -194,14 +194,14 @@ export function useBookings() {
     breakfastOrders?: BreakfastOrder[]; equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons; rateMultiplier?: number; companions?: Companion[]
     partnerDealId?: string; companyName?: string; vehiclePlate?: string
-    invoiceType?: 'folio' | 'billing'; breakfastIncluded?: boolean; contractRateOverride?: number
     paymentMethod?: string; paymentReference?: string; venueExcessHours?: number
+    breakfastIncluded?: boolean; contractRateOverride?: number
   }, MutationContext>({
     mutationFn: async (params) => {
       const { roomId, venueId, guestName, guestEmail, guestPhone, checkIn, checkOut,
         source, status, breakfastOrders, equipmentRentals, eventAddons,
         rateMultiplier = 1.0, companions,
-        partnerDealId, companyName, vehiclePlate, invoiceType, breakfastIncluded, contractRateOverride,
+        partnerDealId, companyName, vehiclePlate, breakfastIncluded, contractRateOverride,
         paymentMethod, paymentReference, venueExcessHours = 0 } = params
 
       if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings)) {
@@ -240,7 +240,7 @@ export function useBookings() {
         partner_deal_id: partnerDealId,
         company_name: companyName,
         vehicle_plate: vehiclePlate,
-        invoice_type: invoiceType,
+        invoice_number: undefined,
         breakfast_included: !!breakfastIncluded,
         contract_rate_override: contractRateOverride
       }
@@ -269,7 +269,7 @@ export function useBookings() {
         partner_deal_id: params.partnerDealId,
         company_name: params.companyName,
         vehicle_plate: params.vehiclePlate,
-        invoice_type: params.invoiceType,
+        invoice_number: undefined,
         breakfast_included: !!params.breakfastIncluded,
         contract_rate_override: params.contractRateOverride
       }

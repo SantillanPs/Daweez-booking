@@ -32,7 +32,6 @@ export interface DashboardDataContextValue {
     partnerDealId?: string
     companyName?: string
     vehiclePlate?: string
-    invoiceType?: 'folio' | 'billing'
     breakfastIncluded?: boolean
     contractRateOverride?: number
   }) => Promise<Booking>

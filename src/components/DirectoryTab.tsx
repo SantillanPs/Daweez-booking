@@ -16,7 +16,6 @@ export function DirectoryTab() {
   const [pContactNo, setPContactNo] = useState('')
   const [pEmail, setPEmail] = useState('')
   const [pVehiclePlate, setPVehiclePlate] = useState('')
-  const [pInvoiceType, setPInvoiceType] = useState<'folio' | 'billing'>('folio')
   const [pBreakfastDefault, setPBreakfastDefault] = useState<'w/o' | 'with'>('w/o')
   const [pRates, setPRates] = useState<Record<string, number>>({})
   const [selectedUnits, setSelectedUnits] = useState<Set<string>>(new Set())
@@ -24,7 +23,7 @@ export function DirectoryTab() {
   const resetForm = () => {
     setPName(''); setPType('company'); setPTIN(''); setPAddress('')
     setPContactNo(''); setPEmail(''); setPVehiclePlate('')
-    setPInvoiceType('folio'); setPBreakfastDefault('w/o'); setPRates({})
+    setPBreakfastDefault('w/o'); setPRates({})
     setSelectedUnits(new Set())
     setEditingDealId(null); setIsAdding(false)
   }
@@ -33,7 +32,7 @@ export function DirectoryTab() {
     setPName(deal.name); setPType(deal.type); setPTIN(deal.tin || '')
     setPAddress(deal.address || ''); setPContactNo(deal.contact_no || '')
     setPEmail(deal.email || ''); setPVehiclePlate(deal.vehicle_plate || '')
-    setPInvoiceType(deal.invoice_type); setPBreakfastDefault(deal.breakfast_default)
+    setPBreakfastDefault(deal.breakfast_default)
     const rates = deal.contracted_rates || {}
     setPRates(rates)
     setSelectedUnits(new Set(Object.keys(rates).filter(k => (rates[k] ?? 0) > 0)))
@@ -65,7 +64,7 @@ export function DirectoryTab() {
       name: pName, type: pType, tin: pTIN || undefined,
       address: pAddress || undefined, contact_no: pContactNo || undefined,
       email: pEmail || undefined, vehicle_plate: pVehiclePlate || undefined,
-      invoice_type: pInvoiceType, breakfast_default: pBreakfastDefault,
+      breakfast_default: pBreakfastDefault,
       contracted_rates: cleanRates, created_at: new Date().toISOString()
     }
 
@@ -181,38 +180,6 @@ export function DirectoryTab() {
                   <div className="grid grid-cols-2 gap-3">
                     <input type="email" placeholder="Email address" value={pEmail} onChange={e => setPEmail(e.target.value)} className={inputCls} />
                     <input type="text" placeholder="Phone number" value={pContactNo} onChange={e => setPContactNo(e.target.value)} className={inputCls} />
-                  </div>
-                </div>
-
-                {/* Invoice Style — toggle cards */}
-                <div>
-                  <label className={labelCls}>Default Invoice Style</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { value: 'billing', icon: Receipt, title: 'Send Bill to Company', sub: 'Shows hotel bank details' },
-                      { value: 'folio', icon: FileText, title: 'Guest Pays Directly', sub: 'Shows no bank details' },
-                    ].map(opt => {
-                      const Icon = opt.icon
-                      const active = pInvoiceType === opt.value
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setPInvoiceType(opt.value as any)}
-                          className={`text-left p-2.5 rounded-lg border-2 transition-all cursor-pointer ${
-                            active
-                              ? 'border-brand-primary bg-brand-bg'
-                              : 'border-soft bg-card hover:border-soft'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <Icon className={`w-3.5 h-3.5 ${active ? 'text-brand-primary' : 'text-muted'}`} />
-                            <span className={`text-xs font-bold ${active ? 'text-brand-text' : 'text-muted'}`}>{opt.title}</span>
-                          </div>
-                          <p className="text-[10px] text-muted leading-normal">{opt.sub}</p>
-                        </button>
-                      )
-                    })}
                   </div>
                 </div>
 
@@ -418,7 +385,7 @@ export function DirectoryTab() {
                     <tr className="border-b border-soft bg-page/40">
                       <th className="px-6 py-3.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Partner</th>
                       <th className="px-6 py-3.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Contact</th>
-                      <th className="px-6 py-3.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Payment & Breakfast</th>
+                      <th className="px-6 py-3.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Breakfast</th>
                       <th className="px-6 py-3.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Custom Prices</th>
                       <th className="px-6 py-3.5 text-right text-[11px] font-semibold text-muted uppercase tracking-wide">Actions</th>
                     </tr>
@@ -437,10 +404,7 @@ export function DirectoryTab() {
                           {d.contact_no && <div className="text-muted text-xs font-mono mt-0.5">{d.contact_no}</div>}
                           {!d.email && !d.contact_no && <span className="text-muted opacity-50 text-xs">—</span>}
                         </td>
-                        <td className="px-6 py-4 space-y-1.5">
-                          <div className="text-xs font-semibold text-main">
-                            {d.invoice_type === 'billing' ? 'Send Bill to Company' : 'Guest Pays Directly'}
-                          </div>
+                        <td className="px-6 py-4">
                           {d.breakfast_default === 'with' ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-200/60">
                               <Coffee className="w-2.5 h-2.5" /> Breakfast Included

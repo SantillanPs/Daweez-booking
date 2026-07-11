@@ -120,10 +120,8 @@ export function PrintInvoiceModal({
 
   // Format invoice number
   // If no generated invoice_number is stored, generate one on-the-fly for preview
-  const invoiceType = booking.invoice_type || 'folio'
-  const isBilling = invoiceType === 'billing'
   const displayInvoiceNumber = booking.invoice_number || (
-    `${isBilling ? 'GRB' : 'GRF'}-${booking.check_in.substring(0, 7).replace('-', '')}-PREVIEW`
+    `GRF-${booking.check_in.substring(0, 7).replace('-', '')}-PREVIEW`
   )
 
   const handlePrint = () => {
@@ -139,7 +137,7 @@ export function PrintInvoiceModal({
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0 print:hidden font-sans">
           <div className="flex items-center gap-2">
             <span className="bg-brand-primary text-xs font-bold px-2 py-0.5 rounded text-main uppercase">
-              {invoiceType === 'billing' ? 'GRB Bill Statement' : 'Guest Folio'}
+              Guest Folio
             </span>
             <span className="text-xs font-mono text-muted">{displayInvoiceNumber}</span>
           </div>
@@ -178,7 +176,7 @@ export function PrintInvoiceModal({
             </div>
             <div className="text-left sm:text-right">
               <h2 className="text-sm font-extrabold text-brand-text uppercase tracking-wider">
-                {isBilling ? 'GUEST REGISTRATION AND BILLING' : 'GUEST FOLIO'}
+                GUEST FOLIO
               </h2>
               <div className="mt-2 text-xs font-medium space-y-0.5 text-muted">
                 <div><span className="text-muted">Invoice No:</span> <strong className="font-mono text-slate-950">{displayInvoiceNumber}</strong></div>
@@ -218,19 +216,19 @@ export function PrintInvoiceModal({
                 <span className="text-muted font-semibold">Vehicle Plate</span>
                 <span className="text-main font-mono font-semibold uppercase">{booking.vehicle_plate || 'N/A'}</span>
                 
-                {!isBilling && booking.company_name && (
+                {booking.company_name && (
                   <>
                     <span className="text-muted font-semibold mt-2">Company / Agency</span>
                     <strong className="text-main font-semibold mt-2">{booking.company_name}</strong>
                   </>
                 )}
-                {!isBilling && deal?.tin && (
+                {deal?.tin && (
                   <>
                     <span className="text-muted font-semibold">TIN</span>
                     <span className="text-main font-mono font-medium">{deal.tin}</span>
                   </>
                 )}
-                {!isBilling && deal?.address && (
+                {deal?.address && (
                   <>
                     <span className="text-muted font-semibold self-start mt-0.5">Billing Address</span>
                     <span className="text-main font-medium">{deal.address}</span>
@@ -338,28 +336,22 @@ export function PrintInvoiceModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 pt-6 border-t-2 border-soft">
             {/* GCash / Landbank billing details (GRB ONLY) */}
             <div>
-              {isBilling ? (
-                <div className="bg-[#FAF7F2] border border-[#EBE1D1] rounded-xl p-4 text-[11px] text-brand-text space-y-2 leading-relaxed">
-                  <strong className="text-xs uppercase tracking-wider block font-bold">Bank Transfer & Digital Payments</strong>
-                  <p>To settle balances, please transfer to either of the following official channels:</p>
-                  <div className="border-t border-[#EBE1D1] pt-2 space-y-1 font-medium">
-                    <div>
-                      <span className="text-muted block font-bold">GCASH ACCOUNT:</span>
-                      <strong className="text-brand-text text-xs font-mono font-bold">DAWEEZ PENSION HOTEL</strong>
-                      <span className="text-muted font-mono block">Number: 0917-889-8978</span>
-                    </div>
-                    <div className="pt-1.5">
-                      <span className="text-muted block font-bold">LANDBANK ACCOUNT:</span>
-                      <strong className="text-brand-text text-xs font-mono font-bold">DAWEEZ PENSION HOTEL</strong>
-                      <span className="text-muted font-mono block">Account No: 1234-5678-90</span>
-                    </div>
+              <div className="bg-[#FAF7F2] border border-[#EBE1D1] rounded-xl p-4 text-[11px] text-brand-text space-y-2 leading-relaxed">
+                <strong className="text-xs uppercase tracking-wider block font-bold">Bank Transfer & Digital Payments</strong>
+                <p>To settle balances, please transfer to either of the following official channels:</p>
+                <div className="border-t border-[#EBE1D1] pt-2 space-y-1 font-medium">
+                  <div>
+                    <span className="text-muted block font-bold">GCASH ACCOUNT:</span>
+                    <strong className="text-brand-text text-xs font-mono font-bold">DAWEEZ PENSION HOTEL</strong>
+                    <span className="text-muted font-mono block">Number: 0917-889-8978</span>
+                  </div>
+                  <div className="pt-1.5">
+                    <span className="text-muted block font-bold">LANDBANK ACCOUNT:</span>
+                    <strong className="text-brand-text text-xs font-mono font-bold">DAWEEZ PENSION HOTEL</strong>
+                    <span className="text-muted font-mono block">Account No: 1234-5678-90</span>
                   </div>
                 </div>
-              ) : (
-                <div className="text-[11px] text-muted italic">
-                  Note: This guest folio excludes payment account disclosures. Contact frontdesk administration for billing questions.
-                </div>
-              )}
+              </div>
             </div>
 
             {/* Price Ledger summary */}

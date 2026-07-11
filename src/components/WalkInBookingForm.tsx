@@ -36,7 +36,6 @@ interface WalkInBookingFormProps {
     partnerDealId?: string
     companyName?: string
     vehiclePlate?: string
-    invoiceType?: 'folio' | 'billing'
     breakfastIncluded?: boolean
     contractRateOverride?: number
     paymentMethod?: string
@@ -68,7 +67,6 @@ export function WalkInBookingForm({
   const [formVehiclePlate, setFormVehiclePlate] = useState('')
   const [formTIN, setFormTIN] = useState('')
   const [formAddress, setFormAddress] = useState('')
-  const [formInvoiceType, setFormInvoiceType] = useState<'folio' | 'billing'>('folio')
 
   const handleSelectPartnerDeal = (deal: PartnerDeal | null) => {
     if (deal) {
@@ -77,7 +75,6 @@ export function WalkInBookingForm({
       setFormTIN(deal.tin || '')
       setFormAddress(deal.address || '')
       setFormVehiclePlate(deal.vehicle_plate || '')
-      setFormInvoiceType(deal.invoice_type)
       setFormGuestEmail(deal.email || '')
       setFormGuestPhone(deal.contact_no || '')
 
@@ -105,7 +102,6 @@ export function WalkInBookingForm({
       setFormTIN('')
       setFormAddress('')
       setFormVehiclePlate('')
-      setFormInvoiceType('folio')
       setFormGuestEmail('')
       setFormGuestPhone('')
       setUnitSelections({})
@@ -379,7 +375,6 @@ export function WalkInBookingForm({
           partnerDealId: formPartnerDealId || undefined,
           companyName: formCompanyName || undefined,
           vehiclePlate: formVehiclePlate || undefined,
-          invoiceType: formInvoiceType,
           breakfastIncluded: isBreakfastIncluded,
           contractRateOverride: contractedPrice || undefined,
           paymentMethod: formPaymentMethod || undefined,
@@ -420,7 +415,6 @@ export function WalkInBookingForm({
           partnerDealId: formPartnerDealId || undefined,
           companyName: formCompanyName || undefined,
           vehiclePlate: formVehiclePlate || undefined,
-          invoiceType: bookingType === 'partner' ? 'billing' : 'folio',
           contractRateOverride: contractedPrice || undefined,
           paymentMethod: formPaymentMethod || undefined,
           paymentReference: formPaymentReference || undefined,
@@ -819,8 +813,6 @@ export function WalkInBookingForm({
                           setFormTIN={setFormTIN}
                           formAddress={formAddress}
                           setFormAddress={setFormAddress}
-                          formInvoiceType={formInvoiceType}
-                          setFormInvoiceType={setFormInvoiceType}
                           onSelectPartnerDeal={handleSelectPartnerDeal}
                         />
                         {formStatus === 'blocked' ? (
@@ -945,7 +937,6 @@ export function WalkInBookingForm({
                       created_at: new Date().toISOString(),
                       expires_at: null,
                       breakfast_included: isBreakfastIncluded,
-                      invoice_type: formInvoiceType,
                       equipment_rentals: rentals,
                       venue_excess_hours: formVenueExcessHours,
                       downpayment_paid: estDown,

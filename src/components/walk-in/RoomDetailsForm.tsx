@@ -26,8 +26,6 @@ interface RoomDetailsFormProps {
   setFormTIN: (val: string) => void
   formAddress: string
   setFormAddress: (val: string) => void
-  formInvoiceType: 'folio' | 'billing'
-  setFormInvoiceType: (val: 'folio' | 'billing') => void
   onSelectPartnerDeal: (deal: PartnerDeal | null) => void
 }
 
@@ -55,8 +53,6 @@ export const RoomDetailsForm = React.memo(
     setFormTIN,
     formAddress,
     setFormAddress,
-    formInvoiceType,
-    setFormInvoiceType,
     onSelectPartnerDeal
   }: RoomDetailsFormProps) => {
     if (formStatus === 'blocked') {
