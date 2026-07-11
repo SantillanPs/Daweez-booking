@@ -288,6 +288,33 @@ export function useBookings() {
     }
   })
 
+  // 9. Mutation: Update Booking
+  const updateBookingMutation = useMutation<void, Error, Booking, MutationContext>({
+    mutationFn: async (updatedBooking: Booking) => {
+      if (updatedBooking.room_id && !syncEngine.isRoomAvailable(updatedBooking.room_id, updatedBooking.check_in, updatedBooking.check_out, bookings, updatedBooking.id)) {
+        throw new Error('Overlap collision — room already reserved.')
+      }
+      if (updatedBooking.venue_id && !syncEngine.isVenueRangeAvailable(updatedBooking.venue_id, updatedBooking.check_in, updatedBooking.check_out, bookings, updatedBooking.id)) {
+        throw new Error('Overlap collision — venue already reserved.')
+      }
+      await syncEngine.updateBooking(updatedBooking)
+    },
+    onMutate: async (updatedBooking) => {
+      await queryClient.cancelQueries({ queryKey: ['bookings'] })
+      const previous = queryClient.getQueryData<Booking[]>(['bookings'])
+      queryClient.setQueryData<Booking[]>(['bookings'], old => 
+        old?.map(b => b.id === updatedBooking.id ? updatedBooking : b)
+      )
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      queryClient.setQueryData(['bookings'], ctx?.previous)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    }
+  })
+
   // 9. Mutation: Trigger Simulated OTA Feed Sync
   const triggerOTASyncMutation = useMutation({
     mutationFn: async () => {
@@ -414,6 +441,9 @@ export function useBookings() {
 
     createManualBooking: createManualBookingMutation.mutateAsync,
     isCreatingManualBooking: createManualBookingMutation.isPending,
+
+    updateBooking: updateBookingMutation.mutateAsync,
+    isUpdatingBooking: updateBookingMutation.isPending,
 
     triggerOTASync: triggerOTASyncMutation.mutateAsync,
     isSyncingOTA: triggerOTASyncMutation.isPending,

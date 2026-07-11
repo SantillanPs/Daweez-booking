@@ -37,6 +37,7 @@ export interface DashboardDataContextValue {
     contractRateOverride?: number
   }) => Promise<Booking>
   triggerOTASync: () => Promise<number>
+  updateBooking: (booking: Booking) => Promise<void>
   updateFeedUrls: (updatedFeeds: SyncFeed[]) => Promise<SyncFeed[]>
   createPartnerDeal: (deal: PartnerDeal) => Promise<void>
   savePartnerDeals: (deals: PartnerDeal[]) => Promise<void>

@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react'
 import { useDashboardData } from './DashboardContext'
-import { Search, Filter, CalendarDays, User, Building, MapPin, BadgeDollarSign, Calendar as CalendarIcon, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { Search, Filter, CalendarDays, User, Building, MapPin, BadgeDollarSign, Calendar as CalendarIcon, CheckCircle2, XCircle, Clock, Edit } from 'lucide-react'
 import { Booking } from '../types/booking'
+import { EditBookingModal } from './EditBookingModal'
 
 export function BookingsListTab() {
-  const { bookings, rooms, venues } = useDashboardData()
+  const { bookings, rooms, venues, updateBooking } = useDashboardData()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<Booking['status'] | 'all'>('all')
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
   
   const getUnitName = (booking: Booking) => {
     if (booking.room_id) {
@@ -88,6 +90,7 @@ export function BookingsListTab() {
                 <th className="px-6 py-4 font-semibold">Unit</th>
                 <th className="px-6 py-4 font-semibold text-right">Financials</th>
                 <th className="px-6 py-4 font-semibold text-center">Status</th>
+                <th className="px-6 py-4 font-semibold text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-soft">
@@ -160,6 +163,15 @@ export function BookingsListTab() {
                           {b.status}
                         </div>
                       </td>
+                      <td className="px-6 py-4 text-center">
+                        <button
+                          onClick={() => setEditingBooking(b)}
+                          className="p-1.5 text-muted hover:text-brand-primary bg-page hover:bg-brand-bg rounded transition-colors cursor-pointer"
+                          title="Edit Booking"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                   )
                 })
@@ -168,6 +180,16 @@ export function BookingsListTab() {
           </table>
         </div>
       </div>
+
+      {editingBooking && (
+        <EditBookingModal
+          booking={editingBooking}
+          onClose={() => setEditingBooking(null)}
+          onSave={async (updated) => {
+            await updateBooking(updated)
+          }}
+        />
+      )}
     </div>
   )
 }

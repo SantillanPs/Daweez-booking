@@ -463,6 +463,54 @@ export async function insertBooking(booking: Booking): Promise<void> {
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify([...existing, booking]))
 }
 
+// Update a single booking
+export async function updateBooking(booking: Booking): Promise<void> {
+  const record = {
+    id: booking.id,
+    room_id: booking.room_id || null,
+    venue_id: booking.venue_id || null,
+    guest_name: booking.guest_name,
+    guest_email: booking.guest_email,
+    guest_phone: booking.guest_phone,
+    check_in: booking.check_in,
+    check_out: booking.check_out,
+    source: booking.source,
+    status: booking.status,
+    downpayment_paid: booking.downpayment_paid,
+    balance_due: booking.balance_due,
+    security_deposit: booking.security_deposit,
+    breakfast_orders: booking.breakfast_orders || null,
+    equipment_rentals: booking.equipment_rentals || null,
+    event_addons: booking.event_addons || null,
+    companions: booking.companions || null,
+    expires_at: booking.expires_at || null,
+    partner_deal_id: booking.partner_deal_id || null,
+    company_name: booking.company_name || null,
+    vehicle_plate: booking.vehicle_plate || null,
+    invoice_number: booking.invoice_number || null,
+    invoice_type: booking.invoice_type || null,
+    breakfast_included: !!booking.breakfast_included,
+    contract_rate_override: booking.contract_rate_override || null
+  }
+
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('bookings').update(record).eq('id', booking.id)
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase updateBooking Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  // LocalStorage fallback
+  initDB()
+  const data = localStorage.getItem(BOOKINGS_KEY)
+  const existing: Booking[] = data ? JSON.parse(data) : []
+  const updated = existing.map(b => b.id === booking.id ? booking : b)
+  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updated))
+}
+
 export async function deleteBooking(bookingId: string): Promise<void> {
   if (isSupabaseConfigured) {
     try {
