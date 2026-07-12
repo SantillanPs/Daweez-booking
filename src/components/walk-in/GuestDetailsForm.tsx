@@ -115,65 +115,6 @@ export const GuestDetailsForm = React.memo(
           </div>
         </div>
 
-        {/* Individual Staggered Stay Dates */}
-        {Object.keys(unitSelections).length > 0 && (
-          <div className="space-y-2 pt-2 border-t border-soft">
-            <span className="text-[10px] text-muted font-semibold block mb-1.5">Dates for Selection:</span>
-            <div className="border border-soft/60 rounded-lg overflow-hidden divide-y divide-slate-150 bg-page/15">
-              {Object.entries(unitSelections).map(([id, sel]) => {
-                const name = sel.type === 'room'
-                  ? `Room ${rooms.find(r => r.id === id)?.room_number}`
-                  : venues.find(v => v.id === id)?.name || id
-                
-                // Overlap check
-                const isRoom = sel.type === 'room'
-                const isOverlapping = sel.checkIn && sel.checkOut && (isRoom
-                  ? !syncEngine.isRoomAvailable(id, sel.checkIn, sel.checkOut, bookings)
-                  : !syncEngine.isVenueRangeAvailable(id, sel.checkIn, sel.checkOut, bookings))
-
-                return (
-                  <div key={id} className="p-2 sm:px-3 sm:py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-page/50 transition-colors">
-                    <div className="sm:w-28 shrink-0">
-                      <span className="text-xs font-bold text-main block leading-tight">{name}</span>
-                      {isOverlapping && (
-                        <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-100 px-1 rounded block mt-0.5 max-w-max animate-pulse">
-                          Dates Overlap
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 flex items-center gap-2 max-w-sm">
-                      <input
-                        type="date"
-                        required
-                        value={sel.checkIn}
-                        onChange={e => {
-                          const updated = { ...unitSelections }
-                          updated[id] = { ...sel, checkIn: e.target.value }
-                          setUnitSelections(updated)
-                        }}
-                        className="w-full bg-card border border-soft text-main px-2 py-1 rounded text-xs font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all"
-                      />
-                      <span className="text-muted text-xs shrink-0 select-none font-medium">to</span>
-                      <input
-                        type="date"
-                        required
-                        value={sel.checkOut}
-                        onChange={e => {
-                          const updated = { ...unitSelections }
-                          updated[id] = { ...sel, checkOut: e.target.value }
-                          setUnitSelections(updated)
-                        }}
-                        className="w-full bg-card border border-soft text-main px-2 py-1 rounded text-xs font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all"
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Channel, Status & Discount Types in a highly space-efficient grid */}
         <div className={`grid gap-3 pt-1 border-t border-soft ${formStatus === 'confirmed' ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'}`}>
           <div>
