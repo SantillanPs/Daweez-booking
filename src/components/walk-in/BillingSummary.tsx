@@ -1,6 +1,5 @@
 import React from 'react'
 import { Room, Venue, BookingSource, PartnerDeal } from '../../types/booking'
-import { Mail, Printer } from 'lucide-react'
 
 interface BillingSummaryProps {
   formStatus: 'confirmed' | 'blocked'
@@ -25,7 +24,6 @@ interface BillingSummaryProps {
   formPaymentReference?: string
   setFormPaymentReference?: (val: string) => void
   formVenueExcessHours?: number
-  onPrintInvoice?: () => void
 
   // Edit Mode Overrides
   isEditMode?: boolean
@@ -65,7 +63,6 @@ export const BillingSummary = React.memo(
     formPaymentReference,
     setFormPaymentReference,
     formVenueExcessHours,
-    onPrintInvoice,
     isEditMode,
     formInvoiceNumber,
     setFormInvoiceNumber,

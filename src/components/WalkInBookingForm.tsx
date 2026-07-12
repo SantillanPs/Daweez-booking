@@ -200,7 +200,7 @@ export function WalkInBookingForm({
   const [formAdditionalDiscount, setFormAdditionalDiscount] = useState(0)
   const [formWalkInDiscount, setFormWalkInDiscount] = useState(true)
   const [createdBookingList, setCreatedBookingList] = useState<Booking[]>([])
-  const [printTargetBooking, setPrintTargetBooking] = useState<Booking | null>(null)
+
 
   // ── Breakfast state ──
   const [formBreakfastEnabled, setFormBreakfastEnabled] = useState(true)
@@ -975,73 +975,13 @@ export function WalkInBookingForm({
                   formPaymentReference={formPaymentReference}
                   setFormPaymentReference={setFormPaymentReference}
                   formVenueExcessHours={formVenueExcessHours}
-                  onPrintInvoice={() => {
-                    const firstUnitId = Object.keys(unitSelections)[0]
-                    if (!firstUnitId) return
-                    const sel = unitSelections[firstUnitId]
-                    const isRoom = sel.type === 'room'
-                    const deal = partnerDeals?.find(d => d.id === formPartnerDealId)
-                    const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
-                
-                    const rentals = isRoom ? {
-                      bigTableCount: 0,
-                      smallTableCount: 0,
-                      chairCount: 0,
-                      mineralWaterCount: 0,
-                      extraFoamCount: formExtraFoam,
-                      extraPillowCount: formExtraPillow,
-                      extraBlanketCount: formExtraBlanket,
-                      extraTowelCount: formExtraTowel
-                    } : {
-                      bigTableCount: 0,
-                      smallTableCount: 0,
-                      chairCount: formChairs,
-                      mineralWaterCount: 0,
-                      tableCount: formEventTable,
-                      tentCount: formEventTent
-                    }
-                
-                    const dummyBooking: Booking = {
-                      id: 'preview',
-                      room_id: isRoom ? firstUnitId : undefined,
-                      venue_id: !isRoom ? firstUnitId : undefined,
-                      guest_name: formGuestName || 'Guest Name',
-                      guest_email: formGuestEmail || '',
-                      guest_phone: formGuestPhone || '',
-                      check_in: sel.checkIn,
-                      check_out: sel.checkOut,
-                      status: 'pending',
-                      source: formSource,
-                      created_at: new Date().toISOString(),
-                      expires_at: null,
-                      breakfast_included: isBreakfastIncluded,
-                      equipment_rentals: rentals,
-                      venue_excess_hours: formVenueExcessHours,
-                      downpayment_paid: estDown,
-                      balance_due: estDue,
-                      security_deposit: 0,
-                      contract_rate_override: deal?.contracted_rates?.[firstUnitId],
-                      partner_deal_id: formPartnerDealId,
-                      company_name: formCompanyName || deal?.name
-                    }
-                    
-                    setPrintTargetBooking(dummyBooking)
-                  }}
                 />
               </div>
             </div>
           </div>
         </form>
 
-        {printTargetBooking && createdBookingList.length === 0 && (
-          <PrintInvoiceModal
-            booking={printTargetBooking}
-            rooms={rooms}
-            venues={venues}
-            bookingsList={[]} // not fully needed for preview
-            onClose={() => setPrintTargetBooking(null)}
-          />
-        )}
+
       </div>
     </div>
   )
