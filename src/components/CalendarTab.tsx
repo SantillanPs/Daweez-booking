@@ -47,8 +47,17 @@ export function CalendarTab() {
   const { rooms, venues, bookings, createManualBooking, cancelBooking, confirmBooking, isConfirming, updateBooking } = useDashboardData()
 
   // ── Timeline state ──
-  const [schedulerStartDate, setSchedulerStartDate] = useState<Date>(new Date())
-  const [daysCount] = useState<number>(30)
+  const [schedulerStartDate, setSchedulerStartDate] = useState<Date>(() => {
+    const d = new Date()
+    d.setDate(1)
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
+  
+  const daysCount = useMemo(() => {
+    return new Date(schedulerStartDate.getFullYear(), schedulerStartDate.getMonth() + 1, 0).getDate()
+  }, [schedulerStartDate])
+
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const [timelineSelection, setTimelineSelection] = useState<{ roomId?: string; venueId?: string; checkIn: Date } | null>(null)
 
@@ -223,31 +232,15 @@ export function CalendarTab() {
   }
 
   const spannedMonthHeader = useMemo(() => {
-    if (daysList.length === 0) return ''
-    const first = daysList[0].date
-    const last = daysList[daysList.length - 1].date
-    
-    const firstMonth = first.toLocaleDateString('en-US', { month: 'long' })
-    const lastMonth = last.toLocaleDateString('en-US', { month: 'long' })
-    const firstYear = first.getFullYear()
-    const lastYear = last.getFullYear()
-    
-    if (firstMonth === lastMonth && firstYear === lastYear) {
-      return `${firstMonth} ${firstYear}`
-    } else if (firstYear === lastYear) {
-      return `${firstMonth} - ${lastMonth} ${firstYear}`
-    } else {
-      return `${firstMonth} ${firstYear} - ${lastMonth} ${lastYear}`
-    }
-  }, [daysList])
+    return schedulerStartDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  }, [schedulerStartDate])
 
-  const getYYYYMMDD = (d: Date) => {
+  const getYYYYMM = (d: Date) => {
     const year = d.getFullYear()
     const month = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
+    return `${year}-${month}`
   }
-  const datePickerValue = getYYYYMMDD(schedulerStartDate)
+  const datePickerValue = getYYYYMM(schedulerStartDate)
 
   return (
     <div className="space-y-4 font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -265,61 +258,50 @@ export function CalendarTab() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Compact Navigation controls */}
           <div className="flex items-center gap-1 bg-page p-1 rounded-lg border border-soft/60">
-            {/* Double-left chevron: Shift by 30 days */}
+            {/* Single-left chevron: Shift by 1 month */}
             <button 
-              onClick={() => { const p = new Date(schedulerStartDate); p.setDate(p.getDate() - 30); setSchedulerStartDate(p) }}
-              title="Prev 30 days"
-              className="p-1 text-muted hover:text-main hover:bg-softbg rounded transition-all cursor-pointer"
-            >
-              <ChevronsLeft className="w-4 h-4" />
-            </button>
-            {/* Single-left chevron: Shift by 7 days */}
-            <button 
-              onClick={() => { const p = new Date(schedulerStartDate); p.setDate(p.getDate() - 7); setSchedulerStartDate(p) }}
-              title="Prev 7 days"
+              onClick={() => { const p = new Date(schedulerStartDate); p.setMonth(p.getMonth() - 1); setSchedulerStartDate(p) }}
+              title="Previous Month"
               className="p-1 text-muted hover:text-main hover:bg-softbg rounded transition-all cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             
-            {/* Native Date Picker */}
+            {/* Native Month Picker */}
             <input 
-              type="date"
+              type="month"
               value={datePickerValue}
               onChange={(e) => {
                 if (e.target.value) {
-                  const [y, m, d] = e.target.value.split('-').map(Number)
-                  setSchedulerStartDate(new Date(y, m - 1, d))
+                  const [y, m] = e.target.value.split('-').map(Number)
+                  setSchedulerStartDate(new Date(y, m - 1, 1))
                 }
               }}
               className="bg-card border border-soft text-main text-xs px-1.5 py-0.5 rounded outline-none font-mono focus:ring-1 focus:ring-[#B89251] focus:border-brand-primary cursor-pointer w-[115px] text-center"
             />
             
-            {/* Single-right chevron: Shift by 7 days */}
+            {/* Single-right chevron: Shift by 1 month */}
             <button 
-              onClick={() => { const n = new Date(schedulerStartDate); n.setDate(n.getDate() + 7); setSchedulerStartDate(n) }}
-              title="Next 7 days"
+              onClick={() => { const n = new Date(schedulerStartDate); n.setMonth(n.getMonth() + 1); setSchedulerStartDate(n) }}
+              title="Next Month"
               className="p-1 text-muted hover:text-main hover:bg-softbg rounded transition-all cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
-            </button>
-            {/* Double-right chevron: Shift by 30 days */}
-            <button 
-              onClick={() => { const n = new Date(schedulerStartDate); n.setDate(n.getDate() + 30); setSchedulerStartDate(n) }}
-              title="Next 30 days"
-              className="p-1 text-muted hover:text-main hover:bg-softbg rounded transition-all cursor-pointer"
-            >
-              <ChevronsRight className="w-4 h-4" />
             </button>
             
             <div className="h-4 w-px bg-soft mx-1" />
             
             {/* Today */}
             <button 
-              onClick={() => setSchedulerStartDate(new Date())}
+              onClick={() => {
+                const d = new Date()
+                d.setDate(1)
+                d.setHours(0, 0, 0, 0)
+                setSchedulerStartDate(d)
+              }}
               className="text-xs font-semibold text-brand-text px-2 py-0.5 hover:bg-card hover:shadow-sm rounded transition-all cursor-pointer"
             >
-              Today
+              This Month
             </button>
           </div>
 
