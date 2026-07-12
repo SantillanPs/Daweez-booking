@@ -190,23 +190,27 @@ export function useBookings() {
 
   // 8. Mutation: Add Manual Block / Booking (Facebook, Google Maps, Walk-in, Admin Block)
   const createManualBookingMutation = useMutation<Booking, Error, {
+    id?: string; invoiceNumber?: string
     roomId?: string; venueId?: string; guestName: string; guestEmail: string
     guestPhone: string; checkIn: string; checkOut: string
-    source: BookingSource; status: 'confirmed' | 'blocked'
+    source: BookingSource; status: 'confirmed' | 'blocked' | 'pending'
     breakfastOrders?: BreakfastOrder[]; equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons; rateMultiplier?: number; companions?: Companion[]
     partnerDealId?: string; companyName?: string; vehiclePlate?: string
     paymentMethod?: string; paymentReference?: string; venueExcessHours?: number
+    paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
+    downpaymentPaid?: number; balanceDue?: number; securityDeposit?: number
     breakfastIncluded?: boolean; contractRateOverride?: number
   }, MutationContext>({
     mutationFn: async (params) => {
-      const { roomId, venueId, guestName, guestEmail, guestPhone, checkIn, checkOut,
+      const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, checkIn, checkOut,
         source, status, breakfastOrders, equipmentRentals, eventAddons,
         rateMultiplier = 1.0, companions,
         partnerDealId, companyName, vehiclePlate, breakfastIncluded, contractRateOverride,
-        paymentMethod, paymentReference, venueExcessHours = 0 } = params
+        paymentMethod, paymentReference, venueExcessHours = 0,
+        paymentStatus, downpaymentPaid, balanceDue, securityDeposit } = params
 
-      if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings)) {
+      if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings, id)) {
         throw new Error('The room is already booked or blocked for these dates.')
       }
       if (venueId && !syncEngine.isVenueRangeAvailable(venueId, checkIn, checkOut, bookings)) {
@@ -221,7 +225,7 @@ export function useBookings() {
       })
 
       const newBooking: Booking = {
-        id: `manual-${syncEngine.generateUUID()}`,
+        id: id || `manual-${syncEngine.generateUUID()}`,
         room_id: roomId,
         venue_id: venueId,
         guest_name: guestName || (status === 'blocked' ? 'Admin Date Block' : 'Walk-in Guest'),
@@ -229,27 +233,30 @@ export function useBookings() {
         guest_phone: guestPhone || 'None',
         check_in: checkIn, check_out: checkOut,
         source, status,
-        payment_status: status === 'blocked' ? undefined : 'unpaid',
-        downpayment_paid: 0,
+        payment_status: paymentStatus !== undefined ? paymentStatus : (status === 'blocked' ? undefined : 'unpaid'),
+        downpayment_paid: downpaymentPaid !== undefined ? downpaymentPaid : 0,
         payment_method: paymentMethod,
         payment_reference: paymentReference,
         venue_excess_hours: venueExcessHours,
-        balance_due: status === 'blocked' ? 0 : pricing.grandTotal,
-        security_deposit: status === 'blocked' ? 0 : pricing.securityDeposit,
+        balance_due: balanceDue !== undefined ? balanceDue : (status === 'blocked' ? 0 : pricing.grandTotal),
+        security_deposit: securityDeposit !== undefined ? securityDeposit : (status === 'blocked' ? 0 : pricing.securityDeposit),
         breakfast_orders: breakfastOrders, equipment_rentals: equipmentRentals,
         event_addons: eventAddons, companions,
-        created_at: new Date().toISOString(),
+        created_at: id ? (bookings.find(b => b.id === id)?.created_at || new Date().toISOString()) : new Date().toISOString(),
         expires_at: null,
         partner_deal_id: partnerDealId,
         company_name: companyName,
         vehicle_plate: vehiclePlate,
-        invoice_number: undefined,
+        invoice_number: invoiceNumber,
         breakfast_included: !!breakfastIncluded,
         contract_rate_override: contractRateOverride
       }
 
-      // Single INSERT — no read+upsert-all round-trip
-      await syncEngine.insertBooking(newBooking)
+      if (id) {
+        await syncEngine.updateBooking(newBooking)
+      } else {
+        await syncEngine.insertBooking(newBooking)
+      }
       return newBooking
     },
     onMutate: async (params) => {

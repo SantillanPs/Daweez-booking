@@ -26,6 +26,19 @@ interface BillingSummaryProps {
   setFormPaymentReference?: (val: string) => void
   formVenueExcessHours?: number
   onPrintInvoice?: () => void
+
+  // Edit Mode Overrides
+  isEditMode?: boolean
+  formInvoiceNumber?: string
+  setFormInvoiceNumber?: (val: string) => void
+  formPaymentStatus?: 'unpaid' | 'downpayment' | 'paid'
+  setFormPaymentStatus?: (val: 'unpaid' | 'downpayment' | 'paid') => void
+  formDownpaymentPaid?: number
+  setFormDownpaymentPaid?: (val: number) => void
+  formBalanceDue?: number | null
+  setFormBalanceDue?: (val: number | null) => void
+  formSecurityDeposit?: number | null
+  setFormSecurityDeposit?: (val: number | null) => void
 }
 
 export const BillingSummary = React.memo(
@@ -52,7 +65,18 @@ export const BillingSummary = React.memo(
     formPaymentReference,
     setFormPaymentReference,
     formVenueExcessHours,
-    onPrintInvoice
+    onPrintInvoice,
+    isEditMode,
+    formInvoiceNumber,
+    setFormInvoiceNumber,
+    formPaymentStatus,
+    setFormPaymentStatus,
+    formDownpaymentPaid,
+    setFormDownpaymentPaid,
+    formBalanceDue,
+    setFormBalanceDue,
+    formSecurityDeposit,
+    setFormSecurityDeposit
   }: BillingSummaryProps) => {
     const unitCount = Object.keys(unitSelections).length
     const hasRooms = Object.values(unitSelections).some(s => s.type === 'room')
@@ -281,6 +305,75 @@ export const BillingSummary = React.memo(
                   </div>
                 </div>
               )}
+
+              {/* Edit Mode Overrides */}
+              {isEditMode && setFormPaymentStatus && (
+                <div className="border-t border-brand-border/40 pt-3.5 mt-3 space-y-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1">Financial Overrides</span>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-main">Payment Status</label>
+                    <select
+                      value={formPaymentStatus || 'unpaid'}
+                      onChange={e => setFormPaymentStatus(e.target.value as 'unpaid' | 'downpayment' | 'paid')}
+                      className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors cursor-pointer appearance-none"
+                    >
+                      <option value="unpaid">Unpaid</option>
+                      <option value="downpayment">Downpayment Paid</option>
+                      <option value="paid">Fully Paid</option>
+                    </select>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-main">Downpayment Paid (₱)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formDownpaymentPaid ?? ''}
+                        onChange={e => setFormDownpaymentPaid?.(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-main">Balance Due (₱)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formBalanceDue ?? ''}
+                        onChange={e => setFormBalanceDue?.(e.target.value ? parseFloat(e.target.value) : null)}
+                        placeholder={`Auto: ${estDue}`}
+                        className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-main">Security Deposit (₱)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formSecurityDeposit ?? ''}
+                        onChange={e => setFormSecurityDeposit?.(e.target.value ? parseFloat(e.target.value) : null)}
+                        placeholder="Optional"
+                        className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
+                      />
+                    </div>
+                    {setFormInvoiceNumber && (
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-main">Invoice Number</label>
+                        <input
+                          type="text"
+                          value={formInvoiceNumber || ''}
+                          onChange={e => setFormInvoiceNumber(e.target.value)}
+                          placeholder="Auto-generated if empty"
+                          className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -325,7 +418,16 @@ export const BillingSummary = React.memo(
       prevProps.guestEmail === nextProps.guestEmail &&
       prevProps.bookingType === nextProps.bookingType &&
       prevProps.formWalkInDiscount === nextProps.formWalkInDiscount &&
-      prevProps.formPartnerDealId === nextProps.formPartnerDealId
+      prevProps.formPartnerDealId === nextProps.formPartnerDealId &&
+      prevProps.formPaymentMethod === nextProps.formPaymentMethod &&
+      prevProps.formPaymentReference === nextProps.formPaymentReference &&
+      prevProps.formVenueExcessHours === nextProps.formVenueExcessHours &&
+      prevProps.isEditMode === nextProps.isEditMode &&
+      prevProps.formInvoiceNumber === nextProps.formInvoiceNumber &&
+      prevProps.formPaymentStatus === nextProps.formPaymentStatus &&
+      prevProps.formDownpaymentPaid === nextProps.formDownpaymentPaid &&
+      prevProps.formBalanceDue === nextProps.formBalanceDue &&
+      prevProps.formSecurityDeposit === nextProps.formSecurityDeposit
     )
   }
 )

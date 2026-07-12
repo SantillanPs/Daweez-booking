@@ -34,6 +34,15 @@ export interface DashboardDataContextValue {
     vehiclePlate?: string
     breakfastIncluded?: boolean
     contractRateOverride?: number
+    paymentMethod?: string
+    paymentReference?: string
+    venueExcessHours?: number
+    id?: string
+    invoiceNumber?: string
+    paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
+    downpaymentPaid?: number
+    balanceDue?: number
+    securityDeposit?: number
   }) => Promise<Booking>
   triggerOTASync: () => Promise<number>
   updateBooking: (booking: Booking) => Promise<void>

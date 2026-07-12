@@ -41,9 +41,17 @@ interface WalkInBookingFormProps {
     paymentMethod?: string
     paymentReference?: string
     venueExcessHours?: number
+    id?: string
+    invoiceNumber?: string
+    paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
+    downpaymentPaid?: number
+    balanceDue?: number
+    securityDeposit?: number
   }) => Promise<Booking>
   cancelBooking: (bookingId: string) => Promise<void>
+  updateBooking?: (booking: Booking) => Promise<void>
   initialSelections: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
+  editingBookings?: Booking[]
   onClose: () => void
 }
 
@@ -53,7 +61,9 @@ export function WalkInBookingForm({
   bookings,
   createManualBooking,
   cancelBooking,
+  updateBooking,
   initialSelections,
+  editingBookings,
   onClose
 }: WalkInBookingFormProps) {
   // ── Core wizard state ──
@@ -205,9 +215,79 @@ export function WalkInBookingForm({
   // ── Payment Details ──
   const [formPaymentMethod, setFormPaymentMethod] = useState('')
   const [formPaymentReference, setFormPaymentReference] = useState('')
+  const [formInvoiceNumber, setFormInvoiceNumber] = useState('')
+  
+  // ── Manual Financial Overrides (for Edit Mode) ──
+  const [formPaymentStatus, setFormPaymentStatus] = useState<'unpaid' | 'downpayment' | 'paid'>('unpaid')
+  const [formDownpaymentPaid, setFormDownpaymentPaid] = useState(0)
+  const [formBalanceDue, setFormBalanceDue] = useState<number | null>(null)
+  const [formSecurityDeposit, setFormSecurityDeposit] = useState<number | null>(null)
 
   // ── Collapsible toggles ──
   const [showCompanions, setShowCompanions] = useState(true)
+
+  // ── Edit Mode Initialization ──
+  useEffect(() => {
+    if (editingBookings && editingBookings.length > 0) {
+      const b = editingBookings[0]
+      setFormGuestName(b.guest_name)
+      setFormGuestEmail(b.guest_email)
+      setFormGuestPhone(b.guest_phone)
+      setFormSource(b.source)
+      setFormStatus(b.status === 'pending' ? 'confirmed' : b.status) // Upgrade pending to confirmed in edit mode usually
+      
+      if (b.partner_deal_id) {
+        setBookingType('partner')
+        setFormPartnerDealId(b.partner_deal_id)
+        setFormCompanyName(b.company_name || '')
+        setFormVehiclePlate(b.vehicle_plate || '')
+      }
+
+      setFormCompanions(b.companions || [])
+      
+      if (b.equipment_rentals) {
+        setFormChairs(b.equipment_rentals.chairCount || 0)
+        setFormExtraFoam(b.equipment_rentals.extraFoamCount || 0)
+        setFormExtraPillow(b.equipment_rentals.extraPillowCount || 0)
+        setFormExtraBlanket(b.equipment_rentals.extraBlanketCount || 0)
+        setFormExtraTowel(b.equipment_rentals.extraTowelCount || 0)
+        setFormEventTable(b.equipment_rentals.tableCount || 0)
+        setFormEventTent(b.equipment_rentals.tentCount || 0)
+      }
+
+      setFormPaymentMethod(b.payment_method || '')
+      setFormPaymentReference(b.payment_reference || '')
+      setFormVenueExcessHours(b.venue_excess_hours || 0)
+      setFormInvoiceNumber(b.invoice_number || '')
+      
+      setFormPaymentStatus(b.payment_status || 'unpaid')
+      // Sum financials across all bookings in the group
+      let totalDown = 0
+      let totalBalance = 0
+      let totalSec = 0
+      editingBookings.forEach(eb => {
+        totalDown += eb.downpayment_paid || 0
+        totalBalance += eb.balance_due || 0
+        totalSec += eb.security_deposit || 0
+      })
+      setFormDownpaymentPaid(totalDown)
+      setFormBalanceDue(totalBalance)
+      setFormSecurityDeposit(totalSec)
+
+      // Initialize selections for all bookings in the group
+      const initial: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }> = {}
+      editingBookings.forEach(eb => {
+        if (eb.room_id) initial[eb.room_id] = { checkIn: eb.check_in, checkOut: eb.check_out, type: 'room' }
+        else if (eb.venue_id) initial[eb.venue_id] = { checkIn: eb.check_in, checkOut: eb.check_out, type: 'venue' }
+      })
+      setUnitSelections(initial)
+    }
+  }, [editingBookings])
+
+  const activeBookingsContext = useMemo(() => {
+    if (!editingBookings || editingBookings.length === 0) return bookings
+    return bookings.filter(b => !editingBookings.find(eb => eb.id === b.id))
+  }, [bookings, editingBookings])
 
   const formRoomIds = useMemo(() => {
     const s = new Set<string>()
@@ -314,13 +394,13 @@ export function WalkInBookingForm({
     for (const [id, sel] of Object.entries(unitSelections)) {
       const isRoom = sel.type === 'room'
       if (isRoom) {
-        if (!syncEngine.isRoomAvailable(id, sel.checkIn, sel.checkOut, bookings)) {
+        if (!syncEngine.isRoomAvailable(id, sel.checkIn, sel.checkOut, activeBookingsContext)) {
           const roomNum = rooms.find(r => r.id === id)?.room_number || id
           setFormError(`Room ${roomNum} is already booked for the selected dates.`)
           setIsSubmitting(false); return
         }
       } else {
-        if (!syncEngine.isVenueRangeAvailable(id, sel.checkIn, sel.checkOut, bookings)) {
+        if (!syncEngine.isVenueRangeAvailable(id, sel.checkIn, sel.checkOut, activeBookingsContext)) {
           const venueName = venues.find(v => v.id === id)?.name || id
           setFormError(`Venue ${venueName} is already reserved for the selected dates.`)
           setIsSubmitting(false); return
@@ -339,8 +419,10 @@ export function WalkInBookingForm({
     const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
 
     const createdBookings: Booking[] = []
+    const processedBookingIds = new Set<string>()
+
     try {
-      // 2. Loop to create room bookings
+      // 2. Loop to create or update room bookings
       let isFirstRoom = true
       for (const roomId of Array.from(formRoomIds)) {
         const sel = unitSelections[roomId]
@@ -360,7 +442,12 @@ export function WalkInBookingForm({
         const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
         const contractedPrice = deal?.contracted_rates[roomId]
 
+        const existingBooking = editingBookings?.find(eb => eb.room_id === roomId)
+        if (existingBooking) processedBookingIds.add(existingBooking.id)
+
         const b = await createManualBooking({
+          id: existingBooking?.id,
+          invoiceNumber: formInvoiceNumber || undefined,
           roomId,
           guestName: cleanGuestName,
           guestEmail: formGuestEmail || (deal?.email || 'admin@daweez-booking.vercel.app'),
@@ -378,12 +465,16 @@ export function WalkInBookingForm({
           breakfastIncluded: isBreakfastIncluded,
           contractRateOverride: contractedPrice || undefined,
           paymentMethod: formPaymentMethod || undefined,
-          paymentReference: formPaymentReference || undefined
+          paymentReference: formPaymentReference || undefined,
+          paymentStatus: editingBookings ? formPaymentStatus : undefined,
+          downpaymentPaid: editingBookings ? formDownpaymentPaid : undefined,
+          balanceDue: editingBookings && formBalanceDue !== null ? formBalanceDue : undefined,
+          securityDeposit: editingBookings && formSecurityDeposit !== null ? formSecurityDeposit : undefined
         })
         createdBookings.push(b)
       }
 
-      // 3. Loop to create venue bookings
+      // 3. Loop to create or update venue bookings
       let isFirstVenue = true
       for (const venueId of Array.from(formVenueIds)) {
         const sel = unitSelections[venueId]
@@ -395,12 +486,15 @@ export function WalkInBookingForm({
           tableCount: formEventTable,
           tentCount: formEventTent
         }
-        isFirstVenue = false
+        const existingBooking = editingBookings?.find(eb => eb.venue_id === venueId)
+        if (existingBooking) processedBookingIds.add(existingBooking.id)
 
         const deal = partnerDeals.find(d => d.id === formPartnerDealId)
         const contractedPrice = deal?.contracted_rates[venueId]
 
         const b = await createManualBooking({
+          id: existingBooking?.id,
+          invoiceNumber: formInvoiceNumber || undefined,
           venueId,
           guestName: cleanGuestName,
           guestEmail: formGuestEmail || (deal?.email || 'admin@daweez-booking.vercel.app'),
@@ -418,9 +512,26 @@ export function WalkInBookingForm({
           contractRateOverride: contractedPrice || undefined,
           paymentMethod: formPaymentMethod || undefined,
           paymentReference: formPaymentReference || undefined,
-          venueExcessHours: formVenueExcessHours
+          venueExcessHours: formVenueExcessHours,
+          paymentStatus: editingBookings ? formPaymentStatus : undefined,
+          downpaymentPaid: editingBookings ? formDownpaymentPaid : undefined,
+          balanceDue: editingBookings && formBalanceDue !== null ? formBalanceDue : undefined,
+          securityDeposit: editingBookings && formSecurityDeposit !== null ? formSecurityDeposit : undefined
         })
         createdBookings.push(b)
+      }
+
+      // 4. Cancel any bookings from editingBookings that were NOT processed (i.e. removed by user)
+      if (editingBookings) {
+        for (const eb of editingBookings) {
+          if (!processedBookingIds.has(eb.id)) {
+            try {
+              await cancelBooking(eb.id)
+            } catch (err) {
+              console.error('Failed to cancel removed booking:', eb.id, err)
+            }
+          }
+        }
       }
 
       setCreatedBookingList(createdBookings)

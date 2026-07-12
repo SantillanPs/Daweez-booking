@@ -2,10 +2,10 @@ import React, { useState, useMemo } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { Search, Filter, CalendarDays, User, Building, MapPin, BadgeDollarSign, Calendar as CalendarIcon, CheckCircle2, XCircle, Clock, Edit } from 'lucide-react'
 import { Booking } from '../types/booking'
-import { EditBookingModal } from './EditBookingModal'
+import { WalkInBookingForm } from './WalkInBookingForm'
 
 export function BookingsListTab() {
-  const { bookings, rooms, venues, updateBooking } = useDashboardData()
+  const { bookings, rooms, venues, updateBooking, createManualBooking, cancelBooking } = useDashboardData()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<Booking['status'] | 'all'>('all')
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
@@ -189,14 +189,26 @@ export function BookingsListTab() {
       </div>
 
       {editingBooking && (
-        <EditBookingModal
-          booking={editingBooking}
+        <WalkInBookingForm
           rooms={rooms}
           venues={venues}
-          onClose={() => setEditingBooking(null)}
-          onSave={async (updated) => {
-            await updateBooking(updated)
+          bookings={bookings}
+          createManualBooking={createManualBooking}
+          cancelBooking={cancelBooking}
+          updateBooking={updateBooking}
+          initialSelections={{
+            [editingBooking.room_id || editingBooking.venue_id || '']: {
+              checkIn: editingBooking.check_in,
+              checkOut: editingBooking.check_out,
+              type: editingBooking.room_id ? 'room' : 'venue'
+            }
           }}
+          editingBookings={
+            editingBooking.invoice_number 
+              ? bookings.filter(b => b.invoice_number === editingBooking.invoice_number)
+              : [editingBooking]
+          }
+          onClose={() => setEditingBooking(null)}
         />
       )}
     </div>

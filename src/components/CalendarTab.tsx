@@ -11,7 +11,6 @@ import {
 // Import modular subcomponents
 import { ExtendStayModal } from './calendar/ExtendStayModal'
 import { TimelineGrid } from './calendar/TimelineGrid'
-import { EditBookingModal } from './EditBookingModal'
 
 const ROOM_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'room-1':  { bg: 'bg-amber-50',   text: 'text-amber-800',   border: 'border-amber-200' },
@@ -449,14 +448,26 @@ export function CalendarTab() {
       )}
 
       {editingBooking && (
-        <EditBookingModal
-          booking={editingBooking}
+        <WalkInBookingForm
           rooms={rooms}
           venues={venues}
-          onClose={() => setEditingBooking(null)}
-          onSave={async (updated) => {
-            await updateBooking(updated)
+          bookings={bookings}
+          createManualBooking={createManualBooking}
+          cancelBooking={cancelBooking}
+          updateBooking={updateBooking}
+          initialSelections={{
+            [editingBooking.room_id || editingBooking.venue_id || '']: {
+              checkIn: editingBooking.check_in,
+              checkOut: editingBooking.check_out,
+              type: editingBooking.room_id ? 'room' : 'venue'
+            }
           }}
+          editingBookings={
+            editingBooking.invoice_number 
+              ? bookings.filter(b => b.invoice_number === editingBooking.invoice_number)
+              : [editingBooking]
+          }
+          onClose={() => setEditingBooking(null)}
         />
       )}
 
