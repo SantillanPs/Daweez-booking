@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Booking, Room, Venue } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
-import { X, Users, AlertCircle, Mail, Printer } from 'lucide-react'
+import { X, Users, AlertCircle, Mail, Printer, Edit3 } from 'lucide-react'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 
 interface ExtendStayModalProps {
@@ -18,6 +18,7 @@ interface ExtendStayModalProps {
   onConfirmReservation?: (id: string) => void
   onCancelBooking?: (id: string) => void
   isConfirming?: boolean
+  onEditBooking?: () => void
 }
 
 export function ExtendStayModal({
@@ -32,7 +33,8 @@ export function ExtendStayModal({
   setExtendCheckoutDate,
   onConfirmReservation,
   onCancelBooking,
-  isConfirming = false
+  isConfirming = false,
+  onEditBooking
 }: ExtendStayModalProps) {
   const [showPrintModal, setShowPrintModal] = useState(false)
 
@@ -41,9 +43,16 @@ export function ExtendStayModal({
       <div className="w-full max-w-sm bg-card rounded-lg shadow-lg overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-soft">
           <h3 className="text-sm font-semibold text-main">Reservation Details</h3>
-          <button onClick={onClose} className="text-muted hover:text-main cursor-pointer">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            {onEditBooking && (
+              <button onClick={onEditBooking} className="text-muted hover:text-main cursor-pointer transition-colors" title="Edit Booking">
+                <Edit3 className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={onClose} className="text-muted hover:text-main cursor-pointer transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
           <div className="bg-page p-3 rounded-lg border border-soft space-y-1 text-xs">

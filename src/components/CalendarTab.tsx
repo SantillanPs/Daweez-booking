@@ -11,6 +11,7 @@ import {
 // Import modular subcomponents
 import { ExtendStayModal } from './calendar/ExtendStayModal'
 import { TimelineGrid } from './calendar/TimelineGrid'
+import { EditBookingModal } from './EditBookingModal'
 
 const ROOM_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'room-1':  { bg: 'bg-amber-50',   text: 'text-amber-800',   border: 'border-amber-200' },
@@ -43,7 +44,7 @@ const getBookingStyle = (b: Booking) => {
 
 export function CalendarTab() {
   const queryClient = useQueryClient()
-  const { rooms, venues, bookings, createManualBooking, cancelBooking, confirmBooking, isConfirming } = useDashboardData()
+  const { rooms, venues, bookings, createManualBooking, cancelBooking, confirmBooking, isConfirming, updateBooking } = useDashboardData()
 
   // ── Timeline state ──
   const [schedulerStartDate, setSchedulerStartDate] = useState<Date>(new Date())
@@ -55,6 +56,7 @@ export function CalendarTab() {
   const [selectedExtendBooking, setSelectedExtendBooking] = useState<Booking | null>(null)
   const [extendCheckoutDate, setExtendCheckoutDate] = useState<string>('')
   const [extendError, setExtendError] = useState<string>('')
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
 
   // ── Walk‑in form wizard ──
   const [showManualForm, setShowManualForm] = useState(false)
@@ -450,6 +452,22 @@ export function CalendarTab() {
           }}
           onCancelBooking={cancelBooking}
           isConfirming={isConfirming}
+          onEditBooking={() => {
+            setEditingBooking(selectedExtendBooking)
+            setSelectedExtendBooking(null)
+          }}
+        />
+      )}
+
+      {editingBooking && (
+        <EditBookingModal
+          booking={editingBooking}
+          rooms={rooms}
+          venues={venues}
+          onClose={() => setEditingBooking(null)}
+          onSave={async (updated) => {
+            await updateBooking(updated)
+          }}
         />
       )}
 
