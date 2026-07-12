@@ -6,7 +6,8 @@ import { X, Printer } from 'lucide-react'
 import { useDashboardData } from '../DashboardContext'
 
 interface PrintInvoiceModalProps {
-  booking: Booking
+  booking?: Booking
+  bookingsToPrint?: Booking[]
   rooms: Room[]
   venues: Venue[]
   bookingsList: Booking[]
@@ -15,11 +16,15 @@ interface PrintInvoiceModalProps {
 
 export function PrintInvoiceModal({
   booking,
+  bookingsToPrint,
   rooms,
   venues,
   bookingsList,
   onClose
 }: PrintInvoiceModalProps) {
+  const primaryBooking = booking || (bookingsToPrint && bookingsToPrint[0])
+  if (!primaryBooking) return null
+
   // Close on Escape key press
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -30,98 +35,173 @@ export function PrintInvoiceModal({
   }, [onClose])
 
   const { partnerDeals } = useDashboardData()
-  const deal = partnerDeals.find(d => d.id === booking.partner_deal_id)
+  const deal = partnerDeals.find(d => d.id === primaryBooking.partner_deal_id)
 
-  // Resolve room or venue name
-  const isRoom = !!booking.room_id
-  const unitId = booking.room_id || booking.venue_id || ''
-  const unitName = isRoom
-    ? (rooms.find(r => r.id === unitId)?.name || `Room ${rooms.find(r => r.id === unitId)?.room_number || ''}`)
-    : (venues.find(v => v.id === unitId)?.name || 'Event Venue')
+  const relatedBookings = bookingsToPrint || 
+    (primaryBooking.invoice_number 
+      ? bookingsList.filter(b => b.invoice_number === primaryBooking.invoice_number)
+      : [primaryBooking])
 
-  const nights = booking.check_in && booking.check_out
-    ? Math.max(1, Math.ceil((new Date(booking.check_out).getTime() - new Date(booking.check_in).getTime()) / 86400000))
-    : 1
-
-  // 1. Calculate breakfast, rentals, addons to deduce base room stay total
-  let breakfastTotal = 0
-  if (isRoom) {
-    const guestCount = 1 + (booking.companions?.length || 0)
-    const deal = bookingsList.find(b => b.id === booking.id)?.partner_deal_id
-      ? partnerDeals.find(d => d.id === booking.partner_deal_id)
-      : undefined
-    const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : booking.breakfast_included
-    if (!isBreakfastIncluded) {
-      breakfastTotal = 150 * guestCount * nights
-    }
-  } else if (booking.breakfast_orders) {
-    booking.breakfast_orders.forEach(order => {
-      breakfastTotal += 150 * order.quantity
-    })
+  const pricingAggregate = {
+    undiscountedSubtotal: 0,
+    subtotal: 0,
+    discountAmount: 0,
+    breakfastTotal: 0,
+    rentalsTotal: 0,
+    addonsTotal: 0,
+    grandTotal: 0,
+    downpaymentPaid: 0,
+    balanceDue: 0
   }
 
-  let rentalsTotal = 0
-  if (booking.equipment_rentals) {
+  const breakdownRows: React.ReactNode[] = []
+  
+  relatedBookings.forEach((b) => {
+    const isRoom = !!b.room_id
+    const unitId = b.room_id || b.venue_id || ''
+    const unitName = isRoom
+      ? (rooms.find(r => r.id === unitId)?.name || `Room ${rooms.find(r => r.id === unitId)?.room_number || ''}`)
+      : (venues.find(v => v.id === unitId)?.name || 'Event Venue')
+
+    const nights = b.check_in && b.check_out
+      ? Math.max(1, Math.ceil((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / 86400000))
+      : 1
+
+    let breakfastTotal = 0
     if (isRoom) {
-      const nightlyRentals =
-        ((booking.equipment_rentals.extraFoamCount || 0) * 200) +
-        ((booking.equipment_rentals.extraPillowCount || 0) * 50) +
-        ((booking.equipment_rentals.extraBlanketCount || 0) * 50) +
-        ((booking.equipment_rentals.extraTowelCount || 0) * 50)
-      rentalsTotal += nightlyRentals * nights
-    } else {
-      rentalsTotal += ((booking.equipment_rentals.bigTableCount || 0) * 150)
-      rentalsTotal += ((booking.equipment_rentals.smallTableCount || 0) * 100)
-      rentalsTotal += ((booking.equipment_rentals.chairCount || 0) * 15)
-      rentalsTotal += ((booking.equipment_rentals.mineralWaterCount || 0) * 35)
-      rentalsTotal += ((booking.equipment_rentals.tableCount || 0) * 150)
-      rentalsTotal += ((booking.equipment_rentals.tentCount || 0) * 500)
+      const guestCount = 1 + (b.companions?.length || 0)
+      const bDeal = bookingsList.find(bx => bx.id === b.id)?.partner_deal_id
+        ? partnerDeals.find(d => d.id === b.partner_deal_id)
+        : undefined
+      const isBreakfastIncluded = bDeal ? bDeal.breakfast_default === 'with' : b.breakfast_included
+      if (!isBreakfastIncluded) {
+        breakfastTotal = 150 * guestCount * nights
+      }
+    } else if (b.breakfast_orders) {
+      b.breakfast_orders.forEach(order => {
+        breakfastTotal += 150 * order.quantity
+      })
     }
-  }
 
-  let addonsTotal = 0
-  if (booking.event_addons) {
-    if (booking.event_addons.fullBandAndLights) addonsTotal += 2000
-    if (booking.event_addons.stage) addonsTotal += 2000
-    if (booking.event_addons.ledWall) addonsTotal += 5000
-  }
+    let rentalsTotal = 0
+    if (b.equipment_rentals) {
+      if (isRoom) {
+        const nightlyRentals =
+          ((b.equipment_rentals.extraFoamCount || 0) * 200) +
+          ((b.equipment_rentals.extraPillowCount || 0) * 50) +
+          ((b.equipment_rentals.extraBlanketCount || 0) * 50) +
+          ((b.equipment_rentals.extraTowelCount || 0) * 50)
+        rentalsTotal += nightlyRentals * nights
+      } else {
+        rentalsTotal += ((b.equipment_rentals.bigTableCount || 0) * 150)
+        rentalsTotal += ((b.equipment_rentals.smallTableCount || 0) * 100)
+        rentalsTotal += ((b.equipment_rentals.chairCount || 0) * 15)
+        rentalsTotal += ((b.equipment_rentals.mineralWaterCount || 0) * 35)
+        rentalsTotal += ((b.equipment_rentals.tableCount || 0) * 150)
+        rentalsTotal += ((b.equipment_rentals.tentCount || 0) * 500)
+      }
+    }
 
-  // 2. Deduce actual base room subtotal from database booking values
-  const actualSubtotal = Number(booking.downpayment_paid) + Number(booking.balance_due) - Number(booking.security_deposit) - (breakfastTotal + rentalsTotal + addonsTotal)
+    let addonsTotal = 0
+    if (b.event_addons) {
+      if (b.event_addons.fullBandAndLights) addonsTotal += 2000
+      if (b.event_addons.stage) addonsTotal += 2000
+      if (b.event_addons.ledWall) addonsTotal += 5000
+    }
 
-  // 3. Get undiscounted base rate subtotal
-  const basePrice = booking.contract_rate_override !== undefined && booking.contract_rate_override !== null
-    ? booking.contract_rate_override
-    : isRoom
-      ? (rooms.find(r => r.id === booking.room_id)?.base_price || 0)
-      : (venues.find(v => v.id === booking.venue_id)?.base_price || 0)
-  const undiscountedSubtotal = basePrice * nights
+    const actualSubtotal = Number(b.downpayment_paid) + Number(b.balance_due) - Number(b.security_deposit) - (breakfastTotal + rentalsTotal + addonsTotal)
 
-  // 4. Derive rate multiplier
-  const derivedMultiplier = undiscountedSubtotal > 0
-    ? Math.min(1.0, Math.max(0.0, actualSubtotal / undiscountedSubtotal))
-    : 1.0
+    const basePrice = b.contract_rate_override !== undefined && b.contract_rate_override !== null
+      ? b.contract_rate_override
+      : isRoom
+        ? (rooms.find(r => r.id === b.room_id)?.base_price || 0)
+        : (venues.find(v => v.id === b.venue_id)?.base_price || 0)
+    const undiscountedSubtotal = basePrice * nights
 
-  // Use calculated pricing
-  const pricing = syncEngine.calculatePricing({
-    roomId: booking.room_id,
-    venueId: booking.venue_id,
-    checkIn: booking.check_in,
-    checkOut: booking.check_out,
-    guestEmail: booking.guest_email,
-    breakfastOrders: booking.breakfast_orders,
-    equipmentRentals: booking.equipment_rentals,
-    eventAddons: booking.event_addons,
-    companions: booking.companions,
-    bookingsList,
-    rateMultiplier: derivedMultiplier,
-    contractRateOverride: booking.contract_rate_override
+    const derivedMultiplier = undiscountedSubtotal > 0
+      ? Math.min(1.0, Math.max(0.0, actualSubtotal / undiscountedSubtotal))
+      : 1.0
+
+    const pricing = syncEngine.calculatePricing({
+      roomId: b.room_id,
+      venueId: b.venue_id,
+      checkIn: b.check_in,
+      checkOut: b.check_out,
+      guestEmail: b.guest_email,
+      breakfastOrders: b.breakfast_orders,
+      equipmentRentals: b.equipment_rentals,
+      eventAddons: b.event_addons,
+      companions: b.companions,
+      bookingsList,
+      rateMultiplier: derivedMultiplier,
+      contractRateOverride: b.contract_rate_override
+    })
+
+    pricingAggregate.undiscountedSubtotal += pricing.undiscountedSubtotal
+    pricingAggregate.subtotal += pricing.subtotal
+    pricingAggregate.discountAmount += pricing.discountAmount
+    pricingAggregate.breakfastTotal += pricing.breakfastTotal
+    pricingAggregate.rentalsTotal += pricing.rentalsTotal
+    pricingAggregate.addonsTotal += pricing.addonsTotal
+    pricingAggregate.grandTotal += pricing.grandTotal
+    pricingAggregate.downpaymentPaid += Number(b.downpayment_paid || 0)
+    pricingAggregate.balanceDue += Number(b.balance_due || 0)
+
+    breakdownRows.push(
+      <React.Fragment key={b.id}>
+        <tr>
+          <td className="py-3 font-semibold text-main">
+            {unitName} - Base Rate stay
+            {b.contract_rate_override ? ' (Corporate Preset Rate)' : ''}
+          </td>
+          <td className="py-3 text-right font-mono">{nights}</td>
+          <td className="py-3 text-right font-mono">
+            ₱{(b.contract_rate_override || basePrice).toLocaleString()}
+          </td>
+          <td className="py-3 text-right font-mono font-semibold text-main">
+            ₱{((b.contract_rate_override || basePrice) * nights).toLocaleString()}
+          </td>
+        </tr>
+        {pricing.breakfastTotal > 0 && (
+          <tr>
+            <td className="py-3 pl-4 text-muted">↳ Breakfast order (₱150/guest/night)</td>
+            <td className="py-3 text-right font-mono text-muted">
+              {b.companions ? b.companions.length + 1 : 1} guest(s) × {nights} nights
+            </td>
+            <td className="py-3 text-right font-mono text-muted">₱150</td>
+            <td className="py-3 text-right font-mono font-semibold text-muted">
+              ₱{pricing.breakfastTotal.toLocaleString()}
+            </td>
+          </tr>
+        )}
+        {pricing.rentalsTotal > 0 && (
+          <tr>
+            <td className="py-3 pl-4 text-muted">↳ Extra foam / pillows / linens rentals</td>
+            <td className="py-3 text-right font-mono text-muted">—</td>
+            <td className="py-3 text-right font-mono text-muted">—</td>
+            <td className="py-3 text-right font-mono font-semibold text-muted">
+              ₱{pricing.rentalsTotal.toLocaleString()}
+            </td>
+          </tr>
+        )}
+        {pricing.addonsTotal > 0 && (
+          <tr>
+            <td className="py-3 pl-4 text-muted">↳ Event Add-ons</td>
+            <td className="py-3 text-right font-mono text-muted">—</td>
+            <td className="py-3 text-right font-mono text-muted">—</td>
+            <td className="py-3 text-right font-mono font-semibold text-muted">
+              ₱{pricing.addonsTotal.toLocaleString()}
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    )
   })
 
   // Format invoice number
   // If no generated invoice_number is stored, generate one on-the-fly for preview
-  const displayInvoiceNumber = booking.invoice_number || (
-    `GRF-${booking.check_in.substring(0, 7).replace('-', '')}-PREVIEW`
+  const displayInvoiceNumber = primaryBooking.invoice_number || (
+    `GRF-${primaryBooking.check_in.substring(0, 7).replace('-', '')}-PREVIEW`
   )
 
   const handlePrint = () => {
@@ -180,18 +260,18 @@ export function PrintInvoiceModal({
               </h2>
               <div className="mt-2 text-xs font-medium space-y-0.5 text-muted">
                 <div><span className="text-muted">Invoice No:</span> <strong className="font-mono text-slate-950">{displayInvoiceNumber}</strong></div>
-                <div><span className="text-muted">Date Issued:</span> <span className="font-mono">{new Date(booking.created_at).toLocaleDateString()}</span></div>
-                <div><span className="text-muted">Status:</span> <span className="uppercase text-emerald-600 font-bold">{booking.status}</span></div>
+                <div><span className="text-muted">Date Issued:</span> <span className="font-mono">{new Date(primaryBooking.created_at).toLocaleDateString()}</span></div>
+                <div><span className="text-muted">Status:</span> <span className="uppercase text-emerald-600 font-bold">{primaryBooking.status}</span></div>
               </div>
             </div>
           </div>
 
           {/* Billed To Section (For Agency/Billing) */}
-          {(booking.company_name || deal) && (
+          {(primaryBooking.company_name || deal) && (
             <div className="py-6 border-b border-soft text-xs">
               <h3 className="text-muted font-bold uppercase tracking-wider mb-2">Bill To:</h3>
               <div className="space-y-1">
-                <strong className="text-main text-[14px] uppercase block">{booking.company_name || deal?.name}</strong>
+                <strong className="text-main text-[14px] uppercase block">{primaryBooking.company_name || deal?.name}</strong>
                 {deal?.tin && <div><span className="text-muted">TIN:</span> <span className="font-mono font-medium">{deal.tin}</span></div>}
                 {deal?.address && <div><span className="text-muted">Address:</span> <span className="font-medium">{deal.address}</span></div>}
               </div>
@@ -205,21 +285,21 @@ export function PrintInvoiceModal({
               <h3 className="text-[10px] font-bold text-muted uppercase tracking-wider mb-3">Guest Information</h3>
               <div className="grid grid-cols-[120px_1fr] gap-y-1.5 items-center">
                 <span className="text-muted font-semibold">Primary Guest</span>
-                <strong className="text-main text-[13px]">{booking.guest_name}</strong>
+                <strong className="text-main text-[13px]">{primaryBooking.guest_name}</strong>
                 
                 <span className="text-muted font-semibold">Contact No</span>
-                <span className="text-main font-mono font-medium">{booking.guest_phone || 'None'}</span>
+                <span className="text-main font-mono font-medium">{primaryBooking.guest_phone || 'None'}</span>
                 
                 <span className="text-muted font-semibold">Email Address</span>
-                <span className="text-main font-medium truncate">{booking.guest_email || 'None'}</span>
+                <span className="text-main font-medium truncate">{primaryBooking.guest_email || 'None'}</span>
                 
                 <span className="text-muted font-semibold">Vehicle Plate</span>
-                <span className="text-main font-mono font-semibold uppercase">{booking.vehicle_plate || 'N/A'}</span>
+                <span className="text-main font-mono font-semibold uppercase">{primaryBooking.vehicle_plate || 'N/A'}</span>
                 
-                {booking.company_name && (
+                {primaryBooking.company_name && (
                   <>
                     <span className="text-muted font-semibold mt-2">Company / Agency</span>
-                    <strong className="text-main font-semibold mt-2">{booking.company_name}</strong>
+                    <strong className="text-main font-semibold mt-2">{primaryBooking.company_name}</strong>
                   </>
                 )}
                 {deal?.tin && (
@@ -242,30 +322,42 @@ export function PrintInvoiceModal({
               <h3 className="text-[10px] font-bold text-muted uppercase tracking-wider mb-3">Stay Details</h3>
               <div className="grid grid-cols-[120px_1fr] gap-y-2 items-center">
                 <span className="text-muted font-semibold">Unit Details</span>
-                <strong className="text-main text-[13px] bg-page px-2 py-0.5 rounded border border-soft/60 inline-flex w-fit">{unitName}</strong>
+                <strong className="text-main text-[13px] bg-page px-2 py-0.5 rounded border border-soft/60 inline-flex w-fit flex-wrap gap-1">
+                  {relatedBookings.map(b => {
+                    const isR = !!b.room_id
+                    const uId = b.room_id || b.venue_id || ''
+                    const uName = isR
+                      ? (rooms.find(r => r.id === uId)?.name || `Room ${rooms.find(r => r.id === uId)?.room_number || ''}`)
+                      : (venues.find(v => v.id === uId)?.name || 'Event Venue')
+                    return <span key={b.id} className="bg-slate-100/50 px-1.5 rounded border border-slate-200/50">{uName}</span>
+                  })}
+                </strong>
                 
                 <span className="text-muted font-semibold">Check-in Date</span>
                 <strong className="text-main font-mono bg-emerald-50 px-2 py-0.5 rounded text-emerald-700 inline-flex w-fit border border-emerald-100/50">
-                  {booking.check_in ? new Date(booking.check_in).toLocaleDateString() : 'TBD'}
+                  {primaryBooking.check_in ? new Date(primaryBooking.check_in).toLocaleDateString() : 'TBD'}
                 </strong>
                 
                 <span className="text-muted font-semibold">Check-out Date</span>
                 <strong className="text-main font-mono bg-rose-50 px-2 py-0.5 rounded text-rose-700 inline-flex w-fit border border-rose-100/50">
-                  {booking.check_out ? new Date(booking.check_out).toLocaleDateString() : 'TBD'}
+                  {primaryBooking.check_out ? new Date(primaryBooking.check_out).toLocaleDateString() : 'TBD'}
                 </strong>
                 
                 <span className="text-muted font-semibold">Duration</span>
-                <span className="text-main font-bold">{nights} {isRoom ? 'Night' : 'Day'}{nights > 1 ? 's' : ''}</span>
+                <span className="text-main font-bold">
+                  {Math.max(1, Math.ceil((new Date(primaryBooking.check_out).getTime() - new Date(primaryBooking.check_in).getTime()) / 86400000))} 
+                  {!!primaryBooking.room_id ? ' Night(s)' : ' Day(s)'}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Companions Section */}
-          {booking.companions && booking.companions.length > 0 && (
+          {primaryBooking.companions && primaryBooking.companions.length > 0 && (
             <div className="py-4 border-b border-soft text-xs">
               <span className="text-muted font-semibold block mb-2 uppercase tracking-wider">Registered Roommates / Companions</span>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {booking.companions.map((c, i) => (
+                {primaryBooking.companions.map((c, i) => (
                   <div key={i} className="bg-page p-2 rounded border border-soft/60 font-medium flex justify-between">
                     <span className="text-main">{c.name}</span>
                     <span className="text-muted text-[10px] capitalize">{c.gender}</span>
@@ -288,46 +380,7 @@ export function PrintInvoiceModal({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-main">
-                {/* 1. Base Room or Venue stay */}
-                <tr>
-                  <td className="py-3 font-semibold text-main">
-                    {unitName} - Base Rate stay
-                    {booking.contract_rate_override ? ' (Corporate Preset Rate)' : ''}
-                  </td>
-                  <td className="py-3 text-right font-mono">{nights}</td>
-                  <td className="py-3 text-right font-mono">
-                    ₱{(booking.contract_rate_override || basePrice).toLocaleString()}
-                  </td>
-                  <td className="py-3 text-right font-mono font-semibold text-main">
-                    ₱{((booking.contract_rate_override || basePrice) * nights).toLocaleString()}
-                  </td>
-                </tr>
-
-                {/* 2. Breakfast (if ordered or standard and not included) */}
-                {pricing.breakfastTotal > 0 && (
-                  <tr>
-                    <td className="py-3">Breakfast order (₱150/guest/night)</td>
-                    <td className="py-3 text-right font-mono">
-                      {booking.companions ? booking.companions.length + 1 : 1} guest(s) × {nights} nights
-                    </td>
-                    <td className="py-3 text-right font-mono">₱150</td>
-                    <td className="py-3 text-right font-mono font-semibold text-main">
-                      ₱{pricing.breakfastTotal.toLocaleString()}
-                    </td>
-                  </tr>
-                )}
-
-                {/* 3. Room rentals & amenities */}
-                {pricing.rentalsTotal > 0 && (
-                  <tr>
-                    <td className="py-3">Extra foam / pillows / linens rentals</td>
-                    <td className="py-3 text-right font-mono">—</td>
-                    <td className="py-3 text-right font-mono">—</td>
-                    <td className="py-3 text-right font-mono font-semibold text-main">
-                      ₱{pricing.rentalsTotal.toLocaleString()}
-                    </td>
-                  </tr>
-                )}
+                {breakdownRows}
               </tbody>
             </table>
           </div>
@@ -358,33 +411,33 @@ export function PrintInvoiceModal({
             <div className="space-y-2 text-xs font-medium">
               <div className="flex justify-between text-muted">
                 <span>Room Rate:</span>
-                <span className="font-mono">₱{pricing.undiscountedSubtotal.toLocaleString()}</span>
+                <span className="font-mono">₱{pricingAggregate.undiscountedSubtotal.toLocaleString()}</span>
               </div>
-              {pricing.discountAmount > 0 && (
+              {pricingAggregate.discountAmount > 0 && (
                 <div className="flex justify-between text-rose-600 font-semibold">
-                  <span>Direct Booking Discount ({pricing.discountPercent}%):</span>
-                  <span className="font-mono">-₱{pricing.discountAmount.toLocaleString()}</span>
+                  <span>Direct Booking Discount ({Math.round((pricingAggregate.discountAmount / pricingAggregate.undiscountedSubtotal) * 100)}%):</span>
+                  <span className="font-mono">-₱{pricingAggregate.discountAmount.toLocaleString()}</span>
                 </div>
               )}
               <div className="flex justify-between text-muted border-t border-soft pt-1.5">
                 <span>Total Before Discounts:</span>
-                <span className="font-mono">₱{pricing.subtotal.toLocaleString()}</span>
+                <span className="font-mono">₱{pricingAggregate.subtotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-muted">
                 <span>Add-ons / rentals:</span>
-                <span className="font-mono">₱{(pricing.breakfastTotal + pricing.rentalsTotal).toLocaleString()}</span>
+                <span className="font-mono">₱{(pricingAggregate.breakfastTotal + pricingAggregate.rentalsTotal + pricingAggregate.addonsTotal).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-main border-t border-soft pt-2 font-bold">
                 <span>Total Amount:</span>
-                <span className="font-mono text-[13px] text-slate-950 font-extrabold">₱{pricing.grandTotal.toLocaleString()}</span>
+                <span className="font-mono text-[13px] text-slate-950 font-extrabold">₱{pricingAggregate.grandTotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-slate-650 border-t border-soft pt-2">
                 <span>Downpayment Paid:</span>
-                <span className="font-mono text-emerald-600 font-bold">-₱{booking.downpayment_paid.toLocaleString()}</span>
+                <span className="font-mono text-emerald-600 font-bold">-₱{pricingAggregate.downpaymentPaid.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-brand-text border-t border-soft/60 pt-2 font-bold text-[13px]">
                 <span>Amount to Pay:</span>
-                <span className="font-mono text-[15px] text-brand-text font-extrabold">₱{booking.balance_due.toLocaleString()}</span>
+                <span className="font-mono text-[15px] text-brand-text font-extrabold">₱{pricingAggregate.balanceDue.toLocaleString()}</span>
               </div>
             </div>
           </div>

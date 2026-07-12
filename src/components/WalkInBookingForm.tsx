@@ -439,67 +439,20 @@ export function WalkInBookingForm({
   }
 
   if (createdBookingList.length > 0) {
-    const successModalContent = (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-        <div className="w-full max-w-md bg-card rounded-xl shadow-2xl overflow-hidden font-sans p-6 text-center space-y-5 border border-soft" onClick={e => e.stopPropagation()}>
-          <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-100/50">
-            <CheckCircle2 className="w-7 h-7" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-main">Booking Saved Successfully!</h3>
-            <p className="text-xs text-muted mt-1 leading-normal font-medium">
-              Sequential invoice(s) generated for check-in records:
-            </p>
-          </div>
-          
-          <div className="bg-page border border-soft/60 p-4 rounded-xl space-y-2.5 text-xs text-left max-h-[220px] overflow-y-auto">
-            {createdBookingList.map(b => (
-              <div key={b.id} className="flex justify-between items-center border-b border-soft/40 pb-2.5 last:border-b-0 last:pb-0">
-                <div>
-                  <span className="font-bold text-main block">
-                    {b.room_id ? `Room ${rooms.find(r => r.id === b.room_id)?.room_number}` : (venues.find(v => v.id === b.venue_id)?.name || 'Venue')}
-                  </span>
-                  <span className="text-[10px] text-muted block font-mono">
-                    Check-in: {b.check_in}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="font-mono font-bold text-brand-text block text-[11px]">{b.invoice_number}</span>
-                  <button
-                    type="button"
-                    onClick={() => setPrintTargetBooking(b)}
-                    className="text-brand-primary hover:text-brand-text text-[10px] font-bold underline select-none cursor-pointer mt-0.5 bg-transparent border-none p-0"
-                  >
-                    Print Statement
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-brand-primary hover:bg-brand-text text-white text-xs font-semibold py-2.5 rounded-lg transition-colors cursor-pointer"
-            >
-              Close & Return to Calendar
-            </button>
-          </div>
-        </div>
-        
-        {printTargetBooking && (
+    return createPortal(
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        <div className="w-full max-w-5xl bg-transparent shadow-2xl" onClick={e => e.stopPropagation()}>
           <PrintInvoiceModal
-            booking={printTargetBooking}
+            bookingsToPrint={createdBookingList}
             rooms={rooms}
             venues={venues}
             bookingsList={bookings}
-            onClose={() => setPrintTargetBooking(null)}
+            onClose={onClose}
           />
-        )}
-      </div>
+        </div>
+      </div>,
+      document.body
     )
-    return createPortal(successModalContent, document.body)
   }
 
   const modalContent = (
