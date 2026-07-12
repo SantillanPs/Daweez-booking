@@ -3,28 +3,26 @@ import * as syncEngine from '../utils/syncEngine'
 import { Booking, Room, Venue, SyncFeed, BookingSource, BreakfastOrder, EquipmentRental, EventAddons, Companion, PartnerDeal } from '../types/booking'
 import { Expense, ExpenseCategory } from '../types/expense'
 import { useRealtimeBookings } from './useRealtimeBookings'
+import { useEffect } from 'react'
+import { supabase, isSupabaseConfigured } from '../utils/supabaseClient'
 
 type MutationContext = { previous: Booking[] | undefined }
 
 export function useBookings() {
   const queryClient = useQueryClient()
 
-  // 1. Fetch Rooms List (Now async from Supabase/local)
+  // 1. Fetch Rooms from Supabase (dynamic, reflects DB price changes)
   const { data: rooms = [], isLoading: isLoadingRooms } = useQuery<Room[]>({
     queryKey: ['rooms'],
-    queryFn: async () => {
-      return await syncEngine.DEFAULT_ROOMS // Prepopulated list matches DB varchar ids perfectly
-    },
-    staleTime: Infinity,
+    queryFn: () => syncEngine.getRooms(),
+    staleTime: 5 * 60 * 1000, // 5 min — Realtime invalidation keeps it fresh
   })
 
-  // 2. Fetch Venues List
+  // 2. Fetch Venues from Supabase (dynamic, reflects DB price changes)
   const { data: venues = [], isLoading: isLoadingVenues } = useQuery<Venue[]>({
     queryKey: ['venues'],
-    queryFn: async () => {
-      return syncEngine.DEFAULT_VENUES
-    },
-    staleTime: Infinity,
+    queryFn: () => syncEngine.getVenues(),
+    staleTime: 5 * 60 * 1000,
   })
 
   // 3. Fetch Bookings (initial load only — Realtime subscription keeps cache fresh)
@@ -72,8 +70,23 @@ export function useBookings() {
     staleTime: Infinity,
   })
 
-  // Subscribe to Supabase Realtime — patches cache on INSERT/UPDATE/DELETE, no polling needed
+  // Subscribe to Supabase Realtime — patches bookings cache on INSERT/UPDATE/DELETE
   useRealtimeBookings()
+
+  // Realtime listeners for rooms & venues — invalidates price cache when DB changes
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+    const channel = supabase
+      .channel('rooms-venues-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['rooms'] })
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'venues' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['venues'] })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [queryClient])
 
   // 5. Mutation: Create Web Booking (30-Minute Lock with downpayments + breakfast/rentals)
   const createPendingBookingMutation = useMutation<Booking, Error, {
@@ -93,7 +106,8 @@ export function useBookings() {
 
       const pricing = syncEngine.calculatePricing({
         roomId, venueId, checkIn, checkOut, guestEmail,
-        breakfastOrders, equipmentRentals, eventAddons, bookingsList: bookings
+        breakfastOrders, equipmentRentals, eventAddons, bookingsList: bookings,
+        rooms, venues
       })
 
       const now = new Date()
@@ -221,7 +235,8 @@ export function useBookings() {
         roomId, venueId, checkIn, checkOut, guestEmail,
         breakfastOrders, equipmentRentals, eventAddons,
         bookingsList: bookings, rateMultiplier, companions,
-        contractRateOverride, venueExcessHours
+        contractRateOverride, venueExcessHours,
+        rooms, venues
       })
 
       const newBooking: Booking = {

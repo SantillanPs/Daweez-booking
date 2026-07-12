@@ -194,7 +194,6 @@ export const RoomDetailsForm = React.memo(
             )}
           </div>
 
-          {/* Breakfast is always included for room bookings — no opt-in needed */}
         </div>
       </div>
     )

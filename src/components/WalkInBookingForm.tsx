@@ -202,6 +202,15 @@ export function WalkInBookingForm({
   const [createdBookingList, setCreatedBookingList] = useState<Booking[]>([])
   const [printTargetBooking, setPrintTargetBooking] = useState<Booking | null>(null)
 
+  // ── Breakfast state ──
+  const [formBreakfastEnabled, setFormBreakfastEnabled] = useState(true)
+  const [formBreakfastGuests, setFormBreakfastGuests] = useState(1)
+
+  // Sync breakfast guest count with companions when they change
+  useEffect(() => {
+    setFormBreakfastGuests(prev => Math.max(1, 1 + formCompanions.length))
+  }, [formCompanions.length])
+
   // ── Add-ons state ──
   const [formChairs, setFormChairs] = useState(0)
   const [formExtraFoam, setFormExtraFoam] = useState(0)
@@ -347,10 +356,10 @@ export function WalkInBookingForm({
       // Breakfast: check if it's default included in partner deal
       const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
       if (sel.type === 'room') {
-        // If breakfast is pre-negotiated w/o breakfast, price is 150/guest/night.
-        // If it's pre-negotiated w/ breakfast (included), we count breakfast cost as 0 (it's already in the room rate override!)
-        if (!isBreakfastIncluded) {
-          breakfast += 150 * (1 + formCompanions.length) * n
+        // If breakfast is pre-negotiated w/ breakfast (included), cost is 0 (already in room rate override).
+        // Otherwise, charge only if the user opted in, for the selected number of guests.
+        if (!isBreakfastIncluded && formBreakfastEnabled) {
+          breakfast += 150 * formBreakfastGuests * n
         }
         rentals += (formExtraFoam * 200 + formExtraPillow * 50 + formExtraBlanket * 50 + formExtraTowel * 50) * n
       }
@@ -373,7 +382,7 @@ export function WalkInBookingForm({
       estDown: down,
       estDue: due
     }
-  }, [unitSelections, formSource, formAdditionalDiscount, formWalkInDiscount, formCompanions.length, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, bookingType])
+  }, [unitSelections, formSource, formAdditionalDiscount, formWalkInDiscount, formCompanions.length, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, bookingType, formBreakfastEnabled, formBreakfastGuests])
 
   const hasAddons = estBreakfast > 0 || estRentals > 0 || estAddons > 0
 
@@ -462,6 +471,7 @@ export function WalkInBookingForm({
           partnerDealId: formPartnerDealId || undefined,
           companyName: formCompanyName || undefined,
           vehiclePlate: formVehiclePlate || undefined,
+          breakfastOrders: formBreakfastEnabled ? undefined : ([] as BreakfastOrder[]),
           breakfastIncluded: isBreakfastIncluded,
           contractRateOverride: contractedPrice || undefined,
           paymentMethod: formPaymentMethod || undefined,
@@ -921,6 +931,10 @@ export function WalkInBookingForm({
                         setFormEventTent={setFormEventTent}
                         formVenueExcessHours={formVenueExcessHours}
                         setFormVenueExcessHours={setFormVenueExcessHours}
+                        formBreakfastEnabled={formBreakfastEnabled}
+                        setFormBreakfastEnabled={setFormBreakfastEnabled}
+                        formBreakfastGuests={formBreakfastGuests}
+                        setFormBreakfastGuests={setFormBreakfastGuests}
                       />
                       <div className="flex justify-between items-center pt-2">
                           <button type="button" onClick={() => setFormStep(2)} className="text-xs text-brand-text hover:text-brand-primary font-bold px-4 py-2 hover:bg-page rounded transition-colors cursor-pointer">&larr; Back</button>

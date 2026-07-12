@@ -147,7 +147,9 @@ export function ExtendStayModal({
                           guestEmail: booking.guest_email,
                           breakfastOrders: booking.breakfast_orders,
                           companions: booking.companions,
-                          bookingsList: bookings
+                          bookingsList: bookings,
+                          rooms,
+                          venues
                         }).balanceDue.toLocaleString()
                       } catch {
                         return '0'

@@ -217,7 +217,9 @@ export function CalendarTab() {
         checkOut: extendCheckoutDate,
         guestEmail: selectedExtendBooking.guest_email,
         breakfastOrders: selectedExtendBooking.breakfast_orders,
-        bookingsList: bookings
+        bookingsList: bookings,
+        rooms,
+        venues
       })
       const current = await syncEngine.getBookings()
       const updated = current.map(b => b.id === selectedExtendBooking.id ? { ...b, check_out: extendCheckoutDate, balance_due: pricing.balanceDue } : b)

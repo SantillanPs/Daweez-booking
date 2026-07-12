@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Armchair, ChevronDown } from 'lucide-react'
+import { Armchair, ChevronDown, Coffee } from 'lucide-react'
 
 interface AmenitiesFormProps {
   hasRooms: boolean
@@ -23,6 +23,10 @@ interface AmenitiesFormProps {
   setFormEventTent: (val: number) => void
   formVenueExcessHours: number
   setFormVenueExcessHours: (val: number) => void
+  formBreakfastEnabled: boolean
+  setFormBreakfastEnabled: (val: boolean) => void
+  formBreakfastGuests: number
+  setFormBreakfastGuests: (val: number) => void
 }
 
 export const AmenitiesForm = React.memo(
@@ -47,7 +51,11 @@ export const AmenitiesForm = React.memo(
     formEventTent,
     setFormEventTent,
     formVenueExcessHours,
-    setFormVenueExcessHours
+    setFormVenueExcessHours,
+    formBreakfastEnabled,
+    setFormBreakfastEnabled,
+    formBreakfastGuests,
+    setFormBreakfastGuests
   }: AmenitiesFormProps) => {
     const [showVenueAddons, setShowVenueAddons] = useState(true)
 
@@ -82,6 +90,42 @@ export const AmenitiesForm = React.memo(
             </span>
           )}
         </h4>
+
+        {/* Breakfast Toggle — only for room bookings */}
+        {hasRooms && (
+          <div className="space-y-3">
+            <span className="text-[10px] text-muted font-bold uppercase tracking-wider block">
+              Breakfast
+            </span>
+            <div className="flex items-center justify-between bg-brand-bg px-3 py-2 rounded border border-brand-border/65">
+              <div className="flex items-center gap-2">
+                <Coffee className="w-4 h-4 text-brand-primary" />
+                <div>
+                  <span className="text-xs font-semibold text-main">Include Breakfast</span>
+                  <span className="text-[10px] text-muted ml-1.5 font-mono">₱150/guest/night</span>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formBreakfastEnabled}
+                  onChange={e => setFormBreakfastEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-ring rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-primary"></div>
+              </label>
+            </div>
+
+            {formBreakfastEnabled && (
+              <div className="flex items-center justify-between bg-page px-3 py-2 rounded border border-soft ml-2">
+                <span className="text-[11px] text-muted font-semibold">Guests for Breakfast</span>
+                <Counter value={formBreakfastGuests} onChange={setFormBreakfastGuests} min={1} />
+              </div>
+            )}
+
+            <div className="border-t border-dashed border-soft/50 mt-3" />
+          </div>
+        )}
 
         {hasRooms && (
           <div className="space-y-3">
@@ -150,7 +194,9 @@ export const AmenitiesForm = React.memo(
       prevProps.formExtraTowel === nextProps.formExtraTowel &&
       prevProps.formEventTable === nextProps.formEventTable &&
       prevProps.formEventTent === nextProps.formEventTent &&
-      prevProps.formVenueExcessHours === nextProps.formVenueExcessHours
+      prevProps.formVenueExcessHours === nextProps.formVenueExcessHours &&
+      prevProps.formBreakfastEnabled === nextProps.formBreakfastEnabled &&
+      prevProps.formBreakfastGuests === nextProps.formBreakfastGuests
     )
   }
 )

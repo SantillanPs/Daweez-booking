@@ -202,7 +202,9 @@ export function useAnalyticsCalculations({
         eventAddons: b.event_addons,
         bookingsList: bookings,
         companions: b.companions,
-        source: b.source
+        source: b.source,
+        rooms,
+        venues
       })
 
       // Stay details

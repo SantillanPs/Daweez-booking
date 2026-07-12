@@ -69,13 +69,18 @@ export function PrintInvoiceModal({
 
     let breakfastTotal = 0
     if (isRoom) {
-      const guestCount = 1 + (b.companions?.length || 0)
-      const bDeal = bookingsList.find(bx => bx.id === b.id)?.partner_deal_id
-        ? partnerDeals.find(d => d.id === b.partner_deal_id)
-        : undefined
-      const isBreakfastIncluded = bDeal ? bDeal.breakfast_default === 'with' : b.breakfast_included
-      if (!isBreakfastIncluded) {
-        breakfastTotal = 150 * guestCount * nights
+      // Empty breakfast_orders means user explicitly opted out of breakfast
+      if (b.breakfast_orders && b.breakfast_orders.length === 0) {
+        // No breakfast — skip
+      } else {
+        const guestCount = 1 + (b.companions?.length || 0)
+        const bDeal = bookingsList.find(bx => bx.id === b.id)?.partner_deal_id
+          ? partnerDeals.find(d => d.id === b.partner_deal_id)
+          : undefined
+        const isBreakfastIncluded = bDeal ? bDeal.breakfast_default === 'with' : b.breakfast_included
+        if (!isBreakfastIncluded) {
+          breakfastTotal = 150 * guestCount * nights
+        }
       }
     } else if (b.breakfast_orders) {
       b.breakfast_orders.forEach(order => {
@@ -134,7 +139,9 @@ export function PrintInvoiceModal({
       companions: b.companions,
       bookingsList,
       rateMultiplier: derivedMultiplier,
-      contractRateOverride: b.contract_rate_override
+      contractRateOverride: b.contract_rate_override,
+      rooms,
+      venues
     })
 
     pricingAggregate.undiscountedSubtotal += pricing.undiscountedSubtotal

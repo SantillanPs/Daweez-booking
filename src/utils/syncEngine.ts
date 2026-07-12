@@ -264,6 +264,54 @@ function initDB() {
   }
 }
 
+// 5a. Fetch Rooms from Supabase (falls back to DEFAULT_ROOMS if not configured)
+export async function getRooms(): Promise<Room[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('rooms').select('*').order('room_number')
+      if (error) throw error
+      if (data && data.length > 0) {
+        return data.map(r => ({
+          id: r.id,
+          room_number: r.room_number,
+          name: r.name,
+          base_price: Number(r.base_price),
+          capacity: r.capacity,
+          description: r.description || undefined,
+          image_url: r.image_url || undefined
+        })) as Room[]
+      }
+    } catch (err) {
+      console.error('Supabase getRooms Error, falling back to defaults:', err)
+    }
+  }
+  return DEFAULT_ROOMS
+}
+
+// 5b. Fetch Venues from Supabase (falls back to DEFAULT_VENUES if not configured)
+export async function getVenues(): Promise<Venue[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('venues').select('*').order('name')
+      if (error) throw error
+      if (data && data.length > 0) {
+        return data.map(v => ({
+          id: v.id,
+          name: v.name,
+          base_price: Number(v.base_price),
+          capacity: v.capacity,
+          description: v.description || undefined,
+          image_url: v.image_url || undefined,
+          details: v.details || undefined
+        })) as Venue[]
+      }
+    } catch (err) {
+      console.error('Supabase getVenues Error, falling back to defaults:', err)
+    }
+  }
+  return DEFAULT_VENUES
+}
+
 // 5. Booking Operations
 export async function getBookings(): Promise<Booking[]> {
   if (isSupabaseConfigured) {
@@ -625,8 +673,12 @@ export function calculatePricing(params: {
   source?: BookingSource
   contractRateOverride?: number
   venueExcessHours?: number
+  breakfastEnabled?: boolean
+  breakfastGuestCount?: number
+  rooms?: Room[]   // live room data from DB — overrides DEFAULT_ROOMS
+  venues?: Venue[] // live venue data from DB — overrides DEFAULT_VENUES
 }) {
-  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier, companions, source, contractRateOverride, venueExcessHours = 0 } = params
+  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier, companions, source, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastGuestCount, rooms: liveRooms, venues: liveVenues } = params
 
   const defaultMultiplier = (source === 'manual' || source === 'facebook' || source === 'website') ? 0.8 : 1.0
   const finalMultiplier = rateMultiplier !== undefined ? rateMultiplier : defaultMultiplier
@@ -643,12 +695,14 @@ export function calculatePricing(params: {
       ? Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
       : Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
   } else if (roomId) {
-    const room = DEFAULT_ROOMS.find(r => r.id === roomId)
+    const roomList = liveRooms && liveRooms.length > 0 ? liveRooms : DEFAULT_ROOMS
+    const room = roomList.find(r => r.id === roomId)
     undiscountedBasePrice = room ? room.base_price : 0
     basePrice = Math.round(undiscountedBasePrice * finalMultiplier)
     nights = Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
   } else if (venueId) {
-    const venue = DEFAULT_VENUES.find(v => v.id === normalizeVenueId(venueId))
+    const venueList = liveVenues && liveVenues.length > 0 ? liveVenues : DEFAULT_VENUES
+    const venue = venueList.find(v => v.id === normalizeVenueId(venueId))
     undiscountedBasePrice = venue ? venue.base_price : 0
     basePrice = Math.round(undiscountedBasePrice * finalMultiplier)
     nights = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
@@ -661,11 +715,19 @@ export function calculatePricing(params: {
   const discountPercent = Math.round((1 - finalMultiplier) * 100)
   const grandTotal = subtotal * ((contractRateOverride !== undefined && contractRateOverride !== null) ? 1 : 1.0)
 
-  // C. Breakfast is always included for room bookings (₱150/guest/night)
+  // C. Breakfast (₱150/guest/night) — optional, with selectable guest count
   let breakfastTotal = 0
   if (roomId) {
-    const guestCount = 1 + (companions?.length || 0)
-    breakfastTotal = 150 * guestCount * nights
+    // Empty breakfastOrders array means user explicitly opted out of breakfast
+    if (breakfastOrders !== undefined && breakfastOrders.length === 0) {
+      // User chose no breakfast — skip
+    } else {
+      const isBreakfastOn = breakfastEnabled !== undefined ? breakfastEnabled : true
+      if (isBreakfastOn) {
+        const guestCount = breakfastGuestCount !== undefined ? breakfastGuestCount : (1 + (companions?.length || 0))
+        breakfastTotal = 150 * guestCount * nights
+      }
+    }
   } else if (breakfastOrders && breakfastOrders.length > 0) {
     // Venue bookings: use stored orders if present
     breakfastOrders.forEach(order => {
