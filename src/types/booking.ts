@@ -74,6 +74,7 @@ export interface Booking {
   check_out: string // YYYY-MM-DD
   source: BookingSource
   status: BookingStatus
+  payment_status?: 'unpaid' | 'downpayment' | 'paid'
   downpayment_paid: number // 50% downpayment
   payment_method?: string
   payment_reference?: string

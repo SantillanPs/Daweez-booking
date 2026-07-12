@@ -123,6 +123,10 @@ const TimelineCell = React.memo(
               <div className="text-[10px] text-muted">
                 {booking.guest_phone}<br />
                 <span className={booking.status === 'confirmed' ? 'text-emerald-600 font-medium' : 'text-amber-600'}>{booking.status}</span>
+                {' · '}
+                <span className={!booking.payment_status || booking.payment_status === 'unpaid' ? 'text-rose-500 font-medium' : booking.payment_status === 'downpayment' ? 'text-amber-600 font-medium' : 'text-emerald-600 font-medium'}>
+                  {!booking.payment_status || booking.payment_status === 'unpaid' ? 'Unpaid' : booking.payment_status === 'downpayment' ? 'DP Paid' : 'Paid'}
+                </span>
                 {' · '}{booking.source}
                 {booking.event_addons?.payment_reference && (
                   <>

@@ -144,7 +144,14 @@ export function BookingsListTab() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="font-medium text-main">
+                        <div className={`inline-block mb-1 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded ${
+                          !b.payment_status || b.payment_status === 'unpaid' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400' :
+                          b.payment_status === 'downpayment' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' :
+                          'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
+                        }`}>
+                          {!b.payment_status || b.payment_status === 'unpaid' ? 'Unpaid' : b.payment_status === 'downpayment' ? 'Downpayment' : 'Fully Paid'}
+                        </div>
+                        <div className="font-medium text-main text-xs">
                           Paid: ₱{(b.downpayment_paid || 0).toLocaleString()}
                         </div>
                         <div className="text-xs text-muted mt-0.5">

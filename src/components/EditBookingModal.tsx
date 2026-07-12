@@ -20,6 +20,7 @@ export function EditBookingModal({ booking, rooms, venues, onClose, onSave }: Ed
     status: booking.status,
     source: booking.source,
     invoice_number: booking.invoice_number || '',
+    payment_status: booking.payment_status,
     downpayment_paid: booking.downpayment_paid,
     balance_due: booking.balance_due,
     security_deposit: booking.security_deposit,
@@ -60,6 +61,7 @@ export function EditBookingModal({ booking, rooms, venues, onClose, onSave }: Ed
         status: formData.status as Booking['status'],
         source: formData.source as Booking['source'],
         invoice_number: formData.invoice_number || undefined,
+        payment_status: formData.payment_status as Booking['payment_status'],
         downpayment_paid: formData.downpayment_paid,
         balance_due: formData.balance_due,
         security_deposit: formData.security_deposit,
@@ -198,6 +200,17 @@ export function EditBookingModal({ booking, rooms, venues, onClose, onSave }: Ed
 
           <div className="border-t border-soft pt-6">
             <h4 className="text-sm font-bold text-main uppercase tracking-wider mb-4">Financials (₱)</h4>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="text-xs text-muted font-medium block mb-1">Payment Status</label>
+                <select name="payment_status" value={formData.payment_status || 'unpaid'} onChange={handleChange}
+                  className="w-full bg-white dark:bg-card border border-soft text-main px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none">
+                  <option value="unpaid">Unpaid</option>
+                  <option value="downpayment">Downpayment Paid</option>
+                  <option value="paid">Fully Paid</option>
+                </select>
+              </div>
+            </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="text-xs text-muted font-medium block mb-1">Downpayment Paid</label>
