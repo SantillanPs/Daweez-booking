@@ -242,6 +242,13 @@ export function CalendarTab() {
   }
   const datePickerValue = getYYYYMM(schedulerStartDate)
 
+  const getYYYYMMDD = (d: Date) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
   return (
     <div className="space-y-4 font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Upper header controls */}
