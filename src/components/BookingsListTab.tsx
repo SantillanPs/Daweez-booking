@@ -184,6 +184,8 @@ export function BookingsListTab() {
       {editingBooking && (
         <EditBookingModal
           booking={editingBooking}
+          rooms={rooms}
+          venues={venues}
           onClose={() => setEditingBooking(null)}
           onSave={async (updated) => {
             await updateBooking(updated)

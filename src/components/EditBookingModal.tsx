@@ -1,14 +1,16 @@
 import React, { useState } from 'react'
-import { Booking } from '../types/booking'
+import { Booking, Room, Venue } from '../types/booking'
 import { X, Save, AlertCircle } from 'lucide-react'
 
 interface EditBookingModalProps {
   booking: Booking
+  rooms: Room[]
+  venues: Venue[]
   onClose: () => void
   onSave: (updatedBooking: Booking) => Promise<void>
 }
 
-export function EditBookingModal({ booking, onClose, onSave }: EditBookingModalProps) {
+export function EditBookingModal({ booking, rooms, venues, onClose, onSave }: EditBookingModalProps) {
   const [formData, setFormData] = useState({
     guest_name: booking.guest_name,
     guest_phone: booking.guest_phone,
@@ -21,6 +23,7 @@ export function EditBookingModal({ booking, onClose, onSave }: EditBookingModalP
     downpayment_paid: booking.downpayment_paid,
     balance_due: booking.balance_due,
     security_deposit: booking.security_deposit,
+    unit_id: booking.room_id || booking.venue_id || '',
   })
 
   const [isSaving, setIsSaving] = useState(false)
@@ -60,6 +63,17 @@ export function EditBookingModal({ booking, onClose, onSave }: EditBookingModalP
         downpayment_paid: formData.downpayment_paid,
         balance_due: formData.balance_due,
         security_deposit: formData.security_deposit,
+      }
+      
+      if (rooms.some(r => r.id === formData.unit_id)) {
+        updatedBooking.room_id = formData.unit_id
+        updatedBooking.venue_id = undefined
+      } else if (venues.some(v => v.id === formData.unit_id)) {
+        updatedBooking.venue_id = formData.unit_id
+        updatedBooking.room_id = undefined
+      } else {
+        updatedBooking.room_id = undefined
+        updatedBooking.venue_id = undefined
       }
       
       await onSave(updatedBooking)
@@ -135,6 +149,26 @@ export function EditBookingModal({ booking, onClose, onSave }: EditBookingModalP
                     <option value="booking_com">Booking.com</option>
                     <option value="facebook">Facebook</option>
                     <option value="manual">Manual / Walk-in</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="text-xs text-muted font-medium block mb-1">Room / Venue</label>
+                  <select name="unit_id" value={formData.unit_id} onChange={handleChange}
+                    className="w-full bg-white dark:bg-card border border-soft text-main px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none">
+                    <option value="">Unassigned</option>
+                    <optgroup label="Rooms">
+                      {rooms.map(r => (
+                        <option key={r.id} value={r.id}>Room {r.room_number}: {r.name}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Venues">
+                      {venues.map(v => (
+                        <option key={v.id} value={v.id}>{v.name}</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
               </div>
