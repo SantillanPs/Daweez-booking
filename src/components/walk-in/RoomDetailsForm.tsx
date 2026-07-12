@@ -1,6 +1,6 @@
 import React from 'react'
 import { Companion, PartnerDeal } from '../../types/booking'
-import { User, Phone, Mail, Users, ChevronDown, Trash2, Plus, CheckCircle2 } from 'lucide-react'
+import { User, Phone, Mail, Users, ChevronDown, Trash2, Plus, CheckCircle2, MapPin, Globe, Car, VenetianMask } from 'lucide-react'
 
 interface RoomDetailsFormProps {
   formStatus: 'confirmed' | 'blocked'
@@ -10,6 +10,14 @@ interface RoomDetailsFormProps {
   setFormGuestEmail: (val: string) => void
   formGuestPhone: string
   setFormGuestPhone: (val: string) => void
+  formGuestGender: string
+  setFormGuestGender: (val: string) => void
+  formGuestNationality: string
+  setFormGuestNationality: (val: string) => void
+  formGuestAddress: string
+  setFormGuestAddress: (val: string) => void
+  formVehiclePlate: string
+  setFormVehiclePlate: (val: string) => void
   formCompanions: Companion[]
   setFormCompanions: (val: Companion[]) => void
   showCompanions: boolean
@@ -20,8 +28,6 @@ interface RoomDetailsFormProps {
   setFormPartnerDealId: (val: string) => void
   formCompanyName: string
   setFormCompanyName: (val: string) => void
-  formVehiclePlate: string
-  setFormVehiclePlate: (val: string) => void
   formTIN: string
   setFormTIN: (val: string) => void
   formAddress: string
@@ -38,6 +44,12 @@ export const RoomDetailsForm = React.memo(
     setFormGuestEmail,
     formGuestPhone,
     setFormGuestPhone,
+    formGuestGender,
+    setFormGuestGender,
+    formGuestNationality,
+    setFormGuestNationality,
+    formGuestAddress,
+    setFormGuestAddress,
     formCompanions,
     setFormCompanions,
     showCompanions,
@@ -200,13 +212,17 @@ export const RoomDetailsForm = React.memo(
   },
   (prevProps, nextProps) => {
     const compsEqual = prevProps.formCompanions.length === nextProps.formCompanions.length &&
-      prevProps.formCompanions.every((c, i) => c.name === nextProps.formCompanions[i].name && c.gender === nextProps.formCompanions[i].gender)
+      prevProps.formCompanions.every((c, i) => c.name === nextProps.formCompanions[i].name && c.gender === nextProps.formCompanions[i].gender && c.nationality === nextProps.formCompanions[i].nationality)
     
     return (
       prevProps.formStatus === nextProps.formStatus &&
       prevProps.formGuestName === nextProps.formGuestName &&
       prevProps.formGuestEmail === nextProps.formGuestEmail &&
       prevProps.formGuestPhone === nextProps.formGuestPhone &&
+      prevProps.formGuestGender === nextProps.formGuestGender &&
+      prevProps.formGuestNationality === nextProps.formGuestNationality &&
+      prevProps.formGuestAddress === nextProps.formGuestAddress &&
+      prevProps.formVehiclePlate === nextProps.formVehiclePlate &&
       prevProps.showCompanions === nextProps.showCompanions &&
 
       prevProps.hasRooms === nextProps.hasRooms &&

@@ -46,6 +46,9 @@ interface WalkInBookingFormProps {
     downpaymentPaid?: number
     balanceDue?: number
     securityDeposit?: number
+    guestGender?: string
+    guestNationality?: string
+    guestAddress?: string
   }) => Promise<Booking>
   cancelBooking: (bookingId: string) => Promise<void>
   updateBooking?: (booking: Booking) => Promise<void>
@@ -191,6 +194,9 @@ export function WalkInBookingForm({
   const [formGuestName, setFormGuestName] = useState('')
   const [formGuestEmail, setFormGuestEmail] = useState('')
   const [formGuestPhone, setFormGuestPhone] = useState('')
+  const [formGuestGender, setFormGuestGender] = useState('')
+  const [formGuestNationality, setFormGuestNationality] = useState('')
+  const [formGuestAddress, setFormGuestAddress] = useState('')
   const [formSource, setFormSource] = useState<BookingSource>('manual')
   const [formStatus, setFormStatus] = useState<'confirmed' | 'blocked'>('confirmed')
   const [formError, setFormError] = useState('')
@@ -460,6 +466,9 @@ export function WalkInBookingForm({
           guestName: cleanGuestName,
           guestEmail: formGuestEmail || (deal?.email || 'admin@daweez-booking.vercel.app'),
           guestPhone: formGuestPhone || (deal?.contact_no || 'None'),
+          guestGender: formGuestGender || undefined,
+          guestNationality: formGuestNationality || undefined,
+          guestAddress: formGuestAddress || undefined,
           checkIn: sel.checkIn,
           checkOut: sel.checkOut,
           source: bookingType === 'partner' ? 'manual' : formSource,
@@ -508,6 +517,9 @@ export function WalkInBookingForm({
           guestName: cleanGuestName,
           guestEmail: formGuestEmail || (deal?.email || 'admin@daweez-booking.vercel.app'),
           guestPhone: formGuestPhone || (deal?.contact_no || 'None'),
+          guestGender: formGuestGender || undefined,
+          guestNationality: formGuestNationality || undefined,
+          guestAddress: formGuestAddress || undefined,
           checkIn: sel.checkIn,
           checkOut: sel.checkOut,
           source: bookingType === 'partner' ? 'manual' : formSource,
@@ -867,6 +879,14 @@ export function WalkInBookingForm({
                           setFormGuestEmail={setFormGuestEmail}
                           formGuestPhone={formGuestPhone}
                           setFormGuestPhone={setFormGuestPhone}
+                          formGuestGender={formGuestGender}
+                          setFormGuestGender={setFormGuestGender}
+                          formGuestNationality={formGuestNationality}
+                          setFormGuestNationality={setFormGuestNationality}
+                          formGuestAddress={formGuestAddress}
+                          setFormGuestAddress={setFormGuestAddress}
+                          formVehiclePlate={formVehiclePlate}
+                          setFormVehiclePlate={setFormVehiclePlate}
                           formCompanions={formCompanions}
                           setFormCompanions={setFormCompanions}
                           showCompanions={showCompanions}
@@ -877,8 +897,6 @@ export function WalkInBookingForm({
                           setFormPartnerDealId={setFormPartnerDealId}
                           formCompanyName={formCompanyName}
                           setFormCompanyName={setFormCompanyName}
-                          formVehiclePlate={formVehiclePlate}
-                          setFormVehiclePlate={setFormVehiclePlate}
                           formTIN={formTIN}
                           setFormTIN={setFormTIN}
                           formAddress={formAddress}

@@ -215,9 +215,10 @@ export function useBookings() {
     paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
     downpaymentPaid?: number; balanceDue?: number; securityDeposit?: number
     breakfastIncluded?: boolean; contractRateOverride?: number
+    guestGender?: string; guestNationality?: string; guestAddress?: string
   }, MutationContext>({
     mutationFn: async (params) => {
-      const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, checkIn, checkOut,
+      const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, guestGender, guestNationality, guestAddress, checkIn, checkOut,
         source, status, breakfastOrders, equipmentRentals, eventAddons,
         rateMultiplier = 1.0, companions,
         partnerDealId, companyName, vehiclePlate, breakfastIncluded, contractRateOverride,
@@ -246,6 +247,9 @@ export function useBookings() {
         guest_name: guestName || (status === 'blocked' ? 'Admin Date Block' : 'Walk-in Guest'),
         guest_email: guestEmail || 'admin@daweez-booking.vercel.app',
         guest_phone: guestPhone || 'None',
+        guest_gender: guestGender || undefined,
+        guest_nationality: guestNationality || undefined,
+        guest_address: guestAddress || undefined,
         check_in: checkIn, check_out: checkOut,
         source, status,
         payment_status: paymentStatus !== undefined ? paymentStatus : (status === 'blocked' ? undefined : 'unpaid'),

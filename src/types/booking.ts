@@ -61,6 +61,7 @@ export interface EventAddons {
 export interface Companion {
   name: string
   gender: 'male' | 'female'
+  nationality?: string
 }
 
 export interface Booking {
@@ -70,6 +71,9 @@ export interface Booking {
   guest_name: string
   guest_email: string
   guest_phone: string
+  guest_gender?: string
+  guest_nationality?: string
+  guest_address?: string
   check_in: string // YYYY-MM-DD
   check_out: string // YYYY-MM-DD
   source: BookingSource
