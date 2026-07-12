@@ -12,7 +12,6 @@ import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
 import { GuestDetailsForm } from './walk-in/GuestDetailsForm'
 import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
-import { BillingSummary } from './walk-in/BillingSummary'
 
 interface WalkInBookingFormProps {
   rooms: Room[]
@@ -669,10 +668,7 @@ export function WalkInBookingForm({
         {/* ── Scrollable Body ── */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="overflow-y-auto flex-1 p-5 bg-page/30">
-            <div className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr] gap-6">
-
-              {/* ── LEFT COLUMN: Progressive Wizard / Quick Form Fields ── */}
-              <div className="space-y-4">
+            <div className="space-y-4">
                 {formError && (
                   <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs flex items-center gap-2 rounded-md animate-in fade-in">
                     <AlertCircle className="w-4 h-4 shrink-0" /><span>{formError}</span>
@@ -948,35 +944,6 @@ export function WalkInBookingForm({
 
                   </>
                 )}
-              </div>
-
-              {/* ── RIGHT COLUMN: Invoice Estimate & Navigation ── */}
-              <div className="flex flex-col gap-4">
-                <BillingSummary
-                  formStatus={formStatus}
-                  unitSelections={unitSelections}
-                  rooms={rooms}
-                  venues={venues}
-                  estBreakfast={estBreakfast}
-                  estRentals={estRentals}
-                  estAddons={estAddons}
-                  estTotal={estTotal}
-                  estDown={estDown}
-                  estDue={estDue}
-                  formSource={formSource}
-                  formAdditionalDiscount={formAdditionalDiscount}
-                  guestEmail={formGuestEmail}
-                  bookingType={bookingType}
-                  formWalkInDiscount={formWalkInDiscount}
-                  partnerDeals={partnerDeals}
-                  formPartnerDealId={formPartnerDealId}
-                  formPaymentMethod={formPaymentMethod}
-                  setFormPaymentMethod={setFormPaymentMethod}
-                  formPaymentReference={formPaymentReference}
-                  setFormPaymentReference={setFormPaymentReference}
-                  formVenueExcessHours={formVenueExcessHours}
-                />
-              </div>
             </div>
           </div>
         </form>
