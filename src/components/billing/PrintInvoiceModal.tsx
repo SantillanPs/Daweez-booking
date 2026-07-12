@@ -432,6 +432,10 @@ export function PrintInvoiceModal({
                 <span className="font-mono text-[13px] text-slate-950 font-extrabold">₱{pricingAggregate.grandTotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-slate-650 border-t border-soft pt-2">
+                <span>Required Downpayment (50%):</span>
+                <span className="font-mono font-semibold">₱{(pricingAggregate.grandTotal * 0.5).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+              </div>
+              <div className="flex justify-between text-slate-650 pt-1">
                 <span>Downpayment Paid:</span>
                 <span className="font-mono text-emerald-600 font-bold">-₱{pricingAggregate.downpaymentPaid.toLocaleString()}</span>
               </div>
