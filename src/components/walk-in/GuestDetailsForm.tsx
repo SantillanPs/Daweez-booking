@@ -12,8 +12,6 @@ interface GuestDetailsFormProps {
   setFormSource: (val: BookingSource) => void
   formStatus: 'confirmed' | 'blocked'
   setFormStatus: (val: 'confirmed' | 'blocked') => void
-  formAdditionalDiscount: number
-  setFormAdditionalDiscount: (val: number) => void
 }
 
 export const GuestDetailsForm = React.memo(
@@ -27,8 +25,7 @@ export const GuestDetailsForm = React.memo(
     setFormSource,
     formStatus,
     setFormStatus,
-    formAdditionalDiscount,
-    setFormAdditionalDiscount
+
   }: GuestDetailsFormProps) => {
 
     const formRoomIds = useMemo(() => {
@@ -91,6 +88,58 @@ export const GuestDetailsForm = React.memo(
           </div>
         </div>
 
+        {/* Selected Rooms with Editable Dates */}
+        {Object.keys(unitSelections).length > 0 && (
+          <div className="border-t border-soft pt-2 pb-0.5 space-y-1">
+            <span className="text-[9px] font-bold text-brand-text tracking-widest uppercase">Dates</span>
+            {(() => {
+              const groups: Record<string, { ids: string[]; checkIn: string; checkOut: string }> = {}
+              Object.entries(unitSelections).forEach(([id, sel]) => {
+                const key = `${sel.checkIn}_${sel.checkOut}`
+                if (!groups[key]) groups[key] = { ids: [], checkIn: sel.checkIn, checkOut: sel.checkOut }
+                groups[key].ids.push(id)
+              })
+              return Object.entries(groups).map(([key, group]) => {
+                const names = group.ids.map(id => {
+                  const sel = unitSelections[id]
+                  if (sel.type === 'room') return `Rm ${rooms.find(r => r.id === id)?.room_number || id}`
+                  return venues.find(v => v.id === id)?.name || id
+                })
+                return (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-main w-[72px] shrink-0 truncate leading-none">{names.join(', ')}</span>
+                    <input
+                      type="date"
+                      value={group.checkIn}
+                      onChange={e => {
+                        const newVal = e.target.value
+                        setUnitSelections({
+                          ...unitSelections,
+                          ...Object.fromEntries(group.ids.map(id => [id, { ...unitSelections[id], checkIn: newVal }]))
+                        })
+                      }}
+                      className="w-[124px] bg-white border border-soft text-main px-2 py-1 rounded text-[10px] font-mono focus:outline-none focus:border-brand-primary cursor-pointer"
+                    />
+                    <span className="text-brand-primary text-[10px] font-bold leading-none">→</span>
+                    <input
+                      type="date"
+                      value={group.checkOut}
+                      onChange={e => {
+                        const newVal = e.target.value
+                        setUnitSelections({
+                          ...unitSelections,
+                          ...Object.fromEntries(group.ids.map(id => [id, { ...unitSelections[id], checkOut: newVal }]))
+                        })
+                      }}
+                      className="w-[124px] bg-white border border-soft text-main px-2 py-1 rounded text-[10px] font-mono focus:outline-none focus:border-brand-primary cursor-pointer"
+                    />
+                  </div>
+                )
+              })
+            })()}
+          </div>
+        )}
+
         {/* Venues Selection */}
         <div className="pt-1">
           <span className="text-[10px] text-muted font-semibold block mb-1">Add a Venue:</span>
@@ -116,7 +165,7 @@ export const GuestDetailsForm = React.memo(
         </div>
 
         {/* Channel, Status & Discount Types in a highly space-efficient grid */}
-        <div className={`grid gap-3 pt-1 border-t border-soft ${formStatus === 'confirmed' ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'}`}>
+        <div className="grid gap-3 pt-1 border-t border-soft grid-cols-2">
           <div>
             <label className="text-[10px] text-muted font-medium block mb-1">Booking Source</label>
             <select 
@@ -153,29 +202,7 @@ export const GuestDetailsForm = React.memo(
               </button>
             </div>
           </div>
-          {formStatus === 'confirmed' && (
-            <div className="animate-in fade-in duration-200">
-              <label className="text-[10px] text-muted font-medium block mb-1">Extra Discount</label>
-              <div className="flex items-center gap-1.5">
-                <input 
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formAdditionalDiscount || ''}
-                  onChange={e => {
-                    const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0))
-                    setFormAdditionalDiscount(val)
-                  }}
-                  placeholder="0"
-                  className="w-full bg-brand-bg border border-soft text-main px-2.5 py-1.5 rounded text-xs text-center font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all"
-                />
-                <span className="text-xs font-bold text-muted font-mono shrink-0">%</span>
-              </div>
-              {(formSource === 'manual' || formSource === 'facebook') && formAdditionalDiscount > 0 && (
-                <p className="text-[9px] text-muted mt-1.5 font-medium">Total: {20 + formAdditionalDiscount}% off</p>
-              )}
-            </div>
-          )}
+
         </div>
       </div>
     )
@@ -198,8 +225,7 @@ export const GuestDetailsForm = React.memo(
       prevProps.formStatus === nextProps.formStatus &&
       prevProps.rooms === nextProps.rooms &&
       prevProps.venues === nextProps.venues &&
-      prevProps.bookings === nextProps.bookings &&
-      prevProps.formAdditionalDiscount === nextProps.formAdditionalDiscount
+      prevProps.bookings === nextProps.bookings
     )
   }
 )

@@ -857,8 +857,6 @@ export function WalkInBookingForm({
                           setFormSource={setFormSource}
                           formStatus={formStatus}
                           setFormStatus={setFormStatus}
-                          formAdditionalDiscount={formAdditionalDiscount}
-                          setFormAdditionalDiscount={setFormAdditionalDiscount}
                         />
                         <div className="flex justify-end pt-2">
                           <button type="button" disabled={!isValidDates} onClick={() => setFormStep(2)} className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">

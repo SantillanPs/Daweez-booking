@@ -24,7 +24,16 @@ This directory contains the React + TypeScript frontend codebase for the Daweez 
   - [LoginPortal](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/LoginPortal.tsx) - Staff passcode validation gate component.
   - [MainLayout](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/components/MainLayout.tsx) - Wrapper providing basic container styling.
 - **Data Operations**:
-  - [syncEngine.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/syncEngine.ts) implements client-side calculations, pricing policy rules (10% loyalty discount, 50% reservation deposit, flat ₱500 security deposit), corporate contract rate overrides, sequential invoice generation, and local storage fallback synchronization when Supabase is unconfigured.
+  - [syncEngine.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/syncEngine.ts) is a barrel re-export. Actual logic lives in domain modules under `src/utils/`:
+    - [helpers.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/helpers.ts) — `generateUUID`, `normalizeVenueId`.
+    - [defaultData.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/defaultData.ts) — `DEFAULT_ROOMS` and `DEFAULT_VENUES` seed data.
+    - [db.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/db.ts) — All CRUD operations (getRooms, getVenues, getBookings, saveBookings, insertBooking, updateBooking, deleteBooking, getFeeds, saveFeeds) with Supabase primary + localStorage fallback. Also `initDB()` for first-run seeding.
+    - [availability.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/availability.ts) — `isRoomAvailable`, `isVenueAvailable`, `isVenueRangeAvailable` collision detection.
+    - [pricing.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/pricing.ts) — `calculatePricing`: client-side pricing policy (20% direct discount, 50% reservation deposit, equipment rental rates, event add-ons).
+    - [otaSync.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/otaSync.ts) — `runSimulatedOTASync` for iCal feed ingestion and mock OTA booking synchronization.
+    - [seedData.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/seedData.ts) — `seedFutureMockData` for testing with June–Dec 2026 bookings.
+    - [partnerDeals.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/partnerDeals.ts) — Partner deal CRUD with Supabase/localStorage dual path.
+    - [expenses.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/utils/expenses.ts) — Expense categories and expenses CRUD with Supabase/localStorage dual path.
   - [useBookings.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/hooks/useBookings.ts) custom React hook orchestrating all React Query operations, exposing partner preset deals and CRUD mutations.
   - [useRealtimeBookings.ts](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/hooks/useRealtimeBookings.ts) hook that listens to PostgreSQL replication changes over WebSockets and updates the React Query bookings cache in real-time.
 

@@ -315,9 +315,7 @@ export function CalendarTab() {
 
           <div>
             <button onClick={() => {
-              const todayStr = getYYYYMMDD(new Date())
-              const tomorrowStr = getYYYYMMDD(new Date(Date.now() + 86400000))
-              resetAndOpenManualForm({ 'room-1': { checkIn: todayStr, checkOut: tomorrowStr, type: 'room' } })
+              resetAndOpenManualForm({})
             }}
               className="flex items-center gap-1.5 bg-brand-primary hover:bg-brand-text text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-sm">
               <Plus className="w-3.5 h-3.5" />

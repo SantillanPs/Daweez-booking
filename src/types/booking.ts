@@ -95,6 +95,7 @@ export interface Booking {
   company_name?: string
   vehicle_plate?: string
   invoice_number?: string
+  invoice_type?: 'folio' | 'billing'
   breakfast_included?: boolean
   contract_rate_override?: number
 }

@@ -76,6 +76,12 @@ Default section order:
 
 ## User Preferences
 
+### File Size & Modularity
+- **Maximum file size: 300 lines per file.** Any file exceeding 300 lines must be split into smaller modules.
+- Enforced as a hard rule: no new file may exceed this limit, and existing files above it are flagged for refactoring.
+- Splitting strategy: separate concerns into their own files (e.g., extract a hook, a subcomponent, or a utility function).
+- Apply this rule to every project, not just this one.
+
 ### Communication & Language Style
 - **Always Use Simple Language**: Avoid overly complex, academic, or technical jargon in both explanations (responses) and user interface design (labels, tabs, links, and route names).
 - **Clear & Direct Vocabulary**: Prefer plain terms (e.g., "Guests & Partners") over technical terms (e.g., "Directory" or "Registry").
