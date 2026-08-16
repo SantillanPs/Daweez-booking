@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Armchair, ChevronDown, Coffee } from 'lucide-react'
+import React from 'react'
+import { Coffee } from 'lucide-react'
 
 interface AmenitiesFormProps {
   hasRooms: boolean
@@ -57,8 +57,6 @@ export const AmenitiesForm = React.memo(
     formBreakfastGuests,
     setFormBreakfastGuests
   }: AmenitiesFormProps) => {
-    const [showVenueAddons, setShowVenueAddons] = useState(true)
-
     // Counter Component
     const Counter = ({ value, onChange, min = 0 }: { value: number; onChange: (v: number) => void; min?: number }) => (
       <div className="flex items-center gap-0.5 select-none">

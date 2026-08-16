@@ -11,7 +11,7 @@ function isDateBetween(dStr: string, startStr: string, endStr: string): boolean 
 // Helper: get array of dates between checkIn and checkOut (checkIn inclusive, checkOut exclusive)
 function getStayDates(checkIn: string, checkOut: string): string[] {
   const dates: string[] = []
-  let curr = new Date(checkIn)
+  const curr = new Date(checkIn)
   const end = new Date(checkOut)
   while (curr < end) {
     dates.push(curr.toISOString().split('T')[0])
@@ -46,8 +46,8 @@ export function useAnalyticsCalculations({
   // 1. Resolve date ranges based on chosen timeframe
   const dateRange = useMemo(() => {
     const today = new Date()
-    let startStr = ''
-    let endStr = ''
+    let startStr: string
+    let endStr: string
 
     if (timeframe === 'daily') {
       // Daily shows last 7 days ending today for trend view
@@ -115,7 +115,7 @@ export function useAnalyticsCalculations({
     const rangeStart = new Date(dateRange.start)
     const rangeEnd = new Date(dateRange.end)
     const allRangeDates: string[] = []
-    let curr = new Date(rangeStart)
+    const curr = new Date(rangeStart)
     while (curr <= rangeEnd) {
       allRangeDates.push(curr.toISOString().split('T')[0])
       curr.setDate(curr.getDate() + 1)

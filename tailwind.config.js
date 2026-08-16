@@ -42,12 +42,18 @@ export default {
         popover: "var(--bg-card)",
       },
       fontFamily: {
-        sans: ["Montserrat", "sans-serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        display: ["Montserrat", "sans-serif"],
       },
       borderRadius: {
-        lg: "4px", /* Sharp geometric boutique borders */
-        md: "4px",
-        sm: "2px",
+        xl: "16px",
+        lg: "12px",
+        md: "10px",
+        sm: "8px",
+      },
+      boxShadow: {
+        soft: "0 4px 24px rgba(15,23,42,0.06)",
+        softLg: "0 8px 32px rgba(15,23,42,0.08)",
       }
     },
   },

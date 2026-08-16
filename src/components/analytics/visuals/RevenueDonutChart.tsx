@@ -18,9 +18,10 @@ export const RevenueDonutChart: React.FC<RevenueDonutChartProps> = ({ donutSegme
   const [hoveredDonutSegment, setHoveredDonutSegment] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
 
-  // Trigger donut animation on mount
+  // Trigger donut animation on mount (deferred so the segment can mount at 0)
   useEffect(() => {
-    setIsMounted(true)
+    const id = requestAnimationFrame(() => setIsMounted(true))
+    return () => cancelAnimationFrame(id)
   }, [])
 
   return (

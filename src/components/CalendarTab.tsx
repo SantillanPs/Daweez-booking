@@ -1,32 +1,15 @@
 import React, { useState, useMemo, useCallback } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useDashboardData } from './DashboardContext'
-import { Booking, Room } from '../types/booking'
+import { Booking } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { WalkInBookingForm } from './WalkInBookingForm'
 import {
-  Calendar, Filter, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X
+  Calendar, Plus, ChevronLeft, ChevronRight, X
 } from 'lucide-react'
 
 // Import modular subcomponents
 import { ExtendStayModal } from './calendar/ExtendStayModal'
 import { TimelineGrid } from './calendar/TimelineGrid'
-
-const ROOM_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  'room-1':  { bg: 'bg-amber-50',   text: 'text-amber-800',   border: 'border-amber-200' },
-  'room-2':  { bg: 'bg-yellow-50',  text: 'text-yellow-800',  border: 'border-yellow-200' },
-  'room-3':  { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200' },
-  'room-4':  { bg: 'bg-blue-50',    text: 'text-blue-800',    border: 'border-blue-200' },
-  'room-5':  { bg: 'bg-rose-50',    text: 'text-rose-800',    border: 'border-rose-200' },
-  'room-6':  { bg: 'bg-violet-50',  text: 'text-violet-800',  border: 'border-violet-200' },
-  'room-7':  { bg: 'bg-teal-50',    text: 'text-teal-800',    border: 'border-teal-200' },
-  'room-8':  { bg: 'bg-sky-50',     text: 'text-sky-800',     border: 'border-sky-200' },
-  'room-9':  { bg: 'bg-orange-50',  text: 'text-orange-800',  border: 'border-orange-200' },
-  'room-10': { bg: 'bg-softbg',  text: 'text-main',   border: 'border-soft' },
-}
-const VENUE_COLORS = { bg: 'bg-fuchsia-50', text: 'text-fuchsia-800', border: 'border-fuchsia-200' }
-
-
 
 const getBookingStyle = (b: Booking) => {
   if (b.status === 'pending') return 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
@@ -42,7 +25,6 @@ const getBookingStyle = (b: Booking) => {
 }
 
 export function CalendarTab() {
-  const queryClient = useQueryClient()
   const { rooms, venues, bookings, createManualBooking, cancelBooking, confirmBooking, isConfirming, updateBooking } = useDashboardData()
 
   // ── Timeline state ──
@@ -71,46 +53,24 @@ export function CalendarTab() {
   const [formSelections, setFormSelections] = useState<Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>>({})
   const [groupSelection, setGroupSelection] = useState<Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null>(null)
 
-  const parseUTCDate = (dateStr: string) => {
-    const [y, m, d] = dateStr.split('-').map(Number)
-    return new Date(Date.UTC(y, m - 1, d))
-  }
+  const toDateKey = (y: number, m: number, d: number) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 
-  // Index bookings by exact Date string
-  const bookingsByDate = useMemo(() => {
-    const map: Record<string, Booking[]> = {}
-    bookings.forEach(b => {
-      const start = parseUTCDate(b.check_in)
-      const end = parseUTCDate(b.check_out)
-      const current = new Date(start)
-      if (current < end) {
-        while (current < end) {
-          const dateStr = current.toISOString().split('T')[0]
-          if (!map[dateStr]) map[dateStr] = []
-          map[dateStr].push(b)
-          current.setUTCDate(current.getUTCDate() + 1)
-        }
-      }
-    })
-    return map
-  }, [bookings])
-
-  // Index bookings by Room/Venue Date key (for Timeline Grid overlaps & cell mapping)
+  // Index bookings by Room/Venue Date key — numeric UTC timestamps, no string parsing in loop
   const bookingByRoomAndDate = useMemo(() => {
     const map: Record<string, Booking> = {}
+    const oneDay = 86400000
     bookings.forEach(b => {
       const keyId = b.room_id || syncEngine.normalizeVenueId(b.venue_id)
-      if (keyId) {
-        const start = parseUTCDate(b.check_in)
-        const current = new Date(start)
-        const checkOut = parseUTCDate(b.check_out)
-        if (current < checkOut) {
-          while (current < checkOut) {
-            const dateStr = current.toISOString().split('T')[0]
-            map[`${keyId}_${dateStr}`] = b
-            current.setUTCDate(current.getUTCDate() + 1)
-          }
-        }
+      if (!keyId) return
+      const [y1,m1,d1] = b.check_in.split('-').map(Number)
+      const [y2,m2,d2] = b.check_out.split('-').map(Number)
+      let cur = Date.UTC(y1, m1 - 1, d1)
+      const end = Date.UTC(y2, m2 - 1, d2)
+      while (cur < end) {
+        const dt = new Date(cur)
+        const k = `${keyId}_${toDateKey(dt.getUTCFullYear(), dt.getUTCMonth()+1, dt.getUTCDate())}`
+        map[k] = b
+        cur += oneDay
       }
     })
     return map
@@ -174,12 +134,9 @@ export function CalendarTab() {
       const checkInStr = timelineSelection.checkIn.toISOString().split('T')[0]
       const checkOutStr = date.toISOString().split('T')[0]
       
-      let isAvailable = true
-      if (type === 'room') {
-        isAvailable = syncEngine.isRoomAvailable(id, checkInStr, checkOutStr, bookings)
-      } else {
-        isAvailable = syncEngine.isVenueRangeAvailable(id, checkInStr, checkOutStr, bookings)
-      }
+      const isAvailable = type === 'room'
+        ? syncEngine.isRoomAvailable(id, checkInStr, checkOutStr, bookings)
+        : syncEngine.isVenueRangeAvailable(id, checkInStr, checkOutStr, bookings)
 
       if (!isAvailable) {
         const unitName = type === 'room' ? (rooms.find(r => r.id === id)?.room_number || id) : (venues.find(v => v.id === id)?.name || id)
@@ -221,10 +178,10 @@ export function CalendarTab() {
         rooms,
         venues
       })
+      // Targeted update through the shared layer (no whole-array rewrite).
       const current = await syncEngine.getBookings()
-      const updated = current.map(b => b.id === selectedExtendBooking.id ? { ...b, check_out: extendCheckoutDate, balance_due: pricing.balanceDue } : b)
-      await syncEngine.saveBookings(updated)
-      await queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      const target = current.find(b => b.id === selectedExtendBooking.id) || selectedExtendBooking
+      await updateBooking({ ...target, check_out: extendCheckoutDate, balance_due: pricing.balanceDue })
       setSelectedExtendBooking(null)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error during stay extension'
@@ -242,13 +199,6 @@ export function CalendarTab() {
     return `${year}-${month}`
   }
   const datePickerValue = getYYYYMM(schedulerStartDate)
-
-  const getYYYYMMDD = (d: Date) => {
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
 
   return (
     <div className="space-y-4 font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -434,7 +384,7 @@ export function CalendarTab() {
             try {
               await confirmBooking(id)
               setSelectedExtendBooking(null)
-            } catch (err) {
+            } catch {
               setExtendError('Failed to confirm reservation.')
             }
           }}

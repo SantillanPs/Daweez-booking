@@ -1,6 +1,6 @@
 import { Room, Venue, Booking, SyncFeed, BookingSource, BookingStatus } from '../types/booking'
 import { supabase, isSupabaseConfigured } from './supabaseClient'
-import { generateUUID } from './helpers'
+import { randomUUID, isValidUUID } from './helpers'
 import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 
 // Local Storage Database Keys
@@ -176,10 +176,8 @@ export async function getBookings(): Promise<Booking[]> {
           return true
         })
 
-        const expiredIds = data.filter(b => b.status === 'pending' && b.expires_at && new Date(b.expires_at) <= now).map(b => b.id)
-        if (expiredIds.length > 0) {
-          await supabase.from('bookings').delete().in('id', expiredIds)
-        }
+        // Remove abandoned 30-min locks via RPC (anon no longer has DELETE).
+        try { await supabase.rpc('cleanup_expired_pending') } catch { /* non-fatal */ }
 
         return activeRecords.map(b => ({
           id: b.id,
@@ -242,45 +240,88 @@ export async function getBookings(): Promise<Booking[]> {
   return activeBookings
 }
 
+// ── Shared Supabase record mapper (single source of truth for column shape) ──
+function toBookingRecord(booking: Booking): Record<string, unknown> {
+  return {
+    id: booking.id,
+    room_id: booking.room_id || null,
+    venue_id: booking.venue_id || null,
+    guest_name: booking.guest_name,
+    guest_email: booking.guest_email,
+    guest_phone: booking.guest_phone,
+    guest_gender: booking.guest_gender || null,
+    guest_nationality: booking.guest_nationality || null,
+    guest_address: booking.guest_address || null,
+    check_in: booking.check_in,
+    check_out: booking.check_out,
+    source: booking.source,
+    status: booking.status,
+    payment_status: booking.payment_status || null,
+    payment_method: booking.payment_method || null,
+    payment_reference: booking.payment_reference || null,
+    downpayment_paid: booking.downpayment_paid,
+    balance_due: booking.balance_due,
+    security_deposit: booking.security_deposit,
+    breakfast_orders: booking.breakfast_orders || null,
+    equipment_rentals: booking.equipment_rentals || null,
+    event_addons: booking.event_addons || null,
+    companions: booking.companions || null,
+    venue_excess_hours: booking.venue_excess_hours || 0,
+    expires_at: booking.expires_at || null,
+    partner_deal_id: booking.partner_deal_id || null,
+    company_name: booking.company_name || null,
+    vehicle_plate: booking.vehicle_plate || null,
+    invoice_number: booking.invoice_number || null,
+    invoice_type: booking.invoice_type || null,
+    breakfast_included: !!booking.breakfast_included,
+    contract_rate_override: booking.contract_rate_override || null
+  }
+}
+
+// Business-rule failures must surface to the UI — never silently fall back.
+function isBusinessRuleError(err: unknown): boolean {
+  const msg = (err as { message?: string })?.message || ''
+  return msg.includes('ROOM_UNAVAILABLE') || msg.includes('VENUE_UNAVAILABLE') || msg.includes('Check-in must be earlier')
+}
+
+// Compute the next sequential invoice number for a check-in month.
+async function nextInvoiceNumber(checkInDate: string): Promise<string> {
+  const allBookings = await getBookings()
+  const prefixYearMonth = checkInDate.substring(0, 7)
+  const prefixDocType = 'GRF'
+
+  const sameMonthBookings = allBookings.filter(b =>
+    b.invoice_number &&
+    b.invoice_number.startsWith(`${prefixDocType}-${prefixYearMonth}-`)
+  )
+
+  let nextSeq = 1
+  if (sameMonthBookings.length > 0) {
+    const seqs = sameMonthBookings.map(b => {
+      const parts = b.invoice_number!.split('-')
+      const lastPart = parts[parts.length - 1]
+      const num = parseInt(lastPart, 10)
+      return isNaN(num) ? 0 : num
+    })
+    nextSeq = Math.max(...seqs) + 1
+  }
+
+  return `${prefixDocType}-${prefixYearMonth}-${String(nextSeq).padStart(4, '0')}`
+}
+
 export async function saveBookings(bookings: Booking[]): Promise<void> {
   if (isSupabaseConfigured) {
     try {
-      const records = bookings.map(b => ({
-        id: b.id,
-        room_id: b.room_id || null,
-        venue_id: b.venue_id || null,
-        guest_name: b.guest_name,
-        guest_email: b.guest_email,
-        guest_phone: b.guest_phone,
-        guest_gender: b.guest_gender || null,
-        guest_nationality: b.guest_nationality || null,
-        guest_address: b.guest_address || null,
-        check_in: b.check_in,
-        check_out: b.check_out,
-        source: b.source,
-        status: b.status,
-        payment_method: b.payment_method || null,
-        payment_reference: b.payment_reference || null,
-        downpayment_paid: b.downpayment_paid,
-        balance_due: b.balance_due,
-        security_deposit: b.security_deposit,
-        breakfast_orders: b.breakfast_orders || null,
-        equipment_rentals: b.equipment_rentals || null,
-        event_addons: b.event_addons || null,
-        companions: b.companions || null,
-        venue_excess_hours: b.venue_excess_hours || 0,
-        expires_at: b.expires_at || null,
-        partner_deal_id: b.partner_deal_id || null,
-        company_name: b.company_name || null,
-        vehicle_plate: b.vehicle_plate || null,
-        invoice_number: b.invoice_number || null,
-        invoice_type: b.invoice_type || null,
-        breakfast_included: !!b.breakfast_included,
-        contract_rate_override: b.contract_rate_override || null
-      }))
-
-      const { error } = await supabase.from('bookings').upsert(records)
-      if (error) throw error
+      // Per-row insert/update through the RPCs (whole-array upsert is no longer
+      // permitted for anon and would cause lost updates between tabs).
+      const existing = await getBookings()
+      for (const b of bookings) {
+        if (existing.some(x => x.id === b.id)) {
+          await updateBooking(b)
+        } else {
+          await insertBooking(b)
+        }
+      }
       return
     } catch (err) {
       console.error('Supabase saveBookings Error, falling back to LocalStorage:', err)
@@ -290,124 +331,60 @@ export async function saveBookings(bookings: Booking[]): Promise<void> {
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings))
 }
 
-export async function insertBooking(booking: Booking): Promise<void> {
-  if (!booking.invoice_number && booking.status !== 'blocked') {
-    const allBookings = await getBookings()
-    const checkInDate = booking.check_in
-    const prefixYearMonth = checkInDate.substring(0, 7)
-    const prefixDocType = 'GRF'
+export async function insertBooking(booking: Booking): Promise<Booking> {
+  // The DB id column is UUID-typed; legacy ids ('manual-abc') would silently
+  // fail on Supabase, so normalize to a real UUID before writing.
+  const dbId = isValidUUID(booking.id) ? booking.id! : randomUUID()
+  const withId: Booking = { ...booking, id: dbId }
 
-    const sameMonthBookings = allBookings.filter(b =>
-      b.invoice_number &&
-      b.invoice_number.startsWith(`${prefixDocType}-${prefixYearMonth}-`)
-    )
-
-    let nextSeq = 1
-    if (sameMonthBookings.length > 0) {
-      const seqs = sameMonthBookings.map(b => {
-        const parts = b.invoice_number!.split('-')
-        const lastPart = parts[parts.length - 1]
-        const num = parseInt(lastPart, 10)
-        return isNaN(num) ? 0 : num
-      })
-      nextSeq = Math.max(...seqs) + 1
-    }
-
-    const paddedSeq = String(nextSeq).padStart(4, '0')
-    booking.invoice_number = `${prefixDocType}-${prefixYearMonth}-${paddedSeq}`
+  // Assign a sequential invoice number client-side (retried on conflict below).
+  if (!withId.invoice_number && withId.status !== 'blocked') {
+    withId.invoice_number = await nextInvoiceNumber(withId.check_in)
   }
 
-  const record = {
-    id: booking.id,
-    room_id: booking.room_id || null,
-    venue_id: booking.venue_id || null,
-    guest_name: booking.guest_name,
-    guest_email: booking.guest_email,
-    guest_phone: booking.guest_phone,
-    guest_gender: booking.guest_gender || null,
-    guest_nationality: booking.guest_nationality || null,
-    guest_address: booking.guest_address || null,
-    check_in: booking.check_in,
-    check_out: booking.check_out,
-    source: booking.source,
-    status: booking.status,
-    payment_method: booking.payment_method || null,
-    payment_reference: booking.payment_reference || null,
-    downpayment_paid: booking.downpayment_paid,
-    balance_due: booking.balance_due,
-    security_deposit: booking.security_deposit,
-    breakfast_orders: booking.breakfast_orders || null,
-    equipment_rentals: booking.equipment_rentals || null,
-    event_addons: booking.event_addons || null,
-    companions: booking.companions || null,
-    venue_excess_hours: booking.venue_excess_hours || 0,
-    expires_at: booking.expires_at || null,
-    partner_deal_id: booking.partner_deal_id || null,
-    company_name: booking.company_name || null,
-    vehicle_plate: booking.vehicle_plate || null,
-    invoice_number: booking.invoice_number || null,
-    invoice_type: booking.invoice_type || null,
-    breakfast_included: !!booking.breakfast_included,
-    contract_rate_override: booking.contract_rate_override || null
-  }
+  const record = toBookingRecord(withId)
 
   if (isSupabaseConfigured) {
-    try {
-      const { error } = await supabase.from('bookings').insert(record)
-      if (error) throw error
-      return
-    } catch (err) {
-      console.error('Supabase insertBooking Error, falling back to LocalStorage:', err)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const { data, error } = await supabase.rpc('book_booking', { p_booking: record })
+        if (error) {
+          // Race on the sequential invoice number → bump and retry.
+          const isInvoiceConflict = withId.invoice_number &&
+            (error.code === '23505' || /duplicate key/i.test(String(error.message || '')))
+          if (isInvoiceConflict) {
+            withId.invoice_number = await nextInvoiceNumber(withId.check_in)
+            record.invoice_number = withId.invoice_number
+            continue
+          }
+          throw error
+        }
+        return (data as unknown as Booking) ?? withId
+      } catch (err) {
+        if (isBusinessRuleError(err)) throw err
+        console.error('Supabase insertBooking Error, falling back to LocalStorage:', err)
+        break
+      }
     }
   }
 
   initDB()
   const data = localStorage.getItem(BOOKINGS_KEY)
   const existing: Booking[] = data ? JSON.parse(data) : []
-  localStorage.setItem(BOOKINGS_KEY, JSON.stringify([...existing, booking]))
+  const next = [...existing, withId]
+  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(next))
+  return withId
 }
 
-export async function updateBooking(booking: Booking): Promise<void> {
-  const record = {
-    id: booking.id,
-    room_id: booking.room_id || null,
-    venue_id: booking.venue_id || null,
-    guest_name: booking.guest_name,
-    guest_email: booking.guest_email,
-    guest_phone: booking.guest_phone,
-    guest_gender: booking.guest_gender || null,
-    guest_nationality: booking.guest_nationality || null,
-    guest_address: booking.guest_address || null,
-    check_in: booking.check_in,
-    check_out: booking.check_out,
-    source: booking.source,
-    status: booking.status,
-    payment_method: booking.payment_method || null,
-    payment_reference: booking.payment_reference || null,
-    downpayment_paid: booking.downpayment_paid,
-    balance_due: booking.balance_due,
-    security_deposit: booking.security_deposit,
-    breakfast_orders: booking.breakfast_orders || null,
-    equipment_rentals: booking.equipment_rentals || null,
-    event_addons: booking.event_addons || null,
-    companions: booking.companions || null,
-    venue_excess_hours: booking.venue_excess_hours || 0,
-    expires_at: booking.expires_at || null,
-    partner_deal_id: booking.partner_deal_id || null,
-    company_name: booking.company_name || null,
-    vehicle_plate: booking.vehicle_plate || null,
-    invoice_number: booking.invoice_number || null,
-    invoice_type: booking.invoice_type || null,
-    breakfast_included: !!booking.breakfast_included,
-    contract_rate_override: booking.contract_rate_override || null
-  }
-
-  if (isSupabaseConfigured) {
+export async function updateBooking(booking: Booking): Promise<Booking> {
+  // Supabase rows always carry real UUID ids; legacy localStorage rows don't.
+  if (isSupabaseConfigured && isValidUUID(booking.id)) {
     try {
-      const { error } = await supabase.from('bookings').update(record).eq('id', booking.id)
+      const { data, error } = await supabase.rpc('update_booking', { p_booking: toBookingRecord(booking) })
       if (error) throw error
-      return
+      return (data as unknown as Booking) ?? booking
     } catch (err) {
+      if (isBusinessRuleError(err)) throw err
       console.error('Supabase updateBooking Error, falling back to LocalStorage:', err)
     }
   }
@@ -417,15 +394,17 @@ export async function updateBooking(booking: Booking): Promise<void> {
   const existing: Booking[] = data ? JSON.parse(data) : []
   const updated = existing.map(b => b.id === booking.id ? booking : b)
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updated))
+  return booking
 }
 
 export async function deleteBooking(bookingId: string): Promise<void> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && isValidUUID(bookingId)) {
     try {
-      const { error } = await supabase.from('bookings').delete().eq('id', bookingId)
+      const { error } = await supabase.rpc('delete_booking', { p_booking_id: bookingId })
       if (error) throw error
       return
     } catch (err) {
+      if (isBusinessRuleError(err)) throw err
       console.error('Supabase deleteBooking Error, falling back to LocalStorage:', err)
     }
   }
@@ -434,6 +413,26 @@ export async function deleteBooking(bookingId: string): Promise<void> {
   const data = localStorage.getItem(BOOKINGS_KEY)
   const existing: Booking[] = data ? JSON.parse(data) : []
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify(existing.filter(b => b.id !== bookingId)))
+}
+
+export async function confirmBooking(bookingId: string): Promise<Booking> {
+  if (isSupabaseConfigured && isValidUUID(bookingId)) {
+    try {
+      const { data, error } = await supabase.rpc('confirm_booking', { p_booking_id: bookingId })
+      if (error) throw error
+      return data as unknown as Booking
+    } catch (err) {
+      if (isBusinessRuleError(err)) throw err
+      console.error('Supabase confirmBooking Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  initDB()
+  const data = localStorage.getItem(BOOKINGS_KEY)
+  const existing: Booking[] = data ? JSON.parse(data) : []
+  const updated = existing.map(b => b.id === bookingId ? { ...b, status: 'confirmed' as const, expires_at: null } : b)
+  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updated))
+  return updated.find(b => b.id === bookingId)!
 }
 
 export async function getFeeds(): Promise<SyncFeed[]> {

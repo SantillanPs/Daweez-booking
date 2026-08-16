@@ -71,7 +71,7 @@ export function ExpensesTab() {
       // Reset form
       setAmount('')
       setNotes('')
-    } catch (err) {
+    } catch {
       alert('Failed to log expense. Please try again.')
     } finally {
       setIsSubmitting(false)
@@ -82,7 +82,7 @@ export function ExpensesTab() {
     if (confirm('Are you sure you want to delete this expense? This will affect analytics.')) {
       try {
         await deleteExpense(id)
-      } catch (err) {
+      } catch {
         alert('Failed to delete expense.')
       }
     }

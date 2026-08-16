@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface AnimatedRectProps extends React.SVGProps<SVGRectElement> {
   targetY: number;
@@ -9,12 +9,14 @@ interface AnimatedRectProps extends React.SVGProps<SVGRectElement> {
 export function AnimatedRect({ targetY, targetHeight, duration = 1000, ...props }: AnimatedRectProps) {
   const [currentY, setCurrentY] = useState(100);
   const [currentHeight, setCurrentHeight] = useState(0);
+  const currentYRef = useRef(100);
+  const currentHeightRef = useRef(0);
 
   useEffect(() => {
     let animationFrameId: number;
     let startTimestamp: number | null = null;
-    const startY = currentY;
-    const startHeight = currentHeight;
+    const startY = currentYRef.current;
+    const startHeight = currentHeightRef.current;
     const endY = targetY;
     const endHeight = targetHeight;
 
@@ -27,12 +29,18 @@ export function AnimatedRect({ targetY, targetHeight, duration = 1000, ...props 
       // Easing function (easeOutExpo)
       const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
       
-      setCurrentY(startY + (endY - startY) * easeProgress);
-      setCurrentHeight(startHeight + (endHeight - startHeight) * easeProgress);
+      const nextY = startY + (endY - startY) * easeProgress;
+      const nextHeight = startHeight + (endHeight - startHeight) * easeProgress;
+      currentYRef.current = nextY;
+      currentHeightRef.current = nextHeight;
+      setCurrentY(nextY);
+      setCurrentHeight(nextHeight);
 
       if (progress < 1) {
         animationFrameId = window.requestAnimationFrame(step);
       } else {
+        currentYRef.current = endY;
+        currentHeightRef.current = endHeight;
         setCurrentY(endY);
         setCurrentHeight(endHeight);
       }

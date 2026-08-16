@@ -4,7 +4,7 @@ import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, Equipme
 import * as syncEngine from '../utils/syncEngine'
 import { useDashboardData } from './DashboardContext'
 import {
-  X, AlertCircle, BedDouble, PartyPopper, CheckCircle2
+  X, AlertCircle, BedDouble, PartyPopper
 } from 'lucide-react'
 import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
 
@@ -63,7 +63,6 @@ export function WalkInBookingForm({
   bookings,
   createManualBooking,
   cancelBooking,
-  updateBooking,
   initialSelections,
   editingBookings,
   onClose
@@ -179,18 +178,6 @@ export function WalkInBookingForm({
     }
   }
 
-  const handleTogglePartnerUnit = (id: string, type: 'room' | 'venue') => {
-    setUnitSelections(prev => {
-      const next = { ...prev }
-      if (next[id]) {
-        delete next[id]
-      } else {
-        next[id] = { checkIn: formCheckIn, checkOut: formCheckOut, type }
-      }
-      return next
-    })
-  }
-
   const [formGuestName, setFormGuestName] = useState('')
   const [formGuestEmail, setFormGuestEmail] = useState('')
   const [formGuestPhone, setFormGuestPhone] = useState('')
@@ -202,7 +189,7 @@ export function WalkInBookingForm({
   const [formError, setFormError] = useState('')
   const [formCompanions, setFormCompanions] = useState<Companion[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formAdditionalDiscount, setFormAdditionalDiscount] = useState(0)
+  const formAdditionalDiscount = 0
   const [formWalkInDiscount, setFormWalkInDiscount] = useState(true)
   const [createdBookingList, setCreatedBookingList] = useState<Booking[]>([])
 
@@ -211,10 +198,13 @@ export function WalkInBookingForm({
   const [formBreakfastEnabled, setFormBreakfastEnabled] = useState(true)
   const [formBreakfastGuests, setFormBreakfastGuests] = useState(1)
 
-  // Sync breakfast guest count with companions when they change
-  useEffect(() => {
-    setFormBreakfastGuests(prev => Math.max(1, 1 + formCompanions.length))
-  }, [formCompanions.length])
+  // Sync breakfast guest count with companions when they change — "adjust
+  // state when a prop changes" pattern (no effect needed).
+  const [prevCompanionCount, setPrevCompanionCount] = useState(formCompanions.length)
+  if (prevCompanionCount !== formCompanions.length) {
+    setPrevCompanionCount(formCompanions.length)
+    setFormBreakfastGuests(Math.max(1, 1 + formCompanions.length))
+  }
 
   // ── Add-ons state ──
   const [formChairs, setFormChairs] = useState(0)
@@ -241,6 +231,9 @@ export function WalkInBookingForm({
   const [showCompanions, setShowCompanions] = useState(true)
 
   // ── Edit Mode Initialization ──
+  // Seeds local form state from the editing booking(s) — the documented
+  // "reset state when a prop changes" case, so the sync is intentional.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (editingBookings && editingBookings.length > 0) {
       const b = editingBookings[0]
@@ -297,6 +290,7 @@ export function WalkInBookingForm({
       setUnitSelections(initial)
     }
   }, [editingBookings])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const activeBookingsContext = useMemo(() => {
     if (!editingBookings || editingBookings.length === 0) return bookings
@@ -329,7 +323,7 @@ export function WalkInBookingForm({
   }, [unitSelections])
 
   // ── Pricing calculations ──
-  const { estBreakfast, estRentals, estAddons, estTotal, estDown, estDue } = useMemo(() => {
+  const { estBreakfast, estRentals, estAddons } = useMemo(() => {
     let base = 0
     let breakfast = 0
     let rentals = 0
@@ -387,7 +381,7 @@ export function WalkInBookingForm({
       estDown: down,
       estDue: due
     }
-  }, [unitSelections, formSource, formAdditionalDiscount, formWalkInDiscount, formCompanions.length, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, bookingType, formBreakfastEnabled, formBreakfastGuests])
+  }, [unitSelections, formSource, formAdditionalDiscount, formWalkInDiscount, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, bookingType, formBreakfastEnabled, formBreakfastGuests])
 
   const hasAddons = estBreakfast > 0 || estRentals > 0 || estAddons > 0
 
@@ -493,7 +487,7 @@ export function WalkInBookingForm({
       }
 
       // 3. Loop to create or update venue bookings
-      let isFirstVenue = true
+      const isFirstVenue = true
       for (const venueId of Array.from(formVenueIds)) {
         const sel = unitSelections[venueId]
         const rentals = (bookingType === 'partner' || !isFirstVenue) ? undefined : {
@@ -572,14 +566,15 @@ export function WalkInBookingForm({
 
   if (createdBookingList.length > 0) {
     return createPortal(
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-        <div className="w-full max-w-5xl bg-transparent shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 p-4 flex flex-col items-center" onClick={onClose}>
+        <div className="w-full max-w-3xl mb-8" onClick={e => e.stopPropagation()}>
           <PrintInvoiceModal
             bookingsToPrint={createdBookingList}
             rooms={rooms}
             venues={venues}
             bookingsList={bookings}
             onClose={onClose}
+            embedded
           />
         </div>
       </div>,

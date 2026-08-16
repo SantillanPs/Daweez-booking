@@ -23,7 +23,7 @@ export function calculatePricing(params: {
   rooms?: Room[]
   venues?: Venue[]
 }) {
-  const { roomId, venueId, checkIn, checkOut, guestEmail, breakfastOrders, equipmentRentals, eventAddons, bookingsList = [], rateMultiplier, companions, source, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastGuestCount, rooms: liveRooms, venues: liveVenues } = params
+  const { roomId, venueId, checkIn, checkOut, breakfastOrders, equipmentRentals, eventAddons, rateMultiplier, companions, source, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastGuestCount, rooms: liveRooms, venues: liveVenues } = params
 
   const defaultMultiplier = (source === 'manual' || source === 'facebook' || source === 'website') ? 0.8 : 1.0
   const finalMultiplier = rateMultiplier !== undefined ? rateMultiplier : defaultMultiplier
@@ -60,8 +60,9 @@ export function calculatePricing(params: {
 
   let breakfastTotal = 0
   if (roomId) {
-    if (breakfastOrders !== undefined && breakfastOrders.length === 0) {
-    } else {
+    // Empty breakfast_orders means the user explicitly opted out — skip.
+    const optedOut = breakfastOrders !== undefined && breakfastOrders.length === 0
+    if (!optedOut) {
       const isBreakfastOn = breakfastEnabled !== undefined ? breakfastEnabled : true
       if (isBreakfastOn) {
         const guestCount = breakfastGuestCount !== undefined ? breakfastGuestCount : (1 + (companions?.length || 0))

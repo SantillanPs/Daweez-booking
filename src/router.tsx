@@ -3,18 +3,12 @@ import {
   createRoute,
   createRouter,
   Outlet,
-  redirect
+  redirect,
+  lazyRouteComponent
 } from '@tanstack/react-router'
 import { MainLayout } from './components/MainLayout'
 import { LoginRoute } from './components/LoginPortal'
 import { DashboardLayout } from './components/DashboardLayout'
-import { CalendarTab } from './components/CalendarTab'
-import { DirectoryTab } from './components/DirectoryTab'
-import { AnalyticsTab } from './components/AnalyticsTab'
-import { SettingsTab } from './components/SettingsTab'
-import { ExpensesTab } from './components/ExpensesTab'
-import { BookingsListTab } from './components/BookingsListTab'
-import { PublicReservePortal } from './components/PublicReservePortal'
 
 // 1. Create a Root Route
 const rootRoute = createRootRoute({
@@ -34,7 +28,7 @@ const loginRoute = createRoute({
 const reserveRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/reserve',
-  component: PublicReservePortal
+  component: lazyRouteComponent(() => import('./components/PublicReservePortal'), 'PublicReservePortal')
 })
 
 // 3. Create Dashboard Layout Route with Auth Guard
@@ -64,37 +58,37 @@ const dashboardIndexRoute = createRoute({
 const calendarRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/calendar',
-  component: CalendarTab
+  component: lazyRouteComponent(() => import('./components/CalendarTab'), 'CalendarTab')
 })
 
 const guestsRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/guests',
-  component: DirectoryTab
+  component: lazyRouteComponent(() => import('./components/DirectoryTab'), 'DirectoryTab')
 })
 
 const settingsRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/settings',
-  component: SettingsTab
+  component: lazyRouteComponent(() => import('./components/SettingsTab'), 'SettingsTab')
 })
 
 const analyticsRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/analytics',
-  component: AnalyticsTab
+  component: lazyRouteComponent(() => import('./components/AnalyticsTab'), 'AnalyticsTab')
 })
 
 const expensesRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/expenses',
-  component: ExpensesTab
+  component: lazyRouteComponent(() => import('./components/ExpensesTab'), 'ExpensesTab')
 })
 
 const bookingsRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/bookings',
-  component: BookingsListTab
+  component: lazyRouteComponent(() => import('./components/BookingsListTab'), 'BookingsListTab')
 })
 
 // 5. Construct Route Tree

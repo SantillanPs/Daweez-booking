@@ -69,31 +69,66 @@ serve(async (req) => {
     if (feedsError) throw feedsError
 
     let totalSynced = 0
+    let totalSkipped = 0
 
-    // 2. Loop and scrape feeds
+    // 2. Loop and scrape feeds (non-destructive, idempotent, collision-aware)
     for (const feed of feeds) {
       if (!feed.url) continue // Skip feeds that have no URL configured
 
       try {
         const response = await fetch(feed.url)
         if (!response.ok) continue
-        
+
         const icsString = await response.text()
         const parsedEvents = parseiCal(icsString)
-
-        // 3. Delete past sync blocks for this room & channel to avoid stale blocks
         const sourceChannel = feed.channel === 'airbnb' ? 'airbnb' : 'booking_com'
-        await supabase
+
+        // 3. Existing sync-managed rows for this room + channel only.
+        const { data: existingRows } = await supabase
           .from('bookings')
-          .delete()
+          .select('id, check_in, check_out')
           .eq('room_id', feed.room_id)
           .eq('source', sourceChannel)
 
-        // 4. Insert fresh blocks
+        const existingByKey = new Map()
+        for (const row of existingRows || []) {
+          existingByKey.set(`${row.check_in}|${row.check_out}`, row)
+        }
+
+        // 4. Diff-based reconciliation:
+        //    a) Delete sync-managed rows that are no longer in the feed
+        //       (cancelled on the OTA). Manual/website bookings are untouched.
+        //    b) Insert feed events that aren't present yet, but ONLY if they do
+        //       not overlap any existing booking for the room.
+        const feedKeys = new Set(parsedEvents.map(evt => `${evt.start}|${evt.end}`))
+
+        for (const [key, row] of existingByKey) {
+          if (!feedKeys.has(key)) {
+            await supabase.from('bookings').delete().eq('id', row.id)
+          }
+        }
+
         for (const evt of parsedEvents) {
-          await supabase
+          const key = `${evt.start}|${evt.end}`
+          if (existingByKey.has(key)) continue // already synced — idempotent
+
+          // Collision check against ALL bookings for this room.
+          const { data: overlaps } = await supabase
             .from('bookings')
-            .insert({
+            .select('id')
+            .eq('room_id', feed.room_id)
+            .lt('check_in', evt.end)
+            .gt('check_out', evt.start)
+            .limit(1)
+
+          if (overlaps && overlaps.length > 0) {
+            totalSkipped++
+            console.warn(`Skipped OTA event for room ${feed.room_id} ${key}: overlaps an existing booking`)
+            continue
+          }
+
+          try {
+            const { error: insertError } = await supabase.from('bookings').insert({
               room_id: feed.room_id,
               guest_name: evt.summary || 'External Synced Booking',
               guest_email: 'sync@external.ota',
@@ -103,7 +138,17 @@ serve(async (req) => {
               source: sourceChannel,
               status: 'confirmed'
             })
-          totalSynced++
+            if (insertError) {
+              // Exclusion constraint / race → skip rather than crash.
+              totalSkipped++
+              console.warn(`Skipped OTA event ${key}: ${insertError.message}`)
+              continue
+            }
+            totalSynced++
+          } catch (err) {
+            totalSkipped++
+            console.warn(`Skipped OTA event ${key}: ${err instanceof Error ? err.message : String(err)}`)
+          }
         }
 
         // Update feed timestamp
@@ -124,7 +169,7 @@ serve(async (req) => {
       .eq('status', 'pending')
       .lt('expires_at', new Date().toISOString())
 
-    return new Response(JSON.stringify({ success: true, syncedCount: totalSynced }), {
+    return new Response(JSON.stringify({ success: true, syncedCount: totalSynced, skippedCount: totalSkipped }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (err: unknown) {

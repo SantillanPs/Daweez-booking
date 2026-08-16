@@ -7,7 +7,7 @@ export function SettingsTab() {
   const { rooms, feeds, updateFeedUrls } = useDashboardData()
 
   // Local settings states
-  const [activeTab, setActiveTab] = useState('channels')
+  const activeTab = 'channels'
   const [editingFeeds, setEditingFeeds] = useState<SyncFeed[]>([])
   const [copiedFeedId, setCopiedFeedId] = useState<string | null>(null)
   const [prevFeeds, setPrevFeeds] = useState<SyncFeed[]>([])

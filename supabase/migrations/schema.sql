@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.rooms (
 -- 2. Create Bookings Table
 CREATE TYPE booking_source AS ENUM ('website', 'airbnb', 'booking_com', 'facebook', 'google_maps', 'manual');
 CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'blocked');
+CREATE TYPE payment_status AS ENUM ('unpaid', 'downpayment', 'paid');
 
 CREATE TABLE IF NOT EXISTS public.bookings (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     check_out DATE NOT NULL,
     source booking_source DEFAULT 'website'::booking_source NOT NULL,
     status booking_status DEFAULT 'pending'::booking_status NOT NULL,
+    payment_status payment_status DEFAULT NULL,
     downpayment_paid DECIMAL(10,2) DEFAULT 0.00 NOT NULL,
     payment_method VARCHAR(50) DEFAULT NULL,
     payment_reference VARCHAR(255) DEFAULT NULL,

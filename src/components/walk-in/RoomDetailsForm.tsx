@@ -1,6 +1,6 @@
 import React from 'react'
 import { Companion, PartnerDeal } from '../../types/booking'
-import { User, Phone, Mail, Users, ChevronDown, Trash2, Plus, CheckCircle2, MapPin, Globe, Car, VenetianMask } from 'lucide-react'
+import { User, Phone, Mail, Users, ChevronDown, Trash2, Plus, CheckCircle2 } from 'lucide-react'
 
 interface RoomDetailsFormProps {
   formStatus: 'confirmed' | 'blocked'
@@ -44,28 +44,10 @@ export const RoomDetailsForm = React.memo(
     setFormGuestEmail,
     formGuestPhone,
     setFormGuestPhone,
-    formGuestGender,
-    setFormGuestGender,
-    formGuestNationality,
-    setFormGuestNationality,
-    formGuestAddress,
-    setFormGuestAddress,
     formCompanions,
     setFormCompanions,
     showCompanions,
-    setShowCompanions,
-    hasRooms,
-    partnerDeals,
-    formPartnerDealId,
-    formCompanyName,
-    setFormCompanyName,
-    formVehiclePlate,
-    setFormVehiclePlate,
-    formTIN,
-    setFormTIN,
-    formAddress,
-    setFormAddress,
-    onSelectPartnerDeal
+    setShowCompanions
   }: RoomDetailsFormProps) => {
     if (formStatus === 'blocked') {
       return (

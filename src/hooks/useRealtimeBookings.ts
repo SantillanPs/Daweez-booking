@@ -4,7 +4,8 @@ import { supabase, isSupabaseConfigured } from '../utils/supabaseClient'
 import { Booking } from '../types/booking'
 import { BookingSource, BookingStatus } from '../types/booking'
 
-/** Map a raw Supabase row to the app's Booking shape */
+/** Map a raw Supabase row to the app's Booking shape (ALL columns, so live
+ *  UPDATE events never strip fields from the cache). */
 function rowToBooking(b: Record<string, unknown>): Booking {
   return {
     id: b.id as string,
@@ -13,10 +14,16 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     guest_name: b.guest_name as string,
     guest_email: b.guest_email as string,
     guest_phone: b.guest_phone as string,
+    guest_gender: (b.guest_gender as string) || undefined,
+    guest_nationality: (b.guest_nationality as string) || undefined,
+    guest_address: (b.guest_address as string) || undefined,
     check_in: b.check_in as string,
     check_out: b.check_out as string,
     source: b.source as BookingSource,
     status: b.status as BookingStatus,
+    payment_status: (b.payment_status as Booking['payment_status']) || undefined,
+    payment_method: (b.payment_method as string) || undefined,
+    payment_reference: (b.payment_reference as string) || undefined,
     downpayment_paid: Number(b.downpayment_paid || 0),
     balance_due: Number(b.balance_due || 0),
     security_deposit: Number(b.security_deposit || 0),
@@ -24,8 +31,16 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     equipment_rentals: (b.equipment_rentals as Booking['equipment_rentals']) || undefined,
     event_addons: (b.event_addons as Booking['event_addons']) || undefined,
     companions: (b.companions as Booking['companions']) || undefined,
+    venue_excess_hours: b.venue_excess_hours ? Number(b.venue_excess_hours) : undefined,
     created_at: b.created_at as string,
     expires_at: (b.expires_at as string) || null,
+    partner_deal_id: (b.partner_deal_id as string) || undefined,
+    company_name: (b.company_name as string) || undefined,
+    vehicle_plate: (b.vehicle_plate as string) || undefined,
+    invoice_number: (b.invoice_number as string) || undefined,
+    invoice_type: (b.invoice_type as Booking['invoice_type']) || undefined,
+    breakfast_included: !!b.breakfast_included,
+    contract_rate_override: b.contract_rate_override ? Number(b.contract_rate_override) : undefined,
   }
 }
 

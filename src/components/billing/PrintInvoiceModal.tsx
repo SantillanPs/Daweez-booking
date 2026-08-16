@@ -12,6 +12,7 @@ interface PrintInvoiceModalProps {
   venues: Venue[]
   bookingsList: Booking[]
   onClose: () => void
+  embedded?: boolean
 }
 
 export function PrintInvoiceModal({
@@ -20,10 +21,10 @@ export function PrintInvoiceModal({
   rooms,
   venues,
   bookingsList,
-  onClose
+  onClose,
+  embedded = false
 }: PrintInvoiceModalProps) {
   const primaryBooking = booking || (bookingsToPrint && bookingsToPrint[0])
-  if (!primaryBooking) return null
 
   // Close on Escape key press
   useEffect(() => {
@@ -35,6 +36,10 @@ export function PrintInvoiceModal({
   }, [onClose])
 
   const { partnerDeals } = useDashboardData()
+
+  // Hooks must run unconditionally — guard early after all hooks.
+  if (!primaryBooking) return null
+
   const deal = partnerDeals.find(d => d.id === primaryBooking.partner_deal_id)
 
   const relatedBookings = bookingsToPrint || 
@@ -215,10 +220,8 @@ export function PrintInvoiceModal({
     window.print()
   }
 
-  const modalContent = (
-    <div className="fixed inset-0 z-50 p-3 sm:p-4 bg-slate-900/50 print:bg-white print:p-0 print:static overflow-y-auto">
-      {/* Print Wrapper Container */}
-      <div className="bg-card w-full max-w-3xl mx-auto rounded-xl shadow-2xl overflow-hidden flex flex-col my-8 print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none">
+  const innerCard = (
+      <div className={`bg-card w-full max-w-3xl mx-auto rounded-xl shadow-2xl overflow-hidden flex flex-col ${embedded ? 'my-0 shadow-xl' : 'my-8'} print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none`}>
         
         {/* Modal Controls (Hidden during print) */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0 print:hidden font-sans">
@@ -353,7 +356,7 @@ export function PrintInvoiceModal({
                 <span className="text-muted font-semibold">Duration</span>
                 <span className="text-main font-bold">
                   {Math.max(1, Math.ceil((new Date(primaryBooking.check_out).getTime() - new Date(primaryBooking.check_in).getTime()) / 86400000))} 
-                  {!!primaryBooking.room_id ? ' Night(s)' : ' Day(s)'}
+                  {primaryBooking.room_id ? ' Night(s)' : ' Day(s)'}
                 </span>
               </div>
             </div>
@@ -468,33 +471,16 @@ export function PrintInvoiceModal({
         </div>
       </div>
 
-      {/* Global CSS Print rules overlay */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .print\\:static, .print\\:static * {
-            visibility: visible;
-          }
-          .print\\:static {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100% !important;
-            max-width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-          .print\\:hidden {
-            display: none !important;
-          }
-        }
-      `}</style>
+  )
+
+  const modalContent = embedded ? innerCard : (
+    <div className="fixed inset-0 z-50 p-3 sm:p-4 bg-slate-900/50 print:bg-white print:p-0 print:static overflow-y-auto">
+      {innerCard}
     </div>
   )
 
+  if (embedded) {
+    return innerCard
+  }
   return createPortal(modalContent, document.body)
 }

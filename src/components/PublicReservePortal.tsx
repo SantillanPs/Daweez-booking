@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { Calendar, User, Mail, Phone, CheckCircle2, BedDouble, PartyPopper, Users, ArrowRight, Info, AlertCircle } from 'lucide-react'
+import React, { useState, useMemo } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Calendar, User, Mail, Phone, CheckCircle2, Users, ArrowRight, Info, AlertCircle } from 'lucide-react'
 import { Booking, Room, Venue, Companion } from '../types/booking'
-import { supabase, isSupabaseConfigured } from '../utils/supabaseClient'
 import * as syncEngine from '../utils/syncEngine'
 
 export function PublicReservePortal() {
   // --- State ---
-  const [bookings, setBookings] = useState<Booking[]>([])
-  const [isLoadingBookings, setIsLoadingBookings] = useState(true)
   const [step, setStep] = useState(1) // 1: Date & Unit, 2: Guest Details, 3: Success
 
   const [checkIn, setCheckIn] = useState('')
@@ -27,96 +25,76 @@ export function PublicReservePortal() {
   const [errorMessage, setErrorMessage] = useState('')
   const [successBookingId, setSuccessBookingId] = useState('')
 
-  // Fetch active bookings from Supabase
-  useEffect(() => {
-    async function loadBookings() {
-      try {
-        if (isSupabaseConfigured) {
-          const { data, error } = await supabase
-            .from('bookings')
-            .select('*')
-            .order('created_at', { ascending: false })
-          if (error) throw error
-          setBookings(data as Booking[])
-        } else {
-          // Fallback to local storage
-          const data = localStorage.getItem('bookings_pms')
-          if (data) {
-            setBookings(JSON.parse(data))
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load bookings:', err)
-      } finally {
-        setIsLoadingBookings(false)
-      }
-    }
-    loadBookings()
-  }, [])
+  const queryClient = useQueryClient()
+
+  // Shared data via React Query — same cache as the dashboard, no duplicate
+  // fetch, and availability stays fresh after staff confirm/cancel bookings.
+  const { data: bookings = [], isLoading: isLoadingBookings } = useQuery<Booking[]>({
+    queryKey: ['bookings'],
+    queryFn: () => syncEngine.getBookings(),
+    staleTime: 30_000,
+  })
+  const { data: rooms = [] } = useQuery<Room[]>({
+    queryKey: ['rooms'],
+    queryFn: () => syncEngine.getRooms(),
+    staleTime: 5 * 60 * 1000,
+  })
+  const { data: venues = [] } = useQuery<Venue[]>({
+    queryKey: ['venues'],
+    queryFn: () => syncEngine.getVenues(),
+    staleTime: 5 * 60 * 1000,
+  })
 
   const nights = useMemo(() => {
     if (!checkIn || !checkOut || checkIn >= checkOut) return 0
     return Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
   }, [checkIn, checkOut])
 
-  // Track availability maps
+  // Track availability maps (live rooms/venues, not hardcoded defaults)
   const roomAvailability = useMemo(() => {
     const map: Record<string, boolean> = {}
-    syncEngine.DEFAULT_ROOMS.forEach(r => {
+    rooms.forEach(r => {
       map[r.id] = (nights > 0 && checkIn && checkOut)
         ? syncEngine.isRoomAvailable(r.id, checkIn, checkOut, bookings)
         : true
     })
     return map
-  }, [checkIn, checkOut, bookings, nights])
+  }, [checkIn, checkOut, bookings, nights, rooms])
 
   const venueAvailability = useMemo(() => {
     const map: Record<string, boolean> = {}
-    syncEngine.DEFAULT_VENUES.forEach(v => {
+    venues.forEach(v => {
       map[v.id] = (nights > 0 && checkIn && checkOut)
         ? syncEngine.isVenueRangeAvailable(v.id, checkIn, checkOut, bookings)
         : true
     })
     return map
-  }, [checkIn, checkOut, bookings, nights])
-
-  const availableRooms = useMemo(() => {
-    return syncEngine.DEFAULT_ROOMS
-  }, [])
-
-  const availableVenues = useMemo(() => {
-    return syncEngine.DEFAULT_VENUES
-  }, [])
+  }, [checkIn, checkOut, bookings, nights, venues])
 
   const selectedUnit = useMemo(() => {
     if (!selectedUnitId) return null
     if (selectedUnitType === 'room') {
-      return syncEngine.DEFAULT_ROOMS.find(r => r.id === selectedUnitId)
-    } else {
-      return syncEngine.DEFAULT_VENUES.find(v => v.id === selectedUnitId)
+      return rooms.find(r => r.id === selectedUnitId)
     }
-  }, [selectedUnitId, selectedUnitType])
+    return venues.find(v => v.id === selectedUnitId)
+  }, [selectedUnitId, selectedUnitType, rooms, venues])
 
-  // Pricing calculations: Website bookings get 20% discount
+  // Pricing: single source of truth via calculatePricing (20% direct discount,
+  // 50% downpayment) — the exact numbers staff see on invoices.
   const pricing = useMemo(() => {
-    if (!selectedUnit || nights <= 0) return { base: 0, discount: 0, subtotal: 0, deposit: 0, downpayment: 0, due: 0 }
-    
-    const originalRate = selectedUnit.base_price * nights
-    const discount = Math.round(originalRate * 0.20) // 20% Direct/Website discount
-    const subtotal = originalRate - discount
-    const deposit = 500 // Flat ₱500 security deposit per unit
-    const downpayment = Math.round(subtotal * 0.50)
-    const due = (subtotal - downpayment) + deposit
-
-    return {
-      base: originalRate,
-      discount,
-      subtotal,
-      deposit,
-      downpayment,
-      due
-    }
-  }, [selectedUnit, nights])
+    if (!selectedUnit || nights <= 0) return null
+    return syncEngine.calculatePricing({
+      roomId: selectedUnitType === 'room' ? selectedUnitId : undefined,
+      venueId: selectedUnitType === 'venue' ? selectedUnitId : undefined,
+      checkIn,
+      checkOut,
+      guestEmail,
+      source: 'website',
+      breakfastEnabled: false, // the portal does not sell breakfast
+      rooms,
+      venues,
+    })
+  }, [selectedUnit, selectedUnitType, selectedUnitId, nights, checkIn, checkOut, guestEmail, rooms, venues])
 
   // Handle unit selection
   const handleSelectUnit = (id: string, type: 'room' | 'venue') => {
@@ -141,7 +119,7 @@ export function PublicReservePortal() {
   // Submit booking
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedUnit || nights <= 0) return
+    if (!selectedUnit || nights <= 0 || !pricing) return
     if (!guestName || !guestEmail || !guestPhone || !paymentRef) {
       setErrorMessage('Please fill out all required fields, including the payment reference.')
       return
@@ -151,33 +129,23 @@ export function PublicReservePortal() {
     setErrorMessage('')
 
     try {
-      // 1. Fetch fresh bookings from Supabase to prevent race condition
-      let currentBookings: Booking[] = []
-      if (isSupabaseConfigured) {
-        const { data, error } = await supabase.from('bookings').select('*')
-        if (error) throw error
-        currentBookings = data as Booking[]
-      } else {
-        const data = localStorage.getItem('bookings_pms')
-        if (data) currentBookings = JSON.parse(data)
-      }
-
-      // 2. Perform one final collision check
+      // 1. Final collision check against the shared cache. (The server-side RPC
+      //    + exclusion constraint are the hard backstop if two guests race.)
       if (selectedUnitType === 'room') {
-        if (!syncEngine.isRoomAvailable(selectedUnitId, checkIn, checkOut, currentBookings)) {
+        if (!syncEngine.isRoomAvailable(selectedUnitId, checkIn, checkOut, bookings)) {
           throw new Error('This room was just booked by another guest. Please select a different room.')
         }
       } else {
-        if (!syncEngine.isVenueRangeAvailable(selectedUnitId, checkIn, checkOut, currentBookings)) {
+        if (!syncEngine.isVenueRangeAvailable(selectedUnitId, checkIn, checkOut, bookings)) {
           throw new Error('This venue was just booked by another guest. Please select a different date or venue.')
         }
       }
 
-      // 3. Assemble booking details
-      const bookingId = `direct-${syncEngine.generateUUID()}`
-      
+      // 2. Assemble the booking with a 30-minute hold so abandoned reservations
+      //    expire and free the room, plus the unified pricing model.
+      const now = new Date()
       const newBooking: Booking = {
-        id: bookingId,
+        id: `direct-${syncEngine.generateUUID()}`,
         room_id: selectedUnitType === 'room' ? selectedUnitId : undefined,
         venue_id: selectedUnitType === 'venue' ? selectedUnitId : undefined,
         guest_name: guestName,
@@ -187,22 +155,27 @@ export function PublicReservePortal() {
         check_out: checkOut,
         source: 'website',
         status: 'pending',
+        payment_status: 'downpayment',
+        payment_method: 'gcash',
+        payment_reference: paymentRef,
         downpayment_paid: pricing.downpayment,
-        balance_due: pricing.due - pricing.deposit, // balance due without security deposit
-        security_deposit: pricing.deposit,
+        balance_due: pricing.balanceDue,
+        security_deposit: pricing.securityDeposit,
         companions: companions.length > 0 ? companions : undefined,
-        event_addons: { payment_reference: paymentRef },
-        created_at: new Date().toISOString(),
-        expires_at: null
+        created_at: now.toISOString(),
+        expires_at: new Date(now.getTime() + 30 * 60000).toISOString()
       }
 
-      // 4. Save to Database
-      await syncEngine.insertBooking(newBooking)
+      // 3. Save via the shared layer and reflect it in the shared cache.
+      const saved = await syncEngine.insertBooking(newBooking)
+      queryClient.setQueryData<Booking[]>(['bookings'], old =>
+        old ? [...old.filter(b => !b.id.startsWith('__optimistic__')), saved] : [saved]
+      )
 
-      setSuccessBookingId(bookingId)
+      setSuccessBookingId(saved.id)
       setStep(3)
-    } catch (err: any) {
-      setErrorMessage(err.message || 'An error occurred while saving your reservation. Please try again.')
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'An error occurred while saving your reservation. Please try again.')
     } finally {
       setIsSaving(false)
     }
@@ -294,9 +267,9 @@ export function PublicReservePortal() {
                   </h2>
                   {isLoadingBookings ? (
                     <div className="text-center py-6 text-xs text-muted">Verifying availability calendars...</div>
-                  ) : availableRooms.length > 0 ? (
+                  ) : rooms.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {availableRooms.map(room => {
+                      {rooms.map(room => {
                         const isAvailable = roomAvailability[room.id]
                         return (
                             <div key={room.id} className={`bg-card border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-all group ${isAvailable ? 'hover:border-brand-primary border-soft/80' : 'opacity-70 grayscale-[20%] border-soft'}`}>
@@ -365,9 +338,9 @@ export function PublicReservePortal() {
                   </h2>
                   {isLoadingBookings ? (
                     <div className="text-center py-6 text-xs text-muted">Verifying availability calendars...</div>
-                  ) : availableVenues.length > 0 ? (
+                  ) : venues.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {availableVenues.map(venue => {
+                      {venues.map(venue => {
                         const isAvailable = venueAvailability[venue.id]
                         return (
                           <div key={venue.id} className={`bg-card border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-all group ${isAvailable ? 'hover:border-brand-primary border-soft/80' : 'opacity-70 grayscale-[20%] border-soft'}`}>
@@ -561,7 +534,7 @@ export function PublicReservePortal() {
                   <div className="space-y-1">
                     <h4 className="text-xs font-bold text-brand-text uppercase tracking-wider">GCash / Bank Transfer Downpayment Instruction</h4>
                     <p className="text-[10px] text-muted leading-relaxed">
-                      To confirm your reservation slot, please send a 50% reservation downpayment of <strong className="text-brand-text font-mono">₱{pricing.downpayment.toLocaleString()}</strong> to the GCash account below, then paste the transaction reference code in the input field.
+                      To confirm your reservation slot, please send a 50% reservation downpayment of <strong className="text-brand-text font-mono">₱{(pricing?.downpayment ?? 0).toLocaleString()}</strong> to the GCash account below, then paste the transaction reference code in the input field.
                     </p>
                   </div>
 
@@ -634,38 +607,36 @@ export function PublicReservePortal() {
                 </div>
               </div>
 
-              {/* Pricing breakdown */}
-              <div className="border-t border-dashed border-brand-border pt-4 space-y-2.5">
-                <div className="flex justify-between text-muted font-medium">
-                  <span>Original Rate:</span>
-                  <span className="font-mono">₱{pricing.base.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-rose-600 font-semibold animate-in fade-in">
-                  <span>Direct Website Discount (20%):</span>
-                  <span className="font-mono">-₱{pricing.discount.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-muted font-medium">
-                  <span>Flat Security Deposit:</span>
-                  <span className="font-mono">₱{pricing.deposit.toLocaleString()}</span>
-                </div>
+              {/* Pricing breakdown (unified with the staff invoice engine) */}
+              {pricing && (
+                <div className="border-t border-dashed border-brand-border pt-4 space-y-2.5">
+                  <div className="flex justify-between text-muted font-medium">
+                    <span>Original Rate:</span>
+                    <span className="font-mono">₱{pricing.undiscountedSubtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-rose-600 font-semibold animate-in fade-in">
+                    <span>Direct Website Discount (20%):</span>
+                    <span className="font-mono">-₱{pricing.discountAmount.toLocaleString()}</span>
+                  </div>
 
-                <div className="flex justify-between text-main font-extrabold border-t border-dashed border-brand-border/60 pt-2 text-xs">
-                  <span>Total Amount:</span>
-                  <span className="font-mono text-main">₱{(pricing.subtotal + pricing.deposit).toLocaleString()}</span>
+                  <div className="flex justify-between text-main font-extrabold border-t border-dashed border-brand-border/60 pt-2 text-xs">
+                    <span>Total Amount:</span>
+                    <span className="font-mono text-main">₱{pricing.grandTotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-main font-bold border-t border-dashed border-brand-border/60 pt-2">
+                    <span>Required Downpayment (50%):</span>
+                    <span className="font-mono text-brand-text text-sm font-extrabold">₱{pricing.downpayment.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-muted font-semibold">
+                    <span>Balance Due upon Check-in:</span>
+                    <span className="font-mono">₱{pricing.balanceDue.toLocaleString()}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-main font-bold border-t border-dashed border-brand-border/60 pt-2">
-                  <span>Required Downpayment (50%):</span>
-                  <span className="font-mono text-brand-text text-sm font-extrabold">₱{pricing.downpayment.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-muted font-semibold">
-                  <span>Balance Due upon Check-in:</span>
-                  <span className="font-mono">₱{pricing.due.toLocaleString()}</span>
-                </div>
-              </div>
+              )}
 
               <div className="bg-[#FCFAF6] border border-soft/50 p-3 rounded-lg text-[10px] text-muted leading-relaxed flex gap-2">
                 <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
-                <span>Security deposit of ₱500 is fully refundable upon check-out after property inspection.</span>
+                <span>The 50% downpayment secures your reservation. The remaining balance is payable upon check-in.</span>
               </div>
             </div>
           </div>

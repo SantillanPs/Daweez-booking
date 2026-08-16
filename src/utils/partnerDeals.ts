@@ -17,13 +17,13 @@ export async function getPartnerDeals(): Promise<PartnerDeal[]> {
         return data.map(d => ({
           id: d.id,
           name: d.name,
-          type: d.type as any,
+          type: d.type as PartnerDeal['type'],
           tin: d.tin || undefined,
           address: d.address || undefined,
           contact_no: d.contact_no || undefined,
           email: d.email || undefined,
           vehicle_plate: d.vehicle_plate || undefined,
-          breakfast_default: d.breakfast_default as any,
+          breakfast_default: d.breakfast_default as PartnerDeal['breakfast_default'],
           contracted_rates: d.contracted_rates || {},
           created_at: d.created_at
         }))

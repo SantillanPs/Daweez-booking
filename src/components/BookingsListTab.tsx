@@ -1,16 +1,22 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useDashboardData } from './DashboardContext'
-import { Search, Filter, CalendarDays, User, Building, MapPin, BadgeDollarSign, Calendar as CalendarIcon, CheckCircle2, XCircle, Clock, Edit } from 'lucide-react'
+import { Search, Filter, CalendarDays, User, Building, MapPin, Calendar as CalendarIcon, CheckCircle2, XCircle, Clock, Edit } from 'lucide-react'
 import { Booking } from '../types/booking'
 import { WalkInBookingForm } from './WalkInBookingForm'
 
 export function BookingsListTab() {
   const { bookings, rooms, venues, updateBooking, createManualBooking, cancelBooking } = useDashboardData()
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<Booking['status'] | 'all'>('all')
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(searchTerm), 250)
+    return () => clearTimeout(id)
+  }, [searchTerm])
   
-  const getUnitName = (booking: Booking) => {
+  const getUnitName = useCallback((booking: Booking) => {
     if (booking.room_id) {
       const r = rooms.find(r => r.id === booking.room_id)
       return r ? `Room ${r.room_number}: ${r.name}` : booking.room_id
@@ -20,14 +26,14 @@ export function BookingsListTab() {
       return v ? v.name : booking.venue_id
     }
     return 'Unknown'
-  }
+  }, [rooms, venues])
 
   const sortedAndFilteredBookings = useMemo(() => {
     return bookings
       .filter(b => {
         if (filterStatus !== 'all' && b.status !== filterStatus) return false
-        if (searchTerm) {
-          const search = searchTerm.toLowerCase()
+        if (debouncedSearch) {
+          const search = debouncedSearch.toLowerCase()
           const guest = b.guest_name.toLowerCase()
           const inv = (b.invoice_number || '').toLowerCase()
           const unit = getUnitName(b).toLowerCase()
@@ -36,7 +42,7 @@ export function BookingsListTab() {
         return true
       })
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  }, [bookings, searchTerm, filterStatus, rooms, venues])
+  }, [bookings, debouncedSearch, filterStatus, getUnitName])
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -68,7 +74,7 @@ export function BookingsListTab() {
             <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as any)}
+              onChange={(e) => setFilterStatus(e.target.value as Booking['status'] | 'all')}
               className="w-full pl-9 pr-8 py-2 bg-white dark:bg-card border border-soft rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-main appearance-none cursor-pointer"
             >
               <option value="all">All Statuses</option>

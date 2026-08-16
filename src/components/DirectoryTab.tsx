@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { PartnerDeal } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
-import { Plus, Trash2, Edit2, Save, X, Building, FileText, Receipt, Coffee, Ban } from 'lucide-react'
+import { Plus, Trash2, Edit2, Save, X, Building, Coffee, Ban } from 'lucide-react'
 
 export function DirectoryTab() {
   const { rooms, venues, partnerDeals, createPartnerDeal, savePartnerDeals, deletePartnerDeal } = useDashboardData()
@@ -197,7 +197,7 @@ export function DirectoryTab() {
                         <button
                           key={opt.value}
                           type="button"
-                          onClick={() => setPBreakfastDefault(opt.value as any)}
+                          onClick={() => setPBreakfastDefault(opt.value as PartnerDeal['breakfast_default'])}
                           className={`text-left p-2.5 rounded-lg border-2 transition-all cursor-pointer ${
                             active
                               ? 'border-brand-primary bg-brand-bg'

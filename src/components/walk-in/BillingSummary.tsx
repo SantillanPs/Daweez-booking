@@ -51,9 +51,7 @@ export const BillingSummary = React.memo(
     estTotal,
     estDown,
     estDue,
-    formSource,
     formAdditionalDiscount,
-    guestEmail,
     bookingType,
     formWalkInDiscount,
     partnerDeals,
@@ -62,7 +60,6 @@ export const BillingSummary = React.memo(
     setFormPaymentMethod,
     formPaymentReference,
     setFormPaymentReference,
-    formVenueExcessHours,
     isEditMode,
     formInvoiceNumber,
     setFormInvoiceNumber,
@@ -161,7 +158,7 @@ export const BillingSummary = React.memo(
 
               {hasRooms && (
                 <div className="space-y-1.5 border-t border-dashed border-brand-border/40 pt-2.5">
-                  {Object.entries(unitSelections).filter(([_, s]) => s.type === 'room').map(([id, sel]) => {
+                  {Object.entries(unitSelections).filter(([, s]) => s.type === 'room').map(([id, sel]) => {
                     const r = rooms.find(room => room.id === id)
                     const nights = sel.checkIn && sel.checkOut
                       ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
@@ -186,7 +183,7 @@ export const BillingSummary = React.memo(
 
               {hasVenues && (
                 <div className="space-y-1.5 border-t border-brand-border/40 pt-2">
-                  {Object.entries(unitSelections).filter(([_, s]) => s.type === 'venue').map(([id, sel]) => {
+                  {Object.entries(unitSelections).filter(([, s]) => s.type === 'venue').map(([id, sel]) => {
                     const v = venues.find(venue => venue.id === id)
                     const nights = sel.checkIn && sel.checkOut
                       ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))

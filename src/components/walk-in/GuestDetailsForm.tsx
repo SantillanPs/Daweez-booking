@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react'
 import { Room, Venue, Booking, BookingSource } from '../../types/booking'
-import * as syncEngine from '../../utils/syncEngine'
 
 interface GuestDetailsFormProps {
   rooms: Room[]
@@ -18,14 +17,12 @@ export const GuestDetailsForm = React.memo(
   ({
     rooms,
     venues,
-    bookings,
     unitSelections,
     setUnitSelections,
     formSource,
     setFormSource,
     formStatus,
     setFormStatus,
-
   }: GuestDetailsFormProps) => {
 
     const formRoomIds = useMemo(() => {

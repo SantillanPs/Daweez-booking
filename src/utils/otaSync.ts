@@ -104,6 +104,10 @@ END:VEVENT
 END:VCALENDAR
 `
 
+// Mock OTA feeds are only injected when explicitly enabled. This prevents the
+// local/offline fallback from fabricating fake bookings that look real.
+const MOCK_SYNC_ENABLED = import.meta.env.VITE_ENABLE_MOCK_SYNC === 'true'
+
 export async function runSimulatedOTASync(currentBookings?: Booking[], currentFeeds?: SyncFeed[]): Promise<number> {
   if (isSupabaseConfigured) {
     try {
@@ -118,81 +122,88 @@ export async function runSimulatedOTASync(currentBookings?: Booking[], currentFe
   const bookings = currentBookings || await getBookings()
   const feeds = currentFeeds || await getFeeds()
 
-  const updatedBookings = bookings.filter(b => b.source === 'website' || b.source === 'manual' || b.source === 'facebook' || b.source === 'google_maps')
+  let updatedBookings = bookings
   let newSyncCount = 0
 
-  const abEvents = parseiCalFeed(MOCK_AIRBNB_FEED)
-  abEvents.forEach(evt => {
-    if (isRoomAvailable('room-2', evt.check_in, evt.check_out, bookings)) {
-      updatedBookings.push({
-        id: `sync-ab-${generateUUID()}`,
-        room_id: 'room-2',
-        guest_name: evt.guest_name,
-        guest_email: evt.guest_email,
-        guest_phone: evt.guest_phone,
-        check_in: evt.check_in,
-        check_out: evt.check_out,
-        source: 'airbnb',
-        status: 'confirmed',
-        downpayment_paid: 950,
-        balance_due: 1450,
-        security_deposit: 500,
-        created_at: new Date().toISOString(),
-        expires_at: null
-      })
-      newSyncCount++
-    }
-  })
+  // Only inject mock OTA bookings when the dev/test flag is set.
+  if (MOCK_SYNC_ENABLED) {
+    updatedBookings = bookings.filter(b => b.source === 'website' || b.source === 'manual' || b.source === 'facebook' || b.source === 'google_maps')
 
-  const bcEvents = parseiCalFeed(MOCK_BOOKING_COM_FEED)
-  bcEvents.forEach(evt => {
-    if (isRoomAvailable('room-3', evt.check_in, evt.check_out, bookings)) {
-      updatedBookings.push({
-        id: `sync-bc-${generateUUID()}`,
-        room_id: 'room-3',
-        guest_name: evt.guest_name,
-        guest_email: evt.guest_email,
-        guest_phone: evt.guest_phone,
-        check_in: evt.check_in,
-        check_out: evt.check_out,
-        source: 'booking_com',
-        status: 'confirmed',
-        downpayment_paid: 950,
-        balance_due: 1450,
-        security_deposit: 500,
-        created_at: new Date().toISOString(),
-        expires_at: null
-      })
-      newSyncCount++
-    }
-  })
+    const abEvents = parseiCalFeed(MOCK_AIRBNB_FEED)
+    abEvents.forEach(evt => {
+      if (isRoomAvailable('room-2', evt.check_in, evt.check_out, bookings)) {
+        updatedBookings.push({
+          id: `sync-ab-${generateUUID()}`,
+          room_id: 'room-2',
+          guest_name: evt.guest_name,
+          guest_email: evt.guest_email,
+          guest_phone: evt.guest_phone,
+          check_in: evt.check_in,
+          check_out: evt.check_out,
+          source: 'airbnb',
+          status: 'confirmed',
+          downpayment_paid: 950,
+          balance_due: 1450,
+          security_deposit: 500,
+          created_at: new Date().toISOString(),
+          expires_at: null
+        })
+        newSyncCount++
+      }
+    })
 
-  const originalOtaKeys = new Set(
-    bookings
-      .filter(b => b.source === 'airbnb' || b.source === 'booking_com')
-      .map(b => `${b.room_id}-${b.check_in}-${b.check_out}`)
-  )
-  const updatedOtaKeys = new Set(
-    updatedBookings
-      .filter(b => b.source === 'airbnb' || b.source === 'booking_com')
-      .map(b => `${b.room_id}-${b.check_in}-${b.check_out}`)
-  )
+    const bcEvents = parseiCalFeed(MOCK_BOOKING_COM_FEED)
+    bcEvents.forEach(evt => {
+      if (isRoomAvailable('room-3', evt.check_in, evt.check_out, bookings)) {
+        updatedBookings.push({
+          id: `sync-bc-${generateUUID()}`,
+          room_id: 'room-3',
+          guest_name: evt.guest_name,
+          guest_email: evt.guest_email,
+          guest_phone: evt.guest_phone,
+          check_in: evt.check_in,
+          check_out: evt.check_out,
+          source: 'booking_com',
+          status: 'confirmed',
+          downpayment_paid: 950,
+          balance_due: 1450,
+          security_deposit: 500,
+          created_at: new Date().toISOString(),
+          expires_at: null
+        })
+        newSyncCount++
+      }
+    })
 
-  let hasChanges = originalOtaKeys.size !== updatedOtaKeys.size
-  if (!hasChanges) {
-    for (const key of originalOtaKeys) {
-      if (!updatedOtaKeys.has(key)) {
-        hasChanges = true
-        break
+    const originalOtaKeys = new Set(
+      bookings
+        .filter(b => b.source === 'airbnb' || b.source === 'booking_com')
+        .map(b => `${b.room_id}-${b.check_in}-${b.check_out}`)
+    )
+    const updatedOtaKeys = new Set(
+      updatedBookings
+        .filter(b => b.source === 'airbnb' || b.source === 'booking_com')
+        .map(b => `${b.room_id}-${b.check_in}-${b.check_out}`)
+    )
+
+    let hasChanges = originalOtaKeys.size !== updatedOtaKeys.size
+    if (!hasChanges) {
+      for (const key of originalOtaKeys) {
+        if (!updatedOtaKeys.has(key)) {
+          hasChanges = true
+          break
+        }
       }
     }
+
+    if (hasChanges) {
+      await saveBookings(updatedBookings)
+    }
   }
 
-  if (hasChanges) {
-    await saveBookings(updatedBookings)
-    const updatedFeeds = feeds.map(f => ({ ...f, last_synced: new Date().toISOString() }))
-    await saveFeeds(updatedFeeds)
-  }
+  // Always refresh the "last synced" stamp so staff can see the sync ran.
+  const updatedFeeds = feeds.map(f => ({ ...f, last_synced: new Date().toISOString() }))
+  await saveFeeds(updatedFeeds)
 
   return newSyncCount
 }

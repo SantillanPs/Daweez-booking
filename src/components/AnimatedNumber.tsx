@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface AnimatedNumberProps {
   value: number;
@@ -9,10 +9,11 @@ interface AnimatedNumberProps {
 
 export function AnimatedNumber({ value, duration = 1000, prefix = '', suffix = '' }: AnimatedNumberProps) {
   const [displayValue, setDisplayValue] = useState(0);
+  const displayValueRef = useRef(0);
 
   useEffect(() => {
     let startTimestamp: number | null = null;
-    const startValue = displayValue;
+    const startValue = displayValueRef.current;
     const endValue = value;
 
     if (startValue === endValue) return;
@@ -24,11 +25,14 @@ export function AnimatedNumber({ value, duration = 1000, prefix = '', suffix = '
       // Easing function (easeOutExpo for a snappy start and slow finish)
       const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
       
-      setDisplayValue(startValue + (endValue - startValue) * easeProgress);
+      const next = startValue + (endValue - startValue) * easeProgress;
+      displayValueRef.current = next;
+      setDisplayValue(next);
 
       if (progress < 1) {
         window.requestAnimationFrame(step);
       } else {
+        displayValueRef.current = endValue;
         setDisplayValue(endValue);
       }
     };

@@ -50,7 +50,6 @@ interface TimelineCellProps {
 const TimelineCell = React.memo(
   ({
     date,
-    isoStr,
     id,
     type,
     booking,
@@ -66,7 +65,7 @@ const TimelineCell = React.memo(
     setExtendError,
     dIdx
   }: TimelineCellProps) => {
-    const hoverTimeoutRef = React.useRef<any>(null)
+    const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
     React.useEffect(() => {
       return () => {

@@ -126,8 +126,7 @@ export function useBookings() {
         expires_at: new Date(now.getTime() + 30 * 60000).toISOString()
       }
 
-      await syncEngine.insertBooking(newBooking)
-      return newBooking
+      return await syncEngine.insertBooking(newBooking)
     },
     onMutate: async (params) => {
       await queryClient.cancelQueries({ queryKey: ['bookings'] })
@@ -161,11 +160,7 @@ export function useBookings() {
   // 6. Mutation: Confirm Pending Booking (Permanent Block)
   const confirmBookingMutation = useMutation<void, Error, string, MutationContext>({
     mutationFn: async (bookingId: string) => {
-      const current = await syncEngine.getBookings()
-      const updated = current.map(b =>
-        b.id === bookingId ? { ...b, status: 'confirmed' as const, expires_at: null } : b
-      )
-      await syncEngine.saveBookings(updated)
+      await syncEngine.confirmBooking(bookingId)
     },
     onMutate: async (bookingId) => {
       await queryClient.cancelQueries({ queryKey: ['bookings'] })
@@ -272,11 +267,9 @@ export function useBookings() {
       }
 
       if (id) {
-        await syncEngine.updateBooking(newBooking)
-      } else {
-        await syncEngine.insertBooking(newBooking)
+        return await syncEngine.updateBooking(newBooking)
       }
-      return newBooking
+      return await syncEngine.insertBooking(newBooking)
     },
     onMutate: async (params) => {
       // Freeze the poll so an in-flight refetch can't race the optimistic update
