@@ -912,9 +912,18 @@ export function WalkInBookingForm({
                       </div>
                     )}
 
-                    {/* STEP 3: Add-ons & Services */}
+                    {/* STEP 3: Add-ons, Promo & Services — promo toggle only here for walk-ins */}
                     {formStep === 3 && formStatus === 'confirmed' && (
                       <div className="space-y-4">
+                        <div className="bg-card border border-soft/60 rounded-lg px-3.5 py-3 flex items-center justify-between">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" checked={formUsePromo} onChange={e => setFormUsePromo(e.target.checked)} className="rounded text-brand-primary w-3.5 h-3.5 accent-brand-primary cursor-pointer" />
+                            <span className="text-[10px] text-brand-text font-bold uppercase tracking-wider">Use Promo Price</span>
+                          </label>
+                          <span className={`text-[11px] font-mono font-bold ${formUsePromo ? 'text-emerald-600' : 'text-muted'}`}>
+                            {formUsePromo ? 'Charging PROMO rate' : 'Charging Regular rate'}
+                          </span>
+                        </div>
                         <AmenitiesForm
                           hasRooms={hasRooms}
                         hasVenues={hasVenues}

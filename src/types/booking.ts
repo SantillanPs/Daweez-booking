@@ -100,6 +100,7 @@ export interface Booking {
   invoice_type?: 'folio' | 'billing'
   breakfast_included?: boolean
   contract_rate_override?: number
+  promo_applied?: boolean
 }
 
 export interface PartnerDeal {

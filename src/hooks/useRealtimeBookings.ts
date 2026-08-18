@@ -22,6 +22,7 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     source: b.source as BookingSource,
     status: b.status as BookingStatus,
     payment_status: (b.payment_status as Booking['payment_status']) || undefined,
+    promo_applied: (b.promo_applied as boolean) || undefined,
     payment_method: (b.payment_method as string) || undefined,
     payment_reference: (b.payment_reference as string) || undefined,
     downpayment_paid: Number(b.downpayment_paid || 0),

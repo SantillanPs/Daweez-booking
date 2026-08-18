@@ -104,10 +104,12 @@ export function useBookings() {
         throw new Error('This event venue is already reserved for the selected date(s).')
       }
 
+      const { isPromoActive: _isPromoActive } = await import('../utils/promoMode')
+      const usePromo = _isPromoActive()
       const pricing = syncEngine.calculatePricing({
         roomId, venueId, checkIn, checkOut, guestEmail,
         breakfastOrders, equipmentRentals, eventAddons, bookingsList: bookings,
-        rooms, venues
+        rooms, venues, usePromo,
       })
 
       const now = new Date()
@@ -118,6 +120,7 @@ export function useBookings() {
         check_in: checkIn, check_out: checkOut,
         source: 'website', status: 'pending',
         payment_status: 'unpaid',
+        promo_applied: usePromo || undefined,
         downpayment_paid: 0,
         balance_due: pricing.grandTotal,
         security_deposit: pricing.securityDeposit,
@@ -248,6 +251,7 @@ export function useBookings() {
         guest_address: guestAddress || undefined,
         check_in: checkIn, check_out: checkOut,
         source, status,
+        promo_applied: usePromo ?? undefined,
         payment_status: paymentStatus !== undefined ? paymentStatus : (status === 'blocked' ? undefined : 'unpaid'),
         downpayment_paid: downpaymentPaid !== undefined ? downpaymentPaid : 0,
         payment_method: paymentMethod,

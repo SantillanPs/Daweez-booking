@@ -188,9 +188,9 @@ export function useAnalyticsCalculations({
       })
     }
 
-    // Process each booking
+    // Process each booking — honors whatever the booking actually charged (promo_applied).
     relevantBookings.forEach(b => {
-      // 1. Calculate pricing details
+      // 1. Calculate pricing details — use the booking's stored choice (promo vs. regular)
       const priceResult = calculatePricing({
         roomId: b.room_id,
         venueId: b.venue_id,
@@ -202,7 +202,8 @@ export function useAnalyticsCalculations({
         eventAddons: b.event_addons,
         bookingsList: bookings,
         companions: b.companions,
-        source: b.source,
+        contractRateOverride: b.contract_rate_override,
+        usePromo: (b as Booking & { promo_applied?: boolean }).promo_applied === true,
         rooms,
         venues
       })

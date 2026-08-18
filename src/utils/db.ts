@@ -199,8 +199,7 @@ export async function getBookings(): Promise<Booking[]> {
           payment_reference: b.payment_reference || undefined,
           downpayment_paid: Number(b.downpayment_paid || 0),
           balance_due: Number(b.balance_due || 0),
-          security_deposit: Number(b.security_deposit || 0),
-          breakfast_orders: b.breakfast_orders || undefined,
+          security_deposit: Number(b.security_deposit || 0),            promo_applied: (b as { promo_applied?: boolean }).promo_applied ?? undefined,          breakfast_orders: b.breakfast_orders || undefined,
           equipment_rentals: b.equipment_rentals || undefined,
           event_addons: b.event_addons || undefined,
           companions: b.companions || undefined,
@@ -276,7 +275,8 @@ function toBookingRecord(booking: Booking): Record<string, unknown> {
     invoice_number: booking.invoice_number || null,
     invoice_type: booking.invoice_type || null,
     breakfast_included: !!booking.breakfast_included,
-    contract_rate_override: booking.contract_rate_override || null
+    contract_rate_override: booking.contract_rate_override || null,
+    promo_applied: booking.promo_applied ?? null,
   }
 }
 

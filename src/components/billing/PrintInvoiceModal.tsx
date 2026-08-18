@@ -119,18 +119,7 @@ export function PrintInvoiceModal({
       if (b.event_addons.ledWall) addonsTotal += 5000
     }
 
-    const actualSubtotal = Number(b.downpayment_paid) + Number(b.balance_due) - Number(b.security_deposit) - (breakfastTotal + rentalsTotal + addonsTotal)
-
-    const basePrice = b.contract_rate_override !== undefined && b.contract_rate_override !== null
-      ? b.contract_rate_override
-      : isRoom
-        ? (rooms.find(r => r.id === b.room_id)?.base_price || 0)
-        : (venues.find(v => v.id === b.venue_id)?.base_price || 0)
-    const undiscountedSubtotal = basePrice * nights
-
-    const derivedMultiplier = undiscountedSubtotal > 0
-      ? Math.min(1.0, Math.max(0.0, actualSubtotal / undiscountedSubtotal))
-      : 1.0
+    const usePromo = (b as Booking & { promo_applied?: boolean }).promo_applied === true
 
     const pricing = syncEngine.calculatePricing({
       roomId: b.room_id,
@@ -143,10 +132,10 @@ export function PrintInvoiceModal({
       eventAddons: b.event_addons,
       companions: b.companions,
       bookingsList,
-      rateMultiplier: derivedMultiplier,
       contractRateOverride: b.contract_rate_override,
       rooms,
-      venues
+      venues,
+      usePromo,
     })
 
     pricingAggregate.undiscountedSubtotal += pricing.undiscountedSubtotal
@@ -164,14 +153,14 @@ export function PrintInvoiceModal({
         <tr>
           <td className="py-3 font-semibold text-main">
             {unitName} - Base Rate stay
-            {b.contract_rate_override ? ' (Corporate Preset Rate)' : ''}
+            {b.contract_rate_override ? ' (Corporate Preset Rate)' : (usePromo ? ' (Promo Rate)' : '')}
           </td>
           <td className="py-3 text-right font-mono">{nights}</td>
           <td className="py-3 text-right font-mono">
-            ₱{(b.contract_rate_override || basePrice).toLocaleString()}
+            ₱{((b.contract_rate_override ?? (usePromo ? (isRoom ? (rooms.find(r => r.id === b.room_id)?.promo_price ?? rooms.find(r => r.id === b.room_id)?.base_price) : (venues.find(v => v.id === b.venue_id)?.promo_price ?? venues.find(v => v.id === b.venue_id)?.base_price)) : null) ?? (isRoom ? (rooms.find(r => r.id === b.room_id)?.base_price || 0) : (venues.find(v => v.id === b.venue_id)?.base_price || 0))))?.toLocaleString?.() ?? '0'}
           </td>
           <td className="py-3 text-right font-mono font-semibold text-main">
-            ₱{((b.contract_rate_override || basePrice) * nights).toLocaleString()}
+            ₱{pricing.subtotal.toLocaleString()}
           </td>
         </tr>
         {pricing.breakfastTotal > 0 && (
