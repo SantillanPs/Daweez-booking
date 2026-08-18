@@ -4,8 +4,9 @@ import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
 import {
   Sparkles, RefreshCw, LogOut, Home, Users, TrendingUp, BarChart3,
-  Calendar, Settings, Building, Moon, Sun, BookOpen
+  Calendar, Settings, Building, Moon, Sun, BookOpen, Tag
 } from 'lucide-react'
+import { isPromoActive, setPromoActive } from '../utils/promoMode'
 
 const TABS = [
   { id: 'calendar',  label: 'Calendar',  Icon: Calendar, to: '/calendar' },
@@ -30,6 +31,23 @@ export function DashboardLayout() {
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('')
   const [isSyncing, setIsSyncing] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('daweez_theme') === 'dark')
+  const [promoActive, setPromoActiveState] = useState(() => isPromoActive())
+  useEffect(() => {
+    const sync = () => setPromoActiveState(isPromoActive())
+    const onStorage = (e: StorageEvent) => { if (e.key === 'daweez_promo_active') sync() }
+    const onPromoToggle = () => sync()
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('promo-toggle' as never, onPromoToggle as never)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('promo-toggle' as never, onPromoToggle as never)
+    }
+  }, [])
+  const togglePromo = () => {
+    const next = !promoActive
+    setPromoActive(next)
+    setPromoActiveState(next)
+  }
   const isCalendarTab = location.pathname === '/calendar' || location.pathname === '/'
 
   useEffect(() => {
@@ -123,6 +141,21 @@ export function DashboardLayout() {
             </div>
 
             <div className="flex items-center gap-1.5">
+              {/* Promo sale toggle — lives here on the main dashboard per owner's request */}
+              <button
+                type="button"
+                onClick={togglePromo}
+                title={promoActive ? 'Promo ON — guests pay promo price. Click to end promo.' : 'Promo OFF — guests pay regular price. Click to start promo.'}
+                className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] font-bold rounded-xl px-3 py-1.5 border transition-colors cursor-pointer ${
+                  promoActive
+                    ? 'bg-brand-primary text-white border-brand-primary shadow-sm'
+                    : 'bg-card text-muted border-soft hover:bg-softbg hover:text-main'
+                }`}
+              >
+                <Tag className={`w-3.5 h-3.5 ${promoActive ? 'text-white' : ''}`} />
+                <span className="hidden xl:inline">{promoActive ? 'Promo ON' : 'Promo OFF'}</span>
+                <span className="xl:hidden">{promoActive ? 'ON' : 'OFF'}</span>
+              </button>
               <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 className="w-8 h-8 flex items-center justify-center rounded-xl border border-soft bg-card text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer"

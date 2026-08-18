@@ -123,6 +123,7 @@ export async function getRooms(): Promise<Room[]> {
           room_number: r.room_number,
           name: r.name,
           base_price: Number(r.base_price),
+          promo_price: r.promo_price != null ? Number(r.promo_price) : null,
           capacity: r.capacity,
           description: r.description || undefined,
           image_url: r.image_url || undefined
@@ -145,6 +146,7 @@ export async function getVenues(): Promise<Venue[]> {
           id: v.id,
           name: v.name,
           base_price: Number(v.base_price),
+          promo_price: v.promo_price != null ? Number(v.promo_price) : null,
           capacity: v.capacity,
           description: v.description || undefined,
           image_url: v.image_url || undefined,

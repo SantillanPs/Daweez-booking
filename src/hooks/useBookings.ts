@@ -204,7 +204,7 @@ export function useBookings() {
     guestPhone: string; checkIn: string; checkOut: string
     source: BookingSource; status: 'confirmed' | 'blocked' | 'pending'
     breakfastOrders?: BreakfastOrder[]; equipmentRentals?: EquipmentRental
-    eventAddons?: EventAddons; rateMultiplier?: number; companions?: Companion[]
+    eventAddons?: EventAddons; rateMultiplier?: number; usePromo?: boolean; companions?: Companion[]
     partnerDealId?: string; companyName?: string; vehiclePlate?: string
     paymentMethod?: string; paymentReference?: string; venueExcessHours?: number
     paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
@@ -215,7 +215,7 @@ export function useBookings() {
     mutationFn: async (params) => {
       const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, guestGender, guestNationality, guestAddress, checkIn, checkOut,
         source, status, breakfastOrders, equipmentRentals, eventAddons,
-        rateMultiplier = 1.0, companions,
+        rateMultiplier, usePromo, companions,
         partnerDealId, companyName, vehiclePlate, breakfastIncluded, contractRateOverride,
         paymentMethod, paymentReference, venueExcessHours = 0,
         paymentStatus, downpaymentPaid, balanceDue, securityDeposit } = params
@@ -232,7 +232,8 @@ export function useBookings() {
         breakfastOrders, equipmentRentals, eventAddons,
         bookingsList: bookings, rateMultiplier, companions,
         contractRateOverride, venueExcessHours,
-        rooms, venues
+        rooms, venues,
+        usePromo,
       })
 
       const newBooking: Booking = {

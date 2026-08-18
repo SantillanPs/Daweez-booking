@@ -1,5 +1,6 @@
 import React from 'react'
 import { Booking, Room, Venue } from '../../types/booking'
+import { getEffectiveNightlyPrice, isPromoActive } from '../../utils/promoMode'
 
 interface TimelineDayInfo {
   date: Date
@@ -199,6 +200,18 @@ export const TimelineGrid = React.memo(
     setExtendCheckoutDate,
     setExtendError
   }: TimelineGridProps) {
+    const [promoOn, setPromoOn] = React.useState<boolean>(() => isPromoActive())
+    React.useEffect(() => {
+      const sync = () => setPromoOn(isPromoActive())
+      const onStorage = (e: StorageEvent) => { if (e.key === 'daweez_promo_active') sync() }
+      const onPromoToggle = () => sync()
+      window.addEventListener('storage', onStorage)
+      window.addEventListener('promo-toggle' as never, onPromoToggle as never)
+      return () => {
+        window.removeEventListener('storage', onStorage)
+        window.removeEventListener('promo-toggle' as never, onPromoToggle as never)
+      }
+    }, [])
 
     const checkInTime = React.useMemo(() => timelineSelection ? timelineSelection.checkIn.getTime() : 0, [timelineSelection])
     const selectionRanges = React.useMemo(() => {
@@ -275,77 +288,45 @@ export const TimelineGrid = React.memo(
                 {rooms.map(room => {
                   const cells: React.ReactNode[] = []
                   let dIdx = 0
-
                   while (dIdx < daysList.length) {
                     const dayInfo = daysList[dIdx]
                     const booking = bookingByRoomAndDate[`${room.id}_${dayInfo.isoStr}`]
-
                     if (booking) {
                       let span = 1
                       while (dIdx + span < daysList.length) {
                         const nextDay = daysList[dIdx + span]
                         const nextBooking = bookingByRoomAndDate[`${room.id}_${nextDay.isoStr}`]
-                        if (nextBooking && nextBooking.id === booking.id) {
-                          span++
-                        } else {
-                          break
-                        }
+                        if (nextBooking && nextBooking.id === booking.id) span++
+                        else break
                       }
-
                       cells.push(
-                        <TimelineCell
-                          key={dIdx}
-                          date={dayInfo.date}
-                          isoStr={dayInfo.isoStr}
-                          id={room.id}
-                          type="room"
-                          booking={booking}
-                          span={span}
-                          isCheckIn={false}
-                          isHighlighted={false}
-                          getBookingStyle={getBookingStyle}
-                          onCellClick={handleCellClick}
-                          setSelectedExtendBooking={setSelectedExtendBooking}
-                          setExtendCheckoutDate={setExtendCheckoutDate}
-                          setExtendError={setExtendError}
-                        />
+                        <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={room.id} type="room" booking={booking} span={span} isCheckIn={false} isHighlighted={false} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
                       )
                       dIdx += span
                     } else {
                       const isDraftCheckIn = timelineSelection && timelineSelection.roomId === room.id && dayInfo.time === checkInTime
                       const range = selectionRanges[room.id]
-                      const isHighlighted = !!(
-                        range &&
-                        dayInfo.time >= range.start &&
-                        dayInfo.time <= range.end
-                      )
+                      const isHighlighted = !!(range && dayInfo.time >= range.start && dayInfo.time <= range.end)
                       cells.push(
-                        <TimelineCell
-                          key={dIdx}
-                          date={dayInfo.date}
-                          isoStr={dayInfo.isoStr}
-                          id={room.id}
-                          type="room"
-                          booking={null}
-                          span={1}
-                          isCheckIn={!!isDraftCheckIn}
-                          isHighlighted={isHighlighted}
-                          getBookingStyle={getBookingStyle}
-                          onCellClick={handleCellClick}
-                          setSelectedExtendBooking={setSelectedExtendBooking}
-                          setExtendCheckoutDate={setExtendCheckoutDate}
-                          setExtendError={setExtendError}
-                        />
+                        <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={room.id} type="room" booking={null} span={1} isCheckIn={!!isDraftCheckIn} isHighlighted={isHighlighted} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
                       )
                       dIdx++
                     }
                   }
-
+                  const promoEligible = promoOn && room.promo_price != null
+                  const displayPrice = getEffectiveNightlyPrice(room.base_price, room.promo_price, promoOn)
                   return (
                     <tr key={room.id} className="border-b border-soft hover:bg-page/30">
                       <td className="sticky left-0 z-20 bg-card border-r border-soft p-3 min-w-[160px]">
                         <span className="text-xs font-semibold text-main block">Room {room.room_number}</span>
-                        <span className="text-[10px] text-brand-primary">₱{room.base_price.toLocaleString()}/night</span>
+                        {promoEligible ? (
+                          <span className="text-[10px] font-mono">
+                            <span className="text-muted line-through">₱{room.base_price.toLocaleString()}</span>
+                            <span className="text-brand-primary ml-1">₱{displayPrice.toLocaleString()}/night</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-brand-primary">₱{room.base_price.toLocaleString()}/night</span>
+                        )}
                       </td>
                       {cells}
                     </tr>
@@ -361,77 +342,45 @@ export const TimelineGrid = React.memo(
                 {venues.map(venue => {
                   const cells: React.ReactNode[] = []
                   let dIdx = 0
-
                   while (dIdx < daysList.length) {
                     const dayInfo = daysList[dIdx]
                     const booking = bookingByRoomAndDate[`${venue.id}_${dayInfo.isoStr}`]
-
                     if (booking) {
                       let span = 1
                       while (dIdx + span < daysList.length) {
                         const nextDay = daysList[dIdx + span]
                         const nextBooking = bookingByRoomAndDate[`${venue.id}_${nextDay.isoStr}`]
-                        if (nextBooking && nextBooking.id === booking.id) {
-                          span++
-                        } else {
-                          break
-                        }
+                        if (nextBooking && nextBooking.id === booking.id) span++
+                        else break
                       }
-
                       cells.push(
-                        <TimelineCell
-                          key={dIdx}
-                          date={dayInfo.date}
-                          isoStr={dayInfo.isoStr}
-                          id={venue.id}
-                          type="venue"
-                          booking={booking}
-                          span={span}
-                          isCheckIn={false}
-                          isHighlighted={false}
-                          getBookingStyle={getVenueBookingStyle}
-                          onCellClick={handleCellClick}
-                          setSelectedExtendBooking={setSelectedExtendBooking}
-                          setExtendCheckoutDate={setExtendCheckoutDate}
-                          setExtendError={setExtendError}
-                        />
+                        <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={venue.id} type="venue" booking={booking} span={span} isCheckIn={false} isHighlighted={false} getBookingStyle={getVenueBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
                       )
                       dIdx += span
                     } else {
                       const isDraftCheckIn = timelineSelection && timelineSelection.venueId === venue.id && dayInfo.time === checkInTime
                       const range = selectionRanges[venue.id]
-                      const isHighlighted = !!(
-                        range &&
-                        dayInfo.time >= range.start &&
-                        dayInfo.time <= range.end
-                      )
+                      const isHighlighted = !!(range && dayInfo.time >= range.start && dayInfo.time <= range.end)
                       cells.push(
-                        <TimelineCell
-                          key={dIdx}
-                          date={dayInfo.date}
-                          isoStr={dayInfo.isoStr}
-                          id={venue.id}
-                          type="venue"
-                          booking={null}
-                          span={1}
-                          isCheckIn={!!isDraftCheckIn}
-                          isHighlighted={isHighlighted}
-                          getBookingStyle={getBookingStyle}
-                          onCellClick={handleCellClick}
-                          setSelectedExtendBooking={setSelectedExtendBooking}
-                          setExtendCheckoutDate={setExtendCheckoutDate}
-                          setExtendError={setExtendError}
-                        />
+                        <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={venue.id} type="venue" booking={null} span={1} isCheckIn={!!isDraftCheckIn} isHighlighted={isHighlighted} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
                       )
                       dIdx++
                     }
                   }
-
+                  const promoEligible = promoOn && venue.promo_price != null
+                  const displayPrice = getEffectiveNightlyPrice(venue.base_price, venue.promo_price, promoOn)
                   return (
                     <tr key={venue.id} className="border-b border-soft hover:bg-page/30">
                       <td className="sticky left-0 z-20 bg-card border-r border-soft p-3 min-w-[160px]">
                         <span className="text-xs font-semibold text-main block">{venue.name}</span>
-                        <span className="text-[10px] text-brand-primary">₱{venue.base_price.toLocaleString()}/day</span>
+                        {promoEligible ? (
+                          <span className="text-[10px] font-mono">
+                            <span className="text-muted line-through">₱{venue.base_price.toLocaleString()}</span>
+                            <span className="text-brand-primary ml-1">₱{displayPrice.toLocaleString()}/day</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-brand-primary">₱{venue.base_price.toLocaleString()}/day</span>
+                        )}
                       </td>
                       {cells}
                     </tr>

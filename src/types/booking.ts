@@ -2,7 +2,8 @@ export interface Room {
   id: string
   room_number: number
   name: string
-  base_price: number // PHP
+  base_price: number // Regular price (PHP)
+  promo_price?: number | null // Promo price when a sale is active
   capacity: number
   description: string
   image_url: string
@@ -11,7 +12,8 @@ export interface Room {
 export interface Venue {
   id: string
   name: 'Gazebo' | 'Vacation House' | 'Garden Area'
-  base_price: number // PHP Promo
+  base_price: number // Regular price (PHP)
+  promo_price?: number | null // Promo price when a sale is active
   capacity: number
   description: string
   image_url: string

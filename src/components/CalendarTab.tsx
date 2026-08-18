@@ -6,6 +6,7 @@ import { WalkInBookingForm } from './WalkInBookingForm'
 import {
   Calendar, Plus, ChevronLeft, ChevronRight, X
 } from 'lucide-react'
+import { isPromoActive } from '../utils/promoMode'
 
 // Import modular subcomponents
 import { ExtendStayModal } from './calendar/ExtendStayModal'

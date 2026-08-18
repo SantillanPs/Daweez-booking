@@ -16,7 +16,7 @@ interface BillingSummaryProps {
   formAdditionalDiscount: number
   guestEmail?: string
   bookingType: 'individual' | 'partner'
-  formWalkInDiscount: boolean
+  formUsePromo: boolean
   partnerDeals?: PartnerDeal[]
   formPartnerDealId?: string
   formPaymentMethod?: string
@@ -53,7 +53,7 @@ export const BillingSummary = React.memo(
     estDue,
     formAdditionalDiscount,
     bookingType,
-    formWalkInDiscount,
+    formUsePromo,
     partnerDeals,
     formPartnerDealId,
     formPaymentMethod,
@@ -79,30 +79,33 @@ export const BillingSummary = React.memo(
     const deal = partnerDeals?.find(d => d.id === formPartnerDealId)
 
     let undiscountedBaseTotal = 0
-    let walkInAmount = 0
+    let promoAmount = 0
     let additionalAmount = 0
 
     Object.entries(unitSelections).forEach(([id, sel]) => {
       const isRoom = sel.type === 'room'
-      const stdPrice = isRoom
-        ? (rooms.find(r => r.id === id)?.base_price ?? 0)
-        : (venues.find(v => v.id === id)?.base_price ?? 0)
+      const room = isRoom ? rooms.find(r => r.id === id) : undefined
+      const venue = !isRoom ? venues.find(v => v.id === id) : undefined
+      const regularPrice = isRoom ? (room?.base_price ?? 0) : (venue?.base_price ?? 0)
+      const promoPrice = isRoom ? (room?.promo_price ?? null) : (venue?.promo_price ?? null)
 
       const nights = sel.checkIn && sel.checkOut
         ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
         : 1
 
       const contractedRate = deal?.contracted_rates[id]
-      const price = contractedRate !== undefined && contractedRate !== null
+      const hasPromo = formUsePromo && promoPrice != null && promoPrice > 0
+      const stdPrice = contractedRate !== undefined && contractedRate !== null
         ? contractedRate
-        : stdPrice
-
-      undiscountedBaseTotal += price * nights
-      if (formWalkInDiscount) {
-        walkInAmount += Math.round(price * 0.2) * nights
+        : regularPrice
+      // Undiscounted total always uses regular/contracted price
+      undiscountedBaseTotal += stdPrice * nights
+      if (hasPromo && contractedRate == null) {
+        const perNightSaving = Math.max(0, regularPrice - promoPrice)
+        promoAmount += perNightSaving * nights
       }
       if (formAdditionalDiscount > 0) {
-        additionalAmount += Math.round(price * (formAdditionalDiscount / 100)) * nights
+        additionalAmount += Math.round(stdPrice * (formAdditionalDiscount / 100)) * nights
       }
     })
 
@@ -237,10 +240,10 @@ export const BillingSummary = React.memo(
                 <span className="font-mono text-emerald-600 font-bold">₱{undiscountedBaseTotal.toLocaleString()}</span>
               </div>
               
-              {formWalkInDiscount && walkInAmount > 0 && (
-                <div className="flex justify-between items-center text-rose-700 font-bold text-[11px] bg-rose-50/50 border border-rose-100/50 px-2.5 py-1 rounded-md animate-in fade-in">
-                  <span>Direct Booking Discount (20%)</span>
-                  <span className="font-mono">-₱{walkInAmount.toLocaleString()}</span>
+              {formUsePromo && promoAmount > 0 && (
+                <div className="flex justify-between items-center text-emerald-700 font-bold text-[11px] bg-emerald-50/50 border border-emerald-100/50 px-2.5 py-1 rounded-md animate-in fade-in">
+                  <span>Promo Price</span>
+                  <span className="font-mono">-₱{promoAmount.toLocaleString()}</span>
                 </div>
               )}
               {additionalAmount > 0 && (
@@ -411,7 +414,7 @@ export const BillingSummary = React.memo(
       prevProps.formAdditionalDiscount === nextProps.formAdditionalDiscount &&
       prevProps.guestEmail === nextProps.guestEmail &&
       prevProps.bookingType === nextProps.bookingType &&
-      prevProps.formWalkInDiscount === nextProps.formWalkInDiscount &&
+      prevProps.formUsePromo === nextProps.formUsePromo &&
       prevProps.formPartnerDealId === nextProps.formPartnerDealId &&
       prevProps.formPaymentMethod === nextProps.formPaymentMethod &&
       prevProps.formPaymentReference === nextProps.formPaymentReference &&

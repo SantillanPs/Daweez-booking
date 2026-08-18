@@ -27,6 +27,7 @@ interface WalkInBookingFormProps {
     checkOut: string
     source: BookingSource
     status: 'confirmed' | 'blocked'
+    usePromo?: boolean
     breakfastOrders?: BreakfastOrder[]
     equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons
@@ -189,8 +190,9 @@ export function WalkInBookingForm({
   const [formError, setFormError] = useState('')
   const [formCompanions, setFormCompanions] = useState<Companion[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const formAdditionalDiscount = 0
-  const [formWalkInDiscount, setFormWalkInDiscount] = useState(true)
+  // Explicit promo override — staff picks "Use Promo Price" per booking
+  // (replaces the old automatic 20% discount).
+  const [formUsePromo, setFormUsePromo] = useState(false)
   const [createdBookingList, setCreatedBookingList] = useState<Booking[]>([])
 
 
@@ -322,41 +324,36 @@ export function WalkInBookingForm({
     return entries.every(sel => sel.checkIn && sel.checkOut && sel.checkIn < sel.checkOut)
   }, [unitSelections])
 
-  // ── Pricing calculations ──
-  const { estBreakfast, estRentals, estAddons } = useMemo(() => {
-    let base = 0
+  // ── Pricing calculations (estimate for totals; real nightly rate goes through calculatePricing) ──
+  const { estBreakfast, estRentals, estAddons, estSubtotal, estDiscountAmount } = useMemo(() => {
+    let regularTotal = 0
+    let discountedTotal = 0
     let breakfast = 0
     let rentals = 0
-
-    const baselineDiscount = bookingType === 'partner'
-      ? (formWalkInDiscount ? 20 : 0)
-      : ((formSource === 'manual' || formSource === 'facebook') ? 20 : 0)
-    const totalDiscount = baselineDiscount + formAdditionalDiscount
-    const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
 
     Object.entries(unitSelections).forEach(([id, sel]) => {
       const deal = partnerDeals.find(d => d.id === formPartnerDealId)
       const contractedRate = deal?.contracted_rates[id]
-
-      const price = contractedRate !== undefined && contractedRate !== null
-        ? contractedRate
-        : sel.type === 'room'
-          ? (rooms.find(r => r.id === id)?.base_price ?? 0)
-          : (venues.find(v => v.id === id)?.base_price ?? 0)
-      
       const n = sel.checkIn && sel.checkOut
         ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
         : 1
-      
-      const finalRate = Math.round(price * rateMultiplier)
-      
-      base += finalRate * n
 
-      // Breakfast: check if it's default included in partner deal
+      const room = sel.type === 'room' ? rooms.find(r => r.id === id) : undefined
+      const venue = sel.type === 'venue' ? venues.find(v => v.id === id) : undefined
+      const regular = contractedRate !== undefined && contractedRate !== null
+        ? contractedRate
+        : sel.type === 'room'
+          ? (room?.base_price ?? 0)
+          : (venue?.base_price ?? 0)
+      const promo = sel.type === 'room'
+        ? (room?.promo_price ?? null)
+        : (venue?.promo_price ?? null)
+      const effectiveRate = formUsePromo && promo != null && promo > 0 ? promo : regular
+      regularTotal += regular * n
+      discountedTotal += effectiveRate * n
+
       const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
       if (sel.type === 'room') {
-        // If breakfast is pre-negotiated w/ breakfast (included), cost is 0 (already in room rate override).
-        // Otherwise, charge only if the user opted in, for the selected number of guests.
         if (!isBreakfastIncluded && formBreakfastEnabled) {
           breakfast += 150 * formBreakfastGuests * n
         }
@@ -368,20 +365,24 @@ export function WalkInBookingForm({
       rentals += formEventTable * 150 + formEventTent * 500 + formChairs * 15
     }
 
-    const total = base + breakfast + rentals
+    const subtotal = discountedTotal
+    const total = subtotal + breakfast + rentals
     const down = Math.round(total * 0.5)
-    
     const due = formStatus === 'blocked' ? 0 : (total - down)
 
     return {
       estBreakfast: breakfast,
       estRentals: rentals,
       estAddons: 0,
+      estSubtotal: subtotal,
+      estRegularTotal: regularTotal,
+      estDiscountAmount: Math.max(0, regularTotal - discountedTotal),
       estTotal: total,
       estDown: down,
-      estDue: due
+      estDue: due,
     }
-  }, [unitSelections, formSource, formAdditionalDiscount, formWalkInDiscount, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, bookingType, formBreakfastEnabled, formBreakfastGuests])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitSelections, formUsePromo, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, formBreakfastEnabled, formBreakfastGuests]) as { estBreakfast: number; estRentals: number; estAddons: number; estSubtotal: number; estRegularTotal: number; estDiscountAmount: number; estTotal: number; estDown: number; estDue: number }
 
   const hasAddons = estBreakfast > 0 || estRentals > 0 || estAddons > 0
 
@@ -421,10 +422,7 @@ export function WalkInBookingForm({
       setFormError('Guest name is required.'); return
     }
 
-    const totalDiscount = (bookingType === 'partner'
-      ? (formWalkInDiscount ? 20 : 0)
-      : ((formSource === 'manual' || formSource === 'facebook') ? 20 : 0)) + formAdditionalDiscount
-    const rateMultiplier = Math.max(0, 1 - totalDiscount / 100)
+    const usePromoForBooking = formUsePromo
 
     const createdBookings: Booking[] = []
     const processedBookingIds = new Set<string>()
@@ -468,7 +466,7 @@ export function WalkInBookingForm({
           source: bookingType === 'partner' ? 'manual' : formSource,
           status: bookingType === 'partner' ? 'confirmed' : formStatus,
           equipmentRentals: rentals,
-          rateMultiplier,
+          usePromo: usePromoForBooking,
           companions: bookingType === 'partner' ? undefined : (formCompanions.length > 0 ? formCompanions : undefined),
           partnerDealId: formPartnerDealId || undefined,
           companyName: formCompanyName || undefined,
@@ -519,7 +517,7 @@ export function WalkInBookingForm({
           source: bookingType === 'partner' ? 'manual' : formSource,
           status: bookingType === 'partner' ? 'confirmed' : formStatus,
           equipmentRentals: rentals,
-          rateMultiplier,
+          usePromo: usePromoForBooking,
           companions: bookingType === 'partner' ? undefined : (formCompanions.length > 0 ? formCompanions : undefined),
           partnerDealId: formPartnerDealId || undefined,
           companyName: formCompanyName || undefined,
@@ -614,7 +612,7 @@ export function WalkInBookingForm({
               onClick={() => {
                 setBookingType('individual');
                 setFormStep(1);
-                setFormWalkInDiscount(true);
+                setFormUsePromo(false);
                 setUnitSelections(initialSelections);
               }}
               className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${bookingType === 'individual' ? 'bg-brand-primary text-white border-brand-primary shadow-sm font-bold' : 'bg-card text-muted border-soft hover:bg-page'}`}
@@ -625,7 +623,7 @@ export function WalkInBookingForm({
               type="button"
               onClick={() => {
                 setBookingType('partner');
-                setFormWalkInDiscount(false);
+                setFormUsePromo(false);
                 setFormPartnerDealId('');
                 setFormCompanyName('');
                 setUnitSelections({});
@@ -807,17 +805,18 @@ export function WalkInBookingForm({
                         </div>
                       </div>
 
-                      {/* Walk-in Discount Checkbox */}
+                      {/* Promo Price Checkbox */}
                       <div className="pt-2 border-t border-soft">
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                           <input
                             type="checkbox"
-                            checked={formWalkInDiscount}
-                            onChange={e => setFormWalkInDiscount(e.target.checked)}
+                            checked={formUsePromo}
+                            onChange={e => setFormUsePromo(e.target.checked)}
                             className="rounded text-brand-primary focus:ring-[#B89251] w-3.5 h-3.5 cursor-pointer accent-brand-primary"
                           />
-                          <span className="text-[10px] text-brand-text font-bold uppercase tracking-wider">Apply 20% Walk-in Discount</span>
+                          <span className="text-[10px] text-brand-text font-bold uppercase tracking-wider">Use Promo Price</span>
                         </label>
+                        {formUsePromo && <p className="text-[10px] text-muted mt-1">Guests are charged the exact promo price from the rate card.</p>}
                         <div className="pt-4 border-t border-soft/60 mt-4 flex gap-2">
                           <button
                             type="button"
