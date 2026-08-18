@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useRef } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { Booking } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
@@ -39,7 +39,6 @@ export function CalendarTab() {
     return new Date(schedulerStartDate.getFullYear(), schedulerStartDate.getMonth() + 1, 0).getDate()
   }, [schedulerStartDate])
 
-  const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const [timelineSelection, setTimelineSelection] = useState<{ roomId?: string; venueId?: string; checkIn: Date } | null>(null)
 
   // ── Booking detail / extension modal ──
@@ -52,6 +51,19 @@ export function CalendarTab() {
   const [showManualForm, setShowManualForm] = useState(false)
   const [formSelections, setFormSelections] = useState<Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>>({})
   const [groupSelection, setGroupSelection] = useState<Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null>(null)
+
+  // Latest-value refs keep the click handler stable, so a date click never
+  // re-renders the whole grid (rerender-memo / rerender-functional-setstate).
+  const timelineSelectionRef = useRef(timelineSelection)
+  const groupSelectionRef = useRef(groupSelection)
+  const bookingsRef = useRef(bookings)
+  const roomsRef = useRef(rooms)
+  const venuesRef = useRef(venues)
+  timelineSelectionRef.current = timelineSelection
+  groupSelectionRef.current = groupSelection
+  bookingsRef.current = bookings
+  roomsRef.current = rooms
+  venuesRef.current = venues
 
   const toDateKey = (y: number, m: number, d: number) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 
@@ -101,8 +113,11 @@ export function CalendarTab() {
   }, [])
 
   const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date) => {
+    const curTimeline = timelineSelectionRef.current
+    const curGroup = groupSelectionRef.current
+
     // If this unit is already selected in groupSelection, toggle it off
-    if (groupSelection && groupSelection[id]) {
+    if (curGroup && curGroup[id]) {
       setGroupSelection(prev => {
         if (!prev) return null
         const next = { ...prev }
@@ -115,31 +130,33 @@ export function CalendarTab() {
     const selIdKey = type === 'room' ? 'roomId' : 'venueId'
     
     // If clicking the exact same check-in date again, cancel the selection draft
-    if (timelineSelection && timelineSelection[selIdKey] === id && date.toDateString() === timelineSelection.checkIn.toDateString()) {
+    if (curTimeline && curTimeline[selIdKey] === id && date.toDateString() === curTimeline.checkIn.toDateString()) {
       setTimelineSelection(null)
       return
     }
 
-    if (!timelineSelection || (timelineSelection.roomId !== id && timelineSelection.venueId !== id)) {
+    if (!curTimeline || (curTimeline.roomId !== id && curTimeline.venueId !== id)) {
       // Start a new selection (Click 1) or switch to a new unit
       setTimelineSelection({ [selIdKey]: id, checkIn: date })
     } else {
       // Complete the selection (Click 2)
-      if (date <= timelineSelection.checkIn) {
+      if (date <= curTimeline.checkIn) {
         // Invalid check-out date, start a new Click 1 selection at this date
         setTimelineSelection({ [selIdKey]: id, checkIn: date })
         return
       }
 
-      const checkInStr = timelineSelection.checkIn.toISOString().split('T')[0]
+      const checkInStr = curTimeline.checkIn.toISOString().split('T')[0]
       const checkOutStr = date.toISOString().split('T')[0]
       
       const isAvailable = type === 'room'
-        ? syncEngine.isRoomAvailable(id, checkInStr, checkOutStr, bookings)
-        : syncEngine.isVenueRangeAvailable(id, checkInStr, checkOutStr, bookings)
+        ? syncEngine.isRoomAvailable(id, checkInStr, checkOutStr, bookingsRef.current)
+        : syncEngine.isVenueRangeAvailable(id, checkInStr, checkOutStr, bookingsRef.current)
 
       if (!isAvailable) {
-        const unitName = type === 'room' ? (rooms.find(r => r.id === id)?.room_number || id) : (venues.find(v => v.id === id)?.name || id)
+        const unitName = type === 'room'
+          ? (roomsRef.current.find(r => r.id === id)?.room_number || id)
+          : (venuesRef.current.find(v => v.id === id)?.name || id)
         alert(`Overlap collision! ${type === 'room' ? 'Room' : 'Venue'} [${unitName}] is already booked on some dates in this range.`)
         setTimelineSelection(null)
         return
@@ -147,11 +164,11 @@ export function CalendarTab() {
 
       setGroupSelection(prev => ({
         ...(prev || {}),
-        [id]: { checkIn: timelineSelection.checkIn, checkOut: date, type }
+        [id]: { checkIn: curTimeline.checkIn, checkOut: date, type }
       }))
       setTimelineSelection(null)
     }
-  }, [timelineSelection, groupSelection, bookings, rooms, venues])
+  }, [])
 
   const handleExtendStaySubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setExtendError('')
@@ -283,8 +300,6 @@ export function CalendarTab() {
           daysList={daysList}
           bookingByRoomAndDate={bookingByRoomAndDate}
           getBookingStyle={getBookingStyle}
-          activeTooltip={activeTooltip}
-          setActiveTooltip={setActiveTooltip}
           timelineSelection={timelineSelection}
           setTimelineSelection={setTimelineSelection}
           groupSelection={groupSelection}

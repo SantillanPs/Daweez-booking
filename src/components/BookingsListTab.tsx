@@ -1,21 +1,30 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useDashboardData } from './DashboardContext'
-import { Search, Filter, CalendarDays, User, Building, MapPin, Calendar as CalendarIcon, CheckCircle2, XCircle, Clock, Edit } from 'lucide-react'
+import { Search, CalendarDays, User, MapPin, Building, Printer, FileText } from 'lucide-react'
 import { Booking } from '../types/booking'
-import { WalkInBookingForm } from './WalkInBookingForm'
+import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
+import { BookingDetailsModal } from './billing/BookingDetailsModal'
+import { PaymentStatusSelect } from './billing/PaymentStatusSelect'
+import { getPaymentView, isOwed, PAYMENT_BADGE_CLASSES } from '../utils/bookingMoney'
+
+type MoneyFilter = 'all' | 'owes' | 'paid'
+
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
 export function BookingsListTab() {
-  const { bookings, rooms, venues, updateBooking, createManualBooking, cancelBooking } = useDashboardData()
+  const { bookings, rooms, venues, updateBooking } = useDashboardData()
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState<Booking['status'] | 'all'>('all')
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
+  const [moneyFilter, setMoneyFilter] = useState<MoneyFilter>('all')
+  const [printBooking, setPrintBooking] = useState<Booking | null>(null)
+  const [detailsBooking, setDetailsBooking] = useState<Booking | null>(null)
 
   useEffect(() => {
-    const id = setTimeout(() => setDebouncedSearch(searchTerm), 250)
+    const id = setTimeout(() => setDebouncedSearch(searchTerm), 200)
     return () => clearTimeout(id)
   }, [searchTerm])
-  
+
   const getUnitName = useCallback((booking: Booking) => {
     if (booking.room_id) {
       const r = rooms.find(r => r.id === booking.room_id)
@@ -28,21 +37,49 @@ export function BookingsListTab() {
     return 'Unknown'
   }, [rooms, venues])
 
-  const sortedAndFilteredBookings = useMemo(() => {
+  // Today in the same YYYY-MM-DD form as check_in / check_out.
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
+
+  const visibleBookings = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase()
     return bookings
       .filter(b => {
-        if (filterStatus !== 'all' && b.status !== filterStatus) return false
-        if (debouncedSearch) {
-          const search = debouncedSearch.toLowerCase()
+        if (moneyFilter === 'owes' && !isOwed(b)) return false
+        if (moneyFilter === 'paid' && (b.payment_status !== 'paid' || b.status === 'blocked')) return false
+        if (q) {
           const guest = b.guest_name.toLowerCase()
           const inv = (b.invoice_number || '').toLowerCase()
           const unit = getUnitName(b).toLowerCase()
-          return guest.includes(search) || inv.includes(search) || unit.includes(search)
+          if (!guest.includes(q) && !inv.includes(q) && !unit.includes(q)) return false
         }
         return true
       })
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  }, [bookings, debouncedSearch, filterStatus, getUnitName])
+      .sort((a, b) => {
+        const aUpcoming = a.check_in >= todayStr
+        const bUpcoming = b.check_in >= todayStr
+        if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1
+        return aUpcoming
+          ? a.check_in.localeCompare(b.check_in)
+          : b.check_in.localeCompare(a.check_in)
+      })
+  }, [bookings, debouncedSearch, moneyFilter, getUnitName, todayStr])
+
+  // The number staff ask for most: how much is still owed, right now.
+  const owesSummary = useMemo(() => {
+    const owed = bookings.filter(b => isOwed(b))
+    return {
+      count: owed.length,
+      total: owed.reduce((sum, b) => sum + (b.balance_due || 0), 0)
+    }
+  }, [bookings])
+
+  const handlePaymentStatusChange = useCallback(async (booking: Booking, status: 'unpaid' | 'downpayment' | 'paid') => {
+    try {
+      await updateBooking({ ...booking, payment_status: status, balance_due: status === 'paid' ? 0 : booking.balance_due })
+    } catch {
+      window.alert('Could not update the payment. Please try again.')
+    }
+  }, [updateBooking])
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -50,171 +87,164 @@ export function BookingsListTab() {
         <div>
           <h2 className="text-xl font-bold text-main flex items-center gap-2">
             <CalendarDays className="w-6 h-6 text-brand-primary" />
-            All Bookings
+            Bookings
           </h2>
-          <p className="text-sm text-muted">Review and search all reservations</p>
+          <p className="text-sm text-muted">Find a stay, print an invoice, or see who still owes</p>
         </div>
       </div>
 
       <div className="bg-card border border-soft rounded-2xl shadow-sm overflow-hidden">
-        {/* Filters */}
-        <div className="p-4 border-b border-soft flex flex-col sm:flex-row items-center gap-4 bg-brand-bg/50">
-          <div className="relative flex-1 w-full">
+        {/* Search + one-tap money filters */}
+        <div className="p-4 border-b border-soft flex flex-col gap-3 bg-brand-bg/50">
+          <div className="relative w-full">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               type="text"
-              placeholder="Search by guest, invoice, or room..."
+              placeholder="Search by guest name…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-white dark:bg-card border border-soft rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-main"
+              className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-card border border-soft rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-main"
             />
           </div>
-          
-          <div className="relative w-full sm:w-48 shrink-0">
-            <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as Booking['status'] | 'all')}
-              className="w-full pl-9 pr-8 py-2 bg-white dark:bg-card border border-soft rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-main appearance-none cursor-pointer"
-            >
-              <option value="all">All Statuses</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="pending">Pending</option>
-              <option value="blocked">Blocked</option>
-            </select>
+          <div className="flex flex-wrap items-center gap-2">
+            {(['all', 'owes', 'paid'] as MoneyFilter[]).map(f => (
+              <button
+                key={f}
+                onClick={() => setMoneyFilter(f)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                  moneyFilter === f
+                    ? 'bg-brand-primary text-white'
+                    : 'bg-page text-muted border border-soft hover:bg-brand-bg'
+                }`}
+              >
+                {f === 'all' ? 'All stays' : f === 'owes' ? 'Who owes' : 'Paid'}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-brand-bg/80 text-muted uppercase text-[10px] tracking-wider border-b border-soft">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Invoice / Source</th>
-                <th className="px-6 py-4 font-semibold">Guest</th>
-                <th className="px-6 py-4 font-semibold">Dates</th>
-                <th className="px-6 py-4 font-semibold">Unit</th>
-                <th className="px-6 py-4 font-semibold text-right">Financials</th>
-                <th className="px-6 py-4 font-semibold text-center">Status</th>
-                <th className="px-6 py-4 font-semibold text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-soft">
-              {sortedAndFilteredBookings.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-muted">
-                    No bookings found matching your search.
-                  </td>
-                </tr>
-              ) : (
-                sortedAndFilteredBookings.map((b) => {
-                  const isVenue = !!b.venue_id
-                  
-                  return (
-                    <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-mono text-xs text-main bg-brand-bg px-2 py-1 rounded inline-block border border-soft/50">
-                          {b.invoice_number || 'N/A'}
-                        </div>
-                        <div className="text-[10px] text-muted mt-1 uppercase tracking-wider font-semibold">
-                          {b.source}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-brand-primary/10 flex items-center justify-center shrink-0">
-                            <User className="w-4 h-4 text-brand-primary" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-main">{b.guest_name}</div>
-                            {b.guest_phone !== 'None' && (
-                              <div className="text-xs text-muted mt-0.5">{b.guest_phone}</div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-main">
-                          <CalendarIcon className="w-3.5 h-3.5 text-muted shrink-0" />
-                          <span>{new Date(b.check_in).toLocaleDateString()} <span className="text-muted mx-1">→</span> {new Date(b.check_out).toLocaleDateString()}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          {isVenue ? (
-                            <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
-                          ) : (
-                            <Building className="w-4 h-4 text-blue-500 shrink-0" />
-                          )}
-                          <span className="font-medium text-main">{getUnitName(b)}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className={`inline-block mb-1 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded ${
-                          !b.payment_status || b.payment_status === 'unpaid' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400' :
-                          b.payment_status === 'downpayment' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' :
-                          'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
-                        }`}>
-                          {!b.payment_status || b.payment_status === 'unpaid' ? 'Unpaid' : b.payment_status === 'downpayment' ? 'Downpayment' : 'Fully Paid'}
-                        </div>
-                        <div className="font-medium text-main text-xs">
-                          Paid: ₱{(b.downpayment_paid || 0).toLocaleString()}
-                        </div>
-                        <div className="text-xs text-muted mt-0.5">
-                          Bal: ₱{(b.balance_due || 0).toLocaleString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${
-                          b.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20' :
-                          b.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20' :
-                          'bg-slate-100 text-slate-700 dark:bg-slate-500/10 dark:text-slate-400 border border-slate-200 dark:border-slate-500/20'
-                        }`}>
-                          {b.status === 'confirmed' && <CheckCircle2 className="w-3 h-3" />}
-                          {b.status === 'pending' && <Clock className="w-3 h-3" />}
-                          {b.status === 'blocked' && <XCircle className="w-3 h-3" />}
-                          {b.status}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => setEditingBooking(b)}
-                          className="p-1.5 text-muted hover:text-brand-primary bg-page hover:bg-brand-bg rounded transition-colors cursor-pointer"
-                          title="Edit Booking"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+        {/* Who-owes headline */}
+        <div className="px-4 sm:px-6 py-3 border-b border-soft flex items-center justify-between gap-3 bg-brand-bg/30">
+          <span className={`text-sm font-extrabold ${owesSummary.count === 0 ? 'text-emerald-600' : 'text-main'}`}>
+            {owesSummary.count === 0
+              ? 'Everyone has paid 🎉'
+              : `Who owes right now: ${owesSummary.count} ${owesSummary.count === 1 ? 'stay' : 'stays'} · ₱${owesSummary.total.toLocaleString()}`}
+          </span>
+          <span className="text-[10px] text-muted hidden sm:block">Upcoming stays first</span>
         </div>
+
+        {/* Booking list */}
+        {visibleBookings.length === 0 ? (
+          <div className="px-6 py-14 text-center">
+            <p className="text-sm font-semibold text-main">
+              {moneyFilter === 'owes'
+                ? 'Nothing owed right now. 🎉'
+                : debouncedSearch
+                  ? `No bookings found for “${debouncedSearch}”.`
+                  : 'No bookings yet.'}
+            </p>
+            <p className="text-xs text-muted mt-1">
+              {debouncedSearch
+                ? 'Try a different name, or clear the search.'
+                : moneyFilter === 'owes'
+                  ? 'Check the “All stays” filter to see every booking.'
+                  : 'Add a stay from the Calendar or the New Booking button.'}
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-soft">
+            {visibleBookings.map(b => {
+              const pay = getPaymentView(b)
+              const isVenue = !!b.venue_id
+              return (
+                <div key={b.id} className="px-4 sm:px-6 py-4 flex flex-col gap-2.5 hover:bg-brand-bg/30 transition-colors">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-full bg-brand-primary/10 flex items-center justify-center shrink-0">
+                        <User className="w-4 h-4 text-brand-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-main truncate">{b.guest_name}</div>
+                        {b.guest_phone !== 'None' && (
+                          <div className="text-xs text-muted truncate">{b.guest_phone}</div>
+                        )}
+                      </div>
+                    </div>
+                    {b.status !== 'blocked' && (
+                      <span className={`px-3 py-1.5 rounded-lg text-sm font-extrabold whitespace-nowrap ${PAYMENT_BADGE_CLASSES[pay.tone]}`}>
+                        {pay.label}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
+                    <span className="text-main font-medium">
+                      {fmtDate(b.check_in)} <span className="text-muted mx-0.5">→</span> {fmtDate(b.check_out)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      {isVenue
+                        ? <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+                        : <Building className="w-3.5 h-3.5 text-blue-500" />}
+                      {getUnitName(b)}
+                    </span>
+                    {b.invoice_number && (
+                      <span className="font-mono text-[10px] bg-brand-bg border border-soft/50 px-1.5 py-0.5 rounded">
+                        {b.invoice_number}
+                      </span>
+                    )}
+                    {b.status === 'pending' && (
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                        Not confirmed
+                      </span>
+                    )}
+                    {b.status === 'blocked' && (
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                        Blocked
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setPrintBooking(b)}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-soft bg-card text-main hover:bg-page transition-colors cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-brand-primary" /> Print invoice
+                    </button>
+                    {b.status !== 'blocked' && (
+                      <PaymentStatusSelect booking={b} onChange={handlePaymentStatusChange} />
+                    )}
+                    <button
+                      onClick={() => setDetailsBooking(b)}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-soft bg-card text-main hover:bg-page transition-colors cursor-pointer"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-brand-primary" /> Details
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      {editingBooking && (
-        <WalkInBookingForm
+      {printBooking && (
+        <PrintInvoiceModal
+          booking={printBooking}
           rooms={rooms}
           venues={venues}
-          bookings={bookings}
-          createManualBooking={createManualBooking}
-          cancelBooking={cancelBooking}
-          updateBooking={updateBooking}
-          initialSelections={{
-            [editingBooking.room_id || editingBooking.venue_id || '']: {
-              checkIn: editingBooking.check_in,
-              checkOut: editingBooking.check_out,
-              type: editingBooking.room_id ? 'room' : 'venue'
-            }
-          }}
-          editingBookings={
-            editingBooking.invoice_number 
-              ? bookings.filter(b => b.invoice_number === editingBooking.invoice_number)
-              : [editingBooking]
-          }
-          onClose={() => setEditingBooking(null)}
+          bookingsList={bookings}
+          onClose={() => setPrintBooking(null)}
+        />
+      )}
+      {detailsBooking && (
+        <BookingDetailsModal
+          booking={detailsBooking}
+          rooms={rooms}
+          venues={venues}
+          bookingsList={bookings}
+          onClose={() => setDetailsBooking(null)}
+          onPaymentStatusChange={handlePaymentStatusChange}
         />
       )}
     </div>

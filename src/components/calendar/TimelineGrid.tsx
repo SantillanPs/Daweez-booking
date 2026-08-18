@@ -16,8 +16,6 @@ interface TimelineGridProps {
   daysList: TimelineDayInfo[]
   bookingByRoomAndDate: Record<string, Booking>
   getBookingStyle: (b: Booking) => string
-  activeTooltip: string | null
-  setActiveTooltip: (id: string | null) => void
   timelineSelection: { roomId?: string; venueId?: string; checkIn: Date } | null
   setTimelineSelection: (val: { roomId?: string; venueId?: string; checkIn: Date } | null) => void
   groupSelection?: Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null
@@ -37,13 +35,17 @@ interface TimelineCellProps {
   isCheckIn: boolean
   isHighlighted: boolean
   getBookingStyle: (b: Booking) => string
-  activeTooltip: string | null
-  setActiveTooltip: (id: string | null) => void
   onCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
   setSelectedExtendBooking: (booking: Booking) => void
   setExtendCheckoutDate: (date: string) => void
   setExtendError: (err: string) => void
-  dIdx: number
+}
+
+// Venue bookings use a distinct color (fuchsia) so they stand out from rooms.
+const getVenueBookingStyle = (b: Booking) => {
+  if (b.status === 'blocked') return 'bg-softbg text-muted border-soft line-through'
+  if (b.status === 'pending') return 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
+  return 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200'
 }
 
 // Highly optimized, memoized timeline cell wrapper
@@ -57,14 +59,14 @@ const TimelineCell = React.memo(
     isCheckIn,
     isHighlighted,
     getBookingStyle,
-    activeTooltip,
-    setActiveTooltip,
     onCellClick,
     setSelectedExtendBooking,
     setExtendCheckoutDate,
-    setExtendError,
-    dIdx
+    setExtendError
   }: TimelineCellProps) => {
+    // Tooltip visibility lives in this cell only, so hovering a booking
+    // never re-renders the whole grid (rerender-defer-reads).
+    const [showTooltip, setShowTooltip] = React.useState(false)
     const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
     React.useEffect(() => {
@@ -74,9 +76,6 @@ const TimelineCell = React.memo(
     }, [])
 
     if (booking) {
-      const tipId = `${id}-${dIdx}`
-      const isTooltipActive = activeTooltip === tipId
-
       return (
         <td
           colSpan={span}
@@ -84,7 +83,7 @@ const TimelineCell = React.memo(
           onMouseEnter={() => {
             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
             hoverTimeoutRef.current = setTimeout(() => {
-              setActiveTooltip(tipId)
+              setShowTooltip(true)
             }, 500)
           }}
           onMouseLeave={() => {
@@ -92,7 +91,7 @@ const TimelineCell = React.memo(
               clearTimeout(hoverTimeoutRef.current)
               hoverTimeoutRef.current = null
             }
-            setActiveTooltip(null)
+            setShowTooltip(false)
           }}
         >
           <div
@@ -104,7 +103,7 @@ const TimelineCell = React.memo(
                 setExtendError('')
               }
             }}
-            className={`h-7 mx-0.5 flex items-center justify-between text-[9.5px] font-extrabold px-2.5 rounded-sm border cursor-pointer select-none transition-all hover:scale-[1.003] hover:shadow-sm ${getBookingStyle(booking)}`}
+            className={`h-7 mx-0.5 flex items-center justify-between text-[9.5px] font-extrabold px-2.5 rounded-sm border cursor-pointer select-none transition-colors hover:scale-[1.003] hover:shadow-sm ${getBookingStyle(booking)}`}
           >
             <span className="truncate">
               {booking.guest_name}
@@ -115,7 +114,7 @@ const TimelineCell = React.memo(
               </span>
             )}
           </div>
-          {isTooltipActive && (
+          {showTooltip && (
             <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-52 bg-card border border-soft p-3 shadow-lg rounded-lg text-xs space-y-1.5 pointer-events-none text-left font-sans">
               <div className="font-semibold text-main">{booking.guest_name}</div>
               <div className="text-[10px] text-muted font-mono">{booking.check_in} → {booking.check_out}</div>
@@ -179,7 +178,6 @@ const TimelineCell = React.memo(
       prevProps.isCheckIn === nextProps.isCheckIn &&
       prevProps.isHighlighted === nextProps.isHighlighted &&
       prevProps.span === nextProps.span &&
-      prevProps.activeTooltip === nextProps.activeTooltip &&
       prevProps.booking?.id === nextProps.booking?.id &&
       prevProps.booking?.status === nextProps.booking?.status
     )
@@ -193,8 +191,6 @@ export const TimelineGrid = React.memo(
     daysList,
     bookingByRoomAndDate,
     getBookingStyle,
-    activeTooltip,
-    setActiveTooltip,
     timelineSelection,
     setTimelineSelection,
     groupSelection,
@@ -231,7 +227,7 @@ export const TimelineGrid = React.memo(
     return (
       <div className="space-y-2.5 flex-1 min-h-0 flex flex-col overflow-hidden">
         {timelineSelection && (
-          <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 max-w-xs bg-brand-bg/95 backdrop-blur-md border border-brand-border text-main rounded-lg p-3.5 shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 font-sans">
+          <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 max-w-xs bg-brand-bg border border-brand-border text-main rounded-lg p-3.5 shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 font-sans">
             <span className="flex h-2.5 w-2.5 relative mt-1 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-brand-primary"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-primary"></span>
@@ -308,13 +304,10 @@ export const TimelineGrid = React.memo(
                           isCheckIn={false}
                           isHighlighted={false}
                           getBookingStyle={getBookingStyle}
-                          activeTooltip={activeTooltip}
-                          setActiveTooltip={setActiveTooltip}
                           onCellClick={handleCellClick}
                           setSelectedExtendBooking={setSelectedExtendBooking}
                           setExtendCheckoutDate={setExtendCheckoutDate}
                           setExtendError={setExtendError}
-                          dIdx={dIdx}
                         />
                       )
                       dIdx += span
@@ -338,13 +331,10 @@ export const TimelineGrid = React.memo(
                           isCheckIn={!!isDraftCheckIn}
                           isHighlighted={isHighlighted}
                           getBookingStyle={getBookingStyle}
-                          activeTooltip={activeTooltip}
-                          setActiveTooltip={setActiveTooltip}
                           onCellClick={handleCellClick}
                           setSelectedExtendBooking={setSelectedExtendBooking}
                           setExtendCheckoutDate={setExtendCheckoutDate}
                           setExtendError={setExtendError}
-                          dIdx={dIdx}
                         />
                       )
                       dIdx++
@@ -399,18 +389,11 @@ export const TimelineGrid = React.memo(
                           span={span}
                           isCheckIn={false}
                           isHighlighted={false}
-                          getBookingStyle={(b) => {
-                            if (b.status === 'blocked') return 'bg-softbg text-muted border-soft line-through'
-                            if (b.status === 'pending') return 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
-                            return 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200'
-                          }}
-                          activeTooltip={activeTooltip}
-                          setActiveTooltip={setActiveTooltip}
+                          getBookingStyle={getVenueBookingStyle}
                           onCellClick={handleCellClick}
                           setSelectedExtendBooking={setSelectedExtendBooking}
                           setExtendCheckoutDate={setExtendCheckoutDate}
                           setExtendError={setExtendError}
-                          dIdx={dIdx}
                         />
                       )
                       dIdx += span
@@ -434,13 +417,10 @@ export const TimelineGrid = React.memo(
                           isCheckIn={!!isDraftCheckIn}
                           isHighlighted={isHighlighted}
                           getBookingStyle={getBookingStyle}
-                          activeTooltip={activeTooltip}
-                          setActiveTooltip={setActiveTooltip}
                           onCellClick={handleCellClick}
                           setSelectedExtendBooking={setSelectedExtendBooking}
                           setExtendCheckoutDate={setExtendCheckoutDate}
                           setExtendError={setExtendError}
-                          dIdx={dIdx}
                         />
                       )
                       dIdx++
