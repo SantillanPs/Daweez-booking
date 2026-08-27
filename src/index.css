@@ -3,33 +3,33 @@
 @tailwind utilities;
 
   :root {
-    --bg-page: #fdfbf7;
-    --bg-card: #ffffff;
-    --bg-softbg: #f8fafc;
-    --border-soft: rgba(229, 213, 192, 0.65);
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --brand-primary: #b89251;
-    --brand-text: #9a783e;
-    --brand-border: #e5d5c0;
-    --brand-bg: #fdfbf7;
-    --brand-ring: #e6c280;
-    --body-bg: #f1f5f9;
+    --bg-page: #FAF6EE;
+    --bg-card: #FFFFFF;
+    --bg-softbg: #F3EEDF;
+    --border-soft: rgba(180, 158, 120, 0.42);
+    --text-main: #2A3733;
+    --text-muted: #75837C;
+    --brand-primary: #2E7D78;
+    --brand-text: #1F5F5B;
+    --brand-border: rgba(46, 125, 120, 0.28);
+    --brand-bg: #EFF7F5;
+    --brand-ring: #57A49C;
+    --body-bg: #F0E9DA;
   }
 
   .dark {
-    --bg-page: #181614;
-    --bg-card: #22201d;
-    --bg-softbg: #1d1b18;
-    --border-soft: rgba(229, 213, 192, 0.04);
-    --text-main: #e0dcd3;
-    --text-muted: #8f8a81;
-    --brand-primary: #b89251;
-    --brand-text: #d9af62;
-    --brand-border: rgba(184, 146, 81, 0.2);
-    --brand-bg: #211c14;
-    --brand-ring: #b89251;
-    --body-bg: #12100e;
+    --bg-page: #1A1C17;
+    --bg-card: #232620;
+    --bg-softbg: #1D201B;
+    --border-soft: rgba(210, 196, 160, 0.14);
+    --text-main: #EAE4D6;
+    --text-muted: #9BA49C;
+    --brand-primary: #57A49C;
+    --brand-text: #8CC4BD;
+    --brand-border: rgba(87, 164, 156, 0.32);
+    --brand-bg: #14211F;
+    --brand-ring: #57A49C;
+    --body-bg: #12140F;
   }
 
   body {
@@ -41,12 +41,19 @@
     font-feature-settings: "cv02","cv03","cv04","cv11";
   }
 
-  /* Mobbin-style soft card */
+  /* Soft card */
   .card-soft {
-    @apply bg-card border border-soft rounded-xl shadow-[0_4px_24px_rgba(15,23,42,0.06)] ;
+    @apply bg-card border border-soft rounded-xl shadow-[0_4px_24px_rgba(42,55,51,0.06)] ;
   }
   .card-soft:hover {
-    @apply shadow-[0_8px_32px_rgba(15,23,42,0.08)];
+    @apply shadow-[0_8px_32px_rgba(42,55,51,0.08)];
+  }
+
+  /* Accessible focus */
+  :focus-visible {
+    outline: 2px solid var(--brand-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 
 /* Custom scrollbars */
@@ -79,9 +86,9 @@
 .animate-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(184, 146, 81, 0.05) 25%,
-    rgba(184, 146, 81, 0.25) 50%,
-    rgba(184, 146, 81, 0.05) 75%
+    rgba(46, 125, 120, 0.05) 25%,
+    rgba(46, 125, 120, 0.22) 50%,
+    rgba(46, 125, 120, 0.05) 75%
   );
   background-size: 200% 100%;
   animation: gold-shimmer 2.5s infinite linear;
@@ -104,3 +111,11 @@
 /* Safe area for mobile bottom nav */
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

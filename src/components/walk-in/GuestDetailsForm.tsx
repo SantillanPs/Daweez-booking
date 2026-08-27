@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import { Room, Venue, Booking, BookingSource } from '../../types/booking'
+import { dateToString } from '../../utils/helpers'
 
 interface GuestDetailsFormProps {
   rooms: Room[]
@@ -47,8 +48,8 @@ export const GuestDetailsForm = React.memo(
         delete updated[id]
       } else {
         const firstSelection = Object.values(unitSelections)[0]
-        const defaultCheckIn = firstSelection?.checkIn || new Date().toISOString().split('T')[0]
-        const defaultCheckOut = firstSelection?.checkOut || new Date(Date.now() + 86400000).toISOString().split('T')[0]
+        const defaultCheckIn = firstSelection?.checkIn || dateToString(new Date())
+        const defaultCheckOut = firstSelection?.checkOut || dateToString(new Date(Date.now() + 86400000))
         updated[id] = { checkIn: defaultCheckIn, checkOut: defaultCheckOut, type }
       }
       setUnitSelections(updated)

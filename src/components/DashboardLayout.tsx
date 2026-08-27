@@ -7,6 +7,7 @@ import {
   Calendar, Settings, Building, Moon, Sun, BookOpen, Tag
 } from 'lucide-react'
 import { isPromoActive, setPromoActive } from '../utils/promoMode'
+import { dateToString } from '../utils/helpers'
 
 const TABS = [
   { id: 'calendar',  label: 'Calendar',  Icon: Calendar, to: '/calendar' },
@@ -89,7 +90,7 @@ export function DashboardLayout() {
   }, [triggerOTASync])
 
   const stats = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = dateToString(new Date())
     const arrivalsToday = bookings.filter(b => b.check_in === todayStr && b.status !== 'blocked')
     const departuresToday = bookings.filter(b => b.check_out === todayStr && b.status !== 'blocked')
     const currentGuests = bookings.filter(b => b.status === 'confirmed' && todayStr >= b.check_in && todayStr < b.check_out)

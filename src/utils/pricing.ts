@@ -97,7 +97,8 @@ export function calculatePricing(params: {
   let breakfastTotal = 0
   if (roomId) {
     // Empty breakfast_orders means the user explicitly opted out — skip.
-    const optedOut = breakfastOrders !== undefined && breakfastOrders.length === 0
+    // (null-safe: DB round-trips turn missing arrays into null)
+    const optedOut = breakfastOrders != null && breakfastOrders.length === 0
     if (!optedOut) {
       const isBreakfastOn = breakfastEnabled !== undefined ? breakfastEnabled : true
       if (isBreakfastOn) {

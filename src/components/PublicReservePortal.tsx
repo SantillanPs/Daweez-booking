@@ -4,6 +4,8 @@ import { Calendar, User, Mail, Phone, CheckCircle2, Users, ArrowRight, Info, Ale
 import { Booking, Room, Venue, Companion } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { isPromoActive, getEffectiveNightlyPrice } from '../utils/promoMode'
+import { dateToString } from '../utils/helpers'
+import { roomDisplayName } from './calendar/bookingStyles'
 
 export function PublicReservePortal() {
   // --- State ---
@@ -247,7 +249,7 @@ export function PublicReservePortal() {
                   <label className="text-[10px] text-muted font-medium block mb-1">Check-in Date</label>
                   <input
                     type="date"
-                    min={new Date().toISOString().split('T')[0]}
+                    min={dateToString(new Date())}
                     value={checkIn}
                     onChange={e => {
                       setCheckIn(e.target.value)
@@ -260,7 +262,7 @@ export function PublicReservePortal() {
                   <label className="text-[10px] text-muted font-medium block mb-1">Check-out Date</label>
                   <input
                     type="date"
-                    min={checkIn ? new Date(new Date(checkIn).getTime() + 86400000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                    min={checkIn ? dateToString(new Date(new Date(checkIn).getTime() + 86400000)) : dateToString(new Date())}
                     value={checkOut}
                     onChange={e => {
                       setCheckOut(e.target.value)
@@ -635,7 +637,7 @@ export function PublicReservePortal() {
                   <div>
                     <h4 className="font-bold text-main text-xs leading-tight">{selectedUnit.name}</h4>
                     <span className="text-[10px] text-muted block pt-0.5">
-                      {selectedUnitType === 'room' ? `Room ${(selectedUnit as Room).room_number}` : 'Event Venue'}
+                      {selectedUnitType === 'room' ? roomDisplayName(selectedUnit as Room) : 'Event Venue'}
                     </span>
                   </div>
                 </div>

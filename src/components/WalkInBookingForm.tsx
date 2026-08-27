@@ -10,6 +10,7 @@ import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
 
 // Import modular subcomponents
 import { GuestDetailsForm } from './walk-in/GuestDetailsForm'
+import { roomDisplayName } from './calendar/bookingStyles'
 import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
 
@@ -325,7 +326,7 @@ export function WalkInBookingForm({
   }, [unitSelections])
 
   // ── Pricing calculations (estimate for totals; real nightly rate goes through calculatePricing) ──
-  const { estBreakfast, estRentals, estAddons, estSubtotal, estDiscountAmount } = useMemo(() => {
+  const { estBreakfast, estRentals, estAddons } = useMemo(() => {
     let regularTotal = 0
     let discountedTotal = 0
     let breakfast = 0
@@ -381,7 +382,6 @@ export function WalkInBookingForm({
       estDown: down,
       estDue: due,
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitSelections, formUsePromo, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, formBreakfastEnabled, formBreakfastGuests]) as { estBreakfast: number; estRentals: number; estAddons: number; estSubtotal: number; estRegularTotal: number; estDiscountAmount: number; estTotal: number; estDown: number; estDue: number }
 
   const hasAddons = estBreakfast > 0 || estRentals > 0 || estAddons > 0
@@ -776,7 +776,7 @@ export function WalkInBookingForm({
                           {Object.entries(unitSelections).map(([id, sel]) => {
                             const isRoom = sel.type === 'room'
                             const name = isRoom 
-                              ? `Room ${rooms.find(r => r.id === id)?.room_number || id}`
+                              ? roomDisplayName(rooms.find(r => r.id === id))
                               : (venues.find(v => v.id === id)?.name || id)
                             const deal = partnerDeals.find(d => d.id === formPartnerDealId)
                             const contractedPrice = deal?.contracted_rates[id]

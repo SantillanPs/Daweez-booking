@@ -2,122 +2,110 @@ import React, { useState, useMemo, useCallback, useRef } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { Booking } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
+import { dateToString } from '../utils/helpers'
 import { WalkInBookingForm } from './WalkInBookingForm'
-import {
-  Calendar, Plus, ChevronLeft, ChevronRight, X
-} from 'lucide-react'
-import { isPromoActive } from '../utils/promoMode'
-
-// Import modular subcomponents
 import { ExtendStayModal } from './calendar/ExtendStayModal'
-import { TimelineGrid } from './calendar/TimelineGrid'
+import { TimelineGrid, TimelineDayInfo } from './calendar/TimelineGrid'
+import { TodayBriefing } from './calendar/TodayBriefing'
+import { QuickBookingSheet, UnitSelection } from './calendar/QuickBookingSheet'
+import { GroupSelectionBar } from './calendar/GroupSelectionBar'
+import { CalendarToolbar } from './calendar/CalendarToolbar'
+import { CalendarLegend } from './calendar/CalendarLegend'
+import { roomDisplayName } from './calendar/bookingStyles'
 
-const getBookingStyle = (b: Booking) => {
-  if (b.status === 'pending') return 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
-  if (b.status === 'blocked') return 'bg-softbg text-muted border-soft line-through'
-  switch (b.source) {
-    case 'airbnb':      return 'bg-emerald-50 text-emerald-700 border-emerald-200'
-    case 'booking_com': return 'bg-blue-50 text-blue-700 border-blue-200'
-    case 'facebook':    return 'bg-indigo-50 text-indigo-700 border-indigo-200'
-    case 'google_maps': return 'bg-orange-50 text-orange-700 border-orange-200'
-    case 'website':     return 'bg-violet-50 text-violet-700 border-violet-200'
-    default:            return 'bg-page text-main border-soft'
-  }
-}
+type Selection = { roomId?: string; venueId?: string; checkIn: Date }
+type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }>
 
 export function CalendarTab() {
   const { rooms, venues, bookings, createManualBooking, cancelBooking, confirmBooking, isConfirming, updateBooking } = useDashboardData()
 
-  // ── Timeline state ──
+  // ── Month / timeline state ──
   const [schedulerStartDate, setSchedulerStartDate] = useState<Date>(() => {
-    const d = new Date()
-    d.setDate(1)
-    d.setHours(0, 0, 0, 0)
-    return d
+    const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d
   })
-  
-  const daysCount = useMemo(() => {
-    return new Date(schedulerStartDate.getFullYear(), schedulerStartDate.getMonth() + 1, 0).getDate()
-  }, [schedulerStartDate])
+  const [timelineSelection, setTimelineSelection] = useState<Selection | null>(null); const [groupSelection, setGroupSelection] = useState<GroupSel | null>(null)
 
-  const [timelineSelection, setTimelineSelection] = useState<{ roomId?: string; venueId?: string; checkIn: Date } | null>(null)
+  // ── Quick booking panel ──
+  const [quickSelections, setQuickSelections] = useState<Record<string, UnitSelection> | null>(null)
+  const [editingSheet, setEditingSheet] = useState(false)
 
   // ── Booking detail / extension modal ──
   const [selectedExtendBooking, setSelectedExtendBooking] = useState<Booking | null>(null)
-  const [extendCheckoutDate, setExtendCheckoutDate] = useState<string>('')
-  const [extendError, setExtendError] = useState<string>('')
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
+  const [extendCheckoutDate, setExtendCheckoutDate] = useState(''); const [extendError, setExtendError] = useState('')
 
-  // ── Walk‑in form wizard ──
-  const [showManualForm, setShowManualForm] = useState(false)
-  const [formSelections, setFormSelections] = useState<Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>>({})
-  const [groupSelection, setGroupSelection] = useState<Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null>(null)
+  // ── Full wizard (editing + advanced) ──
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null); const [showManualForm, setShowManualForm] = useState(false); const [formSelections, setFormSelections] = useState<Record<string, UnitSelection>>({})
 
-  // Latest-value refs keep the click handler stable, so a date click never
-  // re-renders the whole grid (rerender-memo / rerender-functional-setstate).
+  // Latest-value refs keep the click handler stable so a date click never
+  // re-renders the whole grid.
   const timelineSelectionRef = useRef(timelineSelection)
   const groupSelectionRef = useRef(groupSelection)
   const bookingsRef = useRef(bookings)
   const roomsRef = useRef(rooms)
   const venuesRef = useRef(venues)
-  timelineSelectionRef.current = timelineSelection
-  groupSelectionRef.current = groupSelection
-  bookingsRef.current = bookings
-  roomsRef.current = rooms
-  venuesRef.current = venues
+  React.useEffect(() => {
+    timelineSelectionRef.current = timelineSelection; groupSelectionRef.current = groupSelection; bookingsRef.current = bookings; roomsRef.current = rooms; venuesRef.current = venues
+  })
 
-  const toDateKey = (y: number, m: number, d: number) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+  const daysCount = useMemo(() => new Date(schedulerStartDate.getFullYear(), schedulerStartDate.getMonth() + 1, 0).getDate(), [schedulerStartDate])
 
-  // Index bookings by Room/Venue Date key — numeric UTC timestamps, no string parsing in loop
+  const toDateKey = (y: number, m: number, d: number) => y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0')
+
+  // Index bookings by Room/Venue+Date — numeric UTC timestamps, no string parsing in loop.
   const bookingByRoomAndDate = useMemo(() => {
     const map: Record<string, Booking> = {}
     const oneDay = 86400000
     bookings.forEach(b => {
       const keyId = b.room_id || syncEngine.normalizeVenueId(b.venue_id)
       if (!keyId) return
-      const [y1,m1,d1] = b.check_in.split('-').map(Number)
-      const [y2,m2,d2] = b.check_out.split('-').map(Number)
+      const [y1, m1, d1] = b.check_in.split('-').map(Number)
+      const [y2, m2, d2] = b.check_out.split('-').map(Number)
       let cur = Date.UTC(y1, m1 - 1, d1)
       const end = Date.UTC(y2, m2 - 1, d2)
       while (cur < end) {
         const dt = new Date(cur)
-        const k = `${keyId}_${toDateKey(dt.getUTCFullYear(), dt.getUTCMonth()+1, dt.getUTCDate())}`
-        map[k] = b
+        map[keyId + '_' + toDateKey(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate())] = b
         cur += oneDay
       }
     })
     return map
   }, [bookings])
 
-  // Build timeline day list info objects
   const daysList = useMemo(() => {
-    const list = []
+    const list: TimelineDayInfo[] = []
     const todayStr = new Date().toDateString()
     for (let i = 0; i < daysCount; i++) {
       const d = new Date(schedulerStartDate)
       d.setDate(schedulerStartDate.getDate() + i)
       list.push({
         date: d,
-        isoStr: d.toISOString().split('T')[0],
+        isoStr: dateToString(d),
         time: d.getTime(),
         dayNum: d.getDate(),
         weekday: d.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 1),
-        isToday: d.toDateString() === todayStr
+        isToday: d.toDateString() === todayStr,
+        isWeekend: d.getDay() === 0 || d.getDay() === 6
       })
     }
     return list
   }, [schedulerStartDate, daysCount])
 
-  const resetAndOpenManualForm = useCallback((initialSelections: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>) => {
-    setFormSelections(initialSelections)
-    setShowManualForm(true)
+  const openQuick = useCallback((sel: Record<string, UnitSelection>) => {
+    setQuickSelections(sel)
   }, [])
+
+  const handleQuickPaymentChange = useCallback(async (b: Booking, status: 'unpaid' | 'downpayment' | 'paid') => {
+    try {
+      await updateBooking({ ...b, payment_status: status, balance_due: status === 'paid' ? 0 : b.balance_due })
+    } catch {
+      window.alert('Could not update the payment. Please try again.')
+    }
+  }, [updateBooking])
 
   const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date) => {
     const curTimeline = timelineSelectionRef.current
     const curGroup = groupSelectionRef.current
 
-    // If this unit is already selected in groupSelection, toggle it off
     if (curGroup && curGroup[id]) {
       setGroupSelection(prev => {
         if (!prev) return null
@@ -129,44 +117,30 @@ export function CalendarTab() {
     }
 
     const selIdKey = type === 'room' ? 'roomId' : 'venueId'
-    
-    // If clicking the exact same check-in date again, cancel the selection draft
     if (curTimeline && curTimeline[selIdKey] === id && date.toDateString() === curTimeline.checkIn.toDateString()) {
       setTimelineSelection(null)
       return
     }
 
     if (!curTimeline || (curTimeline.roomId !== id && curTimeline.venueId !== id)) {
-      // Start a new selection (Click 1) or switch to a new unit
       setTimelineSelection({ [selIdKey]: id, checkIn: date })
     } else {
-      // Complete the selection (Click 2)
       if (date <= curTimeline.checkIn) {
-        // Invalid check-out date, start a new Click 1 selection at this date
         setTimelineSelection({ [selIdKey]: id, checkIn: date })
         return
       }
-
-      const checkInStr = curTimeline.checkIn.toISOString().split('T')[0]
-      const checkOutStr = date.toISOString().split('T')[0]
-      
+      const checkInStr = dateToString(curTimeline.checkIn)
+      const checkOutStr = dateToString(date)
       const isAvailable = type === 'room'
         ? syncEngine.isRoomAvailable(id, checkInStr, checkOutStr, bookingsRef.current)
         : syncEngine.isVenueRangeAvailable(id, checkInStr, checkOutStr, bookingsRef.current)
-
       if (!isAvailable) {
-        const unitName = type === 'room'
-          ? (roomsRef.current.find(r => r.id === id)?.room_number || id)
-          : (venuesRef.current.find(v => v.id === id)?.name || id)
-        alert(`Overlap collision! ${type === 'room' ? 'Room' : 'Venue'} [${unitName}] is already booked on some dates in this range.`)
+        const unitName = type === 'room' ? roomDisplayName(roomsRef.current.find(r => r.id === id)) : (venuesRef.current.find(v => v.id === id)?.name ?? id)
+        alert('Overlap collision! ' + (type === 'room' ? 'Room' : 'Venue') + ' [' + unitName + '] is already booked on some dates in this range.')
         setTimelineSelection(null)
         return
       }
-
-      setGroupSelection(prev => ({
-        ...(prev || {}),
-        [id]: { checkIn: curTimeline.checkIn, checkOut: date, type }
-      }))
+      setGroupSelection(prev => ({ ...(prev || {}), [id]: { checkIn: curTimeline.checkIn, checkOut: date, type } }))
       setTimelineSelection(null)
     }
   }, [])
@@ -176,15 +150,10 @@ export function CalendarTab() {
     if (!selectedExtendBooking || !extendCheckoutDate) return
     try {
       const isRoom = !!selectedExtendBooking.room_id
-      if (isRoom) {
-        if (!syncEngine.isRoomAvailable(selectedExtendBooking.room_id!, selectedExtendBooking.check_in, extendCheckoutDate, bookings, selectedExtendBooking.id)) {
-          setExtendError('Overlap collision — room already reserved.'); return
-        }
-      } else {
-        if (!syncEngine.isVenueRangeAvailable(selectedExtendBooking.venue_id!, selectedExtendBooking.check_in, extendCheckoutDate, bookings, selectedExtendBooking.id)) {
-          setExtendError('Overlap collision — venue already reserved.'); return
-        }
-      }
+      const availOk = isRoom
+        ? syncEngine.isRoomAvailable(selectedExtendBooking.room_id!, selectedExtendBooking.check_in, extendCheckoutDate, bookings, selectedExtendBooking.id)
+        : syncEngine.isVenueRangeAvailable(selectedExtendBooking.venue_id!, selectedExtendBooking.check_in, extendCheckoutDate, bookings, selectedExtendBooking.id)
+      if (!availOk) { setExtendError('Overlap collision — already reserved.'); return }
       const pricing = syncEngine.calculatePricing({
         roomId: selectedExtendBooking.room_id,
         venueId: selectedExtendBooking.venue_id,
@@ -195,198 +164,76 @@ export function CalendarTab() {
         bookingsList: bookings,
         contractRateOverride: selectedExtendBooking.contract_rate_override,
         usePromo: (selectedExtendBooking as { promo_applied?: boolean }).promo_applied === true,
-        rooms,
-        venues
+        rooms, venues
       })
-      // Targeted update through the shared layer (no whole-array rewrite).
       const current = await syncEngine.getBookings()
       const target = current.find(b => b.id === selectedExtendBooking.id) || selectedExtendBooking
       await updateBooking({ ...target, check_out: extendCheckoutDate, balance_due: pricing.balanceDue })
       setSelectedExtendBooking(null)
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error during stay extension'
-      setExtendError(msg)
+    } catch (err) {
+      setExtendError(err instanceof Error ? err.message : 'Unknown error during stay extension')
     }
   }
 
-  const spannedMonthHeader = useMemo(() => {
-    return schedulerStartDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-  }, [schedulerStartDate])
-
-  const getYYYYMM = (d: Date) => {
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, '0')
-    return `${year}-${month}`
+  const confirmGroup = () => {
+    if (!groupSelection) return
+    const serialized: Record<string, UnitSelection> = {}
+    Object.entries(groupSelection).forEach(([id, sel]) => {
+      serialized[id] = { checkIn: dateToString(sel.checkIn), checkOut: dateToString(sel.checkOut), type: sel.type }
+    })
+    setGroupSelection(null)
+    setTimelineSelection(null)
+    openQuick(serialized)
   }
-  const datePickerValue = getYYYYMM(schedulerStartDate)
 
+  const removeGroupUnit = (id: string) => {
+    setGroupSelection(prev => { if (!prev) return null; const next = { ...prev }; delete next[id]; return Object.keys(next).length === 0 ? null : next })
+  }
+
+  const datePickerValue = schedulerStartDate.getFullYear() + '-' + String(schedulerStartDate.getMonth() + 1).padStart(2, '0')
   return (
-    <div className="space-y-4 font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
-      {/* Upper header controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3 md:p-3.5 rounded-lg border border-soft flex-shrink-0">
-        {/* Left Side: Title */}
-        <div>
-          <h2 className="text-lg font-bold text-main tracking-tight flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-brand-primary" />
-            <span>{spannedMonthHeader}</span>
-          </h2>
-        </div>
+    <div className="space-y-3 font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
+      <TodayBriefing bookings={bookings} rooms={rooms} venues={venues} />
+      <CalendarToolbar
+        monthHeader={schedulerStartDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        datePickerValue={datePickerValue}
+        onPrevMonth={() => { const p = new Date(schedulerStartDate); p.setMonth(p.getMonth() - 1); setSchedulerStartDate(p) }}
+        onNextMonth={() => { const n = new Date(schedulerStartDate); n.setMonth(n.getMonth() + 1); setSchedulerStartDate(n) }}
+        onMonthChange={value => { const [y, m] = value.split('-').map(Number); setSchedulerStartDate(new Date(y, m - 1, 1)) }}
+        onThisMonth={() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); setSchedulerStartDate(d) }}
+        onNewBooking={() => openQuick({})}
+      />
+      <CalendarLegend />
 
-        {/* Right Side: Controls and Actions */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Compact Navigation controls */}
-          <div className="flex items-center gap-1 bg-page p-1 rounded-lg border border-soft/60">
-            {/* Single-left chevron: Shift by 1 month */}
-            <button 
-              onClick={() => { const p = new Date(schedulerStartDate); p.setMonth(p.getMonth() - 1); setSchedulerStartDate(p) }}
-              title="Previous Month"
-              className="p-1 text-muted hover:text-main hover:bg-softbg rounded transition-all cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            
-            {/* Native Month Picker */}
-            <input 
-              type="month"
-              value={datePickerValue}
-              onChange={(e) => {
-                if (e.target.value) {
-                  const [y, m] = e.target.value.split('-').map(Number)
-                  setSchedulerStartDate(new Date(y, m - 1, 1))
-                }
-              }}
-              className="bg-card border border-soft text-main text-xs px-1.5 py-0.5 rounded outline-none font-mono focus:ring-1 focus:ring-[#B89251] focus:border-brand-primary cursor-pointer w-[115px] text-center"
-            />
-            
-            {/* Single-right chevron: Shift by 1 month */}
-            <button 
-              onClick={() => { const n = new Date(schedulerStartDate); n.setMonth(n.getMonth() + 1); setSchedulerStartDate(n) }}
-              title="Next Month"
-              className="p-1 text-muted hover:text-main hover:bg-softbg rounded transition-all cursor-pointer"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            
-            <div className="h-4 w-px bg-soft mx-1" />
-            
-            {/* Today */}
-            <button 
-              onClick={() => {
-                const d = new Date()
-                d.setDate(1)
-                d.setHours(0, 0, 0, 0)
-                setSchedulerStartDate(d)
-              }}
-              className="text-xs font-semibold text-brand-text px-2 py-0.5 hover:bg-card hover:shadow-sm rounded transition-all cursor-pointer"
-            >
-              This Month
-            </button>
-          </div>
-
-          <div>
-            <button onClick={() => {
-              resetAndOpenManualForm({})
-            }}
-              className="flex items-center gap-1.5 bg-brand-primary hover:bg-brand-text text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-sm">
-              <Plus className="w-3.5 h-3.5" />
-              <span>New Booking</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Unified Timeline Grid */}
       <div className="flex-grow min-h-0 flex flex-col overflow-hidden">
         <TimelineGrid
           rooms={rooms}
           venues={venues}
+          bookings={bookings}
           daysList={daysList}
           bookingByRoomAndDate={bookingByRoomAndDate}
-          getBookingStyle={getBookingStyle}
           timelineSelection={timelineSelection}
           setTimelineSelection={setTimelineSelection}
           groupSelection={groupSelection}
           handleCellClick={handleCellClick}
+          onQuickPaymentChange={handleQuickPaymentChange}
           setSelectedExtendBooking={setSelectedExtendBooking}
           setExtendCheckoutDate={setExtendCheckoutDate}
           setExtendError={setExtendError}
         />
       </div>
 
-      {/* Bottom Floating Bar for Group Selection */}
       {groupSelection && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-brand-bg border border-brand-border p-3 md:p-4 rounded-xl shadow-xl flex flex-col md:flex-row items-center gap-3 md:gap-4 max-w-[90vw] md:max-w-4xl animate-in fade-in slide-in-from-bottom-5 duration-300">
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-brand-primary"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-primary"></span>
-            </span>
-            <span className="text-xs font-bold text-main">
-              Selected ({Object.keys(groupSelection).length}):
-            </span>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-            {Object.entries(groupSelection).map(([id, sel]) => {
-              const name = sel.type === 'room'
-                ? `Room ${rooms.find(r => r.id === id)?.room_number || id}`
-                : (venues.find(v => v.id === id)?.name || id)
-              const dateRangeStr = `${sel.checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${sel.checkOut.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-              return (
-                <div key={id} className="flex items-center gap-1.5 bg-card border border-brand-border px-2 py-0.5 rounded text-[11px] text-main font-medium shadow-sm">
-                  <span>{name}</span>
-                  <span className="text-brand-text text-[10px] font-mono">({dateRangeStr})</span>
-                  <button
-                    onClick={() => {
-                      setGroupSelection(prev => {
-                        if (!prev) return null
-                        const next = { ...prev }
-                        delete next[id]
-                        return Object.keys(next).length === 0 ? null : next
-                      })
-                    }}
-                    className="text-muted hover:text-red-500 hover:bg-red-50 p-0.5 rounded cursor-pointer transition-colors"
-                    title="Remove"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end border-t md:border-t-0 pt-2 md:pt-0 border-soft">
-            <button
-              onClick={() => {
-                setGroupSelection(null)
-                setTimelineSelection(null)
-              }}
-              className="text-xs font-semibold text-muted hover:text-main transition-colors px-3 py-1.5 hover:bg-page rounded cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                const serialized: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }> = {}
-                Object.entries(groupSelection).forEach(([id, sel]) => {
-                  serialized[id] = {
-                    checkIn: sel.checkIn.toISOString().split('T')[0],
-                    checkOut: sel.checkOut.toISOString().split('T')[0],
-                    type: sel.type
-                  }
-                })
-                resetAndOpenManualForm(serialized)
-                setGroupSelection(null)
-              }}
-              className="text-xs font-bold text-white bg-brand-primary hover:bg-brand-text px-4 py-1.5 rounded-lg shadow-sm transition-colors cursor-pointer"
-            >
-              Confirm Booking
-            </button>
-          </div>
-        </div>
+        <GroupSelectionBar
+          groupSelection={groupSelection}
+          rooms={rooms}
+          venues={venues}
+          onCancel={() => { setGroupSelection(null); setTimelineSelection(null) }}
+          onRemoveUnit={removeGroupUnit}
+          onConfirm={confirmGroup}
+        />
       )}
 
-      {/* ── Booking details / stay extension modal ── */}
       {selectedExtendBooking && (
         <ExtendStayModal
           booking={selectedExtendBooking}
@@ -398,58 +245,45 @@ export function CalendarTab() {
           onClose={() => setSelectedExtendBooking(null)}
           onExtendStaySubmit={handleExtendStaySubmit}
           setExtendCheckoutDate={setExtendCheckoutDate}
-          onConfirmReservation={async (id) => {
-            try {
-              await confirmBooking(id)
-              setSelectedExtendBooking(null)
-            } catch {
-              setExtendError('Failed to confirm reservation.')
-            }
-          }}
+          onConfirmReservation={async id => { try { await confirmBooking(id); setSelectedExtendBooking(null) } catch { setExtendError('Failed to confirm reservation.') } }}
           onCancelBooking={cancelBooking}
+          onUpdateBooking={updateBooking}
           isConfirming={isConfirming}
-          onEditBooking={() => {
-            setEditingBooking(selectedExtendBooking)
-            setSelectedExtendBooking(null)
-          }}
+          onEditBooking={() => { setEditingBooking(selectedExtendBooking); setEditingSheet(true); setSelectedExtendBooking(null) }}
         />
       )}
 
-      {editingBooking && (
+      {showManualForm && (
         <WalkInBookingForm
+          key={editingBooking ? 'edit-' + editingBooking.id : Object.keys(formSelections).join(',')}
           rooms={rooms}
           venues={venues}
           bookings={bookings}
           createManualBooking={createManualBooking}
           cancelBooking={cancelBooking}
           updateBooking={updateBooking}
-          initialSelections={{
-            [editingBooking.room_id || editingBooking.venue_id || '']: {
-              checkIn: editingBooking.check_in,
-              checkOut: editingBooking.check_out,
-              type: editingBooking.room_id ? 'room' : 'venue'
-            }
-          }}
-          editingBookings={
-            editingBooking.invoice_number 
-              ? bookings.filter(b => b.invoice_number === editingBooking.invoice_number)
-              : [editingBooking]
-          }
-          onClose={() => setEditingBooking(null)}
+          initialSelections={editingBooking
+            ? { [editingBooking.room_id || editingBooking.venue_id || '']: { checkIn: editingBooking.check_in, checkOut: editingBooking.check_out, type: editingBooking.room_id ? 'room' : 'venue' } }
+            : formSelections}
+          editingBookings={editingBooking
+            ? (editingBooking.invoice_number ? bookings.filter(b => b.invoice_number === editingBooking.invoice_number) : [editingBooking])
+            : undefined}
+          onClose={() => { setShowManualForm(false); setEditingBooking(null) }}
         />
       )}
 
-      {/* ── Walk-in booking form wizard ── */}
-      {showManualForm && (
-        <WalkInBookingForm
-          key={Object.keys(formSelections).join(',')}
+      {(quickSelections !== null || (editingBooking && editingSheet)) && (
+        <QuickBookingSheet
+          key={editingBooking ? 'edit-' + editingBooking.id : 'new'}
           rooms={rooms}
           venues={venues}
           bookings={bookings}
           createManualBooking={createManualBooking}
-          cancelBooking={cancelBooking}
-          initialSelections={formSelections}
-          onClose={() => setShowManualForm(false)}
+          updateBooking={updateBooking}
+          editingBooking={editingBooking || undefined}
+          initialSelections={editingBooking ? {} : (quickSelections || {})}
+          onClose={() => { setQuickSelections(null); setEditingBooking(null); setEditingSheet(false) }}
+          onOpenAdvanced={sel => { setQuickSelections(null); setEditingSheet(false); if (!editingBooking) setFormSelections(sel); setShowManualForm(true) }}
         />
       )}
     </div>

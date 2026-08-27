@@ -6,6 +6,7 @@ import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
 import { BookingDetailsModal } from './billing/BookingDetailsModal'
 import { PaymentStatusSelect } from './billing/PaymentStatusSelect'
 import { getPaymentView, isOwed, PAYMENT_BADGE_CLASSES } from '../utils/bookingMoney'
+import { dateToString } from '../utils/helpers'
 
 type MoneyFilter = 'all' | 'owes' | 'paid'
 
@@ -38,7 +39,7 @@ export function BookingsListTab() {
   }, [rooms, venues])
 
   // Today in the same YYYY-MM-DD form as check_in / check_out.
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const todayStr = useMemo(() => dateToString(new Date()), [])
 
   const visibleBookings = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase()

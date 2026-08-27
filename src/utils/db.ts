@@ -195,6 +195,7 @@ export async function getBookings(): Promise<Booking[]> {
           check_out: b.check_out,
           source: b.source as BookingSource,
           status: b.status as BookingStatus,
+          payment_status: (b as { payment_status?: Booking['payment_status'] }).payment_status || undefined,
           payment_method: b.payment_method || undefined,
           payment_reference: b.payment_reference || undefined,
           downpayment_paid: Number(b.downpayment_paid || 0),

@@ -32,3 +32,13 @@ export function normalizeVenueId(vid: string | undefined | null): string | undef
   if (lower.includes('gazebo')) return 'venue-gazebo'
   return vid
 }
+
+// Helper: YYYY-MM-DD for a LOCAL date (never UTC). Booking dates are plain
+// calendar-day strings, so they must be built from local components —
+// toISOString() shifts dates back one day in timezones ahead of UTC (UTC+8).
+export function dateToString(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return y + '-' + m + '-' + day
+}

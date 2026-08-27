@@ -1,201 +1,48 @@
 import React from 'react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { getEffectiveNightlyPrice, isPromoActive } from '../../utils/promoMode'
+import { getBookingStyle, getVenueBookingStyle, roomDisplayName } from './bookingStyles'
+import { normalizeVenueId } from '../../utils/helpers'
+import { TimelineCell } from './TimelineCell'
 
-interface TimelineDayInfo {
+export interface TimelineDayInfo {
   date: Date
   isoStr: string
   time: number
   dayNum: number
   weekday: string
   isToday: boolean
+  isWeekend: boolean
 }
 
 interface TimelineGridProps {
   rooms: Room[]
   venues: Venue[]
+  bookings: Booking[]
   daysList: TimelineDayInfo[]
   bookingByRoomAndDate: Record<string, Booking>
-  getBookingStyle: (b: Booking) => string
   timelineSelection: { roomId?: string; venueId?: string; checkIn: Date } | null
   setTimelineSelection: (val: { roomId?: string; venueId?: string; checkIn: Date } | null) => void
   groupSelection?: Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null
   handleCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
+  onQuickPaymentChange?: (booking: Booking, status: 'unpaid' | 'downpayment' | 'paid') => void
   setSelectedExtendBooking: (booking: Booking) => void
   setExtendCheckoutDate: (date: string) => void
   setExtendError: (err: string) => void
 }
-
-interface TimelineCellProps {
-  date: Date
-  isoStr: string
-  id: string
-  type: 'room' | 'venue'
-  booking: Booking | null
-  span: number
-  isCheckIn: boolean
-  isHighlighted: boolean
-  getBookingStyle: (b: Booking) => string
-  onCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
-  setSelectedExtendBooking: (booking: Booking) => void
-  setExtendCheckoutDate: (date: string) => void
-  setExtendError: (err: string) => void
-}
-
-// Venue bookings use a distinct color (fuchsia) so they stand out from rooms.
-const getVenueBookingStyle = (b: Booking) => {
-  if (b.status === 'blocked') return 'bg-softbg text-muted border-soft line-through'
-  if (b.status === 'pending') return 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
-  return 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200'
-}
-
-// Highly optimized, memoized timeline cell wrapper
-const TimelineCell = React.memo(
-  ({
-    date,
-    id,
-    type,
-    booking,
-    span,
-    isCheckIn,
-    isHighlighted,
-    getBookingStyle,
-    onCellClick,
-    setSelectedExtendBooking,
-    setExtendCheckoutDate,
-    setExtendError
-  }: TimelineCellProps) => {
-    // Tooltip visibility lives in this cell only, so hovering a booking
-    // never re-renders the whole grid (rerender-defer-reads).
-    const [showTooltip, setShowTooltip] = React.useState(false)
-    const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-
-    React.useEffect(() => {
-      return () => {
-        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
-      }
-    }, [])
-
-    if (booking) {
-      return (
-        <td
-          colSpan={span}
-          className="p-0 border-r border-soft relative align-middle"
-          onMouseEnter={() => {
-            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
-            hoverTimeoutRef.current = setTimeout(() => {
-              setShowTooltip(true)
-            }, 500)
-          }}
-          onMouseLeave={() => {
-            if (hoverTimeoutRef.current) {
-              clearTimeout(hoverTimeoutRef.current)
-              hoverTimeoutRef.current = null
-            }
-            setShowTooltip(false)
-          }}
-        >
-          <div
-            onClick={e => {
-              e.stopPropagation()
-              if (booking.status !== 'blocked') {
-                setSelectedExtendBooking(booking)
-                setExtendCheckoutDate(booking.check_out)
-                setExtendError('')
-              }
-            }}
-            className={`h-7 mx-0.5 flex items-center justify-between text-[9.5px] font-extrabold px-2.5 rounded-sm border cursor-pointer select-none transition-colors hover:scale-[1.003] hover:shadow-sm ${getBookingStyle(booking)}`}
-          >
-            <span className="truncate">
-              {booking.guest_name}
-            </span>
-            {span > 1 && (
-              <span className="text-[8px] opacity-65 font-mono shrink-0 pl-1.5">
-                {span} nights
-              </span>
-            )}
-          </div>
-          {showTooltip && (
-            <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-52 bg-card border border-soft p-3 shadow-lg rounded-lg text-xs space-y-1.5 pointer-events-none text-left font-sans">
-              <div className="font-semibold text-main">{booking.guest_name}</div>
-              <div className="text-[10px] text-muted font-mono">{booking.check_in} → {booking.check_out}</div>
-              <div className="text-[10px] text-muted">
-                {booking.guest_phone}<br />
-                <span className={booking.status === 'confirmed' ? 'text-emerald-600 font-medium' : 'text-amber-600'}>{booking.status}</span>
-                {' · '}
-                <span className={!booking.payment_status || booking.payment_status === 'unpaid' ? 'text-rose-500 font-medium' : booking.payment_status === 'downpayment' ? 'text-amber-600 font-medium' : 'text-emerald-600 font-medium'}>
-                  {!booking.payment_status || booking.payment_status === 'unpaid' ? 'Unpaid' : booking.payment_status === 'downpayment' ? 'DP Paid' : 'Paid'}
-                </span>
-                {' · '}{booking.source}
-                {booking.event_addons?.payment_reference && (
-                  <>
-                    <br />
-                    <span className="text-[9.5px] text-brand-text font-bold">
-                      Ref: {booking.event_addons.payment_reference}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </td>
-      )
-    }
-
-    if (isCheckIn) {
-      return (
-        <td
-          onClick={() => onCellClick(id, type, date)}
-          className="p-0.5 h-8 relative cursor-cell align-middle"
-        >
-          <div className="w-full h-full rounded bg-brand-primary text-white flex items-center justify-center text-[9px] font-bold uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-150 border border-[#9A783E]">
-            In
-          </div>
-        </td>
-      )
-    }
-
-    if (isHighlighted) {
-      return (
-        <td
-          onClick={() => onCellClick(id, type, date)}
-          className="p-0 h-8 cursor-cell relative align-middle transition-all bg-gradient-to-r from-[#FAF0DD]/60 to-[#F5E6CC]/50 hover:from-[#FAF0DD]/80 hover:to-[#F5E6CC]/70"
-        >
-          <div className="absolute inset-0 border-y border-dashed border-brand-primary/40" />
-        </td>
-      )
-    }
-
-    return (
-      <td
-        onClick={() => onCellClick(id, type, date)}
-        className="border-r border-soft p-0 h-8 cursor-cell hover:bg-brand-bg/60 transition-colors"
-      />
-    )
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.onCellClick === nextProps.onCellClick &&
-      prevProps.isCheckIn === nextProps.isCheckIn &&
-      prevProps.isHighlighted === nextProps.isHighlighted &&
-      prevProps.span === nextProps.span &&
-      prevProps.booking?.id === nextProps.booking?.id &&
-      prevProps.booking?.status === nextProps.booking?.status
-    )
-  }
-)
 
 export const TimelineGrid = React.memo(
   function TimelineGrid({
     rooms,
     venues,
+    bookings,
     daysList,
     bookingByRoomAndDate,
-    getBookingStyle,
     timelineSelection,
     setTimelineSelection,
     groupSelection,
     handleCellClick,
+    onQuickPaymentChange,
     setSelectedExtendBooking,
     setExtendCheckoutDate,
     setExtendError
@@ -213,15 +60,22 @@ export const TimelineGrid = React.memo(
       }
     }, [])
 
+    // Which booking checks out on each unit+day (for the small "out" mark).
+    const checkoutByUnitAndDate = React.useMemo(() => {
+      const map: Record<string, Booking> = {}
+      bookings.forEach(b => {
+        const keyId = b.room_id || normalizeVenueId(b.venue_id)
+        if (keyId && b.check_out) map[keyId + '_' + b.check_out] = b
+      })
+      return map
+    }, [bookings])
+
     const checkInTime = React.useMemo(() => timelineSelection ? timelineSelection.checkIn.getTime() : 0, [timelineSelection])
     const selectionRanges = React.useMemo(() => {
       if (!groupSelection) return {}
       const ranges: Record<string, { start: number; end: number }> = {}
       Object.entries(groupSelection).forEach(([id, sel]) => {
-        ranges[id] = {
-          start: sel.checkIn.getTime(),
-          end: sel.checkOut.getTime()
-        }
+        ranges[id] = { start: sel.checkIn.getTime(), end: sel.checkOut.getTime() }
       })
       return ranges
     }, [groupSelection])
@@ -229,7 +83,7 @@ export const TimelineGrid = React.memo(
     const selectionName = React.useMemo(() => {
       if (!timelineSelection) return ''
       if (timelineSelection.roomId) {
-        return `Room ${rooms.find(r => r.id === timelineSelection.roomId)?.room_number}`
+        return roomDisplayName(rooms.find(r => r.id === timelineSelection.roomId))
       }
       if (timelineSelection.venueId) {
         return venues.find(v => v.id === timelineSelection.venueId)?.name || 'Venue'
@@ -237,155 +91,142 @@ export const TimelineGrid = React.memo(
       return ''
     }, [timelineSelection, rooms, venues])
 
+    const buildRowCells = (id: string, type: 'room' | 'venue') => {
+      const cells: React.ReactNode[] = []
+      let dIdx = 0
+      while (dIdx < daysList.length) {
+        const dayInfo = daysList[dIdx]
+        const booking = bookingByRoomAndDate[id + '_' + dayInfo.isoStr]
+        if (booking) {
+          let span = 1
+          while (dIdx + span < daysList.length) {
+            const nextBooking = bookingByRoomAndDate[id + '_' + daysList[dIdx + span].isoStr]
+            if (nextBooking && nextBooking.id === booking.id) span++
+            else break
+          }
+          cells.push(
+            <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} isCheckIn={false} isHighlighted={false} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={type === 'room' ? getBookingStyle : getVenueBookingStyle} onCellClick={handleCellClick} onQuickPaymentChange={onQuickPaymentChange} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+          )
+          dIdx += span
+        } else {
+          const isDraftCheckIn = timelineSelection && ((type === 'room' && timelineSelection.roomId === id) || (type === 'venue' && timelineSelection.venueId === id)) && dayInfo.time === checkInTime
+          const range = selectionRanges[id]
+          const isHighlighted = !!(range && dayInfo.time >= range.start && dayInfo.time <= range.end)
+          const checkout = checkoutByUnitAndDate[id + '_' + dayInfo.isoStr] || null
+          cells.push(
+            <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={1} isCheckIn={!!isDraftCheckIn} isHighlighted={isHighlighted} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} checkoutBooking={checkout} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+          )
+          dIdx++
+        }
+      }
+      return cells
+    }
+
+    const promoEligibleFor = (unit: Room | Venue) => promoOn && unit.promo_price != null
+    const displayPriceFor = (unit: Room | Venue) => getEffectiveNightlyPrice(unit.base_price, unit.promo_price, promoOn)
+
     return (
       <div className="space-y-2.5 flex-1 min-h-0 flex flex-col overflow-hidden">
         {timelineSelection && (
-          <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 max-w-xs bg-brand-bg border border-brand-border text-main rounded-lg p-3.5 shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 font-sans">
+          <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 max-w-xs bg-card border border-sea-200 text-main rounded-xl p-3.5 shadow-softLg flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 font-sans">
             <span className="flex h-2.5 w-2.5 relative mt-1 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-brand-primary"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-primary"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-sea-600"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-sea-600"></span>
             </span>
             <div className="flex-1 text-xs">
-              <p className="font-bold text-brand-text">Date Selection Active</p>
+              <p className="font-display font-bold text-sea-700">Booking {selectionName}</p>
               <p className="text-muted mt-1 leading-normal">
-                Selecting <strong>{selectionName}</strong>.
+                Check-in: <strong className="text-main">{timelineSelection.checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>.
               </p>
-              <p className="text-muted leading-normal">
-                Check‑in: <strong className="text-brand-text">{timelineSelection.checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>.
-              </p>
-              <p className="text-[11px] text-brand-primary font-semibold mt-1.5 animate-pulse">
-                Click checkout date on the grid.
+              <p className="text-[11px] text-brand-primary font-semibold mt-1.5">
+                Now click the check-out date.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setTimelineSelection(null)}
-              className="text-[10px] font-bold text-muted hover:text-main transition-all cursor-pointer border border-brand-border hover:border-brand-primary px-2 py-1 rounded bg-card hover:bg-page shadow-sm">
+              className="text-[10px] font-bold text-muted hover:text-main transition-all cursor-pointer border border-soft hover:border-sea-400 px-2 py-1 rounded-lg bg-page hover:bg-sea-50">
               Cancel
             </button>
           </div>
         )}
 
-        <div className="flex-1 min-h-0 bg-card border border-soft rounded-lg overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 bg-card border border-soft rounded-xl overflow-hidden flex flex-col shadow-soft">
           <div className="flex-1 min-h-0 overflow-auto relative">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-page">
-                  <th className="sticky top-0 left-0 z-30 bg-page border-b border-r border-soft p-3 text-left text-xs text-muted font-medium min-w-[160px]">
+                <tr className="bg-sand-50">
+                  <th className="sticky top-0 left-0 z-30 bg-sand-50 border-b border-r border-soft p-3 text-left text-[11px] text-muted font-bold uppercase tracking-wider min-w-[170px]">
                     Room / Venue
                   </th>
-                  {daysList.map((dayInfo, i) => {
-                    return (
-                      <th key={i} className={`sticky top-0 z-10 border-b border-soft p-1.5 text-center text-[10px] min-w-[38px] font-mono ${dayInfo.isToday ? 'bg-brand-bg text-brand-text font-semibold' : 'bg-page text-muted'}`}>
-                        <div>{dayInfo.weekday}</div>
-                        <div className={`text-xs font-semibold mt-0.5 ${dayInfo.isToday ? 'border-b border-brand-primary pb-0.5' : ''}`}>{dayInfo.dayNum}</div>
-                      </th>
-                    )
-                  })}
+                  {daysList.map((dayInfo, i) => (
+                    <th key={i} className={'sticky top-0 z-10 border-b border-soft p-1 text-center min-w-[42px] ' + (dayInfo.isToday ? 'bg-sea-100' : 'bg-sand-50')}>
+                      <div className={'text-[9px] font-bold uppercase ' + (dayInfo.isToday ? 'text-sea-700' : 'text-muted/70')}>{dayInfo.weekday}</div>
+                      <div className="mt-0.5 flex justify-center">
+                        {dayInfo.isToday ? (
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-sea-600 text-white text-[11px] font-bold">{dayInfo.dayNum}</span>
+                        ) : (
+                          <span className="text-[11px] font-semibold text-main">{dayInfo.dayNum}</span>
+                        )}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {rooms.map(room => {
-                  const cells: React.ReactNode[] = []
-                  let dIdx = 0
-                  while (dIdx < daysList.length) {
-                    const dayInfo = daysList[dIdx]
-                    const booking = bookingByRoomAndDate[`${room.id}_${dayInfo.isoStr}`]
-                    if (booking) {
-                      let span = 1
-                      while (dIdx + span < daysList.length) {
-                        const nextDay = daysList[dIdx + span]
-                        const nextBooking = bookingByRoomAndDate[`${room.id}_${nextDay.isoStr}`]
-                        if (nextBooking && nextBooking.id === booking.id) span++
-                        else break
-                      }
-                      cells.push(
-                        <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={room.id} type="room" booking={booking} span={span} isCheckIn={false} isHighlighted={false} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
-                      )
-                      dIdx += span
-                    } else {
-                      const isDraftCheckIn = timelineSelection && timelineSelection.roomId === room.id && dayInfo.time === checkInTime
-                      const range = selectionRanges[room.id]
-                      const isHighlighted = !!(range && dayInfo.time >= range.start && dayInfo.time <= range.end)
-                      cells.push(
-                        <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={room.id} type="room" booking={null} span={1} isCheckIn={!!isDraftCheckIn} isHighlighted={isHighlighted} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
-                      )
-                      dIdx++
-                    }
-                  }
-                  const promoEligible = promoOn && room.promo_price != null
-                  const displayPrice = getEffectiveNightlyPrice(room.base_price, room.promo_price, promoOn)
-                  return (
-                    <tr key={room.id} className="border-b border-soft hover:bg-page/30">
-                      <td className="sticky left-0 z-20 bg-card border-r border-soft p-3 min-w-[160px]">
-                        <span className="text-xs font-semibold text-main block">Room {room.room_number}</span>
-                        {promoEligible ? (
-                          <span className="text-[10px] font-mono">
-                            <span className="text-muted line-through">₱{room.base_price.toLocaleString()}</span>
-                            <span className="text-brand-primary ml-1">₱{displayPrice.toLocaleString()}/night</span>
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-brand-primary">₱{room.base_price.toLocaleString()}/night</span>
-                        )}
-                      </td>
-                      {cells}
-                    </tr>
-                  )
-                })}
+                {rooms.map(room => (
+                  <tr key={room.id} className="border-b border-soft hover:bg-sand-50/50">
+                    <td className="sticky left-0 z-20 bg-card border-r border-soft p-2.5 min-w-[170px]">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-sea-100 text-sea-700 font-display font-bold text-xs flex items-center justify-center shrink-0">
+                          {room.room_number}
+                        </div>
+                        <div>
+                          <span className="text-xs font-semibold text-main block">{roomDisplayName(room)}</span>
+                          {promoEligibleFor(room) ? (
+                            <span className="text-[10px] font-mono">
+                              <span className="text-muted line-through">₱{room.base_price.toLocaleString()}</span>
+                              <span className="text-sea-700 font-semibold ml-1">₱{displayPriceFor(room).toLocaleString()}/night</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-sea-700 font-medium">₱{room.base_price.toLocaleString()}/night</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    {buildRowCells(room.id, 'room')}
+                  </tr>
+                ))}
 
-                <tr className="bg-softbg/50">
-                  <td colSpan={daysList.length + 1} className="sticky left-0 z-20 bg-softbg/70 border-b border-soft p-2 text-[10px] font-bold uppercase tracking-wider text-muted text-left">
-                    Event Venues
+                <tr className="bg-sea-50/80">
+                  <td colSpan={daysList.length + 1} className="sticky left-0 z-20 bg-sea-50/90 border-b border-soft p-2 text-[10px] font-bold uppercase tracking-widest text-sea-800 text-left">
+                    Event venues
                   </td>
                 </tr>
 
-                {venues.map(venue => {
-                  const cells: React.ReactNode[] = []
-                  let dIdx = 0
-                  while (dIdx < daysList.length) {
-                    const dayInfo = daysList[dIdx]
-                    const booking = bookingByRoomAndDate[`${venue.id}_${dayInfo.isoStr}`]
-                    if (booking) {
-                      let span = 1
-                      while (dIdx + span < daysList.length) {
-                        const nextDay = daysList[dIdx + span]
-                        const nextBooking = bookingByRoomAndDate[`${venue.id}_${nextDay.isoStr}`]
-                        if (nextBooking && nextBooking.id === booking.id) span++
-                        else break
-                      }
-                      cells.push(
-                        <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={venue.id} type="venue" booking={booking} span={span} isCheckIn={false} isHighlighted={false} getBookingStyle={getVenueBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
-                      )
-                      dIdx += span
-                    } else {
-                      const isDraftCheckIn = timelineSelection && timelineSelection.venueId === venue.id && dayInfo.time === checkInTime
-                      const range = selectionRanges[venue.id]
-                      const isHighlighted = !!(range && dayInfo.time >= range.start && dayInfo.time <= range.end)
-                      cells.push(
-                        <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={venue.id} type="venue" booking={null} span={1} isCheckIn={!!isDraftCheckIn} isHighlighted={isHighlighted} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
-                      )
-                      dIdx++
-                    }
-                  }
-                  const promoEligible = promoOn && venue.promo_price != null
-                  const displayPrice = getEffectiveNightlyPrice(venue.base_price, venue.promo_price, promoOn)
-                  return (
-                    <tr key={venue.id} className="border-b border-soft hover:bg-page/30">
-                      <td className="sticky left-0 z-20 bg-card border-r border-soft p-3 min-w-[160px]">
-                        <span className="text-xs font-semibold text-main block">{venue.name}</span>
-                        {promoEligible ? (
-                          <span className="text-[10px] font-mono">
-                            <span className="text-muted line-through">₱{venue.base_price.toLocaleString()}</span>
-                            <span className="text-brand-primary ml-1">₱{displayPrice.toLocaleString()}/day</span>
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-brand-primary">₱{venue.base_price.toLocaleString()}/day</span>
-                        )}
-                      </td>
-                      {cells}
-                    </tr>
-                  )
-                })}
+                {venues.map(venue => (
+                  <tr key={venue.id} className="border-b border-soft hover:bg-sand-50/50">
+                    <td className="sticky left-0 z-20 bg-card border-r border-soft p-2.5 min-w-[170px]">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-sun-100 text-sun-700 font-display font-bold text-xs flex items-center justify-center shrink-0">
+                          <span>♪</span>
+                        </div>
+                        <div>
+                          <span className="text-xs font-semibold text-main block">{venue.name}</span>
+                          {promoEligibleFor(venue) ? (
+                            <span className="text-[10px] font-mono">
+                              <span className="text-muted line-through">₱{venue.base_price.toLocaleString()}</span>
+                              <span className="text-sun-600 font-semibold ml-1">₱{displayPriceFor(venue).toLocaleString()}/day</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-sun-600 font-medium">₱{venue.base_price.toLocaleString()}/day</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    {buildRowCells(venue.id, 'venue')}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

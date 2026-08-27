@@ -1,4 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import { defineChart } from '@tanstack/charts'
+import { pie, polar, radialArc } from '@tanstack/charts/polar'
+import { scaleOrdinal } from '@tanstack/charts/scales/ordinal'
+import React, { useMemo } from 'react'
+import { Chart } from '@tanstack/charts/react'
 import { AnimatedNumber } from '../../AnimatedNumber'
 
 export interface DonutSegment {
@@ -10,83 +14,70 @@ export interface DonutSegment {
   renderStartPercent: number
 }
 
-interface RevenueDonutChartProps {
-  donutSegments: DonutSegment[]
-}
-
+interface RevenueDonutChartProps { donutSegments: DonutSegment[] }
 export const RevenueDonutChart: React.FC<RevenueDonutChartProps> = ({ donutSegments }) => {
-  const [hoveredDonutSegment, setHoveredDonutSegment] = useState<string | null>(null)
-  const [isMounted, setIsMounted] = useState(false)
+  const definition = useMemo(() => {
+    if (donutSegments.length === 0) return null
+    // Suppress the supporting data addon (security_deposit 500) from inflating the share.
+    const billable = donutSegments.filter(s => s.value > 0)
+    if (billable.length === 0) return null
+    const slices = pie(billable, { value: 'value' })
+    return defineChart({
+      marks: [
+        polar({
+          inset: 8,
+          radiusRatio: 0.82,
+          marks: [
+            radialArc(slices, {
+              // donut: hole via innerRadius (function keeps it responsive)
+              innerRadius: ({ radius }: { radius: number }) => radius * 0.58,
+              cornerRadius: 4,
+              color: 'name',
+              key: 'name',
+              fill: (d: DonutSegment) => d.color,
+            }),
+          ],
+        }),
+      ],
+      color: {
+        scale: () => scaleOrdinal<string, string>().range(billable.map(s => s.color)).domain(billable.map(s => s.name)),
+      },
+      svgAnimation: true,
+    })
+  }, [donutSegments])
 
-  // Trigger donut animation on mount (deferred so the segment can mount at 0)
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setIsMounted(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
+  if (donutSegments.length === 0) {
+    return (
+      <div className="bg-card border border-soft rounded-xl p-4 flex flex-col min-h-[240px]">
+        <div>
+          <h4 className="text-xs sm:text-sm font-bold text-main">Earnings Share</h4>
+          <p className="text-[10px] text-muted">Breakdown of where your money comes from</p>
+        </div>
+        <div className="flex-1 grid place-items-center text-xs text-muted">No earnings data</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="bg-card border border-soft rounded-xl p-4 flex flex-col justify-between">
+    <div className="bg-card border border-soft rounded-xl p-4 flex flex-col">
       <div>
         <h4 className="text-xs sm:text-sm font-bold text-main">Earnings Share</h4>
         <p className="text-[10px] text-muted">Breakdown of where your money comes from</p>
       </div>
-
-      <div className="flex items-center justify-center py-4 relative">
-        {donutSegments.length === 0 ? (
-          <p className="text-muted text-xs font-semibold">No earnings data</p>
-        ) : (
-          <div className="relative w-48 h-48 sm:w-56 sm:h-56">
-            <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90">
-              {donutSegments.map((seg, idx) => {
-                const radius = 80
-                const circumference = 2 * Math.PI * radius
-                const dashArray = isMounted ? `${seg.renderPercent * (circumference / 100)} ${circumference}` : `0 ${circumference}`
-                const dashOffset = `-${seg.renderStartPercent * (circumference / 100)}`
-
-                return (
-                  <circle
-                    key={idx}
-                    cx="100"
-                    cy="100"
-                    r={radius}
-                    fill="transparent"
-                    stroke={seg.color}
-                    strokeWidth="28"
-                    strokeDasharray={dashArray}
-                    strokeDashoffset={dashOffset}
-                    className="cursor-pointer transition-all duration-1000 ease-out hover:stroke-[34]"
-                    onMouseEnter={() => setHoveredDonutSegment(seg.name)}
-                    onMouseLeave={() => setHoveredDonutSegment(null)}
-                  />
-                );
-              })}
-            </svg>
-            {/* Text overlay in the middle of donut */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <span className="text-[10px] uppercase tracking-wider text-muted font-bold">
-                {hoveredDonutSegment ? hoveredDonutSegment.split(' ')[0] : 'Total'}
-              </span>
-              <span className="text-lg sm:text-xl font-extrabold text-emerald-600 mt-0.5">
-                {hoveredDonutSegment 
-                  ? `${donutSegments.find(s => s.name === hoveredDonutSegment)?.percentage}%`
-                  : '100%'
-                }
-              </span>
-            </div>
-          </div>
-        )}
+      <div className="py-2">
+        <Chart definition={definition!} height={220} ariaLabel="Earnings share by property" />
       </div>
-
-      {/* Donut Legend */}
       <div className="space-y-1.5 border-t border-soft pt-3">
         {donutSegments.map((seg, idx) => (
           <div key={idx} className="flex items-center justify-between text-[10px] font-medium">
             <div className="flex items-center gap-1.5 text-muted">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: seg.color }}></span>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: seg.color }} />
               <span>{seg.name}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-emerald-600 font-bold"><AnimatedNumber prefix="₱" value={seg.value} /></span>
+              <span className="text-emerald-600 font-bold">
+                <AnimatedNumber prefix="₱" value={seg.value} />
+              </span>
               <span className="font-semibold text-muted">{seg.percentage}%</span>
             </div>
           </div>

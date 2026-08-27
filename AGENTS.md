@@ -90,5 +90,5 @@ Default section order:
 
 ## Child DOX Index
 
-- [src/AGENTS.md](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/src/AGENTS.md): Core frontend React application logic, component styling, pricing engine, and hook-based state contracts.
-- [supabase/AGENTS.md](file:///c:/Users/dev4s/Documents/Programming/plum-hotel-booking/supabase/AGENTS.md): Backend database migrations, database schema types, Row-Level Security policies, and Deno serverless edge functions.
+- [src/AGENTS.md](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/AGENTS.md): Core frontend React application logic, component styling, pricing engine, and hook-based state contracts.
+- [supabase/AGENTS.md](file:///c:/Users/dev4s/Documents/Programming/Daweez/supabase/AGENTS.md): Backend database migrations, database schema types, Row-Level Security policies, and Deno serverless edge functions.
