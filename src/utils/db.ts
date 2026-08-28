@@ -380,18 +380,25 @@ export async function insertBooking(booking: Booking): Promise<Booking> {
 }
 
 export async function updateBooking(booking: Booking): Promise<Booking> {
-  // Supabase rows always carry real UUID ids; legacy localStorage rows don't.
-  if (isSupabaseConfigured && isValidUUID(booking.id)) {
+  // bookings.id is a TEXT column that may hold non-UUID ids (manual-…, imported-…).
+  // The update_booking RPC takes text ids, so call it for every id in online mode.
+  if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase.rpc('update_booking', { p_booking: toBookingRecord(booking) })
       if (error) throw error
       return (data as unknown as Booking) ?? booking
     } catch (err) {
       if (isBusinessRuleError(err)) throw err
+      // Network/transient write failures fall back to the browser store so the
+      // app still saves offline (getBookings reads from the same store when the
+      // database is unreachable). The text-id RPC call above already happens for
+      // every id, so non-UUID (manual-/imported-) bookings still persist online.
       console.error('Supabase updateBooking Error, falling back to LocalStorage:', err)
     }
   }
 
+  // Offline / no live database (isSupabaseConfigured === false): persist to the
+  // browser store so the app still works without a backend.
   initDB()
   const data = localStorage.getItem(BOOKINGS_KEY)
   const existing: Booking[] = data ? JSON.parse(data) : []
@@ -401,7 +408,8 @@ export async function updateBooking(booking: Booking): Promise<Booking> {
 }
 
 export async function deleteBooking(bookingId: string): Promise<void> {
-  if (isSupabaseConfigured && isValidUUID(bookingId)) {
+  // bookings.id is TEXT and may be a non-UUID id (manual-…, imported-…); delete_booking takes text.
+  if (isSupabaseConfigured) {
     try {
       const { error } = await supabase.rpc('delete_booking', { p_booking_id: bookingId })
       if (error) throw error
@@ -419,7 +427,8 @@ export async function deleteBooking(bookingId: string): Promise<void> {
 }
 
 export async function confirmBooking(bookingId: string): Promise<Booking> {
-  if (isSupabaseConfigured && isValidUUID(bookingId)) {
+  // bookings.id is TEXT and may be a non-UUID id (manual-…, imported-…); confirm_booking takes text.
+  if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase.rpc('confirm_booking', { p_booking_id: bookingId })
       if (error) throw error
