@@ -264,7 +264,8 @@ export function DirectoryTab() {
                                 <div className="relative" onClick={e => e.stopPropagation()}>
                                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">₱</span>
                                   <input
-                                    type="number"
+                                    type="text"
+                                    inputMode="numeric"
                                     placeholder={String(r.base_price)}
                                     value={pRates[r.id] || ''}
                                     onChange={e => {
@@ -315,7 +316,8 @@ export function DirectoryTab() {
                                 <div className="relative" onClick={e => e.stopPropagation()}>
                                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">₱</span>
                                   <input
-                                    type="number"
+                                    type="text"
+                                    inputMode="numeric"
                                     placeholder={String(v.base_price)}
                                     value={pRates[v.id] || ''}
                                     onChange={e => {

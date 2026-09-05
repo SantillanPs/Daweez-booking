@@ -91,6 +91,12 @@ const bookingsRoute = createRoute({
   component: lazyRouteComponent(() => import('./components/BookingsListTab'), 'BookingsListTab')
 })
 
+const housekeepingRoute = createRoute({
+  getParentRoute: () => dashboardRoute,
+  path: '/housekeeping',
+  component: lazyRouteComponent(() => import('./components/HousekeepingTab'), 'HousekeepingTab')
+})
+
 // 5. Construct Route Tree
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -102,7 +108,8 @@ const routeTree = rootRoute.addChildren([
     guestsRoute,
     analyticsRoute,
     settingsRoute,
-    expensesRoute
+    expensesRoute,
+    housekeepingRoute
   ])
 ])
 

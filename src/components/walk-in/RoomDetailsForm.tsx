@@ -1,5 +1,6 @@
 import React from 'react'
 import { Companion, PartnerDeal } from '../../types/booking'
+import { titleCase } from '../../utils/helpers'
 import { User, Phone, Mail, Users, ChevronDown, Trash2, Plus, CheckCircle2 } from 'lucide-react'
 
 interface RoomDetailsFormProps {
@@ -16,6 +17,10 @@ interface RoomDetailsFormProps {
   setFormGuestNationality: (val: string) => void
   formGuestAddress: string
   setFormGuestAddress: (val: string) => void
+  formGuestBirthdate: string
+  setFormGuestBirthdate: (val: string) => void
+  formBlockNotes: string
+  setFormBlockNotes: (val: string) => void
   formVehiclePlate: string
   setFormVehiclePlate: (val: string) => void
   formCompanions: Companion[]
@@ -44,6 +49,10 @@ export const RoomDetailsForm = React.memo(
     setFormGuestEmail,
     formGuestPhone,
     setFormGuestPhone,
+    formGuestBirthdate,
+    setFormGuestBirthdate,
+    formBlockNotes,
+    setFormBlockNotes,
     formCompanions,
     setFormCompanions,
     showCompanions,
@@ -58,6 +67,9 @@ export const RoomDetailsForm = React.memo(
           <p className="text-[11px] leading-normal">
             This will block out the calendar. It won't create a real booking or charge money.
           </p>
+          <label className="text-[10px] text-muted font-bold block pt-1">Block reason (maintenance / cleaning)</label>
+          <input value={formBlockNotes} onChange={e => setFormBlockNotes(titleCase(e.target.value))} placeholder="e.g. Room maintenance"
+            className="w-full bg-brand-bg border border-soft text-main px-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring" />
         </div>
       )
     }
@@ -81,7 +93,7 @@ export const RoomDetailsForm = React.memo(
                 required 
                 placeholder="Guest full name" 
                 value={formGuestName} 
-                onChange={e => setFormGuestName(e.target.value)}
+                onChange={e => setFormGuestName(titleCase(e.target.value))}
                 className="w-full bg-brand-bg border border-soft text-main pl-9 pr-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium" 
               />
             </div>
@@ -114,6 +126,14 @@ export const RoomDetailsForm = React.memo(
                   className="w-full bg-brand-bg border border-soft text-main pl-9 pr-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium" 
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] text-muted font-medium block mb-1">Birth Date (optional)</label>
+              <input type="date" value={formGuestBirthdate} onChange={e => setFormGuestBirthdate(e.target.value)}
+                className="w-full bg-brand-bg border border-soft text-main px-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium" />
             </div>
           </div>
           
@@ -151,23 +171,25 @@ export const RoomDetailsForm = React.memo(
                       value={comp.name}
                       onChange={e => { 
                         const u = [...formCompanions]
-                        u[idx] = { ...u[idx], name: e.target.value }
+                        u[idx] = { ...u[idx], name: titleCase(e.target.value) }
                         setFormCompanions(u) 
                       }}
                       className="flex-1 bg-card border border-soft text-main px-2 py-1 rounded text-[11px] focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring" 
                     />
-                    <select 
-                      value={comp.gender}
+                    <input 
+                      type="text" 
+                      placeholder="Nationality" 
+                      value={comp.nationality}
                       onChange={e => { 
                         const u = [...formCompanions]
-                        u[idx] = { ...u[idx], gender: e.target.value as 'male' | 'female' }
+                        u[idx] = { ...u[idx], nationality: titleCase(e.target.value) }
                         setFormCompanions(u) 
                       }}
-                      className="bg-card border border-soft text-main px-2 py-1 rounded text-[11px] focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring"
-                    >
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                    </select>
+                      className="w-24 bg-card border border-soft text-main px-2 py-1 rounded text-[11px] focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring"
+                    />
+                    <label className="flex items-center gap-1 text-[10px] text-muted shrink-0 select-none cursor-pointer">
+                      <input type="checkbox" checked={!!comp.breakfast} onChange={e => { const u = [...formCompanions]; u[idx] = { ...u[idx], breakfast: e.target.checked }; setFormCompanions(u) }} className="accent-brand-primary w-3.5 h-3.5" /> B'fast
+                    </label>
                     <button 
                       type="button" 
                       onClick={() => setFormCompanions(formCompanions.filter((_, i) => i !== idx))}
@@ -179,7 +201,7 @@ export const RoomDetailsForm = React.memo(
                 ))}
                 <button 
                   type="button" 
-                  onClick={() => setFormCompanions([...formCompanions, { name: '', gender: 'male' }])}
+                  onClick={() => setFormCompanions([...formCompanions, { name: '' }])}
                   className="text-[10px] text-brand-primary hover:text-brand-text font-bold flex items-center gap-1 transition-colors mt-1 select-none cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add Guest
@@ -194,7 +216,7 @@ export const RoomDetailsForm = React.memo(
   },
   (prevProps, nextProps) => {
     const compsEqual = prevProps.formCompanions.length === nextProps.formCompanions.length &&
-      prevProps.formCompanions.every((c, i) => c.name === nextProps.formCompanions[i].name && c.gender === nextProps.formCompanions[i].gender && c.nationality === nextProps.formCompanions[i].nationality)
+      prevProps.formCompanions.every((c, i) => c.name === nextProps.formCompanions[i].name && (c.nationality || '') === (nextProps.formCompanions[i].nationality || '') && !!c.breakfast === !!nextProps.formCompanions[i].breakfast)
     
     return (
       prevProps.formStatus === nextProps.formStatus &&
@@ -204,6 +226,8 @@ export const RoomDetailsForm = React.memo(
       prevProps.formGuestGender === nextProps.formGuestGender &&
       prevProps.formGuestNationality === nextProps.formGuestNationality &&
       prevProps.formGuestAddress === nextProps.formGuestAddress &&
+      prevProps.formGuestBirthdate === nextProps.formGuestBirthdate &&
+      prevProps.formBlockNotes === nextProps.formBlockNotes &&
       prevProps.formVehiclePlate === nextProps.formVehiclePlate &&
       prevProps.showCompanions === nextProps.showCompanions &&
 

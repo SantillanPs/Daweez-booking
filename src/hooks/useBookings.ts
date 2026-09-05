@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as syncEngine from '../utils/syncEngine'
-import { Booking, Room, Venue, SyncFeed, BookingSource, BreakfastOrder, EquipmentRental, EventAddons, Companion, PartnerDeal } from '../types/booking'
+import { Booking, Room, Venue, SyncFeed, BookingSource, BreakfastOrder, EquipmentRental, EventAddons, Companion, PartnerDeal, AppliedDiscount, PaymentRecord } from '../types/booking'
+import { getRateConfig } from '../utils/rateConfig'
 import { Expense, ExpenseCategory } from '../types/expense'
 import { useRealtimeBookings } from './useRealtimeBookings'
 import { useEffect } from 'react'
@@ -109,7 +110,7 @@ export function useBookings() {
       const pricing = syncEngine.calculatePricing({
         roomId, venueId, checkIn, checkOut, guestEmail,
         breakfastOrders, equipmentRentals, eventAddons, bookingsList: bookings,
-        rooms, venues, usePromo,
+        rooms, venues, usePromo, rates: getRateConfig(),
       })
 
       const now = new Date()
@@ -213,15 +214,21 @@ export function useBookings() {
     paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
     downpaymentPaid?: number; balanceDue?: number; securityDeposit?: number
     breakfastIncluded?: boolean; contractRateOverride?: number
-    guestGender?: string; guestNationality?: string; guestAddress?: string
+    guestGender?: string; guestNationality?: string; guestAddress?: string; birthdate?: string
+    appliedDiscount?: AppliedDiscount
+    earlyCheckInHours?: number; lateCheckOutHours?: number; venueDayBlocks?: number
+    notes?: string; preparedBy?: string; breakfastDays?: string[]
+    referenceNumber?: string; registeredOn?: string; paymentRecords?: PaymentRecord[]
   }, MutationContext>({
     mutationFn: async (params) => {
-      const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, guestGender, guestNationality, guestAddress, checkIn, checkOut,
+      const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, guestGender, guestNationality, guestAddress, birthdate, checkIn, checkOut,
         source, status, breakfastOrders, equipmentRentals, eventAddons,
         rateMultiplier, usePromo, companions,
         partnerDealId, companyName, vehiclePlate, breakfastIncluded, contractRateOverride,
         paymentMethod, paymentReference, venueExcessHours = 0,
-        paymentStatus, downpaymentPaid, balanceDue, securityDeposit } = params
+        paymentStatus, downpaymentPaid, balanceDue, securityDeposit,
+        appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, notes, preparedBy, breakfastDays,
+        referenceNumber, registeredOn, paymentRecords } = params
 
       if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings, id)) {
         throw new Error('The room is already booked or blocked for these dates.')
@@ -237,6 +244,9 @@ export function useBookings() {
         contractRateOverride, venueExcessHours,
         rooms, venues,
         usePromo,
+        appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks,
+        breakfastDays,
+        rates: getRateConfig(),
       })
 
       const newBooking: Booking = {
@@ -249,6 +259,7 @@ export function useBookings() {
         guest_gender: guestGender || undefined,
         guest_nationality: guestNationality || undefined,
         guest_address: guestAddress || undefined,
+        birthdate: birthdate || undefined,
         check_in: checkIn, check_out: checkOut,
         source, status,
         promo_applied: usePromo ?? undefined,
@@ -268,7 +279,17 @@ export function useBookings() {
         vehicle_plate: vehiclePlate,
         invoice_number: invoiceNumber,
         breakfast_included: !!breakfastIncluded,
-        contract_rate_override: contractRateOverride
+        contract_rate_override: contractRateOverride,
+        applied_discount: appliedDiscount,
+        early_check_in_hours: earlyCheckInHours,
+        late_check_out_hours: lateCheckOutHours,
+        venue_day_blocks: venueDayBlocks,
+        breakfast_days: breakfastDays,
+        reference_number: referenceNumber,
+        registered_on: registeredOn,
+        payment_records: paymentRecords,
+        notes,
+        prepared_by: preparedBy
       }
 
       if (id) {
@@ -363,6 +384,16 @@ export function useBookings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
+    }
+  })
+
+  // 10b. Mutation: Update a room's Rates (Regular + Promo). Used by Settings → Rates.
+  const updateRoomRateMutation = useMutation({
+    mutationFn: async (params: { roomId: string; basePrice: number; promoPrice?: number | null }) => {
+      return await syncEngine.updateRoomRate(params.roomId, params.basePrice, params.promoPrice)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] })
     }
   })
 
@@ -477,6 +508,10 @@ export function useBookings() {
 
     updateFeedUrls: updateFeedUrlsMutation.mutateAsync,
     isUpdatingFeeds: updateFeedUrlsMutation.isPending,
+
+    updateRoomRate: async (roomId: string, basePrice: number, promoPrice?: number | null) =>
+      updateRoomRateMutation.mutateAsync({ roomId, basePrice, promoPrice }),
+    isUpdatingRoomRate: updateRoomRateMutation.isPending,
 
     createPartnerDeal: createPartnerDealMutation.mutateAsync,
     savePartnerDeals: savePartnerDealsMutation.mutateAsync,

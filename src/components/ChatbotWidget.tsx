@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useBookings } from '../hooks/useBookings'
 import * as syncEngine from '../utils/syncEngine'
+import { getPaymentAccounts } from '../utils/paymentAccounts'
 import { Room } from '../types/booking'
 import { 
   MessageSquare, 
@@ -234,10 +235,8 @@ export function ChatbotWidget() {
           "• We require a **50% downpayment** of the total bill to confirm any booking, preventing double-bookings across our channels (Airbnb, Booking.com).\n" +
           "• Once you click book, your slot is locked for **30 minutes** pending receipt upload.\n\n" +
           "**Accepted Payment Methods:**\n" +
-          "1. 📱 **GCash:** `0917-888-STAR` (Account: Daweez Pension House)\n" +
-          "2. 💳 **Maya:** `0917-888-STAR` (Account: Daweez Pension House)\n" +
-          "3. 🏛️ **BDO Bank Transfer:** `0012-3456-7890` (Account: Daweez Pension House Corp)\n" +
-          "4. 🏛️ **BPI Bank Transfer:** `0987-6543-2109` (Account: Daweez Pension House Corp)\n\n" +
+          "1. 📱 **GCash:** `" + getPaymentAccounts().gcashNumber + "` (Account: " + getPaymentAccounts().gcashName + ")\n" +
+          "2. 🏛️ **" + getPaymentAccounts().bankName + " Bank Transfer:** `" + getPaymentAccounts().bankAccountNumber + "` (Account: " + getPaymentAccounts().bankAccountName + ")\n\n" +
           "• **Security Deposit:** A flat **₱500 security deposit** is automatically calculated and added to your check-in balance (fully refundable upon standard check-out!)."
         buttons = [
           { text: 'Loyalty Discounts 🎁', action: 'reply', payload: 'show_loyalty' },

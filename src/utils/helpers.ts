@@ -3,6 +3,11 @@ export function generateUUID(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
 }
 
+// Title-case each word (e.g. "juan dela cruz" -> "Juan Dela Cruz") for auto-capped names/addresses.
+export function titleCase(s: string): string {
+  return s.replace(/\w\S*/g, (t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase())
+}
+
 // Helper: Real RFC-4122 UUID (for Supabase UUID primary keys)
 export function randomUUID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {

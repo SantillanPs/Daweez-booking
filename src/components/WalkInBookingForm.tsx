@@ -10,7 +10,9 @@ import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
 
 // Import modular subcomponents
 import { GuestDetailsForm } from './walk-in/GuestDetailsForm'
+import { DiscountPricingControls, DiscountType } from './calendar/DiscountPricingControls'
 import { roomDisplayName } from './calendar/bookingStyles'
+import { titleCase } from '../utils/helpers'
 import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
 
@@ -51,12 +53,18 @@ interface WalkInBookingFormProps {
     guestGender?: string
     guestNationality?: string
     guestAddress?: string
+    birthdate?: string
+    preparedBy?: string
+    appliedDiscount?: { type: 'percent' | 'flat'; value: number }
+    venueDayBlocks?: number
+    notes?: string
   }) => Promise<Booking>
   cancelBooking: (bookingId: string) => Promise<void>
   updateBooking?: (booking: Booking) => Promise<void>
   initialSelections: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
   editingBookings?: Booking[]
   onClose: () => void
+  initialBookingType?: 'individual' | 'partner'
 }
 
 export function WalkInBookingForm({
@@ -67,11 +75,12 @@ export function WalkInBookingForm({
   cancelBooking,
   initialSelections,
   editingBookings,
-  onClose
+  onClose,
+  initialBookingType
 }: WalkInBookingFormProps) {
   // ── Core wizard state ──
   const [formStep, setFormStep] = useState<number>(1)
-  const [bookingType, setBookingType] = useState<'individual' | 'partner'>('individual')
+  const [bookingType, setBookingType] = useState<'individual' | 'partner'>(initialBookingType || 'individual')
 
   // ── Corporate / Partner presets state ──
   const { partnerDeals } = useDashboardData()
@@ -223,6 +232,14 @@ export function WalkInBookingForm({
   const [formPaymentMethod, setFormPaymentMethod] = useState('')
   const [formPaymentReference, setFormPaymentReference] = useState('')
   const [formInvoiceNumber, setFormInvoiceNumber] = useState('')
+
+  // ── Quick-form parity fields ──
+  const [formPreparedBy, setFormPreparedBy] = useState('')
+  const [formBirthdate, setFormBirthdate] = useState('')
+  const [formBlockNotes, setFormBlockNotes] = useState('')
+  const [discountType, setDiscountType] = useState<DiscountType>('none')
+  const [discountValue, setDiscountValue] = useState(0)
+  const [venueDayBlocks, setVenueDayBlocks] = useState(1)
   
   // ── Manual Financial Overrides (for Edit Mode) ──
   const [formPaymentStatus, setFormPaymentStatus] = useState<'unpaid' | 'downpayment' | 'paid'>('unpaid')
@@ -271,6 +288,11 @@ export function WalkInBookingForm({
       setFormInvoiceNumber(b.invoice_number || '')
       
       setFormPaymentStatus(b.payment_status || 'unpaid')
+      setFormBirthdate(b.birthdate || '')
+      setFormPreparedBy(b.prepared_by || '')
+      setFormBlockNotes(b.notes || '')
+      if (b.applied_discount) { setDiscountType(b.applied_discount.type); setDiscountValue(b.applied_discount.value) }
+      setVenueDayBlocks(b.venue_day_blocks || 1)
       // Sum financials across all bookings in the group
       let totalDown = 0
       let totalBalance = 0
@@ -318,6 +340,9 @@ export function WalkInBookingForm({
 
   const hasRooms = formRoomIds.size > 0
   const hasVenues = formVenueIds.size > 0
+  const hasDayBlock = useMemo(() =>
+    Object.entries(unitSelections).some(([id, sel]) => sel.type === 'venue' && ['Gazebo', 'Garden Area'].includes(venues.find(v => v.id === id)?.name || '')),
+  [unitSelections, venues])
 
   const isValidDates = useMemo(() => {
     const entries = Object.values(unitSelections)
@@ -461,6 +486,11 @@ export function WalkInBookingForm({
           guestGender: formGuestGender || undefined,
           guestNationality: formGuestNationality || undefined,
           guestAddress: formGuestAddress || undefined,
+          birthdate: formBirthdate || undefined,
+          preparedBy: formPreparedBy || undefined,
+          appliedDiscount: discountType === 'none' ? undefined : { type: discountType, value: discountValue },
+          venueDayBlocks,
+          notes: formBlockNotes.trim() || undefined,
           checkIn: sel.checkIn,
           checkOut: sel.checkOut,
           source: bookingType === 'partner' ? 'manual' : formSource,
@@ -512,6 +542,11 @@ export function WalkInBookingForm({
           guestGender: formGuestGender || undefined,
           guestNationality: formGuestNationality || undefined,
           guestAddress: formGuestAddress || undefined,
+          birthdate: formBirthdate || undefined,
+          preparedBy: formPreparedBy || undefined,
+          appliedDiscount: discountType === 'none' ? undefined : { type: discountType, value: discountValue },
+          venueDayBlocks,
+          notes: formBlockNotes.trim() || undefined,
           checkIn: sel.checkIn,
           checkOut: sel.checkOut,
           source: bookingType === 'partner' ? 'manual' : formSource,
@@ -603,37 +638,6 @@ export function WalkInBookingForm({
             <X className="w-4 h-4" />
           </button>
         </div>
-
-        {/* ── Booking Type Toggle (Only if not successfully submitted yet) ── */}
-        {createdBookingList.length === 0 && (
-          <div className="flex border-b border-soft px-5 py-2 bg-page/50 gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setBookingType('individual');
-                setFormStep(1);
-                setFormUsePromo(false);
-                setUnitSelections(initialSelections);
-              }}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${bookingType === 'individual' ? 'bg-brand-primary text-white border-brand-primary shadow-sm font-bold' : 'bg-card text-muted border-soft hover:bg-page'}`}
-            >
-              Walk-in Guest
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setBookingType('partner');
-                setFormUsePromo(false);
-                setFormPartnerDealId('');
-                setFormCompanyName('');
-                setUnitSelections({});
-              }}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${bookingType === 'partner' ? 'bg-brand-primary text-white border-brand-primary shadow-sm font-bold' : 'bg-card text-muted border-soft hover:bg-page'}`}
-            >
-              Corporate Partner / Agency
-            </button>
-          </div>
-        )}
 
         {/* ── Step Progress Indicator ── */}
         {bookingType === 'individual' && (
@@ -877,6 +881,10 @@ export function WalkInBookingForm({
                           setFormGuestNationality={setFormGuestNationality}
                           formGuestAddress={formGuestAddress}
                           setFormGuestAddress={setFormGuestAddress}
+                          formGuestBirthdate={formBirthdate}
+                          setFormGuestBirthdate={setFormBirthdate}
+                          formBlockNotes={formBlockNotes}
+                          setFormBlockNotes={setFormBlockNotes}
                           formVehiclePlate={formVehiclePlate}
                           setFormVehiclePlate={setFormVehiclePlate}
                           formCompanions={formCompanions}
@@ -951,6 +959,21 @@ export function WalkInBookingForm({
                         formBreakfastGuests={formBreakfastGuests}
                         setFormBreakfastGuests={setFormBreakfastGuests}
                       />
+
+                      <DiscountPricingControls
+                        isDayBlock={hasDayBlock}
+                        discountType={discountType}
+                        setDiscountType={setDiscountType}
+                        discountValue={discountValue}
+                        setDiscountValue={setDiscountValue}
+                        venueDayBlocks={venueDayBlocks}
+                        setVenueDayBlocks={setVenueDayBlocks}
+                      />
+                      <div>
+                        <label className="text-[10px] text-muted font-bold block mb-1">Prepared by</label>
+                        <input value={formPreparedBy} onChange={e => setFormPreparedBy(titleCase(e.target.value))} placeholder="Staff name" className="w-full bg-page border border-soft text-main px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-sea-500" />
+                      </div>
+
                       <div className="flex justify-between items-center pt-2">
                           <button type="button" onClick={() => setFormStep(2)} className="text-xs text-brand-text hover:text-brand-primary font-bold px-4 py-2 hover:bg-page rounded transition-colors cursor-pointer">&larr; Back</button>
                           <button type="submit" disabled={isSubmitting} className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-bold px-6 py-2.5 rounded transition-all cursor-pointer shadow-sm">

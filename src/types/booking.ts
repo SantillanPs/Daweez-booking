@@ -40,6 +40,23 @@ export interface BreakfastOrder {
   withCoffee: boolean
 }
 
+// A staff-editable breakfast menu item. Staff add/rename items and set each
+// item's price in Settings → Rates (defaults: Bangsilog / Tapsilog / Longsilog).
+export interface BreakfastMenuOption {
+  name: string
+  price: number
+}
+
+// One breakfast served on one stay day, recorded during the stay (not planned
+// ahead). Charged per person and shown on the billing statement at check-out.
+export interface BreakfastRecord {
+  id: string
+  date: string // YYYY-MM-DD the breakfast was served
+  item: string // menu item name (e.g. 'Bangsilog')
+  quantity: number // how many guests ate
+  price: number // price per person at the time it was recorded
+}
+
 export interface EquipmentRental {
   bigTableCount: number  // ₱150
   smallTableCount: number // ₱100
@@ -60,10 +77,28 @@ export interface EventAddons {
   payment_reference?: string
 }
 
+// Staff-applied discount. 'percent' takes a % (20% or 10%) off the stay;
+// 'flat' is a fixed peso amount off the stay (the "custom" option).
+export interface AppliedDiscount {
+  type: 'percent' | 'flat'
+  value: number
+}
+
+// One payment receipt, created only after the guest actually pays. A booking
+// can have many of these (one per payment), each with its own date & time.
+export interface PaymentRecord {
+  id: string
+  amount: number
+  method: string
+  reference?: string
+  paid_at: string // ISO date-time
+  prepared_by?: string
+}
+
 export interface Companion {
   name: string
-  gender: 'male' | 'female'
   nationality?: string
+  breakfast?: boolean
 }
 
 export interface Booking {
@@ -76,6 +111,7 @@ export interface Booking {
   guest_gender?: string
   guest_nationality?: string
   guest_address?: string
+  birthdate?: string // Birth Date from the paper Guest Registration form
   check_in: string // YYYY-MM-DD
   check_out: string // YYYY-MM-DD
   source: BookingSource
@@ -91,6 +127,7 @@ export interface Booking {
   event_addons?: EventAddons
   companions?: Companion[]
   venue_excess_hours?: number
+  venue_day_blocks?: number
   created_at: string // ISO date-time
   expires_at: string | null // ISO date-time for 30-min website locks
   partner_deal_id?: string
@@ -99,8 +136,60 @@ export interface Booking {
   invoice_number?: string
   invoice_type?: 'folio' | 'billing'
   breakfast_included?: boolean
+  breakfast_days?: string[]
+  breakfast_records?: BreakfastRecord[]
   contract_rate_override?: number
   promo_applied?: boolean
+  applied_discount?: AppliedDiscount
+  early_check_in_hours?: number
+  late_check_out_hours?: number
+  // Actual arrival/departure times recorded by the check-in / check-out button.
+  actual_check_in?: string // ISO date-time
+  actual_check_out?: string // ISO date-time
+  // Blocked-date notes (maintenance / cleaning reason).
+  notes?: string
+  prepared_by?: string
+  // Original paper log reference (kept when importing old bookings so staff
+  // can find the physical log by its registration number / date).
+  reference_number?: string
+  registered_on?: string // YYYY-MM-DD date on the original paper log
+  // One receipt per payment the guest made (populated only after they pay).
+  payment_records?: PaymentRecord[]
+}
+
+// Where the guest sends a downpayment (GCash / bank). Defaults match the
+// official Daweez Pension House form; editable in Settings → Rates.
+export interface PaymentAccounts {
+  gcashName: string
+  gcashNumber: string
+  bankName: string
+  bankAccountName: string
+  bankAccountNumber: string
+}
+
+// Editable rate settings (items staff can change: late/early check-in-out,
+// breakfast, venue hourly, venue day-block, security deposit).
+export interface RateConfig {
+  lateEarlyRatePesos: number // ₱100/hour default; vacation house uses its own hourly rate
+  lateEarlyCapHours: number  // after this many early/late hours the charge becomes 1 night (3)
+  breakfastPrice: number     // ₱150/person/night (fallback for legacy planned-ahead breakfast)
+  breakfastMenu: BreakfastMenuOption[] // editable menu; each item has its own price
+  venueHourlyRate: number    // ₱500/hour (vacation house late/early + venue excess hours)
+  venueDayBlockHours: number // 6 hours per day block for Gazebo & Garden
+  dayBlockRate: number       // price for one 6-hour day block (default = venue base_price)
+  securityDeposit: number    // ₱500
+  standardCheckInTime: string  // 'HH:MM' local, default '14:00' (2 PM)
+  standardCheckOutTime: string // 'HH:MM' local, default '12:00' (noon)
+  // Extras / rental rates (per unit)
+  foamRate: number        // ₱200/night
+  pillowRate: number      // ₱50/night
+  blanketRate: number     // ₱50/night
+  towelRate: number       // ₱50/night
+  bigTableRate: number    // ₱150
+  smallTableRate: number  // ₱100
+  chairRate: number       // ₱15
+  mineralWaterRate: number // ₱35
+  tentRate: number        // ₱500
 }
 
 export interface PartnerDeal {

@@ -28,3 +28,7 @@ dist-ssr
 # Compound Engineering
 .compound-engineering/*.local.yaml
 real-invoice.json
+
+# Editor/tooling atomic-write temp artifacts
+*.tmpdir/
+*.tmp

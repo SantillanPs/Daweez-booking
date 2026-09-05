@@ -42,6 +42,9 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     invoice_type: (b.invoice_type as Booking['invoice_type']) || undefined,
     breakfast_included: !!b.breakfast_included,
     contract_rate_override: b.contract_rate_override ? Number(b.contract_rate_override) : undefined,
+    breakfast_records: (b.breakfast_records as Booking['breakfast_records']) || undefined,
+    reference_number: (b.reference_number as string) || undefined,
+    registered_on: (b.registered_on as string) || undefined,
   }
 }
 

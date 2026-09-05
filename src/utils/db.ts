@@ -7,6 +7,7 @@ import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 const BOOKINGS_KEY = 'l_etoile_bookings_db'
 const FEEDS_KEY = 'l_etoile_feeds_db'
 export const PARTNERS_KEY = 'l_etoile_partners_db'
+const ROOMS_KEY = 'l_etoile_rooms_db'
 
 // Initialization
 function initDB() {
@@ -118,7 +119,7 @@ export async function getRooms(): Promise<Room[]> {
       const { data, error } = await supabase.from('rooms').select('*').order('room_number')
       if (error) throw error
       if (data && data.length > 0) {
-        return data.map(r => ({
+        const rooms = data.map(r => ({
           id: r.id,
           room_number: r.room_number,
           name: r.name,
@@ -128,12 +129,60 @@ export async function getRooms(): Promise<Room[]> {
           description: r.description || undefined,
           image_url: r.image_url || undefined
         })) as Room[]
+        return applyRoomRateOverrides(rooms)
       }
     } catch (err) {
       console.error('Supabase getRooms Error, falling back to defaults:', err)
     }
   }
-  return DEFAULT_ROOMS
+  return applyRoomRateOverrides(DEFAULT_ROOMS)
+}
+
+// Local override store for room rates (Regular + Promo). Written only when a
+// rate edit cannot reach the database (offline / RPC unavailable) so the staff
+// dashboard keeps saving without a live backend. `getRooms` overlays these so
+// edits stay visible. Keys are room ids; values are the edited price fields.
+function applyRoomRateOverrides(rooms: Room[]): Room[] {
+  try {
+    const data = localStorage.getItem(ROOMS_KEY)
+    if (!data) return rooms
+    const overrides: Record<string, Partial<Room>> = JSON.parse(data)
+    return rooms.map(r => overrides[r.id] ? { ...r, ...overrides[r.id] } : r)
+  } catch {
+    return rooms
+  }
+}
+
+export async function updateRoomRate(roomId: string, basePrice: number, promoPrice?: number | null): Promise<Room | null> {
+  const base = Math.max(0, Math.round(basePrice))
+  const promo = promoPrice != null && promoPrice > 0 ? Math.round(promoPrice) : null
+
+  if (isSupabaseConfigured) {
+    try {
+      // RLS grants anon only SELECT on `rooms`, so rate edits go through this
+      // SECURITY DEFINER RPC (same pattern as the booking write paths).
+      const { data, error } = await supabase.rpc('update_room_rate', {
+        p_room_id: roomId,
+        p_base_price: base,
+        p_promo_price: promo ?? 0,
+      })
+      if (error) throw error
+      return (data as unknown as Room) ?? null
+    } catch (err) {
+      console.error('Supabase updateRoomRate Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  // Offline / no live database: persist the rate override in the browser store.
+  const data = localStorage.getItem(ROOMS_KEY)
+  const overrides: Record<string, Partial<Room>> = data ? JSON.parse(data) : {}
+  overrides[roomId] = { base_price: base, promo_price: promo }
+  localStorage.setItem(ROOMS_KEY, JSON.stringify(overrides))
+
+  const existing = applyRoomRateOverrides(DEFAULT_ROOMS).find(r => r.id === roomId)
+  return existing
+    ? { ...existing, base_price: base, promo_price: promo }
+    : { id: roomId, room_number: -1, name: '', base_price: base, promo_price: promo, capacity: 0, description: '', image_url: '' }
 }
 
 export async function getVenues(): Promise<Venue[]> {
@@ -191,6 +240,7 @@ export async function getBookings(): Promise<Booking[]> {
           guest_gender: b.guest_gender || undefined,
           guest_nationality: b.guest_nationality || undefined,
           guest_address: b.guest_address || undefined,
+          birthdate: b.birthdate || undefined,
           check_in: b.check_in,
           check_out: b.check_out,
           source: b.source as BookingSource,
@@ -213,7 +263,20 @@ export async function getBookings(): Promise<Booking[]> {
           invoice_number: b.invoice_number || undefined,
           invoice_type: b.invoice_type || undefined,
           breakfast_included: !!b.breakfast_included,
-          contract_rate_override: b.contract_rate_override ? Number(b.contract_rate_override) : undefined
+          contract_rate_override: b.contract_rate_override ? Number(b.contract_rate_override) : undefined,
+          applied_discount: (b as { applied_discount?: Booking['applied_discount'] }).applied_discount || undefined,
+          early_check_in_hours: b.early_check_in_hours != null ? Number(b.early_check_in_hours) : undefined,
+          late_check_out_hours: b.late_check_out_hours != null ? Number(b.late_check_out_hours) : undefined,
+          actual_check_in: b.actual_check_in || undefined,
+          actual_check_out: b.actual_check_out || undefined,
+          notes: b.notes || undefined,
+          prepared_by: b.prepared_by || undefined,
+          reference_number: b.reference_number || undefined,
+          registered_on: b.registered_on || undefined,
+          payment_records: (b as { payment_records?: Booking['payment_records'] }).payment_records || undefined,
+          venue_day_blocks: b.venue_day_blocks != null ? Number(b.venue_day_blocks) : undefined,
+          breakfast_days: (b as { breakfast_days?: string[] }).breakfast_days || undefined,
+          breakfast_records: (b as { breakfast_records?: Booking['breakfast_records'] }).breakfast_records || undefined
         }))
       }
     } catch (err) {
@@ -254,6 +317,7 @@ function toBookingRecord(booking: Booking): Record<string, unknown> {
     guest_gender: booking.guest_gender || null,
     guest_nationality: booking.guest_nationality || null,
     guest_address: booking.guest_address || null,
+    birthdate: booking.birthdate || null,
     check_in: booking.check_in,
     check_out: booking.check_out,
     source: booking.source,
@@ -278,6 +342,19 @@ function toBookingRecord(booking: Booking): Record<string, unknown> {
     breakfast_included: !!booking.breakfast_included,
     contract_rate_override: booking.contract_rate_override || null,
     promo_applied: booking.promo_applied ?? null,
+    applied_discount: booking.applied_discount || null,
+    early_check_in_hours: booking.early_check_in_hours ?? null,
+    late_check_out_hours: booking.late_check_out_hours ?? null,
+    actual_check_in: booking.actual_check_in || null,
+    actual_check_out: booking.actual_check_out || null,
+    notes: booking.notes || null,
+    prepared_by: booking.prepared_by || null,
+    reference_number: booking.reference_number || null,
+    registered_on: booking.registered_on || null,
+    payment_records: booking.payment_records || null,
+    venue_day_blocks: booking.venue_day_blocks ?? null,
+    breakfast_days: booking.breakfast_days || null,
+    breakfast_records: booking.breakfast_records || null,
   }
 }
 

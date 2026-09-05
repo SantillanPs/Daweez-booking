@@ -27,6 +27,7 @@ export interface TimelineCellProps {
 export const TimelineCell = React.memo(
   function TimelineCell({
     date,
+    isoStr,
     id,
     type,
     booking,
@@ -56,7 +57,8 @@ export const TimelineCell = React.memo(
       return (
         <td
           colSpan={span}
-          className="p-0 border-r border-soft relative align-middle"
+          data-day={isoStr}
+          className={'p-0 border-r border-soft relative align-middle'}
           onMouseEnter={() => {
             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
             hoverTimeoutRef.current = setTimeout(() => setShowTooltip(true), 500)
@@ -79,9 +81,9 @@ export const TimelineCell = React.memo(
               }
             }}
             title={booking.guest_name}
-            className={'h-8 mx-0.5 flex items-center justify-between gap-1 px-2 rounded-md border cursor-pointer select-none transition-shadow hover:shadow-sm text-[10px] font-bold ' + getBookingStyle(booking)}
+            className={'h-8 mx-0.5 flex items-center justify-between gap-0.5 px-1 rounded-md border cursor-pointer select-none transition-shadow hover:shadow-sm text-[10px] font-bold ' + getBookingStyle(booking)}
           >
-            <span className="truncate">{booking.guest_name}</span>
+            <span className="min-w-0 truncate">{booking.guest_name}</span>
             <span className="flex items-center gap-1 shrink-0">
               {span > 1 && (
                 <span className="text-[8.5px] opacity-70 font-mono">{span}n</span>
@@ -153,6 +155,7 @@ export const TimelineCell = React.memo(
 
     return (
       <td
+        data-day={isoStr}
         onClick={() => onCellClick(id, type, date)}
         title={checkoutBooking ? checkoutBooking.guest_name + ' checks out this day' : undefined}
         className={'relative border-r border-soft p-0 h-8 cursor-cell transition-colors ' + (isToday ? 'bg-sea-50/50' : isWeekend ? 'bg-sand-50/60' : '') + ' hover:bg-sea-100/70'}
@@ -173,7 +176,7 @@ export const TimelineCell = React.memo(
       prevProps.isWeekend === nextProps.isWeekend &&
       prevProps.isToday === nextProps.isToday &&
       prevProps.checkoutBooking?.id === nextProps.checkoutBooking?.id &&
-      prevProps.span === nextProps.span &&
+            prevProps.span === nextProps.span &&
       prevProps.booking?.id === nextProps.booking?.id &&
       prevProps.booking?.status === nextProps.booking?.status &&
       prevProps.booking?.payment_status === nextProps.booking?.payment_status

@@ -1,9 +1,15 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Booking, Room, Venue } from '../../types/booking'
+import { Booking, Room, Venue, PaymentRecord, BreakfastRecord } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
+import { computeCheckInOutHours } from '../../utils/checkInOut'
+import { getRateConfig, getBreakfastMenu } from '../../utils/rateConfig'
+import { dateToString } from '../../utils/helpers'
+import { BreakfastRecorder } from './BreakfastRecorder'
+import { NumInput } from '../NumInput'
 import { X, Users, AlertCircle, Printer, Edit3 } from 'lucide-react'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
+import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
 import { PaymentStatusSelect, PaymentStatusOption } from '../billing/PaymentStatusSelect'
 import { SOURCE_LABELS, roomDisplayName } from './bookingStyles'
 
@@ -47,6 +53,12 @@ export function ExtendStayModal({
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [localBooking, setLocalBooking] = useState(booking)
   const [payFlash, setPayFlash] = useState(false)
+  const [addReceiptOpen, setAddReceiptOpen] = useState(false)
+  const [receiptAmount, setReceiptAmount] = useState(0)
+  const [receiptMethod, setReceiptMethod] = useState('Cash')
+  const [receiptRef, setReceiptRef] = useState('')
+  const [receiptFor, setReceiptFor] = useState<PaymentRecord | null>(null)
+  const [showReceipt, setShowReceipt] = useState(false)
 
   const room = booking.room_id ? rooms.find(r => r.id === booking.room_id) : undefined
   const venue = booking.venue_id ? venues.find(v => v.id === booking.venue_id) : undefined
@@ -70,6 +82,112 @@ export function ExtendStayModal({
     } catch {
       window.alert('Could not update the payment. Please try again.')
     }
+  }
+
+  // Recompute the balance after early/late hours are applied, using the
+  // booking's own charges + current rates, so the amount owed stays correct.
+  const withRecomputedBalance = (base: Booking, patch: Partial<Booking>): Booking => {
+    const merged = { ...base, ...patch }
+    const pricing = syncEngine.calculatePricing({
+      roomId: merged.room_id,
+      venueId: merged.venue_id,
+      checkIn: merged.check_in,
+      checkOut: merged.check_out,
+      guestEmail: merged.guest_email,
+      breakfastOrders: merged.breakfast_orders,
+      equipmentRentals: merged.equipment_rentals,
+      eventAddons: merged.event_addons,
+      companions: merged.companions,
+      contractRateOverride: merged.contract_rate_override,
+      venueExcessHours: merged.venue_excess_hours,
+      appliedDiscount: merged.applied_discount,
+      earlyCheckInHours: merged.early_check_in_hours,
+      lateCheckOutHours: merged.late_check_out_hours,
+      venueDayBlocks: merged.venue_day_blocks,
+      breakfastDays: merged.breakfast_days,
+      breakfastRecords: merged.breakfast_records,
+      usePromo: (merged as Booking & { promo_applied?: boolean }).promo_applied === true,
+      rooms,
+      venues,
+      rates: getRateConfig(),
+    })
+    const paid = Number(merged.downpayment_paid || 0)
+    const remaining = Math.max(0, pricing.grandTotal - paid)
+    return { ...merged, balance_due: remaining, payment_status: remaining <= 0 ? 'paid' as const : merged.payment_status }
+  }
+
+  // Check-in / check-out — records the actual time and auto-computes the early /
+  // late hours against the standard 2 PM check-in / 12 PM check-out times.
+  const handleCheckIn = async () => {
+    const actualCheckIn = new Date().toISOString()
+    const rates = getRateConfig()
+    const { earlyHours } = computeCheckInOutHours({
+      checkIn: booking.check_in, checkOut: booking.check_out, actualCheckIn,
+      standardCheckInTime: rates.standardCheckInTime, standardCheckOutTime: rates.standardCheckOutTime,
+    })
+    const updated = withRecomputedBalance(booking, { actual_check_in: actualCheckIn, early_check_in_hours: earlyHours, status: 'confirmed' as const })
+    setLocalBooking(updated)
+    try { await onUpdateBooking?.(updated) } catch { window.alert('Could not check in. Please try again.') }
+  }
+  const handleCheckOut = async () => {
+    const actualCheckOut = new Date().toISOString()
+    const rates = getRateConfig()
+    const { lateHours } = computeCheckInOutHours({
+      checkIn: booking.check_in, checkOut: booking.check_out, actualCheckOut,
+      standardCheckInTime: rates.standardCheckInTime, standardCheckOutTime: rates.standardCheckOutTime,
+    })
+    const updated = withRecomputedBalance(booking, { actual_check_out: actualCheckOut, late_check_out_hours: lateHours })
+    setLocalBooking(updated)
+    try { await onUpdateBooking?.(updated) } catch { window.alert('Could not check out. Please try again.') }
+    // If money is still owed, bring up the billing statement right away.
+    if (Number(updated.balance_due || 0) > 0 && !showPrintModal) setShowPrintModal(true)
+  }
+
+  // Record a payment: creates a receipt (date + time) only when the guest pays.
+  const handleAddReceipt = async () => {
+    const amount = Number(receiptAmount) || 0
+    if (amount <= 0) { window.alert('Enter a payment amount.'); return }
+    const paidSoFar = Number(localBooking.downpayment_paid || 0)
+    const totalCharge = paidSoFar + Number(localBooking.balance_due || 0)
+    const newPaid = paidSoFar + amount
+    const remaining = Math.max(0, totalCharge - newPaid)
+    const rec = { id: 'rcpt-' + Date.now(), amount, method: receiptMethod, reference: receiptRef.trim() || undefined, paid_at: new Date().toISOString(), prepared_by: localBooking.prepared_by }
+    const records = [...(localBooking.payment_records || []), rec]
+    const status = remaining <= 0 ? 'paid' as const : localBooking.payment_status === 'paid' ? 'paid' as const : 'downpayment' as const
+    const updated = {
+      ...localBooking,
+      payment_records: records,
+      downpayment_paid: newPaid,
+      balance_due: remaining,
+      payment_status: status,
+      payment_method: receiptMethod,
+      payment_reference: receiptRef.trim() || localBooking.payment_reference,
+    }
+    setLocalBooking(updated)
+    setReceiptAmount(0); setReceiptRef(''); setAddReceiptOpen(false)
+    setPayFlash(true); setTimeout(() => setPayFlash(false), 1500)
+    try {
+      await onUpdateBooking?.(updated)
+      setReceiptFor(rec)
+      setShowReceipt(true)
+    } catch {
+      window.alert('Could not record the payment. Please try again.')
+    }
+  }
+
+  // Breakfast is recorded day by day during the stay, then charged at check-out.
+  const breakfastMenu = getBreakfastMenu()
+  const stayDays = (() => {
+    const arr: string[] = []
+    const d = new Date(booking.check_in)
+    const end = new Date(booking.check_out)
+    while (d < end) { arr.push(dateToString(d)); d.setDate(d.getDate() + 1) }
+    return arr
+  })()
+  const saveBreakfastRecords = async (records: BreakfastRecord[]) => {
+    const updated = withRecomputedBalance(localBooking, { breakfast_records: records })
+    setLocalBooking(updated)
+    try { await onUpdateBooking?.(updated) } catch { window.alert('Could not save breakfast. Please try again.') }
   }
 
   const statusBadge = booking.status === 'confirmed'
@@ -145,6 +263,8 @@ export function ExtendStayModal({
             </div>
             <div className="border-t border-soft/70 pt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted">
               <span>Booked from: <strong className="text-main">{SOURCE_LABELS[booking.source] || booking.source}</strong></span>
+              {booking.reference_number && <span>Paper ref: <strong className="text-main">{booking.reference_number}</strong></span>}
+              {booking.registered_on && <span>Logged: <strong className="text-main">{booking.registered_on}</strong></span>}
               {booking.vehicle_plate && <span>Plate: <strong className="text-main uppercase">{booking.vehicle_plate}</strong></span>}
               {booking.company_name && <span>Company: <strong className="text-main">{booking.company_name}</strong></span>}
             </div>
@@ -156,7 +276,7 @@ export function ExtendStayModal({
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                   {booking.companions.map((comp, idx) => (
                     <span key={idx} className="text-[11px] bg-card border border-soft rounded-md px-2 py-0.5">
-                      {comp.name} <span className="text-muted capitalize">({comp.gender})</span>
+                      {comp.name}{comp.nationality ? <span className="text-muted capitalize"> ({comp.nationality})</span> : null}
                     </span>
                   ))}
                 </div>
@@ -192,6 +312,77 @@ export function ExtendStayModal({
               </p>
             )}
           </div>
+
+          {/* Payment receipts */}
+          <div className="border-t border-soft pt-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Payment receipts</p>
+              <button type="button" onClick={() => setAddReceiptOpen(v => !v)}
+                className="text-[11px] font-bold text-sea-700 bg-sea-50 border border-sea-200 hover:bg-sea-100 rounded-md px-2.5 py-1 transition-colors cursor-pointer">
+                {addReceiptOpen ? 'Cancel' : '+ Record a payment'}
+              </button>
+            </div>
+            {addReceiptOpen && (
+              <div className="p-3 bg-page border border-soft rounded-lg space-y-2">
+                <label className="text-[10px] text-muted font-bold block">Amount (PHP)</label>
+                <NumInput value={receiptAmount} onChange={setReceiptAmount} placeholder="0"
+                  className="w-full bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm font-mono focus:outline-none focus:border-sea-500" />
+                <div className="grid grid-cols-2 gap-2">
+                  <select value={receiptMethod} onChange={e => setReceiptMethod(e.target.value)} className="bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm focus:outline-none focus:border-sea-500">
+                    <option>Cash</option><option>GCash</option><option>Bank transfer</option><option>Other</option>
+                  </select>
+                  <input value={receiptRef} onChange={e => setReceiptRef(e.target.value)} placeholder="Reference (optional)" className="bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm focus:outline-none focus:border-sea-500" />
+                </div>
+                <button type="button" onClick={handleAddReceipt} className="w-full bg-sea-600 hover:bg-sea-700 text-white text-xs font-bold py-2 rounded-lg transition-colors cursor-pointer">Save receipt</button>
+              </div>
+            )}
+            {localBooking.payment_records && localBooking.payment_records.length > 0 ? (
+              <ul className="space-y-1.5">
+                {localBooking.payment_records.map(r => (
+                  <li key={r.id} className="flex items-center justify-between gap-2 bg-card border border-soft rounded-md px-2.5 py-1.5 text-[12px]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-semibold text-emerald-600 shrink-0">+{fmtPeso(r.amount)}</span>
+                      <span className="text-muted shrink-0">{r.method}</span>
+                      <span className="text-muted text-[10px] truncate">{r.paid_at ? new Date(r.paid_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</span>
+                    </div>
+                    <button type="button" onClick={() => { setReceiptFor(r); setShowReceipt(true) }} className="text-sea-600 hover:text-sea-700 p-1 cursor-pointer shrink-0" aria-label="Print receipt">
+                      <Printer className="w-3.5 h-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[11px] text-muted">No payments yet — a receipt is created each time the guest pays.</p>
+            )}
+          </div>
+
+          {/* Breakfast (during the stay) — room stays only */}
+          {booking.room_id && (
+            <BreakfastRecorder
+              menu={breakfastMenu}
+              records={localBooking.breakfast_records || []}
+              stayDays={stayDays}
+              onChange={saveBreakfastRecords}
+            />
+          )}
+
+          {/* Check-in / check-out */}
+          {(booking.status === 'confirmed' || booking.status === 'pending') && (
+            <div className="grid grid-cols-2 gap-2">
+              {!booking.actual_check_in && (
+                <button type="button" onClick={handleCheckIn}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm">
+                  Check in now
+                </button>
+              )}
+              {booking.actual_check_in && !booking.actual_check_out && (
+                <button type="button" onClick={handleCheckOut}
+                  className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm">
+                  Check out now
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Extend stay */}
           <form onSubmit={onExtendStaySubmit} className="border-t border-soft pt-4 space-y-3">
@@ -279,6 +470,15 @@ export function ExtendStayModal({
           venues={venues}
           bookingsList={bookings}
           onClose={() => setShowPrintModal(false)}
+        />
+      )}
+      {showReceipt && receiptFor && (
+        <PrintPaymentReceiptModal
+          booking={localBooking}
+          record={receiptFor}
+          rooms={rooms}
+          venues={venues}
+          onClose={() => setShowReceipt(false)}
         />
       )}
     </div>

@@ -47,6 +47,7 @@ export interface DashboardDataContextValue {
   triggerOTASync: () => Promise<number>
   updateBooking: (booking: Booking) => Promise<void>
   updateFeedUrls: (updatedFeeds: SyncFeed[]) => Promise<SyncFeed[]>
+  updateRoomRate: (roomId: string, basePrice: number, promoPrice?: number | null) => Promise<Room | null>
   createPartnerDeal: (deal: PartnerDeal) => Promise<void>
   savePartnerDeals: (deals: PartnerDeal[]) => Promise<void>
   deletePartnerDeal: (dealId: string) => Promise<void>

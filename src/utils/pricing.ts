@@ -1,11 +1,18 @@
-import { Booking, BreakfastOrder, EquipmentRental, EventAddons, BookingSource, Companion, Room, Venue } from '../types/booking'
+import { Booking, BreakfastOrder, EquipmentRental, EventAddons, BookingSource, Companion, Room, Venue, AppliedDiscount, RateConfig, BreakfastRecord } from '../types/booking'
 import { normalizeVenueId } from './helpers'
 import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
+import { DEFAULT_RATE_CONFIG } from './rateConfig'
 
-// Dynamic Invoice Calculations — explicit promo mode: when `usePromo` is true
-// the exact sheet `promo_price` is charged (otherwise regular `base_price`).
-// `rateMultiplier` is retained as a deprecated shim for partner/additional
-// discount stacking and is honoured only when `usePromo` is undefined.
+function diffDays(a: string, b: string): number {
+  return Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function earlyLateCharge(hours: number | undefined, rate: number, cap: number, nightlyRate: number, hourlyOnly = false): number {
+  if (!hours || hours <= 0) return 0
+  if (hourlyOnly) return hours * rate
+  return hours <= cap ? hours * rate : nightlyRate
+}
+
 export function calculatePricing(params: {
   roomId?: string
   venueId?: string
@@ -13,6 +20,7 @@ export function calculatePricing(params: {
   checkOut: string
   guestEmail: string
   breakfastOrders?: BreakfastOrder[]
+  breakfastRecords?: BreakfastRecord[]
   equipmentRentals?: EquipmentRental
   eventAddons?: EventAddons
   bookingsList?: Booking[]
@@ -23,32 +31,45 @@ export function calculatePricing(params: {
   venueExcessHours?: number
   breakfastEnabled?: boolean
   breakfastGuestCount?: number
+  breakfastDays?: string[]
   rooms?: Room[]
   venues?: Venue[]
   usePromo?: boolean
+  appliedDiscount?: AppliedDiscount
+  earlyCheckInHours?: number
+  lateCheckOutHours?: number
+  venueDayBlocks?: number
+  rates?: RateConfig
 }) {
-  const { roomId, venueId, checkIn, checkOut, breakfastOrders, equipmentRentals, eventAddons, rateMultiplier, companions, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastGuestCount, rooms: liveRooms, venues: liveVenues, usePromo } = params
+  const { roomId, venueId, checkIn, checkOut, breakfastOrders, equipmentRentals, eventAddons, rateMultiplier, companions, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastGuestCount, breakfastDays, breakfastRecords, rooms: liveRooms, venues: liveVenues, usePromo, appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, rates: ratesOverride } = params
+  const rates = ratesOverride ?? DEFAULT_RATE_CONFIG
 
   let basePrice = 0
   let undiscountedBasePrice = 0
   let nights = 0
   let discountPercent = 0
+  let stayQuantity = 0
+  let stayUnit = 'NIGHT'
+
+  const roomList = liveRooms && liveRooms.length > 0 ? liveRooms : DEFAULT_ROOMS
+  const venueList = liveVenues && liveVenues.length > 0 ? liveVenues : DEFAULT_VENUES
+  const venue = venueId ? venueList.find(v => v.id === normalizeVenueId(venueId)) : undefined
+  const isVacationHouse = venue ? venue.name === 'Vacation House' : false
+  const isVenue = !!venueId
+  const isDayBlockVenue = venue ? (venue.name === 'Gazebo' || venue.name === 'Garden Area') : false
 
   if (contractRateOverride !== undefined && contractRateOverride !== null) {
     undiscountedBasePrice = contractRateOverride
-    // Contract rate is a hard override; honour legacy multiplier only when
-    // usePromo is not supplied (keeps partner-stack addons working).
     if (usePromo === undefined && rateMultiplier !== undefined && rateMultiplier !== 1) {
       basePrice = Math.round(contractRateOverride * rateMultiplier)
       discountPercent = Math.round((1 - rateMultiplier) * 100)
     } else {
       basePrice = contractRateOverride
     }
-    nights = roomId
-      ? Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
-      : Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
+    nights = Math.max(1, diffDays(checkIn, checkOut))
+    stayQuantity = nights
+    stayUnit = roomId ? 'NIGHT' : 'DAY'
   } else if (roomId) {
-    const roomList = liveRooms && liveRooms.length > 0 ? liveRooms : DEFAULT_ROOMS
     const room = roomList.find(r => r.id === roomId)
     const regular = room ? room.base_price : 0
     const promo = room ? (room.promo_price ?? null) : null
@@ -59,56 +80,77 @@ export function calculatePricing(params: {
       basePrice = Math.round(regular * rateMultiplier)
       discountPercent = Math.round((1 - rateMultiplier) * 100)
     } else {
-      // Legacy path without usePromo or multiplier: charge regular. Callers
-      // that previously relied on the implicit 0.8 website/manual discount
-      // must now pass usePromo derived from the global promo toggle / staff
-      // "Use Promo" button. Left here so callers omitting the flag never get
-      // a phantom discount.
       basePrice = regular
     }
-    nights = Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
+    nights = Math.max(1, diffDays(checkIn, checkOut))
+    stayQuantity = nights
+    stayUnit = 'NIGHT'
   } else if (venueId) {
-    const venueList = liveVenues && liveVenues.length > 0 ? liveVenues : DEFAULT_VENUES
-    const venue = venueList.find(v => v.id === normalizeVenueId(venueId))
-    const regular = venue ? venue.base_price : 0
-    const promo = venue ? (venue.promo_price ?? null) : null
-    undiscountedBasePrice = regular
-    if (usePromo !== undefined) {
-      basePrice = usePromo && promo != null && promo > 0 ? promo : regular
-    } else if (rateMultiplier !== undefined && rateMultiplier !== 1) {
-      basePrice = Math.round(regular * rateMultiplier)
-      discountPercent = Math.round((1 - rateMultiplier) * 100)
+    if (isDayBlockVenue) {
+      const perBlock = rates.dayBlockRate > 0 ? rates.dayBlockRate : (venue ? venue.base_price : 0)
+      undiscountedBasePrice = perBlock
+      let blocks = venueDayBlocks ?? Math.max(1, diffDays(checkIn, checkOut))
+      if (blocks < 1) blocks = 1
+      basePrice = perBlock
+      stayQuantity = blocks
+      stayUnit = 'BLOCK'
     } else {
-      basePrice = regular
+      const regular = venue ? venue.base_price : 0
+      const promo = venue ? (venue.promo_price ?? null) : null
+      undiscountedBasePrice = regular
+      if (usePromo !== undefined) {
+        basePrice = usePromo && promo != null && promo > 0 ? promo : regular
+      } else if (rateMultiplier !== undefined && rateMultiplier !== 1) {
+        basePrice = Math.round(regular * rateMultiplier)
+        discountPercent = Math.round((1 - rateMultiplier) * 100)
+      } else {
+        basePrice = regular
+      }
+      nights = Math.max(1, diffDays(checkIn, checkOut))
+      stayQuantity = nights
     }
-    nights = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
   }
 
-  const subtotal = basePrice * nights
-  const undiscountedSubtotal = undiscountedBasePrice * nights
+  const subtotal = basePrice * stayQuantity
+  const undiscountedSubtotal = undiscountedBasePrice * stayQuantity
   const discountAmount = Math.max(0, undiscountedSubtotal - subtotal)
   if (undiscountedBasePrice > 0 && basePrice !== undiscountedBasePrice) {
     discountPercent = Math.round(((undiscountedBasePrice - basePrice) / undiscountedBasePrice) * 100)
   } else if (usePromo !== undefined) {
     discountPercent = basePrice !== undiscountedBasePrice ? Math.round(((undiscountedBasePrice - basePrice) / Math.max(1, undiscountedBasePrice)) * 100) : 0
   }
-  const grandTotal = subtotal * ((contractRateOverride !== undefined && contractRateOverride !== null) ? 1 : 1.0)
+
+  let appliedDiscountAmount = 0
+  if (appliedDiscount && appliedDiscount.value > 0) {
+    appliedDiscountAmount = appliedDiscount.type === 'percent'
+      ? Math.round(subtotal * appliedDiscount.value / 100)
+      : Math.min(appliedDiscount.value, subtotal)
+  }
+  const stayTotal = Math.max(0, subtotal - appliedDiscountAmount)
+
+  const earlyRate = isVenue ? rates.venueHourlyRate : rates.lateEarlyRatePesos
+  const perStayNight = stayQuantity > 0 ? basePrice : 0
+  const earlyCharge = earlyLateCharge(earlyCheckInHours, earlyRate, rates.lateEarlyCapHours, perStayNight, isVenue)
+  const lateCharge = earlyLateCharge(lateCheckOutHours, earlyRate, rates.lateEarlyCapHours, perStayNight, isVenue)
+  const earlyLateTotal = earlyCharge + lateCharge
 
   let breakfastTotal = 0
-  if (roomId) {
-    // Empty breakfast_orders means the user explicitly opted out — skip.
-    // (null-safe: DB round-trips turn missing arrays into null)
+  const brkRecords = breakfastRecords || []
+  if (brkRecords.length > 0) {
+    breakfastTotal = brkRecords.reduce((sum, r) => sum + ((r.price || 0) * (r.quantity || 0)), 0)
+  } else if (roomId) {
     const optedOut = breakfastOrders != null && breakfastOrders.length === 0
     if (!optedOut) {
       const isBreakfastOn = breakfastEnabled !== undefined ? breakfastEnabled : true
       if (isBreakfastOn) {
-        const guestCount = breakfastGuestCount !== undefined ? breakfastGuestCount : (1 + (companions?.length || 0))
-        breakfastTotal = 150 * guestCount * nights
+        const guestCount = breakfastGuestCount !== undefined ? breakfastGuestCount : (1 + (companions ? companions.length : 0))
+        const dayCount = breakfastDays && breakfastDays.length > 0 ? breakfastDays.length : nights
+        breakfastTotal = rates.breakfastPrice * guestCount * dayCount
       }
     }
   } else if (breakfastOrders && breakfastOrders.length > 0) {
     breakfastOrders.forEach(order => {
-      breakfastTotal += 150 * order.quantity
+      breakfastTotal += rates.breakfastPrice * order.quantity
     })
   }
 
@@ -116,22 +158,22 @@ export function calculatePricing(params: {
   if (equipmentRentals) {
     if (roomId) {
       const nightlyRentals =
-        ((equipmentRentals.extraFoamCount || 0) * 200) +
-        ((equipmentRentals.extraPillowCount || 0) * 50) +
-        ((equipmentRentals.extraBlanketCount || 0) * 50) +
-        ((equipmentRentals.extraTowelCount || 0) * 50)
+        ((equipmentRentals.extraFoamCount || 0) * rates.foamRate) +
+        ((equipmentRentals.extraPillowCount || 0) * rates.pillowRate) +
+        ((equipmentRentals.extraBlanketCount || 0) * rates.blanketRate) +
+        ((equipmentRentals.extraTowelCount || 0) * rates.towelRate)
       rentalsTotal += nightlyRentals * nights
     } else {
-      rentalsTotal += ((equipmentRentals.bigTableCount || 0) * 150)
-      rentalsTotal += ((equipmentRentals.smallTableCount || 0) * 100)
-      rentalsTotal += ((equipmentRentals.chairCount || 0) * 15)
-      rentalsTotal += ((equipmentRentals.mineralWaterCount || 0) * 35)
-      rentalsTotal += ((equipmentRentals.tableCount || 0) * 150)
-      rentalsTotal += ((equipmentRentals.tentCount || 0) * 500)
-      rentalsTotal += (venueExcessHours * 500)
+      rentalsTotal += ((equipmentRentals.bigTableCount || 0) * rates.bigTableRate)
+      rentalsTotal += ((equipmentRentals.smallTableCount || 0) * rates.smallTableRate)
+      rentalsTotal += ((equipmentRentals.chairCount || 0) * rates.chairRate)
+      rentalsTotal += ((equipmentRentals.mineralWaterCount || 0) * rates.mineralWaterRate)
+      rentalsTotal += ((equipmentRentals.tableCount || 0) * rates.bigTableRate)
+      rentalsTotal += ((equipmentRentals.tentCount || 0) * rates.tentRate)
+      rentalsTotal += (venueExcessHours * rates.venueHourlyRate)
     }
   } else if (venueExcessHours > 0) {
-    rentalsTotal += (venueExcessHours * 500)
+    rentalsTotal += (venueExcessHours * rates.venueHourlyRate)
   }
 
   let addonsTotal = 0
@@ -142,7 +184,7 @@ export function calculatePricing(params: {
   }
 
   const securityDeposit = 0
-  const calculatedGrand = grandTotal + breakfastTotal + rentalsTotal + addonsTotal
+  const calculatedGrand = stayTotal + earlyLateTotal + breakfastTotal + rentalsTotal + addonsTotal
   const downpayment = Math.round(calculatedGrand * 0.50)
   const balanceDue = (calculatedGrand - downpayment) + securityDeposit
 
@@ -156,6 +198,11 @@ export function calculatePricing(params: {
     rentalsTotal,
     addonsTotal,
     securityDeposit,
+    stayTotal: Math.round(stayTotal),
+    appliedDiscountAmount: Math.round(appliedDiscountAmount),
+    earlyLateTotal: Math.round(earlyLateTotal),
+    stayQuantity,
+    stayUnit,
     grandTotal: calculatedGrand,
     downpayment,
     balanceDue

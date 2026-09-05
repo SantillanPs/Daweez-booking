@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from '@tanstack/react-router'
 import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
 import {
-  Sparkles, RefreshCw, LogOut, Home, Users, TrendingUp, BarChart3,
-  Calendar, Settings, Building, Moon, Sun, BookOpen, Tag
+  Sparkles, RefreshCw, LogOut, BarChart3, TrendingUp,
+  Calendar, Settings, Building, Moon, Sun, BookOpen, Tag, Boxes
 } from 'lucide-react'
 import { isPromoActive, setPromoActive } from '../utils/promoMode'
-import { dateToString } from '../utils/helpers'
 
 const TABS = [
   { id: 'calendar',  label: 'Calendar',  Icon: Calendar, to: '/calendar' },
@@ -15,6 +14,7 @@ const TABS = [
   { id: 'guests',    label: 'Corporate Partners', Icon: Building, to: '/guests' },
   { id: 'analytics', label: 'Analytics', Icon: BarChart3, to: '/analytics' },
   { id: 'expenses',  label: 'Expenses',  Icon: TrendingUp, to: '/expenses' },
+  { id: 'housekeeping', label: 'Housekeeping', Icon: Boxes, to: '/housekeeping' },
   { id: 'settings',  label: 'Settings',  Icon: Settings, to: '/settings' },
 ]
 
@@ -24,7 +24,7 @@ export function DashboardLayout() {
   const {
     rooms, venues, bookings, feeds, partnerDeals, expenses, expenseCategories,
     confirmBooking, cancelBooking, createManualBooking, updateBooking,
-    triggerOTASync, updateFeedUrls, isLoading, isConfirmingBooking,
+    triggerOTASync, updateFeedUrls, updateRoomRate, isLoading, isConfirmingBooking,
     createPartnerDeal, savePartnerDeals, deletePartnerDeal,
     createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense
   } = useBookings()
@@ -89,29 +89,17 @@ export function DashboardLayout() {
     return () => clearInterval(id)
   }, [triggerOTASync])
 
-  const stats = useMemo(() => {
-    const todayStr = dateToString(new Date())
-    const arrivalsToday = bookings.filter(b => b.check_in === todayStr && b.status !== 'blocked')
-    const departuresToday = bookings.filter(b => b.check_out === todayStr && b.status !== 'blocked')
-    const currentGuests = bookings.filter(b => b.status === 'confirmed' && todayStr >= b.check_in && todayStr < b.check_out)
-    const occupiedRoomIds = new Set(currentGuests.map(g => g.room_id).filter(Boolean))
-    const totalRooms = rooms.length || 10
-    const roomOccupancyRate = Math.round((occupiedRoomIds.size / totalRooms) * 100)
-    const totalRevenue = bookings.filter(b => b.status === 'confirmed').reduce((s, b) => s + (b.downpayment_paid ?? 0) + ((b.balance_due ?? 0) - (b.security_deposit ?? 0)), 0)
-    return { arrivalsToday: arrivalsToday.length, departuresToday: departuresToday.length, currentGuests: currentGuests.length, roomOccupancyRate, totalRevenue }
-  }, [bookings, rooms.length])
-
   return (
     <DashboardDataContext.Provider value={{
       rooms, venues, bookings, feeds, partnerDeals, expenses, expenseCategories, isLoading,
       isConfirming: isConfirmingBooking,
       confirmBooking, cancelBooking, createManualBooking, updateBooking,
-      triggerOTASync, updateFeedUrls, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
+      triggerOTASync, updateFeedUrls, updateRoomRate, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
       createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense,
       onLogout: handleLogout
     }}>
       <div className={isCalendarTab ? "h-screen bg-background flex flex-col overflow-hidden pb-[56px] md:pb-0" : "min-h-screen bg-background pb-20 md:pb-6"}>
-        <header className={`sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-soft ${isCalendarTab ? 'flex-shrink-0' : ''}`}>
+        <header className={`sticky top-0 z-40 bg-card border-b border-soft ${isCalendarTab ? 'flex-shrink-0' : ''}`}>
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-[56px] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 shrink-0">
               <div className="w-9 h-9 flex items-center justify-center bg-brand-primary rounded-xl shadow-sm">
@@ -123,22 +111,14 @@ export function DashboardLayout() {
               </div>
             </div>
 
-            <div className="hidden lg:flex items-center gap-2">
-              <div className="flex items-center gap-2 rounded-full bg-softbg border border-soft px-1.5 py-1">
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-main bg-card border border-soft rounded-full px-2.5 py-1">
-                  <Home className="w-3.5 h-3.5 text-brand-primary" /> {stats.roomOccupancyRate}% full
-                </span>
-                <span className="text-xs font-medium text-muted px-2">In <strong className="text-main">{stats.arrivalsToday}</strong></span>
-                <span className="w-px h-4 bg-soft" />
-                <span className="text-xs font-medium text-muted px-2">Out <strong className="text-main">{stats.departuresToday}</strong></span>
-                <span className="w-px h-4 bg-soft" />
-                <span className="text-xs font-medium text-muted px-2 flex items-center gap-1"><Users className="w-3.5 h-3.5" /> <strong className="text-main">{stats.currentGuests}</strong></span>
-              </div>
-              <div className="flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-xs font-bold text-emerald-700">₱{stats.totalRevenue.toLocaleString()}</span>
-                <span className="text-[10px] font-medium text-emerald-600">earned</span>
-              </div>
+            <div className="hidden md:flex items-center gap-1 p-1 bg-page/70 border border-soft rounded-xl">
+              {TABS.map(t => (
+                <Link key={t.id} to={t.to}
+                  className="px-3.5 py-1.5 text-sm font-medium rounded-lg text-muted hover:text-sea-700 hover:bg-card transition-colors"
+                  activeProps={{ className: '!bg-sea-600 !text-white shadow-sm' }}>
+                  {t.label}
+                </Link>
+              ))}
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -149,11 +129,11 @@ export function DashboardLayout() {
                 title={promoActive ? 'Promo ON — guests pay promo price. Click to end promo.' : 'Promo OFF — guests pay regular price. Click to start promo.'}
                 className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] font-bold rounded-xl px-3 py-1.5 border transition-colors cursor-pointer ${
                   promoActive
-                    ? 'bg-brand-primary text-white border-brand-primary shadow-sm'
+                    ? 'bg-sea-600 text-white border-sea-600 shadow-sm'
                     : 'bg-card text-muted border-soft hover:bg-softbg hover:text-main'
                 }`}
               >
-                <Tag className={`w-3.5 h-3.5 ${promoActive ? 'text-white' : ''}`} />
+                <Tag className={`w-3.5 h-3.5 ${promoActive ? 'text-sun-400' : ''}`} />
                 <span className="hidden xl:inline">{promoActive ? 'Promo ON' : 'Promo OFF'}</span>
                 <span className="xl:hidden">{promoActive ? 'ON' : 'OFF'}</span>
               </button>
@@ -188,26 +168,6 @@ export function DashboardLayout() {
           </div>
         )}
 
-        <div className={`lg:hidden bg-softbg border-b border-soft px-4 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs ${isCalendarTab ? 'flex-shrink-0' : ''}`}>
-          <span className="shrink-0 font-semibold text-main">{stats.roomOccupancyRate}% full</span>
-          <span className="w-px h-3 bg-soft shrink-0" />
-          <span className="shrink-0 text-muted">In <strong className="text-main">{stats.arrivalsToday}</strong></span>
-          <span className="shrink-0 text-muted">Out <strong className="text-main">{stats.departuresToday}</strong></span>
-          <span className="shrink-0 text-muted">Guests <strong className="text-main">{stats.currentGuests}</strong></span>
-          <span className="ml-auto shrink-0 font-bold text-emerald-600">₱{stats.totalRevenue.toLocaleString()}</span>
-        </div>
-
-        <div className={`hidden md:block max-w-[1600px] w-full mx-auto px-4 sm:px-6 pt-3 ${isCalendarTab ? 'flex-shrink-0' : ''}`}>
-          <div className="flex gap-1 p-1 bg-softbg border border-soft rounded-xl w-fit">
-            {TABS.map(t => (
-              <Link key={t.id} to={t.to}
-                className="px-3.5 py-1.5 text-sm font-medium rounded-lg text-muted hover:text-main hover:bg-card transition-colors"
-                activeProps={{ className: '!bg-card !text-main shadow-sm border border-soft' }}>
-                {t.label}
-              </Link>
-            ))}
-          </div>
-        </div>
 
         <div className={isCalendarTab
           ? "max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-4 flex-1 min-h-0 flex flex-col overflow-hidden"

@@ -3,7 +3,7 @@
 export { generateUUID, normalizeVenueId } from './helpers'
 export { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 export {
-  getRooms, getVenues, getBookings, saveBookings,
+  getRooms, updateRoomRate, getVenues, getBookings, saveBookings,
   insertBooking, updateBooking, deleteBooking, confirmBooking,
   getFeeds, saveFeeds
 } from './db'

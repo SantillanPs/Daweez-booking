@@ -6,15 +6,15 @@ import { dateToString } from '../utils/helpers'
 import { WalkInBookingForm } from './WalkInBookingForm'
 import { ExtendStayModal } from './calendar/ExtendStayModal'
 import { TimelineGrid, TimelineDayInfo } from './calendar/TimelineGrid'
-import { TodayBriefing } from './calendar/TodayBriefing'
-import { QuickBookingSheet, UnitSelection } from './calendar/QuickBookingSheet'
-import { GroupSelectionBar } from './calendar/GroupSelectionBar'
+import { LogOldBookingModal } from './calendar/LogOldBookingModal'
+import { CorporateBookingForm } from './corporate/CorporateBookingForm'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { CalendarLegend } from './calendar/CalendarLegend'
 import { roomDisplayName } from './calendar/bookingStyles'
 
 type Selection = { roomId?: string; venueId?: string; checkIn: Date }
 type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }>
+type UnitSel = { checkIn: string; checkOut: string; type: 'room' | 'venue' }
 
 export function CalendarTab() {
   const { rooms, venues, bookings, createManualBooking, cancelBooking, confirmBooking, isConfirming, updateBooking } = useDashboardData()
@@ -25,16 +25,16 @@ export function CalendarTab() {
   })
   const [timelineSelection, setTimelineSelection] = useState<Selection | null>(null); const [groupSelection, setGroupSelection] = useState<GroupSel | null>(null)
 
-  // ── Quick booking panel ──
-  const [quickSelections, setQuickSelections] = useState<Record<string, UnitSelection> | null>(null)
-  const [editingSheet, setEditingSheet] = useState(false)
-
   // ── Booking detail / extension modal ──
   const [selectedExtendBooking, setSelectedExtendBooking] = useState<Booking | null>(null)
+  const [showLogOld, setShowLogOld] = useState(false)
+  const [logOldSelections, setLogOldSelections] = useState<Record<string, UnitSel>>({})
+  const [showCorporate, setShowCorporate] = useState(false)
+  const [corporateSelections, setCorporateSelections] = useState<Record<string, UnitSel>>({})
   const [extendCheckoutDate, setExtendCheckoutDate] = useState(''); const [extendError, setExtendError] = useState('')
 
   // ── Full wizard (editing + advanced) ──
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null); const [showManualForm, setShowManualForm] = useState(false); const [formSelections, setFormSelections] = useState<Record<string, UnitSelection>>({})
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null); const [showManualForm, setShowManualForm] = useState(false); const [formSelections, setFormSelections] = useState<Record<string, UnitSel>>({}); const [manualBookingType, setManualBookingType] = useState<'individual' | 'partner'>('individual')
 
   // Latest-value refs keep the click handler stable so a date click never
   // re-renders the whole grid.
@@ -89,10 +89,6 @@ export function CalendarTab() {
     }
     return list
   }, [schedulerStartDate, daysCount])
-
-  const openQuick = useCallback((sel: Record<string, UnitSelection>) => {
-    setQuickSelections(sel)
-  }, [])
 
   const handleQuickPaymentChange = useCallback(async (b: Booking, status: 'unpaid' | 'downpayment' | 'paid') => {
     try {
@@ -177,23 +173,34 @@ export function CalendarTab() {
 
   const confirmGroup = () => {
     if (!groupSelection) return
-    const serialized: Record<string, UnitSelection> = {}
+    const serialized: Record<string, UnitSel> = {}
     Object.entries(groupSelection).forEach(([id, sel]) => {
       serialized[id] = { checkIn: dateToString(sel.checkIn), checkOut: dateToString(sel.checkOut), type: sel.type }
     })
     setGroupSelection(null)
     setTimelineSelection(null)
-    openQuick(serialized)
+    setFormSelections(serialized)
+    setEditingBooking(null)
+    setManualBookingType('individual')
+    setShowManualForm(true)
   }
 
-  const removeGroupUnit = (id: string) => {
-    setGroupSelection(prev => { if (!prev) return null; const next = { ...prev }; delete next[id]; return Object.keys(next).length === 0 ? null : next })
+  const confirmGroupCorporate = () => {
+    if (!groupSelection) return
+    const serialized: Record<string, UnitSel> = {}
+    Object.entries(groupSelection).forEach(([id, sel]) => {
+      serialized[id] = { checkIn: dateToString(sel.checkIn), checkOut: dateToString(sel.checkOut), type: sel.type }
+    })
+    setGroupSelection(null)
+    setTimelineSelection(null)
+    setCorporateSelections(serialized)
+    setShowCorporate(true)
   }
+
 
   const datePickerValue = schedulerStartDate.getFullYear() + '-' + String(schedulerStartDate.getMonth() + 1).padStart(2, '0')
   return (
     <div className="space-y-3 font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
-      <TodayBriefing bookings={bookings} rooms={rooms} venues={venues} />
       <CalendarToolbar
         monthHeader={schedulerStartDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         datePickerValue={datePickerValue}
@@ -201,11 +208,18 @@ export function CalendarTab() {
         onNextMonth={() => { const n = new Date(schedulerStartDate); n.setMonth(n.getMonth() + 1); setSchedulerStartDate(n) }}
         onMonthChange={value => { const [y, m] = value.split('-').map(Number); setSchedulerStartDate(new Date(y, m - 1, 1)) }}
         onThisMonth={() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); setSchedulerStartDate(d) }}
-        onNewBooking={() => openQuick({})}
+        newBookingDisabled={!groupSelection || Object.keys(groupSelection).length === 0}
+        onNewBooking={confirmGroup}
+        onNewCorporate={confirmGroupCorporate}
+        onLogOldBooking={() => {
+          const serialized: Record<string, UnitSel> = {}
+          if (groupSelection) Object.entries(groupSelection).forEach(([id, sel]) => { serialized[id] = { checkIn: dateToString(sel.checkIn), checkOut: dateToString(sel.checkOut), type: sel.type } })
+          setLogOldSelections(serialized)
+          setShowLogOld(true)
+        }}
       />
-      <CalendarLegend />
-
-      <div className="flex-grow min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-grow min-h-0 flex flex-row gap-2 overflow-hidden">
+        <CalendarLegend />
         <TimelineGrid
           rooms={rooms}
           venues={venues}
@@ -223,16 +237,6 @@ export function CalendarTab() {
         />
       </div>
 
-      {groupSelection && (
-        <GroupSelectionBar
-          groupSelection={groupSelection}
-          rooms={rooms}
-          venues={venues}
-          onCancel={() => { setGroupSelection(null); setTimelineSelection(null) }}
-          onRemoveUnit={removeGroupUnit}
-          onConfirm={confirmGroup}
-        />
-      )}
 
       {selectedExtendBooking && (
         <ExtendStayModal
@@ -249,7 +253,7 @@ export function CalendarTab() {
           onCancelBooking={cancelBooking}
           onUpdateBooking={updateBooking}
           isConfirming={isConfirming}
-          onEditBooking={() => { setEditingBooking(selectedExtendBooking); setEditingSheet(true); setSelectedExtendBooking(null) }}
+          onEditBooking={() => { setEditingBooking(selectedExtendBooking); setShowManualForm(true); setSelectedExtendBooking(null) }}
         />
       )}
 
@@ -268,24 +272,31 @@ export function CalendarTab() {
           editingBookings={editingBooking
             ? (editingBooking.invoice_number ? bookings.filter(b => b.invoice_number === editingBooking.invoice_number) : [editingBooking])
             : undefined}
-          onClose={() => { setShowManualForm(false); setEditingBooking(null) }}
+          initialBookingType={manualBookingType}
+          onClose={() => { setShowManualForm(false); setEditingBooking(null); setFormSelections({}) }}
         />
       )}
 
-      {(quickSelections !== null || (editingBooking && editingSheet)) && (
-        <QuickBookingSheet
-          key={editingBooking ? 'edit-' + editingBooking.id : 'new'}
+      {showCorporate && (
+        <CorporateBookingForm
           rooms={rooms}
           venues={venues}
           bookings={bookings}
+          initialSelections={corporateSelections}
           createManualBooking={createManualBooking}
-          updateBooking={updateBooking}
-          editingBooking={editingBooking || undefined}
-          initialSelections={editingBooking ? {} : (quickSelections || {})}
-          onClose={() => { setQuickSelections(null); setEditingBooking(null); setEditingSheet(false) }}
-          onOpenAdvanced={sel => { setQuickSelections(null); setEditingSheet(false); if (!editingBooking) setFormSelections(sel); setShowManualForm(true) }}
+          onClose={() => setShowCorporate(false)}
         />
       )}
+
+      {showLogOld && (
+        <LogOldBookingModal
+          rooms={rooms}
+          createManualBooking={createManualBooking}
+          initialSelections={logOldSelections}
+          onClose={() => setShowLogOld(false)}
+        />
+      )}
+
     </div>
   )
 }

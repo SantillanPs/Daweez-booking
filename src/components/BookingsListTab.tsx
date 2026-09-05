@@ -50,8 +50,9 @@ export function BookingsListTab() {
         if (q) {
           const guest = b.guest_name.toLowerCase()
           const inv = (b.invoice_number || '').toLowerCase()
+          const ref = (b.reference_number || '').toLowerCase()
           const unit = getUnitName(b).toLowerCase()
-          if (!guest.includes(q) && !inv.includes(q) && !unit.includes(q)) return false
+          if (!guest.includes(q) && !inv.includes(q) && !ref.includes(q) && !unit.includes(q)) return false
         }
         return true
       })

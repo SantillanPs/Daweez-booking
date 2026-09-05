@@ -5,6 +5,7 @@ import { Booking, Room, Venue, Companion } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { isPromoActive, getEffectiveNightlyPrice } from '../utils/promoMode'
 import { dateToString } from '../utils/helpers'
+import { getPaymentAccounts } from '../utils/paymentAccounts'
 import { roomDisplayName } from './calendar/bookingStyles'
 
 export function PublicReservePortal() {
@@ -22,7 +23,7 @@ export function PublicReservePortal() {
   const [paymentRef, setPaymentRef] = useState('')
   const [companions, setCompanions] = useState<Companion[]>([])
   const [newCompanionName, setNewCompanionName] = useState('')
-  const [newCompanionGender, setNewCompanionGender] = useState<'male' | 'female'>('male')
+  const [newCompanionNationality, setNewCompanionNationality] = useState('')
 
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -123,9 +124,9 @@ export function PublicReservePortal() {
   // Add Companion
   const handleAddCompanion = () => {
     if (!newCompanionName.trim()) return
-    setCompanions([...companions, { name: newCompanionName.trim(), gender: newCompanionGender }])
+    setCompanions([...companions, { name: newCompanionName.trim(), nationality: newCompanionNationality.trim() || undefined }])
     setNewCompanionName('')
-    setNewCompanionGender('male')
+    setNewCompanionNationality('')
   }
 
   // Remove Companion
@@ -528,7 +529,7 @@ export function PublicReservePortal() {
                         <div key={idx} className="flex justify-between items-center bg-card border border-soft px-3 py-1.5 rounded-lg">
                           <span className="font-semibold text-main">{comp.name}</span>
                           <div className="flex items-center gap-3">
-                            <span className="text-muted capitalize">{comp.gender}</span>
+                            <span className="text-muted capitalize">{comp.nationality}</span>
                             <button
                               type="button"
                               onClick={() => handleRemoveCompanion(idx)}
@@ -550,14 +551,13 @@ export function PublicReservePortal() {
                       placeholder="Companion Name"
                       className="flex-1 bg-card border border-soft text-main px-3 py-1.5 rounded-lg text-xs outline-none focus:border-brand-primary"
                     />
-                    <select
-                      value={newCompanionGender}
-                      onChange={e => setNewCompanionGender(e.target.value as 'male' | 'female')}
-                      className="bg-card border border-soft text-main px-2 py-1.5 rounded-lg text-xs outline-none focus:border-brand-primary"
-                    >
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                    </select>
+                    <input
+                      type="text"
+                      value={newCompanionNationality}
+                      onChange={e => setNewCompanionNationality(e.target.value)}
+                      placeholder="Nationality"
+                      className="w-28 bg-card border border-soft text-main px-2 py-1.5 rounded-lg text-xs outline-none focus:border-brand-primary"
+                    />
                     <button
                       type="button"
                       onClick={handleAddCompanion}
@@ -577,14 +577,26 @@ export function PublicReservePortal() {
                     </p>
                   </div>
 
-                  <div className="bg-card p-3 rounded-lg border border-[#EADFC9]/60 flex items-center justify-between text-xs font-mono text-main max-w-sm">
-                    <div>
-                      <span className="text-muted text-[10px] block">GCash Account Name:</span>
-                      <strong>DAWEEZ PENSION HOTEL</strong>
+                  <div className="space-y-2">
+                    <div className="bg-card p-3 rounded-lg border border-[#EADFC9]/60 flex items-center justify-between text-xs font-mono text-main max-w-sm">
+                      <div>
+                        <span className="text-muted text-[10px] block">GCash Account Name:</span>
+                        <strong>{getPaymentAccounts().gcashName}</strong>
+                      </div>
+                      <div>
+                        <span className="text-muted text-[10px] block">GCash Number:</span>
+                        <strong className="text-brand-text">{getPaymentAccounts().gcashNumber}</strong>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-muted text-[10px] block">GCash Number:</span>
-                      <strong className="text-brand-text">0917-123-4567</strong>
+                    <div className="bg-card p-3 rounded-lg border border-[#EADFC9]/60 flex items-center justify-between text-xs font-mono text-main max-w-sm">
+                      <div>
+                        <span className="text-muted text-[10px] block">{getPaymentAccounts().bankName} Account Name:</span>
+                        <strong>{getPaymentAccounts().bankAccountName}</strong>
+                      </div>
+                      <div>
+                        <span className="text-muted text-[10px] block">{getPaymentAccounts().bankName} Account No:</span>
+                        <strong className="text-brand-text">{getPaymentAccounts().bankAccountNumber}</strong>
+                      </div>
                     </div>
                   </div>
 

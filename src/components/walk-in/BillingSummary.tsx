@@ -325,9 +325,9 @@ export const BillingSummary = React.memo(
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-main">Downpayment Paid (₱)</label>
                       <input
-                        type="number"
-                        min="0"
-                        value={formDownpaymentPaid ?? ''}
+                        type="text"
+                        inputMode="numeric"
+                        value={formDownpaymentPaid || ''}
                         onChange={e => setFormDownpaymentPaid?.(parseFloat(e.target.value) || 0)}
                         className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
                       />
@@ -335,9 +335,9 @@ export const BillingSummary = React.memo(
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-main">Balance Due (₱)</label>
                       <input
-                        type="number"
-                        min="0"
-                        value={formBalanceDue ?? ''}
+                        type="text"
+                        inputMode="numeric"
+                        value={formBalanceDue || ''}
                         onChange={e => setFormBalanceDue?.(e.target.value ? parseFloat(e.target.value) : null)}
                         placeholder={`Auto: ${estDue}`}
                         className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
@@ -348,9 +348,9 @@ export const BillingSummary = React.memo(
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-main">Security Deposit (₱)</label>
                       <input
-                        type="number"
-                        min="0"
-                        value={formSecurityDeposit ?? ''}
+                        type="text"
+                        inputMode="numeric"
+                        value={formSecurityDeposit || ''}
                         onChange={e => setFormSecurityDeposit?.(e.target.value ? parseFloat(e.target.value) : null)}
                         placeholder="Optional"
                         className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"

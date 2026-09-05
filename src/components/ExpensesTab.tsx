@@ -144,9 +144,8 @@ export function ExpensesTab() {
                   <span className="text-muted text-sm font-medium">₱</span>
                 </div>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   required
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}

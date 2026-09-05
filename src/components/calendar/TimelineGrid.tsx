@@ -48,6 +48,14 @@ export const TimelineGrid = React.memo(
     setExtendError
   }: TimelineGridProps) {
     const [promoOn, setPromoOn] = React.useState<boolean>(() => isPromoActive())
+
+    // Crosshair: know the hovered day so the column + row read at a glance.
+    const [hoverDay, setHoverDay] = React.useState<string | null>(null)
+    const handleGridMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+      const t = (e.target as HTMLElement).closest('[data-day]') as HTMLElement | null
+      setHoverDay(t ? t.getAttribute('data-day') : null)
+    }
+    const handleGridMouseLeave = () => setHoverDay(null)
     React.useEffect(() => {
       const sync = () => setPromoOn(isPromoActive())
       const onStorage = (e: StorageEvent) => { if (e.key === 'daweez_promo_active') sync() }
@@ -126,7 +134,7 @@ export const TimelineGrid = React.memo(
     const displayPriceFor = (unit: Room | Venue) => getEffectiveNightlyPrice(unit.base_price, unit.promo_price, promoOn)
 
     return (
-      <div className="space-y-2.5 flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="space-y-2.5 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
         {timelineSelection && (
           <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 max-w-xs bg-card border border-sea-200 text-main rounded-xl p-3.5 shadow-softLg flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 font-sans">
             <span className="flex h-2.5 w-2.5 relative mt-1 shrink-0">
@@ -152,15 +160,15 @@ export const TimelineGrid = React.memo(
         )}
 
         <div className="flex-1 min-h-0 bg-card border border-soft rounded-xl overflow-hidden flex flex-col shadow-soft">
-          <div className="flex-1 min-h-0 overflow-auto relative">
-            <table className="w-full border-collapse">
+          <div className="flex-1 min-h-0 overflow-auto relative" onMouseMove={handleGridMouseMove} onMouseLeave={handleGridMouseLeave}>
+            <table className="w-full table-fixed border-collapse">
               <thead>
                 <tr className="bg-sand-50">
-                  <th className="sticky top-0 left-0 z-30 bg-sand-50 border-b border-r border-soft p-3 text-left text-[11px] text-muted font-bold uppercase tracking-wider min-w-[170px]">
+                  <th className="sticky top-0 left-0 z-30 bg-sand-50 border-b border-r border-soft p-3 text-left text-[11px] text-muted font-bold uppercase tracking-wider w-[170px] min-w-[170px]">
                     Room / Venue
                   </th>
                   {daysList.map((dayInfo, i) => (
-                    <th key={i} className={'sticky top-0 z-10 border-b border-soft p-1 text-center min-w-[42px] ' + (dayInfo.isToday ? 'bg-sea-100' : 'bg-sand-50')}>
+                    <th key={i} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft p-1 text-center w-[54px] min-w-[54px] ' + (dayInfo.isToday ? 'bg-sea-100' : 'bg-sand-50') + (hoverDay === dayInfo.isoStr ? ' !bg-sea-200/70' : '')}>
                       <div className={'text-[9px] font-bold uppercase ' + (dayInfo.isToday ? 'text-sea-700' : 'text-muted/70')}>{dayInfo.weekday}</div>
                       <div className="mt-0.5 flex justify-center">
                         {dayInfo.isToday ? (
@@ -175,8 +183,8 @@ export const TimelineGrid = React.memo(
               </thead>
               <tbody>
                 {rooms.map(room => (
-                  <tr key={room.id} className="border-b border-soft hover:bg-sand-50/50">
-                    <td className="sticky left-0 z-20 bg-card border-r border-soft p-2.5 min-w-[170px]">
+                  <tr key={room.id} className="group border-b border-soft hover:bg-sand-50/50">
+                    <td className="sticky left-0 z-20 bg-card border-r border-soft p-2.5 min-w-[170px] transition-colors group-hover:bg-sea-100">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-sea-100 text-sea-700 font-display font-bold text-xs flex items-center justify-center shrink-0">
                           {room.room_number}
@@ -205,8 +213,8 @@ export const TimelineGrid = React.memo(
                 </tr>
 
                 {venues.map(venue => (
-                  <tr key={venue.id} className="border-b border-soft hover:bg-sand-50/50">
-                    <td className="sticky left-0 z-20 bg-card border-r border-soft p-2.5 min-w-[170px]">
+                  <tr key={venue.id} className="group border-b border-soft hover:bg-sand-50/50">
+                    <td className="sticky left-0 z-20 bg-card border-r border-soft p-2.5 min-w-[170px] transition-colors group-hover:bg-sea-100">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-sun-100 text-sun-700 font-display font-bold text-xs flex items-center justify-center shrink-0">
                           <span>♪</span>

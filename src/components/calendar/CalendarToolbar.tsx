@@ -1,5 +1,5 @@
 import React from 'react'
-import { Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Plus, Users, FilePlus } from 'lucide-react'
 
 interface CalendarToolbarProps {
   monthHeader: string
@@ -9,12 +9,15 @@ interface CalendarToolbarProps {
   onMonthChange: (value: string) => void
   onThisMonth: () => void
   onNewBooking: () => void
+  onNewCorporate: () => void
+  onLogOldBooking: () => void
+  newBookingDisabled: boolean
 }
 
 // Calendar top bar: month title, month navigation, and the primary action.
-export function CalendarToolbar({ monthHeader, datePickerValue, onPrevMonth, onNextMonth, onMonthChange, onThisMonth, onNewBooking }: CalendarToolbarProps) {
+export function CalendarToolbar({ monthHeader, datePickerValue, onPrevMonth, onNextMonth, onMonthChange, onThisMonth, onNewBooking, onNewCorporate, onLogOldBooking, newBookingDisabled }: CalendarToolbarProps) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3 md:p-3.5 rounded-xl border border-soft flex-shrink-0 shadow-soft">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-card px-3 py-2 rounded-xl border border-soft flex-shrink-0 shadow-soft">
       <h2 className="font-display font-bold text-lg text-main tracking-tight flex items-center gap-2">
         <Calendar className="w-5 h-5 text-sea-600" />
         {monthHeader}
@@ -40,9 +43,20 @@ export function CalendarToolbar({ monthHeader, datePickerValue, onPrevMonth, onN
           </button>
         </div>
 
-        <button onClick={onNewBooking} className="flex items-center gap-1.5 bg-sea-600 hover:bg-sea-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm">
-          <Plus className="w-3.5 h-3.5" />
-          New booking
+        <div className="flex items-center rounded-lg overflow-hidden border border-soft shadow-sm">
+          <button onClick={onNewBooking} disabled={newBookingDisabled} className="flex items-center gap-1.5 bg-sea-600 hover:bg-sea-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 transition-colors cursor-pointer">
+            <Plus className="w-3.5 h-3.5" />
+            New booking
+          </button>
+          <div className="w-px h-5 bg-soft" />
+          <button onClick={onNewCorporate} disabled={newBookingDisabled} title={newBookingDisabled ? 'Pick a date range on the calendar first' : 'Corporate / partner booking'} className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-sea-700 bg-card hover:bg-sea-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer">
+            <Users className="w-3.5 h-3.5" />
+            Corporate
+          </button>
+        </div>
+
+        <button onClick={onLogOldBooking} title="Log old booking" aria-label="Log old booking" className="flex items-center justify-center w-9 h-9 rounded-lg bg-card border border-soft text-muted hover:text-main hover:bg-page transition-colors cursor-pointer">
+          <FilePlus className="w-4 h-4 text-sea-600" />
         </button>
       </div>
     </div>
