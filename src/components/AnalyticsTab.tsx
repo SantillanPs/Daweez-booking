@@ -42,7 +42,7 @@ export function AnalyticsTab() {
   if (isLoading || !calculations) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 text-muted">
-        <Sparkles className="w-8 h-8 text-brand-primary animate-spin" />
+        <Sparkles className="w-8 h-8 text-brand-text animate-spin" />
         <p className="text-xs font-medium">Analyzing PMS profits & records...</p>
       </div>
     )

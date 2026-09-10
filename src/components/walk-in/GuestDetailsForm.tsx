@@ -134,7 +134,7 @@ export const GuestDetailsForm = React.memo(
                         onBlur={() => setDateBlur(b => ({ ...b, [inKey]: true }))}
                         className={inShow ? dateErrCls : dateCls}
                       />
-                      <span className="text-brand-primary text-[10px] font-bold leading-none">→</span>
+                      <span className="text-brand-text text-[10px] font-bold leading-none">→</span>
                       <input
                         type="date"
                         value={cOut}

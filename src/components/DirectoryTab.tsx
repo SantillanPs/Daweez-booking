@@ -205,7 +205,7 @@ export function DirectoryTab() {
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            <Icon className={`w-3.5 h-3.5 ${active ? 'text-brand-primary' : 'text-muted'}`} />
+                            <Icon className={`w-3.5 h-3.5 ${active ? 'text-brand-text' : 'text-muted'}`} />
                             <span className={`text-xs font-bold ${active ? 'text-brand-text' : 'text-muted'}`}>{opt.title}</span>
                           </div>
                           <p className="text-[10px] text-muted leading-normal">{opt.sub}</p>
@@ -438,7 +438,7 @@ export function DirectoryTab() {
                           <div className="flex justify-end gap-1.5">
                             <button
                               onClick={() => startEdit(d)}
-                              className="p-2 text-muted hover:text-brand-primary transition-colors border border-soft rounded-lg hover:border-brand-primary/30 cursor-pointer bg-card hover:bg-brand-bg"
+                              className="p-2 text-muted hover:text-brand-text transition-colors border border-soft rounded-lg hover:border-brand-primary/30 cursor-pointer bg-card hover:bg-brand-bg"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>

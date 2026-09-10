@@ -38,7 +38,27 @@ export function BookingCreatedPanel({
         <div className="w-full max-w-3xl mb-8" onClick={e => e.stopPropagation()}>
           <div className="bg-base-100 border border-base-300 rounded-xl p-4 shadow-sm mb-4">
             <h4 className="text-xs font-bold text-base-content uppercase tracking-wider mb-1">Record a payment</h4>
-            <p className="text-[10px] text-base-content/60 mb-3">Total due: <b className="text-success font-mono">₱{createdDue.toLocaleString()}</b></p>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <p className="text-[10px] text-base-content/60">Total due: <b className="text-success font-mono">₱{createdDue.toLocaleString()}</b></p>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPayAmount(String(Math.round(createdDue / 2)))}
+                  className="btn btn-outline btn-primary btn-xs"
+                  title="Guest paid the 50% deposit"
+                >
+                  50% deposit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPayAmount(String(createdDue))}
+                  className="btn btn-outline btn-primary btn-xs"
+                  title="Guest paid the full amount"
+                >
+                  Full amount
+                </button>
+              </div>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-2.5">
               <label className="text-[10px] text-base-content/60 font-bold block">Amount (₱)
                 <input type="text" inputMode="decimal" value={payAmount || String(createdDue || '')} onChange={e => setPayAmount(e.target.value)} placeholder={String(createdDue || 0)} className="input input-bordered w-full mt-1" />

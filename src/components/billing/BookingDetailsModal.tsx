@@ -97,7 +97,7 @@ export function BookingDetailsModal({ booking, rooms, venues, bookingsList, onCl
               onClick={() => setShowPrint(true)}
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-soft bg-card text-main hover:bg-page transition-colors cursor-pointer"
             >
-              <Printer className="w-4 h-4 text-brand-primary" /> Print invoice
+              <Printer className="w-4 h-4 text-brand-text" /> Print invoice
             </button>
             {booking.status !== 'blocked' && (
               <PaymentStatusSelect booking={booking} onChange={onPaymentStatusChange} />

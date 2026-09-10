@@ -360,7 +360,7 @@ export function ChatbotWidget() {
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#9A783E] to-[#E5D5C0] p-[1.5px]">
                   <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
-                    <Sparkles className="w-5 h-5 text-brand-primary" />
+                    <Sparkles className="w-5 h-5 text-brand-text" />
                   </div>
                 </div>
                 <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
@@ -378,7 +378,7 @@ export function ChatbotWidget() {
             <div className="flex items-center gap-1.5">
               <button 
                 onClick={() => setSoundEnabled(!soundEnabled)} 
-                className="p-1.5 rounded-lg hover:bg-softbg text-muted hover:text-brand-primary transition-colors"
+                className="p-1.5 rounded-lg hover:bg-softbg text-muted hover:text-brand-text transition-colors"
                 title={soundEnabled ? "Mute sounds" : "Unmute sounds"}
               >
                 {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}

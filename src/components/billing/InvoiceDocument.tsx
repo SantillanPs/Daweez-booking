@@ -32,8 +32,6 @@ const fmtStayTime = (dateStr?: string, actual?: string) =>
     ? new Date(actual).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
     : fmtDate(dateStr)
 
-const PAY_METHODS = ['Cash', 'Gcash', 'Bank Transfer', 'Other']
-
 // One labelled "fill-in-the-blank" line, like the paper form.
 function Line({ label, value, className = '' }: { label: string; value?: string; className?: string }) {
   return (
@@ -59,8 +57,9 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
   const guestCount = 1 + (b.companions ? b.companions.length : 0)
   const hasCompanions = !!(b.companions && b.companions.length > 0)
 
-  const pm = (statement.paymentMethod || '').toLowerCase()
-  const isPaidBy = (m: string) => pm.includes(m.toLowerCase())
+  const method = (statement.paymentMethod || '').trim().toLowerCase()
+  const isBank = method.includes('bank')
+  const isGcash = method.includes('gcash')
 
   return (
     <div className={'bg-card w-full max-w-3xl mx-auto rounded-xl shadow-2xl overflow-hidden flex flex-col print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none ' + (embedded ? 'my-0 shadow-xl' : 'my-8')}>
@@ -198,27 +197,43 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 py-3 border-t-2 border-slate-700">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-main mb-1.5">Payment Method</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              {PAY_METHODS.map(m => (
-                <div key={m} className="flex items-center gap-1.5 text-[12.5px]">
-                  <span className="inline-flex w-4 h-4 items-center justify-center border border-slate-400 text-[11px] font-bold">{isPaidBy(m) ? '✓' : ''}</span>
-                  <span className={isPaidBy(m) ? 'font-semibold' : ''}>{m}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 pt-2 border-t border-dashed border-slate-400 space-y-0.5 text-[11px] text-slate-600">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-1">Account Details</p>
-              <p>{payAcct.bankName} Name: <strong className="text-main">{payAcct.bankAccountName}</strong></p>
-              <p>{payAcct.bankName} Account No: <strong className="font-mono text-main">{payAcct.bankAccountNumber}</strong></p>
-              <p>GCash Name: <strong className="text-main">{payAcct.gcashName}</strong></p>
-              <p>GCash No: <strong className="font-mono text-main">{payAcct.gcashNumber}</strong></p>
-            </div>
+            {statement.paymentMethod ? (
+              <div className="flex items-center gap-1.5 text-[12.5px]">
+                <span className="inline-flex w-4 h-4 items-center justify-center border border-slate-400 text-[11px] font-bold">✓</span>
+                <span className="font-semibold">{statement.paymentMethod}</span>
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-500 italic">To be advised</p>
+            )}
+
+            {/* Account details only for the method actually chosen — nothing to
+                transfer to when the guest pays in cash. */}
+            {isGcash && (
+              <div className="mt-3 pt-2 border-t border-dashed border-slate-400 space-y-0.5 text-[11px] text-slate-600">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-1">Account Details</p>
+                <p>GCash Name: <strong className="text-main">{payAcct.gcashName}</strong></p>
+                <p>GCash No: <strong className="font-mono text-main">{payAcct.gcashNumber}</strong></p>
+              </div>
+            )}
+            {isBank && (
+              <div className="mt-3 pt-2 border-t border-dashed border-slate-400 space-y-0.5 text-[11px] text-slate-600">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-1">Account Details</p>
+                <p>{payAcct.bankName} Name: <strong className="text-main">{payAcct.bankAccountName}</strong></p>
+                <p>{payAcct.bankName} Account No: <strong className="font-mono text-main">{payAcct.bankAccountNumber}</strong></p>
+              </div>
+            )}
           </div>
           <div className="space-y-1.5 text-[13px]">
             <div className="flex justify-between"><span className="text-slate-600">Sub-Total</span><span className="font-mono">{money(statement.subTotal)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-600">Less: Downpayment/Deposit</span><span className="font-mono">−{money(statement.downpaymentPaid)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-600">Partial Payment</span><span className="font-mono">−{money(statement.partialPayment)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-600">Other</span><span className="font-mono">−{money(statement.other)}</span></div>
+            {statement.downpaymentPaid > 0 && (
+              <div className="flex justify-between"><span className="text-slate-600">Less: Downpayment/Deposit</span><span className="font-mono">−{money(statement.downpaymentPaid)}</span></div>
+            )}
+            {statement.partialPayment > 0 && (
+              <div className="flex justify-between"><span className="text-slate-600">Less: Partial Payment</span><span className="font-mono">−{money(statement.partialPayment)}</span></div>
+            )}
+            {statement.other > 0 && (
+              <div className="flex justify-between"><span className="text-slate-600">Less: Other</span><span className="font-mono">−{money(statement.other)}</span></div>
+            )}
             <div className="flex justify-between border-t border-slate-400 pt-1.5">
               <span className="font-bold uppercase tracking-wider text-main">Amount Due</span>
               <span className="font-display text-[22px] font-extrabold text-slate-900">{money(statement.amountDue)}</span>
@@ -237,7 +252,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
         <div className="grid grid-cols-2 gap-6 mt-5 pt-4 border-t border-dashed border-slate-400">
           <div className="flex items-end gap-3">
             <span className="text-[11px] font-bold uppercase tracking-wider text-main whitespace-nowrap">Prepared by:</span>
-            <div className="flex-1 border-b border-slate-400 h-6" />
+            <span className="flex-1 text-[12px] font-semibold text-main border-b border-slate-400 min-h-[24px] pb-0.5">{b.prepared_by || ''}</span>
           </div>
           <div className="flex items-end gap-3">
             <span className="text-[11px] font-bold uppercase tracking-wider text-main whitespace-nowrap">Guest Signature:</span>

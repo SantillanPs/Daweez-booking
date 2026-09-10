@@ -7,6 +7,7 @@ import { BookingDetailsModal } from './billing/BookingDetailsModal'
 import { PaymentStatusSelect } from './billing/PaymentStatusSelect'
 import { getPaymentView, isOwed, PAYMENT_BADGE_CLASSES } from '../utils/bookingMoney'
 import { dateToString } from '../utils/helpers'
+import { statusAfterPayment } from '../utils/bookingStatus'
 
 type MoneyFilter = 'all' | 'owes' | 'paid'
 
@@ -77,7 +78,7 @@ export function BookingsListTab() {
 
   const handlePaymentStatusChange = useCallback(async (booking: Booking, status: 'unpaid' | 'downpayment' | 'paid') => {
     try {
-      await updateBooking({ ...booking, payment_status: status, balance_due: status === 'paid' ? 0 : booking.balance_due })
+      await updateBooking({ ...booking, payment_status: status, status: status === 'unpaid' ? booking.status : statusAfterPayment(booking.status), balance_due: status === 'paid' ? 0 : booking.balance_due })
     } catch {
       window.alert('Could not update the payment. Please try again.')
     }
@@ -88,7 +89,7 @@ export function BookingsListTab() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-main flex items-center gap-2">
-            <CalendarDays className="w-6 h-6 text-brand-primary" />
+            <CalendarDays className="w-6 h-6 text-brand-text" />
             Bookings
           </h2>
           <p className="text-sm text-muted">Find a stay, print an invoice, or see who still owes</p>
@@ -163,7 +164,7 @@ export function BookingsListTab() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-9 h-9 rounded-full bg-brand-primary/10 flex items-center justify-center shrink-0">
-                        <User className="w-4 h-4 text-brand-primary" />
+                        <User className="w-4 h-4 text-brand-text" />
                       </div>
                       <div className="min-w-0">
                         <div className="font-bold text-main truncate">{b.guest_name}</div>
@@ -195,8 +196,8 @@ export function BookingsListTab() {
                       </span>
                     )}
                     {b.status === 'pending' && (
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                        Not confirmed
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800" title="No deposit received yet — booking is not confirmed">
+                        Unpaid
                       </span>
                     )}
                     {b.status === 'blocked' && (
@@ -211,7 +212,7 @@ export function BookingsListTab() {
                       onClick={() => setPrintBooking(b)}
                       className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-soft bg-card text-main hover:bg-page transition-colors cursor-pointer"
                     >
-                      <Printer className="w-3.5 h-3.5 text-brand-primary" /> Print invoice
+                      <Printer className="w-3.5 h-3.5 text-brand-text" /> Print invoice
                     </button>
                     {b.status !== 'blocked' && (
                       <PaymentStatusSelect booking={b} onChange={handlePaymentStatusChange} />
@@ -220,7 +221,7 @@ export function BookingsListTab() {
                       onClick={() => setDetailsBooking(b)}
                       className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-soft bg-card text-main hover:bg-page transition-colors cursor-pointer"
                     >
-                      <FileText className="w-3.5 h-3.5 text-brand-primary" /> Details
+                      <FileText className="w-3.5 h-3.5 text-brand-text" /> Details
                     </button>
                   </div>
                 </div>

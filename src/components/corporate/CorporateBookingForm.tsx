@@ -155,7 +155,7 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
       <div className="w-full max-w-md bg-card rounded-lg border border-soft shadow-xl flex flex-col max-h-[92vh] overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-soft shrink-0 bg-card">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 flex items-center justify-center bg-brand-bg border border-brand-border rounded-md"><PartyPopper className="w-3.5 h-3.5 text-brand-primary" /></div>
+            <div className="w-7 h-7 flex items-center justify-center bg-brand-bg border border-brand-border rounded-md"><PartyPopper className="w-3.5 h-3.5 text-brand-text" /></div>
             <div><h3 className="text-sm font-bold text-main">Corporate Booking</h3><p className="text-[10px] text-muted font-medium">Partner / agency reservation</p></div>
           </div>
           <button type="button" onClick={onClose} className="text-muted hover:text-main transition-colors p-1.5 -mr-1.5 cursor-pointer"><X className="w-4 h-4" /></button>
@@ -220,7 +220,7 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
 
               <div className="pt-2 border-t border-soft">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input type="checkbox" checked={formUsePromo} onChange={e => setFormUsePromo(e.target.checked)} className="rounded text-brand-primary focus:ring-[#B89251] w-3.5 h-3.5 cursor-pointer accent-brand-primary" />
+                  <input type="checkbox" checked={formUsePromo} onChange={e => setFormUsePromo(e.target.checked)} className="rounded text-brand-text focus:ring-[#B89251] w-3.5 h-3.5 cursor-pointer accent-brand-primary" />
                   <span className="text-[10px] text-brand-text font-bold uppercase tracking-wider">Use Promo Price</span>
                 </label>
               </div>

@@ -12,6 +12,7 @@ import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
 import { PaymentStatusSelect, PaymentStatusOption } from '../billing/PaymentStatusSelect'
 import { SOURCE_LABELS, roomDisplayName } from './bookingStyles'
+import { statusAfterPayment } from '../../utils/bookingStatus'
 
 interface ExtendStayModalProps {
   booking: Booking
@@ -180,6 +181,7 @@ export function ExtendStayModal({
       downpayment_paid: newPaid,
       balance_due: remaining,
       payment_status: status,
+      status: statusAfterPayment(localBooking.status),
       payment_method: receiptMethod,
       payment_reference: receiptRef.trim() || localBooking.payment_reference,
     }

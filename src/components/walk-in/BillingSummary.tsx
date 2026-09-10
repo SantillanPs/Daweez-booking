@@ -22,8 +22,6 @@ interface BillingSummaryProps {
   formPartnerDealId?: string
   formPaymentMethod?: string
   setFormPaymentMethod?: (val: string) => void
-  formPaymentReference?: string
-  setFormPaymentReference?: (val: string) => void
   formVenueExcessHours?: number
 
   // Edit Mode Overrides
@@ -59,8 +57,6 @@ export const BillingSummary = React.memo(
     formPartnerDealId,
     formPaymentMethod,
     setFormPaymentMethod,
-    formPaymentReference,
-    setFormPaymentReference,
     isEditMode,
     formInvoiceNumber,
     setFormInvoiceNumber,
@@ -264,44 +260,33 @@ export const BillingSummary = React.memo(
               {/* Split Payment Cards Grid */}
               <div className="grid grid-cols-2 gap-2.5 border-t border-base-300 pt-3.5">
                 <div className="bg-success/10 border border-success/20 rounded-md p-2 text-center animate-in fade-in">
-                  <span className="text-[9px] text-success font-bold uppercase tracking-wider block">Pay Now (50%)</span>
+                  <span className="text-[9px] text-success font-bold uppercase tracking-wider block">Deposit (50%)</span>
                   <span className="text-[13px] font-black text-success block mt-0.5 font-mono">₱{estDown.toLocaleString()}</span>
                 </div>
                 <div className="bg-base-200/80 border border-base-300 rounded-md p-2 text-center animate-in fade-in">
-                  <span className="text-[9px] text-primary font-bold uppercase tracking-wider block">Pay at Check-in</span>
+                  <span className="text-[9px] text-primary font-bold uppercase tracking-wider block">Balance at check-in</span>
                   <span className="text-[13px] font-black text-primary block mt-0.5 font-mono">₱{estDue.toLocaleString()}</span>
                 </div>
               </div>
 
-              {/* Payment Details */}
-              {(setFormPaymentMethod && setFormPaymentReference) && (
-                <div className="border-t border-base-300 pt-3.5 mt-3 space-y-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60 block mb-1">Payment Details</span>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-base-content">Method</label>
-                      <select
-                        value={formPaymentMethod || ''}
-                        onChange={e => setFormPaymentMethod(e.target.value)}
-                        className="select select-bordered w-full"
-                      >
-                        <option value="">Select...</option>
-                        <option value="Cash">Cash</option>
-                        <option value="GCash">GCash</option>
-                        <option value="Bank Transfer">Bank Transfer</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-base-content">Reference / Date</label>
-                      <input
-                        type="text"
-                        value={formPaymentReference || ''}
-                        onChange={e => setFormPaymentReference(e.target.value)}
-                        placeholder="e.g. 123456789"
-                        className="input input-bordered w-full"
-                      />
-                    </div>
-                  </div>
+              {/* Agreed payment method — printed on the Guest Billing Statement.
+                  Nothing is recorded as paid here: the guest is given the
+                  statement first, and the actual payment is recorded afterwards
+                  from the booking (which also confirms the booking). */}
+              {setFormPaymentMethod && (
+                <div className="border-t border-base-300 pt-3.5 mt-3 space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60 block">Payment Method</span>
+                  <p className="text-[10px] text-base-content/60">Shown on the billing statement. No payment is recorded yet.</p>
+                  <select
+                    value={formPaymentMethod || ''}
+                    onChange={e => setFormPaymentMethod(e.target.value)}
+                    className="select select-bordered w-full"
+                  >
+                    <option value="">Select...</option>
+                    <option value="Cash">Cash</option>
+                    <option value="GCash">GCash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                  </select>
                 </div>
               )}
 
@@ -419,7 +404,6 @@ export const BillingSummary = React.memo(
       prevProps.formUsePromo === nextProps.formUsePromo &&
       prevProps.formPartnerDealId === nextProps.formPartnerDealId &&
       prevProps.formPaymentMethod === nextProps.formPaymentMethod &&
-      prevProps.formPaymentReference === nextProps.formPaymentReference &&
       prevProps.formVenueExcessHours === nextProps.formVenueExcessHours &&
       prevProps.isEditMode === nextProps.isEditMode &&
       prevProps.formInvoiceNumber === nextProps.formInvoiceNumber &&

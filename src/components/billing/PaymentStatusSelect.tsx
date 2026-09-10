@@ -20,7 +20,7 @@ export function PaymentStatusSelect({ booking, onChange }: PaymentStatusSelectPr
   const current: PaymentStatusOption = booking.payment_status || 'unpaid'
   return (
     <div className="relative inline-flex items-center">
-      <Banknote className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-primary pointer-events-none" />
+      <Banknote className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-text pointer-events-none" />
       <select
         value={current}
         title="Payment status"

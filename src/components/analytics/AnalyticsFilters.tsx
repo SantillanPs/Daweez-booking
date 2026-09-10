@@ -52,7 +52,7 @@ export const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
         {/* Dynamic Custom Date Inputs */}
         {timeframe === 'custom' && (
           <div className="flex items-center gap-2">
-            <Calendar className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+            <Calendar className="w-3.5 h-3.5 text-brand-text shrink-0" />
             <input
               type="date"
               value={customStart}
@@ -79,12 +79,12 @@ export const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
         >
           {viewMode === 'spreadsheet' ? (
             <>
-              <BarChart2 className="w-4 h-4 text-brand-primary" />
+              <BarChart2 className="w-4 h-4 text-brand-text" />
               Switch to Visuals
             </>
           ) : (
             <>
-              <Table className="w-4 h-4 text-brand-primary" />
+              <Table className="w-4 h-4 text-brand-text" />
               Switch to Spreadsheet
             </>
           )}
@@ -97,10 +97,10 @@ export const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
           </span>
           <button 
             onClick={() => setIncludePending(prev => !prev)}
-            className="text-muted hover:text-brand-primary transition-all cursor-pointer"
+            className="text-muted hover:text-brand-text transition-all cursor-pointer"
           >
             {includePending ? (
-              <ToggleRight className="w-8 h-8 text-brand-primary" />
+              <ToggleRight className="w-8 h-8 text-brand-text" />
             ) : (
               <ToggleLeft className="w-8 h-8 text-muted" />
             )}

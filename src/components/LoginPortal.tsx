@@ -50,16 +50,23 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-softbg font-sans p-4">
-      <div className="w-full max-w-sm bg-card p-8 rounded-lg border border-soft shadow-sm">
-        <div className="text-center mb-6">
-          <h2 className="text-lg font-bold text-main">Daweez Pension House</h2>
-          <p className="text-xs text-muted mt-1">Staff PMS Login</p>
+    <div className="min-h-screen w-full flex items-center justify-center bg-chrome-bg font-sans p-4">
+      <div className="w-full max-w-sm bg-chrome-raised p-8 rounded-2xl border border-chrome-border shadow-softLg">
+
+        {/* Brand lockup — echoes the logo: gold monogram inside a thin circle,
+            white uppercase wordmark beneath. */}
+        <div className="flex flex-col items-center mb-7">
+          <div className="w-20 h-20 rounded-full border-2 border-gold-400 flex items-center justify-center mb-4">
+            <span className="font-display font-extrabold text-2xl tracking-tight text-gold-400">DP</span>
+          </div>
+          <h2 className="font-display font-extrabold text-xl tracking-[0.18em] text-white">DAWEEZ</h2>
+          <p className="text-[10px] font-bold tracking-[0.3em] text-chrome-muted mt-1">PENSION HOUSE</p>
+          <p className="text-[11px] text-chrome-muted mt-4">Staff PMS Login</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs text-muted font-medium">Passcode</label>
+            <label className="text-xs text-chrome-muted font-medium">Passcode</label>
             <input
               ref={inputRef}
               type="password"
@@ -70,15 +77,15 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
               }}
               disabled={isSubmitting}
               placeholder="Enter staff passcode"
-              className="w-full px-3.5 py-2.5 bg-page border border-soft rounded-lg text-main outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 text-sm transition-all placeholder:text-muted placeholder:opacity-50"
+              className="w-full px-3.5 py-2.5 bg-chrome-bg border border-chrome-border rounded-lg text-chrome-text outline-none focus:border-gold-400 focus:ring-1 focus:ring-gold-400/30 text-sm transition-all placeholder:text-chrome-muted placeholder:opacity-60"
             />
-            {error && <p className="text-xs text-rose-600 font-medium mt-1">{error}</p>}
+            {error && <p className="text-xs text-danger-300 font-medium mt-1">{error}</p>}
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting || !passcode}
-            className="w-full py-2.5 bg-brand-primary hover:bg-[#a27e43] disabled:bg-softbg disabled:text-muted text-ink-900 font-medium text-sm rounded-lg transition-all cursor-pointer"
+            className="w-full py-2.5 bg-gold-400 hover:bg-gold-500 disabled:bg-chrome-border disabled:text-chrome-muted text-ink-900 font-bold text-sm rounded-lg transition-all cursor-pointer"
           >
             {isSubmitting ? 'Verifying...' : 'Login'}
           </button>

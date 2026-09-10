@@ -200,26 +200,27 @@ export function PublicReservePortal() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FCFAF6] font-sans pb-16">
-      {/* Premium Header */}
-      <header className="bg-card border-b border-[#EADFC9]/60 py-5 sticky top-0 z-40 shadow-sm">
+    <div className="min-h-screen bg-paper-50 font-sans pb-16">
+      {/* Brand header — dark chrome band, gold monogram, matching the logo */}
+      <header className="bg-chrome-bg border-b border-chrome-border py-4 sticky top-0 z-40">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 flex items-center justify-center bg-brand-bg border border-brand-primary rounded-lg">
-              <span className="text-brand-primary font-bold text-sm">DP</span>
+            <div className="w-9 h-9 flex items-center justify-center rounded-full border border-gold-400 shrink-0">
+              <span className="text-gold-400 font-display font-extrabold text-sm tracking-tight">DP</span>
             </div>
             <div>
-              <h1 className="text-sm font-bold text-main tracking-wide uppercase">Daweez Pension Hotel</h1>
-              <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">Direct Reservation Portal</p>
+              <h1 className="text-sm font-bold text-chrome-text tracking-wide uppercase">Daweez Pension House</h1>
+              <p className="text-[10px] text-chrome-muted font-semibold uppercase tracking-wider">Direct Reservation Portal</p>
             </div>
           </div>
           <div className="text-right">
-            <span className="text-[10px] bg-[#FAF0DD] text-brand-text font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border border-brand-border/40">
+            <span className="text-[10px] bg-gold-400/15 text-chrome-accent font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border border-gold-400/30">
               ✓ 20% Direct Discount Applied
             </span>
           </div>
         </div>
       </header>
+
 
       <main className="max-w-[1200px] mx-auto px-4 sm:px-6 mt-8">
         {/* Step Progress Bar */}
@@ -243,7 +244,7 @@ export function PublicReservePortal() {
             {/* Search Card */}
             <div className="bg-card border border-[#EADFC9]/60 p-6 rounded-2xl shadow-sm max-w-3xl mx-auto space-y-4">
               <h3 className="text-sm font-bold text-main flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-brand-primary" /> Select Stay Dates
+                <Calendar className="w-4 h-4 text-brand-text" /> Select Stay Dates
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -444,7 +445,7 @@ export function PublicReservePortal() {
               </div>
             ) : (
               <div className="bg-card border border-soft/60 p-12 rounded-2xl text-center shadow-sm max-w-md mx-auto space-y-2">
-                <Info className="w-8 h-8 text-brand-primary mx-auto animate-pulse" />
+                <Info className="w-8 h-8 text-brand-text mx-auto animate-pulse" />
                 <h4 className="text-xs font-bold text-main">Select stay dates to view availability</h4>
                 <p className="text-[10px] text-muted leading-relaxed">Available rooms and event venues with rates will display immediately after you choose date boundaries.</p>
               </div>
@@ -688,7 +689,7 @@ export function PublicReservePortal() {
               )}
 
               <div className="bg-[#FCFAF6] border border-soft/50 p-3 rounded-lg text-[10px] text-muted leading-relaxed flex gap-2">
-                <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                <Info className="w-4 h-4 text-brand-text shrink-0 mt-0.5" />
                 <span>The 50% downpayment secures your reservation. The remaining balance is payable upon check-in.</span>
               </div>
             </div>

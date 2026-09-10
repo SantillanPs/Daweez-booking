@@ -124,7 +124,7 @@ export function ExpensesTab() {
       <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-6">
         <div>
           <h2 className="text-xl font-bold text-main flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-brand-primary" />
+            <Wallet className="w-5 h-5 text-brand-text" />
             Hotel Expenses
           </h2>
           <p className="text-sm text-muted mt-1">Log and track all operational outgoings and purchases.</p>
@@ -164,7 +164,7 @@ export function ExpensesTab() {
                   className="flex items-center justify-between w-full pl-3 pr-3 py-2 border border-soft rounded-lg text-sm bg-card hover:bg-page transition-colors text-left focus:ring-2 focus:ring-[#B89251] focus:border-transparent cursor-pointer"
                 >
                   <div className="flex items-center gap-2 text-main">
-                    <Tag className="w-4 h-4 text-brand-primary shrink-0" />
+                    <Tag className="w-4 h-4 text-brand-text shrink-0" />
                     {selectedCategory ? (
                       <span className="font-medium text-sm text-main">{selectedCategory.name}</span>
                     ) : (
@@ -216,7 +216,7 @@ export function ExpensesTab() {
                                 <span>{cat.name}</span>
                               </div>
                               {isSelected && (
-                                <svg className="w-3.5 h-3.5 text-brand-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <svg className="w-3.5 h-3.5 text-brand-text" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                 </svg>
                               )}
@@ -388,7 +388,7 @@ export function ExpensesTab() {
           <div className="bg-card w-full max-w-md rounded-xl border border-soft shadow-xl overflow-hidden flex flex-col">
             <div className="px-5 py-4 border-b border-soft flex items-center justify-between bg-page">
               <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-brand-primary" />
+                <Tag className="w-4 h-4 text-brand-text" />
                 <h3 className="text-sm font-semibold text-main">Manage Expense Categories</h3>
               </div>
               <button 

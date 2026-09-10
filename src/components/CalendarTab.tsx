@@ -11,6 +11,7 @@ import { CorporateBookingForm } from './corporate/CorporateBookingForm'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { CalendarLegend } from './calendar/CalendarLegend'
 import { roomDisplayName } from './calendar/bookingStyles'
+import { statusAfterPayment } from '../utils/bookingStatus'
 
 type Selection = { roomId?: string; venueId?: string; checkIn: Date }
 type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }>
@@ -92,7 +93,7 @@ export function CalendarTab() {
 
   const handleQuickPaymentChange = useCallback(async (b: Booking, status: 'unpaid' | 'downpayment' | 'paid') => {
     try {
-      await updateBooking({ ...b, payment_status: status, balance_due: status === 'paid' ? 0 : b.balance_due })
+      await updateBooking({ ...b, payment_status: status, status: status === 'unpaid' ? b.status : statusAfterPayment(b.status), balance_due: status === 'paid' ? 0 : b.balance_due })
     } catch {
       window.alert('Could not update the payment. Please try again.')
     }

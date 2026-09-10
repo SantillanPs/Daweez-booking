@@ -146,7 +146,7 @@ export const TimelineGrid = React.memo(
               <p className="text-muted mt-1 leading-normal">
                 Check-in: <strong className="text-main">{timelineSelection.checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>.
               </p>
-              <p className="text-[11px] text-brand-primary font-semibold mt-1.5">
+              <p className="text-[11px] text-brand-text font-semibold mt-1.5">
                 Now click the check-out date.
               </p>
             </div>

@@ -23,7 +23,7 @@ export interface DashboardDataContextValue {
     checkIn: string
     checkOut: string
     source: BookingSource
-    status: 'confirmed' | 'blocked'
+    status: 'confirmed' | 'blocked' | 'pending'
     breakfastOrders?: BreakfastOrder[]
     equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons

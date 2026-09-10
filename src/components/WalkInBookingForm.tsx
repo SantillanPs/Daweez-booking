@@ -17,6 +17,7 @@ import { PartnerBookingFields } from './walk-in/PartnerBookingFields'
 import { BookingCreatedPanel } from './walk-in/BookingCreatedPanel'
 import { BookingWizardHeader } from './walk-in/BookingWizardHeader'
 import { dateToString } from '../utils/helpers'
+import { statusAfterPayment } from '../utils/bookingStatus'
 
 interface WalkInBookingFormProps {
   rooms: Room[]
@@ -31,7 +32,7 @@ interface WalkInBookingFormProps {
     checkIn: string
     checkOut: string
     source: BookingSource
-    status: 'confirmed' | 'blocked'
+    status: 'pending' | 'confirmed' | 'blocked'
     usePromo?: boolean
     breakfastOrders?: BreakfastOrder[]
     equipmentRentals?: EquipmentRental
@@ -383,7 +384,20 @@ export function WalkInBookingForm({
     e.preventDefault(); setFormError('')
     if (Object.values(fieldErrors).some(v => v)) { setTrySave(true); return }
     setIsSubmitting(true)
+    // A brand-new walk-in booking is NOT confirmed yet — it stays in the
+    // "Unpaid"/pending state until the first payment is recorded. Corporate
+    // bookings are contract-backed, so they confirm immediately. Editing keeps
+    // whatever status the booking already had (no silent confirm).
+    const bookingStatus: 'pending' | 'confirmed' | 'blocked' =
+      formStatus === 'blocked'
+        ? 'blocked'
+        : bookingType === 'partner'
+          ? 'confirmed'
+          : (editingBookings && editingBookings.length > 0)
+            ? (editingBookings[0].status || 'confirmed')
+            : 'pending'
     const result = await submitBookingForm({
+      bookingStatus,
       unitSelections, formRoomIds, formVenueIds, rooms, venues,
       activeBookings: activeBookingsContext,
       partnerDeals, formPartnerDealId, bookingType, formStatus, formGuestName,
@@ -415,7 +429,7 @@ export function WalkInBookingForm({
       const newDown = (target.downpayment_paid || 0) + amount
       const newBalance = Math.max(0, total - newDown)
       const status: Booking['payment_status'] = newBalance <= 0 ? 'paid' : 'downpayment'
-      const updated: Booking = { ...target, payment_records: [...(target.payment_records || []), rec], downpayment_paid: newDown, balance_due: newBalance, payment_status: status }
+      const updated: Booking = { ...target, payment_records: [...(target.payment_records || []), rec], downpayment_paid: newDown, balance_due: newBalance, payment_status: status, status: statusAfterPayment(target.status) }
       setCreatedBookingList(list => list.map(b => b.id === target.id ? updated : b))
       if (updateBooking) { try { await updateBooking(updated) } catch (e) { console.error('Could not persist payment:', e) } }
       setReceiptRecord(rec)
@@ -655,8 +669,6 @@ export function WalkInBookingForm({
                           formPartnerDealId={formPartnerDealId}
                           formPaymentMethod={formPaymentMethod}
                           setFormPaymentMethod={setFormPaymentMethod}
-                          formPaymentReference={formPaymentReference}
-                          setFormPaymentReference={setFormPaymentReference}
                           formVenueExcessHours={formVenueExcessHours}
                           isEditMode={!!editingBookings}
                           formInvoiceNumber={formInvoiceNumber}

@@ -25,7 +25,7 @@ export interface ManualBookingInput {
   checkIn: string
   checkOut: string
   source: BookingSource
-  status: 'confirmed' | 'blocked'
+  status: 'pending' | 'confirmed' | 'blocked'
   equipmentRentals?: EquipmentRental
   usePromo?: boolean
   companions?: Companion[]
@@ -55,6 +55,7 @@ export interface BookingSubmitParams {
   formPartnerDealId: string
   bookingType: 'individual' | 'partner'
   formStatus: 'confirmed' | 'blocked'
+  bookingStatus: 'pending' | 'confirmed' | 'blocked'
   formGuestName: string
   formGuestEmail: string
   formGuestPhone: string
@@ -117,7 +118,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
   }
 
   const cleanGuestName = p.formGuestName.trim() || (p.bookingType === 'partner' && p.formPartnerDealId ? `${p.partnerDeals.find(d => d.id === p.formPartnerDealId)?.name || 'Corporate'} Guest` : '')
-  if (p.formStatus === 'confirmed' && !cleanGuestName && p.bookingType === 'individual') {
+  if (p.bookingStatus !== 'blocked' && !cleanGuestName && p.bookingType === 'individual') {
     return { ok: false, error: 'Guest name is required.' }
   }
 
@@ -167,7 +168,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         checkIn: sel.checkIn,
         checkOut: sel.checkOut,
         source: p.bookingType === 'partner' ? 'manual' : p.formSource,
-        status: p.bookingType === 'partner' ? 'confirmed' : p.formStatus,
+        status: p.bookingStatus,
         equipmentRentals: rentals,
         usePromo: usePromoForBooking,
         companions: p.bookingType === 'partner' ? undefined : (p.formCompanions.length > 0 ? p.formCompanions : undefined),
@@ -223,7 +224,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         checkIn: sel.checkIn,
         checkOut: sel.checkOut,
         source: p.bookingType === 'partner' ? 'manual' : p.formSource,
-        status: p.bookingType === 'partner' ? 'confirmed' : p.formStatus,
+        status: p.bookingStatus,
         equipmentRentals: rentals,
         usePromo: usePromoForBooking,
         companions: p.bookingType === 'partner' ? undefined : (p.formCompanions.length > 0 ? p.formCompanions : undefined),

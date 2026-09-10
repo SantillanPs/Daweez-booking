@@ -127,12 +127,12 @@ export function SettingsTab() {
                     {isExpanded && (
                       <div className="px-5 pb-4 pt-1 space-y-2.5">
                         <div className="grid grid-cols-[80px_1fr] md:grid-cols-[100px_1fr] gap-3 items-center">
-                          <span className="text-xs text-brand-primary font-medium text-right">Export URL</span>
+                          <span className="text-xs text-brand-text font-medium text-right">Export URL</span>
                           <div className="relative flex items-center">
                             <input readOnly value={'https://daweez-booking.vercel.app/api/ical/room/' + room.room_number + '.ics'}
                               className="bg-page border border-soft text-muted py-1.5 pl-3 pr-9 rounded-lg font-mono text-[10px] w-full select-all outline-none" />
                             <button onClick={() => copyToClipboard('https://daweez-booking.vercel.app/api/ical/room/' + room.room_number + '.ics', 'export-' + room.id)}
-                              className="absolute right-1.5 p-1 text-muted hover:text-brand-primary transition-colors" title="Copy URL">
+                              className="absolute right-1.5 p-1 text-muted hover:text-brand-text transition-colors" title="Copy URL">
                               {copiedFeedId === 'export-' + room.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                             </button>
                           </div>
