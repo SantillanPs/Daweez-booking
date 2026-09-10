@@ -331,7 +331,7 @@ export function ChatbotWidget() {
         className={`fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
           isOpen 
             ? 'bg-slate-800 text-white rotate-90' 
-            : 'bg-brand-primary hover:bg-brand-text text-white shadow-[#B89251]/30'
+            : 'bg-brand-primary hover:bg-gold-500 text-ink-900 shadow-[#B89251]/30'
         }`}
         aria-label="Open digital concierge chat"
       >
@@ -405,7 +405,7 @@ export function ChatbotWidget() {
                 <div 
                   className={`px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line shadow-sm border ${
                     msg.sender === 'user'
-                      ? 'bg-brand-primary text-white border-transparent rounded-tr-none font-medium'
+                      ? 'bg-brand-primary text-ink-900 border-transparent rounded-tr-none font-medium'
                       : 'bg-card text-main border-soft rounded-tl-none font-normal'
                   }`}
                 >
@@ -463,7 +463,7 @@ export function ChatbotWidget() {
               disabled={!inputValue.trim()}
               className={`p-2 rounded-xl border transition-all ${
                 inputValue.trim()
-                  ? 'bg-brand-primary text-white border-transparent hover:scale-105 active:scale-95 shadow-sm shadow-[#B89251]/10'
+                  ? 'bg-brand-primary text-ink-900 border-transparent hover:scale-105 active:scale-95 shadow-sm shadow-[#B89251]/10'
                   : 'bg-softbg text-muted border-transparent cursor-not-allowed'
               }`}
             >

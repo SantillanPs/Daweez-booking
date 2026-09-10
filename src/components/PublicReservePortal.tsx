@@ -226,12 +226,12 @@ export function PublicReservePortal() {
         {step < 3 && (
           <div className="max-w-md mx-auto mb-8 bg-card border border-soft/60 p-4 rounded-xl shadow-sm flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold ${step >= 1 ? 'bg-brand-primary text-white' : 'bg-softbg text-muted'}`}>1</div>
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold ${step >= 1 ? 'bg-brand-primary text-ink-900' : 'bg-softbg text-muted'}`}>1</div>
               <span className={`font-semibold ${step === 1 ? 'text-main' : 'text-muted'}`}>Select Dates & Unit</span>
             </div>
             <div className="h-[2px] bg-soft flex-1 mx-3" />
             <div className="flex items-center gap-2">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold ${step >= 2 ? 'bg-brand-primary text-white' : 'bg-softbg text-muted'}`}>2</div>
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold ${step >= 2 ? 'bg-brand-primary text-ink-900' : 'bg-softbg text-muted'}`}>2</div>
               <span className={`font-semibold ${step === 2 ? 'text-main' : 'text-muted'}`}>Guest Details</span>
             </div>
           </div>
@@ -299,7 +299,7 @@ export function PublicReservePortal() {
                                   Room {room.room_number}
                                 </span>
                                 {isAvailable && roomPromoOn && (
-                                  <span className="absolute bottom-3 right-3 bg-brand-primary text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center gap-1">
+                                  <span className="absolute bottom-3 right-3 bg-brand-primary text-ink-900 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center gap-1">
                                     <Tag className="w-3 h-3" /> PROMO
                                   </span>
                                 )}
@@ -335,7 +335,7 @@ export function PublicReservePortal() {
                                   {isAvailable ? (
                                     <button
                                       onClick={() => handleSelectUnit(room.id, 'room')}
-                                      className="bg-brand-primary hover:bg-brand-text text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                                      className="bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
                                     >
                                       Reserve <ArrowRight className="w-3.5 h-3.5" />
                                     </button>
@@ -381,7 +381,7 @@ export function PublicReservePortal() {
                                 Venue
                               </span>
                               {isAvailable && venuePromoOn && (
-                                <span className="absolute bottom-3 right-3 bg-brand-primary text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center gap-1">
+                                <span className="absolute bottom-3 right-3 bg-brand-primary text-ink-900 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center gap-1">
                                   <Tag className="w-3 h-3" /> PROMO
                                 </span>
                               )}
@@ -417,7 +417,7 @@ export function PublicReservePortal() {
                                 {isAvailable ? (
                                   <button
                                     onClick={() => handleSelectUnit(venue.id, 'venue')}
-                                    className="bg-brand-primary hover:bg-brand-text text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                                    className="bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
                                   >
                                     Reserve <ArrowRight className="w-3.5 h-3.5" />
                                   </button>
@@ -561,7 +561,7 @@ export function PublicReservePortal() {
                     <button
                       type="button"
                       onClick={handleAddCompanion}
-                      className="bg-brand-primary hover:bg-brand-text text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      className="bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors cursor-pointer"
                     >
                       + Add
                     </button>
@@ -626,7 +626,7 @@ export function PublicReservePortal() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex-1 bg-brand-primary hover:bg-brand-text text-white text-xs font-bold py-2.5 rounded-xl transition-colors shadow-sm disabled:bg-softbg disabled:text-muted cursor-pointer"
+                  className="flex-1 bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-bold py-2.5 rounded-xl transition-colors shadow-sm disabled:bg-softbg disabled:text-muted cursor-pointer"
                 >
                   {isSaving ? 'Submitting...' : 'Submit Reservation'}
                 </button>
@@ -748,7 +748,7 @@ export function PublicReservePortal() {
                 setPaymentRef('')
                 setCompanions([])
               }}
-              className="bg-brand-primary hover:bg-brand-text text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-colors cursor-pointer inline-block shadow-sm"
+              className="bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-bold px-6 py-2.5 rounded-xl transition-colors cursor-pointer inline-block shadow-sm"
             >
               Make Another Reservation
             </button>

@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal, PaymentRecord } from '../types/booking'
-import * as syncEngine from '../utils/syncEngine'
 import { useDashboardData } from './DashboardContext'
 import {
   AlertCircle, UserCheck, CheckCircle2
@@ -12,6 +11,8 @@ import { DiscountPricingControls, DiscountType } from './calendar/DiscountPricin
 import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
 import { BillingSummary } from './walk-in/BillingSummary'
+import { computeBookingEstimate } from './walk-in/bookingEstimate'
+import { submitBookingForm } from './walk-in/bookingSubmit'
 import { PartnerBookingFields } from './walk-in/PartnerBookingFields'
 import { BookingCreatedPanel } from './walk-in/BookingCreatedPanel'
 import { BookingWizardHeader } from './walk-in/BookingWizardHeader'
@@ -367,64 +368,14 @@ export function WalkInBookingForm({
   const dateFieldErr = 'input input-bordered input-error w-full'
 
   // ── Pricing calculations (estimate for totals; real nightly rate goes through calculatePricing) ──
-  const { estBreakfast, estRentals, estAddons, estTotal, estDown, estDue } = useMemo(() => {
-    let regularTotal = 0
-    let discountedTotal = 0
-    let breakfast = 0
-    let rentals = 0
-
-    Object.entries(unitSelections).forEach(([id, sel]) => {
-      const deal = partnerDeals.find(d => d.id === formPartnerDealId)
-      const contractedRate = deal?.contracted_rates[id]
-      const n = sel.checkIn && sel.checkOut
-        ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
-        : 1
-
-      const room = sel.type === 'room' ? rooms.find(r => r.id === id) : undefined
-      const venue = sel.type === 'venue' ? venues.find(v => v.id === id) : undefined
-      const regular = contractedRate !== undefined && contractedRate !== null
-        ? contractedRate
-        : sel.type === 'room'
-          ? (room?.base_price ?? 0)
-          : (venue?.base_price ?? 0)
-      const promo = sel.type === 'room'
-        ? (room?.promo_price ?? null)
-        : (venue?.promo_price ?? null)
-      const effectiveRate = formUsePromo && promo != null && promo > 0 ? promo : regular
-      regularTotal += regular * n
-      discountedTotal += effectiveRate * n
-
-      const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
-      if (sel.type === 'room') {
-        const bfCount = (formGuestBreakfast ? 1 : 0) + formCompanions.filter(c => c.breakfast).length
-        if (!isBreakfastIncluded && bfCount > 0) {
-          breakfast += 150 * bfCount * n
-        }
-        rentals += (formExtraFoam * 200 + formExtraPillow * 50 + formExtraBlanket * 50 + formExtraTowel * 50) * n
-      }
-    })
-
-    if (hasVenues) {
-      rentals += formEventTable * 150 + formEventTent * 500 + formChairs * 15
-    }
-
-    const subtotal = discountedTotal
-    const total = subtotal + breakfast + rentals
-    const down = Math.round(total * 0.5)
-    const due = formStatus === 'blocked' ? 0 : (total - down)
-
-    return {
-      estBreakfast: breakfast,
-      estRentals: rentals,
-      estAddons: 0,
-      estSubtotal: subtotal,
-      estRegularTotal: regularTotal,
-      estDiscountAmount: Math.max(0, regularTotal - discountedTotal),
-      estTotal: total,
-      estDown: down,
-      estDue: due,
-    }
-  }, [unitSelections, formUsePromo, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, formGuestBreakfast, formCompanions]) as { estBreakfast: number; estRentals: number; estAddons: number; estSubtotal: number; estRegularTotal: number; estDiscountAmount: number; estTotal: number; estDown: number; estDue: number }
+  const { estBreakfast, estRentals, estAddons, estTotal, estDown, estDue } = useMemo(
+    () => computeBookingEstimate({
+      unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formUsePromo, formStatus, hasVenues,
+      formGuestBreakfast, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
+      formEventTable, formEventTent, formChairs,
+    }),
+    [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formUsePromo, formStatus, hasVenues, formGuestBreakfast, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs]
+  )
 
   const hasAddons = estBreakfast > 0 || estRentals > 0 || estAddons > 0
 
@@ -432,179 +383,23 @@ export function WalkInBookingForm({
     e.preventDefault(); setFormError('')
     if (Object.values(fieldErrors).some(v => v)) { setTrySave(true); return }
     setIsSubmitting(true)
-
-    // 1. Run collision checks for all selected units on their respective dates
-    for (const [id, sel] of Object.entries(unitSelections)) {
-      const isRoom = sel.type === 'room'
-      if (isRoom) {
-        if (!syncEngine.isRoomAvailable(id, sel.checkIn, sel.checkOut, activeBookingsContext)) {
-          const roomNum = rooms.find(r => r.id === id)?.room_number || id
-          setFormError(`Room ${roomNum} is already booked for the selected dates.`)
-          setIsSubmitting(false); return
-        }
-      } else {
-        if (!syncEngine.isVenueRangeAvailable(id, sel.checkIn, sel.checkOut, activeBookingsContext)) {
-          const venueName = venues.find(v => v.id === id)?.name || id
-          setFormError(`Venue ${venueName} is already reserved for the selected dates.`)
-          setIsSubmitting(false); return
-        }
-      }
-    }
-
-    const cleanGuestName = formGuestName.trim() || (bookingType === 'partner' && formPartnerDealId ? `${partnerDeals.find(d => d.id === formPartnerDealId)?.name || 'Corporate'} Guest` : '')
-    if (formStatus === 'confirmed' && !cleanGuestName && bookingType === 'individual') {
-      setFormError('Guest name is required.'); return
-    }
-
-    const usePromoForBooking = formUsePromo
-
-    const createdBookings: Booking[] = []
-    const processedBookingIds = new Set<string>()
-
-    try {
-      // 2. Loop to create or update room bookings
-      let isFirstRoom = true
-      for (const roomId of Array.from(formRoomIds)) {
-        const sel = unitSelections[roomId]
-        const rentals = (bookingType === 'partner' || !isFirstRoom) ? undefined : {
-          bigTableCount: 0,
-          smallTableCount: 0,
-          chairCount: 0,
-          mineralWaterCount: 0,
-          extraFoamCount: formExtraFoam,
-          extraPillowCount: formExtraPillow,
-          extraBlanketCount: formExtraBlanket,
-          extraTowelCount: formExtraTowel
-        }
-        isFirstRoom = false
-
-        const deal = partnerDeals.find(d => d.id === formPartnerDealId)
-        const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
-        const contractedPrice = deal?.contracted_rates[roomId]
-
-        const existingBooking = editingBookings?.find(eb => eb.room_id === roomId)
-        if (existingBooking) processedBookingIds.add(existingBooking.id)
-
-        const b = await createManualBooking({
-          id: existingBooking?.id,
-          invoiceNumber: formInvoiceNumber || undefined,
-          roomId,
-          guestName: cleanGuestName,
-          guestEmail: formGuestEmail || (deal?.email || 'admin@daweez-booking.vercel.app'),
-          guestPhone: formGuestPhone || (deal?.contact_no || 'None'),
-          guestGender: formGuestGender || undefined,
-          guestNationality: formGuestNationality || undefined,
-          guestAddress: formGuestAddress || undefined,
-          birthdate: formBirthdate || undefined,
-          preparedBy: formPreparedBy || undefined,
-          appliedDiscount: discountType === 'none' ? undefined : { type: discountType, value: discountValue },
-          venueDayBlocks,
-          notes: formBlockNotes.trim() || undefined,
-          checkIn: sel.checkIn,
-          checkOut: sel.checkOut,
-          source: bookingType === 'partner' ? 'manual' : formSource,
-          status: bookingType === 'partner' ? 'confirmed' : formStatus,
-          equipmentRentals: rentals,
-          usePromo: usePromoForBooking,
-          companions: bookingType === 'partner' ? undefined : (formCompanions.length > 0 ? formCompanions : undefined),
-          partnerDealId: formPartnerDealId || undefined,
-          companyName: formCompanyName || undefined,
-          vehiclePlate: formVehiclePlate || undefined,
-          breakfastOrders: (formGuestBreakfast || formCompanions.some(c => c.breakfast)) ? undefined : ([] as BreakfastOrder[]),
-          breakfastIncluded: isBreakfastIncluded,
-          contractRateOverride: contractedPrice || undefined,
-          paymentMethod: formPaymentMethod || undefined,
-          paymentReference: formPaymentReference || undefined,
-          paymentStatus: editingBookings ? formPaymentStatus : undefined,
-          downpaymentPaid: editingBookings ? formDownpaymentPaid : undefined,
-          balanceDue: editingBookings && formBalanceDue !== null ? formBalanceDue : undefined,
-          securityDeposit: editingBookings && formSecurityDeposit !== null ? formSecurityDeposit : undefined
-        })
-        createdBookings.push(b)
-      }
-
-      // 3. Loop to create or update venue bookings
-      const isFirstVenue = true
-      for (const venueId of Array.from(formVenueIds)) {
-        const sel = unitSelections[venueId]
-        const rentals = (bookingType === 'partner' || !isFirstVenue) ? undefined : {
-          bigTableCount: 0,
-          smallTableCount: 0,
-          chairCount: formChairs,
-          mineralWaterCount: 0,
-          tableCount: formEventTable,
-          tentCount: formEventTent
-        }
-        const existingBooking = editingBookings?.find(eb => eb.venue_id === venueId)
-        if (existingBooking) processedBookingIds.add(existingBooking.id)
-
-        const deal = partnerDeals.find(d => d.id === formPartnerDealId)
-        const contractedPrice = deal?.contracted_rates[venueId]
-
-        const b = await createManualBooking({
-          id: existingBooking?.id,
-          invoiceNumber: formInvoiceNumber || undefined,
-          venueId,
-          guestName: cleanGuestName,
-          guestEmail: formGuestEmail || (deal?.email || 'admin@daweez-booking.vercel.app'),
-          guestPhone: formGuestPhone || (deal?.contact_no || 'None'),
-          guestGender: formGuestGender || undefined,
-          guestNationality: formGuestNationality || undefined,
-          guestAddress: formGuestAddress || undefined,
-          birthdate: formBirthdate || undefined,
-          preparedBy: formPreparedBy || undefined,
-          appliedDiscount: discountType === 'none' ? undefined : { type: discountType, value: discountValue },
-          venueDayBlocks,
-          notes: formBlockNotes.trim() || undefined,
-          checkIn: sel.checkIn,
-          checkOut: sel.checkOut,
-          source: bookingType === 'partner' ? 'manual' : formSource,
-          status: bookingType === 'partner' ? 'confirmed' : formStatus,
-          equipmentRentals: rentals,
-          usePromo: usePromoForBooking,
-          companions: bookingType === 'partner' ? undefined : (formCompanions.length > 0 ? formCompanions : undefined),
-          partnerDealId: formPartnerDealId || undefined,
-          companyName: formCompanyName || undefined,
-          vehiclePlate: formVehiclePlate || undefined,
-          contractRateOverride: contractedPrice || undefined,
-          paymentMethod: formPaymentMethod || undefined,
-          paymentReference: formPaymentReference || undefined,
-          venueExcessHours: formVenueExcessHours,
-          paymentStatus: editingBookings ? formPaymentStatus : undefined,
-          downpaymentPaid: editingBookings ? formDownpaymentPaid : undefined,
-          balanceDue: editingBookings && formBalanceDue !== null ? formBalanceDue : undefined,
-          securityDeposit: editingBookings && formSecurityDeposit !== null ? formSecurityDeposit : undefined
-        })
-        createdBookings.push(b)
-      }
-
-      // 4. Cancel any bookings from editingBookings that were NOT processed (i.e. removed by user)
-      if (editingBookings) {
-        for (const eb of editingBookings) {
-          if (!processedBookingIds.has(eb.id)) {
-            try {
-              await cancelBooking(eb.id)
-            } catch (err) {
-              console.error('Failed to cancel removed booking:', eb.id, err)
-            }
-          }
-        }
-      }
-
-      setCreatedBookingList(createdBookings)
-      setPayAmount(String(createdBookings.reduce((a, b) => a + (b.balance_due || 0), 0)))
-    } catch (err: unknown) {
-      // Rollback successfully created bookings on failure
-      for (const b of createdBookings) {
-        try {
-          await cancelBooking(b.id)
-        } catch (rollbackErr) {
-          console.error('Failed to rollback booking:', b.id, rollbackErr)
-        }
-      }
-      setFormError(err instanceof Error ? err.message : 'Booking failed — possible date overlap.')
-      setIsSubmitting(false)
-    }
+    const result = await submitBookingForm({
+      unitSelections, formRoomIds, formVenueIds, rooms, venues,
+      activeBookings: activeBookingsContext,
+      partnerDeals, formPartnerDealId, bookingType, formStatus, formGuestName,
+      formGuestEmail, formGuestPhone, formGuestGender, formGuestNationality, formGuestAddress,
+      formBirthdate, formPreparedBy, formCompanyName, formVehiclePlate, formInvoiceNumber,
+      formSource, formUsePromo, formGuestBreakfast, formCompanions,
+      formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
+      formChairs, formEventTable, formEventTent, formVenueExcessHours,
+      formBlockNotes, discountType, discountValue, venueDayBlocks, editingBookings,
+      formPaymentMethod, formPaymentReference, formPaymentStatus, formDownpaymentPaid,
+      formBalanceDue, formSecurityDeposit, createManualBooking, cancelBooking,
+    })
+    if (!result.ok) { setFormError(result.error); setIsSubmitting(false); return }
+    setCreatedBookingList(result.bookings)
+    setPayAmount(result.payAmount)
+    setIsSubmitting(false)
   }
 
   const createdDue = useMemo(() => createdBookingList.reduce((a, b) => a + (b.balance_due || 0), 0), [createdBookingList])

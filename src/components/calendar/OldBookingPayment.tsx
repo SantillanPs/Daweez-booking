@@ -21,15 +21,15 @@ interface OldBookingPaymentProps {
 // input, or mark the booking fully paid and the amount equals the total.
 export function OldBookingPayment({ payMode, setPayMode, payDate, setPayDate, deposit, setDeposit, usePromo, setUsePromo, fullyPaid, setFullyPaid, totalLabel, totalNum, balance, cleanNum }: OldBookingPaymentProps) {
   const baseField = 'w-full bg-page border text-main px-3 py-2 rounded-lg text-sm focus:outline-none'
-  const field = baseField + ' border-soft focus:border-sea-500'
+  const field = baseField + ' border-soft focus:border-gold-500'
   const label = 'text-[10px] text-muted font-bold block mb-1'
   const moneyField = field + ' mt-1 font-mono'
 
   return (
-    <div className="bg-sand-50 border border-sand-200 rounded-lg p-3 space-y-2">
+    <div className="bg-paper-50 border border-paper-200 rounded-lg p-3 space-y-2">
       <p className="text-[10px] font-bold uppercase tracking-wider text-muted">What was paid</p>
       <div className="flex items-center gap-2 pt-0.5 select-none">
-        <input type="checkbox" id="fully-paid" checked={fullyPaid} onChange={e => setFullyPaid(e.target.checked)} className="rounded text-sea-600 accent-sea-600 w-3.5 h-3.5 cursor-pointer" />
+        <input type="checkbox" id="fully-paid" checked={fullyPaid} onChange={e => setFullyPaid(e.target.checked)} className="rounded text-gold-600 accent-gold-600 w-3.5 h-3.5 cursor-pointer" />
         <label htmlFor="fully-paid" className="text-[11px] font-bold text-main cursor-pointer">Fully paid?</label>
         <span className="text-[10px] text-muted">Check to use the full price.</span>
       </div>
@@ -50,12 +50,12 @@ export function OldBookingPayment({ payMode, setPayMode, payDate, setPayDate, de
         </label>
       </div>
       <div className="flex items-center gap-2 pt-1 select-none">
-        <input type="checkbox" id="use-promo" checked={usePromo} onChange={e => setUsePromo(e.target.checked)} className="rounded text-sea-600 accent-sea-600 w-3.5 h-3.5 cursor-pointer" />
+        <input type="checkbox" id="use-promo" checked={usePromo} onChange={e => setUsePromo(e.target.checked)} className="rounded text-gold-600 accent-gold-600 w-3.5 h-3.5 cursor-pointer" />
         <label htmlFor="use-promo" className="text-[10px] font-bold text-muted cursor-pointer">Use Promo Price</label>
       </div>
-      <div className="flex items-center justify-between text-[12px] pt-1 border-t border-sand-200">
-        <span className={balance <= 0 ? 'text-emerald-600' : 'text-coral-600'}>{balance <= 0 ? 'Fully paid' : 'Total Due'}</span>
-        <span className={'font-bold ' + (balance <= 0 ? 'text-emerald-600' : 'text-coral-600')}>{fmtPeso(balance)}</span>
+      <div className="flex items-center justify-between text-[12px] pt-1 border-t border-paper-200">
+        <span className={balance <= 0 ? 'text-emerald-600' : 'text-danger-600'}>{balance <= 0 ? 'Fully paid' : 'Total Due'}</span>
+        <span className={'font-bold ' + (balance <= 0 ? 'text-emerald-600' : 'text-danger-600')}>{fmtPeso(balance)}</span>
       </div>
     </div>
   )

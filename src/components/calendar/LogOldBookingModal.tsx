@@ -87,8 +87,8 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
   const removeCompanion = (i: number) => setCompanions(prev => prev.filter((_, j) => j !== i))
 
   const baseField = 'w-full bg-page border text-main px-3 py-2 rounded-lg text-sm focus:outline-none'
-  const field = baseField + ' border-soft focus:border-sea-500'
-  const fieldErr = baseField + ' border-coral-400 focus:border-coral-500'
+  const field = baseField + ' border-soft focus:border-gold-500'
+  const fieldErr = baseField + ' border-danger-400 focus:border-danger-500'
   const label = 'text-[10px] text-muted font-bold block mb-1'
 
   const handleSave = async () => {
@@ -153,7 +153,7 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
   const modal = (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50">
       <div className="w-full max-w-lg bg-card rounded-xl shadow-softLg overflow-hidden flex flex-col max-h-[92vh]">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-soft bg-sea-50 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-soft bg-gold-100 shrink-0">
           <div>
             <h3 className="font-display font-bold text-main">Log old booking</h3>
             <p className="text-[11px] text-muted">Copy a past paper booking into the system.</p>
@@ -178,7 +178,7 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
             <div className="grid grid-cols-2 gap-3">
               <label className={label}>Guest name *
                 <input value={guestName} onChange={e => setGuestName(e.target.value.toUpperCase())} onBlur={markTouched('guestName')} placeholder="Full name" className={(isInvalid('guestName') ? fieldErr : field) + ' mt-1'} />
-                {showErr('guestName') && <p className="text-[10px] text-coral-600 mt-1">{showErr('guestName')}</p>}
+                {showErr('guestName') && <p className="text-[10px] text-danger-600 mt-1">{showErr('guestName')}</p>}
               </label>
               <label className={label}>Contact no.
                 <input value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="09xx xxx xxxx" className={field + ' mt-1'} />
@@ -194,7 +194,7 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
             {/* Companions */}
             <div className="space-y-1.5">
               <p className="text-[10px] font-bold text-muted uppercase tracking-wider flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-sea-600" /> Companions
+                <Users className="w-3.5 h-3.5 text-gold-600" /> Companions
               </p>
               {companions.map((c, i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -202,12 +202,12 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
                     <input value={c.name} onChange={e => updateCompanion(i, { name: e.target.value.toUpperCase() })} placeholder="Name" className={field} />
                     <input value={c.nationality || ''} onChange={e => updateCompanion(i, { nationality: e.target.value.toUpperCase() })} placeholder="Nationality" className={field} />
                   </div>
-                  <button type="button" onClick={() => removeCompanion(i)} className="text-muted hover:text-coral-600 p-1.5 cursor-pointer" aria-label="Remove companion">
+                  <button type="button" onClick={() => removeCompanion(i)} className="text-muted hover:text-danger-600 p-1.5 cursor-pointer" aria-label="Remove companion">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               ))}
-              <button type="button" onClick={addCompanion} className="text-[11px] font-bold text-sea-700 bg-sea-50 border border-sea-200 hover:bg-sea-100 rounded-md px-2.5 py-1 transition-colors cursor-pointer inline-flex items-center gap-1">
+              <button type="button" onClick={addCompanion} className="text-[11px] font-bold text-gold-700 bg-gold-100 border border-gold-200 hover:bg-gold-100 rounded-md px-2.5 py-1 transition-colors cursor-pointer inline-flex items-center gap-1">
                 <Plus className="w-3.5 h-3.5" /> Add companion
               </button>
             </div>
@@ -220,7 +220,7 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
                 unitSelections={unitSelections}
                 onChange={next => setUnitSelections(next)}
               />
-              {showErr('units') && <p className="text-[10px] text-coral-600 mt-1">{showErr('units')}</p>}
+              {showErr('units') && <p className="text-[10px] text-danger-600 mt-1">{showErr('units')}</p>}
             </div>
 
             {/* Receptionist on duty */}
@@ -248,11 +248,11 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
               cleanNum={cleanNum}
             />
 
-            {error && <div className="p-2.5 bg-coral-50 border border-coral-200 text-coral-600 text-xs rounded-lg">{error}</div>}
+            {error && <div className="p-2.5 bg-danger-50 border border-danger-200 text-danger-600 text-xs rounded-lg">{error}</div>}
 
             <div className="flex gap-2 pt-1">
-              <button type="button" onClick={onClose} className="flex-1 border border-soft text-main text-sm font-semibold py-2.5 rounded-lg hover:bg-sand-50 transition-colors cursor-pointer">Cancel</button>
-              <button type="button" onClick={handleSave} disabled={isSaving} className="flex-1 bg-sea-600 hover:bg-sea-700 disabled:bg-sea-200 text-white text-sm font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm">
+              <button type="button" onClick={onClose} className="flex-1 border border-soft text-main text-sm font-semibold py-2.5 rounded-lg hover:bg-paper-50 transition-colors cursor-pointer">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={isSaving} className="flex-1 bg-gold-400 hover:bg-gold-600 disabled:bg-gold-200 text-ink-900 text-sm font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm">
                 {isSaving ? 'Saving…' : 'Log booking'}
               </button>
             </div>

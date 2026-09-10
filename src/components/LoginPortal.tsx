@@ -78,7 +78,7 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
           <button
             type="submit"
             disabled={isSubmitting || !passcode}
-            className="w-full py-2.5 bg-brand-primary hover:bg-[#a27e43] disabled:bg-softbg disabled:text-muted text-white font-medium text-sm rounded-lg transition-all cursor-pointer"
+            className="w-full py-2.5 bg-brand-primary hover:bg-[#a27e43] disabled:bg-softbg disabled:text-muted text-ink-900 font-medium text-sm rounded-lg transition-all cursor-pointer"
           >
             {isSubmitting ? 'Verifying...' : 'Login'}
           </button>

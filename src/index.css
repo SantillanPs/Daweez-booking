@@ -2,34 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+  /* Daweez brand tokens — charcoal + gold, sampled from the logo
+     (charcoal #1C1C1C, gold #D0AB60). Teal is retired. */
   :root {
-    --bg-page: #FAF6EE;
+    /* Light workspace (calendar, tables, money lists) */
+    --bg-page: #F8F5EF;
     --bg-card: #FFFFFF;
-    --bg-softbg: #F3EEDF;
-    --border-soft: rgba(180, 158, 120, 0.42);
-    --text-main: #2A3733;
-    --text-muted: #75837C;
-    --brand-primary: #2E7D78;
-    --brand-text: #1F5F5B;
-    --brand-border: rgba(46, 125, 120, 0.28);
-    --brand-bg: #EFF7F5;
-    --brand-ring: #57A49C;
-    --body-bg: #F0E9DA;
-  }
+    --bg-softbg: #F1ECE1;
+    --border-soft: rgba(28, 28, 28, 0.14);
+    --text-main: #1F1F1F;
+    --text-muted: #6E6E6E;
 
-  .dark {
-    --bg-page: #1A1C17;
-    --bg-card: #232620;
-    --bg-softbg: #1D201B;
-    --border-soft: rgba(210, 196, 160, 0.14);
-    --text-main: #EAE4D6;
-    --text-muted: #9BA49C;
-    --brand-primary: #57A49C;
-    --brand-text: #8CC4BD;
-    --brand-border: rgba(87, 164, 156, 0.32);
-    --brand-bg: #14211F;
-    --brand-ring: #57A49C;
-    --body-bg: #12140F;
+    /* Brand gold. #D0AB60 is the logo gold; #6F5420 is the "deep gold" used
+       for gold TEXT on light surfaces (6.5:1) — the logo gold only reaches
+       2.2:1 on white and must never be used as text there. */
+    --brand-primary: #D0AB60;
+    --brand-text: #6F5420;
+    --brand-border: rgba(208, 171, 96, 0.45);
+    --brand-bg: #F7EFDD;
+    --brand-ring: #1C1C1C; /* high-contrast focus on light surfaces */
+    --body-bg: #EFEBE3;
+
+    /* Dark brand chrome (header / sidebar / login / public portal) */
+    --chrome-bg: #1C1C1C;
+    --chrome-raised: #242424;
+    --chrome-border: #2E2E2E;
+    --chrome-text: #F5F2EC;
+    --chrome-muted: #9A9A9A;
+    --chrome-accent: #D0AB60;
   }
 
   body {
@@ -43,10 +43,10 @@
 
   /* Soft card */
   .card-soft {
-    @apply bg-card border border-soft rounded-xl shadow-[0_4px_24px_rgba(42,55,51,0.06)] ;
+    @apply bg-card border border-soft rounded-xl shadow-[0_4px_24px_rgba(28,28,28,0.06)] ;
   }
   .card-soft:hover {
-    @apply shadow-[0_8px_32px_rgba(42,55,51,0.08)];
+    @apply shadow-[0_8px_32px_rgba(28,28,28,0.08)];
   }
 
   /* Accessible focus */
@@ -86,9 +86,9 @@
 .animate-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(46, 125, 120, 0.05) 25%,
-    rgba(46, 125, 120, 0.22) 50%,
-    rgba(46, 125, 120, 0.05) 75%
+    rgba(208, 171, 96, 0.12) 25%,
+    rgba(208, 171, 96, 0.35) 50%,
+    rgba(208, 171, 96, 0.12) 75%
   );
   background-size: 200% 100%;
   animation: gold-shimmer 2.5s infinite linear;

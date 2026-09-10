@@ -5,61 +5,63 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Sun & Sea palette: sand paper, sea-teal actions, sun gold accents,
-        // coral for "needs attention".
-        sea: {
-          50: "#F0F7F6",
-          100: "#DDEFEC",
-          200: "#BFE2DE",
-          300: "#8FCAC4",
-          400: "#57A49C",
-          500: "#3B8A82",
-          600: "#2E7D78",
-          700: "#25635F",
-          800: "#1D4F4C",
-          900: "#163B39"
+        // ── Daweez brand: charcoal + gold ────────────────────────────────
+        // Sampled from the logo: charcoal #1C1C1C (pure neutral), gold
+        // #D0AB60 (one flat gold). Teal is retired entirely.
+        ink: {
+          50: "#FAFAFA",
+          100: "#F0F0F0",
+          200: "#E5E5E5",
+          300: "#D4D4D4",
+          400: "#B5B5B5",
+          500: "#8A8A8A",
+          600: "#3D3D3D",
+          700: "#2E2E2E",
+          800: "#242424",
+          900: "#1C1C1C",
+          950: "#141414"
         },
-        sand: {
-          50: "#FDFBF6",
-          100: "#FAF6EE",
-          200: "#F2ECDD",
-          300: "#E6DCC4",
-          400: "#D5C59E",
-          500: "#C2AC7C"
+        gold: {
+          100: "#F5EAD1",
+          200: "#E3C68C",
+          300: "#EAD4A4",
+          400: "#D0AB60", // BRAND — the logo gold
+          500: "#C1994A",
+          600: "#A9812F",
+          700: "#8A6A2F",
+          800: "#6F5420", // deep gold — safe as TEXT on light surfaces
+          900: "#4E3A16"
         },
-        sun: {
-          100: "#FBF3E0",
-          200: "#F6E3B8",
-          300: "#EED08F",
-          400: "#DEAE55",
-          500: "#C9922F",
-          600: "#A97720"
+        paper: {
+          0: "#FFFFFF",
+          50: "#F8F5EF",
+          100: "#F1ECE1",
+          200: "#E6DFD0",
+          300: "#D9D0BC",
+          400: "#C4B9A0",
+          500: "#A99C82"
         },
-        coral: {
-          50: "#FDF0EC",
-          100: "#FBE3DA",
-          200: "#F5C4B4",
-          300: "#EE9E88",
-          400: "#E47F68",
-          500: "#D9604A",
-          600: "#BC4A36"
+        // Dark brand chrome (header / sidebar / login / public portal)
+        chrome: {
+          bg: "#1C1C1C",
+          raised: "#242424",
+          border: "#2E2E2E",
+          text: "#F5F2EC",
+          muted: "#9A9A9A",
+          accent: "#D0AB60"
         },
-        plum: {
-          950: "#0c040b",
-          900: "#120710",
-          800: "#190916",
-          700: "#281124",
-          600: "#3e1c39",
-          500: "#5e3b58",
-          400: "#c9a7c3"
+        // Semantic "needs attention" ramp. Named `danger` (not `error`) so it
+        // cannot collide with daisyUI's own theme `error` colour.
+        danger: {
+          50: "#FBEDEA",
+          100: "#F7DCD6",
+          200: "#EFBEB4",
+          300: "#E59C8D",
+          400: "#D46A56",
+          500: "#BE3A2B",
+          600: "#A32F22"
         },
-        champagne: {
-          500: "#b89251",
-          400: "#d9af62",
-          300: "#e6c280",
-          200: "#e8c68a",
-          100: "#f7e6c4"
-        },
+        // ── Semantic tokens (driven by src/index.css) ────────────────────
         brand: {
           primary: "var(--brand-primary)",
           text: "var(--brand-text)",
@@ -91,9 +93,9 @@ export default {
         sm: "8px"
       },
       boxShadow: {
-        soft: "0 4px 24px rgba(42,55,51,0.07)",
-        softLg: "0 8px 32px rgba(42,55,51,0.10)",
-        sheet: "-8px 0 32px rgba(42,55,51,0.12)"
+        soft: "0 4px 24px rgba(28,28,28,0.07)",
+        softLg: "0 8px 32px rgba(28,28,28,0.10)",
+        sheet: "-8px 0 32px rgba(28,28,28,0.12)"
       }
     }
   },
@@ -101,27 +103,29 @@ export default {
   daisyui: {
     themes: [
       {
-        sunsea: {
-          primary: "#2E7D78",
-          "primary-content": "#ffffff",
-          secondary: "#C9922F",
-          "secondary-content": "#ffffff",
-          accent: "#DEAE55",
-          "accent-content": "#ffffff",
-          neutral: "#3D3A33",
-          "neutral-content": "#ffffff",
-          "base-100": "#ffffff",
-          "base-200": "#FAF6EE",
-          "base-300": "#F2ECDD",
-          "base-content": "#2E2A24",
-          info: "#3B8A82",
-          "info-content": "#ffffff",
+        daweez: {
+          // Gold fill + CHARCOAL label: white on #D0AB60 is only 2.2:1 and
+          // would be unreadable. Charcoal on gold is 7.9:1.
+          primary: "#D0AB60",
+          "primary-content": "#1C1C1C",
+          secondary: "#1C1C1C",
+          "secondary-content": "#F5F2EC",
+          accent: "#A9812F",
+          "accent-content": "#FFFFFF",
+          neutral: "#2E2E2E",
+          "neutral-content": "#F5F2EC",
+          "base-100": "#FFFFFF",
+          "base-200": "#F8F5EF",
+          "base-300": "#E6DFD0",
+          "base-content": "#1F1F1F",
+          info: "#57606A",
+          "info-content": "#FFFFFF",
           success: "#059669",
-          "success-content": "#ffffff",
-          warning: "#DEAE55",
-          "warning-content": "#ffffff",
-          error: "#D9604A",
-          "error-content": "#ffffff",
+          "success-content": "#FFFFFF",
+          warning: "#B45309",
+          "warning-content": "#FFFFFF",
+          error: "#BE3A2B",
+          "error-content": "#FFFFFF",
           "--rounded-box": "1rem",
           "--rounded-btn": "0.75rem",
           "--rounded-badge": "0.5rem",

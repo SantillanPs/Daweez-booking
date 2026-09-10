@@ -88,11 +88,11 @@ export function SettingsTab() {
       <div className="w-full md:w-56 shrink-0">
         <nav className="flex md:flex-col gap-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
           <button onClick={() => setActiveTab('channels')}
-            className={'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' + (activeTab === 'channels' ? 'bg-brand-primary text-white shadow-sm' : 'text-muted hover:bg-softbg')}>
+            className={'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' + (activeTab === 'channels' ? 'bg-brand-primary text-ink-900 shadow-sm' : 'text-muted hover:bg-softbg')}>
             <RefreshCw className="w-4 h-4" /> OTA Channels
           </button>
           <button onClick={() => setActiveTab('rates')}
-            className={'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' + (activeTab === 'rates' ? 'bg-brand-primary text-white shadow-sm' : 'text-muted hover:bg-softbg')}>
+            className={'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' + (activeTab === 'rates' ? 'bg-brand-primary text-ink-900 shadow-sm' : 'text-muted hover:bg-softbg')}>
             <BadgeDollarSign className="w-4 h-4" /> Rates
           </button>
         </nav>
@@ -107,7 +107,7 @@ export function SettingsTab() {
                 <h3 className="text-sm font-semibold text-main">iCal Feed Subscriptions</h3>
                 <p className="text-xs text-muted mt-1">Manage import and export calendar links for your rooms.</p>
               </div>
-              <button onClick={handleSaveFeeds} className="bg-brand-primary hover:bg-brand-text text-white text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm">Save Feed URLs</button>
+              <button onClick={handleSaveFeeds} className="bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm">Save Feed URLs</button>
             </div>
             <div className="divide-y divide-soft">
               {rooms.map(room => {
@@ -178,7 +178,7 @@ export function SettingsTab() {
                 <h3 className="text-sm font-semibold text-main">Shared Rates</h3>
                 <p className="text-xs text-muted mt-1">Edit the everyday prices the booking form uses — no code needed. These apply to new bookings.</p>
               </div>
-              <button onClick={handleSaveRates} className="bg-brand-primary hover:bg-brand-text text-white text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm">Save Rates</button>
+              <button onClick={handleSaveRates} className="bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm">Save Rates</button>
             </div>
             <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
               <MoneyField label="Late / early per hour (rooms)" value={rates.lateEarlyRatePesos} onChange={v => setRates(s => ({ ...s, lateEarlyRatePesos: v }))} />
@@ -219,13 +219,13 @@ export function SettingsTab() {
                       <NumInput value={m.price} onChange={v => setRates(s => ({ ...s, breakfastMenu: s.breakfastMenu.map((mm, idx) => idx === i ? { ...mm, price: v } : mm) }))}
                         className="w-24 bg-card border border-soft text-main px-2 py-2 rounded-md text-sm font-mono focus:outline-none focus:border-brand-primary text-right" />
                     </div>
-                    <button type="button" onClick={() => setRates(s => ({ ...s, breakfastMenu: s.breakfastMenu.filter((_, idx) => idx !== i) }))} className="text-muted hover:text-coral-600 p-1.5 cursor-pointer" aria-label="Remove item">
+                    <button type="button" onClick={() => setRates(s => ({ ...s, breakfastMenu: s.breakfastMenu.filter((_, idx) => idx !== i) }))} className="text-muted hover:text-danger-600 p-1.5 cursor-pointer" aria-label="Remove item">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
                 <button type="button" onClick={() => setRates(s => ({ ...s, breakfastMenu: [...s.breakfastMenu, { name: '', price: 0 }] }))}
-                  className="text-[11px] font-bold text-sea-700 bg-sea-50 border border-sea-200 hover:bg-sea-100 rounded-md px-2.5 py-1.5 transition-colors cursor-pointer inline-flex items-center gap-1">
+                  className="text-[11px] font-bold text-gold-700 bg-gold-100 border border-gold-200 hover:bg-gold-100 rounded-md px-2.5 py-1.5 transition-colors cursor-pointer inline-flex items-center gap-1">
                   <Plus className="w-3.5 h-3.5" /> Add item
                 </button>
               </div>

@@ -113,7 +113,7 @@ export const TimelineCell = React.memo(
                 {' · '}
                 <span className={
                   !booking.payment_status || booking.payment_status === 'unpaid'
-                    ? 'text-coral-500 font-semibold'
+                    ? 'text-danger-500 font-semibold'
                     : booking.payment_status === 'downpayment' ? 'text-amber-600 font-semibold' : 'text-emerald-600 font-semibold'
                 }>
                   {getPaymentLabel(booking)}
@@ -135,7 +135,7 @@ export const TimelineCell = React.memo(
     if (isCheckIn) {
       return (
         <td onClick={() => onCellClick(id, type, date)} className="p-0.5 h-8 relative cursor-cell align-middle">
-          <div className="w-full h-full rounded-md bg-sea-600 text-white flex items-center justify-center text-[9px] font-bold uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-150">
+          <div className="w-full h-full rounded-md bg-gold-400 text-ink-900 flex items-center justify-center text-[9px] font-bold uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-150">
             In
           </div>
         </td>
@@ -146,9 +146,9 @@ export const TimelineCell = React.memo(
       return (
         <td
           onClick={() => onCellClick(id, type, date)}
-          className="p-0 h-8 cursor-cell relative align-middle transition-colors bg-gradient-to-r from-sea-100/70 to-sea-50/60 hover:from-sea-100 hover:to-sea-50"
+          className="p-0 h-8 cursor-cell relative align-middle transition-colors bg-gradient-to-r from-gold-100/70 to-gold-100/60 hover:from-gold-100 hover:to-gold-100"
         >
-          <div className="absolute inset-0 border-y border-dashed border-sea-400/50" />
+          <div className="absolute inset-0 border-y border-dashed border-gold-400/50" />
         </td>
       )
     }
@@ -158,7 +158,7 @@ export const TimelineCell = React.memo(
         data-day={isoStr}
         onClick={() => onCellClick(id, type, date)}
         title={checkoutBooking ? checkoutBooking.guest_name + ' checks out this day' : undefined}
-        className={'relative border-r border-soft p-0 h-8 cursor-cell transition-colors ' + (isToday ? 'bg-sea-50/50' : isWeekend ? 'bg-sand-50/60' : '') + ' hover:bg-sea-100/70'}
+        className={'relative border-r border-soft p-0 h-8 cursor-cell transition-colors ' + (isToday ? 'bg-gold-100/50' : isWeekend ? 'bg-paper-50/60' : '') + ' hover:bg-gold-100/70'}
       >
         {checkoutBooking && (
           <span className="absolute top-0.5 right-0.5 pointer-events-none text-[7px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 border border-rose-100 rounded-sm px-1 py-px leading-none">

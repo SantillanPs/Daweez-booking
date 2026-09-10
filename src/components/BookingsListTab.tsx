@@ -115,7 +115,7 @@ export function BookingsListTab() {
                 onClick={() => setMoneyFilter(f)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
                   moneyFilter === f
-                    ? 'bg-brand-primary text-white'
+                    ? 'bg-brand-primary text-ink-900'
                     : 'bg-page text-muted border border-soft hover:bg-brand-bg'
                 }`}
               >

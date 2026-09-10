@@ -170,7 +170,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
         <div className="py-3 border-t border-soft">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-sand-100 border-y-2 border-slate-600 text-left text-[10px] uppercase tracking-wider text-slate-800">
+              <tr className="bg-paper-100 border-y-2 border-slate-600 text-left text-[10px] uppercase tracking-wider text-slate-800">
                 <th className="py-1.5 px-2 font-bold">Description</th>
                 <th className="py-1.5 px-2 font-bold text-center w-16">Qty/Night</th>
                 <th className="py-1.5 px-2 font-bold text-center w-16">Unit</th>

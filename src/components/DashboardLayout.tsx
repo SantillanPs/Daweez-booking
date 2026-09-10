@@ -114,8 +114,8 @@ export function DashboardLayout() {
             <div className="hidden md:flex items-center gap-1 p-1 bg-page/70 border border-soft rounded-xl">
               {TABS.map(t => (
                 <Link key={t.id} to={t.to}
-                  className="px-3.5 py-1.5 text-sm font-medium rounded-lg text-muted hover:text-sea-700 hover:bg-card transition-colors"
-                  activeProps={{ className: '!bg-sea-600 !text-white shadow-sm' }}>
+                  className="px-3.5 py-1.5 text-sm font-medium rounded-lg text-muted hover:text-gold-700 hover:bg-card transition-colors"
+                  activeProps={{ className: '!bg-gold-400 !text-ink-900 shadow-sm' }}>
                   {t.label}
                 </Link>
               ))}
@@ -129,11 +129,11 @@ export function DashboardLayout() {
                 title={promoActive ? 'Promo ON — guests pay promo price. Click to end promo.' : 'Promo OFF — guests pay regular price. Click to start promo.'}
                 className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] font-bold rounded-xl px-3 py-1.5 border transition-colors cursor-pointer ${
                   promoActive
-                    ? 'bg-sea-600 text-white border-sea-600 shadow-sm'
+                    ? 'bg-gold-400 text-ink-900 border-gold-600 shadow-sm'
                     : 'bg-card text-muted border-soft hover:bg-softbg hover:text-main'
                 }`}
               >
-                <Tag className={`w-3.5 h-3.5 ${promoActive ? 'text-sun-400' : ''}`} />
+                <Tag className={`w-3.5 h-3.5 ${promoActive ? 'text-gold-400' : ''}`} />
                 <span className="hidden xl:inline">{promoActive ? 'Promo ON' : 'Promo OFF'}</span>
                 <span className="xl:hidden">{promoActive ? 'ON' : 'OFF'}</span>
               </button>

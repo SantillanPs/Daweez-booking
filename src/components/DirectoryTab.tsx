@@ -350,7 +350,7 @@ export function DirectoryTab() {
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-lg bg-brand-primary hover:bg-brand-text text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                className="px-5 py-2 rounded-lg bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
               >
                 <Save className="w-4 h-4" />
                 Save Partner
@@ -363,7 +363,7 @@ export function DirectoryTab() {
             <p className="text-xs text-muted font-medium">{partnerDeals.length} partner{partnerDeals.length !== 1 ? 's' : ''} added</p>
             <button
               onClick={() => setIsAdding(true)}
-              className="bg-brand-primary hover:bg-brand-text text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              className="bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
               Add Partner

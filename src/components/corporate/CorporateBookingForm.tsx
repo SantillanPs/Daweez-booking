@@ -227,7 +227,7 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
 
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={onClose} className="text-xs text-muted font-bold px-4 py-3 rounded-md border border-soft bg-card hover:bg-page transition-all cursor-pointer">Cancel</button>
-                <button type="submit" disabled={isSubmitting || !formPartnerDealId || Object.keys(unitSelections).length === 0} className="flex-1 bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-bold py-3 rounded-md transition-all cursor-pointer shadow-sm">
+                <button type="submit" disabled={isSubmitting || !formPartnerDealId || Object.keys(unitSelections).length === 0} className="flex-1 bg-brand-primary hover:bg-gold-500 disabled:bg-softbg disabled:text-muted text-ink-900 text-xs font-bold py-3 rounded-md transition-all cursor-pointer shadow-sm">
                   {isSubmitting ? 'Booking...' : 'Confirm Corporate Booking'}
                 </button>
               </div>

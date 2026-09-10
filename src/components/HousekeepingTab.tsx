@@ -74,10 +74,10 @@ export function HousekeepingTab() {
     <div className="flex flex-col md:flex-row gap-6 h-full">
       <div className="w-full md:w-56 shrink-0">
         <nav className="flex md:flex-col gap-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
-          <button onClick={() => setTab('inventory')} className={'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' + (tab === 'inventory' ? 'bg-brand-primary text-white shadow-sm' : 'text-muted hover:bg-softbg')}>
+          <button onClick={() => setTab('inventory')} className={'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' + (tab === 'inventory' ? 'bg-brand-primary text-ink-900 shadow-sm' : 'text-muted hover:bg-softbg')}>
             <Boxes className="w-4 h-4" /> Hotel Inventory
           </button>
-          <button onClick={() => setTab('cleaning')} className={'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' + (tab === 'cleaning' ? 'bg-brand-primary text-white shadow-sm' : 'text-muted hover:bg-softbg')}>
+          <button onClick={() => setTab('cleaning')} className={'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' + (tab === 'cleaning' ? 'bg-brand-primary text-ink-900 shadow-sm' : 'text-muted hover:bg-softbg')}>
             <ClipboardCheck className="w-4 h-4" /> Cleaning Checklist
           </button>
         </nav>
@@ -92,13 +92,13 @@ export function HousekeepingTab() {
             </div>
             <div className="p-4 border-b border-soft flex flex-wrap items-end gap-2">
               <input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="New item name"
-                className="flex-1 min-w-[160px] bg-page border border-soft text-main px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-sea-500" />
-              <select value={newItemCategory} onChange={e => setNewItemCategory(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-sea-500">
+                className="flex-1 min-w-[160px] bg-page border border-soft text-main px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500" />
+              <select value={newItemCategory} onChange={e => setNewItemCategory(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500">
                 <option value="room">Room</option><option value="bathroom">Bathroom</option><option value="common">Common</option>
               </select>
               <NumInput value={newItemQty} onChange={setNewItemQty} placeholder="Qty" allowDecimal={false}
-                className="w-20 bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-sea-500" />
-              <button onClick={addItem} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-sea-600 hover:bg-sea-700 text-white text-sm font-semibold transition-colors cursor-pointer"><Plus className="w-4 h-4" /> Add</button>
+                className="w-20 bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500" />
+              <button onClick={addItem} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-semibold transition-colors cursor-pointer"><Plus className="w-4 h-4" /> Add</button>
             </div>
             <div className="divide-y divide-soft">
               {inventory.length === 0 && <div className="px-5 py-6 text-sm text-muted">No inventory items yet.</div>}
@@ -127,17 +127,17 @@ export function HousekeepingTab() {
               <p className="text-xs text-muted mt-1">Log what was cleaned, who cleaned it, and who checked it.</p>
             </div>
             <div className="p-4 border-b border-soft flex flex-wrap items-end gap-2">
-              <select value={taskItem} onChange={e => setTaskItem(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-sea-500 min-w-[140px]">
+              <select value={taskItem} onChange={e => setTaskItem(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 min-w-[140px]">
                 {CLEANING_ITEMS.map(it => <option key={it} value={it}>{it}</option>)}
               </select>
-              <select value={taskRoom} onChange={e => setTaskRoom(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-sea-500">
+              <select value={taskRoom} onChange={e => setTaskRoom(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500">
                 <option value="">Room…</option>
                 {rooms.map(r => <option key={r.id} value={r.id}>Room {r.room_number}</option>)}
               </select>
-              <input type="date" value={taskDate} onChange={e => setTaskDate(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-sea-500" />
-              <input value={taskCleanedBy} onChange={e => setTaskCleanedBy(e.target.value)} placeholder="Cleaned by" className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-sea-500 w-32" />
-              <input value={taskCheckedBy} onChange={e => setTaskCheckedBy(e.target.value)} placeholder="Checked by" className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-sea-500 w-32" />
-              <button onClick={addTask} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-sea-600 hover:bg-sea-700 text-white text-sm font-semibold transition-colors cursor-pointer"><Plus className="w-4 h-4" /> Add</button>
+              <input type="date" value={taskDate} onChange={e => setTaskDate(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500" />
+              <input value={taskCleanedBy} onChange={e => setTaskCleanedBy(e.target.value)} placeholder="Cleaned by" className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 w-32" />
+              <input value={taskCheckedBy} onChange={e => setTaskCheckedBy(e.target.value)} placeholder="Checked by" className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 w-32" />
+              <button onClick={addTask} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-semibold transition-colors cursor-pointer"><Plus className="w-4 h-4" /> Add</button>
             </div>
             <div className="divide-y divide-soft">
               {cleaning.length === 0 && <div className="px-5 py-6 text-sm text-muted">No cleaning entries yet.</div>}
@@ -157,10 +157,10 @@ export function HousekeepingTab() {
                     </div>
                     <div className="flex gap-1.5 mt-2">
                       <input value={t.cleaned_by || ''} onChange={e => updateTask(t.id, { cleaned_by: e.target.value, status: e.target.value ? 'done' : t.status })} placeholder="Cleaned by"
-                        className="flex-1 bg-page border border-soft text-main px-2 py-1 rounded text-xs focus:outline-none focus:border-sea-500" />
+                        className="flex-1 bg-page border border-soft text-main px-2 py-1 rounded text-xs focus:outline-none focus:border-gold-500" />
                       <input value={t.checked_by || ''} onChange={e => updateTask(t.id, { checked_by: e.target.value, status: e.target.value ? 'checked' : t.status })} placeholder="Checked by"
-                        className="flex-1 bg-page border border-soft text-main px-2 py-1 rounded text-xs focus:outline-none focus:border-sea-500" />
-                      <span className={'text-[10px] font-bold uppercase px-2 py-1 rounded ' + (t.status === 'checked' ? 'bg-emerald-100 text-emerald-700' : t.status === 'done' ? 'bg-sea-100 text-sea-700' : 'bg-amber-100 text-amber-700')}>{t.status}</span>
+                        className="flex-1 bg-page border border-soft text-main px-2 py-1 rounded text-xs focus:outline-none focus:border-gold-500" />
+                      <span className={'text-[10px] font-bold uppercase px-2 py-1 rounded ' + (t.status === 'checked' ? 'bg-emerald-100 text-emerald-700' : t.status === 'done' ? 'bg-gold-100 text-gold-700' : 'bg-amber-100 text-amber-700')}>{t.status}</span>
                     </div>
                   </div>
                 )

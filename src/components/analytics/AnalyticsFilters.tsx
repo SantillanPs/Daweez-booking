@@ -40,7 +40,7 @@ export const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
               onClick={() => setTimeframe(t)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider cursor-pointer transition-all shrink-0 ${
                 timeframe === t 
-                  ? 'bg-brand-primary text-white' 
+                  ? 'bg-brand-primary text-ink-900' 
                   : 'bg-page hover:bg-softbg text-muted'
               }`}
             >

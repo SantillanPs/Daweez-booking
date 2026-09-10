@@ -89,8 +89,8 @@ export function ExtendStayModal({
   }
 
   const baseField = 'w-full bg-page border text-main px-2.5 py-2 rounded-lg text-xs font-mono outline-none'
-  const field = baseField + ' border-sea-300 focus:bg-card focus:border-sea-500'
-  const fieldErr = baseField + ' border-coral-400 focus:bg-card focus:border-coral-500'
+  const field = baseField + ' border-gold-300 focus:bg-card focus:border-gold-500'
+  const fieldErr = baseField + ' border-danger-400 focus:bg-card focus:border-danger-500'
 
   const handleQuickPayment = async (b: Booking, status: PaymentStatusOption) => {
     const updated = { ...b, payment_status: status, balance_due: status === 'paid' ? 0 : b.balance_due }
@@ -243,14 +243,14 @@ export function ExtendStayModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
       <div className="w-full max-w-md bg-card rounded-xl shadow-softLg overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-soft bg-sea-50">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-soft bg-gold-100">
           <div className="flex items-center gap-2.5">
             <h3 className="font-display font-bold text-main">Reservation</h3>
             {statusBadge}
           </div>
           <div className="flex items-center gap-3">
             {onEditBooking && (
-              <button onClick={onEditBooking} className="text-muted hover:text-sea-700 transition-colors cursor-pointer" title="Edit booking">
+              <button onClick={onEditBooking} className="text-muted hover:text-gold-700 transition-colors cursor-pointer" title="Edit booking">
                 <Edit3 className="w-4 h-4" />
               </button>
             )}
@@ -291,7 +291,7 @@ export function ExtendStayModal({
             {booking.companions && booking.companions.length > 0 && (
               <div className="border-t border-soft/70 pt-2.5">
                 <p className="text-[10px] font-bold text-muted uppercase tracking-wider flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-sea-600" /> {booking.companions.length + 1} guests staying
+                  <Users className="w-3.5 h-3.5 text-gold-600" /> {booking.companions.length + 1} guests staying
                 </p>
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                   {booking.companions.map((comp, idx) => (
@@ -305,7 +305,7 @@ export function ExtendStayModal({
           </div>
 
           {/* Money */}
-          <div className="bg-sand-50 border border-sand-200 rounded-xl p-4 space-y-2">
+          <div className="bg-paper-50 border border-paper-200 rounded-xl p-4 space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Payment</p>
               <div className="flex items-center gap-2">
@@ -323,7 +323,7 @@ export function ExtendStayModal({
             </div>
             <div className="flex items-end justify-between border-t border-soft pt-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-muted">Amount to pay</span>
-              <span className={'font-display text-[22px] font-extrabold leading-none ' + (due > 0 ? 'text-coral-600' : 'text-sea-700')}>{fmtPeso(due)}</span>
+              <span className={'font-display text-[22px] font-extrabold leading-none ' + (due > 0 ? 'text-danger-600' : 'text-gold-700')}>{fmtPeso(due)}</span>
             </div>
             {(booking.payment_method || payRef) && (
               <p className="text-[11px] text-muted pt-1.5 border-t border-soft/60">
@@ -338,7 +338,7 @@ export function ExtendStayModal({
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Payment receipts</p>
               <button type="button" onClick={() => setAddReceiptOpen(v => !v)}
-                className="text-[11px] font-bold text-sea-700 bg-sea-50 border border-sea-200 hover:bg-sea-100 rounded-md px-2.5 py-1 transition-colors cursor-pointer">
+                className="text-[11px] font-bold text-gold-700 bg-gold-100 border border-gold-200 hover:bg-gold-100 rounded-md px-2.5 py-1 transition-colors cursor-pointer">
                 {addReceiptOpen ? 'Cancel' : '+ Record a payment'}
               </button>
             </div>
@@ -346,14 +346,14 @@ export function ExtendStayModal({
               <div className="p-3 bg-page border border-soft rounded-lg space-y-2">
                 <label className="text-[10px] text-muted font-bold block">Amount (PHP)</label>
                 <NumInput value={receiptAmount} onChange={setReceiptAmount} placeholder="0"
-                  className="w-full bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm font-mono focus:outline-none focus:border-sea-500" />
+                  className="w-full bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm font-mono focus:outline-none focus:border-gold-500" />
                 <div className="grid grid-cols-2 gap-2">
-                  <select value={receiptMethod} onChange={e => setReceiptMethod(e.target.value)} className="bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm focus:outline-none focus:border-sea-500">
+                  <select value={receiptMethod} onChange={e => setReceiptMethod(e.target.value)} className="bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm focus:outline-none focus:border-gold-500">
                     <option>Cash</option><option>GCash</option><option>Bank transfer</option><option>Other</option>
                   </select>
-                  <input value={receiptRef} onChange={e => setReceiptRef(e.target.value)} placeholder="Reference (optional)" className="bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm focus:outline-none focus:border-sea-500" />
+                  <input value={receiptRef} onChange={e => setReceiptRef(e.target.value)} placeholder="Reference (optional)" className="bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm focus:outline-none focus:border-gold-500" />
                 </div>
-                <button type="button" onClick={handleAddReceipt} className="w-full bg-sea-600 hover:bg-sea-700 text-white text-xs font-bold py-2 rounded-lg transition-colors cursor-pointer">Save receipt</button>
+                <button type="button" onClick={handleAddReceipt} className="w-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-xs font-bold py-2 rounded-lg transition-colors cursor-pointer">Save receipt</button>
               </div>
             )}
             {localBooking.payment_records && localBooking.payment_records.length > 0 ? (
@@ -365,7 +365,7 @@ export function ExtendStayModal({
                       <span className="text-muted shrink-0">{r.method}</span>
                       <span className="text-muted text-[10px] truncate">{r.paid_at ? new Date(r.paid_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</span>
                     </div>
-                    <button type="button" onClick={() => { setReceiptFor(r); setShowReceipt(true) }} className="text-sea-600 hover:text-sea-700 p-1 cursor-pointer shrink-0" aria-label="Print receipt">
+                    <button type="button" onClick={() => { setReceiptFor(r); setShowReceipt(true) }} className="text-gold-600 hover:text-gold-700 p-1 cursor-pointer shrink-0" aria-label="Print receipt">
                       <Printer className="w-3.5 h-3.5" />
                     </button>
                   </li>
@@ -407,7 +407,7 @@ export function ExtendStayModal({
           {/* Extend stay */}
           <form onSubmit={handleExtendSubmit} className="border-t border-soft pt-4 space-y-3">
             {extendError && (
-              <div className="p-2.5 bg-coral-50 border border-coral-200 text-coral-600 text-xs flex items-center gap-2 rounded-lg">
+              <div className="p-2.5 bg-danger-50 border border-danger-200 text-danger-600 text-xs flex items-center gap-2 rounded-lg">
                 <AlertCircle className="w-4 h-4 shrink-0" /><span>{extendError}</span>
               </div>
             )}
@@ -419,23 +419,23 @@ export function ExtendStayModal({
                   className="w-full bg-softbg border border-soft text-muted px-2.5 py-2 rounded-lg text-xs font-mono outline-none" />
               </div>
               <div>
-                <label className="text-[10px] text-sea-700 font-bold block mb-1">New check-out <span className="text-coral-600">*</span></label>
+                <label className="text-[10px] text-gold-700 font-bold block mb-1">New check-out <span className="text-danger-600">*</span></label>
                 <input type="date" min={booking.check_in} value={extendCheckoutDate}
                   onChange={e => setExtendCheckoutDate(e.target.value)}
                   onBlur={markTouched('extendCheckoutDate')}
                   className={isInvalid('extendCheckoutDate') ? fieldErr : field} />
-                {showErr('extendCheckoutDate') && <p className="text-[10px] text-coral-600 mt-1">{showErr('extendCheckoutDate')}</p>}
+                {showErr('extendCheckoutDate') && <p className="text-[10px] text-danger-600 mt-1">{showErr('extendCheckoutDate')}</p>}
               </div>
             </div>
             {extraNights > 0 && (
-              <div className="p-3 bg-sea-50 border border-sea-200 rounded-lg text-[12px] space-y-1">
+              <div className="p-3 bg-gold-100 border border-gold-200 rounded-lg text-[12px] space-y-1">
                 <div className="flex justify-between text-muted">
                   <span>Extra nights</span>
                   <span className="font-mono text-main font-semibold">+{extraNights}</span>
                 </div>
-                <div className="flex justify-between font-bold border-t border-sea-200/70 pt-1">
+                <div className="flex justify-between font-bold border-t border-gold-200/70 pt-1">
                   <span className="text-muted">New amount to pay</span>
-                  <span className={'font-mono ' + (newBalanceDue > 0 ? 'text-coral-600' : 'text-emerald-600')}>{fmtPeso(newBalanceDue)}</span>
+                  <span className={'font-mono ' + (newBalanceDue > 0 ? 'text-danger-600' : 'text-emerald-600')}>{fmtPeso(newBalanceDue)}</span>
                 </div>
               </div>
             )}
@@ -443,9 +443,9 @@ export function ExtendStayModal({
               <button
                 type="button"
                 onClick={() => setShowPrintModal(true)}
-                className="flex-1 bg-card hover:bg-sea-50 text-main border border-soft text-xs font-bold py-2.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="flex-1 bg-card hover:bg-gold-100 text-main border border-soft text-xs font-bold py-2.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
-                <Printer className="w-3.5 h-3.5 text-sea-600" />
+                <Printer className="w-3.5 h-3.5 text-gold-600" />
                 Print invoice
               </button>
               {onCancelBooking && (
@@ -457,7 +457,7 @@ export function ExtendStayModal({
                       onClose()
                     }
                   }}
-                  className="flex-1 bg-coral-50 hover:bg-coral-100 text-coral-600 border border-coral-200 text-xs font-medium py-2.5 rounded-lg transition-colors cursor-pointer"
+                  className="flex-1 bg-danger-50 hover:bg-danger-100 text-danger-600 border border-danger-200 text-xs font-medium py-2.5 rounded-lg transition-colors cursor-pointer"
                 >
                   Cancel booking
                 </button>
@@ -476,7 +476,7 @@ export function ExtendStayModal({
               <button
                 type="submit"
                 disabled={extendCheckoutDate === booking.check_out}
-                className="w-full bg-sea-600 hover:bg-sea-700 disabled:bg-softbg disabled:text-muted text-white text-sm font-bold py-3 rounded-lg transition-colors cursor-pointer shadow-sm"
+                className="w-full bg-gold-400 hover:bg-gold-600 disabled:bg-softbg disabled:text-muted text-ink-900 text-sm font-bold py-3 rounded-lg transition-colors cursor-pointer shadow-sm"
               >
                 Save extension
               </button>

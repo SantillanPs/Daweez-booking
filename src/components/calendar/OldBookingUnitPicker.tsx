@@ -25,10 +25,10 @@ export function OldBookingUnitPicker({ rooms, venues, unitSelections, onChange }
   const firstSel = entries[0]?.[1]
 
   const baseField = 'bg-page border text-main px-2 py-1.5 rounded-lg text-xs focus:outline-none'
-  const field = baseField + ' border-soft focus:border-sea-500'
+  const field = baseField + ' border-soft focus:border-gold-500'
   const label = 'text-[10px] text-muted font-bold block mb-1'
-  const pickBtn = 'px-3 py-1.5 rounded-lg border border-soft text-main text-xs font-bold hover:bg-sand-50 transition-colors cursor-pointer'
-  const pickBtnActive = 'px-3 py-1.5 rounded-lg bg-sea-600 text-white text-xs font-bold transition-colors cursor-pointer'
+  const pickBtn = 'px-3 py-1.5 rounded-lg border border-soft text-main text-xs font-bold hover:bg-paper-50 transition-colors cursor-pointer'
+  const pickBtnActive = 'px-3 py-1.5 rounded-lg bg-gold-400 text-ink-900 text-xs font-bold transition-colors cursor-pointer'
 
   const unitName = (id: string, type: 'room' | 'venue') => {
     if (type === 'room') {
@@ -72,7 +72,7 @@ export function OldBookingUnitPicker({ rooms, venues, unitSelections, onChange }
               <span className="text-xs font-semibold text-main flex-1 min-w-[120px]">{unitName(id, sel.type)}</span>
               <input type="date" value={sel.checkIn} onChange={e => setUnit(id, { checkIn: e.target.value })} className={field + ' w-32'} />
               <input type="date" value={sel.checkOut} onChange={e => setUnit(id, { checkOut: e.target.value })} className={field + ' w-32'} />
-              <button type="button" onClick={() => removeUnit(id)} className="text-muted hover:text-coral-600 p-1 cursor-pointer" aria-label="Remove unit">
+              <button type="button" onClick={() => removeUnit(id)} className="text-muted hover:text-danger-600 p-1 cursor-pointer" aria-label="Remove unit">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -92,7 +92,7 @@ export function OldBookingUnitPicker({ rooms, venues, unitSelections, onChange }
             <option key={u.id} value={u.id}>{(addType === 'room' && 'room_number' in u) ? `Room ${u.room_number} · ${u.name}` : u.name}</option>
           ))}
         </select>
-        <button type="button" onClick={addSelected} className="text-[11px] font-bold text-sea-700 bg-sea-50 border border-sea-200 hover:bg-sea-100 rounded-md px-2 py-1 transition-colors cursor-pointer inline-flex items-center gap-1">
+        <button type="button" onClick={addSelected} className="text-[11px] font-bold text-gold-700 bg-gold-100 border border-gold-200 hover:bg-gold-100 rounded-md px-2 py-1 transition-colors cursor-pointer inline-flex items-center gap-1">
           <Plus className="w-3.5 h-3.5" /> Add
         </button>
       </div>

@@ -91,7 +91,7 @@ export function RoomRatesEditor({ rooms, updateRoomRate }: RoomRatesEditorProps)
                   </div>
                   <div className="flex items-center gap-3">
                     <button type="button" onClick={() => handleSave(room)} disabled={savingId === room.id}
-                      className="inline-flex items-center gap-1.5 bg-brand-primary hover:bg-brand-text text-white text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-60">
+                      className="inline-flex items-center gap-1.5 bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-60">
                       {savingId === room.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                       Save {room.name} rate
                     </button>

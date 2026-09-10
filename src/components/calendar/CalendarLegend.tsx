@@ -13,17 +13,17 @@ export function CalendarLegend() {
           <LegendSwatch className="bg-indigo-100 border-indigo-200" label="Facebook" />
           <LegendSwatch className="bg-orange-100 border-orange-200" label="Google Maps" />
           <LegendSwatch className="bg-violet-100 border-violet-200" label="Website" />
-          <LegendSwatch className="bg-sea-100 border-sea-200" label="Walk-in" />
-          <LegendSwatch className="bg-sun-100 border-sun-200" label="Event venue" />
+          <LegendSwatch className="bg-gold-100 border-gold-200" label="Walk-in" />
+          <LegendSwatch className="bg-gold-100 border-gold-200" label="Event venue" />
           <LegendSwatch className="bg-amber-50 border-amber-200 border-dashed" label="On hold" />
-          <LegendSwatch className="bg-sand-200 border-sand-300 line-through" label="Blocked" />
+          <LegendSwatch className="bg-paper-200 border-paper-300 line-through" label="Blocked" />
         </div>
       </div>
 
       <div>
         <p className="font-bold uppercase tracking-wider text-[9px] text-muted/80 mb-1.5">Payment</p>
         <div className="flex flex-col gap-1.5">
-          <DotSwatch className="bg-coral-500" label="owes" />
+          <DotSwatch className="bg-danger-500" label="owes" />
           <DotSwatch className="bg-amber-400" label="deposit only" />
           <DotSwatch className="bg-emerald-500" label="paid" />
         </div>
@@ -37,7 +37,7 @@ export function CalendarLegend() {
         </span>
       </div>
 
-      <p className="text-sea-700 font-semibold mt-auto pt-2 border-t border-soft/70">Tip: click an empty day to book</p>
+      <p className="text-gold-700 font-semibold mt-auto pt-2 border-t border-soft/70">Tip: click an empty day to book</p>
     </aside>
   )
 }

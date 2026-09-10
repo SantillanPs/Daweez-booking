@@ -38,10 +38,10 @@ export function BreakfastRecorder({ menu, records, stayDays, onChange }: Breakfa
     <div className="border-t border-soft pt-4 space-y-2.5">
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
-          <Utensils className="w-3.5 h-3.5 text-sea-600" /> Breakfast (during the stay)
+          <Utensils className="w-3.5 h-3.5 text-gold-600" /> Breakfast (during the stay)
         </p>
         <button type="button" onClick={() => setOpen(v => !v)}
-          className="text-[11px] font-bold text-sea-700 bg-sea-50 border border-sea-200 hover:bg-sea-100 rounded-md px-2.5 py-1 transition-colors cursor-pointer">
+          className="text-[11px] font-bold text-gold-700 bg-gold-100 border border-gold-200 hover:bg-gold-100 rounded-md px-2.5 py-1 transition-colors cursor-pointer">
           {open ? 'Cancel' : '+ Add breakfast'}
         </button>
       </div>
@@ -52,14 +52,14 @@ export function BreakfastRecorder({ menu, records, stayDays, onChange }: Breakfa
             <label className="text-[10px] text-muted font-bold block">
               Day
               <select value={date} onChange={e => setDate(e.target.value)}
-                className="mt-1 w-full bg-card border border-soft text-main px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-sea-500">
+                className="mt-1 w-full bg-card border border-soft text-main px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-gold-500">
                 {stayDays.map(d => <option key={d} value={d}>{fmtDay(d)}</option>)}
               </select>
             </label>
             <label className="text-[10px] text-muted font-bold block">
               Meal
               <select value={item} onChange={e => setItem(e.target.value)}
-                className="mt-1 w-full bg-card border border-soft text-main px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-sea-500">
+                className="mt-1 w-full bg-card border border-soft text-main px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-gold-500">
                 {menu.map(m => <option key={m.name} value={m.name}>{m.name} · {fmtPeso(m.price)}</option>)}
               </select>
             </label>
@@ -68,10 +68,10 @@ export function BreakfastRecorder({ menu, records, stayDays, onChange }: Breakfa
             <label className="text-[10px] text-muted font-bold block flex-1">
               Qty
               <NumInput value={qty} onChange={setQty} min={1} allowDecimal={false}
-                className="mt-1 w-full bg-card border border-soft text-main px-2 py-1.5 rounded-lg text-xs font-mono focus:outline-none focus:border-sea-500" />
+                className="mt-1 w-full bg-card border border-soft text-main px-2 py-1.5 rounded-lg text-xs font-mono focus:outline-none focus:border-gold-500" />
             </label>
             <button type="button" onClick={add}
-              className="bg-sea-600 hover:bg-sea-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors cursor-pointer">
+              className="bg-gold-400 hover:bg-gold-600 text-ink-900 text-xs font-bold px-3 py-2 rounded-lg transition-colors cursor-pointer">
               Save
             </button>
           </div>
@@ -87,7 +87,7 @@ export function BreakfastRecorder({ menu, records, stayDays, onChange }: Breakfa
                 <span className="text-muted truncate">{r.item} × {r.quantity}</span>
                 <span className="text-emerald-600 shrink-0">{fmtPeso((r.price || 0) * (r.quantity || 0))}</span>
               </div>
-              <button type="button" onClick={() => remove(r.id)} className="text-muted hover:text-coral-600 p-1 cursor-pointer shrink-0" aria-label="Remove">
+              <button type="button" onClick={() => remove(r.id)} className="text-muted hover:text-danger-600 p-1 cursor-pointer shrink-0" aria-label="Remove">
                 <X className="w-3.5 h-3.5" />
               </button>
             </li>
