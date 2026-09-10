@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Booking, Room, Venue } from '../types/booking'
 import { Expense } from '../types/expense'
 import { calculatePricing } from '../utils/syncEngine'
+import { getRateConfig } from '../utils/rateConfig'
 
 // Helper: check if a date is within start and end strings (YYYY-MM-DD)
 function isDateBetween(dStr: string, startStr: string, endStr: string): boolean {
@@ -103,9 +104,9 @@ export function useAnalyticsCalculations({
     let totalExpenses = 0
 
     // Individual room revenues
-    const roomRevenues: Record<string, { id: string, name: string, base: number, breakfast: number, rentals: number, total: number }> = {}
+    const roomRevenues: Record<string, { id: string, room_number: number, name: string, base: number, breakfast: number, rentals: number, total: number }> = {}
     rooms.forEach(r => {
-      roomRevenues[r.id] = { id: r.id, name: r.name, base: 0, breakfast: 0, rentals: 0, total: 0 }
+      roomRevenues[r.id] = { id: r.id, room_number: r.room_number, name: r.name, base: 0, breakfast: 0, rentals: 0, total: 0 }
     })
 
     // For room occupancy: count booked room-nights
@@ -292,38 +293,67 @@ export function useAnalyticsCalculations({
       ? Math.round(totalPensionRevenue / totalAvailableRoomNights) 
       : 0
 
+    const parseISO = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d) }
+    const fmtMdy = (iso: string) => parseISO(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const periodLabel = timeframe === 'monthly'
+      ? parseISO(dateRange.start).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      : timeframe === 'yearly'
+        ? dateRange.start.slice(0, 4)
+        : `${fmtMdy(dateRange.start)} – ${fmtMdy(dateRange.end)}, ${dateRange.end.slice(0, 4)}`
+
+    const cfg = getRateConfig()
+    const pensionExtras = cfg.accommodationExtras
+    const vacationExtras = cfg.accommodationExtras
+    const gardenExtras = cfg.venueExtras
+    const gazeboExtras = cfg.venueExtras
+    const totalExtras = pensionExtras + vacationExtras + gardenExtras + gazeboExtras
+    const reportPension = Math.round(totalPensionBase + totalPensionBreakfast + pensionExtras)
+    const reportVacation = Math.round(totalVacationHouse + vacationExtras)
+    const reportGarden = Math.round(totalGardenArea + gardenExtras)
+    const reportGazebo = Math.round(totalGazebo + gazeboExtras)
+    const reportRevenue = reportPension + reportVacation + reportGarden + reportGazebo
+
     return {
-      totalRevenue: Math.round(totalRevenue),
+      periodLabel,
+      totalRevenue: reportRevenue,
+      pensionExtras,
+      vacationExtras,
+      gardenExtras,
+      gazeboExtras,
+      totalExtras,
       totalExpenses: Math.round(totalExpenses),
-      netProfit: Math.round(totalRevenue - totalExpenses),
-      totalPension: Math.round(totalPensionRevenue),
+      netProfit: reportRevenue - Math.round(totalExpenses),
+      totalPension: reportPension,
       totalPensionBase: Math.round(totalPensionBase),
       totalPensionBreakfast: Math.round(totalPensionBreakfast),
-      totalPensionRentals: Math.round(totalPensionRentals),
+      totalPensionRentals: pensionExtras,
       totalVacationHouse: Math.round(totalVacationHouse),
+      vacationTotal: reportVacation,
       totalGardenArea: Math.round(totalGardenArea),
+      gardenTotal: reportGarden,
       totalGazebo: Math.round(totalGazebo),
+      gazeboTotal: reportGazebo,
       totalAddonsRentals: Math.round(totalAddonsRentals),
       roomOccupancyRate,
       adr,
       revpar,
       trendSlots,
-      roomRevenues: Object.values(roomRevenues).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+      roomRevenues: Object.values(roomRevenues).sort((a, b) => a.room_number - b.room_number)
     }
   }, [isLoading, bookings, venues, rooms, expenses, dateRange, includePending, timeframe])
 
   // Custom donut calculations
   const donutSegments = useMemo(() => {
     if (!calculations) return []
-    const { totalPension, totalVacationHouse, totalGardenArea, totalGazebo } = calculations
-    const sum = totalPension + totalVacationHouse + totalGardenArea + totalGazebo
+    const { totalPension, vacationTotal, gardenTotal, gazeboTotal } = calculations
+    const sum = totalPension + vacationTotal + gardenTotal + gazeboTotal
     if (sum === 0) return []
 
     const segments = [
       { name: 'Pension (Rooms 1-10)', value: totalPension, color: '#B89251' },
-      { name: 'Vacation House', value: totalVacationHouse, color: '#4A90E2' },
-      { name: 'Garden Area', value: totalGardenArea, color: '#2ECC71' },
-      { name: 'Gazebo', value: totalGazebo, color: '#F39C12' }
+      { name: 'Vacation House', value: vacationTotal, color: '#4A90E2' },
+      { name: 'Garden Area', value: gardenTotal, color: '#2ECC71' },
+      { name: 'Gazebo', value: gazeboTotal, color: '#F39C12' }
     ]
 
     let exactCumulative = 0

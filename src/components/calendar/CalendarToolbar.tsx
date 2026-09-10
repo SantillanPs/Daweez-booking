@@ -12,10 +12,11 @@ interface CalendarToolbarProps {
   onNewCorporate: () => void
   onLogOldBooking: () => void
   newBookingDisabled: boolean
+  logOldDisabled: boolean
 }
 
 // Calendar top bar: month title, month navigation, and the primary action.
-export function CalendarToolbar({ monthHeader, datePickerValue, onPrevMonth, onNextMonth, onMonthChange, onThisMonth, onNewBooking, onNewCorporate, onLogOldBooking, newBookingDisabled }: CalendarToolbarProps) {
+export function CalendarToolbar({ monthHeader, datePickerValue, onPrevMonth, onNextMonth, onMonthChange, onThisMonth, onNewBooking, onNewCorporate, onLogOldBooking, newBookingDisabled, logOldDisabled }: CalendarToolbarProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-card px-3 py-2 rounded-xl border border-soft flex-shrink-0 shadow-soft">
       <h2 className="font-display font-bold text-lg text-main tracking-tight flex items-center gap-2">
@@ -55,7 +56,7 @@ export function CalendarToolbar({ monthHeader, datePickerValue, onPrevMonth, onN
           </button>
         </div>
 
-        <button onClick={onLogOldBooking} title="Log old booking" aria-label="Log old booking" className="flex items-center justify-center w-9 h-9 rounded-lg bg-card border border-soft text-muted hover:text-main hover:bg-page transition-colors cursor-pointer">
+        <button onClick={onLogOldBooking} disabled={logOldDisabled} title={logOldDisabled ? 'Pick a date range on the calendar first' : 'Log old booking'} aria-label="Log old booking" className="flex items-center justify-center w-9 h-9 rounded-lg bg-card border border-soft text-muted hover:text-main hover:bg-page disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer">
           <FilePlus className="w-4 h-4 text-sea-600" />
         </button>
       </div>

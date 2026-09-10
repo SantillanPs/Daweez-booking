@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Room, Venue, Booking, BookingSource } from '../../types/booking'
 import { dateToString } from '../../utils/helpers'
 
@@ -12,6 +12,7 @@ interface GuestDetailsFormProps {
   setFormSource: (val: BookingSource) => void
   formStatus: 'confirmed' | 'blocked'
   setFormStatus: (val: 'confirmed' | 'blocked') => void
+  revealErrors: boolean
 }
 
 export const GuestDetailsForm = React.memo(
@@ -24,6 +25,7 @@ export const GuestDetailsForm = React.memo(
     setFormSource,
     formStatus,
     setFormStatus,
+    revealErrors,
   }: GuestDetailsFormProps) => {
 
     const formRoomIds = useMemo(() => {
@@ -42,6 +44,10 @@ export const GuestDetailsForm = React.memo(
       return s
     }, [unitSelections])
 
+    const [dateBlur, setDateBlur] = useState<Record<string, boolean>>({})
+    const dateCls = 'w-[124px] bg-white border border-soft text-main px-2 py-1 rounded text-[10px] font-mono focus:outline-none focus:border-brand-primary cursor-pointer'
+    const dateErrCls = 'w-[124px] bg-white border border-rose-400 text-main px-2 py-1 rounded text-[10px] font-mono focus:outline-none focus:border-rose-500 cursor-pointer'
+
     const handleToggle = (id: string, type: 'room' | 'venue') => {
       const updated = { ...unitSelections }
       if (id in updated) {
@@ -58,7 +64,7 @@ export const GuestDetailsForm = React.memo(
     return (
       <div className="bg-card p-4 rounded-md border border-soft/60 shadow-sm space-y-4 font-sans animate-fade-in">
         <h4 className="text-[9px] font-bold text-brand-text tracking-widest uppercase border-b border-soft pb-1.5">
-          1. Rooms &amp; Dates
+          Room Information
         </h4>
         
         {/* Rooms Selection */}
@@ -103,34 +109,47 @@ export const GuestDetailsForm = React.memo(
                   if (sel.type === 'room') return `Rm ${rooms.find(r => r.id === id)?.room_number || id}`
                   return venues.find(v => v.id === id)?.name || id
                 })
+                const cIn = group.checkIn
+                const cOut = group.checkOut
+                const inErr = !cIn ? 'Check-in date is required.' : ''
+                const outErr = !cOut ? 'Check-out date is required.' : (cIn && cOut <= cIn ? 'Check-out must be after check-in.' : '')
+                const inKey = key + '__in'
+                const outKey = key + '__out'
+                const inShow = (dateBlur[inKey] || revealErrors) ? inErr : ''
+                const outShow = (dateBlur[outKey] || revealErrors) ? outErr : ''
                 return (
-                  <div key={key} className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-main w-[72px] shrink-0 truncate leading-none">{names.join(', ')}</span>
-                    <input
-                      type="date"
-                      value={group.checkIn}
-                      onChange={e => {
-                        const newVal = e.target.value
-                        setUnitSelections({
-                          ...unitSelections,
-                          ...Object.fromEntries(group.ids.map(id => [id, { ...unitSelections[id], checkIn: newVal }]))
-                        })
-                      }}
-                      className="w-[124px] bg-white border border-soft text-main px-2 py-1 rounded text-[10px] font-mono focus:outline-none focus:border-brand-primary cursor-pointer"
-                    />
-                    <span className="text-brand-primary text-[10px] font-bold leading-none">→</span>
-                    <input
-                      type="date"
-                      value={group.checkOut}
-                      onChange={e => {
-                        const newVal = e.target.value
-                        setUnitSelections({
-                          ...unitSelections,
-                          ...Object.fromEntries(group.ids.map(id => [id, { ...unitSelections[id], checkOut: newVal }]))
-                        })
-                      }}
-                      className="w-[124px] bg-white border border-soft text-main px-2 py-1 rounded text-[10px] font-mono focus:outline-none focus:border-brand-primary cursor-pointer"
-                    />
+                  <div key={key} className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-main w-[72px] shrink-0 truncate leading-none">{names.join(', ')}</span>
+                      <input
+                        type="date"
+                        value={cIn}
+                        onChange={e => {
+                          const newVal = e.target.value
+                          setUnitSelections({
+                            ...unitSelections,
+                            ...Object.fromEntries(group.ids.map(id => [id, { ...unitSelections[id], checkIn: newVal }]))
+                          })
+                        }}
+                        onBlur={() => setDateBlur(b => ({ ...b, [inKey]: true }))}
+                        className={inShow ? dateErrCls : dateCls}
+                      />
+                      <span className="text-brand-primary text-[10px] font-bold leading-none">→</span>
+                      <input
+                        type="date"
+                        value={cOut}
+                        onChange={e => {
+                          const newVal = e.target.value
+                          setUnitSelections({
+                            ...unitSelections,
+                            ...Object.fromEntries(group.ids.map(id => [id, { ...unitSelections[id], checkOut: newVal }]))
+                          })
+                        }}
+                        onBlur={() => setDateBlur(b => ({ ...b, [outKey]: true }))}
+                        className={outShow ? dateErrCls : dateCls}
+                      />
+                    </div>
+                    {(inShow || outShow) && <p className="text-[9px] text-rose-600">{inShow || outShow}</p>}
                   </div>
                 )
               })
@@ -223,6 +242,7 @@ export const GuestDetailsForm = React.memo(
       prevProps.formStatus === nextProps.formStatus &&
       prevProps.rooms === nextProps.rooms &&
       prevProps.venues === nextProps.venues &&
+      prevProps.revealErrors === nextProps.revealErrors &&
       prevProps.bookings === nextProps.bookings
     )
   }

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Coffee } from 'lucide-react'
+import { PackagePlus } from 'lucide-react'
 
 interface AmenitiesFormProps {
   hasRooms: boolean
@@ -23,10 +23,6 @@ interface AmenitiesFormProps {
   setFormEventTent: (val: number) => void
   formVenueExcessHours: number
   setFormVenueExcessHours: (val: number) => void
-  formBreakfastEnabled: boolean
-  setFormBreakfastEnabled: (val: boolean) => void
-  formBreakfastGuests: number
-  setFormBreakfastGuests: (val: number) => void
 }
 
 export const AmenitiesForm = React.memo(
@@ -52,10 +48,6 @@ export const AmenitiesForm = React.memo(
     setFormEventTent,
     formVenueExcessHours,
     setFormVenueExcessHours,
-    formBreakfastEnabled,
-    setFormBreakfastEnabled,
-    formBreakfastGuests,
-    setFormBreakfastGuests
   }: AmenitiesFormProps) => {
     // Counter Component
     const Counter = ({ value, onChange, min = 0 }: { value: number; onChange: (v: number) => void; min?: number }) => (
@@ -63,15 +55,15 @@ export const AmenitiesForm = React.memo(
         <button 
           type="button" 
           onClick={() => onChange(Math.max(min, value - 1))}
-          className="w-6 h-6 rounded bg-softbg hover:bg-slate-200 text-muted flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
+          className="btn btn-ghost btn-xs w-6 h-6 rounded"
         >
           −
         </button>
-        <span className="font-mono w-6 text-center text-xs font-semibold text-main">{value}</span>
+        <span className="font-mono w-6 text-center text-sm font-semibold text-base-content">{value}</span>
         <button 
           type="button" 
           onClick={() => onChange(value + 1)}
-          className="w-6 h-6 rounded bg-softbg hover:bg-slate-200 text-muted flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
+          className="btn btn-ghost btn-xs w-6 h-6 rounded"
         >
           +
         </button>
@@ -79,68 +71,31 @@ export const AmenitiesForm = React.memo(
     )
 
     return (
-      <div className="bg-card p-4 rounded-md border border-soft/60 shadow-sm space-y-4 animate-in fade-in duration-200 font-sans">
-        <h4 className="text-[9px] font-bold text-brand-text tracking-widest uppercase border-b border-soft pb-1.5 flex justify-between items-center">
-          <span>3. Extras</span>
-          {hasAddons && (
-            <span className="bg-brand-bg border border-brand-border text-brand-text text-[9px] font-bold px-2 py-0.5 rounded animate-fade-in normal-case tracking-normal">
-              +₱{(estRentals + estAddons).toLocaleString()}
-            </span>
-          )}
+      <div className="bg-base-100 p-3 rounded-xl border border-base-300 shadow-sm space-y-2.5 animate-in fade-in duration-200 font-sans">
+        <h4 className="flex items-center justify-between border-b border-base-300 pb-1.5">
+          <span className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center shrink-0"><PackagePlus className="w-3 h-3" /></span>
+            <span className="text-[10px] font-bold text-base-content tracking-widest uppercase">Add-ons</span>
+          </span>
+          <span className="text-xs font-mono font-bold text-success">+₱{(estRentals + estAddons).toLocaleString()}</span>
         </h4>
 
-        {/* Breakfast Toggle — only for room bookings */}
         {hasRooms && (
           <div className="space-y-3">
-            <span className="text-[10px] text-muted font-bold uppercase tracking-wider block">
-              Breakfast
-            </span>
-            <div className="flex items-center justify-between bg-brand-bg px-3 py-2 rounded border border-brand-border/65">
-              <div className="flex items-center gap-2">
-                <Coffee className="w-4 h-4 text-brand-primary" />
-                <div>
-                  <span className="text-xs font-semibold text-main">Include Breakfast</span>
-                  <span className="text-[10px] text-muted ml-1.5 font-mono">₱150/guest/night</span>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formBreakfastEnabled}
-                  onChange={e => setFormBreakfastEnabled(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-ring rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-primary"></div>
-              </label>
-            </div>
-
-            {formBreakfastEnabled && (
-              <div className="flex items-center justify-between bg-page px-3 py-2 rounded border border-soft ml-2">
-                <span className="text-[11px] text-muted font-semibold">Guests for Breakfast</span>
-                <Counter value={formBreakfastGuests} onChange={setFormBreakfastGuests} min={1} />
-              </div>
-            )}
-
-            <div className="border-t border-dashed border-soft/50 mt-3" />
-          </div>
-        )}
-
-        {hasRooms && (
-          <div className="space-y-3">
-            <span className="text-[10px] text-muted font-bold uppercase tracking-wider block">
+            <span className="text-xs text-base-content/60 font-bold uppercase tracking-wider block">
               Room Extras (per night)
             </span>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: 'Extra Foam', value: formExtraFoam, set: setFormExtraFoam, price: 200 },
-                { label: 'Extra Pillow', value: formExtraPillow, set: setFormExtraPillow, price: 50 },
-                { label: 'Extra Blanket', value: formExtraBlanket, set: setFormExtraBlanket, price: 50 },
-                { label: 'Extra Towel', value: formExtraTowel, set: setFormExtraTowel, price: 50 },
+                { label: 'Foam', value: formExtraFoam, set: setFormExtraFoam, price: 200 },
+                { label: 'Pillow', value: formExtraPillow, set: setFormExtraPillow, price: 50 },
+                { label: 'Blanket', value: formExtraBlanket, set: setFormExtraBlanket, price: 50 },
+                { label: 'Towel', value: formExtraTowel, set: setFormExtraTowel, price: 50 },
               ].map(item => (
-                <div key={item.label} className="flex items-center justify-between bg-brand-bg px-3 py-1.5 rounded border border-brand-border/65">
+                <div key={item.label} className="flex items-center justify-between bg-base-200/60 px-3 py-1.5 rounded-lg border border-base-300">
                   <div>
-                    <span className="text-xs font-semibold text-main">{item.label}</span>
-                    <span className="text-[10px] text-muted ml-1.5 font-mono">₱{item.price}/night</span>
+                    <span className="text-sm font-semibold text-base-content">{item.label}</span>
+                    <span className="text-sm text-success font-bold font-mono ml-1.5">₱{item.price}/night</span>
                   </div>
                   <Counter value={item.value} onChange={item.set} />
                 </div>
@@ -150,11 +105,11 @@ export const AmenitiesForm = React.memo(
         )}
 
         {/* Divider if both exist */}
-        {hasRooms && hasVenues && <div className="border-t border-soft my-4" />}
+        {hasRooms && hasVenues && <div className="border-t border-base-300 my-4" />}
 
         {hasVenues && (
           <div className="space-y-3">
-            <span className="text-[10px] text-muted font-bold uppercase tracking-wider block">
+            <span className="text-xs text-base-content/60 font-bold uppercase tracking-wider block">
               Venue Rentals (one-time fee)
             </span>
             <div className="grid grid-cols-2 gap-2">
@@ -164,10 +119,10 @@ export const AmenitiesForm = React.memo(
                 { label: 'Chairs', value: formChairs, set: setFormChairs, price: 15 },
                 { label: 'Excess Hours', value: formVenueExcessHours, set: setFormVenueExcessHours, price: 500 },
               ].map(item => (
-                <div key={item.label} className="flex items-center justify-between bg-page/60 px-3 py-1.5 rounded border border-soft">
+                <div key={item.label} className="flex items-center justify-between bg-base-200/60 px-3 py-1.5 rounded-lg border border-base-300">
                   <div>
-                    <span className="text-xs font-semibold text-main">{item.label}</span>
-                    <span className="text-[10px] text-muted ml-1.5 font-mono">₱{item.price}</span>
+                    <span className="text-sm font-semibold text-base-content">{item.label}</span>
+                    <span className="text-sm text-success font-bold font-mono ml-1.5">₱{item.price}</span>
                   </div>
                   <Counter value={item.value} onChange={item.set} />
                 </div>
@@ -192,9 +147,7 @@ export const AmenitiesForm = React.memo(
       prevProps.formExtraTowel === nextProps.formExtraTowel &&
       prevProps.formEventTable === nextProps.formEventTable &&
       prevProps.formEventTent === nextProps.formEventTent &&
-      prevProps.formVenueExcessHours === nextProps.formVenueExcessHours &&
-      prevProps.formBreakfastEnabled === nextProps.formBreakfastEnabled &&
-      prevProps.formBreakfastGuests === nextProps.formBreakfastGuests
+      prevProps.formVenueExcessHours === nextProps.formVenueExcessHours
     )
   }
 )

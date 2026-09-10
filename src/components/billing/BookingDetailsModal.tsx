@@ -68,6 +68,10 @@ export function BookingDetailsModal({ booking, rooms, venues, bookingsList, onCl
               <div className="font-medium text-main capitalize">{booking.source}</div>
             </div>
             <div>
+              <div className="text-muted mb-0.5">Booked</div>
+              <div className="font-medium text-main">{booking.created_at ? new Date(booking.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}</div>
+            </div>
+            <div>
               <div className="text-muted mb-0.5">Phone</div>
               <div className="font-medium text-main flex items-center gap-1">
                 <Phone className="w-3 h-3 text-muted" /> {booking.guest_phone || '—'}

@@ -113,7 +113,7 @@ export const TimelineGrid = React.memo(
             else break
           }
           cells.push(
-            <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} isCheckIn={false} isHighlighted={false} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={type === 'room' ? getBookingStyle : getVenueBookingStyle} onCellClick={handleCellClick} onQuickPaymentChange={onQuickPaymentChange} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={dayInfo.isoStr} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} isCheckIn={false} isHighlighted={false} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={type === 'room' ? getBookingStyle : getVenueBookingStyle} onCellClick={handleCellClick} onQuickPaymentChange={onQuickPaymentChange} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           dIdx += span
         } else {
@@ -122,7 +122,7 @@ export const TimelineGrid = React.memo(
           const isHighlighted = !!(range && dayInfo.time >= range.start && dayInfo.time <= range.end)
           const checkout = checkoutByUnitAndDate[id + '_' + dayInfo.isoStr] || null
           cells.push(
-            <TimelineCell key={dIdx} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={1} isCheckIn={!!isDraftCheckIn} isHighlighted={isHighlighted} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} checkoutBooking={checkout} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={dayInfo.isoStr} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={1} isCheckIn={!!isDraftCheckIn} isHighlighted={isHighlighted} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} checkoutBooking={checkout} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           dIdx++
         }

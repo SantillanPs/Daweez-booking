@@ -2,7 +2,6 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Room, Venue, Booking, PartnerDeal } from '../../types/booking'
 import { PartyPopper, X, AlertCircle } from 'lucide-react'
-import { titleCase } from '../../utils/helpers'
 import * as syncEngine from '../../utils/syncEngine'
 import { useDashboardData } from '../DashboardContext'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
@@ -45,6 +44,8 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
   const [formGuestPhone, setFormGuestPhone] = useState('')
   const [formUsePromo, setFormUsePromo] = useState(false)
   const [error, setError] = useState('')
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [trySave, setTrySave] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [createdList, setCreatedList] = useState<Booking[]>([])
 
@@ -96,12 +97,21 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
     else { setFormCheckOut(value); setUnitSelections(prev => { const n = { ...prev }; Object.keys(n).forEach(k => { n[k] = { ...n[k], checkOut: value } }); return n }) }
   }
 
+  const fieldErrors = {
+    partner: formPartnerDealId ? '' : 'Choose a partner account.',
+    checkIn: formCheckIn ? '' : 'Check-in is required.',
+    checkOut: !formCheckOut ? 'Check-out is required.' : (formCheckOut <= formCheckIn ? 'Check-out must be after check-in.' : ''),
+    units: Object.keys(unitSelections).length > 0 ? '' : 'Pick a partner with a room or venue rate.',
+  }
+  const showErr = (f: keyof typeof fieldErrors) => (touched[f] || trySave) ? fieldErrors[f] : ''
+  const isInvalid = (f: keyof typeof fieldErrors) => Boolean(showErr(f))
+  const markTouched = (f: keyof typeof fieldErrors) => () => setTouched(t => ({ ...t, [f]: true }))
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setError('')
+    if (Object.values(fieldErrors).some(v => v)) { setTrySave(true); return }
     const deal = partnerDeals.find(d => d.id === formPartnerDealId)
     if (!deal) { setError('Choose a partner account.'); return }
-    if (Object.keys(unitSelections).length === 0) { setError('This partner has no rooms with a rate — pick one or add a rate first.'); return }
-    if (!formCheckIn || !formCheckOut || formCheckOut <= formCheckIn) { setError('Check-out must be after check-in.'); return }
     setIsSubmitting(true)
     try {
       const created: Booking[] = []
@@ -112,7 +122,7 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
         const b = await createManualBooking({
           roomId: isRoom ? id : undefined,
           venueId: isRoom ? undefined : id,
-          guestName: titleCase((deal.name || 'Corporate') + ' Representative'),
+          guestName: ((deal.name || 'Corporate') + ' Representative').toUpperCase(),
           guestEmail: deal.email || 'admin@daweez-booking.vercel.app',
           guestPhone: deal.contact_no || 'None',
           checkIn: sel.checkIn, checkOut: sel.checkOut,
@@ -157,11 +167,12 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
               {error && <div className="p-2.5 bg-rose-50 border border-rose-100 text-rose-700 text-xs flex items-center gap-2 rounded-md"><AlertCircle className="w-4 h-4 shrink-0" /><span>{error}</span></div>}
 
               <div className="relative" ref={partnerDropdownRef}>
-                <label className="text-[10px] text-brand-text font-bold block mb-1 uppercase tracking-wider">Partner Account</label>
-                <div onClick={() => setIsPartnerDropdownOpen(!isPartnerDropdownOpen)} className="w-full bg-brand-bg border border-brand-border text-main px-3 py-2 rounded-lg focus:outline-none focus:border-brand-primary font-semibold cursor-pointer flex justify-between items-center shadow-sm select-none">
+                <label className="text-[10px] text-brand-text font-bold block mb-1 uppercase tracking-wider">Partner Account *</label>
+                <div onClick={() => { setIsPartnerDropdownOpen(!isPartnerDropdownOpen); markTouched('partner')() }} className={isInvalid('partner') ? 'w-full bg-brand-bg border border-rose-400 text-main px-3 py-2 rounded-lg focus:outline-none focus:border-rose-500 font-semibold cursor-pointer flex justify-between items-center shadow-sm select-none' : 'w-full bg-brand-bg border border-brand-border text-main px-3 py-2 rounded-lg focus:outline-none focus:border-brand-primary font-semibold cursor-pointer flex justify-between items-center shadow-sm select-none'}>
                   <span className={formCompanyName ? 'text-main' : 'text-muted font-normal'}>{formCompanyName || '-- Search & Select Partner --'}</span>
                   <span className="text-[10px] text-muted">▼</span>
                 </div>
+                {showErr('partner') && <p className="text-[10px] text-rose-600 mt-1">{showErr('partner')}</p>}
                 {isPartnerDropdownOpen && (
                   <div className="absolute z-50 mt-1 w-full bg-card border border-soft rounded-lg shadow-lg overflow-hidden flex flex-col max-h-60" onClick={e => e.stopPropagation()}>
                     <div className="p-2 border-b border-soft bg-page"><input type="text" placeholder="Type to search agency..." value={partnerSearchQuery} onChange={e => setPartnerSearchQuery(e.target.value)} className="w-full bg-card border border-soft text-main px-2.5 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary" autoFocus /></div>
@@ -178,10 +189,12 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
               </div>
 
               <div className="grid grid-cols-2 gap-3.5">
-                <div><label className="text-[10px] text-brand-text font-bold block mb-1 uppercase tracking-wider">Check-in</label>
-                  <input type="date" required value={formCheckIn} onChange={e => handleDateChange('checkIn', e.target.value)} className="w-full bg-brand-bg border border-brand-border text-main px-3 py-2 rounded-lg focus:outline-none focus:border-brand-primary font-mono font-medium" /></div>
-                <div><label className="text-[10px] text-brand-text font-bold block mb-1 uppercase tracking-wider">Check-out</label>
-                  <input type="date" required value={formCheckOut} onChange={e => handleDateChange('checkOut', e.target.value)} className="w-full bg-brand-bg border border-brand-border text-main px-3 py-2 rounded-lg focus:outline-none focus:border-brand-primary font-mono font-medium" /></div>
+                <div><label className="text-[10px] text-brand-text font-bold block mb-1 uppercase tracking-wider">Check-in *</label>
+                  <input type="date" required value={formCheckIn} onChange={e => handleDateChange('checkIn', e.target.value)} onBlur={markTouched('checkIn')} className={isInvalid('checkIn') ? 'w-full bg-brand-bg border border-rose-400 text-main px-3 py-2 rounded-lg focus:outline-none focus:border-rose-500 font-mono font-medium' : 'w-full bg-brand-bg border border-brand-border text-main px-3 py-2 rounded-lg focus:outline-none focus:border-brand-primary font-mono font-medium'} />
+                  {showErr('checkIn') && <p className="text-[10px] text-rose-600 mt-1">{showErr('checkIn')}</p>}</div>
+                <div><label className="text-[10px] text-brand-text font-bold block mb-1 uppercase tracking-wider">Check-out *</label>
+                  <input type="date" required value={formCheckOut} onChange={e => handleDateChange('checkOut', e.target.value)} onBlur={markTouched('checkOut')} className={isInvalid('checkOut') ? 'w-full bg-brand-bg border border-rose-400 text-main px-3 py-2 rounded-lg focus:outline-none focus:border-rose-500 font-mono font-medium' : 'w-full bg-brand-bg border border-brand-border text-main px-3 py-2 rounded-lg focus:outline-none focus:border-brand-primary font-mono font-medium'} />
+                  {showErr('checkOut') && <p className="text-[10px] text-rose-600 mt-1">{showErr('checkOut')}</p>}</div>
               </div>
 
               <div>
@@ -202,6 +215,7 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
                     </div>
                   })}
                 </div>
+                {showErr('units') && <p className="text-[10px] text-rose-600 mt-1">{showErr('units')}</p>}
               </div>
 
               <div className="pt-2 border-t border-soft">

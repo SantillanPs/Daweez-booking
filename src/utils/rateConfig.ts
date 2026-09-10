@@ -30,6 +30,8 @@ export const DEFAULT_RATE_CONFIG: RateConfig = {
   chairRate: 15,        // chair (event)
   mineralWaterRate: 35, // mineral water
   tentRate: 500,        // tent (event)
+  accommodationExtras: 0, // flat extras added to Pension rooms + Vacation House (report)
+  venueExtras: 0,         // flat extras added to Garden Area + Gazebo (report)
 }
 
 const RATES_KEY = 'l_etoile_rates_db'

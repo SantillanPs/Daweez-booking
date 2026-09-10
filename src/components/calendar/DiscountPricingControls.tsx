@@ -6,20 +6,20 @@ export type DiscountType = 'none' | 'percent' | 'flat'
 function StepLabel({ label, hint }: { label: string; hint?: string }) {
   return (
     <div>
-      <p className="text-[10px] font-bold text-muted uppercase tracking-wider">{label}</p>
-      {hint && <p className="text-[10px] text-muted mt-0.5">{hint}</p>}
+      <p className="text-xs font-bold text-base-content/60 uppercase tracking-wider">{label}</p>
+      {hint && <p className="text-xs text-base-content/60 mt-0.5">{hint}</p>}
     </div>
   )
 }
 
 function Stepper({ label, value, onChange, min = 0, max = 24, step = 1 }: { label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number }) {
   return (
-    <div className="flex items-center justify-between gap-1.5 bg-page border border-soft rounded-lg px-2.5 py-2">
-      <span className="text-[11px] text-muted font-medium">{label}</span>
+    <div className="flex items-center justify-between gap-1.5 bg-base-200/60 border border-base-300 rounded-lg px-2.5 py-2">
+      <span className="text-xs text-base-content/60 font-medium">{label}</span>
       <div className="flex items-center gap-0.5">
-        <button type="button" onClick={() => onChange(Math.max(min, value - step))} className="w-5 h-5 rounded bg-card border border-soft text-muted flex items-center justify-center text-xs font-bold hover:bg-softbg transition-colors cursor-pointer">-</button>
-        <span className="font-mono w-8 text-center text-xs font-semibold text-main">{value}</span>
-        <button type="button" onClick={() => onChange(Math.min(max, value + step))} className="w-5 h-5 rounded bg-card border border-soft text-muted flex items-center justify-center text-xs font-bold hover:bg-softbg transition-colors cursor-pointer">+</button>
+        <button type="button" onClick={() => onChange(Math.max(min, value - step))} className="btn btn-ghost btn-xs">-</button>
+        <span className="font-mono w-8 text-center text-sm font-semibold text-base-content">{value}</span>
+        <button type="button" onClick={() => onChange(Math.min(max, value + step))} className="btn btn-ghost btn-xs">+</button>
       </div>
     </div>
   )
@@ -41,7 +41,7 @@ export function DiscountPricingControls({
   setVenueDayBlocks: (v: number) => void
 }) {
   return (
-    <div className="bg-sea-50/50 border border-sea-200 rounded-lg p-3 space-y-3">
+    <div className="bg-base-100 border border-base-300 rounded-xl p-3 shadow-sm space-y-2.5">
       <StepLabel label="Discount" hint="% off the room charge, or a custom peso discount." />
       <div className="flex flex-wrap gap-1.5">
         {[
@@ -54,15 +54,15 @@ export function DiscountPricingControls({
             key={btn.key}
             type="button"
             onClick={btn.onClick}
-            className={'px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ' + (btn.active ? 'bg-sea-600 border-sea-600 text-white shadow-sm' : 'bg-card border-soft text-muted hover:border-sea-400')}
+            className={'btn btn-sm ' + (btn.active ? 'btn-primary' : 'btn-ghost')}
           >{btn.label}</button>
         ))}
       </div>
       {discountType === 'flat' && (
         <div>
-          <label className="text-[10px] text-muted font-bold block mb-1">Discount amount (PHP)</label>
+          <label className="text-xs text-base-content/60 font-bold block mb-1">Discount amount (PHP)</label>
           <NumInput value={discountValue} onChange={setDiscountValue}
-            placeholder="e.g. 500" className="w-full bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm focus:outline-none focus:border-sea-500" />
+            placeholder="e.g. 500" className="input input-bordered w-full text-sm" />
         </div>
       )}
       {isDayBlock ? (

@@ -1,12 +1,13 @@
 import React from 'react'
 import { Companion, PartnerDeal } from '../../types/booking'
-import { titleCase } from '../../utils/helpers'
-import { User, Phone, Mail, Users, ChevronDown, Trash2, Plus, CheckCircle2 } from 'lucide-react'
+import { User, Phone, Mail, Users, Trash2, Plus, CheckCircle2 } from 'lucide-react'
 
 interface RoomDetailsFormProps {
   formStatus: 'confirmed' | 'blocked'
   formGuestName: string
   setFormGuestName: (val: string) => void
+  formGuestBreakfast: boolean
+  setFormGuestBreakfast: (val: boolean) => void
   formGuestEmail: string
   setFormGuestEmail: (val: string) => void
   formGuestPhone: string
@@ -38,6 +39,8 @@ interface RoomDetailsFormProps {
   formAddress: string
   setFormAddress: (val: string) => void
   onSelectPartnerDeal: (deal: PartnerDeal | null) => void
+  guestNameError: string
+  onGuestNameBlur: () => void
 }
 
 export const RoomDetailsForm = React.memo(
@@ -45,10 +48,16 @@ export const RoomDetailsForm = React.memo(
     formStatus,
     formGuestName,
     setFormGuestName,
+    formGuestBreakfast,
+    setFormGuestBreakfast,
     formGuestEmail,
     setFormGuestEmail,
     formGuestPhone,
     setFormGuestPhone,
+    formGuestNationality,
+    setFormGuestNationality,
+    formGuestAddress,
+    setFormGuestAddress,
     formGuestBirthdate,
     setFormGuestBirthdate,
     formBlockNotes,
@@ -56,74 +65,101 @@ export const RoomDetailsForm = React.memo(
     formCompanions,
     setFormCompanions,
     showCompanions,
-    setShowCompanions
+    setShowCompanions,
+    guestNameError,
+    onGuestNameBlur
   }: RoomDetailsFormProps) => {
     if (formStatus === 'blocked') {
       return (
-        <div className="p-4 bg-page border border-soft/60 rounded text-xs text-muted space-y-1.5 font-sans">
-          <p className="font-bold text-main flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-brand-primary" /> Block Dates
+        <div className="bg-base-200 border border-base-300 rounded-lg px-2.5 py-2 space-y-1.5">
+          <p className="text-[10px] font-bold text-base-content flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Block — just blocks the calendar (no charge).
           </p>
-          <p className="text-[11px] leading-normal">
-            This will block out the calendar. It won't create a real booking or charge money.
-          </p>
-          <label className="text-[10px] text-muted font-bold block pt-1">Block reason (maintenance / cleaning)</label>
-          <input value={formBlockNotes} onChange={e => setFormBlockNotes(titleCase(e.target.value))} placeholder="e.g. Room maintenance"
-            className="w-full bg-brand-bg border border-soft text-main px-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring" />
+          <label className="text-[10px] text-base-content/60 font-bold block">Block reason (maintenance / cleaning)</label>
+          <input value={formBlockNotes} onChange={e => setFormBlockNotes(e.target.value.toUpperCase())} placeholder="e.g. Room maintenance"
+            className="input input-sm input-bordered w-full" />
         </div>
       )
     }
 
     return (
-      <div className="bg-card p-4 rounded-md border border-soft/60 shadow-sm space-y-3.5 animate-in fade-in duration-200 font-sans">
-        <h4 className="text-[9px] font-bold text-brand-text tracking-widest uppercase border-b border-soft pb-1.5">
-          2. Guest Details
-        </h4>
+      <div className="bg-base-100 p-3 rounded-xl border border-base-300 shadow-sm space-y-3 animate-in fade-in duration-200 font-sans">
+        <div className="flex items-center gap-2 pb-2 border-b border-base-300">
+          <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><User className="w-3 h-3" /></span>
+          <h4 className="text-[10px] font-bold text-base-content tracking-widest uppercase">Guest Information</h4>
+        </div>
         
         <div className="space-y-3">
 
 
           {/* Primary Guest Name */}
           <div>
-            <label className="text-[10px] text-muted font-medium block mb-1">Guest Name</label>
+            <label className="text-xs text-base-content/70 font-medium block mb-1">Name <span className="text-error">*</span></label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
               <input 
                 type="text" 
-                required 
                 placeholder="Guest full name" 
                 value={formGuestName} 
-                onChange={e => setFormGuestName(titleCase(e.target.value))}
-                className="w-full bg-brand-bg border border-soft text-main pl-9 pr-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium" 
+                onChange={e => setFormGuestName(e.target.value.toUpperCase())}
+                onBlur={onGuestNameBlur}
+                className={guestNameError ? 'input input-bordered input-error w-full pl-9' : 'input input-bordered w-full pl-9'} 
               />
             </div>
+            {guestNameError && <p className="text-xs text-error mt-1">{guestNameError}</p>}
           </div>
 
+          {/* Main guest breakfast — same per-person choice as each companion */}
+          <label className="flex items-center gap-2 text-xs text-base-content/70 font-medium mt-2 select-none cursor-pointer">
+            <input type="checkbox" checked={formGuestBreakfast} onChange={e => setFormGuestBreakfast(e.target.checked)} className="checkbox checkbox-primary checkbox-sm" />
+            B'fast for this guest
+            <span className="text-success font-bold font-mono">₱150/night</span>
+          </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-soft">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-base-300">
             <div>
-              <label className="text-[10px] text-muted font-medium block mb-1">Email Address</label>
+              <label className="text-xs text-base-content/70 font-medium block mb-1">Contact No.</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                <input 
-                  type="email" 
-                  placeholder="guest@domain.com" 
-                  value={formGuestEmail} 
-                  onChange={e => setFormGuestEmail(e.target.value)}
-                  className="w-full bg-brand-bg border border-soft text-main pl-9 pr-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium" 
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-[10px] text-muted font-medium block mb-1">Phone Number</label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
                 <input 
                   type="text" 
                   placeholder="09xx-xxx-xxxx" 
                   value={formGuestPhone} 
                   onChange={e => setFormGuestPhone(e.target.value)}
-                  className="w-full bg-brand-bg border border-soft text-main pl-9 pr-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium" 
+                  className="input input-bordered w-full pl-9" 
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-base-content/70 font-medium block mb-1">Nationality</label>
+              <input 
+                type="text" 
+                placeholder="e.g. Filipino" 
+                value={formGuestNationality || ''} 
+                onChange={e => setFormGuestNationality(e.target.value.toUpperCase())}
+                className="input input-bordered w-full transition-all font-medium" 
+              />
+            </div>
+            <div>
+              <label className="text-xs text-base-content/70 font-medium block mb-1">Address</label>
+              <input 
+                type="text" 
+                placeholder="Home address" 
+                value={formGuestAddress || ''} 
+                onChange={e => setFormGuestAddress(e.target.value.toUpperCase())}
+                className="input input-bordered w-full transition-all font-medium" 
+              />
+            </div>
+            <div>
+              <label className="text-xs text-base-content/70 font-medium block mb-1">Email (optional)</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+                <input 
+                  type="email" 
+                  placeholder="guest@domain.com" 
+                  value={formGuestEmail} 
+                  onChange={e => setFormGuestEmail(e.target.value)}
+                  className="input input-bordered w-full pl-9" 
                 />
               </div>
             </div>
@@ -131,83 +167,75 @@ export const RoomDetailsForm = React.memo(
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] text-muted font-medium block mb-1">Birth Date (optional)</label>
+              <label className="text-xs text-base-content/70 font-medium block mb-1">Birth Date (optional)</label>
               <input type="date" value={formGuestBirthdate} onChange={e => setFormGuestBirthdate(e.target.value)}
-                className="w-full bg-brand-bg border border-soft text-main px-3 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring transition-all font-medium" />
+                className="input input-bordered w-full transition-all font-medium" />
             </div>
           </div>
           
-          {/* Companions Registry */}
-          <div className="pt-2 border-t border-soft col-span-1 sm:col-span-2">
-            <button 
-              type="button" 
-              onClick={() => setShowCompanions(!showCompanions)}
-              className="flex items-center justify-between w-full text-[10px] text-muted font-semibold uppercase tracking-wider hover:text-main transition-colors py-1 cursor-pointer"
-            >
+          {/* Companions */}
+          <div className="pt-2 border-t border-base-300 col-span-1 sm:col-span-2">
+            <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-brand-primary" /> Other Guests
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><Users className="w-3 h-3" /></span>
+                <span className="text-xs font-bold text-base-content">Companion Information</span>
                 {formCompanions.length > 0 && (
-                  <span className="bg-brand-bg border border-brand-border text-brand-text text-[9px] font-bold px-2 py-0.5 rounded ml-1">
-                    {formCompanions.length} Guest{formCompanions.length !== 1 ? 's' : ''}
-                  </span>
+                  <span className="badge badge-primary badge-sm ml-1">{formCompanions.length} Guest{formCompanions.length !== 1 ? 's' : ''}</span>
                 )}
               </span>
-              <ChevronDown className={`w-4 h-4 text-muted transition-transform duration-200 ${showCompanions ? 'rotate-180' : ''}`} />
-            </button>
+              <button
+                type="button"
+                onClick={() => setFormCompanions([...formCompanions, { name: '' }])}
+                className="btn btn-ghost btn-xs text-primary hover:text-primary/80 font-bold gap-1 normal-case"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Guest
+              </button>
+            </div>
 
-            {showCompanions && (
-              <div className="space-y-2 pt-2 animate-in slide-in-from-top-1 duration-150">
-                {formCompanions.length === 0 && (
-                  <p className="text-[10px] text-muted py-3 italic text-center bg-page/50 rounded border border-dashed border-soft">
-                    No other guests added. Click below to add.
-                  </p>
-                )}
-                {formCompanions.map((comp, idx) => (
-                  <div key={idx} className="flex items-center gap-2 bg-page p-2 rounded border border-soft/60">
-                    <input 
-                      type="text" 
-                      required 
-                      placeholder="Full name" 
-                      value={comp.name}
-                      onChange={e => { 
-                        const u = [...formCompanions]
-                        u[idx] = { ...u[idx], name: titleCase(e.target.value) }
-                        setFormCompanions(u) 
-                      }}
-                      className="flex-1 bg-card border border-soft text-main px-2 py-1 rounded text-[11px] focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring" 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Nationality" 
-                      value={comp.nationality}
-                      onChange={e => { 
-                        const u = [...formCompanions]
-                        u[idx] = { ...u[idx], nationality: titleCase(e.target.value) }
-                        setFormCompanions(u) 
-                      }}
-                      className="w-24 bg-card border border-soft text-main px-2 py-1 rounded text-[11px] focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-ring"
-                    />
-                    <label className="flex items-center gap-1 text-[10px] text-muted shrink-0 select-none cursor-pointer">
-                      <input type="checkbox" checked={!!comp.breakfast} onChange={e => { const u = [...formCompanions]; u[idx] = { ...u[idx], breakfast: e.target.checked }; setFormCompanions(u) }} className="accent-brand-primary w-3.5 h-3.5" /> B'fast
-                    </label>
-                    <button 
-                      type="button" 
-                      onClick={() => setFormCompanions(formCompanions.filter((_, i) => i !== idx))}
-                      className="text-muted hover:text-rose-500 transition-colors p-1.5 shrink-0 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-                <button 
-                  type="button" 
-                  onClick={() => setFormCompanions([...formCompanions, { name: '' }])}
-                  className="text-[10px] text-brand-primary hover:text-brand-text font-bold flex items-center gap-1 transition-colors mt-1 select-none cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add Guest
-                </button>
-              </div>
-            )}
+            <div className="space-y-2 pt-2">
+              {formCompanions.length === 0 && (
+                <p className="text-xs text-base-content/60 py-3 italic text-center bg-base-200/50 rounded border border-dashed border-base-300">
+                  No other guests added. Tap "Add Guest" to add.
+                </p>
+              )}
+              {formCompanions.map((comp, idx) => (
+                <div key={idx} className="flex items-center gap-2 bg-base-200/50 p-2 rounded border border-base-300/60">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Full name"
+                    value={comp.name}
+                    onChange={e => {
+                      const u = [...formCompanions]
+                      u[idx] = { ...u[idx], name: e.target.value.toUpperCase() }
+                      setFormCompanions(u)
+                    }}
+                    className="input input-bordered input-sm flex-1"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Nationality"
+                    value={comp.nationality}
+                    onChange={e => {
+                      const u = [...formCompanions]
+                      u[idx] = { ...u[idx], nationality: e.target.value.toUpperCase() }
+                      setFormCompanions(u)
+                    }}
+                    className="input input-bordered input-sm w-24"
+                  />
+                  <label className="flex items-center gap-1 text-[10px] text-base-content/60 shrink-0 select-none cursor-pointer">
+                    <input type="checkbox" checked={!!comp.breakfast} onChange={e => { const u = [...formCompanions]; u[idx] = { ...u[idx], breakfast: e.target.checked }; setFormCompanions(u) }} className="checkbox checkbox-primary checkbox-sm" /> B'fast
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormCompanions(formCompanions.filter((_, i) => i !== idx))}
+                    className="btn btn-ghost btn-xs text-base-content/60 hover:text-error p-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
         </div>
@@ -221,6 +249,7 @@ export const RoomDetailsForm = React.memo(
     return (
       prevProps.formStatus === nextProps.formStatus &&
       prevProps.formGuestName === nextProps.formGuestName &&
+      prevProps.formGuestBreakfast === nextProps.formGuestBreakfast &&
       prevProps.formGuestEmail === nextProps.formGuestEmail &&
       prevProps.formGuestPhone === nextProps.formGuestPhone &&
       prevProps.formGuestGender === nextProps.formGuestGender &&
@@ -230,6 +259,7 @@ export const RoomDetailsForm = React.memo(
       prevProps.formBlockNotes === nextProps.formBlockNotes &&
       prevProps.formVehiclePlate === nextProps.formVehiclePlate &&
       prevProps.showCompanions === nextProps.showCompanions &&
+      prevProps.guestNameError === nextProps.guestNameError &&
 
       prevProps.hasRooms === nextProps.hasRooms &&
       compsEqual

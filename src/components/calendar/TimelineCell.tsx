@@ -170,6 +170,10 @@ export const TimelineCell = React.memo(
   },
   (prevProps, nextProps) => {
     return (
+      prevProps.date.getTime() === nextProps.date.getTime() &&
+      prevProps.isoStr === nextProps.isoStr &&
+      prevProps.id === nextProps.id &&
+      prevProps.type === nextProps.type &&
       prevProps.onCellClick === nextProps.onCellClick &&
       prevProps.isCheckIn === nextProps.isCheckIn &&
       prevProps.isHighlighted === nextProps.isHighlighted &&

@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, BedDouble, House, Flower2, PartyPopper, Coins, Coffee, PackagePlus, PieChart, CircleDollarSign, Building2 } from 'lucide-react'
 import { AnimatedNumber } from '../AnimatedNumber'
 
 interface RoomRevenue {
   id: string
+  room_number: number
   name: string
   base: number
   breakfast: number
@@ -12,7 +13,16 @@ interface RoomRevenue {
 }
 
 interface AnalyticsCalculations {
+  periodLabel: string
   totalRevenue: number
+  pensionExtras: number
+  vacationExtras: number
+  gardenExtras: number
+  gazeboExtras: number
+  totalExtras: number
+  vacationTotal: number
+  gardenTotal: number
+  gazeboTotal: number
   totalExpenses: number
   netProfit: number
   totalPension: number
@@ -34,23 +44,26 @@ export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> =
 
   return (
     <div className="bg-card border border-soft rounded-xl overflow-hidden">
-      <div className="p-4 border-b border-soft flex items-center justify-between">
+      <div className="p-4 border-b border-soft flex items-center justify-between gap-3">
         <div>
           <h4 className="text-xs sm:text-sm font-bold text-main">Earnings Report</h4>
-          <p className="text-[10px] text-muted">Detailed breakdown of where your money comes from</p>
+          <p className="text-[10px] text-muted">Where your money comes from{calculations.totalRevenue === 0 && calculations.totalExpenses === 0 ? ' — nothing recorded yet this period' : ''}</p>
         </div>
+        <span className="text-[10px] font-semibold text-brand-text bg-brand-bg border border-brand-border rounded-full px-3 py-1 whitespace-nowrap">
+          {calculations.periodLabel}
+        </span>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse whitespace-nowrap">
           <thead>
             <tr className="bg-slate-100/50 border-b-2 border-slate-200 text-slate-500 uppercase tracking-wider font-bold text-[11px]">
-              <th className="py-4 px-5">Area / Room</th>
-              <th className="py-4 px-5 text-right">Room Rate</th>
-              <th className="py-4 px-5 text-right">Breakfast</th>
-              <th className="py-4 px-5 text-right">Extras</th>
-              <th className="py-4 px-5 text-right">% of Total</th>
-              <th className="py-4 px-5 text-right text-slate-800">Total Earned</th>
+              <th className="py-4 px-5" title="Which room or venue the money came from"><span className="inline-flex items-center gap-1"><Building2 className="w-3.5 h-3.5 text-slate-400" />Area / Room</span></th>
+              <th className="py-4 px-5 text-right" title="Money from the room's nightly rate"><span className="inline-flex items-center gap-1 justify-end"><Coins className="w-3.5 h-3.5 text-[#2E7D78]" />Room Rate</span></th>
+              <th className="py-4 px-5 text-right" title="Money from breakfast served during stays"><span className="inline-flex items-center gap-1 justify-end"><Coffee className="w-3.5 h-3.5 text-[#C9922F]" />Breakfast</span></th>
+              <th className="py-4 px-5 text-right" title="Money from extra items (rentals, linens, etc.)"><span className="inline-flex items-center gap-1 justify-end"><PackagePlus className="w-3.5 h-3.5 text-[#0EA5E9]" />Extras</span></th>
+              <th className="py-4 px-5 text-right" title="Share of everything that came in"><span className="inline-flex items-center gap-1 justify-end"><PieChart className="w-3.5 h-3.5 text-slate-500" />% of Total</span></th>
+              <th className="py-4 px-5 text-right text-slate-800" title="Room Rate + Breakfast + Extras for this row"><span className="inline-flex items-center gap-1 justify-end"><CircleDollarSign className="w-3.5 h-3.5 text-emerald-600" />Total Earned</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-main text-sm">
@@ -64,14 +77,14 @@ export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> =
                   {isPensionExpanded ? <ChevronDown className="w-4 h-4 text-slate-600" /> : <ChevronRight className="w-4 h-4 text-slate-600" />}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-brand-primary"></span>
+                  <span className="w-6 h-6 rounded-full bg-[#2E7D78]/10 text-[#2E7D78] flex items-center justify-center shrink-0"><BedDouble className="w-3.5 h-3.5" /></span>
                   <span className="text-slate-800">Pension <span className="text-slate-500 font-normal">(Rooms 1-10)</span></span>
                 </div>
               </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">₱{calculations.totalPensionBase.toLocaleString()}</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">₱{calculations.totalPensionRentals.toLocaleString()}</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-brand-primary">
+              <td className="py-4 px-5 text-right font-mono font-bold text-[#2E7D78]">₱{calculations.totalPensionBase.toLocaleString()}</td>
+              <td className="py-4 px-5 text-right font-mono font-bold text-[#C9922F]">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
+              <td className="py-4 px-5 text-right font-mono font-bold text-[#0EA5E9]">₱{calculations.totalPensionRentals.toLocaleString()}</td>
+              <td className="py-4 px-5 text-right font-mono font-bold text-slate-600">
                 {calculations.totalRevenue > 0 ? Math.round((calculations.totalPension / calculations.totalRevenue) * 100) : 0}%
               </td>
               <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700"><AnimatedNumber prefix="₱" value={calculations.totalPension} /></td>
@@ -83,18 +96,18 @@ export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> =
                 <td className="py-3 px-5 pl-[52px] text-[13px] font-semibold text-slate-800 flex items-center gap-2 relative">
                   <div className="absolute left-[30px] top-0 bottom-0 w-px bg-slate-200"></div>
                   <div className="absolute left-[30px] top-1/2 w-3 h-px bg-slate-200"></div>
-                  {room.name}
+                  <span className="text-slate-400 font-normal">Room {room.room_number}</span><span>{room.name}</span>
                 </td>
                 <td className="py-3 px-5 text-right font-mono text-[13px] font-semibold text-slate-800">
-                  {room.base > 0 ? `₱${Math.round(room.base).toLocaleString()}` : <span className="text-slate-300 font-normal">-</span>}
+                  {room.base > 0 ? <span className="text-[#2E7D78]">{`₱${Math.round(room.base).toLocaleString()}`}</span> : <span className="text-slate-300 font-normal">-</span>}
                 </td>
                 <td className="py-3 px-5 text-right font-mono text-[13px] font-semibold text-slate-800">
-                  {room.breakfast > 0 ? `₱${Math.round(room.breakfast).toLocaleString()}` : <span className="text-slate-300 font-normal">-</span>}
+                  {room.breakfast > 0 ? <span className="text-[#C9922F]">{`₱${Math.round(room.breakfast).toLocaleString()}`}</span> : <span className="text-slate-300 font-normal">-</span>}
                 </td>
                 <td className="py-3 px-5 text-right font-mono text-[13px] font-semibold text-slate-800">
-                  {room.rentals > 0 ? `₱${Math.round(room.rentals).toLocaleString()}` : <span className="text-slate-300 font-normal">-</span>}
+                  {room.rentals > 0 ? <span className="text-[#0EA5E9]">{`₱${Math.round(room.rentals).toLocaleString()}`}</span> : <span className="text-slate-300 font-normal">-</span>}
                 </td>
-                <td className="py-3 px-5 text-right font-mono font-medium text-[13px] text-slate-500">
+                <td className="py-3 px-5 text-right font-mono font-medium text-[13px] text-slate-600">
                   {calculations.totalRevenue > 0 && room.total > 0 ? `${Math.round((room.total / calculations.totalRevenue) * 100)}%` : <span className="text-slate-300">-</span>}
                 </td>
                 <td className="py-3 px-5 text-right font-mono font-bold text-[13px] text-emerald-700">
@@ -106,57 +119,57 @@ export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> =
             {/* Row 2: Vacation House */}
             <tr className="hover:bg-slate-50 transition-colors">
               <td className="py-4 px-5 font-semibold flex items-center gap-2 pl-[44px]">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#4A90E2]"></span>
+                <span className="w-6 h-6 rounded-full bg-[#4A90E2]/10 text-[#4A90E2] flex items-center justify-center shrink-0"><House className="w-3.5 h-3.5" /></span>
                 <span className="text-slate-800">Vacation House</span>
               </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">
+              <td className="py-4 px-5 text-right font-mono font-bold text-[#2E7D78]">
                 ₱{Math.round(calculations.totalVacationHouse).toLocaleString()}
               </td>
               <td className="py-4 px-5 text-right font-mono font-medium text-slate-300">-</td>
-              <td className="py-4 px-5 text-right font-mono font-semibold text-slate-500 text-xs italic">Included</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-[#4A90E2]">
-                {calculations.totalRevenue > 0 ? Math.round((calculations.totalVacationHouse / calculations.totalRevenue) * 100) : 0}%
+              <td className="py-4 px-5 text-right font-mono font-semibold text-[#0EA5E9]">{calculations.vacationExtras > 0 ? `₱${calculations.vacationExtras.toLocaleString()}` : <span className="text-slate-300 font-normal">-</span>}</td>
+              <td className="py-4 px-5 text-right font-mono font-bold text-slate-600">
+                {calculations.totalRevenue > 0 ? Math.round((calculations.vacationTotal / calculations.totalRevenue) * 100) : 0}%
               </td>
               <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700">
-                <AnimatedNumber prefix="₱" value={calculations.totalVacationHouse} />
+                <AnimatedNumber prefix="₱" value={calculations.vacationTotal} />
               </td>
             </tr>
 
             {/* Row 3: Garden Area */}
             <tr className="hover:bg-slate-50 transition-colors">
               <td className="py-4 px-5 font-semibold flex items-center gap-2 pl-[44px]">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#2ECC71]"></span>
+                <span className="w-6 h-6 rounded-full bg-[#2ECC71]/10 text-[#2ECC71] flex items-center justify-center shrink-0"><Flower2 className="w-3.5 h-3.5" /></span>
                 <span className="text-slate-800">Garden Area</span>
               </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">
+              <td className="py-4 px-5 text-right font-mono font-bold text-[#2E7D78]">
                 ₱{Math.round(calculations.totalGardenArea).toLocaleString()}
               </td>
               <td className="py-4 px-5 text-right font-mono font-medium text-slate-300">-</td>
-              <td className="py-4 px-5 text-right font-mono font-semibold text-slate-500 text-xs italic">Included</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-[#2ECC71]">
-                {calculations.totalRevenue > 0 ? Math.round((calculations.totalGardenArea / calculations.totalRevenue) * 100) : 0}%
+              <td className="py-4 px-5 text-right font-mono font-semibold text-[#0EA5E9]">{calculations.gardenExtras > 0 ? `₱${calculations.gardenExtras.toLocaleString()}` : <span className="text-slate-300 font-normal">-</span>}</td>
+              <td className="py-4 px-5 text-right font-mono font-bold text-slate-600">
+                {calculations.totalRevenue > 0 ? Math.round((calculations.gardenTotal / calculations.totalRevenue) * 100) : 0}%
               </td>
               <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700">
-                <AnimatedNumber prefix="₱" value={calculations.totalGardenArea} />
+                <AnimatedNumber prefix="₱" value={calculations.gardenTotal} />
               </td>
             </tr>
 
             {/* Row 4: Gazebo */}
             <tr className="hover:bg-slate-50 transition-colors">
               <td className="py-4 px-5 font-semibold flex items-center gap-2 pl-[44px]">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#F39C12]"></span>
+                <span className="w-6 h-6 rounded-full bg-[#F39C12]/10 text-[#F39C12] flex items-center justify-center shrink-0"><PartyPopper className="w-3.5 h-3.5" /></span>
                 <span className="text-slate-800">Gazebo</span>
               </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-slate-800">
+              <td className="py-4 px-5 text-right font-mono font-bold text-[#2E7D78]">
                 ₱{Math.round(calculations.totalGazebo).toLocaleString()}
               </td>
               <td className="py-4 px-5 text-right font-mono font-medium text-slate-300">-</td>
-              <td className="py-4 px-5 text-right font-mono font-semibold text-slate-500 text-xs italic">Included</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-[#F39C12]">
-                {calculations.totalRevenue > 0 ? Math.round((calculations.totalGazebo / calculations.totalRevenue) * 100) : 0}%
+              <td className="py-4 px-5 text-right font-mono font-semibold text-[#0EA5E9]">{calculations.gazeboExtras > 0 ? `₱${calculations.gazeboExtras.toLocaleString()}` : <span className="text-slate-300 font-normal">-</span>}</td>
+              <td className="py-4 px-5 text-right font-mono font-bold text-slate-600">
+                {calculations.totalRevenue > 0 ? Math.round((calculations.gazeboTotal / calculations.totalRevenue) * 100) : 0}%
               </td>
               <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700">
-                <AnimatedNumber prefix="₱" value={calculations.totalGazebo} />
+                <AnimatedNumber prefix="₱" value={calculations.gazeboTotal} />
               </td>
             </tr>
 
@@ -164,12 +177,12 @@ export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> =
           <tfoot>
             <tr className="border-t-2 border-slate-200 bg-slate-50 text-slate-800">
               <td className="py-5 px-5 font-bold text-[13px] uppercase tracking-wider">Total Money In</td>
-              <td className="py-5 px-5 text-right font-mono font-bold">
+              <td className="py-5 px-5 text-right font-mono font-bold text-[#2E7D78]">
                 ₱{(calculations.totalPensionBase + calculations.totalVacationHouse + calculations.totalGardenArea + calculations.totalGazebo).toLocaleString()}
               </td>
-              <td className="py-5 px-5 text-right font-mono font-bold text-slate-500">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
-              <td className="py-5 px-5 text-right font-mono font-bold text-slate-500">₱{calculations.totalPensionRentals.toLocaleString()}</td>
-              <td className="py-5 px-5 text-right font-mono font-black text-brand-primary text-[17px]">100%</td>
+              <td className="py-5 px-5 text-right font-mono font-bold text-[#C9922F]">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
+              <td className="py-5 px-5 text-right font-mono font-bold text-[#0EA5E9]">₱{calculations.totalExtras.toLocaleString()}</td>
+              <td className="py-5 px-5 text-right font-mono font-black text-slate-600 text-[17px]">100%</td>
               <td className="py-5 px-5 text-right font-mono font-black text-emerald-700 text-[17px]"><AnimatedNumber prefix="₱" value={calculations.totalRevenue} /></td>
             </tr>
             <tr className="border-t border-slate-200 bg-rose-50/50 text-rose-800">

@@ -209,12 +209,15 @@ export function CalendarTab() {
         onMonthChange={value => { const [y, m] = value.split('-').map(Number); setSchedulerStartDate(new Date(y, m - 1, 1)) }}
         onThisMonth={() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); setSchedulerStartDate(d) }}
         newBookingDisabled={!groupSelection || Object.keys(groupSelection).length === 0}
+        logOldDisabled={!groupSelection || Object.keys(groupSelection).length === 0}
         onNewBooking={confirmGroup}
         onNewCorporate={confirmGroupCorporate}
         onLogOldBooking={() => {
           const serialized: Record<string, UnitSel> = {}
           if (groupSelection) Object.entries(groupSelection).forEach(([id, sel]) => { serialized[id] = { checkIn: dateToString(sel.checkIn), checkOut: dateToString(sel.checkOut), type: sel.type } })
           setLogOldSelections(serialized)
+          setGroupSelection(null)
+          setTimelineSelection(null)
           setShowLogOld(true)
         }}
       />
@@ -291,6 +294,7 @@ export function CalendarTab() {
       {showLogOld && (
         <LogOldBookingModal
           rooms={rooms}
+          venues={venues}
           createManualBooking={createManualBooking}
           initialSelections={logOldSelections}
           onClose={() => setShowLogOld(false)}

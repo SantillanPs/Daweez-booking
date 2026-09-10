@@ -59,6 +59,8 @@ export function ExtendStayModal({
   const [receiptRef, setReceiptRef] = useState('')
   const [receiptFor, setReceiptFor] = useState<PaymentRecord | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [trySave, setTrySave] = useState(false)
 
   const room = booking.room_id ? rooms.find(r => r.id === booking.room_id) : undefined
   const venue = booking.venue_id ? venues.find(v => v.id === booking.venue_id) : undefined
@@ -71,6 +73,24 @@ export function ExtendStayModal({
   const due = Number(localBooking.balance_due || 0)
   const payRef = booking.payment_reference || booking.event_addons?.payment_reference
   const hasEmail = booking.guest_email && booking.guest_email !== 'admin@daweez-booking.vercel.app'
+
+  // Inline required-field validation for the extend-stay form (mirrors LogOldBookingModal).
+  const fieldErrors = {
+    extendCheckoutDate: !extendCheckoutDate
+      ? 'Check-out date is required.'
+      : extendCheckoutDate <= booking.check_in ? 'Check-out must be after check-in.' : '',
+  }
+  const showErr = (f: keyof typeof fieldErrors) => (touched[f] || trySave) ? fieldErrors[f] : ''
+  const isInvalid = (f: keyof typeof fieldErrors) => Boolean(showErr(f))
+  const markTouched = (f: keyof typeof fieldErrors) => () => setTouched(t => ({ ...t, [f]: true }))
+  const handleExtendSubmit = (e: React.FormEvent) => {
+    if (Object.values(fieldErrors).some(v => v)) { e.preventDefault(); setTrySave(true); return }
+    onExtendStaySubmit(e)
+  }
+
+  const baseField = 'w-full bg-page border text-main px-2.5 py-2 rounded-lg text-xs font-mono outline-none'
+  const field = baseField + ' border-sea-300 focus:bg-card focus:border-sea-500'
+  const fieldErr = baseField + ' border-coral-400 focus:bg-card focus:border-coral-500'
 
   const handleQuickPayment = async (b: Booking, status: PaymentStatusOption) => {
     const updated = { ...b, payment_status: status, balance_due: status === 'paid' ? 0 : b.balance_due }
@@ -385,7 +405,7 @@ export function ExtendStayModal({
           )}
 
           {/* Extend stay */}
-          <form onSubmit={onExtendStaySubmit} className="border-t border-soft pt-4 space-y-3">
+          <form onSubmit={handleExtendSubmit} className="border-t border-soft pt-4 space-y-3">
             {extendError && (
               <div className="p-2.5 bg-coral-50 border border-coral-200 text-coral-600 text-xs flex items-center gap-2 rounded-lg">
                 <AlertCircle className="w-4 h-4 shrink-0" /><span>{extendError}</span>
@@ -399,10 +419,12 @@ export function ExtendStayModal({
                   className="w-full bg-softbg border border-soft text-muted px-2.5 py-2 rounded-lg text-xs font-mono outline-none" />
               </div>
               <div>
-                <label className="text-[10px] text-sea-700 font-bold block mb-1">New check-out</label>
-                <input type="date" required min={booking.check_in} value={extendCheckoutDate}
+                <label className="text-[10px] text-sea-700 font-bold block mb-1">New check-out <span className="text-coral-600">*</span></label>
+                <input type="date" min={booking.check_in} value={extendCheckoutDate}
                   onChange={e => setExtendCheckoutDate(e.target.value)}
-                  className="w-full bg-page border border-sea-300 text-main px-2.5 py-2 rounded-lg text-xs font-mono outline-none focus:bg-card focus:border-sea-500" />
+                  onBlur={markTouched('extendCheckoutDate')}
+                  className={isInvalid('extendCheckoutDate') ? fieldErr : field} />
+                {showErr('extendCheckoutDate') && <p className="text-[10px] text-coral-600 mt-1">{showErr('extendCheckoutDate')}</p>}
               </div>
             </div>
             {extraNights > 0 && (

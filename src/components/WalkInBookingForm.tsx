@@ -1,20 +1,21 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal } from '../types/booking'
+import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal, PaymentRecord } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { useDashboardData } from './DashboardContext'
 import {
-  X, AlertCircle, BedDouble, PartyPopper
+  X, AlertCircle, BedDouble, PartyPopper, CircleDollarSign, UserCheck, CheckCircle2, CalendarX
 } from 'lucide-react'
 import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
+import { PrintPaymentReceiptModal } from './billing/PrintPaymentReceiptModal'
 
 // Import modular subcomponents
-import { GuestDetailsForm } from './walk-in/GuestDetailsForm'
 import { DiscountPricingControls, DiscountType } from './calendar/DiscountPricingControls'
 import { roomDisplayName } from './calendar/bookingStyles'
-import { titleCase } from '../utils/helpers'
 import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
+import { BillingSummary } from './walk-in/BillingSummary'
+import { dateToString } from '../utils/helpers'
 
 interface WalkInBookingFormProps {
   rooms: Room[]
@@ -73,12 +74,13 @@ export function WalkInBookingForm({
   bookings,
   createManualBooking,
   cancelBooking,
+  updateBooking,
   initialSelections,
   editingBookings,
   onClose,
   initialBookingType
 }: WalkInBookingFormProps) {
-  // ── Core wizard state ──
+  // ── Core form state ──
   const [formStep, setFormStep] = useState<number>(1)
   const [bookingType, setBookingType] = useState<'individual' | 'partner'>(initialBookingType || 'individual')
 
@@ -199,24 +201,13 @@ export function WalkInBookingForm({
   const [formStatus, setFormStatus] = useState<'confirmed' | 'blocked'>('confirmed')
   const [formError, setFormError] = useState('')
   const [formCompanions, setFormCompanions] = useState<Companion[]>([])
+  const [formGuestBreakfast, setFormGuestBreakfast] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   // Explicit promo override — staff picks "Use Promo Price" per booking
   // (replaces the old automatic 20% discount).
   const [formUsePromo, setFormUsePromo] = useState(false)
   const [createdBookingList, setCreatedBookingList] = useState<Booking[]>([])
 
-
-  // ── Breakfast state ──
-  const [formBreakfastEnabled, setFormBreakfastEnabled] = useState(true)
-  const [formBreakfastGuests, setFormBreakfastGuests] = useState(1)
-
-  // Sync breakfast guest count with companions when they change — "adjust
-  // state when a prop changes" pattern (no effect needed).
-  const [prevCompanionCount, setPrevCompanionCount] = useState(formCompanions.length)
-  if (prevCompanionCount !== formCompanions.length) {
-    setPrevCompanionCount(formCompanions.length)
-    setFormBreakfastGuests(Math.max(1, 1 + formCompanions.length))
-  }
 
   // ── Add-ons state ──
   const [formChairs, setFormChairs] = useState(0)
@@ -232,6 +223,15 @@ export function WalkInBookingForm({
   const [formPaymentMethod, setFormPaymentMethod] = useState('')
   const [formPaymentReference, setFormPaymentReference] = useState('')
   const [formInvoiceNumber, setFormInvoiceNumber] = useState('')
+
+  // ── Post-create payment (Option B) ──
+  const [payAmount, setPayAmount] = useState('')
+  const [payMethod, setPayMethod] = useState('Cash')
+  const [payReference, setPayReference] = useState('')
+  const [payDate, setPayDate] = useState(() => dateToString(new Date()))
+  const [isRecordingPay, setIsRecordingPay] = useState(false)
+  const [receiptRecord, setReceiptRecord] = useState<PaymentRecord | null>(null)
+  const [receiptBooking, setReceiptBooking] = useState<Booking | null>(null)
 
   // ── Quick-form parity fields ──
   const [formPreparedBy, setFormPreparedBy] = useState('')
@@ -350,8 +350,25 @@ export function WalkInBookingForm({
     return entries.every(sel => sel.checkIn && sel.checkOut && sel.checkIn < sel.checkOut)
   }, [unitSelections])
 
+  // ── Inline required-field validation (mirrors LogOldBookingModal) ──
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [trySave, setTrySave] = useState(false)
+  const fieldErrors = {
+    checkIn: bookingType === 'partner' ? (formCheckIn.trim() ? '' : 'Check-in date is required.') : '',
+    checkOut: bookingType === 'partner' ? (!formCheckOut ? 'Check-out date is required.' : (formCheckOut <= formCheckIn ? 'Check-out must be after check-in.' : '')) : '',
+    units: Object.keys(unitSelections).length === 0 ? 'Select at least one room or venue.' : '',
+    dates: Object.keys(unitSelections).length === 0 ? '' : (isValidDates ? '' : 'Please select valid check-in and check-out dates for all units.'),
+    guestName: (formStatus === 'confirmed' && bookingType === 'individual' && !formGuestName.trim()) ? 'Guest name is required.' : '',
+  }
+  const showErr = (k: keyof typeof fieldErrors) => (touched[k] || trySave) ? fieldErrors[k] : ''
+  const isInvalid = (k: keyof typeof fieldErrors) => Boolean(showErr(k))
+  const markTouched = (k: keyof typeof fieldErrors) => () => setTouched(t => ({ ...t, [k]: true }))
+  const dateBase = 'input input-bordered w-full font-mono'
+  const dateField = 'input input-bordered w-full'
+  const dateFieldErr = 'input input-bordered input-error w-full'
+
   // ── Pricing calculations (estimate for totals; real nightly rate goes through calculatePricing) ──
-  const { estBreakfast, estRentals, estAddons } = useMemo(() => {
+  const { estBreakfast, estRentals, estAddons, estTotal, estDown, estDue } = useMemo(() => {
     let regularTotal = 0
     let discountedTotal = 0
     let breakfast = 0
@@ -380,8 +397,9 @@ export function WalkInBookingForm({
 
       const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
       if (sel.type === 'room') {
-        if (!isBreakfastIncluded && formBreakfastEnabled) {
-          breakfast += 150 * formBreakfastGuests * n
+        const bfCount = (formGuestBreakfast ? 1 : 0) + formCompanions.filter(c => c.breakfast).length
+        if (!isBreakfastIncluded && bfCount > 0) {
+          breakfast += 150 * bfCount * n
         }
         rentals += (formExtraFoam * 200 + formExtraPillow * 50 + formExtraBlanket * 50 + formExtraTowel * 50) * n
       }
@@ -407,21 +425,13 @@ export function WalkInBookingForm({
       estDown: down,
       estDue: due,
     }
-  }, [unitSelections, formUsePromo, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, formBreakfastEnabled, formBreakfastGuests]) as { estBreakfast: number; estRentals: number; estAddons: number; estSubtotal: number; estRegularTotal: number; estDiscountAmount: number; estTotal: number; estDown: number; estDue: number }
+  }, [unitSelections, formUsePromo, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formStatus, rooms, venues, hasVenues, partnerDeals, formPartnerDealId, formGuestBreakfast, formCompanions]) as { estBreakfast: number; estRentals: number; estAddons: number; estSubtotal: number; estRegularTotal: number; estDiscountAmount: number; estTotal: number; estDown: number; estDue: number }
 
   const hasAddons = estBreakfast > 0 || estRentals > 0 || estAddons > 0
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setFormError('')
-    if (!isValidDates) {
-      setFormError('Please select valid check-in and check-out dates for all units.'); return
-    }
-    if (Object.keys(unitSelections).length === 0) {
-      setFormError('Please select at least one room or event venue.'); return
-    }
-    if (formStatus === 'confirmed' && !formGuestName) {
-      setFormError('Guest name is required.'); return
-    }
+    if (Object.values(fieldErrors).some(v => v)) { setTrySave(true); return }
     setIsSubmitting(true)
 
     // 1. Run collision checks for all selected units on their respective dates
@@ -501,7 +511,7 @@ export function WalkInBookingForm({
           partnerDealId: formPartnerDealId || undefined,
           companyName: formCompanyName || undefined,
           vehiclePlate: formVehiclePlate || undefined,
-          breakfastOrders: formBreakfastEnabled ? undefined : ([] as BreakfastOrder[]),
+          breakfastOrders: (formGuestBreakfast || formCompanions.some(c => c.breakfast)) ? undefined : ([] as BreakfastOrder[]),
           breakfastIncluded: isBreakfastIncluded,
           contractRateOverride: contractedPrice || undefined,
           paymentMethod: formPaymentMethod || undefined,
@@ -583,6 +593,7 @@ export function WalkInBookingForm({
       }
 
       setCreatedBookingList(createdBookings)
+      setPayAmount(String(createdBookings.reduce((a, b) => a + (b.balance_due || 0), 0)))
     } catch (err: unknown) {
       // Rollback successfully created bookings on failure
       for (const b of createdBookings) {
@@ -597,10 +608,59 @@ export function WalkInBookingForm({
     }
   }
 
+  const createdDue = useMemo(() => createdBookingList.reduce((a, b) => a + (b.balance_due || 0), 0), [createdBookingList])
+
+  const recordPayment = async () => {
+    const amount = parseFloat(payAmount) || createdDue
+    if (!createdBookingList.length || amount <= 0) return
+    setIsRecordingPay(true)
+    try {
+      const rec: PaymentRecord = { id: 'rcpt-' + Date.now(), amount, method: payMethod, reference: payReference.trim() || undefined, paid_at: payDate ? new Date(payDate + 'T12:00:00').toISOString() : new Date().toISOString() }
+      const target = createdBookingList[0]
+      const total = (target.balance_due || 0) + (target.downpayment_paid || 0)
+      const newDown = (target.downpayment_paid || 0) + amount
+      const newBalance = Math.max(0, total - newDown)
+      const status: Booking['payment_status'] = newBalance <= 0 ? 'paid' : 'downpayment'
+      const updated: Booking = { ...target, payment_records: [...(target.payment_records || []), rec], downpayment_paid: newDown, balance_due: newBalance, payment_status: status }
+      setCreatedBookingList(list => list.map(b => b.id === target.id ? updated : b))
+      if (updateBooking) { try { await updateBooking(updated) } catch (e) { console.error('Could not persist payment:', e) } }
+      setReceiptRecord(rec)
+      setReceiptBooking(updated)
+    } finally {
+      setIsRecordingPay(false)
+    }
+  }
+
   if (createdBookingList.length > 0) {
     return createPortal(
       <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 p-4 flex flex-col items-center" onClick={onClose}>
         <div className="w-full max-w-3xl mb-8" onClick={e => e.stopPropagation()}>
+          <div className="bg-base-100 border border-base-300 rounded-xl p-4 shadow-sm mb-4">
+            <h4 className="text-xs font-bold text-base-content uppercase tracking-wider mb-1">Record a payment</h4>
+            <p className="text-[10px] text-base-content/60 mb-3">Total due: <b className="text-success font-mono">₱{createdDue.toLocaleString()}</b></p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-2.5">
+              <label className="text-[10px] text-base-content/60 font-bold block">Amount (₱)
+                <input type="text" inputMode="decimal" value={payAmount || String(createdDue || '')} onChange={e => setPayAmount(e.target.value)} placeholder={String(createdDue || 0)} className="input input-bordered w-full mt-1" />
+              </label>
+              <label className="text-[10px] text-base-content/60 font-bold block">Method
+                <select value={payMethod} onChange={e => setPayMethod(e.target.value)} className="select select-bordered w-full mt-1">
+                  <option value="Cash">Cash</option>
+                  <option value="GCash">GCash</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+              </label>
+              <label className="text-[10px] text-base-content/60 font-bold block">Reference
+                <input type="text" value={payReference} onChange={e => setPayReference(e.target.value)} placeholder="Optional" className="input input-bordered w-full mt-1" />
+              </label>
+              <label className="text-[10px] text-base-content/60 font-bold block">Date
+                <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} className="input input-bordered w-full mt-1" />
+              </label>
+            </div>
+            <button type="button" onClick={recordPayment} disabled={isRecordingPay || !(parseFloat(payAmount) || createdDue)} className="btn btn-primary btn-block">
+              {isRecordingPay ? 'Recording…' : 'Record a payment'}
+            </button>
+          </div>
+
           <PrintInvoiceModal
             bookingsToPrint={createdBookingList}
             rooms={rooms}
@@ -610,6 +670,9 @@ export function WalkInBookingForm({
             embedded
           />
         </div>
+        {receiptRecord && receiptBooking && (
+          <PrintPaymentReceiptModal booking={receiptBooking} record={receiptRecord} rooms={rooms} venues={venues} onClose={() => setReceiptRecord(null)} />
+        )}
       </div>,
       document.body
     )
@@ -617,55 +680,52 @@ export function WalkInBookingForm({
 
   const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 font-sans" onClick={onClose}>
-      <div className="w-full max-w-md md:max-w-4xl bg-card rounded-lg border border-soft shadow-xl flex flex-col max-h-[92vh] md:max-h-[85vh] overflow-hidden transition-all duration-300" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-md md:max-w-4xl bg-base-100 rounded-lg border border-base-300 shadow-xl flex flex-col max-h-[92vh] md:max-h-[85vh] overflow-hidden transition-all duration-300" onClick={e => e.stopPropagation()}>
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-soft shrink-0 bg-card">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-base-300 shrink-0 bg-base-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 flex items-center justify-center bg-brand-bg border border-brand-border rounded-md">
+            <div className="w-7 h-7 flex items-center justify-center bg-primary/10 border border-base-300 rounded-lg">
               {hasVenues && !hasRooms
-                ? <PartyPopper className="w-3.5 h-3.5 text-brand-primary" />
-                : <BedDouble className="w-3.5 h-3.5 text-brand-primary" />}
+                ? <PartyPopper className="w-3.5 h-3.5 text-primary" />
+                : <BedDouble className="w-3.5 h-3.5 text-primary" />}
             </div>
             <div>
-              <h3 className="text-sm font-bold text-main">New Reservation</h3>
-              <p className="text-[10px] text-muted font-medium">
-                {bookingType === 'partner' ? 'Quick Partner Booking' : `Step ${formStep} of ${formStatus === 'blocked' ? 2 : 3}`}
+              <h3 className="text-sm font-bold text-base-content">New Reservation</h3>
+              <p className="text-[10px] text-base-content/60 font-medium">
+                {bookingType === 'partner' ? 'Quick Partner Booking' : `Step ${formStep} of 3`}
               </p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="text-muted hover:text-main transition-colors p-1.5 -mr-1.5 cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {formStatus === 'blocked' ? (
+              <button type="button" onClick={() => setFormStatus('confirmed')} className="btn btn-ghost btn-sm">&larr; Booking</button>
+            ) : (
+              <button type="button" onClick={() => setFormStatus('blocked')} className="btn btn-outline btn-primary btn-sm">
+                <CalendarX className="w-3.5 h-3.5" /> Block dates
+              </button>
+            )}
+            <button type="button" onClick={onClose} className="btn btn-ghost btn-sm -mr-1.5">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* ── Step Progress Indicator ── */}
+
         {bookingType === 'individual' && (
-          <div className="flex items-center px-5 py-2.5 border-b border-soft shrink-0 bg-page/50">
+          <div className="flex items-center px-5 py-2.5 border-b border-base-300 shrink-0 bg-base-200/50">
             {[1, 2, 3].map(s => {
-              if (s === 3 && formStatus === 'blocked') return null
               const isActive = formStep === s
               const isCompleted = formStep > s
-              const isNextStepReady = 
-                (s === 2 && isValidDates) || 
-                (s === 3 && isValidDates && !!formGuestName)
+              const isNextStepReady = (s === 2 || s === 3) && formStatus === 'confirmed' && !!formGuestName
               const isUnlocked = s <= formStep || isNextStepReady
-
               return (
                 <React.Fragment key={s}>
                   {s > 1 && (
-                    <div className={`flex-1 h-0.5 transition-all duration-300 ${isCompleted ? 'bg-brand-primary' : 'bg-slate-200'}`} />
+                    <div className={'flex-1 h-0.5 transition-all duration-300 ' + (isCompleted ? 'bg-primary' : 'bg-base-300')} />
                   )}
                   <button type="button" disabled={!isUnlocked} onClick={() => setFormStep(s)}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-brand-primary border-brand-primary text-white shadow-sm ring-2 ring-brand-primary/20'
-                        : isCompleted
-                          ? 'bg-brand-bg border-brand-primary text-brand-text font-semibold hover:bg-brand-primary hover:text-white'
-                          : isUnlocked
-                            ? 'bg-card border-brand-primary text-brand-primary shadow-sm hover:bg-brand-primary hover:text-white animate-pulse'
-                            : 'bg-card border-soft text-muted disabled:cursor-not-allowed opacity-50'
-                    }`}>
+                    className={'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all cursor-pointer ' + (isActive ? 'bg-primary border-primary text-primary-content shadow-sm ring-2 ring-primary/20' : isCompleted ? 'bg-primary/10 border-primary text-primary hover:bg-primary hover:text-primary-content' : isUnlocked ? 'bg-base-100 border-primary text-primary hover:bg-primary hover:text-primary-content animate-pulse' : 'bg-base-100 border-base-300 text-base-content/60 disabled:cursor-not-allowed opacity-50')}>
                     {s}
                   </button>
                 </React.Fragment>
@@ -676,21 +736,21 @@ export function WalkInBookingForm({
 
         {/* ── Scrollable Body ── */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="overflow-y-auto flex-1 p-5 bg-page/30">
-            <div className="space-y-4">
+          <div className="overflow-y-auto flex-1 p-5 bg-base-200/30">
+            <div className="space-y-2.5">
                 {formError && (
-                  <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs flex items-center gap-2 rounded-md animate-in fade-in">
+                  <div className="p-3 bg-error/10 border border-error/20 text-error text-xs flex items-center gap-2 rounded-md animate-in fade-in">
                     <AlertCircle className="w-4 h-4 shrink-0" /><span>{formError}</span>
                   </div>
                 )}
 
                 {bookingType === 'partner' ? (
-                  <div className="space-y-4 font-sans bg-card border border-soft/60 rounded-xl p-5 shadow-sm">
-                    <div className="border-b border-soft pb-3">
-                      <h4 className="text-xs font-bold text-main uppercase tracking-wider">
+                  <div className="space-y-4 font-sans bg-base-100 border border-base-300 rounded-xl p-5 shadow-sm">
+                    <div className="border-b border-base-300 pb-3">
+                      <h4 className="text-xs font-bold text-base-content uppercase tracking-wider">
                         Corporate / Agency details
                       </h4>
-                      <p className="text-[10px] text-muted font-medium mt-0.5">
+                      <p className="text-[10px] text-base-content/60 font-medium mt-0.5">
                         Select a partner account to automatically populate contract rates, invoices, and contact info.
                       </p>
                     </div>
@@ -698,26 +758,26 @@ export function WalkInBookingForm({
                     <div className="space-y-3.5 text-xs">
                       {/* 1. Searchable Partner Selector */}
                       <div className="relative" ref={partnerDropdownRef}>
-                        <label className="text-[10px] text-brand-text font-bold block mb-1 uppercase tracking-wider">Partner Account</label>
+                        <label className="text-[10px] text-primary font-bold block mb-1 uppercase tracking-wider">Partner Account</label>
                         <div
                           onClick={() => setIsPartnerDropdownOpen(!isPartnerDropdownOpen)}
-                          className="w-full bg-brand-bg border border-brand-border text-main px-3 py-2 rounded-lg focus:outline-none focus:border-brand-primary font-semibold cursor-pointer flex justify-between items-center shadow-sm select-none"
+                          className="w-full bg-base-100 border border-base-300 text-base-content px-3 py-2 rounded-lg focus:outline-none font-semibold cursor-pointer flex justify-between items-center shadow-sm select-none"
                         >
-                          <span className={formCompanyName ? 'text-main' : 'text-muted font-normal'}>
+                          <span className={formCompanyName ? 'text-base-content' : 'text-base-content/60 font-normal'}>
                             {formCompanyName || '-- Search & Select Partner --'}
                           </span>
-                          <span className="text-[10px] text-muted">▼</span>
+                          <span className="text-[10px] text-base-content/60">▼</span>
                         </div>
 
                         {isPartnerDropdownOpen && (
-                          <div className="absolute z-50 mt-1 w-full bg-card border border-soft rounded-lg shadow-lg overflow-hidden flex flex-col max-h-60" onClick={e => e.stopPropagation()}>
-                            <div className="p-2 border-b border-soft bg-page">
+                          <div className="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-60" onClick={e => e.stopPropagation()}>
+                            <div className="p-2 border-b border-base-300 bg-base-200">
                               <input
                                 type="text"
                                 placeholder="Type to search agency..."
                                 value={partnerSearchQuery}
                                 onChange={e => setPartnerSearchQuery(e.target.value)}
-                                className="w-full bg-card border border-soft text-main px-2.5 py-1.5 rounded text-xs focus:outline-none focus:border-brand-primary"
+                                className="input input-bordered w-full text-sm"
                                 autoFocus
                               />
                             </div>
@@ -733,14 +793,14 @@ export function WalkInBookingForm({
                                       setIsPartnerDropdownOpen(false)
                                       setPartnerSearchQuery('')
                                     }}
-                                    className="w-full text-left px-3 py-2 hover:bg-brand-bg hover:text-brand-text text-xs font-semibold text-main flex justify-between items-center transition-colors border-none bg-transparent cursor-pointer"
+                                    className="w-full text-left px-3 py-2 hover:bg-primary/10 hover:text-primary text-xs font-semibold text-base-content flex justify-between items-center transition-colors border-none bg-transparent cursor-pointer"
                                   >
                                     <span>{d.name}</span>
-                                    <span className="text-[9px] bg-softbg text-muted px-1.5 py-0.5 rounded uppercase font-bold shrink-0">{d.type}</span>
+                                    <span className="text-[9px] bg-base-300/50 text-base-content/60 px-1.5 py-0.5 rounded uppercase font-bold shrink-0">{d.type}</span>
                                   </button>
                                 ))
                               ) : (
-                                <div className="px-3 py-3 text-center text-xs text-muted font-medium">
+                                <div className="px-3 py-3 text-center text-xs text-base-content/60 font-medium">
                                   No matching partner accounts
                                 </div>
                               )}
@@ -752,30 +812,34 @@ export function WalkInBookingForm({
                       {/* 2. Dates Row */}
                       <div className="grid grid-cols-2 gap-3.5">
                         <div>
-                          <label className="text-[10px] text-brand-text font-bold block mb-1 uppercase tracking-wider">Check-in</label>
+                          <label className="text-[10px] text-primary font-bold block mb-1 uppercase tracking-wider">Check-in *</label>
                           <input
                             type="date"
-                            required
+                            onBlur={markTouched('checkIn')}
                             value={formCheckIn}
                             onChange={e => handlePartnerDateChange('checkIn', e.target.value)}
-                            className="w-full bg-brand-bg border border-brand-border text-main px-3 py-2 rounded-lg focus:outline-none focus:border-brand-primary font-mono font-medium"
+                            className={isInvalid('checkIn') ? dateFieldErr : dateField}
                           />
+                          {showErr('checkIn') && <p className="text-[10px] text-error mt-1">{showErr('checkIn')}</p>}
                         </div>
                         <div>
-                          <label className="text-[10px] text-brand-text font-bold block mb-1 uppercase tracking-wider">Check-out</label>
+                          <label className="text-[10px] text-primary font-bold block mb-1 uppercase tracking-wider">Check-out *</label>
                           <input
                             type="date"
-                            required
+                            onBlur={markTouched('checkOut')}
                             value={formCheckOut}
                             onChange={e => handlePartnerDateChange('checkOut', e.target.value)}
-                            className="w-full bg-brand-bg border border-brand-border text-main px-3 py-2 rounded-lg focus:outline-none focus:border-brand-primary font-mono font-medium"
+                            className={isInvalid('checkOut') ? dateFieldErr : dateField}
                           />
+                          {showErr('checkOut') && <p className="text-[10px] text-error mt-1">{showErr('checkOut')}</p>}
                         </div>
                       </div>
+                      {showErr('dates') && <p className="text-[10px] text-error mt-1">{showErr('dates')}</p>}
+                      {showErr('units') && <p className="text-[10px] text-error mt-1">{showErr('units')}</p>}
 
                       {/* 3. Selected Rooms Display (Read-Only) */}
                       <div>
-                        <label className="text-[10px] text-brand-text font-bold block mb-1.5 uppercase tracking-wider">Selected Rooms</label>
+                        <label className="text-[10px] text-primary font-bold block mb-1.5 uppercase tracking-wider">Selected Rooms</label>
                         <div className="flex flex-wrap gap-2.5">
                           {Object.entries(unitSelections).map(([id, sel]) => {
                             const isRoom = sel.type === 'room'
@@ -789,18 +853,18 @@ export function WalkInBookingForm({
                               : (venues.find(v => v.id === id)?.base_price || 0)
                             
                             return (
-                              <div key={id} className="bg-brand-bg border border-brand-border rounded-md px-2 py-1 flex items-center gap-1.5 shadow-sm text-[11px] animate-in fade-in select-none">
-                                <span className="font-bold text-main">{name}</span>
+                              <div key={id} className="bg-primary/10 border border-base-300 rounded-md px-2 py-1 flex items-center gap-1.5 shadow-sm text-[11px] animate-in fade-in select-none">
+                                <span className="font-bold text-base-content">{name}</span>
                                 <span className="text-slate-300">|</span>
                                 {contractedPrice !== undefined && contractedPrice !== null ? (
-                                  <span className="font-extrabold text-brand-text flex items-center gap-1">
+                                  <span className="font-extrabold text-primary flex items-center gap-1">
                                     ₱{contractedPrice.toLocaleString()}
-                                    <span className="text-[8px] text-brand-text font-bold bg-[#9A783E]/10 px-1 py-0.5 rounded uppercase">Neg</span>
+                                    <span className="text-[8px] text-primary font-bold bg-[#9A783E]/10 px-1 py-0.5 rounded uppercase">Neg</span>
                                   </span>
                                 ) : (
-                                  <span className="font-semibold text-muted flex items-center gap-1">
+                                  <span className="font-semibold text-base-content/60 flex items-center gap-1">
                                     ₱{basePrice.toLocaleString()}
-                                    <span className="text-[8px] text-muted font-bold bg-softbg px-1 py-0.5 rounded uppercase">Std</span>
+                                    <span className="text-[8px] text-base-content/60 font-bold bg-base-300/50 px-1 py-0.5 rounded uppercase">Std</span>
                                   </span>
                                 )}
                               </div>
@@ -810,29 +874,29 @@ export function WalkInBookingForm({
                       </div>
 
                       {/* Promo Price Checkbox */}
-                      <div className="pt-2 border-t border-soft">
+                      <div className="pt-2 border-t border-base-300">
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                           <input
                             type="checkbox"
                             checked={formUsePromo}
                             onChange={e => setFormUsePromo(e.target.checked)}
-                            className="rounded text-brand-primary focus:ring-[#B89251] w-3.5 h-3.5 cursor-pointer accent-brand-primary"
+                            className="checkbox checkbox-primary"
                           />
-                          <span className="text-[10px] text-brand-text font-bold uppercase tracking-wider">Use Promo Price</span>
+                          <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Use Promo Price</span>
                         </label>
-                        {formUsePromo && <p className="text-[10px] text-muted mt-1">Guests are charged the exact promo price from the rate card.</p>}
-                        <div className="pt-4 border-t border-soft/60 mt-4 flex gap-2">
+                        {formUsePromo && <p className="text-xs text-base-content/60 mt-1">Guests are charged the exact promo price from the rate card.</p>}
+                        <div className="pt-4 border-t border-base-300 mt-4 flex gap-2">
                           <button
                             type="button"
                             onClick={onClose}
-                            className="text-xs text-muted font-bold px-4 py-3 rounded-md border border-soft bg-card hover:bg-page transition-all cursor-pointer"
+                            className="btn btn-ghost"
                           >
                             Cancel
                           </button>
                           <button
                             type="submit"
                             disabled={isSubmitting || !formPartnerDealId || Object.keys(unitSelections).length === 0}
-                            className="flex-1 bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-bold py-3 rounded-md transition-all cursor-pointer shadow-sm"
+                            className="flex-1 btn btn-primary"
                           >
                             {isSubmitting ? 'Booking...' : 'Confirm Corporate Booking'}
                           </button>
@@ -841,36 +905,35 @@ export function WalkInBookingForm({
                     </div>
                   </div>
                 ) : (
-                  <>
-                    {/* STEP 1: Resource Schedule & Type Selection */}
-                    {formStep === 1 && (
-                      <div className="space-y-4">
-                        <GuestDetailsForm
-                          rooms={rooms}
-                          venues={venues}
-                          bookings={bookings}
-                          unitSelections={unitSelections}
-                          setUnitSelections={setUnitSelections}
-                          formSource={formSource}
-                          setFormSource={setFormSource}
-                          formStatus={formStatus}
-                          setFormStatus={setFormStatus}
-                        />
-                        <div className="flex justify-end pt-2">
-                          <button type="button" disabled={!isValidDates} onClick={() => setFormStep(2)} className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
-                            Next Step &rarr;
-                          </button>
+                  <div className="space-y-2.5">
+
+                    {showErr('units') && <p className="text-[10px] text-error mt-1">{showErr('units')}</p>}
+
+                    {/* STEP 1: Guest Information + Companions */}
+                    {formStatus === 'blocked' && (
+                      <div className="space-y-2.5">
+                        <div className="bg-base-200 border border-base-300 rounded-lg px-2.5 py-2 space-y-1.5">
+                          <p className="text-[10px] font-bold text-base-content flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Block — just blocks the calendar (no charge).
+                          </p>
+                          <label className="text-[10px] text-base-content/60 font-bold block">Block reason (maintenance / cleaning)</label>
+                          <input value={formBlockNotes} onChange={e => setFormBlockNotes(e.target.value.toUpperCase())} placeholder="e.g. Room maintenance" className="input input-sm input-bordered w-full" />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-1">
+                          <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
+                          <button type="submit" disabled={isSubmitting} className="btn btn-neutral">{isSubmitting ? 'Creating...' : 'Create Block'}</button>
                         </div>
                       </div>
                     )}
 
-                    {/* STEP 2: Guest Details & Companions */}
-                    {formStep === 2 && (
-                      <div className="space-y-4">
+                    {formStatus === 'confirmed' && formStep === 1 && (
+                      <div className="space-y-2.5">
                         <RoomDetailsForm
                           formStatus={formStatus}
                           formGuestName={formGuestName}
                           setFormGuestName={setFormGuestName}
+                          formGuestBreakfast={formGuestBreakfast}
+                          setFormGuestBreakfast={setFormGuestBreakfast}
                           formGuestEmail={formGuestEmail}
                           setFormGuestEmail={setFormGuestEmail}
                           formGuestPhone={formGuestPhone}
@@ -902,95 +965,122 @@ export function WalkInBookingForm({
                           formAddress={formAddress}
                           setFormAddress={setFormAddress}
                           onSelectPartnerDeal={handleSelectPartnerDeal}
+                          guestNameError={showErr('guestName')}
+                          onGuestNameBlur={markTouched('guestName')}
                         />
-                        {formStatus === 'blocked' ? (
-                          <div className="pt-2">
-                            <button type="submit" disabled={isSubmitting} className="w-full bg-slate-700 hover:bg-slate-800 disabled:bg-slate-200 text-white disabled:text-muted text-xs font-bold py-3 rounded-md transition-all cursor-pointer shadow-sm">
-                              {isSubmitting ? 'Creating...' : 'Create Block'}
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-between items-center pt-2">
-                            <button type="button" onClick={() => setFormStep(1)} className="text-xs text-brand-text hover:text-brand-primary font-bold px-4 py-2 hover:bg-page rounded transition-colors cursor-pointer">&larr; Back</button>
-                            <button type="button" disabled={!formGuestName} onClick={() => setFormStep(3)} className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-semibold px-6 py-2 rounded transition-all cursor-pointer shadow-sm">
-                              Next Step &rarr;
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex justify-between items-center pt-2">
+                          <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
+                          <button type="button" disabled={formStatus === 'confirmed' && !formGuestName.trim()} onClick={() => setFormStep(2)} className="btn btn-primary">
+                            Next Step &rarr;
+                          </button>
+                        </div>
                       </div>
                     )}
 
-                    {/* STEP 3: Add-ons, Promo & Services — promo toggle only here for walk-ins */}
-                    {formStep === 3 && formStatus === 'confirmed' && (
-                      <div className="space-y-4">
-                        <div className="bg-card border border-soft/60 rounded-lg px-3.5 py-3 flex items-center justify-between">
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" checked={formUsePromo} onChange={e => setFormUsePromo(e.target.checked)} className="rounded text-brand-primary w-3.5 h-3.5 accent-brand-primary cursor-pointer" />
-                            <span className="text-[10px] text-brand-text font-bold uppercase tracking-wider">Use Promo Price</span>
-                          </label>
-                          <span className={`text-[11px] font-mono font-bold ${formUsePromo ? 'text-emerald-600' : 'text-muted'}`}>
-                            {formUsePromo ? 'Charging PROMO rate' : 'Charging Regular rate'}
-                          </span>
-                        </div>
+                    {/* STEP 2: Add-ons & Discount + Billing + Receptionist */}
+                    {formStatus === 'confirmed' && formStep === 2 && (
+                      <div className="space-y-2.5">
                         <AmenitiesForm
                           hasRooms={hasRooms}
-                        hasVenues={hasVenues}
-                        hasAddons={hasAddons}
-                        estRentals={estRentals}
-                        estAddons={estAddons}
-                        formChairs={formChairs}
-                        setFormChairs={setFormChairs}
-                        formExtraFoam={formExtraFoam}
-                        setFormExtraFoam={setFormExtraFoam}
-                        formExtraPillow={formExtraPillow}
-                        setFormExtraPillow={setFormExtraPillow}
-                        formExtraBlanket={formExtraBlanket}
-                        setFormExtraBlanket={setFormExtraBlanket}
-                        formExtraTowel={formExtraTowel}
-                        setFormExtraTowel={setFormExtraTowel}
-                        formEventTable={formEventTable}
-                        setFormEventTable={setFormEventTable}
-                        formEventTent={formEventTent}
-                        setFormEventTent={setFormEventTent}
-                        formVenueExcessHours={formVenueExcessHours}
-                        setFormVenueExcessHours={setFormVenueExcessHours}
-                        formBreakfastEnabled={formBreakfastEnabled}
-                        setFormBreakfastEnabled={setFormBreakfastEnabled}
-                        formBreakfastGuests={formBreakfastGuests}
-                        setFormBreakfastGuests={setFormBreakfastGuests}
-                      />
-
-                      <DiscountPricingControls
-                        isDayBlock={hasDayBlock}
-                        discountType={discountType}
-                        setDiscountType={setDiscountType}
-                        discountValue={discountValue}
-                        setDiscountValue={setDiscountValue}
-                        venueDayBlocks={venueDayBlocks}
-                        setVenueDayBlocks={setVenueDayBlocks}
-                      />
-                      <div>
-                        <label className="text-[10px] text-muted font-bold block mb-1">Prepared by</label>
-                        <input value={formPreparedBy} onChange={e => setFormPreparedBy(titleCase(e.target.value))} placeholder="Staff name" className="w-full bg-page border border-soft text-main px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-sea-500" />
-                      </div>
-
-                      <div className="flex justify-between items-center pt-2">
-                          <button type="button" onClick={() => setFormStep(2)} className="text-xs text-brand-text hover:text-brand-primary font-bold px-4 py-2 hover:bg-page rounded transition-colors cursor-pointer">&larr; Back</button>
-                          <button type="submit" disabled={isSubmitting} className="bg-brand-primary hover:bg-brand-text disabled:bg-softbg disabled:text-muted text-white text-xs font-bold px-6 py-2.5 rounded transition-all cursor-pointer shadow-sm">
-                            {isSubmitting ? 'Creating...' : 'Confirm Booking'}
+                          hasVenues={hasVenues}
+                          hasAddons={hasAddons}
+                          estRentals={estRentals}
+                          estAddons={estAddons}
+                          formChairs={formChairs}
+                          setFormChairs={setFormChairs}
+                          formExtraFoam={formExtraFoam}
+                          setFormExtraFoam={setFormExtraFoam}
+                          formExtraPillow={formExtraPillow}
+                          setFormExtraPillow={setFormExtraPillow}
+                          formExtraBlanket={formExtraBlanket}
+                          setFormExtraBlanket={setFormExtraBlanket}
+                          formExtraTowel={formExtraTowel}
+                          setFormExtraTowel={setFormExtraTowel}
+                          formEventTable={formEventTable}
+                          setFormEventTable={setFormEventTable}
+                          formEventTent={formEventTent}
+                          setFormEventTent={setFormEventTent}
+                          formVenueExcessHours={formVenueExcessHours}
+                          setFormVenueExcessHours={setFormVenueExcessHours}
+                        />
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 items-start">
+                          <DiscountPricingControls
+                            isDayBlock={hasDayBlock}
+                            discountType={discountType}
+                            setDiscountType={setDiscountType}
+                            discountValue={discountValue}
+                            setDiscountValue={setDiscountValue}
+                            venueDayBlocks={venueDayBlocks}
+                            setVenueDayBlocks={setVenueDayBlocks}
+                          />
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><UserCheck className="w-3 h-3" /></span>
+                              <h4 className="text-[10px] font-bold text-base-content tracking-widest uppercase">Receptionist on duty</h4>
+                            </div>
+                            <input value={formPreparedBy} onChange={e => setFormPreparedBy(e.target.value.toUpperCase())} placeholder="Staff name" className="input input-bordered w-full" />
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-2">
+                          <button type="button" onClick={() => setFormStep(1)} className="btn btn-ghost btn-sm">&larr; Back</button>
+                          <button type="button" onClick={() => setFormStep(3)} className="btn btn-primary">
+                            Next Step &rarr;
                           </button>
+                        </div>
                       </div>
-                    </div>
                     )}
 
-
-                  </>
+                    {/* STEP 3: Billing & Confirm */}
+                    {formStatus === 'confirmed' && formStep === 3 && (
+                      <div className="space-y-2.5">
+                        <BillingSummary
+                          formStatus={formStatus}
+                          unitSelections={unitSelections}
+                          rooms={rooms}
+                          venues={venues}
+                          estBreakfast={estBreakfast}
+                          estRentals={estRentals}
+                          estAddons={estAddons}
+                          estTotal={estTotal}
+                          estDown={estDown}
+                          estDue={estDue}
+                          formSource={formSource}
+                          formAdditionalDiscount={discountType === 'percent' ? discountValue : 0}
+                          guestEmail={formGuestEmail}
+                          bookingType={bookingType}
+                          formUsePromo={formUsePromo}
+                          partnerDeals={partnerDeals}
+                          formPartnerDealId={formPartnerDealId}
+                          formPaymentMethod={formPaymentMethod}
+                          setFormPaymentMethod={setFormPaymentMethod}
+                          formPaymentReference={formPaymentReference}
+                          setFormPaymentReference={setFormPaymentReference}
+                          formVenueExcessHours={formVenueExcessHours}
+                          isEditMode={!!editingBookings}
+                          formInvoiceNumber={formInvoiceNumber}
+                          setFormInvoiceNumber={setFormInvoiceNumber}
+                          formPaymentStatus={formPaymentStatus}
+                          setFormPaymentStatus={setFormPaymentStatus}
+                          formDownpaymentPaid={formDownpaymentPaid}
+                          setFormDownpaymentPaid={setFormDownpaymentPaid}
+                          formBalanceDue={formBalanceDue}
+                          setFormBalanceDue={setFormBalanceDue}
+                          formSecurityDeposit={formSecurityDeposit}
+                          setFormSecurityDeposit={setFormSecurityDeposit}
+                        />
+                        <div className="flex justify-between items-center pt-2">
+                          <button type="button" onClick={() => setFormStep(2)} className="btn btn-ghost btn-sm">&larr; Back</button>
+                          <button type="submit" disabled={isSubmitting} className="btn btn-primary">
+                            {isSubmitting ? 'Booking...' : 'Confirm Booking'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
             </div>
           </div>
         </form>
-
-
       </div>
     </div>
   )

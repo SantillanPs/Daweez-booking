@@ -97,5 +97,37 @@ export default {
       }
     }
   },
-  plugins: [require("tailwindcss-animate")]
+  plugins: [require("tailwindcss-animate"), require("daisyui")],
+  daisyui: {
+    themes: [
+      {
+        sunsea: {
+          primary: "#2E7D78",
+          "primary-content": "#ffffff",
+          secondary: "#C9922F",
+          "secondary-content": "#ffffff",
+          accent: "#DEAE55",
+          "accent-content": "#ffffff",
+          neutral: "#3D3A33",
+          "neutral-content": "#ffffff",
+          "base-100": "#ffffff",
+          "base-200": "#FAF6EE",
+          "base-300": "#F2ECDD",
+          "base-content": "#2E2A24",
+          info: "#3B8A82",
+          "info-content": "#ffffff",
+          success: "#059669",
+          "success-content": "#ffffff",
+          warning: "#DEAE55",
+          "warning-content": "#ffffff",
+          error: "#D9604A",
+          "error-content": "#ffffff",
+          "--rounded-box": "1rem",
+          "--rounded-btn": "0.75rem",
+          "--rounded-badge": "0.5rem",
+          "--rounded-field": "0.75rem"
+        }
+      }
+    ]
+  }
 }

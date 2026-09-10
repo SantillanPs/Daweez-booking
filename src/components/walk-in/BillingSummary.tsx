@@ -1,5 +1,6 @@
 import React from 'react'
 import { Room, Venue, BookingSource, PartnerDeal } from '../../types/booking'
+import { CircleDollarSign } from 'lucide-react'
 
 interface BillingSummaryProps {
   formStatus: 'confirmed' | 'blocked'
@@ -111,42 +112,43 @@ export const BillingSummary = React.memo(
 
     return (
       <div className="space-y-4 font-sans">
-        <h4 className="text-[9px] font-bold text-brand-text tracking-widest uppercase md:block hidden pb-0.5 border-b border-soft/40">
-          Price Estimate
-        </h4>
+        <div className="flex items-center gap-2 pb-0.5 border-b border-base-300 hidden md:flex">
+          <span className="w-5 h-5 rounded-full bg-success/10 text-success flex items-center justify-center shrink-0"><CircleDollarSign className="w-3 h-3" /></span>
+          <h4 className="text-[9px] font-bold text-primary tracking-widest uppercase">Price Estimate</h4>
+        </div>
 
         {formStatus === 'confirmed' ? (
-          <div className="bg-gradient-to-br from-white to-[#FDFBF9] border border-brand-border p-5 rounded-lg text-xs space-y-4 shadow-sm relative overflow-hidden text-brand-text animate-fade-in">
-            <div className="absolute top-0 inset-x-0 h-1 bg-brand-primary" />
+          <div className="bg-gradient-to-br from-base-100 to-base-200 border border-primary/20 p-3 rounded-xl text-xs space-y-2.5 shadow-sm relative overflow-hidden text-base-content animate-fade-in">
+            <div className="absolute top-0 inset-x-0 h-1 bg-primary" />
             
             {/* Header */}
-            <div className="text-center border-b border-brand-border/40 pb-3">
-              <div className="text-[10px] text-brand-text font-bold tracking-widest uppercase mb-0.5">
+            <div className="text-center border-b border-base-300 pb-3">
+              <div className="text-[10px] text-primary font-bold tracking-widest uppercase mb-0.5">
                 {bookingType === 'partner' ? 'Corporate Booking Cost' : 'Estimated Cost'}
               </div>
-              <h5 className="text-[13px] font-black text-main tracking-tight uppercase">Daweez Pension House</h5>
-              <span className="text-[8px] font-bold text-muted block mt-0.5 uppercase tracking-wider">
+              <h5 className="text-[13px] font-black text-base-content tracking-tight uppercase">Daweez Pension House</h5>
+              <span className="text-[8px] font-bold text-base-content/60 block mt-0.5 uppercase tracking-wider">
                 {bookingType === 'partner' ? `${deal?.name.replace(/\s+/g, '-').toUpperCase() || 'PARTNER'} Booking` : 'Walk-in Booking'}
               </span>
             </div>
             
             {/* Company Info Box */}
             {bookingType === 'partner' && deal && (
-              <div className="bg-[#FAF7F2]/50 border border-brand-border/30 rounded-md p-3 text-[10px] space-y-1.5 text-muted">
+              <div className="bg-base-200/50 border border-base-300 rounded-md p-3 text-[10px] space-y-1.5 text-base-content/60">
                 <div className="flex justify-between items-center">
-                  <span className="text-[9px] text-muted font-bold tracking-wider uppercase font-sans">Company</span>
-                  <span className="font-bold text-main">{deal.name}</span>
+                  <span className="text-[9px] text-base-content/60 font-bold tracking-wider uppercase font-sans">Company</span>
+                  <span className="font-bold text-base-content">{deal.name}</span>
                 </div>
                 {deal.contact_no && (
-                  <div className="flex justify-between items-center pt-1 border-t border-brand-border/20">
-                    <span className="text-[9px] text-muted font-bold tracking-wider uppercase font-sans">Contact No</span>
-                    <span className="font-semibold text-main font-mono">{deal.contact_no}</span>
+                  <div className="flex justify-between items-center pt-1 border-t border-base-300">
+                    <span className="text-[9px] text-base-content/60 font-bold tracking-wider uppercase font-sans">Contact No</span>
+                    <span className="font-semibold text-base-content font-mono">{deal.contact_no}</span>
                   </div>
                 )}
                 {deal.email && (
-                  <div className="flex justify-between items-center pt-1 border-t border-brand-border/20">
-                    <span className="text-[9px] text-muted font-bold tracking-wider uppercase font-sans">Email Address</span>
-                    <span className="font-semibold text-main">{deal.email}</span>
+                  <div className="flex justify-between items-center pt-1 border-t border-base-300">
+                    <span className="text-[9px] text-base-content/60 font-bold tracking-wider uppercase font-sans">Email Address</span>
+                    <span className="font-semibold text-base-content">{deal.email}</span>
                   </div>
                 )}
               </div>
@@ -155,12 +157,12 @@ export const BillingSummary = React.memo(
             {/* Selected Rooms / Items List */}
             <div className="space-y-2.5 text-slate-650 font-medium">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-muted uppercase tracking-wider text-[9px]">Rooms</span>
-                <span className="font-bold text-main bg-[#FAF7F2] border border-brand-border/40 px-2 py-0.5 rounded-full">{unitCount} room{unitCount > 1 ? 's' : ''}</span>
+                <span className="font-bold text-base-content/60 uppercase tracking-wider text-[9px]">Rooms</span>
+                <span className="font-bold text-base-content bg-base-200 border border-base-300 px-2 py-0.5 rounded-full">{unitCount} room{unitCount > 1 ? 's' : ''}</span>
               </div>
 
               {hasRooms && (
-                <div className="space-y-1.5 border-t border-dashed border-brand-border/40 pt-2.5">
+                <div className="space-y-1.5 border-t border-dashed border-base-300 pt-2.5">
                   {Object.entries(unitSelections).filter(([, s]) => s.type === 'room').map(([id, sel]) => {
                     const r = rooms.find(room => room.id === id)
                     const nights = sel.checkIn && sel.checkOut
@@ -173,11 +175,11 @@ export const BillingSummary = React.memo(
                     return r ? (
                       <div key={id} className="flex justify-between items-center text-slate-750 font-medium py-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-main text-[11px] whitespace-nowrap">Room {r.room_number}</span>
-                          <span className="text-[9px] bg-softbg border border-soft/50 text-muted px-1 rounded font-mono">{sel.checkIn.substring(5)} to {sel.checkOut.substring(5)}</span>
-                          <span className="text-[9px] text-muted font-bold whitespace-nowrap">({nights}N)</span>
+                          <span className="font-bold text-base-content text-[11px] whitespace-nowrap">Room {r.room_number}</span>
+                          <span className="text-[9px] bg-base-300/50 border border-base-300/60 text-base-content/60 px-1 rounded font-mono">{sel.checkIn.substring(5)} to {sel.checkOut.substring(5)}</span>
+                          <span className="text-[9px] text-base-content/60 font-bold whitespace-nowrap">({nights}N)</span>
                         </div>
-                        <span className="font-extrabold text-emerald-600 font-mono text-[11px]">₱{(displayPrice * nights).toLocaleString()}</span>
+                        <span className="font-extrabold text-success font-mono text-[11px]">₱{(displayPrice * nights).toLocaleString()}</span>
                       </div>
                     ) : null
                   })}
@@ -185,7 +187,7 @@ export const BillingSummary = React.memo(
               )}
 
               {hasVenues && (
-                <div className="space-y-1.5 border-t border-brand-border/40 pt-2">
+                <div className="space-y-1.5 border-t border-base-300 pt-2">
                   {Object.entries(unitSelections).filter(([, s]) => s.type === 'venue').map(([id, sel]) => {
                     const v = venues.find(venue => venue.id === id)
                     const nights = sel.checkIn && sel.checkOut
@@ -198,11 +200,11 @@ export const BillingSummary = React.memo(
                     return v ? (
                       <div key={id} className="flex justify-between items-center text-slate-750 font-medium py-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-main text-[11px] whitespace-nowrap max-w-[80px] truncate">{v.name}</span>
-                          <span className="text-[9px] bg-softbg border border-soft/50 text-muted px-1 rounded font-mono">{sel.checkIn.substring(5)} to {sel.checkOut.substring(5)}</span>
-                          <span className="text-[9px] text-muted font-bold whitespace-nowrap">({nights}D)</span>
+                          <span className="font-bold text-base-content text-[11px] whitespace-nowrap max-w-[80px] truncate">{v.name}</span>
+                          <span className="text-[9px] bg-base-300/50 border border-base-300/60 text-base-content/60 px-1 rounded font-mono">{sel.checkIn.substring(5)} to {sel.checkOut.substring(5)}</span>
+                          <span className="text-[9px] text-base-content/60 font-bold whitespace-nowrap">({nights}D)</span>
                         </div>
-                        <span className="font-extrabold text-emerald-600 font-mono text-[11px]">₱{(displayPrice * nights).toLocaleString()}</span>
+                        <span className="font-extrabold text-success font-mono text-[11px]">₱{(displayPrice * nights).toLocaleString()}</span>
                       </div>
                     ) : null
                   })}
@@ -210,23 +212,23 @@ export const BillingSummary = React.memo(
               )}
 
               {(estBreakfast > 0 || estRentals > 0 || estAddons > 0) && (
-                <div className="space-y-1.5 border-t border-dashed border-brand-border/40 pt-2">
+                <div className="space-y-1.5 border-t border-dashed border-base-300 pt-2">
                   {estBreakfast > 0 && (
                     <div className="flex justify-between items-center text-slate-750 font-medium">
                       <span>Breakfast</span>
-                      <span className="font-extrabold text-emerald-600 font-mono">₱{estBreakfast.toLocaleString()}</span>
+                      <span className="font-extrabold text-success font-mono">₱{estBreakfast.toLocaleString()}</span>
                     </div>
                   )}
                   {estRentals > 0 && (
                     <div className="flex justify-between items-center text-slate-750 font-medium">
                       <span>Extras</span>
-                      <span className="font-extrabold text-emerald-600 font-mono">₱{estRentals.toLocaleString()}</span>
+                      <span className="font-extrabold text-success font-mono">₱{estRentals.toLocaleString()}</span>
                     </div>
                   )}
                   {estAddons > 0 && (
                     <div className="flex justify-between items-center text-slate-750 font-medium">
                       <span>Venue Extras</span>
-                      <span className="font-extrabold text-emerald-600 font-mono">₱{estAddons.toLocaleString()}</span>
+                      <span className="font-extrabold text-success font-mono">₱{estAddons.toLocaleString()}</span>
                     </div>
                   )}
                 </div>
@@ -234,54 +236,54 @@ export const BillingSummary = React.memo(
             </div>
 
             {/* Discounts and Rates */}
-            <div className="border-t border-brand-border/40 pt-3.5 space-y-2">
-              <div className="flex justify-between text-muted font-semibold text-[11px]">
+            <div className="border-t border-base-300 pt-3.5 space-y-2">
+              <div className="flex justify-between text-base-content/60 font-semibold text-[11px]">
                 <span>Standard Price</span>
-                <span className="font-mono text-emerald-600 font-bold">₱{undiscountedBaseTotal.toLocaleString()}</span>
+                <span className="font-mono text-success font-bold">₱{undiscountedBaseTotal.toLocaleString()}</span>
               </div>
               
               {formUsePromo && promoAmount > 0 && (
-                <div className="flex justify-between items-center text-emerald-700 font-bold text-[11px] bg-emerald-50/50 border border-emerald-100/50 px-2.5 py-1 rounded-md animate-in fade-in">
+                <div className="flex justify-between items-center text-success font-bold text-sm bg-success/10 border border-success/20 px-2.5 py-1 rounded-md animate-in fade-in">
                   <span>Promo Price</span>
                   <span className="font-mono">-₱{promoAmount.toLocaleString()}</span>
                 </div>
               )}
               {additionalAmount > 0 && (
-                <div className="flex justify-between items-center text-rose-700 font-bold text-[11px] bg-rose-50/50 border border-rose-100/50 px-2.5 py-1 rounded-md animate-in fade-in">
+                <div className="flex justify-between items-center text-error font-bold text-sm bg-error/10 border border-error/20 px-2.5 py-1 rounded-md animate-in fade-in">
                   <span>Additional Discount ({formAdditionalDiscount}%)</span>
                   <span className="font-mono">-₱{additionalAmount.toLocaleString()}</span>
                 </div>
               )}
 
               {/* Grand Total */}
-              <div className="flex justify-between items-center text-main border-t border-brand-border/40 pt-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Total Cost</span>
-                <span className="text-[17px] font-black text-emerald-600 font-mono">₱{estTotal.toLocaleString()}</span>
+              <div className="flex justify-between items-center text-base-content border-t border-base-300 pt-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60">Total Cost</span>
+                <span className="text-[17px] font-black text-success font-mono">₱{estTotal.toLocaleString()}</span>
               </div>
 
               {/* Split Payment Cards Grid */}
-              <div className="grid grid-cols-2 gap-2.5 border-t border-brand-border/40 pt-3.5">
-                <div className="bg-emerald-50/60 border border-emerald-100/80 rounded-md p-2 text-center animate-in fade-in">
-                  <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider block">Pay Now (50%)</span>
-                  <span className="text-[13px] font-black text-emerald-700 block mt-0.5 font-mono">₱{estDown.toLocaleString()}</span>
+              <div className="grid grid-cols-2 gap-2.5 border-t border-base-300 pt-3.5">
+                <div className="bg-success/10 border border-success/20 rounded-md p-2 text-center animate-in fade-in">
+                  <span className="text-[9px] text-success font-bold uppercase tracking-wider block">Pay Now (50%)</span>
+                  <span className="text-[13px] font-black text-success block mt-0.5 font-mono">₱{estDown.toLocaleString()}</span>
                 </div>
-                <div className="bg-[#FAF7F2]/80 border border-brand-border/40 rounded-md p-2 text-center animate-in fade-in">
-                  <span className="text-[9px] text-brand-text font-bold uppercase tracking-wider block">Pay at Check-in</span>
-                  <span className="text-[13px] font-black text-brand-text block mt-0.5 font-mono">₱{estDue.toLocaleString()}</span>
+                <div className="bg-base-200/80 border border-base-300 rounded-md p-2 text-center animate-in fade-in">
+                  <span className="text-[9px] text-primary font-bold uppercase tracking-wider block">Pay at Check-in</span>
+                  <span className="text-[13px] font-black text-primary block mt-0.5 font-mono">₱{estDue.toLocaleString()}</span>
                 </div>
               </div>
 
               {/* Payment Details */}
               {(setFormPaymentMethod && setFormPaymentReference) && (
-                <div className="border-t border-brand-border/40 pt-3.5 mt-3 space-y-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1">Payment Details</span>
+                <div className="border-t border-base-300 pt-3.5 mt-3 space-y-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60 block mb-1">Payment Details</span>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-main">Method</label>
+                      <label className="text-xs font-bold text-base-content">Method</label>
                       <select
                         value={formPaymentMethod || ''}
                         onChange={e => setFormPaymentMethod(e.target.value)}
-                        className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors cursor-pointer appearance-none"
+                        className="select select-bordered w-full"
                       >
                         <option value="">Select...</option>
                         <option value="Cash">Cash</option>
@@ -290,13 +292,13 @@ export const BillingSummary = React.memo(
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-main">Reference / Date</label>
+                      <label className="text-xs font-bold text-base-content">Reference / Date</label>
                       <input
                         type="text"
                         value={formPaymentReference || ''}
                         onChange={e => setFormPaymentReference(e.target.value)}
                         placeholder="e.g. 123456789"
-                        className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
+                        className="input input-bordered w-full"
                       />
                     </div>
                   </div>
@@ -305,15 +307,15 @@ export const BillingSummary = React.memo(
 
               {/* Edit Mode Overrides */}
               {isEditMode && setFormPaymentStatus && (
-                <div className="border-t border-brand-border/40 pt-3.5 mt-3 space-y-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1">Financial Overrides</span>
+                <div className="border-t border-base-300 pt-3.5 mt-3 space-y-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60 block mb-1">Financial Overrides</span>
                   
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-main">Payment Status</label>
+                    <label className="text-xs font-bold text-base-content">Payment Status</label>
                     <select
                       value={formPaymentStatus || 'unpaid'}
                       onChange={e => setFormPaymentStatus(e.target.value as 'unpaid' | 'downpayment' | 'paid')}
-                      className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors cursor-pointer appearance-none"
+                      className="select select-bordered w-full"
                     >
                       <option value="unpaid">Unpaid</option>
                       <option value="downpayment">Downpayment Paid</option>
@@ -323,48 +325,48 @@ export const BillingSummary = React.memo(
                   
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-main">Downpayment Paid (₱)</label>
+                      <label className="text-xs font-bold text-base-content">Downpayment Paid (₱)</label>
                       <input
                         type="text"
                         inputMode="numeric"
                         value={formDownpaymentPaid || ''}
                         onChange={e => setFormDownpaymentPaid?.(parseFloat(e.target.value) || 0)}
-                        className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
+                        className="input input-bordered w-full"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-main">Balance Due (₱)</label>
+                      <label className="text-xs font-bold text-base-content">Balance Due (₱)</label>
                       <input
                         type="text"
                         inputMode="numeric"
                         value={formBalanceDue || ''}
                         onChange={e => setFormBalanceDue?.(e.target.value ? parseFloat(e.target.value) : null)}
                         placeholder={`Auto: ${estDue}`}
-                        className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
+                        className="input input-bordered w-full"
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-main">Security Deposit (₱)</label>
+                      <label className="text-xs font-bold text-base-content">Security Deposit (₱)</label>
                       <input
                         type="text"
                         inputMode="numeric"
                         value={formSecurityDeposit || ''}
                         onChange={e => setFormSecurityDeposit?.(e.target.value ? parseFloat(e.target.value) : null)}
                         placeholder="Optional"
-                        className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
+                        className="input input-bordered w-full"
                       />
                     </div>
                     {setFormInvoiceNumber && (
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-main">Invoice Number</label>
+                        <label className="text-xs font-bold text-base-content">Invoice Number</label>
                         <input
                           type="text"
                           value={formInvoiceNumber || ''}
                           onChange={e => setFormInvoiceNumber(e.target.value)}
                           placeholder="Auto-generated if empty"
-                          className="w-full bg-page/50 border border-soft rounded px-2.5 py-1.5 text-xs text-main focus:outline-none focus:border-brand-primary/50 transition-colors"
+                          className="input input-bordered w-full"
                         />
                       </div>
                     )}
@@ -374,13 +376,13 @@ export const BillingSummary = React.memo(
             </div>
           </div>
         ) : (
-          <div className="bg-brand-bg border border-brand-border p-5 rounded-md text-xs space-y-2 text-brand-text font-sans">
-            <div className="text-center border-b border-dashed border-brand-border pb-2">
-              <div className="text-[9px] text-brand-text font-bold tracking-widest uppercase mb-1">Calendar Block</div>
-              <h5 className="text-sm font-extrabold text-main tracking-tight uppercase">DAWEEZ PENSION HOUSE</h5>
+          <div className="bg-primary/10 border border-primary/30 p-5 rounded-md text-xs space-y-2 text-primary font-sans">
+            <div className="text-center border-b border-dashed border-base-300 pb-2">
+              <div className="text-[9px] text-primary font-bold tracking-widest uppercase mb-1">Calendar Block</div>
+              <h5 className="text-sm font-extrabold text-base-content tracking-tight uppercase">DAWEEZ PENSION HOUSE</h5>
             </div>
-            <p className="text-muted text-center text-[10px] py-4 leading-normal font-medium">
-              This reservation will be marked as <strong className="text-brand-text">Blocked</strong>. No prices or payments will be recorded.
+            <p className="text-base-content/60 text-center text-[10px] py-4 leading-normal font-medium">
+              This reservation will be marked as <strong className="text-primary">Blocked</strong>. No prices or payments will be recorded.
             </p>
           </div>
         )}

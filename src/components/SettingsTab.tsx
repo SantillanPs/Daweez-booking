@@ -199,6 +199,8 @@ export function SettingsTab() {
               <MoneyField label="Chair (event)" value={rates.chairRate} onChange={v => setRates(s => ({ ...s, chairRate: v }))} />
               <MoneyField label="Mineral water" value={rates.mineralWaterRate} onChange={v => setRates(s => ({ ...s, mineralWaterRate: v }))} />
               <MoneyField label="Tent (event)" value={rates.tentRate} onChange={v => setRates(s => ({ ...s, tentRate: v }))} />
+              <MoneyField label="Extras: Pension + Vacation House (report)" value={rates.accommodationExtras} onChange={v => setRates(s => ({ ...s, accommodationExtras: v }))} />
+              <MoneyField label="Extras: Garden + Gazebo (report)" value={rates.venueExtras} onChange={v => setRates(s => ({ ...s, venueExtras: v }))} />
             </div>
             <p className="px-5 pb-4 text-[11px] text-muted">These are the shared, extra rates. Each room's Regular and Promo prices are set under Room Rates below.</p>
             </div>

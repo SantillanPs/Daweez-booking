@@ -190,6 +190,8 @@ export interface RateConfig {
   chairRate: number       // ₱15
   mineralWaterRate: number // ₱35
   tentRate: number        // ₱500
+  accommodationExtras: number // flat extras shown for Pension rooms + Vacation House
+  venueExtras: number        // flat extras shown for Garden Area + Gazebo
 }
 
 export interface PartnerDeal {

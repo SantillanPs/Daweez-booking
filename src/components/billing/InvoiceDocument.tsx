@@ -25,6 +25,12 @@ const fmtTime = (t?: string) => {
   const label = hh + ':' + String(m).padStart(2, '0') + period
   return h === 12 && m === 0 ? label.replace('pm', 'nn') : label
 }
+// Check-in/out TIMES aren't planned — they're recorded at the actual check-in/out.
+// Show the recorded actual time (date + time) when present, else just the date.
+const fmtStayTime = (dateStr?: string, actual?: string) =>
+  actual
+    ? new Date(actual).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : fmtDate(dateStr)
 
 const PAY_METHODS = ['Cash', 'Gcash', 'Bank Transfer', 'Other']
 
@@ -125,8 +131,8 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 py-2 border-t border-soft">
           <Line label="Room No." value={roomNo} />
           <Line label="Room Type" value={roomType} />
-          <Line label="Check In Date &amp; Time" value={fmtDate(b.check_in)} />
-          <Line label="Check Out Date &amp; Time" value={fmtDate(b.check_out)} />
+          <Line label="Check In Date &amp; Time" value={fmtStayTime(b.check_in, b.actual_check_in)} />
+          <Line label="Check Out Date &amp; Time" value={fmtStayTime(b.check_out, b.actual_check_out)} />
           <Line label="Standard Check-in / Out" value={fmtTime(rates.standardCheckInTime) + ' / ' + fmtTime(rates.standardCheckOutTime)} />
         </div>
 
