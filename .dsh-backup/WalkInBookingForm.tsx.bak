@@ -4,17 +4,17 @@ import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, Equipme
 import * as syncEngine from '../utils/syncEngine'
 import { useDashboardData } from './DashboardContext'
 import {
-  AlertCircle, UserCheck, CheckCircle2
+  X, AlertCircle, BedDouble, PartyPopper, CircleDollarSign, UserCheck, CheckCircle2, CalendarX
 } from 'lucide-react'
+import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
+import { PrintPaymentReceiptModal } from './billing/PrintPaymentReceiptModal'
 
 // Import modular subcomponents
 import { DiscountPricingControls, DiscountType } from './calendar/DiscountPricingControls'
+import { roomDisplayName } from './calendar/bookingStyles'
 import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
 import { BillingSummary } from './walk-in/BillingSummary'
-import { PartnerBookingFields } from './walk-in/PartnerBookingFields'
-import { BookingCreatedPanel } from './walk-in/BookingCreatedPanel'
-import { BookingWizardHeader } from './walk-in/BookingWizardHeader'
 import { dateToString } from '../utils/helpers'
 
 interface WalkInBookingFormProps {
@@ -363,6 +363,7 @@ export function WalkInBookingForm({
   const showErr = (k: keyof typeof fieldErrors) => (touched[k] || trySave) ? fieldErrors[k] : ''
   const isInvalid = (k: keyof typeof fieldErrors) => Boolean(showErr(k))
   const markTouched = (k: keyof typeof fieldErrors) => () => setTouched(t => ({ ...t, [k]: true }))
+  const dateBase = 'input input-bordered w-full font-mono'
   const dateField = 'input input-bordered w-full'
   const dateFieldErr = 'input input-bordered input-error w-full'
 
@@ -632,27 +633,47 @@ export function WalkInBookingForm({
 
   if (createdBookingList.length > 0) {
     return createPortal(
-      <BookingCreatedPanel
-        createdDue={createdDue}
-        payAmount={payAmount}
-        setPayAmount={setPayAmount}
-        payMethod={payMethod}
-        setPayMethod={setPayMethod}
-        payReference={payReference}
-        setPayReference={setPayReference}
-        payDate={payDate}
-        setPayDate={setPayDate}
-        recordPayment={recordPayment}
-        isRecordingPay={isRecordingPay}
-        createdBookingList={createdBookingList}
-        rooms={rooms}
-        venues={venues}
-        bookings={bookings}
-        onClose={onClose}
-        receiptRecord={receiptRecord}
-        receiptBooking={receiptBooking}
-        setReceiptRecord={setReceiptRecord}
-      />,
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 p-4 flex flex-col items-center" onClick={onClose}>
+        <div className="w-full max-w-3xl mb-8" onClick={e => e.stopPropagation()}>
+          <div className="bg-base-100 border border-base-300 rounded-xl p-4 shadow-sm mb-4">
+            <h4 className="text-xs font-bold text-base-content uppercase tracking-wider mb-1">Record a payment</h4>
+            <p className="text-[10px] text-base-content/60 mb-3">Total due: <b className="text-success font-mono">₱{createdDue.toLocaleString()}</b></p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-2.5">
+              <label className="text-[10px] text-base-content/60 font-bold block">Amount (₱)
+                <input type="text" inputMode="decimal" value={payAmount || String(createdDue || '')} onChange={e => setPayAmount(e.target.value)} placeholder={String(createdDue || 0)} className="input input-bordered w-full mt-1" />
+              </label>
+              <label className="text-[10px] text-base-content/60 font-bold block">Method
+                <select value={payMethod} onChange={e => setPayMethod(e.target.value)} className="select select-bordered w-full mt-1">
+                  <option value="Cash">Cash</option>
+                  <option value="GCash">GCash</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+              </label>
+              <label className="text-[10px] text-base-content/60 font-bold block">Reference
+                <input type="text" value={payReference} onChange={e => setPayReference(e.target.value)} placeholder="Optional" className="input input-bordered w-full mt-1" />
+              </label>
+              <label className="text-[10px] text-base-content/60 font-bold block">Date
+                <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} className="input input-bordered w-full mt-1" />
+              </label>
+            </div>
+            <button type="button" onClick={recordPayment} disabled={isRecordingPay || !(parseFloat(payAmount) || createdDue)} className="btn btn-primary btn-block">
+              {isRecordingPay ? 'Recording…' : 'Record a payment'}
+            </button>
+          </div>
+
+          <PrintInvoiceModal
+            bookingsToPrint={createdBookingList}
+            rooms={rooms}
+            venues={venues}
+            bookingsList={bookings}
+            onClose={onClose}
+            embedded
+          />
+        </div>
+        {receiptRecord && receiptBooking && (
+          <PrintPaymentReceiptModal booking={receiptBooking} record={receiptRecord} rooms={rooms} venues={venues} onClose={() => setReceiptRecord(null)} />
+        )}
+      </div>,
       document.body
     )
   }
@@ -661,17 +682,58 @@ export function WalkInBookingForm({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 font-sans" onClick={onClose}>
       <div className="w-full max-w-md md:max-w-4xl bg-base-100 rounded-lg border border-base-300 shadow-xl flex flex-col max-h-[92vh] md:max-h-[85vh] overflow-hidden transition-all duration-300" onClick={e => e.stopPropagation()}>
 
-        <BookingWizardHeader
-          hasVenues={hasVenues}
-          hasRooms={hasRooms}
-          bookingType={bookingType}
-          formStep={formStep}
-          setFormStep={setFormStep}
-          formStatus={formStatus}
-          setFormStatus={setFormStatus}
-          formGuestName={formGuestName}
-          onClose={onClose}
-        />
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-base-300 shrink-0 bg-base-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 flex items-center justify-center bg-primary/10 border border-base-300 rounded-lg">
+              {hasVenues && !hasRooms
+                ? <PartyPopper className="w-3.5 h-3.5 text-primary" />
+                : <BedDouble className="w-3.5 h-3.5 text-primary" />}
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-base-content">New Reservation</h3>
+              <p className="text-[10px] text-base-content/60 font-medium">
+                {bookingType === 'partner' ? 'Quick Partner Booking' : `Step ${formStep} of 3`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {formStatus === 'blocked' ? (
+              <button type="button" onClick={() => setFormStatus('confirmed')} className="btn btn-ghost btn-sm">&larr; Booking</button>
+            ) : (
+              <button type="button" onClick={() => setFormStatus('blocked')} className="btn btn-outline btn-primary btn-sm">
+                <CalendarX className="w-3.5 h-3.5" /> Block dates
+              </button>
+            )}
+            <button type="button" onClick={onClose} className="btn btn-ghost btn-sm -mr-1.5">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+
+        {bookingType === 'individual' && (
+          <div className="flex items-center px-5 py-2.5 border-b border-base-300 shrink-0 bg-base-200/50">
+            {[1, 2, 3].map(s => {
+              const isActive = formStep === s
+              const isCompleted = formStep > s
+              const isNextStepReady = (s === 2 || s === 3) && formStatus === 'confirmed' && !!formGuestName
+              const isUnlocked = s <= formStep || isNextStepReady
+              return (
+                <React.Fragment key={s}>
+                  {s > 1 && (
+                    <div className={'flex-1 h-0.5 transition-all duration-300 ' + (isCompleted ? 'bg-primary' : 'bg-base-300')} />
+                  )}
+                  <button type="button" disabled={!isUnlocked} onClick={() => setFormStep(s)}
+                    className={'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all cursor-pointer ' + (isActive ? 'bg-primary border-primary text-primary-content shadow-sm ring-2 ring-primary/20' : isCompleted ? 'bg-primary/10 border-primary text-primary hover:bg-primary hover:text-primary-content' : isUnlocked ? 'bg-base-100 border-primary text-primary hover:bg-primary hover:text-primary-content animate-pulse' : 'bg-base-100 border-base-300 text-base-content/60 disabled:cursor-not-allowed opacity-50')}>
+                    {s}
+                  </button>
+                </React.Fragment>
+              )
+            })}
+          </div>
+        )}
+
         {/* ── Scrollable Body ── */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="overflow-y-auto flex-1 p-5 bg-base-200/30">
@@ -683,34 +745,165 @@ export function WalkInBookingForm({
                 )}
 
                 {bookingType === 'partner' ? (
-                  <PartnerBookingFields
-                    partnerDropdownRef={partnerDropdownRef}
-                    isPartnerDropdownOpen={isPartnerDropdownOpen}
-                    setIsPartnerDropdownOpen={setIsPartnerDropdownOpen}
-                    partnerSearchQuery={partnerSearchQuery}
-                    setPartnerSearchQuery={setPartnerSearchQuery}
-                    filteredDeals={filteredDeals}
-                    onSelectDeal={handleSelectPartnerDeal}
-                    setFormGuestName={setFormGuestName}
-                    formCompanyName={formCompanyName}
-                    formCheckIn={formCheckIn}
-                    formCheckOut={formCheckOut}
-                    handlePartnerDateChange={handlePartnerDateChange}
-                    markTouched={markTouched}
-                    isInvalid={isInvalid}
-                    showErr={showErr}
-                    dateField={dateField}
-                    dateFieldErr={dateFieldErr}
-                    unitSelections={unitSelections}
-                    rooms={rooms}
-                    venues={venues}
-                    partnerDeals={partnerDeals}
-                    formPartnerDealId={formPartnerDealId}
-                    formUsePromo={formUsePromo}
-                    setFormUsePromo={setFormUsePromo}
-                    isSubmitting={isSubmitting}
-                    onClose={onClose}
-                  />
+                  <div className="space-y-4 font-sans bg-base-100 border border-base-300 rounded-xl p-5 shadow-sm">
+                    <div className="border-b border-base-300 pb-3">
+                      <h4 className="text-xs font-bold text-base-content uppercase tracking-wider">
+                        Corporate / Agency details
+                      </h4>
+                      <p className="text-[10px] text-base-content/60 font-medium mt-0.5">
+                        Select a partner account to automatically populate contract rates, invoices, and contact info.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3.5 text-xs">
+                      {/* 1. Searchable Partner Selector */}
+                      <div className="relative" ref={partnerDropdownRef}>
+                        <label className="text-[10px] text-primary font-bold block mb-1 uppercase tracking-wider">Partner Account</label>
+                        <div
+                          onClick={() => setIsPartnerDropdownOpen(!isPartnerDropdownOpen)}
+                          className="w-full bg-base-100 border border-base-300 text-base-content px-3 py-2 rounded-lg focus:outline-none font-semibold cursor-pointer flex justify-between items-center shadow-sm select-none"
+                        >
+                          <span className={formCompanyName ? 'text-base-content' : 'text-base-content/60 font-normal'}>
+                            {formCompanyName || '-- Search & Select Partner --'}
+                          </span>
+                          <span className="text-[10px] text-base-content/60">▼</span>
+                        </div>
+
+                        {isPartnerDropdownOpen && (
+                          <div className="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-60" onClick={e => e.stopPropagation()}>
+                            <div className="p-2 border-b border-base-300 bg-base-200">
+                              <input
+                                type="text"
+                                placeholder="Type to search agency..."
+                                value={partnerSearchQuery}
+                                onChange={e => setPartnerSearchQuery(e.target.value)}
+                                className="input input-bordered w-full text-sm"
+                                autoFocus
+                              />
+                            </div>
+                            <div className="overflow-y-auto flex-1 py-1 max-h-48">
+                              {filteredDeals.length > 0 ? (
+                                filteredDeals.map(d => (
+                                  <button
+                                    key={d.id}
+                                    type="button"
+                                    onClick={() => {
+                                      handleSelectPartnerDeal(d)
+                                      setFormGuestName(`${d.name} Representative`)
+                                      setIsPartnerDropdownOpen(false)
+                                      setPartnerSearchQuery('')
+                                    }}
+                                    className="w-full text-left px-3 py-2 hover:bg-primary/10 hover:text-primary text-xs font-semibold text-base-content flex justify-between items-center transition-colors border-none bg-transparent cursor-pointer"
+                                  >
+                                    <span>{d.name}</span>
+                                    <span className="text-[9px] bg-base-300/50 text-base-content/60 px-1.5 py-0.5 rounded uppercase font-bold shrink-0">{d.type}</span>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="px-3 py-3 text-center text-xs text-base-content/60 font-medium">
+                                  No matching partner accounts
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 2. Dates Row */}
+                      <div className="grid grid-cols-2 gap-3.5">
+                        <div>
+                          <label className="text-[10px] text-primary font-bold block mb-1 uppercase tracking-wider">Check-in *</label>
+                          <input
+                            type="date"
+                            onBlur={markTouched('checkIn')}
+                            value={formCheckIn}
+                            onChange={e => handlePartnerDateChange('checkIn', e.target.value)}
+                            className={isInvalid('checkIn') ? dateFieldErr : dateField}
+                          />
+                          {showErr('checkIn') && <p className="text-[10px] text-error mt-1">{showErr('checkIn')}</p>}
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-primary font-bold block mb-1 uppercase tracking-wider">Check-out *</label>
+                          <input
+                            type="date"
+                            onBlur={markTouched('checkOut')}
+                            value={formCheckOut}
+                            onChange={e => handlePartnerDateChange('checkOut', e.target.value)}
+                            className={isInvalid('checkOut') ? dateFieldErr : dateField}
+                          />
+                          {showErr('checkOut') && <p className="text-[10px] text-error mt-1">{showErr('checkOut')}</p>}
+                        </div>
+                      </div>
+                      {showErr('dates') && <p className="text-[10px] text-error mt-1">{showErr('dates')}</p>}
+                      {showErr('units') && <p className="text-[10px] text-error mt-1">{showErr('units')}</p>}
+
+                      {/* 3. Selected Rooms Display (Read-Only) */}
+                      <div>
+                        <label className="text-[10px] text-primary font-bold block mb-1.5 uppercase tracking-wider">Selected Rooms</label>
+                        <div className="flex flex-wrap gap-2.5">
+                          {Object.entries(unitSelections).map(([id, sel]) => {
+                            const isRoom = sel.type === 'room'
+                            const name = isRoom 
+                              ? roomDisplayName(rooms.find(r => r.id === id))
+                              : (venues.find(v => v.id === id)?.name || id)
+                            const deal = partnerDeals.find(d => d.id === formPartnerDealId)
+                            const contractedPrice = deal?.contracted_rates[id]
+                            const basePrice = isRoom 
+                              ? (rooms.find(r => r.id === id)?.base_price || 0)
+                              : (venues.find(v => v.id === id)?.base_price || 0)
+                            
+                            return (
+                              <div key={id} className="bg-primary/10 border border-base-300 rounded-md px-2 py-1 flex items-center gap-1.5 shadow-sm text-[11px] animate-in fade-in select-none">
+                                <span className="font-bold text-base-content">{name}</span>
+                                <span className="text-slate-300">|</span>
+                                {contractedPrice !== undefined && contractedPrice !== null ? (
+                                  <span className="font-extrabold text-primary flex items-center gap-1">
+                                    ₱{contractedPrice.toLocaleString()}
+                                    <span className="text-[8px] text-primary font-bold bg-[#9A783E]/10 px-1 py-0.5 rounded uppercase">Neg</span>
+                                  </span>
+                                ) : (
+                                  <span className="font-semibold text-base-content/60 flex items-center gap-1">
+                                    ₱{basePrice.toLocaleString()}
+                                    <span className="text-[8px] text-base-content/60 font-bold bg-base-300/50 px-1 py-0.5 rounded uppercase">Std</span>
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Promo Price Checkbox */}
+                      <div className="pt-2 border-t border-base-300">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={formUsePromo}
+                            onChange={e => setFormUsePromo(e.target.checked)}
+                            className="checkbox checkbox-primary"
+                          />
+                          <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Use Promo Price</span>
+                        </label>
+                        {formUsePromo && <p className="text-xs text-base-content/60 mt-1">Guests are charged the exact promo price from the rate card.</p>}
+                        <div className="pt-4 border-t border-base-300 mt-4 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={onClose}
+                            className="btn btn-ghost"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isSubmitting || !formPartnerDealId || Object.keys(unitSelections).length === 0}
+                            className="flex-1 btn btn-primary"
+                          >
+                            {isSubmitting ? 'Booking...' : 'Confirm Corporate Booking'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-2.5">
 
