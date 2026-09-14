@@ -25,6 +25,7 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     promo_applied: (b.promo_applied as boolean) || undefined,
     payment_method: (b.payment_method as string) || undefined,
     payment_reference: (b.payment_reference as string) || undefined,
+    payment_plan: (b.payment_plan as Booking['payment_plan']) || undefined,
     downpayment_paid: Number(b.downpayment_paid || 0),
     balance_due: Number(b.balance_due || 0),
     security_deposit: Number(b.security_deposit || 0),

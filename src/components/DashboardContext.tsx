@@ -36,6 +36,7 @@ export interface DashboardDataContextValue {
     contractRateOverride?: number
     paymentMethod?: string
     paymentReference?: string
+    paymentPlan?: 'deposit' | 'full'
     venueExcessHours?: number
     id?: string
     invoiceNumber?: string

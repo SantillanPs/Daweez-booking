@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { X, Printer, MapPin, Building, Phone, Mail } from 'lucide-react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { PrintInvoiceModal } from './PrintInvoiceModal'
-import { PaymentStatusSelect } from './PaymentStatusSelect'
 import { getPaymentView, PAYMENT_BADGE_CLASSES } from '../../utils/bookingMoney'
 
 interface BookingDetailsModalProps {
@@ -12,13 +11,12 @@ interface BookingDetailsModalProps {
   venues: Venue[]
   bookingsList: Booking[]
   onClose: () => void
-  onPaymentStatusChange: (booking: Booking, status: 'unpaid' | 'downpayment' | 'paid') => void
 }
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-export function BookingDetailsModal({ booking, rooms, venues, bookingsList, onClose, onPaymentStatusChange }: BookingDetailsModalProps) {
+export function BookingDetailsModal({ booking, rooms, venues, bookingsList, onClose }: BookingDetailsModalProps) {
   const [showPrint, setShowPrint] = React.useState(false)
   const pay = getPaymentView(booking)
   const isVenue = !!booking.venue_id
@@ -99,9 +97,6 @@ export function BookingDetailsModal({ booking, rooms, venues, bookingsList, onCl
             >
               <Printer className="w-4 h-4 text-brand-text" /> Print invoice
             </button>
-            {booking.status !== 'blocked' && (
-              <PaymentStatusSelect booking={booking} onChange={onPaymentStatusChange} />
-            )}
           </div>
         </div>
       </div>

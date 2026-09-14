@@ -25,7 +25,6 @@ interface TimelineGridProps {
   setTimelineSelection: (val: { roomId?: string; venueId?: string; checkIn: Date } | null) => void
   groupSelection?: Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null
   handleCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
-  onQuickPaymentChange?: (booking: Booking, status: 'unpaid' | 'downpayment' | 'paid') => void
   setSelectedExtendBooking: (booking: Booking) => void
   setExtendCheckoutDate: (date: string) => void
   setExtendError: (err: string) => void
@@ -42,7 +41,6 @@ export const TimelineGrid = React.memo(
     setTimelineSelection,
     groupSelection,
     handleCellClick,
-    onQuickPaymentChange,
     setSelectedExtendBooking,
     setExtendCheckoutDate,
     setExtendError
@@ -113,7 +111,7 @@ export const TimelineGrid = React.memo(
             else break
           }
           cells.push(
-            <TimelineCell key={dayInfo.isoStr} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} isCheckIn={false} isHighlighted={false} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={type === 'room' ? getBookingStyle : getVenueBookingStyle} onCellClick={handleCellClick} onQuickPaymentChange={onQuickPaymentChange} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={dayInfo.isoStr} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} isCheckIn={false} isHighlighted={false} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={type === 'room' ? getBookingStyle : getVenueBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           dIdx += span
         } else {

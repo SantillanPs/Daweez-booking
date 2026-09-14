@@ -83,6 +83,11 @@ Default section order:
 - Apply this rule to every project, not just this one.
 - **Why it also matters for tooling**: the agent's `read` tool returns at most ~50 KiB (~51,200 characters, roughly 1000 lines of typical TSX) per call, even when a larger `limit` is requested. Files above that are silently truncated (always compare `lines.length` against `totalLines`). Keeping files under 300 lines guarantees they are always fully readable in one call and safe to edit with targeted edits rather than full rewrites.
 
+### Kanban Board
+- The agent may move a card to **In Progress** and to **Review**.
+- The agent may **never** move a card to **Done** — the user decides what is finished and closes cards themselves. Never delete or create cards unless explicitly asked.
+- Move finished work to **Review** and hand it back for verification.
+
 ### Communication & Language Style
 - **Always Use Simple Language**: Avoid overly complex, academic, or technical jargon in both explanations (responses) and user interface design (labels, tabs, links, and route names).
 - **Clear & Direct Vocabulary**: Prefer plain terms (e.g., "Guests & Partners") over technical terms (e.g., "Directory" or "Registry").

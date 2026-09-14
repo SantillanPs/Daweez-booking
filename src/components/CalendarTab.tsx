@@ -11,7 +11,6 @@ import { CorporateBookingForm } from './corporate/CorporateBookingForm'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { CalendarLegend } from './calendar/CalendarLegend'
 import { roomDisplayName } from './calendar/bookingStyles'
-import { statusAfterPayment } from '../utils/bookingStatus'
 
 type Selection = { roomId?: string; venueId?: string; checkIn: Date }
 type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }>
@@ -90,14 +89,6 @@ export function CalendarTab() {
     }
     return list
   }, [schedulerStartDate, daysCount])
-
-  const handleQuickPaymentChange = useCallback(async (b: Booking, status: 'unpaid' | 'downpayment' | 'paid') => {
-    try {
-      await updateBooking({ ...b, payment_status: status, status: status === 'unpaid' ? b.status : statusAfterPayment(b.status), balance_due: status === 'paid' ? 0 : b.balance_due })
-    } catch {
-      window.alert('Could not update the payment. Please try again.')
-    }
-  }, [updateBooking])
 
   const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date) => {
     const curTimeline = timelineSelectionRef.current
@@ -234,7 +225,6 @@ export function CalendarTab() {
           setTimelineSelection={setTimelineSelection}
           groupSelection={groupSelection}
           handleCellClick={handleCellClick}
-          onQuickPaymentChange={handleQuickPaymentChange}
           setSelectedExtendBooking={setSelectedExtendBooking}
           setExtendCheckoutDate={setExtendCheckoutDate}
           setExtendError={setExtendError}
@@ -244,6 +234,7 @@ export function CalendarTab() {
 
       {selectedExtendBooking && (
         <ExtendStayModal
+          key={selectedExtendBooking.id}
           booking={selectedExtendBooking}
           rooms={rooms}
           venues={venues}
@@ -269,7 +260,6 @@ export function CalendarTab() {
           bookings={bookings}
           createManualBooking={createManualBooking}
           cancelBooking={cancelBooking}
-          updateBooking={updateBooking}
           initialSelections={editingBooking
             ? { [editingBooking.room_id || editingBooking.venue_id || '']: { checkIn: editingBooking.check_in, checkOut: editingBooking.check_out, type: editingBooking.room_id ? 'room' : 'venue' } }
             : formSelections}

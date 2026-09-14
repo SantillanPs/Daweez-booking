@@ -1,13 +1,15 @@
 import { PaymentRecord } from '../../types/booking'
-import { NumInput } from '../NumInput'
-import { Printer } from 'lucide-react'
+import { Printer, Trash2 } from 'lucide-react'
+import { RecordPaymentForm } from './RecordPaymentForm'
 
 const fmtPeso = (n: number) => '₱' + n.toLocaleString()
 
 interface BookingReceiptsProps {
   records: PaymentRecord[]
+  showAdd: boolean
   open: boolean
   setOpen: (v: boolean) => void
+  totalDue: number
   amount: number
   setAmount: (v: number) => void
   method: string
@@ -16,37 +18,42 @@ interface BookingReceiptsProps {
   setReference: (v: string) => void
   onAdd: () => void
   onPrint: (r: PaymentRecord) => void
+  /** Removing a receipt logged by mistake; the balance is recomputed after. */
+  onRemove?: (r: PaymentRecord) => void
+  referenceRequired?: boolean
+  referenceError?: string
 }
 
-// One receipt per payment the guest actually made. Reprintable at any time.
+// Every payment the guest has made, each with its own receipt to reprint.
 export function BookingReceipts({
-  records, open, setOpen, amount, setAmount, method, setMethod, reference, setReference, onAdd, onPrint,
+  records, showAdd, open, setOpen, totalDue, amount, setAmount,
+  method, setMethod, reference, setReference, onAdd, onPrint, onRemove,
+  referenceRequired = false, referenceError = '',
 }: BookingReceiptsProps) {
   return (
     <div className="space-y-2.5">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setOpen(!open)}
-          className="text-[11px] font-bold text-gold-700 bg-gold-100 border border-gold-200 hover:bg-gold-100 rounded-md px-2.5 py-1 transition-colors cursor-pointer"
-        >
-          {open ? 'Cancel' : '+ Record a payment'}
-        </button>
-      </div>
-
-      {open && (
-        <div className="p-3 bg-page border border-soft rounded-lg space-y-2">
-          <label className="text-[10px] text-muted font-bold block">Amount (PHP)</label>
-          <NumInput value={amount} onChange={setAmount} placeholder="0"
-            className="w-full bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm font-mono focus:outline-none focus:border-gold-500" />
-          <div className="grid grid-cols-2 gap-2">
-            <select value={method} onChange={e => setMethod(e.target.value)} className="bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm focus:outline-none focus:border-gold-500">
-              <option>Cash</option><option>GCash</option><option>Bank transfer</option><option>Other</option>
-            </select>
-            <input value={reference} onChange={e => setReference(e.target.value)} placeholder="Reference (optional)" className="bg-card border border-soft text-main px-2.5 py-1.5 rounded-lg text-sm focus:outline-none focus:border-gold-500" />
-          </div>
-          <button type="button" onClick={onAdd} className="w-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-xs font-bold py-2 rounded-lg transition-colors cursor-pointer">Save receipt</button>
+      {showAdd && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            className="text-[11px] font-bold text-gold-700 bg-gold-100 border border-gold-200 hover:bg-gold-100 rounded-md px-2.5 py-1 transition-colors cursor-pointer"
+          >
+            {open ? 'Cancel' : '+ Record a payment'}
+          </button>
         </div>
+      )}
+
+      {showAdd && open && (
+        <RecordPaymentForm
+          totalDue={totalDue}
+          amount={amount} setAmount={setAmount}
+          method={method} setMethod={setMethod}
+          reference={reference} setReference={setReference}
+          onSubmit={onAdd}
+          referenceRequired={referenceRequired}
+          referenceError={referenceError}
+        />
       )}
 
       {records.length > 0 ? (
@@ -58,9 +65,16 @@ export function BookingReceipts({
                 <span className="text-muted shrink-0">{r.method}</span>
                 <span className="text-muted text-[10px] truncate">{r.paid_at ? new Date(r.paid_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</span>
               </div>
-              <button type="button" onClick={() => onPrint(r)} className="text-gold-600 hover:text-gold-700 p-1 cursor-pointer shrink-0" aria-label="Print receipt">
-                <Printer className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button type="button" onClick={() => onPrint(r)} className="text-gold-600 hover:text-gold-700 p-1 cursor-pointer" aria-label="Print receipt" title="Print receipt">
+                  <Printer className="w-3.5 h-3.5" />
+                </button>
+                {onRemove && (
+                  <button type="button" onClick={() => onRemove(r)} className="text-muted hover:text-danger-600 p-1 cursor-pointer" aria-label="Remove payment" title="Remove this payment">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

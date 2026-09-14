@@ -22,14 +22,14 @@ interface BillingSummaryProps {
   formPartnerDealId?: string
   formPaymentMethod?: string
   setFormPaymentMethod?: (val: string) => void
+  formPaymentPlan?: 'deposit' | 'full'
+  setFormPaymentPlan?: (val: 'deposit' | 'full') => void
   formVenueExcessHours?: number
 
   // Edit Mode Overrides
   isEditMode?: boolean
   formInvoiceNumber?: string
   setFormInvoiceNumber?: (val: string) => void
-  formPaymentStatus?: 'unpaid' | 'downpayment' | 'paid'
-  setFormPaymentStatus?: (val: 'unpaid' | 'downpayment' | 'paid') => void
   formDownpaymentPaid?: number
   setFormDownpaymentPaid?: (val: number) => void
   formBalanceDue?: number | null
@@ -57,11 +57,11 @@ export const BillingSummary = React.memo(
     formPartnerDealId,
     formPaymentMethod,
     setFormPaymentMethod,
+    formPaymentPlan,
+    setFormPaymentPlan,
     isEditMode,
     formInvoiceNumber,
     setFormInvoiceNumber,
-    formPaymentStatus,
-    setFormPaymentStatus,
     formDownpaymentPaid,
     setFormDownpaymentPaid,
     formBalanceDue,
@@ -74,6 +74,7 @@ export const BillingSummary = React.memo(
     const hasVenues = Object.values(unitSelections).some(s => s.type === 'venue')
 
     const deal = partnerDeals?.find(d => d.id === formPartnerDealId)
+    const plan: 'deposit' | 'full' = formPaymentPlan === 'full' ? 'full' : 'deposit'
 
     let undiscountedBaseTotal = 0
     let promoAmount = 0
@@ -269,44 +270,59 @@ export const BillingSummary = React.memo(
                 </div>
               </div>
 
-              {/* Agreed payment method — printed on the Guest Billing Statement.
-                  Nothing is recorded as paid here: the guest is given the
-                  statement first, and the actual payment is recorded afterwards
-                  from the booking (which also confirms the booking). */}
+              {/* What the guest pays now, and how. Printed on the Guest Billing
+                  Statement and read back in the booking quick view, which then
+                  expects that money (plus a GCash / bank reference) to be
+                  recorded. Nothing is taken here — the guest gets the statement
+                  first. Leaving the method blank prints every way to pay. */}
               {setFormPaymentMethod && (
-                <div className="border-t border-base-300 pt-3.5 mt-3 space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60 block">Payment Method</span>
-                  <p className="text-[10px] text-base-content/60">Shown on the billing statement. No payment is recorded yet.</p>
-                  <select
-                    value={formPaymentMethod || ''}
-                    onChange={e => setFormPaymentMethod(e.target.value)}
-                    className="select select-bordered w-full"
-                  >
-                    <option value="">Select...</option>
-                    <option value="Cash">Cash</option>
-                    <option value="GCash">GCash</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                  </select>
+                <div className="border-t border-base-300 pt-3.5 mt-3 space-y-2.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60 block">What the guest pays now</span>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { value: 'deposit' as const, label: 'Deposit (50%)', amount: estDown },
+                      { value: 'full' as const, label: 'Pay in full', amount: estTotal },
+                    ]).map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setFormPaymentPlan?.(opt.value)}
+                        className={'rounded-md border px-2 py-2 text-center transition-colors cursor-pointer ' + (plan === opt.value ? 'border-brand-primary bg-brand-bg' : 'border-base-300 bg-base-100 hover:bg-base-200')}
+                      >
+                        <span className="block text-[9px] font-bold uppercase tracking-wider text-base-content/60">{opt.label}</span>
+                        <span className="block text-[13px] font-black font-mono text-base-content mt-0.5">₱{opt.amount.toLocaleString()}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <label className="block">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60 block mb-1">Payment method</span>
+                    <select
+                      value={formPaymentMethod || ''}
+                      onChange={e => setFormPaymentMethod(e.target.value)}
+                      className="select select-bordered select-sm w-full"
+                    >
+                      <option value="">Not decided — print every way to pay</option>
+                      <option value="Cash">Cash</option>
+                      <option value="GCash">GCash</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                  </label>
+
+                  <p className="text-[10px] text-base-content/60 leading-snug">
+                    Expecting <strong className="text-base-content font-mono">₱{(plan === 'full' ? estTotal : estDown).toLocaleString()}</strong>
+                    {plan === 'full' ? ' in full' : ' deposit'}{formPaymentMethod ? ' by ' + formPaymentMethod : ''} when they pay.
+                    No payment is recorded yet — hand them the statement first.
+                  </p>
                 </div>
               )}
 
               {/* Edit Mode Overrides */}
-              {isEditMode && setFormPaymentStatus && (
+              {isEditMode && setFormDownpaymentPaid && (
                 <div className="border-t border-base-300 pt-3.5 mt-3 space-y-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60 block mb-1">Financial Overrides</span>
-                  
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-base-content">Payment Status</label>
-                    <select
-                      value={formPaymentStatus || 'unpaid'}
-                      onChange={e => setFormPaymentStatus(e.target.value as 'unpaid' | 'downpayment' | 'paid')}
-                      className="select select-bordered w-full"
-                    >
-                      <option value="unpaid">Unpaid</option>
-                      <option value="downpayment">Downpayment Paid</option>
-                      <option value="paid">Fully Paid</option>
-                    </select>
-                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60 block mb-1">Correct the money</span>
+                  <p className="text-[10px] text-base-content/60">For an existing booking only. The payment status follows whatever you enter here.</p>
                   
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
@@ -404,10 +420,10 @@ export const BillingSummary = React.memo(
       prevProps.formUsePromo === nextProps.formUsePromo &&
       prevProps.formPartnerDealId === nextProps.formPartnerDealId &&
       prevProps.formPaymentMethod === nextProps.formPaymentMethod &&
+      prevProps.formPaymentPlan === nextProps.formPaymentPlan &&
       prevProps.formVenueExcessHours === nextProps.formVenueExcessHours &&
       prevProps.isEditMode === nextProps.isEditMode &&
       prevProps.formInvoiceNumber === nextProps.formInvoiceNumber &&
-      prevProps.formPaymentStatus === nextProps.formPaymentStatus &&
       prevProps.formDownpaymentPaid === nextProps.formDownpaymentPaid &&
       prevProps.formBalanceDue === nextProps.formBalanceDue &&
       prevProps.formSecurityDeposit === nextProps.formSecurityDeposit

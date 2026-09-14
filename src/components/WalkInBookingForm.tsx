@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal, PaymentRecord } from '../types/booking'
+import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal } from '../types/booking'
 import { useDashboardData } from './DashboardContext'
 import {
   AlertCircle, UserCheck, CheckCircle2
@@ -16,8 +16,6 @@ import { submitBookingForm } from './walk-in/bookingSubmit'
 import { PartnerBookingFields } from './walk-in/PartnerBookingFields'
 import { BookingCreatedPanel } from './walk-in/BookingCreatedPanel'
 import { BookingWizardHeader } from './walk-in/BookingWizardHeader'
-import { dateToString } from '../utils/helpers'
-import { statusAfterPayment } from '../utils/bookingStatus'
 
 interface WalkInBookingFormProps {
   rooms: Room[]
@@ -63,7 +61,6 @@ interface WalkInBookingFormProps {
     notes?: string
   }) => Promise<Booking>
   cancelBooking: (bookingId: string) => Promise<void>
-  updateBooking?: (booking: Booking) => Promise<void>
   initialSelections: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
   editingBookings?: Booking[]
   onClose: () => void
@@ -76,7 +73,6 @@ export function WalkInBookingForm({
   bookings,
   createManualBooking,
   cancelBooking,
-  updateBooking,
   initialSelections,
   editingBookings,
   onClose,
@@ -223,17 +219,10 @@ export function WalkInBookingForm({
 
   // ── Payment Details ──
   const [formPaymentMethod, setFormPaymentMethod] = useState('')
+  // What the guest agreed to pay now — a 50% deposit or the full amount.
+  const [formPaymentPlan, setFormPaymentPlan] = useState<'deposit' | 'full'>('deposit')
   const [formPaymentReference, setFormPaymentReference] = useState('')
   const [formInvoiceNumber, setFormInvoiceNumber] = useState('')
-
-  // ── Post-create payment (Option B) ──
-  const [payAmount, setPayAmount] = useState('')
-  const [payMethod, setPayMethod] = useState('Cash')
-  const [payReference, setPayReference] = useState('')
-  const [payDate, setPayDate] = useState(() => dateToString(new Date()))
-  const [isRecordingPay, setIsRecordingPay] = useState(false)
-  const [receiptRecord, setReceiptRecord] = useState<PaymentRecord | null>(null)
-  const [receiptBooking, setReceiptBooking] = useState<Booking | null>(null)
 
   // ── Quick-form parity fields ──
   const [formPreparedBy, setFormPreparedBy] = useState('')
@@ -244,7 +233,7 @@ export function WalkInBookingForm({
   const [venueDayBlocks, setVenueDayBlocks] = useState(1)
   
   // ── Manual Financial Overrides (for Edit Mode) ──
-  const [formPaymentStatus, setFormPaymentStatus] = useState<'unpaid' | 'downpayment' | 'paid'>('unpaid')
+  // Kept only to re-derive the status when editing — it is never typed by hand.
   const [formDownpaymentPaid, setFormDownpaymentPaid] = useState(0)
   const [formBalanceDue, setFormBalanceDue] = useState<number | null>(null)
   const [formSecurityDeposit, setFormSecurityDeposit] = useState<number | null>(null)
@@ -286,10 +275,10 @@ export function WalkInBookingForm({
 
       setFormPaymentMethod(b.payment_method || '')
       setFormPaymentReference(b.payment_reference || '')
+      setFormPaymentPlan(b.payment_plan === 'full' ? 'full' : 'deposit')
       setFormVenueExcessHours(b.venue_excess_hours || 0)
       setFormInvoiceNumber(b.invoice_number || '')
       
-      setFormPaymentStatus(b.payment_status || 'unpaid')
       setFormBirthdate(b.birthdate || '')
       setFormPreparedBy(b.prepared_by || '')
       setFormBlockNotes(b.notes || '')
@@ -396,6 +385,10 @@ export function WalkInBookingForm({
           : (editingBookings && editingBookings.length > 0)
             ? (editingBookings[0].status || 'confirmed')
             : 'pending'
+    // Payment status is never chosen by hand: editing a booking keeps the status
+    // that the money already recorded implies (nothing / part / all of it).
+    const derivedPaymentStatus: 'unpaid' | 'downpayment' | 'paid' =
+      formDownpaymentPaid <= 0 ? 'unpaid' : (formBalanceDue ?? estDue) <= 0 ? 'paid' : 'downpayment'
     const result = await submitBookingForm({
       bookingStatus,
       unitSelections, formRoomIds, formVenueIds, rooms, venues,
@@ -407,60 +400,22 @@ export function WalkInBookingForm({
       formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
       formChairs, formEventTable, formEventTent, formVenueExcessHours,
       formBlockNotes, discountType, discountValue, venueDayBlocks, editingBookings,
-      formPaymentMethod, formPaymentReference, formPaymentStatus, formDownpaymentPaid,
+      formPaymentMethod, formPaymentReference, formPaymentPlan, derivedPaymentStatus, formDownpaymentPaid,
       formBalanceDue, formSecurityDeposit, createManualBooking, cancelBooking,
     })
     if (!result.ok) { setFormError(result.error); setIsSubmitting(false); return }
     setCreatedBookingList(result.bookings)
-    setPayAmount(result.payAmount)
     setIsSubmitting(false)
-  }
-
-  const createdDue = useMemo(() => createdBookingList.reduce((a, b) => a + (b.balance_due || 0), 0), [createdBookingList])
-
-  const recordPayment = async () => {
-    const amount = parseFloat(payAmount) || createdDue
-    if (!createdBookingList.length || amount <= 0) return
-    setIsRecordingPay(true)
-    try {
-      const rec: PaymentRecord = { id: 'rcpt-' + Date.now(), amount, method: payMethod, reference: payReference.trim() || undefined, paid_at: payDate ? new Date(payDate + 'T12:00:00').toISOString() : new Date().toISOString() }
-      const target = createdBookingList[0]
-      const total = (target.balance_due || 0) + (target.downpayment_paid || 0)
-      const newDown = (target.downpayment_paid || 0) + amount
-      const newBalance = Math.max(0, total - newDown)
-      const status: Booking['payment_status'] = newBalance <= 0 ? 'paid' : 'downpayment'
-      const updated: Booking = { ...target, payment_records: [...(target.payment_records || []), rec], downpayment_paid: newDown, balance_due: newBalance, payment_status: status, status: statusAfterPayment(target.status) }
-      setCreatedBookingList(list => list.map(b => b.id === target.id ? updated : b))
-      if (updateBooking) { try { await updateBooking(updated) } catch (e) { console.error('Could not persist payment:', e) } }
-      setReceiptRecord(rec)
-      setReceiptBooking(updated)
-    } finally {
-      setIsRecordingPay(false)
-    }
   }
 
   if (createdBookingList.length > 0) {
     return createPortal(
       <BookingCreatedPanel
-        createdDue={createdDue}
-        payAmount={payAmount}
-        setPayAmount={setPayAmount}
-        payMethod={payMethod}
-        setPayMethod={setPayMethod}
-        payReference={payReference}
-        setPayReference={setPayReference}
-        payDate={payDate}
-        setPayDate={setPayDate}
-        recordPayment={recordPayment}
-        isRecordingPay={isRecordingPay}
         createdBookingList={createdBookingList}
         rooms={rooms}
         venues={venues}
         bookings={bookings}
         onClose={onClose}
-        receiptRecord={receiptRecord}
-        receiptBooking={receiptBooking}
-        setReceiptRecord={setReceiptRecord}
       />,
       document.body
     )
@@ -669,12 +624,12 @@ export function WalkInBookingForm({
                           formPartnerDealId={formPartnerDealId}
                           formPaymentMethod={formPaymentMethod}
                           setFormPaymentMethod={setFormPaymentMethod}
+                          formPaymentPlan={formPaymentPlan}
+                          setFormPaymentPlan={setFormPaymentPlan}
                           formVenueExcessHours={formVenueExcessHours}
                           isEditMode={!!editingBookings}
                           formInvoiceNumber={formInvoiceNumber}
                           setFormInvoiceNumber={setFormInvoiceNumber}
-                          formPaymentStatus={formPaymentStatus}
-                          setFormPaymentStatus={setFormPaymentStatus}
                           formDownpaymentPaid={formDownpaymentPaid}
                           setFormDownpaymentPaid={setFormDownpaymentPaid}
                           formBalanceDue={formBalanceDue}

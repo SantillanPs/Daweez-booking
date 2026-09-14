@@ -37,6 +37,7 @@ export interface ManualBookingInput {
   contractRateOverride?: number
   paymentMethod?: string
   paymentReference?: string
+  paymentPlan?: 'deposit' | 'full'
   venueExcessHours?: number
   paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
   downpaymentPaid?: number
@@ -86,7 +87,9 @@ export interface BookingSubmitParams {
   editingBookings?: Booking[]
   formPaymentMethod: string
   formPaymentReference: string
-  formPaymentStatus: 'unpaid' | 'downpayment' | 'paid'
+  formPaymentPlan: 'deposit' | 'full'
+  /** Derived from the money on the booking — never typed in by staff. */
+  derivedPaymentStatus: 'unpaid' | 'downpayment' | 'paid'
   formDownpaymentPaid: number
   formBalanceDue: number | null
   formSecurityDeposit: number | null
@@ -180,7 +183,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         contractRateOverride: contractedPrice || undefined,
         paymentMethod: p.formPaymentMethod || undefined,
         paymentReference: p.formPaymentReference || undefined,
-        paymentStatus: p.editingBookings ? p.formPaymentStatus : undefined,
+        paymentPlan: p.bookingStatus === 'blocked' ? undefined : p.formPaymentPlan,
+        paymentStatus: p.editingBookings ? p.derivedPaymentStatus : undefined,
         downpaymentPaid: p.editingBookings ? p.formDownpaymentPaid : undefined,
         balanceDue: p.editingBookings && p.formBalanceDue !== null ? p.formBalanceDue : undefined,
         securityDeposit: p.editingBookings && p.formSecurityDeposit !== null ? p.formSecurityDeposit : undefined
@@ -234,8 +238,9 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         contractRateOverride: contractedPrice || undefined,
         paymentMethod: p.formPaymentMethod || undefined,
         paymentReference: p.formPaymentReference || undefined,
+        paymentPlan: p.bookingStatus === 'blocked' ? undefined : p.formPaymentPlan,
         venueExcessHours: p.formVenueExcessHours,
-        paymentStatus: p.editingBookings ? p.formPaymentStatus : undefined,
+        paymentStatus: p.editingBookings ? p.derivedPaymentStatus : undefined,
         downpaymentPaid: p.editingBookings ? p.formDownpaymentPaid : undefined,
         balanceDue: p.editingBookings && p.formBalanceDue !== null ? p.formBalanceDue : undefined,
         securityDeposit: p.editingBookings && p.formSecurityDeposit !== null ? p.formSecurityDeposit : undefined

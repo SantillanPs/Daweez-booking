@@ -120,6 +120,10 @@ export interface Booking {
   downpayment_paid: number // 50% downpayment
   payment_method?: string
   payment_reference?: string
+  // What the guest agreed to pay when they booked: a 50% deposit or the full
+  // amount. Shown as "expecting" in the booking quick view; the booking's
+  // payment STATUS itself follows the money actually recorded.
+  payment_plan?: 'deposit' | 'full'
   balance_due: number      // Remaining 50% + rentals/addons + security deposit
   security_deposit: number // ₱500 flat
   breakfast_orders?: BreakfastOrder[]

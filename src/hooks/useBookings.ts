@@ -210,7 +210,7 @@ export function useBookings() {
     breakfastOrders?: BreakfastOrder[]; equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons; rateMultiplier?: number; usePromo?: boolean; companions?: Companion[]
     partnerDealId?: string; companyName?: string; vehiclePlate?: string
-    paymentMethod?: string; paymentReference?: string; venueExcessHours?: number
+    paymentMethod?: string; paymentReference?: string; paymentPlan?: 'deposit' | 'full'; venueExcessHours?: number
     paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
     downpaymentPaid?: number; balanceDue?: number; securityDeposit?: number
     breakfastIncluded?: boolean; contractRateOverride?: number
@@ -225,7 +225,7 @@ export function useBookings() {
         source, status, breakfastOrders, equipmentRentals, eventAddons,
         rateMultiplier, usePromo, companions,
         partnerDealId, companyName, vehiclePlate, breakfastIncluded, contractRateOverride,
-        paymentMethod, paymentReference, venueExcessHours = 0,
+        paymentMethod, paymentReference, paymentPlan, venueExcessHours = 0,
         paymentStatus, downpaymentPaid, balanceDue, securityDeposit,
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, notes, preparedBy, breakfastDays,
         referenceNumber, registeredOn, paymentRecords } = params
@@ -267,6 +267,7 @@ export function useBookings() {
         downpayment_paid: downpaymentPaid !== undefined ? downpaymentPaid : 0,
         payment_method: paymentMethod,
         payment_reference: paymentReference,
+        payment_plan: paymentPlan,
         venue_excess_hours: venueExcessHours,
         balance_due: balanceDue !== undefined ? balanceDue : (status === 'blocked' ? 0 : pricing.grandTotal),
         security_deposit: securityDeposit !== undefined ? securityDeposit : (status === 'blocked' ? 0 : pricing.securityDeposit),

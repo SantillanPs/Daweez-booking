@@ -19,7 +19,6 @@ export interface TimelineCellProps {
   setSelectedExtendBooking: (booking: Booking) => void
   setExtendCheckoutDate: (date: string) => void
   setExtendError: (err: string) => void
-  onQuickPaymentChange?: (booking: Booking, status: 'unpaid' | 'downpayment' | 'paid') => void
 }
 
 // Optimized, memoized timeline cell. Tooltip visibility lives in this cell
@@ -41,8 +40,7 @@ export const TimelineCell = React.memo(
     onCellClick,
     setSelectedExtendBooking,
     setExtendCheckoutDate,
-    setExtendError,
-    onQuickPaymentChange
+    setExtendError
   }: TimelineCellProps) {
     const [showTooltip, setShowTooltip] = React.useState(false)
     const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -88,16 +86,10 @@ export const TimelineCell = React.memo(
               {span > 1 && (
                 <span className="text-[8.5px] opacity-70 font-mono">{span}n</span>
               )}
-              <button
-                onClick={e => {
-                  e.stopPropagation()
-                  const next = !booking.payment_status || booking.payment_status === 'unpaid'
-                    ? 'downpayment' : booking.payment_status === 'downpayment' ? 'paid' : 'unpaid'
-                  onQuickPaymentChange?.(booking, next)
-                }}
-                title={'Payment: ' + getPaymentLabel(booking) + ' — click to change'}
-                aria-label="Change payment status"
-                className={'w-2 h-2 rounded-full cursor-pointer transition-transform hover:scale-150 ' + getPaymentDotClass(booking)}
+              <span
+                title={'Payment: ' + getPaymentLabel(booking) + ' — from the payments recorded on the booking'}
+                aria-label={'Payment: ' + getPaymentLabel(booking)}
+                className={'w-2 h-2 rounded-full ' + getPaymentDotClass(booking)}
               />
             </span>
           </div>

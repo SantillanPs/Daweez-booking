@@ -4,10 +4,8 @@ import { Search, CalendarDays, User, MapPin, Building, Printer, FileText } from 
 import { Booking } from '../types/booking'
 import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
 import { BookingDetailsModal } from './billing/BookingDetailsModal'
-import { PaymentStatusSelect } from './billing/PaymentStatusSelect'
 import { getPaymentView, isOwed, PAYMENT_BADGE_CLASSES } from '../utils/bookingMoney'
 import { dateToString } from '../utils/helpers'
-import { statusAfterPayment } from '../utils/bookingStatus'
 
 type MoneyFilter = 'all' | 'owes' | 'paid'
 
@@ -15,7 +13,7 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
 export function BookingsListTab() {
-  const { bookings, rooms, venues, updateBooking } = useDashboardData()
+  const { bookings, rooms, venues } = useDashboardData()
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [moneyFilter, setMoneyFilter] = useState<MoneyFilter>('all')
@@ -75,14 +73,6 @@ export function BookingsListTab() {
       total: owed.reduce((sum, b) => sum + (b.balance_due || 0), 0)
     }
   }, [bookings])
-
-  const handlePaymentStatusChange = useCallback(async (booking: Booking, status: 'unpaid' | 'downpayment' | 'paid') => {
-    try {
-      await updateBooking({ ...booking, payment_status: status, status: status === 'unpaid' ? booking.status : statusAfterPayment(booking.status), balance_due: status === 'paid' ? 0 : booking.balance_due })
-    } catch {
-      window.alert('Could not update the payment. Please try again.')
-    }
-  }, [updateBooking])
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -214,9 +204,6 @@ export function BookingsListTab() {
                     >
                       <Printer className="w-3.5 h-3.5 text-brand-text" /> Print invoice
                     </button>
-                    {b.status !== 'blocked' && (
-                      <PaymentStatusSelect booking={b} onChange={handlePaymentStatusChange} />
-                    )}
                     <button
                       onClick={() => setDetailsBooking(b)}
                       className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-soft bg-card text-main hover:bg-page transition-colors cursor-pointer"
@@ -247,7 +234,6 @@ export function BookingsListTab() {
           venues={venues}
           bookingsList={bookings}
           onClose={() => setDetailsBooking(null)}
-          onPaymentStatusChange={handlePaymentStatusChange}
         />
       )}
     </div>

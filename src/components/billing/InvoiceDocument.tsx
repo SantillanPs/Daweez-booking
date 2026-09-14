@@ -203,23 +203,41 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
                 <span className="font-semibold">{statement.paymentMethod}</span>
               </div>
             ) : (
-              <p className="text-[11px] text-slate-500 italic">To be advised</p>
+              /* No method agreed yet — print every way to pay, so the guest can
+                 pick without asking at the desk. */
+              <ul className="space-y-1 text-[12.5px]">
+                <li className="flex items-center gap-1.5"><span className="inline-flex w-4 h-4 border border-slate-400" /><span className="font-semibold">Cash</span></li>
+                <li className="flex items-center gap-1.5"><span className="inline-flex w-4 h-4 border border-slate-400" /><span className="font-semibold">GCash</span></li>
+                <li className="flex items-center gap-1.5"><span className="inline-flex w-4 h-4 border border-slate-400" /><span className="font-semibold">{payAcct.bankName ? payAcct.bankName + ' Transfer' : 'Bank Transfer'}</span></li>
+              </ul>
             )}
 
-            {/* Account details only for the method actually chosen — nothing to
-                transfer to when the guest pays in cash. */}
-            {isGcash && (
-              <div className="mt-3 pt-2 border-t border-dashed border-slate-400 space-y-0.5 text-[11px] text-slate-600">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-1">Account Details</p>
-                <p>GCash Name: <strong className="text-main">{payAcct.gcashName}</strong></p>
-                <p>GCash No: <strong className="font-mono text-main">{payAcct.gcashNumber}</strong></p>
-              </div>
-            )}
-            {isBank && (
-              <div className="mt-3 pt-2 border-t border-dashed border-slate-400 space-y-0.5 text-[11px] text-slate-600">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-1">Account Details</p>
-                <p>{payAcct.bankName} Name: <strong className="text-main">{payAcct.bankAccountName}</strong></p>
-                <p>{payAcct.bankName} Account No: <strong className="font-mono text-main">{payAcct.bankAccountNumber}</strong></p>
+            {/* Account details only for the method actually chosen — and every
+                account when nothing has been chosen yet. Nothing to transfer to
+                when the guest pays in cash. */}
+            {statement.paymentMethod ? (
+              <>
+                {isGcash && (
+                  <div className="mt-3 pt-2 border-t border-dashed border-slate-400 space-y-0.5 text-[11px] text-slate-600">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-1">Account Details</p>
+                    <p>GCash Name: <strong className="text-main">{payAcct.gcashName}</strong></p>
+                    <p>GCash No: <strong className="font-mono text-main">{payAcct.gcashNumber}</strong></p>
+                  </div>
+                )}
+                {isBank && (
+                  <div className="mt-3 pt-2 border-t border-dashed border-slate-400 space-y-0.5 text-[11px] text-slate-600">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-1">Account Details</p>
+                    <p>{payAcct.bankName} Name: <strong className="text-main">{payAcct.bankAccountName}</strong></p>
+                    <p>{payAcct.bankName} Account No: <strong className="font-mono text-main">{payAcct.bankAccountNumber}</strong></p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="mt-3 pt-2 border-t border-dashed border-slate-400 space-y-1 text-[11px] text-slate-600">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-main">Where to pay</p>
+                <p>Cash — at the front desk.</p>
+                <p>GCash — <strong className="text-main">{payAcct.gcashName}</strong> · <strong className="font-mono text-main">{payAcct.gcashNumber}</strong></p>
+                <p>{payAcct.bankName || 'Bank'} — <strong className="text-main">{payAcct.bankAccountName}</strong> · <strong className="font-mono text-main">{payAcct.bankAccountNumber}</strong></p>
               </div>
             )}
           </div>
