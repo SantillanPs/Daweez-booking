@@ -23,7 +23,23 @@ export function PrintPaymentReceiptModal({ booking, record, rooms, venues, onClo
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  const handlePrint = () => window.print()
+  // The hotel prints receipts on a 58 mm thermal roll. The page box is set only
+  // for the moment of printing (the style is injected, then removed), so the A4
+  // billing statement keeps its own page size instead of inheriting this one.
+  const handlePrint = () => {
+    const style = document.createElement('style')
+    style.textContent = '@page { size: 58mm auto; margin: 3mm; }'
+    document.head.appendChild(style)
+    const done = () => {
+      style.remove()
+      window.removeEventListener('afterprint', done)
+    }
+    window.addEventListener('afterprint', done)
+    window.print()
+    // Backstop: some browsers never fire afterprint.
+    window.setTimeout(done, 60000)
+  }
+
   const doc = (
     <PaymentReceiptDocument
       booking={booking}

@@ -17,18 +17,40 @@ interface PaymentReceiptDocumentProps {
 const money = (n: number) => '₱' + n.toLocaleString()
 const fmtDateTime = (d?: string) => (d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '')
 
-function Field({ label, value }: { label: string; value?: string }) {
+// Dashed rule, the way a receipt separates its blocks.
+function Rule() {
+  return <div className="border-t border-dashed border-black my-1.5" />
+}
+
+// Label above the value. At 58 mm a long label and a long value cannot share one
+// line, so anything that can run long gets its own row.
+function Block({ label, value }: { label: string; value?: string }) {
+  const shown = (value ?? '').trim()
+  if (!shown) return null
   return (
-    <div className="flex items-end gap-2 border-b border-slate-400/60 pb-0.5">
-      <span className="text-[11px] font-bold whitespace-nowrap text-main">{label}:</span>
-      <span className="flex-1 text-[13px] text-main min-h-[18px] break-words">{value || ''}</span>
+    <div className="mt-1.5 first:mt-0">
+      <p className="text-[8px] font-bold uppercase tracking-wider">{label}</p>
+      <p className="text-[10px] font-semibold break-words">{shown}</p>
     </div>
   )
 }
 
-// A filled-in payment receipt. Unlike the blank paper form it only shows the
-// payment method actually used, the actual payment-for reason, and the real
-// status — never a full list of checkboxes.
+// Label left, amount right. Only for labels short enough to always fit.
+function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2 mt-0.5 first:mt-0">
+      <span className="text-[9px] font-semibold">{label}</span>
+      <span className={'font-mono shrink-0 text-right break-all ' + (strong ? 'text-[11px] font-bold' : 'text-[10px]')}>{value}</span>
+    </div>
+  )
+}
+
+// A filled-in payment receipt, sized for the hotel's 58 mm thermal roll: ONE
+// column, no side-by-side tables, black on white (the printer is 1-bit, so grey
+// text just dithers into fuzz), and nothing wider than the paper.
+//
+// The screen preview is the same 58 mm slip rather than a wide page, so what
+// staff see is what comes out of the printer.
 export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose, onPrint, embedded = false }: PaymentReceiptDocumentProps) {
   const isRoom = !!booking.room_id
   const room = rooms.find(r => r.id === booking.room_id)
@@ -58,94 +80,89 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
   const showRef = (kind === 'gcash' || kind === 'bank') && !!record.reference
 
   return (
-    <div className={'bg-card w-full max-w-3xl mx-auto rounded-xl shadow-2xl overflow-hidden flex flex-col print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none ' + (embedded ? 'my-0 shadow-xl' : 'my-8')}>
-      <div className="flex items-center justify-between px-5 py-3 bg-slate-800 text-white shrink-0 print:hidden">
-        <div className="flex items-center gap-2">
-          <span className="bg-white text-slate-800 text-[11px] font-bold px-2 py-0.5 rounded uppercase">Payment receipt</span>
-          <span className="text-xs font-mono text-white/70">{receiptNo}</span>
+    <div className={'flex flex-col items-center ' + (embedded ? '' : 'w-full')}>
+      {!embedded && (
+        <div className="w-full max-w-md mb-3 flex items-center justify-between gap-3 rounded-xl bg-slate-800 px-4 py-2.5 text-white print:hidden">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="bg-white text-slate-800 text-[11px] font-bold px-2 py-0.5 rounded uppercase shrink-0">Payment receipt</span>
+            <span className="text-xs font-mono text-white/70 truncate">{receiptNo}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
+              <Printer className="w-3.5 h-3.5" /> Print
+            </button>
+            <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer" aria-label="Close">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
-            <Printer className="w-3.5 h-3.5" /> Print
-          </button>
-          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer" aria-label="Close">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+      )}
 
-      <div className="p-6 md:p-10 overflow-y-auto print:p-6 print:overflow-visible flex-1 bg-card font-sans text-main leading-relaxed print:static">
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-3 pb-4">
-          <div>
-            <h1 className="font-display font-extrabold text-lg md:text-xl text-slate-800 uppercase tracking-tight">Daweez Pension House</h1>
-            <p className="text-[11px] text-slate-600 mt-0.5">San Agustin Sur, Tandag City, Surigao del Sur</p>
-            <p className="text-[11px] text-slate-600">Email Address: daweezpensionhouse@gmail.com</p>
-            <p className="text-[11px] text-slate-600">Mobile No: 0910-7163830</p>
-          </div>
-          <div className="text-left sm:text-right">
-            <h2 className="font-display font-bold text-[15px] text-slate-800 uppercase tracking-widest">Payment Receipt</h2>
-            <div className="mt-2 text-[12px] text-slate-700 space-y-1">
-              <div className="flex items-center gap-2 justify-end">
-                <span className="text-[11px] font-bold whitespace-nowrap">Receipt / Payment No.:</span>
-                <span className="font-mono border-b border-slate-400/60">{receiptNo}</span>
-              </div>
-              <div className="flex items-center gap-2 justify-end">
-                <span className="text-[11px] font-bold whitespace-nowrap">Date:</span>
-                <span className="font-mono border-b border-slate-400/60">{fmtDateTime(record.paid_at)}</span>
-              </div>
-            </div>
-          </div>
+      {/* The 58 mm slip. Printed width comes from the @page box the modal sets,
+          so in print it simply fills that page instead of a fixed 58 mm. */}
+      <div className={((embedded ? 'my-0 ' : 'my-2 ') + 'w-[58mm] max-w-full bg-white text-black font-sans leading-snug px-2.5 py-3 ' +
+        'print:w-auto print:max-w-none print:px-0 print:py-0 print:my-0 print:shadow-none print:rounded-none')}>
+        <div className="text-center">
+          <h1 className="font-display font-extrabold text-[13px] uppercase leading-tight">Daweez Pension House</h1>
+          <p className="text-[8.5px] mt-0.5">San Agustin Sur, Tandag City</p>
+          <p className="text-[8.5px]">Surigao del Sur</p>
+          <p className="text-[8.5px] break-all">daweezpensionhouse@gmail.com</p>
+          <p className="text-[8.5px]">Mobile No: 0910-7163830</p>
         </div>
-        <div className="border-t-2 border-slate-700 my-2" />
+
+        <Rule />
+
+        <div className="text-center">
+          <h2 className="font-display font-bold text-[11px] uppercase tracking-widest">Payment Receipt</h2>
+          <p className="font-mono text-[10px] font-bold mt-1">{receiptNo}</p>
+          <p className="text-[8.5px] mt-0.5">{fmtDateTime(record.paid_at)}</p>
+        </div>
+
+        <Rule />
 
         {/* "Received From" is a heading, not a field: it says what the lines
-            under it are — who the money came from. Filling it with the guest's
-            name printed that name twice and told the reader nothing. */}
-        <div className="py-3">
-          <p className="text-[12px] font-bold uppercase tracking-wider text-main mb-2">Received From</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-2">
-            <Field label="Guest" value={booking.guest_name} />
-            <Field label="Room No" value={unitLabel} />
-            <Field label="Status" value={statusLine} />
-          </div>
+            under it are — who the money came from. */}
+        <p className="text-[8px] font-bold uppercase tracking-wider">Received From</p>
+        <Block label="Guest" value={booking.guest_name} />
+        <Block label="Room No" value={unitLabel} />
+        <Block label="Status" value={statusLine} />
+
+        <Rule />
+
+        <div className="text-center">
+          <p className="text-[8px] font-bold uppercase tracking-wider">Amount Received</p>
+          <p className="font-display text-[17px] font-extrabold leading-none mt-1">{money(amountPaid)}</p>
         </div>
 
-        <div className="border-t border-soft py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
-          <div className="space-y-2">
-            <Field label="Amount Received" value={money(amountPaid)} />
-          </div>
-          <div className="space-y-2">
-            <Field label="Payment For" value={paymentFor} />
-            <Field label="Bill / Invoice No." value={booking.invoice_number} />
-          </div>
-        </div>
+        <Rule />
 
-        <div className="border-t border-soft py-3 grid grid-cols-3 gap-2">
-          <Field label="Previous Balance" value={money(previousBalance)} />
-          <Field label="Amount Paid" value={money(amountPaid)} />
-          <Field label="Remaining Balance" value={money(remainingAfter)} />
-        </div>
+        <Block label="Payment For" value={paymentFor} />
+        <Block label="Invoice" value={booking.invoice_number} />
 
-        <div className="border-t border-soft py-3 space-y-2">
-          <Field label="Payment Method" value={methodLabel} />
-          {showRef ? <Field label={kind === 'gcash' ? 'GCash Ref No.' : 'Bank Transfer Ref No.'} value={record.reference} /> : null}
-        </div>
+        <Rule />
 
-        <div className="border-t border-soft py-3 grid grid-cols-2 gap-8">
-          <div>
-            <p className="text-[12px] font-bold uppercase tracking-wider text-main mb-6">Received By</p>
-            <p className="border-b border-slate-400/60 text-[11px] text-main min-h-[18px]">{record.prepared_by || booking.prepared_by || ''}</p>
-          </div>
-          <div>
-            <p className="text-[12px] font-bold uppercase tracking-wider text-main mb-6">Guest Signature</p>
-            <p className="border-b border-slate-400/60 text-[11px] text-main min-h-[18px]"></p>
-          </div>
-        </div>
+        <Row label="Previous Balance" value={money(previousBalance)} />
+        <Row label="Amount Paid" value={money(amountPaid)} />
+        <Row label="Remaining Balance" value={money(remainingAfter)} strong />
 
-        <div className="mt-6 pt-3 border-t border-slate-300 text-center">
-          <p className="font-display font-bold text-[14px] text-slate-800">Thank you for staying at</p>
-          <p className="font-display font-extrabold text-[15px] text-slate-800 uppercase mt-0.5">Daweez Pension House</p>
-          <p className="text-[11px] text-slate-500 mt-2">Guest copy · {statusLine}</p>
+        <Rule />
+
+        <Row label="Payment Method" value={methodLabel} />
+        {showRef ? <Row label={kind === 'gcash' ? 'GCash Ref No.' : 'Bank Ref No.'} value={record.reference || ''} /> : null}
+
+        <Rule />
+
+        <p className="text-[8px] font-bold uppercase tracking-wider">Received By</p>
+        <p className="text-[10px] font-semibold mt-0.5 min-h-[12px]">{record.prepared_by || booking.prepared_by || ''}</p>
+        <p className="text-[8px] font-bold uppercase tracking-wider mt-2">Guest Signature</p>
+        <div className="border-b border-black h-4 mt-0.5" />
+
+        <Rule />
+
+        <div className="text-center">
+          <p className="text-[8.5px]">Thank you for staying at</p>
+          <p className="font-display font-extrabold text-[10px] uppercase mt-0.5">Daweez Pension House</p>
+          <p className="text-[8px] mt-1">Guest copy · {statusLine}</p>
         </div>
       </div>
     </div>
