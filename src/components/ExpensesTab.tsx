@@ -2,6 +2,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { generateUUID } from '../utils/syncEngine'
 import { TrendingDown, Plus, Trash2, Calendar, FileText, Tag, Wallet, X } from 'lucide-react'
+import { showToast } from '../utils/toast'
+import { askConfirm } from '../utils/confirm'
 
 export function ExpensesTab() {
   const { expenses, expenseCategories, createExpense, deleteExpense, createExpenseCategory, deleteExpenseCategory, isLoading } = useDashboardData()
@@ -72,19 +74,24 @@ export function ExpensesTab() {
       setAmount('')
       setNotes('')
     } catch {
-      alert('Failed to log expense. Please try again.')
+      showToast('Could not log the expense. Please try again.', 'error')
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this expense? This will affect analytics.')) {
-      try {
-        await deleteExpense(id)
-      } catch {
-        alert('Failed to delete expense.')
-      }
+    const ok = await askConfirm({
+      title: 'Delete this expense?',
+      message: 'The Earnings Report changes to match.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
+    try {
+      await deleteExpense(id)
+    } catch {
+      showToast('Could not delete the expense.', 'error')
     }
   }
 
@@ -95,19 +102,23 @@ export function ExpensesTab() {
       await createExpenseCategory({ id: `cat-${generateUUID()}`, name: newCategoryName.trim() })
       setNewCategoryName('')
     } catch {
-      alert('Failed to add category.')
+      showToast('Could not add the category.', 'error')
     }
   }
 
   const handleDeleteCategory = async (id: string) => {
     const isUsed = expenses.some(exp => exp.category_id === id)
     if (isUsed) {
-      alert('Cannot delete: this category is used by existing expenses.')
+      showToast('This category is used by existing expenses, so it cannot be deleted.', 'error')
       return
     }
-    if (confirm('Delete this category?')) {
-      try { await deleteExpenseCategory(id) } catch { alert('Failed to delete category.') }
-    }
+    const ok = await askConfirm({
+      title: 'Delete this category?',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
+    try { await deleteExpenseCategory(id) } catch { showToast('Could not delete the category.', 'error') }
   }
 
   if (isLoading) {

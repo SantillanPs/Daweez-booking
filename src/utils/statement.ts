@@ -2,6 +2,7 @@ import { Booking, Room, Venue, PartnerDeal } from '../types/booking'
 import * as syncEngine from './syncEngine'
 import { normalizeVenueId } from './helpers'
 import { getRateConfig } from './rateConfig'
+import { amountToPayNow } from './bookingMoney'
 import { roomDisplayName } from '../components/calendar/bookingStyles'
 
 // Builds the structured data for the printable "Guest Billing Statement"
@@ -27,7 +28,18 @@ export interface Statement {
   downpaymentPaid: number
   partialPayment: number
   other: number
+  // A refundable deposit held on the booking, printed only when one is actually
+  // held so the statement never shows a line that has nothing to say.
+  securityDeposit: number
+  // What the guest hands over at this point — the agreed 50% deposit while
+  // nothing has been paid yet, otherwise whatever is still owed. Never the whole
+  // stay when the guest only agreed to a deposit.
   amountDue: number
+  // What is still owed AFTER that payment, so the guest can see the deposit is
+  // not the whole bill and knows what to bring on arrival.
+  balanceAfter: number
+  // What the guest agreed to pay when they booked: 'deposit' | 'full' | ''.
+  paymentPlan: '' | 'deposit' | 'full'
   paymentMethod: string
 }
 
@@ -88,8 +100,14 @@ export function buildStatement(o: StatementInput): Statement {
   const lineItems: StatementLineItem[] = []
   let subTotal = 0
   let downpaymentPaid = 0
+  let securityDeposit = 0
   let amountDue = 0
+  let balanceAfter = 0
   let paymentMethod = ''
+  const paymentPlan: '' | 'deposit' | 'full' =
+    primaryBooking.payment_plan === 'deposit' || primaryBooking.payment_plan === 'full'
+      ? primaryBooking.payment_plan
+      : ''
 
   relatedBookings.forEach(b => {
     const pricing = bookingPricing(b, o)
@@ -214,7 +232,13 @@ export function buildStatement(o: StatementInput): Statement {
 
     subTotal += pricing.grandTotal
     downpaymentPaid += Number(b.downpayment_paid || 0)
-    amountDue += Number(b.balance_due || 0)
+    securityDeposit += Number(b.security_deposit || 0)
+    // What to pay NOW, from the guest's own choice: the agreed 50% deposit while
+    // nothing has been paid, otherwise what is left. Using `balance_due` alone
+    // printed the whole stay as due, which contradicted a deposit booking.
+    const payNow = amountToPayNow(b)
+    amountDue += payNow
+    balanceAfter += Math.max(0, Number(b.balance_due || 0) - payNow)
     if (b.payment_method) paymentMethod = b.payment_method
   })
 
@@ -230,7 +254,10 @@ export function buildStatement(o: StatementInput): Statement {
     downpaymentPaid,
     partialPayment: 0,
     other: 0,
+    securityDeposit,
     amountDue,
+    balanceAfter,
+    paymentPlan,
     paymentMethod,
   }
 }

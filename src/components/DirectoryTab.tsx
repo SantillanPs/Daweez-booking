@@ -3,6 +3,8 @@ import { useDashboardData } from './DashboardContext'
 import { PartnerDeal } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { Plus, Trash2, Edit2, Save, X, Building, Coffee, Ban } from 'lucide-react'
+import { showToast } from '../utils/toast'
+import { askConfirm } from '../utils/confirm'
 
 export function DirectoryTab() {
   const { rooms, venues, partnerDeals, createPartnerDeal, savePartnerDeals, deletePartnerDeal } = useDashboardData()
@@ -54,7 +56,7 @@ export function DirectoryTab() {
 
   const handleSavePartner = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!pName.trim()) { alert('Partner name is required.'); return }
+    if (!pName.trim()) { showToast('Partner name is required.', 'error'); return }
 
     const cleanRates: Record<string, number> = {}
     Object.entries(pRates).forEach(([k, v]) => { if (v > 0) cleanRates[k] = Number(v) })
@@ -75,16 +77,23 @@ export function DirectoryTab() {
         await createPartnerDeal(dealData)
       }
       resetForm()
-      alert('Partner deal saved!')
+      showToast('Partner deal saved.')
     } catch {
-      alert('Failed to save partner deal.')
+      showToast('Could not save the partner deal.', 'error')
     }
   }
 
   const handleDeletePartner = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this partner profile?')) return
-    try { await deletePartnerDeal(id); alert('Partner deal deleted!') }
-    catch { alert('Failed to delete partner deal.') }
+    const deal = partnerDeals.find(d => d.id === id)
+    const ok = await askConfirm({
+      title: 'Delete ' + (deal?.name || 'this partner') + "'s profile?",
+      message: 'Their contracted prices stop being offered on new bookings.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
+    try { await deletePartnerDeal(id); showToast('Partner deal deleted.') }
+    catch { showToast('Could not delete the partner deal.', 'error') }
   }
 
   const partnerTypes = [

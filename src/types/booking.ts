@@ -93,6 +93,9 @@ export interface PaymentRecord {
   reference?: string
   paid_at: string // ISO date-time
   prepared_by?: string
+  // Stored when the payment is recorded so the receipt keeps the same number
+  // even if another payment is later removed (see utils/receiptNumber.ts).
+  receipt_number?: string
 }
 
 export interface Companion {

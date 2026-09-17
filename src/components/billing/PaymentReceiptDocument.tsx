@@ -1,6 +1,8 @@
 import React from 'react'
 import { Printer, X } from 'lucide-react'
 import { Booking, PaymentRecord, Room, Venue } from '../../types/booking'
+import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
+import { receiptNumberFor, paymentBreakdown } from '../../utils/receiptNumber'
 
 interface PaymentReceiptDocumentProps {
   booking: Booking
@@ -33,15 +35,12 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
   const venue = venues.find(v => v.id === booking.venue_id)
   const unitLabel = isRoom ? 'Room ' + (room?.room_number ?? '') : (venue?.name || '')
 
-  const records = booking.payment_records || []
-  const idx = Math.max(0, records.findIndex(r => r.id === record.id))
-  const recordsSum = records.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+  const receiptNo = receiptNumberFor(booking, record)
   // The deposit captured at booking lives in downpayment_paid, not in the
   // payment records, so back it out to reconstruct each receipt's balances.
-  const initialDeposit = Math.max(0, (Number(booking.downpayment_paid) || 0) - recordsSum)
+  const { paidBefore } = paymentBreakdown(booking, record)
   const totalCharge = (Number(booking.downpayment_paid) || 0) + (Number(booking.balance_due) || 0)
   const amountPaid = Number(record.amount) || 0
-  const paidBefore = initialDeposit + records.slice(0, idx).reduce((s, r) => s + (Number(r.amount) || 0), 0)
   const remainingAfter = Math.max(0, totalCharge - (paidBefore + amountPaid))
   const previousBalance = Math.max(0, totalCharge - paidBefore)
 
@@ -54,19 +53,16 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
     : (isRoom ? 'Booked Confirmed' : 'Venue or Room Reserved')
 
   const rawMethod = (record.method || '').trim()
-  const m = rawMethod.toLowerCase()
-  const isGcash = m.includes('gcash')
-  const isBank = m.includes('bank') || m.includes('transfer')
-  const isCash = m.includes('cash')
-  const methodLabel = isGcash ? 'GCash' : isBank ? 'Bank Transfer' : isCash ? 'Cash' : (rawMethod || 'Cash')
-  const showRef = (isGcash || isBank) && !!record.reference
+  const kind = paymentKind(rawMethod)
+  const methodLabel = paymentMethodLabel(rawMethod)
+  const showRef = (kind === 'gcash' || kind === 'bank') && !!record.reference
 
   return (
     <div className={'bg-card w-full max-w-3xl mx-auto rounded-xl shadow-2xl overflow-hidden flex flex-col print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none ' + (embedded ? 'my-0 shadow-xl' : 'my-8')}>
       <div className="flex items-center justify-between px-5 py-3 bg-slate-800 text-white shrink-0 print:hidden">
         <div className="flex items-center gap-2">
           <span className="bg-white text-slate-800 text-[11px] font-bold px-2 py-0.5 rounded uppercase">Payment receipt</span>
-          <span className="text-xs font-mono text-white/70">R-{String(idx + 1).padStart(3, '0')}</span>
+          <span className="text-xs font-mono text-white/70">{receiptNo}</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
@@ -91,7 +87,7 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
             <div className="mt-2 text-[12px] text-slate-700 space-y-1">
               <div className="flex items-center gap-2 justify-end">
                 <span className="text-[11px] font-bold whitespace-nowrap">Receipt / Payment No.:</span>
-                <span className="font-mono border-b border-slate-400/60">R-{String(idx + 1).padStart(3, '0')}</span>
+                <span className="font-mono border-b border-slate-400/60">{receiptNo}</span>
               </div>
               <div className="flex items-center gap-2 justify-end">
                 <span className="text-[11px] font-bold whitespace-nowrap">Date:</span>
@@ -102,12 +98,13 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
         </div>
         <div className="border-t-2 border-slate-700 my-2" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 py-3">
-          <div className="space-y-2">
-            <Field label="Received From" value={booking.guest_name} />
-            <Field label="Guest's Name" value={booking.guest_name} />
-          </div>
-          <div className="space-y-2">
+        {/* "Received From" is a heading, not a field: it says what the lines
+            under it are — who the money came from. Filling it with the guest's
+            name printed that name twice and told the reader nothing. */}
+        <div className="py-3">
+          <p className="text-[12px] font-bold uppercase tracking-wider text-main mb-2">Received From</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-2">
+            <Field label="Guest" value={booking.guest_name} />
             <Field label="Room No" value={unitLabel} />
             <Field label="Status" value={statusLine} />
           </div>
@@ -131,7 +128,7 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
 
         <div className="border-t border-soft py-3 space-y-2">
           <Field label="Payment Method" value={methodLabel} />
-          {showRef ? <Field label={isGcash ? 'GCash Ref No.' : 'Bank Transfer Ref No.'} value={record.reference} /> : null}
+          {showRef ? <Field label={kind === 'gcash' ? 'GCash Ref No.' : 'Bank Transfer Ref No.'} value={record.reference} /> : null}
         </div>
 
         <div className="border-t border-soft py-3 grid grid-cols-2 gap-8">

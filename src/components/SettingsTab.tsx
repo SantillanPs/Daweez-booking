@@ -6,6 +6,7 @@ import { getRateConfig, saveRateConfig } from '../utils/rateConfig'
 import { getPaymentAccounts, savePaymentAccounts } from '../utils/paymentAccounts'
 import { RoomRatesEditor } from './settings/RoomRatesEditor'
 import { NumInput } from './NumInput'
+import { showToast } from '../utils/toast'
 
 type RatesTab = 'channels' | 'rates'
 
@@ -70,14 +71,14 @@ export function SettingsTab() {
   }
 
   const handleSaveFeeds = async () => {
-    try { await updateFeedUrls(editingFeeds); alert('Feed URLs saved!') }
-    catch { alert('Failed to save URLs.') }
+    try { await updateFeedUrls(editingFeeds); showToast('Feed URLs saved.') }
+    catch { showToast('Could not save the feed URLs.', 'error') }
   }
 
   const handleSaveRates = () => {
     saveRateConfig(rates)
     savePaymentAccounts(pay)
-    alert('Rates saved! The booking form and invoices use these.')
+    showToast('Rates saved. The booking form and statements use these.')
   }
 
   const [expandedRoomId, setExpandedRoomId] = useState<string | null>(rooms.length > 0 ? rooms[0].id : null)

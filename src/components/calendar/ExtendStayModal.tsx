@@ -11,11 +11,16 @@ import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
 import { SOURCE_LABELS, roomDisplayName } from './bookingStyles'
 import { statusAfterPayment } from '../../utils/bookingStatus'
+import { hasOutstandingBalance, amountToPayNow, hasPaymentRecorded, getPaymentView, paymentStatusWord, PAYMENT_BADGE_CLASSES } from '../../utils/bookingMoney'
+import { paymentMethodLabel, methodNeedsReference } from '../../utils/paymentMethod'
+import { nextReceiptNumber } from '../../utils/receiptNumber'
 import { SlideOverSection } from './SlideOverSection'
 import { BookingMoneyPanel } from './BookingMoneyPanel'
 import { BookingReceipts } from './BookingReceipts'
-import { RecordPaymentForm } from './RecordPaymentForm'
+import { ReceivePaymentStep } from './ReceivePaymentStep'
 import { ExtendStayForm } from './ExtendStayForm'
+import { showToast } from '../../utils/toast'
+import { askConfirm } from '../../utils/confirm'
 
 interface ExtendStayModalProps {
   booking: Booking
@@ -27,10 +32,8 @@ interface ExtendStayModalProps {
   onClose: () => void
   onExtendStaySubmit: (e: React.FormEvent) => void
   setExtendCheckoutDate: (date: string) => void
-  onConfirmReservation?: (id: string) => void
   onCancelBooking?: (id: string) => void
   onUpdateBooking?: (booking: Booking) => Promise<void>
-  isConfirming?: boolean
   onEditBooking?: () => void
 }
 
@@ -39,22 +42,12 @@ const fmtPeso = (n: number) => '₱' + n.toLocaleString()
 
 // How the guest said they would pay, matched to the form's own option labels.
 function agreedMethod(b: Booking): string {
-  const m = (b.payment_method || '').trim().toLowerCase()
-  if (!m) return 'Cash'
-  if (m.includes('gcash')) return 'GCash'
-  if (m.includes('bank')) return 'Bank transfer'
-  if (m.includes('cash')) return 'Cash'
-  return b.payment_method || 'Cash'
+  return paymentMethodLabel(b.payment_method)
 }
 
-// What the guest agreed to pay now: finish their 50% deposit, or clear the lot.
-function agreedPaymentAmount(b: Booking): number {
-  const paid = Number(b.downpayment_paid || 0)
-  const owed = Number(b.balance_due || 0)
-  if (b.payment_plan === 'full') return owed
-  if (b.payment_plan === 'deposit') return Math.max(0, Math.min(owed, Math.round((paid + owed) / 2) - paid))
-  return owed
-}
+// What the guest agreed to pay now is shared with the money card
+// (`amountToPayNow`), so the figure displayed and the figure pre-filled into the
+// payment form can never drift apart.
 
 // Reservation details slide-over: who, what, how much, and the single next step.
 // Layout is a folio, not a stack of cards — one focal money card, everything else
@@ -69,19 +62,25 @@ export function ExtendStayModal({
   onClose,
   onExtendStaySubmit,
   setExtendCheckoutDate,
-  onConfirmReservation,
   onCancelBooking,
   onUpdateBooking,
-  isConfirming = false,
   onEditBooking
 }: ExtendStayModalProps) {
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [localBooking, setLocalBooking] = useState(booking)
   const [payFlash, setPayFlash] = useState(false)
+  // Something the pressed action could not do, said on the page beside the
+  // button (e.g. checking out while money is still owed). Replaced every popup.
+  const [actionNotice, setActionNotice] = useState('')
+  // Taking money is a DECISION, not a default: a deposit booking sits quietly as
+  // "partly paid" until the staff press Receive money / Check in, and only then
+  // does the card open up and ask for the method, the reference and the amount.
+  const [takingPayment, setTakingPayment] = useState(false)
   const [addReceiptOpen, setAddReceiptOpen] = useState(false)
-  // Pre-filled from what the guest agreed to at booking time (the component is
-  // keyed per booking), so staff only type the reference number.
-  const [receiptAmount, setReceiptAmount] = useState(() => agreedPaymentAmount(booking))
+  // Only used by the Payment receipts block for an in-stay charge or a
+  // part-payment, where the staff member types the amount from scratch. Every
+  // other payment takes its amount straight from the card's "Amount to pay".
+  const [receiptAmount, setReceiptAmount] = useState(() => amountToPayNow(booking))
   const [receiptMethod, setReceiptMethod] = useState(() => agreedMethod(booking))
   const [receiptRef, setReceiptRef] = useState('')
   const [tryPayment, setTryPayment] = useState(false)
@@ -100,11 +99,25 @@ export function ExtendStayModal({
   const due = Number(localBooking.balance_due || 0)
   const paidSoFar = Number(localBooking.downpayment_paid || 0)
   const totalCharge = paidSoFar + due
+  // Every payment the guest has made, each with its own receipt to reprint.
+  // This is the one place the money received is itemised (amount, method, when),
+  // so the money card above does not repeat it.
+  const receiptRecords = localBooking.payment_records || []
   // The guest agreed to a 50% deposit or the full amount when they booked.
   const plan = booking.payment_plan === 'full' ? 'full' : booking.payment_plan === 'deposit' ? 'deposit' : ''
   // GCash and bank payments need the reference number; cash does not.
-  const methodNeedsRef = /gcash|bank/i.test(receiptMethod)
+  const methodNeedsRef = methodNeedsReference(receiptMethod)
+  // The card only OPENS by itself while nothing has been recorded: right after a
+  // booking the payment is expected, so the panel is shown with the amount, the
+  // agreed method and — for GCash/bank — the reference. Every later payment is
+  // taken through the guided step below, when the staff start it.
+  const nothingRecordedYet = !hasPaymentRecorded(localBooking)
+  const showPaymentForm = due > 0 && nothingRecordedYet
+  const paymentOpen = due > 0 && nothingRecordedYet
   const hasEmail = booking.guest_email && booking.guest_email !== 'admin@daweez-booking.vercel.app'
+  // "None" is the placeholder the bookings store writes when no phone was taken.
+  const hasPhone = !!booking.guest_phone && booking.guest_phone.trim() !== 'None'
+  const hasContact = !!hasPhone || !!hasEmail
 
   // Inline required-field validation for the extend-stay form (mirrors LogOldBookingModal).
   const fieldErrors = {
@@ -123,7 +136,13 @@ export function ExtendStayModal({
   // Money can be corrected: removing a receipt that was logged by mistake puts
   // the balance and the automatic payment status back where they belong.
   const handleRemoveReceipt = async (rec: PaymentRecord) => {
-    if (!window.confirm('Remove this ' + fmtPeso(rec.amount) + ' payment? The amount to pay goes back up.')) return
+    const ok = await askConfirm({
+      title: 'Remove this ' + fmtPeso(rec.amount) + ' payment?',
+      message: 'The amount to pay goes back up and the receipt is withdrawn.',
+      confirmLabel: 'Remove',
+      tone: 'danger',
+    })
+    if (!ok) return
     const records = (localBooking.payment_records || []).filter(r => r.id !== rec.id)
     const newPaid = records.reduce((a, r) => a + (r.amount || 0), 0)
     const remaining = Math.max(0, totalCharge - newPaid)
@@ -138,7 +157,7 @@ export function ExtendStayModal({
     try {
       await onUpdateBooking?.(updated)
     } catch {
-      window.alert('Could not remove the payment. Please try again.')
+      showToast('Could not remove the payment. Please try again.', 'error')
     }
   }
 
@@ -174,20 +193,43 @@ export function ExtendStayModal({
     return { ...merged, balance_due: remaining, payment_status: remaining <= 0 ? 'paid' as const : merged.payment_status }
   }
 
-  // Check-in / check-out — records the actual time and auto-computes the early /
-  // late hours against the standard 2 PM check-in / 12 PM check-out times.
-  const handleCheckIn = async () => {
+  // Records the arrival time and auto-computes the early hours. `base` is the
+  // booking to check in — the live one normally, or the just-paid copy when the
+  // check-in follows a payment.
+  const performCheckIn = async (base: Booking) => {
     const actualCheckIn = new Date().toISOString()
     const rates = getRateConfig()
     const { earlyHours } = computeCheckInOutHours({
-      checkIn: booking.check_in, checkOut: booking.check_out, actualCheckIn,
+      checkIn: base.check_in, checkOut: base.check_out, actualCheckIn,
       standardCheckInTime: rates.standardCheckInTime, standardCheckOutTime: rates.standardCheckOutTime,
     })
-    const updated = withRecomputedBalance(localBooking, { actual_check_in: actualCheckIn, early_check_in_hours: earlyHours, status: 'confirmed' as const })
+    const updated = withRecomputedBalance(base, { actual_check_in: actualCheckIn, early_check_in_hours: earlyHours, status: 'confirmed' as const })
     setLocalBooking(updated)
-    try { await onUpdateBooking?.(updated) } catch { window.alert('Could not check in. Please try again.') }
+    try { await onUpdateBooking?.(updated) } catch { showToast('Could not check in. Please try again.', 'error') }
+  }
+
+  // Check-in / check-out — records the actual time and auto-computes the early /
+  // late hours against the standard 2 PM check-in / 12 PM check-out times.
+  const handleCheckIn = async () => {
+    // Guard only: the Check in button is not rendered while money is owed, so
+    // this is the backstop.
+    if (hasOutstandingBalance(localBooking)) return
+    await performCheckIn(localBooking)
   }
   const handleCheckOut = async () => {
+    // Normally nothing is owed by now — the balance was taken at check-in, and
+    // check-in refuses to run while money is outstanding. This stays as the
+    // backstop for a stay that grew afterwards (extra nights, per-day
+    // breakfast), so a guest never leaves with an unpaid bill.
+    if (hasOutstandingBalance(localBooking)) {
+      const owed = fmtPeso(Number(localBooking.balance_due || 0))
+      // Said on the page, next to the button that was pressed — and the card
+      // opens its payment panel so the money can be taken right there.
+      setActionNotice('This guest still owes ' + owed + '. Receive it first, then check them out.')
+      setTakingPayment(true)
+      return
+    }
+    setActionNotice('')
     const actualCheckOut = new Date().toISOString()
     const rates = getRateConfig()
     const { lateHours } = computeCheckInOutHours({
@@ -196,22 +238,43 @@ export function ExtendStayModal({
     })
     const updated = withRecomputedBalance(localBooking, { actual_check_out: actualCheckOut, late_check_out_hours: lateHours })
     setLocalBooking(updated)
-    try { await onUpdateBooking?.(updated) } catch { window.alert('Could not check out. Please try again.') }
-    // If money is still owed, bring up the billing statement right away.
-    if (Number(updated.balance_due || 0) > 0 && !showPrintModal) setShowPrintModal(true)
+    try { await onUpdateBooking?.(updated) } catch { showToast('Could not check out. Please try again.', 'error') }
+    // A late check-out adds hours, which can put the guest back in debt — that
+    // debt must be settled too before they leave.
+    if (hasOutstandingBalance(updated)) {
+      setActionNotice('Late check-out added ' + fmtPeso(Number(updated.balance_due || 0)) + ' to this stay. Record the payment before the guest leaves.')
+      if (!showPrintModal) setShowPrintModal(true)
+    }
   }
 
   // Record a payment: creates a receipt (date + time) only when the guest pays.
-  const handleAddReceipt = async () => {
-    const amount = Number(receiptAmount) || 0
+  const handleAddReceipt = async (amountOverride?: number, thenCheckIn = false) => {
+    // Only a real number counts as an override. A DOM event must never be read
+    // as one: `Number(event)` is NaN, which silently zeroed the amount the form
+    // was already showing and blocked the save.
+    const amount = Number(typeof amountOverride === 'number' ? amountOverride : receiptAmount) || 0
     setTryPayment(true)
-    if (amount <= 0) { window.alert('Enter a payment amount.'); return }
+    // Missing amount / reference are shown inline on the form itself, under the
+    // box that needs filling — not as a popup that hides which box it means.
+    if (amount <= 0) return
+    // The reference lives on the money card for GCash / bank, and in the form
+    // for the booking deposit — either way it is the same `receiptRef`.
     if (methodNeedsRef && !receiptRef.trim()) return
     const paidSoFar = Number(localBooking.downpayment_paid || 0)
     const totalCharge = paidSoFar + Number(localBooking.balance_due || 0)
     const newPaid = paidSoFar + amount
     const remaining = Math.max(0, totalCharge - newPaid)
-    const rec = { id: 'rcpt-' + Date.now(), amount, method: receiptMethod, reference: receiptRef.trim() || undefined, paid_at: new Date().toISOString(), prepared_by: localBooking.prepared_by }
+    const rec = {
+      id: 'rcpt-' + Date.now(),
+      amount,
+      method: receiptMethod,
+      reference: receiptRef.trim() || undefined,
+      paid_at: new Date().toISOString(),
+      prepared_by: localBooking.prepared_by,
+      // Stored, not derived: the receipt keeps this number even if another
+      // payment is later removed.
+      receipt_number: nextReceiptNumber(localBooking),
+    }
     const records = [...(localBooking.payment_records || []), rec]
     const status = remaining <= 0 ? 'paid' as const : localBooking.payment_status === 'paid' ? 'paid' as const : 'downpayment' as const
     const updated = {
@@ -225,14 +288,22 @@ export function ExtendStayModal({
       payment_reference: receiptRef.trim() || localBooking.payment_reference,
     }
     setLocalBooking(updated)
+    setActionNotice('')
+    setTakingPayment(false)
     setReceiptAmount(0); setReceiptRef(''); setAddReceiptOpen(false); setTryPayment(false)
     setPayFlash(true); setTimeout(() => setPayFlash(false), 1500)
     try {
       await onUpdateBooking?.(updated)
       setReceiptFor(rec)
       setShowReceipt(true)
+      // Arrival payment (thenCheckIn): now the money is in, finish the check-in
+      // in the same action — one button, no second trip. Never on a booking
+      // deposit, which is paid long before the guest arrives.
+      if (thenCheckIn && remaining <= 0 && !localBooking.actual_check_in) {
+        await performCheckIn(updated)
+      }
     } catch {
-      window.alert('Could not record the payment. Please try again.')
+      showToast('Could not record the payment. Please try again.', 'error')
     }
   }
 
@@ -248,8 +319,17 @@ export function ExtendStayModal({
   const saveBreakfastRecords = async (records: BreakfastRecord[]) => {
     const updated = withRecomputedBalance(localBooking, { breakfast_records: records })
     setLocalBooking(updated)
-    try { await onUpdateBooking?.(updated) } catch { window.alert('Could not save breakfast. Please try again.') }
+    try { await onUpdateBooking?.(updated) } catch { showToast('Could not save breakfast. Please try again.', 'error') }
   }
+
+  // The same plain-language status the calendar's payment dot stands for, said
+  // in words here so staff never have to decode a colour.
+  const payView = getPaymentView(localBooking)
+  const paymentChip = localBooking.status === 'blocked' ? null : (
+    <span className={'shrink-0 text-[10px] font-bold uppercase tracking-wider rounded-md px-2 py-0.5 ' + PAYMENT_BADGE_CLASSES[payView.tone]}>
+      {paymentStatusWord(localBooking)}
+    </span>
+  )
 
   const statusBadge = localBooking.status === 'confirmed'
     ? <span className="shrink-0 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-0.5">Confirmed</span>
@@ -280,7 +360,6 @@ export function ExtendStayModal({
     }
   })()
 
-  const receiptRecords = localBooking.payment_records || []
   const receiptTotal = receiptRecords.reduce((a, r) => a + (r.amount || 0), 0)
   const breakfastRecords = localBooking.breakfast_records || []
   const canCheckIn = localBooking.status !== 'blocked' && !localBooking.actual_check_in
@@ -296,6 +375,7 @@ export function ExtendStayModal({
             <div className="flex items-center gap-2">
               <h3 className="font-display font-bold text-main truncate">{unitName}</h3>
               {statusBadge}
+              {paymentChip}
             </div>
             <p className="text-[11px] text-muted mt-1 truncate">
               {unitSub ? unitSub + ' · ' : ''}{fmtShort(booking.check_in)} → {fmtShort(booking.check_out)} · {nights} {nights === 1 ? 'night' : 'nights'}
@@ -317,10 +397,16 @@ export function ExtendStayModal({
           {/* Who is staying */}
           <div className="pt-4">
             <p className="font-display font-bold text-[19px] text-main leading-tight">{booking.guest_name}</p>
-            <p className="text-[12px] text-muted mt-1 break-words">
-              {booking.guest_phone}
-              {hasEmail && <span className="text-muted"> · {booking.guest_email}</span>}
-            </p>
+            {/* The store writes the literal "None" when no phone was taken, so
+                treat that (and a missing email) as nothing and skip the line
+                rather than printing a row that says nothing. */}
+            {hasContact && (
+              <p className="text-[12px] text-muted mt-1 break-words">
+                {hasPhone && <span>{booking.guest_phone}</span>}
+                {hasPhone && hasEmail && <span className="text-muted"> · </span>}
+                {hasEmail && <span className="text-muted">{booking.guest_email}</span>}
+              </p>
+            )}
             {booking.companions && booking.companions.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2.5">
                 {booking.companions.map((comp, idx) => (
@@ -339,52 +425,82 @@ export function ExtendStayModal({
             </p>
           </div>
 
-          {/* The one focal card */}
-          <div className="mt-4">
-            <BookingMoneyPanel booking={booking} localBooking={localBooking} payFlash={payFlash} />
-          </div>
-
-          {/* The single next step. While the booking is unpaid that step is
-              taking the money: recording it confirms the booking and prints the
-              guest's Payment Receipt (deposit or full, cash / GCash / bank). */}
-          {due > 0 ? (
-            <div className="mt-3 space-y-2">
-              <RecordPaymentForm
-                totalDue={due}
-                amount={receiptAmount} setAmount={setReceiptAmount}
+          {/* The money card: a quiet status strip normally, the full payment
+              panel only while money is actually being taken. */}
+          {totalCharge > 0 && (
+            <div className="mt-4">
+              <BookingMoneyPanel
+                localBooking={localBooking}
+                payFlash={payFlash}
+                open={paymentOpen}
                 method={receiptMethod} setMethod={setReceiptMethod}
                 reference={receiptRef} setReference={setReceiptRef}
-                onSubmit={handleAddReceipt}
-                submitLabel={plan === 'full' ? 'Confirm full payment & print receipt' : plan === 'deposit' ? 'Confirm deposit paid & print receipt' : 'Save payment & print receipt'}
-                referenceRequired={methodNeedsRef}
-                referenceError={tryPayment && methodNeedsRef && !receiptRef.trim() ? 'Enter the ' + receiptMethod + ' reference number.' : ''}
+                referenceError={tryPayment && methodNeedsRef && !receiptRef.trim()
+                  ? 'Enter the ' + receiptMethod + ' reference number.' : ''}
               />
-              {localBooking.status === 'pending' && (
-                <button
-                  type="button"
-                  disabled={isConfirming}
-                  onClick={() => onConfirmReservation && onConfirmReservation(booking.id)}
-                  className="w-full text-[11px] font-semibold text-muted hover:text-main transition-colors cursor-pointer"
-                >
-                  {isConfirming ? 'Confirming…' : 'Confirm without payment'}
-                </button>
-              )}
             </div>
-          ) : (canCheckIn || canCheckOut) ? (
-            <div className="mt-3">
-              {canCheckOut ? (
+          )}
+
+          {/* One loud action, right below the card, and never two. Taking money
+              at the door is the staff's decision: pressing "Receive money &
+              check in" starts a guided step they have to finish — choose how the
+              guest pays, enter the reference where one is needed, then confirm. */}
+          {(canCheckOut || canCheckIn || showPaymentForm) && (
+            <div className="mt-3 space-y-2.5">
+              {takingPayment && due > 0 ? (
+                <ReceivePaymentStep
+                  amount={due}
+                  method={receiptMethod} setMethod={setReceiptMethod}
+                  reference={receiptRef} setReference={setReceiptRef}
+                  referenceError={tryPayment && methodNeedsRef && !receiptRef.trim()
+                    ? 'Enter the ' + receiptMethod + ' reference number.' : ''}
+                  submitLabel={localBooking.actual_check_in
+                    ? 'Receive ' + fmtPeso(due)
+                    : 'Receive ' + fmtPeso(due) + ' & check in'}
+                  note={localBooking.actual_check_in
+                    ? 'The stay grew after check-in — take the payment before the guest leaves.'
+                    : 'Guest is at the desk. Take the payment and they are checked in.'}
+                  onSubmit={() => handleAddReceipt(due, !localBooking.actual_check_in)}
+                  onCancel={() => { setActionNotice(''); setTakingPayment(false); setTryPayment(false) }}
+                />
+              ) : canCheckOut ? (
                 <button type="button" onClick={handleCheckOut}
                   className="w-full bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold py-3 rounded-xl transition-colors cursor-pointer shadow-sm">
                   Check out now
                 </button>
-              ) : (
+              ) : showPaymentForm && !localBooking.actual_check_in ? (
+                /* Nothing recorded yet: the booking is expected to be paid for
+                   now. The agreed deposit (or the full amount) is already the
+                   card's "Amount to pay". */
+                <button type="button" onClick={() => handleAddReceipt(amountToPayNow(localBooking))}
+                  className="w-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-bold py-3 rounded-xl transition-colors cursor-pointer shadow-sm">
+                  {plan === 'full' ? 'Confirm full payment & print receipt' : plan === 'deposit' ? 'Confirm deposit paid & print receipt' : 'Save payment & print receipt'}
+                </button>
+              ) : canCheckIn && due > 0 ? (
+                /* The deposit is in and the guest has not arrived. Nothing is
+                   asked for here — the card just says the stay is partly paid.
+                   Taking the rest is the staff's decision, when they walk in. */
+                <button type="button" onClick={() => { setActionNotice(''); setTakingPayment(true) }}
+                  className="w-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-bold py-3 rounded-xl transition-colors shadow-sm cursor-pointer">
+                  Receive money & check in
+                </button>
+              ) : canCheckIn && due <= 0 ? (
+                /* The check-in button appears ONLY once the whole bill is paid.
+                   Nothing owed means paid — including a booking whose money was
+                   recorded before receipts existed (imported / old paper logs),
+                   which must never be left without an arrival button. */
                 <button type="button" onClick={handleCheckIn}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3 rounded-xl transition-colors cursor-pointer shadow-sm">
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3 rounded-xl transition-colors shadow-sm cursor-pointer">
                   Check in now
                 </button>
+              ) : null}
+              {/* Why the button just pressed did not go through — on the page,
+                  under the button, where it can be read while acting. */}
+              {actionNotice && (
+                <p className="text-[11px] font-semibold text-danger-600 leading-snug">{actionNotice}</p>
               )}
             </div>
-          ) : null}
+          )}
 
           {/* Collapsed detail blocks — opened only when needed */}
           <div className="mt-4">
@@ -400,7 +516,6 @@ export function ExtendStayModal({
                 showAdd={due > 0}
                 open={addReceiptOpen}
                 setOpen={setAddReceiptOpen}
-                totalDue={due}
                 amount={receiptAmount}
                 setAmount={setReceiptAmount}
                 method={receiptMethod}
@@ -458,11 +573,16 @@ export function ExtendStayModal({
             {onCancelBooking && (
               <button
                 type="button"
-                onClick={() => {
-                  if (window.confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) {
-                    onCancelBooking(booking.id)
-                    onClose()
-                  }
+                onClick={async () => {
+                  const ok = await askConfirm({
+                    title: 'Cancel ' + booking.guest_name + "'s booking?",
+                    message: 'The room is freed and this cannot be undone.',
+                    confirmLabel: 'Cancel booking',
+                    tone: 'danger',
+                  })
+                  if (!ok) return
+                  onCancelBooking(booking.id)
+                  onClose()
                 }}
                 className="text-[12px] font-semibold text-danger-600 hover:text-danger-500 transition-colors cursor-pointer"
               >
@@ -475,7 +595,7 @@ export function ExtendStayModal({
 
       {showPrintModal && (
         <PrintInvoiceModal
-          booking={booking}
+          booking={localBooking}
           rooms={rooms}
           venues={venues}
           bookingsList={bookings}

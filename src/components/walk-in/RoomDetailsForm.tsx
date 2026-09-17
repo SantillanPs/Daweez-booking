@@ -1,5 +1,6 @@
 import React from 'react'
 import { Companion, PartnerDeal } from '../../types/booking'
+import { getRateConfig } from '../../utils/rateConfig'
 import { User, Phone, Mail, Users, Trash2, Plus, CheckCircle2 } from 'lucide-react'
 
 interface RoomDetailsFormProps {
@@ -54,12 +55,16 @@ export const RoomDetailsForm = React.memo(
     setFormGuestEmail,
     formGuestPhone,
     setFormGuestPhone,
+    formGuestGender,
+    setFormGuestGender,
     formGuestNationality,
     setFormGuestNationality,
     formGuestAddress,
     setFormGuestAddress,
     formGuestBirthdate,
     setFormGuestBirthdate,
+    formVehiclePlate,
+    setFormVehiclePlate,
     formBlockNotes,
     setFormBlockNotes,
     formCompanions,
@@ -69,6 +74,10 @@ export const RoomDetailsForm = React.memo(
     guestNameError,
     onGuestNameBlur
   }: RoomDetailsFormProps) => {
+    // Read the staff-editable rate so the form never quotes a price the bill
+    // won't charge (the price used to be hardcoded at ₱150).
+    const breakfastPrice = getRateConfig().breakfastPrice
+
     if (formStatus === 'blocked') {
       return (
         <div className="bg-base-200 border border-base-300 rounded-lg px-2.5 py-2 space-y-1.5">
@@ -113,7 +122,7 @@ export const RoomDetailsForm = React.memo(
           <label className="flex items-center gap-2 text-xs text-base-content/70 font-medium mt-2 select-none cursor-pointer">
             <input type="checkbox" checked={formGuestBreakfast} onChange={e => setFormGuestBreakfast(e.target.checked)} className="checkbox checkbox-primary checkbox-sm" />
             B'fast for this guest
-            <span className="text-success font-bold font-mono">₱150/night</span>
+            <span className="text-success font-bold font-mono">₱{breakfastPrice}/night</span>
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-base-300">
@@ -163,6 +172,16 @@ export const RoomDetailsForm = React.memo(
                 />
               </div>
             </div>
+            <div>
+              <label className="text-xs text-base-content/70 font-medium block mb-1">Plate No. (optional)</label>
+              <input
+                type="text"
+                placeholder="Vehicle plate"
+                value={formVehiclePlate || ''}
+                onChange={e => setFormVehiclePlate(e.target.value.toUpperCase())}
+                className="input input-bordered w-full transition-all font-medium"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -170,6 +189,18 @@ export const RoomDetailsForm = React.memo(
               <label className="text-xs text-base-content/70 font-medium block mb-1">Birth Date (optional)</label>
               <input type="date" value={formGuestBirthdate} onChange={e => setFormGuestBirthdate(e.target.value)}
                 className="input input-bordered w-full transition-all font-medium" />
+            </div>
+            <div>
+              <label className="text-xs text-base-content/70 font-medium block mb-1">Sex</label>
+              <select
+                value={formGuestGender || ''}
+                onChange={e => setFormGuestGender(e.target.value)}
+                className="select select-bordered w-full font-medium"
+              >
+                <option value="">Not stated</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
             </div>
           </div>
           

@@ -22,6 +22,9 @@ interface BillingSummaryProps {
   formPartnerDealId?: string
   formPaymentMethod?: string
   setFormPaymentMethod?: (val: string) => void
+  /** Required field — chosen at booking so the payment can be verified later. */
+  paymentMethodError?: string
+  onPaymentMethodBlur?: () => void
   formPaymentPlan?: 'deposit' | 'full'
   setFormPaymentPlan?: (val: 'deposit' | 'full') => void
   formVenueExcessHours?: number
@@ -57,6 +60,8 @@ export const BillingSummary = React.memo(
     formPartnerDealId,
     formPaymentMethod,
     setFormPaymentMethod,
+    paymentMethodError,
+    onPaymentMethodBlur,
     formPaymentPlan,
     setFormPaymentPlan,
     isEditMode,
@@ -297,17 +302,21 @@ export const BillingSummary = React.memo(
                   </div>
 
                   <label className="block">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60 block mb-1">Payment method</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60 block mb-1">
+                      Payment method <span className="text-danger-500">*</span>
+                    </span>
                     <select
                       value={formPaymentMethod || ''}
                       onChange={e => setFormPaymentMethod(e.target.value)}
-                      className="select select-bordered select-sm w-full"
+                      onBlur={onPaymentMethodBlur}
+                      className={paymentMethodError ? 'select select-bordered select-sm w-full select-error' : 'select select-bordered select-sm w-full'}
                     >
-                      <option value="">Not decided — print every way to pay</option>
+                      <option value="">Choose how the guest will pay</option>
                       <option value="Cash">Cash</option>
                       <option value="GCash">GCash</option>
                       <option value="Bank Transfer">Bank Transfer</option>
                     </select>
+                    {paymentMethodError && <p className="text-[10px] text-error mt-1">{paymentMethodError}</p>}
                   </label>
 
                   <p className="text-[10px] text-base-content/60 leading-snug">
@@ -420,6 +429,7 @@ export const BillingSummary = React.memo(
       prevProps.formUsePromo === nextProps.formUsePromo &&
       prevProps.formPartnerDealId === nextProps.formPartnerDealId &&
       prevProps.formPaymentMethod === nextProps.formPaymentMethod &&
+      prevProps.paymentMethodError === nextProps.paymentMethodError &&
       prevProps.formPaymentPlan === nextProps.formPaymentPlan &&
       prevProps.formVenueExcessHours === nextProps.formVenueExcessHours &&
       prevProps.isEditMode === nextProps.isEditMode &&

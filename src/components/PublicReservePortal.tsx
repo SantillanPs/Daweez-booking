@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Calendar, User, Mail, Phone, CheckCircle2, Users, ArrowRight, Info, AlertCircle, Tag } from 'lucide-react'
-import { Booking, Room, Venue, Companion } from '../types/booking'
+import { Booking, Room, Venue, Companion, PaymentRecord } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { isPromoActive, getEffectiveNightlyPrice } from '../utils/promoMode'
 import { dateToString } from '../utils/helpers'
 import { getPaymentAccounts } from '../utils/paymentAccounts'
+import { nextReceiptNumber } from '../utils/receiptNumber'
 import { roomDisplayName } from './calendar/bookingStyles'
 
 export function PublicReservePortal() {
@@ -182,6 +183,22 @@ export function PublicReservePortal() {
         companions: companions.length > 0 ? companions : undefined,
         created_at: now.toISOString(),
         expires_at: new Date(now.getTime() + 30 * 60000).toISOString()
+      }
+
+      // The downpayment was taken online, so it needs its own numbered receipt
+      // like any other payment. Staff can then reprint it for the guest, and the
+      // booking is not left looking unpaid.
+      const onlinePayment: PaymentRecord = {
+        id: 'rcpt-' + syncEngine.generateUUID(),
+        amount: Number(pricing.downpayment) || 0,
+        method: 'GCash',
+        reference: paymentRef,
+        paid_at: now.toISOString(),
+        prepared_by: 'Online booking (guest portal)',
+        receipt_number: nextReceiptNumber(newBooking),
+      }
+      if (onlinePayment.amount > 0) {
+        newBooking.payment_records = [onlinePayment]
       }
 
       // 3. Save via the shared layer and reflect it in the shared cache.

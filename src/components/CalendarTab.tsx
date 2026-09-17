@@ -11,13 +11,14 @@ import { CorporateBookingForm } from './corporate/CorporateBookingForm'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { CalendarLegend } from './calendar/CalendarLegend'
 import { roomDisplayName } from './calendar/bookingStyles'
+import { showToast } from '../utils/toast'
 
 type Selection = { roomId?: string; venueId?: string; checkIn: Date }
 type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }>
 type UnitSel = { checkIn: string; checkOut: string; type: 'room' | 'venue' }
 
 export function CalendarTab() {
-  const { rooms, venues, bookings, createManualBooking, cancelBooking, confirmBooking, isConfirming, updateBooking } = useDashboardData()
+  const { rooms, venues, bookings, createManualBooking, cancelBooking, updateBooking } = useDashboardData()
 
   // ── Month / timeline state ──
   const [schedulerStartDate, setSchedulerStartDate] = useState<Date>(() => {
@@ -124,7 +125,7 @@ export function CalendarTab() {
         : syncEngine.isVenueRangeAvailable(id, checkInStr, checkOutStr, bookingsRef.current)
       if (!isAvailable) {
         const unitName = type === 'room' ? roomDisplayName(roomsRef.current.find(r => r.id === id)) : (venuesRef.current.find(v => v.id === id)?.name ?? id)
-        alert('Overlap collision! ' + (type === 'room' ? 'Room' : 'Venue') + ' [' + unitName + '] is already booked on some dates in this range.')
+        showToast((type === 'room' ? 'Room' : 'Venue') + ' ' + unitName + ' is already booked on some of those dates.', 'error')
         setTimelineSelection(null)
         return
       }
@@ -244,10 +245,8 @@ export function CalendarTab() {
           onClose={() => setSelectedExtendBooking(null)}
           onExtendStaySubmit={handleExtendStaySubmit}
           setExtendCheckoutDate={setExtendCheckoutDate}
-          onConfirmReservation={async id => { try { await confirmBooking(id); setSelectedExtendBooking(null) } catch { setExtendError('Failed to confirm reservation.') } }}
           onCancelBooking={cancelBooking}
           onUpdateBooking={updateBooking}
-          isConfirming={isConfirming}
           onEditBooking={() => { setEditingBooking(selectedExtendBooking); setShowManualForm(true); setSelectedExtendBooking(null) }}
         />
       )}

@@ -9,7 +9,6 @@ interface BookingReceiptsProps {
   showAdd: boolean
   open: boolean
   setOpen: (v: boolean) => void
-  totalDue: number
   amount: number
   setAmount: (v: number) => void
   method: string
@@ -26,7 +25,7 @@ interface BookingReceiptsProps {
 
 // Every payment the guest has made, each with its own receipt to reprint.
 export function BookingReceipts({
-  records, showAdd, open, setOpen, totalDue, amount, setAmount,
+  records, showAdd, open, setOpen, amount, setAmount,
   method, setMethod, reference, setReference, onAdd, onPrint, onRemove,
   referenceRequired = false, referenceError = '',
 }: BookingReceiptsProps) {
@@ -46,7 +45,8 @@ export function BookingReceipts({
 
       {showAdd && open && (
         <RecordPaymentForm
-          totalDue={totalDue}
+          title="Record this payment"
+          note="An in-stay charge or a part-payment."
           amount={amount} setAmount={setAmount}
           method={method} setMethod={setMethod}
           reference={reference} setReference={setReference}

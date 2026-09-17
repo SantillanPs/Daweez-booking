@@ -7,6 +7,8 @@ import {
   Calendar, Settings, Building, BookOpen, Tag, Boxes
 } from 'lucide-react'
 import { isPromoActive, setPromoActive } from '../utils/promoMode'
+import { ToastHost } from './Toast'
+import { ConfirmHost } from './ConfirmDialog'
 
 const TABS = [
   { id: 'calendar',  label: 'Calendar',  Icon: Calendar, to: '/calendar' },
@@ -149,6 +151,11 @@ export function DashboardLayout() {
             </div>
           </div>
         )}
+
+        {/* Every "saved" / "could not save" message in the staff app lands here. */}
+        <ToastHost />
+        {/* Every "are you sure?" in the staff app lands here too. */}
+        <ConfirmHost />
 
 
         <div className={isCalendarTab

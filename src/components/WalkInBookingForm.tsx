@@ -350,6 +350,9 @@ export function WalkInBookingForm({
     units: Object.keys(unitSelections).length === 0 ? 'Select at least one room or venue.' : '',
     dates: Object.keys(unitSelections).length === 0 ? '' : (isValidDates ? '' : 'Please select valid check-in and check-out dates for all units.'),
     guestName: (formStatus === 'confirmed' && bookingType === 'individual' && !formGuestName.trim()) ? 'Guest name is required.' : '',
+    // The method decides how the payment gets verified on arrival, so it can no
+    // longer be left blank. ("Not decided" was removed from the picker.)
+    paymentMethod: (formStatus === 'confirmed' && bookingType === 'individual' && !formPaymentMethod.trim()) ? 'Choose how the guest will pay.' : '',
   }
   const showErr = (k: keyof typeof fieldErrors) => (touched[k] || trySave) ? fieldErrors[k] : ''
   const isInvalid = (k: keyof typeof fieldErrors) => Boolean(showErr(k))
@@ -624,6 +627,8 @@ export function WalkInBookingForm({
                           formPartnerDealId={formPartnerDealId}
                           formPaymentMethod={formPaymentMethod}
                           setFormPaymentMethod={setFormPaymentMethod}
+                          paymentMethodError={showErr('paymentMethod')}
+                          onPaymentMethodBlur={markTouched('paymentMethod')}
                           formPaymentPlan={formPaymentPlan}
                           setFormPaymentPlan={setFormPaymentPlan}
                           formVenueExcessHours={formVenueExcessHours}

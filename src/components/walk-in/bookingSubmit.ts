@@ -193,7 +193,9 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
     }
 
     // 3. Loop to create or update venue bookings
-    const isFirstVenue = true
+    // Extras are entered once for the whole group, so they belong on the FIRST
+    // venue only — the same rule the rooms loop above uses.
+    let isFirstVenue = true
     for (const venueId of Array.from(p.formVenueIds)) {
       const sel = p.unitSelections[venueId]
       const rentals = (p.bookingType === 'partner' || !isFirstVenue) ? undefined : {
@@ -204,6 +206,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         tableCount: p.formEventTable,
         tentCount: p.formEventTent
       }
+      isFirstVenue = false
       const existingBooking = p.editingBookings?.find(eb => eb.venue_id === venueId)
       if (existingBooking) processedBookingIds.add(existingBooking.id)
 
