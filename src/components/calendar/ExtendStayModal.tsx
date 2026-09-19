@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Booking, Room, Venue, PaymentRecord, BreakfastRecord } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
@@ -15,6 +15,9 @@ import { hasOutstandingBalance, amountToPayNow, hasPaymentRecorded, getPaymentVi
 import { paymentMethodLabel, methodNeedsReference } from '../../utils/paymentMethod'
 import { nextReceiptNumber } from '../../utils/receiptNumber'
 import { SlideOverSection } from './SlideOverSection'
+import { GuestTabPanel } from './GuestTabPanel'
+import { recomputeBalance } from '../../utils/bookingBalance'
+import { useGuestTab } from '../../hooks/useGuestTab'
 import { BookingMoneyPanel } from './BookingMoneyPanel'
 import { BookingReceipts } from './BookingReceipts'
 import { ReceivePaymentStep } from './ReceivePaymentStep'
@@ -89,6 +92,26 @@ export function ExtendStayModal({
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [trySave, setTrySave] = useState(false)
 
+  // ── The guest's food and bar tab (k69) ─────────────────────────────────────
+  // Read from its own tables and folded into what is owed. The loading, the
+  // reload after a change and the balance re-sync all live in the hook.
+  const { lines: tabLines, amount: tabAmount, reload: reloadTab, resolveTabId } = useGuestTab({
+    booking: localBooking,
+    rooms,
+    venues,
+    setBooking: setLocalBooking,
+    onUpdateBooking,
+  })
+
+  // The deposit is agreed on the STAY alone, so the food tab is taken out of it.
+  // The tab arrives a moment after the first render, so the pre-filled amount has
+  // to be worked out again once it is known — otherwise a deposit booking with a
+  // lunch on it would ask at the desk for half the food as well.
+  useEffect(() => {
+    if (!hasPaymentRecorded(localBooking)) setReceiptAmount(amountToPayNow(localBooking, tabAmount))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabAmount])
+
   const room = booking.room_id ? rooms.find(r => r.id === booking.room_id) : undefined
   const venue = booking.venue_id ? venues.find(v => v.id === booking.venue_id) : undefined
   const unitName = booking.room_id ? roomDisplayName(room) : (venue?.name || 'Event Venue')
@@ -162,36 +185,10 @@ export function ExtendStayModal({
   }
 
   // Recompute the balance after early/late hours are applied, using the
-  // booking's own charges + current rates, so the amount owed stays correct.
-  const withRecomputedBalance = (base: Booking, patch: Partial<Booking>): Booking => {
-    const merged = { ...base, ...patch }
-    const pricing = syncEngine.calculatePricing({
-      roomId: merged.room_id,
-      venueId: merged.venue_id,
-      checkIn: merged.check_in,
-      checkOut: merged.check_out,
-      guestEmail: merged.guest_email,
-      breakfastOrders: merged.breakfast_orders,
-      equipmentRentals: merged.equipment_rentals,
-      eventAddons: merged.event_addons,
-      companions: merged.companions,
-      contractRateOverride: merged.contract_rate_override,
-      venueExcessHours: merged.venue_excess_hours,
-      appliedDiscount: merged.applied_discount,
-      earlyCheckInHours: merged.early_check_in_hours,
-      lateCheckOutHours: merged.late_check_out_hours,
-      venueDayBlocks: merged.venue_day_blocks,
-      breakfastDays: merged.breakfast_days,
-      breakfastRecords: merged.breakfast_records,
-      usePromo: (merged as Booking & { promo_applied?: boolean }).promo_applied === true,
-      rooms,
-      venues,
-      rates: getRateConfig(),
-    })
-    const paid = Number(merged.downpayment_paid || 0)
-    const remaining = Math.max(0, pricing.grandTotal - paid)
-    return { ...merged, balance_due: remaining, payment_status: remaining <= 0 ? 'paid' as const : merged.payment_status }
-  }
+  // booking's own charges + current rates + the guest's food tab, so the amount
+  // owed stays correct. The rule itself lives in utils/bookingBalance.ts.
+  const withRecomputedBalance = (base: Booking, patch: Partial<Booking>, tabTotalOverride?: number): Booking =>
+    recomputeBalance({ ...base, ...patch }, { rooms, venues, tabTotal: tabTotalOverride ?? tabAmount })
 
   // Records the arrival time and auto-computes the early hours. `base` is the
   // booking to check in — the live one normally, or the just-paid copy when the
@@ -354,7 +351,7 @@ export function ExtendStayModal({
         bookingsList: bookings,
         rooms,
         venues
-      }).balanceDue
+      }).balanceDue + tabAmount
     } catch {
       return due
     }
@@ -432,6 +429,7 @@ export function ExtendStayModal({
               <BookingMoneyPanel
                 localBooking={localBooking}
                 payFlash={payFlash}
+                tabTotal={tabAmount}
                 open={paymentOpen}
                 method={receiptMethod} setMethod={setReceiptMethod}
                 reference={receiptRef} setReference={setReceiptRef}
@@ -472,7 +470,7 @@ export function ExtendStayModal({
                 /* Nothing recorded yet: the booking is expected to be paid for
                    now. The agreed deposit (or the full amount) is already the
                    card's "Amount to pay". */
-                <button type="button" onClick={() => handleAddReceipt(amountToPayNow(localBooking))}
+                <button type="button" onClick={() => handleAddReceipt(amountToPayNow(localBooking, tabAmount))}
                   className="w-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-bold py-3 rounded-xl transition-colors cursor-pointer shadow-sm">
                   {plan === 'full' ? 'Confirm full payment & print receipt' : plan === 'deposit' ? 'Confirm deposit paid & print receipt' : 'Save payment & print receipt'}
                 </button>
@@ -527,6 +525,21 @@ export function ExtendStayModal({
                 onAdd={handleAddReceipt}
                 onRemove={handleRemoveReceipt}
                 onPrint={r => { setReceiptFor(r); setShowReceipt(true) }}
+              />
+            </SlideOverSection>
+
+            <SlideOverSection
+              title="Guest tab"
+              summary={tabLines.length > 0
+                ? tabLines.length + ' line' + (tabLines.length > 1 ? 's' : '') + ' · ' + fmtPeso(tabAmount)
+                : 'Nothing on the tab'}
+            >
+              <GuestTabPanel
+                resolveTabId={resolveTabId}
+                lines={tabLines}
+                tabTotal={tabAmount}
+                onChanged={reloadTab}
+                locked={!localBooking.actual_check_in}
               />
             </SlideOverSection>
 

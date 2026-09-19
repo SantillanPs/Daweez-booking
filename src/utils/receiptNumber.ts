@@ -45,6 +45,22 @@ export function receiptNumberFor(booking: Booking, record: PaymentRecord): strin
   return prefixFor(booking) + String(position).padStart(3, '0')
 }
 
+// The next free receipt number for a walk-in TAB (k69, part C). A diner with no
+// booking has no check-in month to take, so today's month is used — built from
+// LOCAL date parts, because UTC would report the previous month for the first
+// eight hours of a new month in UTC+8.
+export function nextTabReceiptNumber(usedNumbers: string[]): string {
+  const now = new Date()
+  const month = String(now.getFullYear()) + String(now.getMonth() + 1).padStart(2, '0')
+  const prefix = PREFIX + '-' + month + '-'
+  const used = usedNumbers
+    .filter(n => n.startsWith(prefix))
+    .map(n => Number(n.slice(prefix.length)))
+    .filter(n => Number.isFinite(n) && n > 0)
+  const next = (used.length > 0 ? Math.max(...used) : 0) + 1
+  return prefix + String(next).padStart(3, '0')
+}
+
 // Splits all money received into the deposit captured when the booking was made
 // and the payments recorded one by one, so a receipt can show the balance the
 // guest was looking at *before* this payment.

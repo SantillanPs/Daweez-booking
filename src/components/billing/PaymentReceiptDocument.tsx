@@ -3,6 +3,7 @@ import { Printer, X } from 'lucide-react'
 import { Booking, PaymentRecord, Room, Venue } from '../../types/booking'
 import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
 import { receiptNumberFor, paymentBreakdown } from '../../utils/receiptNumber'
+import { Block, Row, Rule, fmtDateTime, money } from './receiptPrimitives'
 
 interface PaymentReceiptDocumentProps {
   booking: Booking
@@ -12,37 +13,6 @@ interface PaymentReceiptDocumentProps {
   onClose: () => void
   onPrint: () => void
   embedded?: boolean
-}
-
-const money = (n: number) => '₱' + n.toLocaleString()
-const fmtDateTime = (d?: string) => (d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '')
-
-// Dashed rule, the way a receipt separates its blocks.
-function Rule() {
-  return <div className="border-t border-dashed border-black my-1.5" />
-}
-
-// Label above the value. At 58 mm a long label and a long value cannot share one
-// line, so anything that can run long gets its own row.
-function Block({ label, value }: { label: string; value?: string }) {
-  const shown = (value ?? '').trim()
-  if (!shown) return null
-  return (
-    <div className="mt-1.5 first:mt-0">
-      <p className="text-[8px] font-bold uppercase tracking-wider">{label}</p>
-      <p className="text-[10px] font-semibold break-words">{shown}</p>
-    </div>
-  )
-}
-
-// Label left, amount right. Only for labels short enough to always fit.
-function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2 mt-0.5 first:mt-0">
-      <span className="text-[9px] font-semibold">{label}</span>
-      <span className={'font-mono shrink-0 text-right break-all ' + (strong ? 'text-[11px] font-bold' : 'text-[10px]')}>{value}</span>
-    </div>
-  )
 }
 
 // A filled-in payment receipt, sized for the hotel's 58 mm thermal roll: ONE

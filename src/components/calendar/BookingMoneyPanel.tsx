@@ -12,6 +12,12 @@ interface BookingMoneyPanelProps {
   localBooking: Booking
   payFlash: boolean
   /**
+   * What the guest's food tab adds to the bill (k69). Passed down so the deposit
+   * stays stay-only: `amountToPayNow` takes the tab back out before working the
+   * 50% out, and a lunch eaten after booking never inflates the deposit.
+   */
+  tabTotal?: number
+  /**
    * True only while the staff member is actually taking a payment: right after
    * a booking, or once they have pressed Receive money / Check in. Otherwise
    * the card stays a quiet status strip, so opening a booking never feels like
@@ -44,12 +50,12 @@ interface BookingMoneyPanelProps {
 // still have something to do" long before the guest walked in. The staff member
 // decides when to take the rest; the booking just says how it stands.
 export function BookingMoneyPanel({
-  localBooking, payFlash, open, method, setMethod, reference, setReference, referenceError = '',
+  localBooking, payFlash, tabTotal = 0, open, method, setMethod, reference, setReference, referenceError = '',
 }: BookingMoneyPanelProps) {
   const paid = Number(localBooking.downpayment_paid || 0)
   const owed = Number(localBooking.balance_due || 0)
   const total = paid + owed
-  const dueNow = amountToPayNow(localBooking)
+  const dueNow = amountToPayNow(localBooking, tabTotal)
   const plan = paymentPlanLabel(localBooking.payment_plan)
   const view = getPaymentView(localBooking)
   const received = hasPaymentRecorded(localBooking) || paid > 0
@@ -103,6 +109,13 @@ export function BookingMoneyPanel({
           <span className="block text-[10px] font-semibold text-amber-700 truncate">
             {fmtPeso(paid)} of {fmtPeso(total)} received · {fmtPeso(owed)} still to receive
           </span>
+          {/* The room's own price stays visible once food joins the bill, so the
+              figure the hotel is asking for never gets hidden by an order. */}
+          {tabTotal > 0 && (
+            <span className="block text-[10px] font-semibold text-amber-700/80 truncate">
+              Room {fmtPeso(total - tabTotal)} · Restaurant &amp; bar {fmtPeso(tabTotal)}
+            </span>
+          )}
         </span>
         {payFlash && <span className="ml-auto text-[10px] font-bold text-emerald-600 shrink-0">Saved ✓</span>}
       </div>
@@ -151,6 +164,15 @@ export function BookingMoneyPanel({
           <p className="text-[10px] font-semibold mt-1.5 leading-snug text-brand-text">{amountCaption}</p>
         </div>
       </div>
+
+      {/* What the bill is made of, once food is on it: the room's own price stays
+          readable beside the food, instead of being folded into one big number. */}
+      {tabTotal > 0 && (
+        <p className="px-3.5 py-2 border-t border-paper-200 text-[10.5px] font-semibold text-muted flex justify-between gap-3">
+          <span>Room {fmtPeso(total - tabTotal)}</span>
+          <span>Restaurant &amp; bar {fmtPeso(tabTotal)}</span>
+        </p>
+      )}
 
       {/* Payment progress. An empty bar means nothing is paid yet; a green fill
           means money is already in hand — so the stage reads with no English. */}

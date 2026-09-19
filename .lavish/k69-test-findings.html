@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>k69 — three things from your test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#1C1C1C; --color-ink-700:#2E2E2E; --color-ink-600:#3D3D3D; --color-ink-500:#8A8A8A;
+    --color-gold-400:#D0AB60; --color-gold-100:#F5EAD1; --color-gold-800:#6F5420;
+    --color-paper-50:#F8F5EF; --color-paper-100:#F1ECE1; --color-paper-200:#E6DFD0; --color-paper-300:#D9D0BC;
+    --color-danger-500:#BE3A2B; --color-danger-50:#FBEDEA;
+    --color-good-600:#059669; --color-good-50:#ECFDF5;
+    --font-display:"Sora",system-ui,sans-serif;
+    --font-sans:"DM Sans",system-ui,sans-serif;
+  }
+</style>
+<style>
+  :root{--ink-900:#1C1C1C;--ink-600:#3D3D3D;--ink-500:#8A8A8A;--gold-400:#D0AB60;--gold-100:#F5EAD1;--gold-800:#6F5420;--paper-200:#E6DFD0;--paper-300:#D9D0BC;--paper-50:#F8F5EF;--danger:#BE3A2B;--good:#059669;--amber:#B45309;--card:#FFFFFF}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,li,label,button,span,b){overflow-wrap:anywhere}
+  svg{max-width:100%;height:auto;display:block}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(28,28,28,.07)}
+  .cap{font-size:13px;color:var(--ink-500);margin:10px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .tile{background:#fff;border:1px solid var(--paper-200);border-radius:10px;padding:11px 13px}
+  .num{font-family:"Sora",sans-serif;font-weight:700;font-size:22px;line-height:1}
+  .opt label{display:flex;gap:9px;align-items:flex-start;padding:4px 0;font-size:14px;cursor:pointer;line-height:1.35}
+  .opt input[type=radio]{margin-top:3px;flex:none;accent-color:#D0AB60}
+  .qbtn{background:var(--gold-400);color:var(--ink-900);font-weight:700;font-size:12.5px;border:0;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:inherit}
+  .qbtn:disabled{opacity:.45;cursor:not-allowed}
+  .state{font-size:12px;font-weight:700;color:var(--good)}
+  .mock{border:1px solid var(--paper-200);border-radius:10px;padding:10px 12px;background:#fff}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-5xl px-5 py-8 lg:px-8 space-y-6">
+
+  <header>
+    <p class="pill bg-gold-100 text-gold-800 mb-2">Board card k69 · after your test</p>
+    <h1 class="text-3xl lg:text-4xl font-bold tracking-tight">Three things from your test</h1>
+    <p class="cap mt-2">One is a bug I have half-fixed, one is a display change you asked for, and one is a workflow question only you can settle.</p>
+  </header>
+
+  <section class="card p-5" style="border-color:var(--danger)">
+    <p class="pill mb-2" style="background:#FBEDEA;color:var(--danger)">1 · the error you hit</p>
+    <h2 class="text-lg font-bold">“Could not add that line. Please try again.”</h2>
+    <p class="cap mt-1 mb-3">That message was my fault twice over — it hid the reason, and one way it could fire was a cache write killing a save that had already worked.</p>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="tile" style="border-color:var(--good)">
+        <p class="pill mb-2" style="background:#ECFDF5;color:var(--good)">Fixed</p>
+        <p class="text-[13.5px]" style="border-left:3px solid var(--good);padding-left:10px"><b>The message now says why.</b> It reads <i>“Could not add that line — ”</i> followed by the real reason.</p>
+        <p class="text-[13.5px] mt-2" style="border-left:3px solid var(--good);padding-left:10px"><b>A full browser cache can no longer break a save.</b> It is only an offline copy, so a failure there is now ignored instead of killing the order.</p>
+      </div>
+      <div class="tile" style="border-color:var(--amber)">
+        <p class="pill mb-2" style="background:#FEF3C7;color:var(--amber)">Still to find</p>
+        <p class="text-[13px] text-ink-600">Neither of those tells me which one you actually hit. So please add the ₱100 order once more and <b>send me the words after the dash</b> — that names the cause in one go.</p>
+        <p class="text-[12.5px] text-ink-500 mt-2">If the dash is followed by nothing, the browser console has a line starting <span class="font-mono">Could not add that tab line</span>.</p>
+      </div>
+    </div>
+    <p class="cap mb-0"><b class="text-ink-900">One more thing I want to check while I am in here:</b> if the database refuses a line, the app quietly keeps it on your device only. That is fine for the calendar offline, but a restaurant order that only exists on one tablet is not fine — I would rather it said so.</p>
+  </section>
+
+  <section class="card p-5">
+    <p class="pill bg-gold-100 text-gold-800 mb-2">2 · the money card</p>
+    <h2 class="text-lg font-bold mb-1">The room's own price was getting hidden</h2>
+    <p class="cap mt-1 mb-3">Room ₱1,250, deposit ₱625 paid, then a ₱100 order. Adding food used to bury the room figure inside one bigger number:</p>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="tile" style="border-color:var(--danger)">
+        <p class="pill mb-3" style="background:#FBEDEA;color:var(--danger)">Before</p>
+        <div class="mock">
+          <p class="text-[11px] font-bold text-amber-700">PARTLY PAID</p>
+          <p class="text-[11.5px] font-semibold mt-1" style="color:var(--amber)">₱625 of ₱1,350 received · ₱725 still to receive</p>
+        </div>
+        <p class="cap mb-0" style="color:var(--danger)">Where did the room's ₱1,250 go? Not shown anywhere.</p>
+      </div>
+      <div class="tile" style="border-color:var(--good)">
+        <p class="pill mb-3" style="background:#ECFDF5;color:var(--good)">Now</p>
+        <div class="mock">
+          <p class="text-[11px] font-bold text-amber-700">PARTLY PAID</p>
+          <p class="text-[11.5px] font-semibold mt-1" style="color:var(--amber)">₱625 of ₱1,350 received · ₱725 still to receive</p>
+          <p class="text-[11px] font-semibold mt-1" style="color:var(--amber);opacity:.85">Room ₱1,250 · Restaurant &amp; bar ₱100</p>
+        </div>
+        <p class="cap mb-0" style="color:var(--good)">The room price and the food are named separately.</p>
+      </div>
+    </div>
+    <p class="cap mb-0"><b class="text-ink-900">On “received” not changing:</b> that is correct and stays that way. Received is money already in hand — ordering food does not hand over money, so ₱625 must stay ₱625. It is <b>what is still to receive</b> that grows, ₱625 → ₱725, and the new line shows it.</p>
+  </section>
+
+  <section class="card p-5" style="border-color:var(--gold-400)">
+    <p class="pill bg-gold-100 text-gold-800 mb-2">3 · your question</p>
+    <h2 class="text-lg font-bold">Should food be orderable before the guest checks in?</h2>
+    <p class="mt-2 mb-3 text-[14px] italic text-ink-600" style="border-left:3px solid var(--gold-400);padding-left:11px">“Wouldn't it make sense for that person to start ordering something once he's checked in? … I'm confident the hotel would require them to check in first before they order anything in the gazebo.”</p>
+    <p class="cap mt-1 mb-3">You are describing a real hotel rule, and it is the opposite of what is built today. Today a booked guest can be charged food the moment they book.</p>
+    <svg viewBox="0 0 920 132" role="img" aria-labelledby="dC-title">
+      <title id="dC-title">Today food can be added right after booking; the proposal is that the guest must be checked in first</title>
+      <defs><marker id="arC" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto"><path d="M0,0 L7,3.2 L0,6.4 z" fill="var(--ink-500)"/></marker></defs>
+      <g id="dC-a"><title>Today</title>
+        <rect x="8" y="30" width="130" height="52" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <text x="73" y="61" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink-900)">Booked</text></g>
+      <line x1="138" y1="56" x2="176" y2="56" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arC)"/>
+      <g id="dC-b"><title>Food can already be added today</title>
+        <rect x="184" y="30" width="230" height="52" rx="10" fill="#FBEDEA" stroke="var(--danger)"/>
+        <text x="299" y="61" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--danger)">Food can be added — today</text></g>
+      <line x1="414" y1="56" x2="452" y2="56" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arC)"/>
+      <g id="dC-c"><title>Checked in</title>
+        <rect x="460" y="30" width="150" height="52" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <text x="535" y="61" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink-900)">Checked in</text></g>
+      <text x="630" y="61" font-size="12" fill="var(--ink-500)">today: the order lands before the guest arrives</text>
+      <g id="dC-d"><title>With the rule</title>
+        <rect x="8" y="92" width="130" height="0" rx="10" fill="none"/></g>
+      <text x="184" y="120" font-size="12.5" font-weight="700" fill="var(--gold-800)">With your rule: Booked → Checked in → Food can be added</text>
+    </svg>
+    <div class="grid gap-4 md:grid-cols-2 mt-4 opt">
+      <div class="tile" style="border-color:var(--gold-400)">
+        <p class="pill bg-gold-100 text-gold-800 mb-2">What you described</p>
+        <p class="font-bold text-[15px] mb-1">A · Check in first</p>
+        <p class="text-[13px] text-ink-600 mb-2">The tab stays shut until the guest is checked in. Before that it says <i>“Check the guest in first”</i> instead of the order box.</p>
+        <p class="text-[11.5px] text-ink-500">Cheap to do — the check-in button already exists, so the guest is one press from ordering. It also matches the gazebo rule you described.</p>
+      </div>
+      <div class="tile">
+        <p class="pill mb-2" style="background:#F1ECE1;color:var(--ink-600)">What is built now</p>
+        <p class="font-bold text-[15px] mb-1">B · Order any time</p>
+        <p class="text-[13px] text-ink-600 mb-2">A booked guest can be charged food before arriving — useful for a phone order taken for a guest who is on the way.</p>
+        <p class="text-[11.5px] text-ink-500">No change needed. But nothing stops a room that has not been handed over from collecting a bar tab.</p>
+      </div>
+    </div>
+    <p class="mt-4 pt-4 text-[13.5px]" style="border-top:1px solid var(--paper-200)">
+      <span class="pill" style="background:#ECFDF5;color:var(--good)">Decided · built</span>
+      <b class="ml-2">A — check in first, then food.</b> Your reason, in your words: people never order on the phone here, they order when they are physically in the hotel. So a stay's tab now stays shut — it says <i>Check the guest in first</i> — until the guest is checked in. The walk-in <b>Restaurant</b> tab has no such gate, because that diner is standing there.
+    </p>
+  </section>
+
+  <footer class="card p-4">
+    <p class="cap mt-0"><b class="text-ink-900">Also still open from your screenshot:</b> the deposit is ₱625 of ₱1,250 — half, as agreed. Nothing there is wrong; it is the room price that had gone missing, which is what the change above fixes.</p>
+  </footer>
+
+</main>
+</body>
+</html>

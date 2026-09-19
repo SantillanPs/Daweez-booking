@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guest tab (k69) — what's left</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#1C1C1C; --color-ink-700:#2E2E2E; --color-ink-600:#3D3D3D; --color-ink-500:#8A8A8A;
+    --color-gold-400:#D0AB60; --color-gold-100:#F5EAD1; --color-gold-800:#6F5420;
+    --color-paper-50:#F8F5EF; --color-paper-100:#F1ECE1; --color-paper-200:#E6DFD0; --color-paper-300:#D9D0BC;
+    --color-danger-500:#BE3A2B; --color-danger-50:#FBEDEA;
+    --color-good-600:#059669; --color-good-50:#ECFDF5;
+    --font-display:"Sora",system-ui,sans-serif;
+    --font-sans:"DM Sans",system-ui,sans-serif;
+  }
+</style>
+<style>
+  :root{--ink-900:#1C1C1C;--ink-600:#3D3D3D;--ink-500:#8A8A8A;--gold-400:#D0AB60;--gold-100:#F5EAD1;--gold-800:#6F5420;--paper-200:#E6DFD0;--paper-300:#D9D0BC;--paper-50:#F8F5EF;--danger:#BE3A2B;--good:#059669;--card:#FFFFFF}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,h4,li,label,button,td,th,span,b){overflow-wrap:anywhere}
+  svg{max-width:100%;height:auto;display:block}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(28,28,28,.07)}
+  .cap{font-size:13px;color:var(--ink-500);margin:10px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .tile{background:#fff;border:1px solid var(--paper-200);border-radius:10px;padding:11px 13px}
+  .money{font-size:13.5px;display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed var(--paper-200)}
+  .money:last-of-type{border-bottom:0}
+  .num{font-family:"Sora",sans-serif;font-weight:700;font-size:24px;line-height:1}
+  .row{display:grid;grid-template-columns:minmax(0,26px) minmax(0,1.1fr) minmax(0,1.4fr) auto;gap:10px;align-items:start;padding:11px 0;border-bottom:1px solid var(--paper-200)}
+  .row:last-child{border-bottom:0}
+  .opt label{display:flex;gap:9px;align-items:flex-start;padding:4px 0;font-size:14px;cursor:pointer;line-height:1.35}
+  .opt input[type=radio]{margin-top:3px;flex:none;accent-color:#D0AB60}
+  .qbtn{background:var(--gold-400);color:var(--ink-900);font-weight:700;font-size:12.5px;border:0;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:inherit}
+  .qbtn:disabled{opacity:.45;cursor:not-allowed}
+  .state{font-size:12px;font-weight:700;color:var(--good)}
+  @media (max-width:640px){.row{grid-template-columns:minmax(0,26px) minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-5xl px-5 py-8 lg:px-8 space-y-6">
+
+  <header>
+    <p class="pill bg-gold-100 text-gold-800 mb-2">Board card k69 · in progress</p>
+    <h1 class="text-3xl lg:text-4xl font-bold tracking-tight">The guest tab — what's left</h1>
+    <p class="cap mt-2">Eight pieces are built. Three are not — and the next one is what lets a walk-in diner actually pay.</p>
+  </header>
+
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-3">Built, and working</h2>
+    <div class="grid gap-2 sm:grid-cols-2">
+      <p class="text-[13.5px]"><span style="color:var(--good)" class="font-bold">✓</span> The two tables in Supabase</p>
+      <p class="text-[13.5px]"><span style="color:var(--good)" class="font-bold">✓</span> Tab code — open, add, remove, total</p>
+      <p class="text-[13.5px]"><span style="color:var(--good)" class="font-bold">✓</span> Food joins the bill the guest owes</p>
+      <p class="text-[13.5px]"><span style="color:var(--good)" class="font-bold">✓</span> The Guest tab panel in a booking</p>
+      <p class="text-[13.5px]"><span style="color:var(--good)" class="font-bold">✓</span> The deposit stays room-only</p>
+      <p class="text-[13.5px]"><span style="color:var(--good)" class="font-bold">✓</span> A wrong line is binned, not corrected</p>
+      <p class="text-[13.5px]"><span style="color:var(--good)" class="font-bold">✓</span> The printed bill shows the food lines</p>
+      <p class="text-[13.5px]"><span style="color:var(--good)" class="font-bold">✓</span> A <b>Restaurant</b> tab for walk-in diners</p>
+    </div>
+  </section>
+
+  <section class="card p-5" style="border-color:var(--good)">
+    <p class="pill mb-2" style="background:#ECFDF5;color:var(--good)">A · done ✓</p>
+    <h2 class="text-lg font-bold">The printed bill now shows the food</h2>
+    <p class="cap mt-1 mb-3">Room ₱2,000 and a ₱300 lunch on the tab. Before, the paper and the screen disagreed. Now they agree:</p>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="tile" style="border-color:var(--danger)">
+        <p class="pill mb-3" style="background:#FBEDEA;color:var(--danger)">Before</p>
+        <div class="money"><span>Printed bill — room</span><b>₱2,000</b></div>
+        <div class="money"><span>Printed bill — food</span><b style="color:var(--danger)">not shown</b></div>
+        <p class="mt-3 text-[12px] text-ink-500">Paper says</p>
+        <p class="num" style="color:var(--danger)">₱2,000</p>
+        <p class="mt-3 text-[12px] text-ink-500">The screen says owed</p>
+        <p class="num">₱2,300</p>
+        <p class="cap mb-0" style="color:var(--danger)">They disagree by ₱300.</p>
+      </div>
+      <div class="tile" style="border-color:var(--good)">
+        <p class="pill mb-3" style="background:#ECFDF5;color:var(--good)">Now</p>
+        <div class="money"><span>Printed bill — room</span><b>₱2,000</b></div>
+        <div class="money"><span>Printed bill — restaurant</span><b>₱300</b></div>
+        <p class="mt-3 text-[12px] text-ink-500">Paper says</p>
+        <p class="num" style="color:var(--good)">₱2,300</p>
+        <p class="mt-3 text-[12px] text-ink-500">The screen says owed</p>
+        <p class="num">₱2,300</p>
+        <p class="cap mb-0" style="color:var(--good)">One figure, one bill.</p>
+      </div>
+    </div>
+    <p class="cap mb-0"><b class="text-ink-900">Done:</b> the bill reads the food tab before it prints, and holds the page back until the tab is known — so a bill is never handed over missing the food.</p>
+  </section>
+
+  <section class="card p-5">
+    <h2 class="text-lg font-bold">The other three</h2>
+    <div class="mt-2">
+      <div class="row">
+        <span class="pill bg-gold-100 text-gold-800">C</span>
+        <p class="text-[13.5px] font-bold">Pay at the counter</p>
+        <p class="text-[13px] text-ink-600">A walk-in settles their tab and gets their own numbered receipt, like every other payment.</p>
+        <span class="text-[10.5px] font-bold" style="color:var(--danger)">needs SQL</span>
+      </div>
+      <div class="row">
+        <span class="pill bg-gold-100 text-gold-800">D</span>
+        <p class="text-[13.5px] font-bold">The running tab, on request</p>
+        <p class="text-[13px] text-ink-600">You asked for this: the guest can ask to see the tab mid-stay, not only at check-out.</p>
+        <span class="text-[10.5px] text-ink-500">no SQL</span>
+      </div>
+      <div class="row">
+        <span class="pill bg-gold-100 text-gold-800">E</span>
+        <p class="text-[13.5px] font-bold">Restaurant money in the Earnings Report</p>
+        <p class="text-[13px] text-ink-600">Without it, food income lands in the wrong column or goes missing from the totals.</p>
+        <span class="text-[10.5px] text-ink-500">no SQL</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">B, in one picture — now built</h2>
+    <p class="cap mt-1 mb-3">The restaurant's walk-in diner used to have nothing to charge to. There is now a <b>Restaurant</b> tab in the menu: open a tab by name or table, and everything they order goes on it.</p>
+    <svg viewBox="0 0 920 150" role="img" aria-labelledby="dB-title">
+      <title id="dB-title">A walk-in diner has no booking to charge to today; after the change they get a tab of their own</title>
+      <defs><marker id="arB" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto"><path d="M0,0 L7,3.2 L0,6.4 z" fill="var(--ink-500)"/></marker></defs>
+      <g id="dB-diner1"><title>Walk-in diner</title>
+        <rect x="8" y="18" width="170" height="48" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <text x="93" y="48" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink-900)">Walk-in diner</text></g>
+      <line x1="178" y1="42" x2="236" y2="42" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arB)"/>
+      <g id="dB-none"><title>No booking, so nothing to charge to today</title>
+        <rect x="244" y="18" width="220" height="48" rx="10" fill="#FBEDEA" stroke="var(--danger)" stroke-dasharray="5 4"/>
+        <text x="354" y="40" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--danger)">No booking to charge to</text>
+        <text x="354" y="56" text-anchor="middle" font-size="10.5" fill="var(--danger)">the order has nowhere to go</text></g>
+      <text x="484" y="47" font-size="12" fill="var(--ink-500)">today — the diner pays per item, nothing is written down</text>
+      <g id="dB-diner2"><title>Walk-in diner</title>
+        <rect x="8" y="88" width="170" height="48" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <text x="93" y="118" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink-900)">Walk-in diner</text></g>
+      <line x1="178" y1="112" x2="236" y2="112" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arB)"/>
+      <g id="dB-own"><title>Their own tab, settled at the counter</title>
+        <rect x="244" y="88" width="220" height="48" rx="10" fill="#fff" stroke="var(--gold-400)" stroke-width="1.5"/>
+        <text x="354" y="110" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink-900)">Their own tab</text>
+        <text x="354" y="126" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">a name, or the table number</text></g>
+      <text x="484" y="117" font-size="12" fill="var(--ink-500)">after B — everything they order is on one bill</text>
+    </svg>
+  </section>
+
+  <section class="card p-5" style="border-color:var(--gold-400)">
+    <p class="pill bg-gold-100 text-gold-800 mb-2">Your call</p>
+    <h2 class="text-lg font-bold mb-1">Next up: C — pay at the counter</h2>
+    <div class="grid gap-4 md:grid-cols-2 mt-3 opt">
+      <div class="tile" style="border-color:var(--gold-400)">
+        <p class="pill bg-gold-100 text-gold-800 mb-2">My recommendation</p>
+        <p class="font-bold text-[15px] mb-1">A, then B</p>
+        <p class="text-[13px] text-ink-600">Fix the bill first — it's short, and it's the one a guest can see. Then give your walk-in diners a tab, which is where the money is.</p>
+      </div>
+      <div class="tile">
+        <p class="pill mb-2" style="background:#F1ECE1;color:var(--ink-600)">Other way round</p>
+        <p class="font-bold text-[15px] mb-1">B first</p>
+        <p class="text-[13px] text-ink-600">Get walk-in diners onto tabs sooner, accepting that printed bills stay incomplete a while longer — so keep them away from guests.</p>
+      </div>
+    </div>
+    <p class="mt-4 pt-4 text-[13.5px]" style="border-top:1px solid var(--paper-200)">
+      <span class="pill" style="background:#ECFDF5;color:var(--good)">Decided</span>
+      <b class="ml-2">A then B</b> — both done. Next is <b>C</b>, so a walk-in can settle their tab and get a receipt.
+    </p>
+  </section>
+
+  <footer class="card p-4">
+    <p class="cap mt-0"><b class="text-ink-900">Only C needs another SQL run.</b> A, B, D and E are app-side only — nothing new to paste into Supabase.</p>
+  </footer>
+
+</main>
+</body>
+</html>

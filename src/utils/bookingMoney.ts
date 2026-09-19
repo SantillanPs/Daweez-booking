@@ -60,13 +60,20 @@ export function hasPaymentRecorded(booking: Booking): boolean {
 // Once the deposit HAS been paid this switches to the outstanding balance: the
 // deposit is done, so what is left to collect is the rest of the stay. Returning
 // the deposit portion here would show ₱0 and hide money the guest still owes.
-export function amountToPayNow(booking: Booking): number {
+//
+// `tabTotal` is what has been run up on the guest's food tab (k69). It is
+// subtracted before the deposit is worked out, because the deposit is agreed on
+// the STAY alone — a lunch eaten after booking must never inflate what the desk
+// asks for on arrival. It does count towards the balance, which already carries
+// it once the tab is folded in.
+export function amountToPayNow(booking: Booking, tabTotal = 0): number {
   const paid = Number(booking.downpayment_paid || 0)
   const owed = Number(booking.balance_due || 0)
   if (hasPaymentRecorded(booking)) return owed
   if (booking.payment_plan === 'full') return owed
   if (booking.payment_plan === 'deposit') {
-    return Math.max(0, Math.min(owed, Math.round((paid + owed) / 2) - paid))
+    const stayOwed = Math.max(0, owed - Math.max(0, tabTotal))
+    return Math.max(0, Math.min(owed, Math.round((paid + stayOwed) / 2) - paid))
   }
   return owed
 }
@@ -87,4 +94,14 @@ export function paymentPlanLabel(plan?: Booking['payment_plan']): string {
   if (plan === 'full') return 'Full payment'
   if (plan === 'deposit') return 'Deposit (50%)'
   return ''
+}
+
+// The one place the automatic payment status is worked out from the money:
+// nothing received → unpaid, part of it → deposit, nothing left → paid. Used
+// wherever the balance is recomputed (check-in, check-out, breakfast, and the
+// guest's food tab), so the status can never drift from the money — including
+// the case where a charge added later re-opens a bill that was already settled.
+export function paymentStatusFromMoney(paid: number, remaining: number): 'unpaid' | 'downpayment' | 'paid' {
+  if (remaining <= 0) return 'paid'
+  return paid > 0 ? 'downpayment' : 'unpaid'
 }

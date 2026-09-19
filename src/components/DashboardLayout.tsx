@@ -4,7 +4,7 @@ import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
 import {
   Sparkles, RefreshCw, LogOut, BarChart3, TrendingUp,
-  Calendar, Settings, Building, BookOpen, Tag, Boxes
+  Calendar, Settings, Building, BookOpen, Tag, Boxes, Utensils
 } from 'lucide-react'
 import { isPromoActive, setPromoActive } from '../utils/promoMode'
 import { ToastHost } from './Toast'
@@ -17,6 +17,7 @@ const TABS = [
   { id: 'analytics', label: 'Analytics', Icon: BarChart3, to: '/analytics' },
   { id: 'expenses',  label: 'Expenses',  Icon: TrendingUp, to: '/expenses' },
   { id: 'housekeeping', label: 'Housekeeping', Icon: Boxes, to: '/housekeeping' },
+  { id: 'restaurant', label: 'Restaurant', Icon: Utensils, to: '/restaurant' },
   { id: 'settings',  label: 'Settings',  Icon: Settings, to: '/settings' },
 ]
 

@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>k70 — the menu board, redrawn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#1C1C1C; --color-ink-600:#3D3D3D; --color-ink-500:#8A8A8A;
+    --color-gold-400:#D0AB60; --color-gold-100:#F5EAD1; --color-gold-800:#6F5420;
+    --color-paper-50:#F8F5EF; --color-paper-200:#E6DFD0; --color-paper-300:#D9D0BC;
+    --color-danger-500:#BE3A2B; --color-good-600:#059669;
+    --font-display:"Sora",system-ui,sans-serif; --font-sans:"DM Sans",system-ui,sans-serif;
+  }
+</style>
+<style>
+  :root{--ink-900:#1C1C1C;--ink-600:#3D3D3D;--ink-500:#8A8A8A;--gold-400:#D0AB60;--gold-100:#F5EAD1;--gold-800:#6F5420;--paper-200:#E6DFD0;--paper-300:#D9D0BC;--paper-50:#F8F5EF;--danger:#BE3A2B;--good:#059669;--card:#FFFFFF}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,li,label,button,span,b){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(28,28,28,.07)}
+  .cap{font-size:13px;color:var(--ink-500);margin:10px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .board{background:#fff;border:1px solid var(--paper-300);border-radius:12px;padding:8px}
+  .chips{display:flex;gap:5px;overflow-x:auto;padding-bottom:7px;border-bottom:1px solid var(--paper-200);margin-bottom:8px}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:5px 9px;border-radius:8px;border:1px solid var(--paper-300);background:#fff;color:var(--ink-600);white-space:nowrap}
+  .chip.on{background:var(--gold-400);border-color:var(--gold-400);color:var(--ink-900)}
+  .chip svg{width:14px;height:14px;color:var(--gold-800)}
+  .chip.on svg{color:var(--ink-900)}
+  .grp{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-500);margin:12px 0 6px}
+  .grp svg{width:14px;height:14px;color:var(--gold-800)}
+  .grp span{font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink-500)}
+  .g3{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+  @media(min-width:640px){.g3{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  .tile{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:6px;background:#fff;border:1px solid var(--paper-200);border-radius:10px;padding:9px 10px;min-height:62px}
+  .tile .top{display:flex;align-items:flex-start;gap:6px}
+  .tile .top svg{width:14px;height:14px;flex:none;margin-top:1px;color:var(--ink-500)}
+  .tile .nm{font-size:12.5px;font-weight:700;line-height:1.15}
+  .tile .pr{font-family:"Sora",sans-serif;font-size:16px;font-weight:800;color:var(--gold-800);line-height:1}
+  .tile.on{border-color:var(--gold-400);background:var(--gold-100)}
+  .tile .n{position:absolute;top:6px;right:6px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--gold-400);color:var(--ink-900);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  /* The old board, kept on the page only to show the change. */
+  .flat{background:#fff;border:1px solid var(--paper-200);border-radius:8px;padding:9px 10px;font-size:12.5px;font-weight:700;color:var(--ink-600)}
+  .flat i{display:block;font-size:12px;font-weight:700;color:var(--gold-800);font-style:normal;margin-top:3px}
+  .qbtn{background:var(--gold-400);color:var(--ink-900);font-weight:700;font-size:12.5px;border:0;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:inherit}
+  .qbtn:disabled{opacity:.45;cursor:not-allowed}
+  .opt label{display:flex;gap:9px;align-items:flex-start;padding:4px 0;font-size:14px;cursor:pointer}
+  .opt input{margin-top:3px;flex:none;accent-color:#D0AB60}
+  .state{font-size:12px;font-weight:700;color:var(--good)}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-6xl px-5 py-8 lg:px-8 space-y-6">
+
+  <header>
+    <p class="pill bg-gold-100 text-gold-800 mb-2">Board card k70 · redrawn</p>
+    <h1 class="text-3xl lg:text-4xl font-bold tracking-tight">The menu board, redrawn</h1>
+    <p class="cap mt-2">You were right — the first one was a wall of grey words. This one is read at a glance: an icon per food group, the <b>price as the loudest thing on the tile</b>, and a dish already ordered lights up with how many. Built for staff at the counter, not for a guest holding the tablet.</p>
+  </header>
+
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-3">Before → now</h2>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div>
+        <p class="pill mb-2" style="background:#F1ECE1;color:var(--ink-600)">Before — words on tiles</p>
+        <div class="g3">
+          <div class="flat">Cornsilog<i>₱200</i></div>
+          <div class="flat">Hotsilog<i>₱200</i></div>
+          <div class="flat">Porksilog<i>₱200</i></div>
+          <div class="flat">Bangsilog<i>₱200</i></div>
+          <div class="flat">Lumpiasilog<i>₱200</i></div>
+          <div class="flat">Beefsilog<i>₱210</i></div>
+        </div>
+        <p class="cap">Same size, same weight, no cue — you have to read every tile to find one.</p>
+      </div>
+      <div>
+        <p class="pill bg-gold-100 text-gold-800 mb-2">Now — icon, big price, count</p>
+        <div class="g3">
+          <div class="tile on"><span class="n">2</span><span class="top"><i data-lucide="coffee"></i><span class="nm">Cornsilog</span></span><span class="pr">₱200</span></div>
+          <div class="tile"><span class="top"><i data-lucide="coffee"></i><span class="nm">Hotsilog</span></span><span class="pr">₱200</span></div>
+          <div class="tile"><span class="top"><i data-lucide="coffee"></i><span class="nm">Porksilog</span></span><span class="pr">₱200</span></div>
+          <div class="tile"><span class="top"><i data-lucide="coffee"></i><span class="nm">Bangsilog</span></span><span class="pr">₱200</span></div>
+          <div class="tile"><span class="top"><i data-lucide="coffee"></i><span class="nm">Lumpiasilog</span></span><span class="pr">₱200</span></div>
+          <div class="tile"><span class="top"><i data-lucide="coffee"></i><span class="nm">Beefsilog</span></span><span class="pr">₱210</span></div>
+        </div>
+        <p class="cap">The group is a coffee cup, the price is the loudest thing, and Cornsilog ×2 is already on the tab — lit up, so it cannot be added twice by accident.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">The whole board — check the prices</h2>
+    <p class="cap mt-1 mb-3">This is the real thing, one food group at a time. Read the prices the way staff will — the big gold number.</p>
+    <div class="board">
+      <div class="chips">
+        <span class="chip on"><i data-lucide="coffee"></i>Breakfast</span>
+        <span class="chip"><i data-lucide="badge-percent"></i>Value Meals</span>
+        <span class="chip"><i data-lucide="wheat"></i>Rice</span>
+        <span class="chip"><i data-lucide="cookie"></i>Appetizers</span>
+        <span class="chip"><i data-lucide="drumstick"></i>Chicken</span>
+        <span class="chip"><i data-lucide="ham"></i>Pork</span>
+        <span class="chip"><i data-lucide="beef"></i>Beef</span>
+        <span class="chip"><i data-lucide="fish"></i>Seafood</span>
+        <span class="chip"><i data-lucide="soup"></i>Noodles</span>
+        <span class="chip"><i data-lucide="salad"></i>Vegetables</span>
+        <span class="chip"><i data-lucide="salad"></i>Salad</span>
+        <span class="chip"><i data-lucide="sandwich"></i>Snacks</span>
+        <span class="chip"><i data-lucide="ice-cream-cone"></i>Desserts</span>
+        <span class="chip"><i data-lucide="cup-soda"></i>Drinks</span>
+        <span class="chip"><i data-lucide="beer"></i>Beer</span>
+      </div>
+
+      <p class="grp"><i data-lucide="coffee"></i> Breakfast <span>· 6–10am</span></p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="coffee"></i><span class="nm">Cornsilog</span></span><span class="pr">₱200</span></div>
+        <div class="tile"><span class="top"><i data-lucide="coffee"></i><span class="nm">Hotsilog</span></span><span class="pr">₱200</span></div>
+        <div class="tile"><span class="top"><i data-lucide="coffee"></i><span class="nm">Porksilog</span></span><span class="pr">₱200</span></div>
+        <div class="tile"><span class="top"><i data-lucide="coffee"></i><span class="nm">Bangsilog</span></span><span class="pr">₱200</span></div>
+        <div class="tile"><span class="top"><i data-lucide="coffee"></i><span class="nm">Lumpiasilog</span></span><span class="pr">₱200</span></div>
+        <div class="tile"><span class="top"><i data-lucide="coffee"></i><span class="nm">Beefsilog</span></span><span class="pr">₱210</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="badge-percent"></i> Value Meals <span>· with rice + swakto soda</span></p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="badge-percent"></i><span class="nm">Sizzling Sisig Meal</span></span><span class="pr">₱210</span></div>
+        <div class="tile"><span class="top"><i data-lucide="badge-percent"></i><span class="nm">Lechon Kawali Meal</span></span><span class="pr">₱200</span></div>
+        <div class="tile"><span class="top"><i data-lucide="badge-percent"></i><span class="nm">Beef Steak Meal</span></span><span class="pr">₱250</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="wheat"></i> Rice</p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="wheat"></i><span class="nm">Cup rice</span></span><span class="pr">₱20</span></div>
+        <div class="tile"><span class="top"><i data-lucide="wheat"></i><span class="nm">Platter rice</span></span><span class="pr">₱100</span></div>
+        <div class="tile"><span class="top"><i data-lucide="wheat"></i><span class="nm">Fried rice</span></span><span class="pr">₱180</span></div>
+        <div class="tile"><span class="top"><i data-lucide="wheat"></i><span class="nm">Java rice</span></span><span class="pr">₱170</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="cookie"></i> Appetizers</p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="cookie"></i><span class="nm">Calamares</span></span><span class="pr">₱280</span></div>
+        <div class="tile"><span class="top"><i data-lucide="cookie"></i><span class="nm">Shrimp Tempura</span></span><span class="pr">₱270</span></div>
+        <div class="tile"><span class="top"><i data-lucide="cookie"></i><span class="nm">Pork Lumpia (12 pcs)</span></span><span class="pr">₱210</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="drumstick"></i> Chicken</p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="drumstick"></i><span class="nm">Whole Fried Chicken</span></span><span class="pr">₱490</span></div>
+        <div class="tile"><span class="top"><i data-lucide="drumstick"></i><span class="nm">Half Fried Chicken</span></span><span class="pr">₱290</span></div>
+        <div class="tile"><span class="top"><i data-lucide="drumstick"></i><span class="nm">Buttered Chicken</span></span><span class="pr">₱290</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="ham"></i> Pork</p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="ham"></i><span class="nm">Sizzling Sisig</span></span><span class="pr">₱310</span></div>
+        <div class="tile"><span class="top"><i data-lucide="ham"></i><span class="nm">Lechon Kawali</span></span><span class="pr">₱340</span></div>
+        <div class="tile"><span class="top"><i data-lucide="ham"></i><span class="nm">Crispy Pata</span></span><span class="pr">₱650</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="beef"></i> Beef</p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="beef"></i><span class="nm">Beef Steak</span></span><span class="pr">₱350</span></div>
+        <div class="tile"><span class="top"><i data-lucide="beef"></i><span class="nm">Beef with Broccoli</span></span><span class="pr">₱360</span></div>
+        <div class="tile"><span class="top"><i data-lucide="beef"></i><span class="nm">Beef with Mushroom</span></span><span class="pr">₱360</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="fish"></i> Seafood <span>· the cooking choice is on the tile's tooltip</span></p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="fish"></i><span class="nm">Shrimp</span></span><span class="pr">₱300</span></div>
+        <div class="tile"><span class="top"><i data-lucide="fish"></i><span class="nm">Tuna</span></span><span class="pr">₱300</span></div>
+        <div class="tile"><span class="top"><i data-lucide="fish"></i><span class="nm">Tuna Belly</span></span><span class="pr">₱480</span></div>
+        <div class="tile"><span class="top"><i data-lucide="fish"></i><span class="nm">Pampano</span></span><span class="pr">₱480</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="soup"></i> Noodles</p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="soup"></i><span class="nm">Bam-i</span></span><span class="pr">₱200</span></div>
+        <div class="tile"><span class="top"><i data-lucide="soup"></i><span class="nm">Bihon</span></span><span class="pr">₱200</span></div>
+        <div class="tile"><span class="top"><i data-lucide="soup"></i><span class="nm">Canton Guisado</span></span><span class="pr">₱200</span></div>
+        <div class="tile"><span class="top"><i data-lucide="soup"></i><span class="nm">Sotanghon</span></span><span class="pr">₱220</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="salad"></i> Vegetables &amp; Salad</p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="salad"></i><span class="nm">Chopsuey</span></span><span class="pr">₱250</span></div>
+        <div class="tile"><span class="top"><i data-lucide="salad"></i><span class="nm">Mix Vegetable</span></span><span class="pr">₱480</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="sandwich"></i> Snacks</p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="sandwich"></i><span class="nm">Burger</span></span><span class="pr">₱75</span></div>
+        <div class="tile"><span class="top"><i data-lucide="sandwich"></i><span class="nm">Burger with cheese</span></span><span class="pr">₱85</span></div>
+        <div class="tile"><span class="top"><i data-lucide="sandwich"></i><span class="nm">Double Stacker Burger</span></span><span class="pr">₱150</span></div>
+        <div class="tile"><span class="top"><i data-lucide="sandwich"></i><span class="nm">Regular Burger with Fries</span></span><span class="pr">₱100</span></div>
+        <div class="tile"><span class="top"><i data-lucide="sandwich"></i><span class="nm">French Fries 200g</span></span><span class="pr">₱150</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="ice-cream-cone"></i> Desserts &amp; Shakes</p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="ice-cream-cone"></i><span class="nm">Halo-halo</span></span><span class="pr">₱135</span></div>
+        <div class="tile"><span class="top"><i data-lucide="ice-cream-cone"></i><span class="nm">Mango Shake</span></span><span class="pr">₱140</span></div>
+        <div class="tile"><span class="top"><i data-lucide="ice-cream-cone"></i><span class="nm">Ice Cream Scoops</span></span><span class="pr">₱50</span></div>
+        <div class="tile"><span class="top"><i data-lucide="ice-cream-cone"></i><span class="nm">Avocado Shake</span></span><span class="pr">₱150</span></div>
+        <div class="tile"><span class="top"><i data-lucide="ice-cream-cone"></i><span class="nm">Durian Shake</span></span><span class="pr">₱200</span></div>
+        <div class="tile"><span class="top"><i data-lucide="ice-cream-cone"></i><span class="nm">Banana Shake</span></span><span class="pr">₱100</span></div>
+        <div class="tile"><span class="top"><i data-lucide="ice-cream-cone"></i><span class="nm">Buko Shake</span></span><span class="pr">₱150</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="cup-soda"></i> Drinks <span>· non-alcoholic</span></p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="cup-soda"></i><span class="nm">Coke / Royal / Sprite</span></span><span class="pr">₱15</span></div>
+        <div class="tile"><span class="top"><i data-lucide="cup-soda"></i><span class="nm">Coke / Royal / Sprite 1.25L</span></span><span class="pr">₱100</span></div>
+        <div class="tile"><span class="top"><i data-lucide="cup-soda"></i><span class="nm">Kopiko Brown 3-in-1</span></span><span class="pr">₱25</span></div>
+        <div class="tile"><span class="top"><i data-lucide="cup-soda"></i><span class="nm">Coffee Stick with Cream</span></span><span class="pr">₱25</span></div>
+        <div class="tile"><span class="top"><i data-lucide="cup-soda"></i><span class="nm">Iced Coffee</span></span><span class="pr">₱70</span></div>
+        <div class="tile"><span class="top"><i data-lucide="cup-soda"></i><span class="nm">Iced Milo</span></span><span class="pr">₱75</span></div>
+        <div class="tile"><span class="top"><i data-lucide="cup-soda"></i><span class="nm">Hot Milo</span></span><span class="pr">₱25</span></div>
+        <div class="tile"><span class="top"><i data-lucide="cup-soda"></i><span class="nm">Bottled Water 500ml</span></span><span class="pr">₱20</span></div>
+        <div class="tile"><span class="top"><i data-lucide="cup-soda"></i><span class="nm">Iced Tea 1L Pitcher</span></span><span class="pr">₱120</span></div>
+      </div>
+
+      <p class="grp"><i data-lucide="beer"></i> Beer &amp; Spirits</p>
+      <div class="g3">
+        <div class="tile"><span class="top"><i data-lucide="beer"></i><span class="nm">San Mig Flavoured Beer (Apple)</span></span><span class="pr">₱70</span></div>
+        <div class="tile"><span class="top"><i data-lucide="beer"></i><span class="nm">San Mig Light</span></span><span class="pr">₱70</span></div>
+        <div class="tile"><span class="top"><i data-lucide="beer"></i><span class="nm">Red Horse Stallion</span></span><span class="pr">₱70</span></div>
+        <div class="tile"><span class="top"><i data-lucide="beer"></i><span class="nm">Red Horse 1 Litro</span></span><span class="pr">₱160</span></div>
+        <div class="tile"><span class="top"><i data-lucide="beer"></i><span class="nm">Pilsen</span></span><span class="pr">₱70</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-5" style="border-color:var(--good)">
+    <p class="pill mb-2" style="background:#ECFDF5;color:var(--good)">Fixed ✓</p>
+    <h2 class="text-lg font-bold mb-1">The menu now lives in the database</h2>
+    <p class="text-[13.5px] text-ink-600 mb-0">All <b>61 items in 15 groups</b> are seeded into two new tables (`menu_categories`, `menu_items`), so every tablet shows the same menu and the same prices. The list typed into the code stays only as the offline fallback. <b>One SQL run</b> applies it.</p>
+  </section>
+
+  <section class="card p-5" style="border-color:var(--gold-400)">
+    <p class="pill bg-gold-100 text-gold-800 mb-2">Your call</p>
+    <h2 class="text-lg font-bold mb-2">Decided · built · on the board</h2>
+    <p class="mt-2 text-[13.5px]">
+      <span class="pill" style="background:#ECFDF5;color:var(--good)">Decided</span>
+      <b class="ml-2">The menu moved into the database.</b> Done — 61 items seeded, one SQL run to apply.
+    </p>
+    <p class="mt-2 text-[13.5px]">
+      <span class="pill bg-gold-100 text-gold-800">On the board</span>
+      The rest of the list is now tracked rather than living on this page: <b>k105</b> a screen to edit the menu and prices, <b>k107</b> photos of the dishes on the tiles, <b>k109</b> cooking choices on a dish. Finishing <b>C</b> (a walk-in settling at the counter) stays on card <b>k69</b>.
+    </p>
+    <p class="mt-2 text-[13px] text-ink-500">If a price below is wrong, just tell me which and I will correct it.</p>
+  </section>
+
+  <footer class="card p-4">
+    <p class="cap mt-0"><b class="text-ink-900">On colour:</b> I kept the hotel's charcoal-and-gold palette and got the contrast from icons, size and the count badge rather than fifteen different colours — the brand rules in the project say gold and charcoal only. If you want a colour per food group on top of that, say so and I will add it; it is your palette.</p>
+    <p class="cap mb-0"><b class="text-ink-900">Modifiers:</b> Shrimp, Tuna and Pampano come with a cooking choice (buttered, sinagang, tinola). It is a tooltip today — proper choice buttons on the dish are a follow-up.</p>
+  </footer>
+
+</main>
+<script>
+  if (window.lucide) window.lucide.createIcons()
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import { normalizeVenueId } from './helpers'
 import { getRateConfig } from './rateConfig'
 import { amountToPayNow } from './bookingMoney'
 import { roomDisplayName } from '../components/calendar/bookingStyles'
+import { TabLine } from '../types/tab'
 
 // Builds the structured data for the printable "Guest Billing Statement"
 // (the form staff fill in by hand for walk-ins / Facebook calls). It turns a
@@ -50,6 +51,12 @@ export interface StatementInput {
   venues: Venue[]
   deal?: PartnerDeal | null
   bookingsList: Booking[]
+  /**
+   * The food and bar tab for each booking, keyed by booking id (k69). Its lines
+   * print under the room and its total joins the bill, so the paper the guest
+   * holds carries the same figure the screen shows.
+   */
+  tabLinesByBooking?: Record<string, TabLine[]>
 }
 
 const unitName = (b: Booking, rooms: Room[], venues: Venue[]): string => {
@@ -230,13 +237,31 @@ export function buildStatement(o: StatementInput): Statement {
       })
     }
 
-    subTotal += pricing.grandTotal
+    // The guest's food and bar tab (k69). Its lines print right under the room and
+    // its total joins the bill — without this the paper showed the room alone
+    // while the screen said the guest owed the room plus the food.
+    const tab = o.tabLinesByBooking?.[b.id] || []
+    const tabLinesTotal = tab.reduce((sum, l) => sum + Number(l.amount || 0), 0)
+    tab.forEach(l => {
+      lineItems.push({
+        key: b.id + '-tab-' + l.id,
+        description: 'Restaurant & bar · ' + l.description,
+        qty: String(l.qty || 1),
+        unit: 'PC',
+        price: Math.round(Number(l.unit_price || 0)),
+        discount: 0,
+        amount: Math.round(Number(l.amount || 0)),
+      })
+    })
+
+    subTotal += pricing.grandTotal + tabLinesTotal
     downpaymentPaid += Number(b.downpayment_paid || 0)
     securityDeposit += Number(b.security_deposit || 0)
     // What to pay NOW, from the guest's own choice: the agreed 50% deposit while
     // nothing has been paid, otherwise what is left. Using `balance_due` alone
-    // printed the whole stay as due, which contradicted a deposit booking.
-    const payNow = amountToPayNow(b)
+    // printed the whole stay as due, which contradicted a deposit booking. The tab
+    // is passed in so the deposit is still worked out from the STAY alone.
+    const payNow = amountToPayNow(b, tabLinesTotal)
     amountDue += payNow
     balanceAfter += Math.max(0, Number(b.balance_due || 0) - payNow)
     if (b.payment_method) paymentMethod = b.payment_method
