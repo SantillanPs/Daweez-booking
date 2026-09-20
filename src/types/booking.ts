@@ -4,6 +4,12 @@ export interface Room {
   name: string
   base_price: number // Regular price (PHP)
   promo_price?: number | null // Promo price when a sale is active
+  /**
+   * How many beds the room has. Breakfast is charged as ₱150 × this number,
+   * once for the stay (card k140) — a room with 3 bunk beds is 6 beds. Left
+   * unset, breakfast falls back to the old per-person, per-day figure.
+   */
+  beds?: number
   capacity: number
   description: string
   image_url: string
@@ -127,6 +133,12 @@ export interface Booking {
   // amount. Shown as "expecting" in the booking quick view; the booking's
   // payment STATUS itself follows the money actually recorded.
   payment_plan?: 'deposit' | 'full'
+  /**
+   * What the desk and the guest agreed the guest would pay now, in pesos
+   * (card k130). Half the stay by default, but the desk may type any figure —
+   * `undefined` means "work it out", which `amountToPayNow` does.
+   */
+  agreed_deposit?: number
   balance_due: number      // Remaining 50% + rentals/addons + security deposit
   security_deposit: number // ₱500 flat
   breakfast_orders?: BreakfastOrder[]

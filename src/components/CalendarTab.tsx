@@ -4,6 +4,7 @@ import { Booking } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { dateToString } from '../utils/helpers'
 import { WalkInBookingForm } from './WalkInBookingForm'
+import { takeFocusedBooking } from '../utils/bookingFocus'
 import { ExtendStayModal } from './calendar/ExtendStayModal'
 import { TimelineGrid, TimelineDayInfo } from './calendar/TimelineGrid'
 import { LogOldBookingModal } from './calendar/LogOldBookingModal'
@@ -266,7 +267,14 @@ export function CalendarTab() {
             ? (editingBooking.invoice_number ? bookings.filter(b => b.invoice_number === editingBooking.invoice_number) : [editingBooking])
             : undefined}
           initialBookingType={manualBookingType}
-          onClose={() => { setShowManualForm(false); setEditingBooking(null); setFormSelections({}) }}
+          onClose={() => {
+            setShowManualForm(false); setEditingBooking(null); setFormSelections({})
+            // Once the billing statement is closed, the booking just made opens
+            // itself in the quick view (card k134).
+            const created = takeFocusedBooking()
+            const booking = created ? bookings.find(b => b.id === created) : undefined
+            if (booking) setSelectedExtendBooking(booking)
+          }}
         />
       )}
 

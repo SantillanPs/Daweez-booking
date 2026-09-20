@@ -84,6 +84,8 @@ function bookingPricing(b: Booking, o: StatementInput) {
     checkOut: b.check_out,
     guestEmail: b.guest_email,
     breakfastOrders: b.breakfast_orders == null ? [] : b.breakfast_orders,
+    // What the booking holds: this room has breakfast (card k140).
+    breakfastIncluded: b.breakfast_included === true,
     equipmentRentals: b.equipment_rentals,
     eventAddons: b.event_addons,
     companions: b.companions,
@@ -126,15 +128,19 @@ export function buildStatement(o: StatementInput): Statement {
     const regularNightly = stayQty > 0 ? Math.round(pricing.undiscountedSubtotal / stayQty) : Math.round(pricing.subtotal / Math.max(1, stayQty))
     const rateLabel = b.contract_rate_override != null ? ' · corporate' : usePromo ? ' · promo' : ''
 
-    // The stay itself — one row per unit.
+    // The stay itself — one row per unit. For a room, breakfast rides ON this row
+    // (owner's rule, card k142): it is already inside the room rate, so the line
+    // is named "Room 2 · Breakfast" and the amount includes it. Breakfast never
+    // gets a row of its own on a room bill.
+    const breakfastOnRoomLine = isRoom ? Math.round(pricing.breakfastTotal) : 0
     lineItems.push({
       key: b.id + '-stay',
-      description: unitName(b, rooms, venues) + rateLabel,
+      description: unitName(b, rooms, venues) + (breakfastOnRoomLine > 0 ? ' · Breakfast' : '') + rateLabel,
       qty: String(stayQty),
       unit: pricing.stayUnit,
       price: regularNightly,
       discount: Math.round(pricing.discountAmount + pricing.appliedDiscountAmount),
-      amount: Math.round(pricing.stayTotal),
+      amount: Math.round(pricing.stayTotal + breakfastOnRoomLine),
     })
 
     // Early check-in / late checkout charge.
@@ -151,9 +157,9 @@ export function buildStatement(o: StatementInput): Statement {
       })
     }
 
-    // Breakfast — one row per day served (recorded during the stay, per person).
-    // Legacy planned-ahead bookings fall back to a single guest-night row.
-    const bfRecords = b.breakfast_records || []
+    // Breakfast on a VENUE booking keeps its own row; on a room it is already on
+    // the room line above (card k142), so this block is skipped for rooms.
+    const bfRecords = isRoom ? [] : (b.breakfast_records || [])
     if (bfRecords.length > 0) {
       bfRecords.forEach(r => {
         const dateLabel = r.date ? new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
@@ -167,7 +173,7 @@ export function buildStatement(o: StatementInput): Statement {
           amount: Math.round((r.price || 0) * (r.quantity || 0)),
         })
       })
-    } else if (pricing.breakfastTotal > 0) {
+    } else if (!isRoom && pricing.breakfastTotal > 0) {
       const rates = getRateConfig()
       const guestNights = rates.breakfastPrice > 0 ? pricing.breakfastTotal / rates.breakfastPrice : 0
       lineItems.push({

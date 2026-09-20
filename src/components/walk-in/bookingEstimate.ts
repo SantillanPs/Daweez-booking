@@ -6,10 +6,9 @@ export interface BookingEstimateParams {
   venues: Venue[]
   partnerDeals: PartnerDeal[]
   formPartnerDealId: string
-  formUsePromo: boolean
   formStatus: 'confirmed' | 'blocked'
   hasVenues: boolean
-  formGuestBreakfast: boolean
+  formBreakfastRoomIds: string[]
   formCompanions: Companion[]
   formExtraFoam: number
   formExtraPillow: number
@@ -57,16 +56,19 @@ export function computeBookingEstimate(p: BookingEstimateParams): BookingEstimat
     const promo = sel.type === 'room'
       ? (room?.promo_price ?? null)
       : (venue?.promo_price ?? null)
-    const effectiveRate = p.formUsePromo && promo != null && promo > 0 ? promo : regular
+    // ONE PRICE (card k128): the promo figure is the price whenever there is one.
+    const effectiveRate = promo != null && promo > 0 ? promo : regular
     regularTotal += regular * n
     discountedTotal += effectiveRate * n
 
     const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
     if (sel.type === 'room') {
-      const bfCount = (p.formGuestBreakfast ? 1 : 0) + p.formCompanions.filter(c => c.breakfast).length
-      if (!isBreakfastIncluded && bfCount > 0) {
-        breakfast += 150 * bfCount * n
-      }
+      // Breakfast is the ROOM's choice (card k140): ₱150 × its beds, ONCE for the
+      // stay — not per person and not per night. A partner deal that includes
+      // breakfast does not charge it again.
+      const roomBeds = Number(room?.beds || 0)
+      const wantsBreakfast = isBreakfastIncluded || p.formBreakfastRoomIds.includes(id)
+      if (wantsBreakfast && roomBeds > 0) breakfast += 150 * roomBeds
       rentals += (p.formExtraFoam * 200 + p.formExtraPillow * 50 + p.formExtraBlanket * 50 + p.formExtraTowel * 50) * n
     }
   })

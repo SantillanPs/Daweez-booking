@@ -7,8 +7,6 @@ interface RoomDetailsFormProps {
   formStatus: 'confirmed' | 'blocked'
   formGuestName: string
   setFormGuestName: (val: string) => void
-  formGuestBreakfast: boolean
-  setFormGuestBreakfast: (val: boolean) => void
   formGuestEmail: string
   setFormGuestEmail: (val: string) => void
   formGuestPhone: string
@@ -49,8 +47,6 @@ export const RoomDetailsForm = React.memo(
     formStatus,
     formGuestName,
     setFormGuestName,
-    formGuestBreakfast,
-    setFormGuestBreakfast,
     formGuestEmail,
     setFormGuestEmail,
     formGuestPhone,
@@ -76,7 +72,6 @@ export const RoomDetailsForm = React.memo(
   }: RoomDetailsFormProps) => {
     // Read the staff-editable rate so the form never quotes a price the bill
     // won't charge (the price used to be hardcoded at ₱150).
-    const breakfastPrice = getRateConfig().breakfastPrice
 
     if (formStatus === 'blocked') {
       return (
@@ -117,13 +112,6 @@ export const RoomDetailsForm = React.memo(
             </div>
             {guestNameError && <p className="text-xs text-error mt-1">{guestNameError}</p>}
           </div>
-
-          {/* Main guest breakfast — same per-person choice as each companion */}
-          <label className="flex items-center gap-2 text-xs text-base-content/70 font-medium mt-2 select-none cursor-pointer">
-            <input type="checkbox" checked={formGuestBreakfast} onChange={e => setFormGuestBreakfast(e.target.checked)} className="checkbox checkbox-primary checkbox-sm" />
-            B'fast for this guest
-            <span className="text-success font-bold font-mono">₱{breakfastPrice}/night</span>
-          </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-base-300">
             <div>
@@ -254,9 +242,6 @@ export const RoomDetailsForm = React.memo(
                     }}
                     className="input input-bordered input-sm w-24"
                   />
-                  <label className="flex items-center gap-1 text-[10px] text-base-content/60 shrink-0 select-none cursor-pointer">
-                    <input type="checkbox" checked={!!comp.breakfast} onChange={e => { const u = [...formCompanions]; u[idx] = { ...u[idx], breakfast: e.target.checked }; setFormCompanions(u) }} className="checkbox checkbox-primary checkbox-sm" /> B'fast
-                  </label>
                   <button
                     type="button"
                     onClick={() => setFormCompanions(formCompanions.filter((_, i) => i !== idx))}
@@ -280,7 +265,6 @@ export const RoomDetailsForm = React.memo(
     return (
       prevProps.formStatus === nextProps.formStatus &&
       prevProps.formGuestName === nextProps.formGuestName &&
-      prevProps.formGuestBreakfast === nextProps.formGuestBreakfast &&
       prevProps.formGuestEmail === nextProps.formGuestEmail &&
       prevProps.formGuestPhone === nextProps.formGuestPhone &&
       prevProps.formGuestGender === nextProps.formGuestGender &&

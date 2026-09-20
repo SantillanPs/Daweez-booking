@@ -119,3 +119,34 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Printing one document, and only that document ──────────────────────────
+   A receipt or a bill is opened over the screen it was printed from, and the
+   browser was sending BOTH to the printer: pressing Print on a payment receipt
+   put the booking slide-over behind it on the paper instead of the slip.
+   Anything that should go on paper marks itself, and everything else steps
+   aside for the duration of the print.
+
+   `.print-slip` is the 58 mm thermal roll (a payment receipt, a tab receipt, a
+   running tab); `.print-page` is the guest billing statement. Visibility is used
+   rather than display so the hidden screen keeps its layout, and the printed
+   element is pulled to the top of the sheet instead of landing in the middle. */
+@media print {
+  body * { visibility: hidden !important; }
+  .print-slip, .print-slip *,
+  .print-page, .print-page * { visibility: visible !important; }
+  .print-slip {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 58mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+  .print-page {
+    position: static !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+}

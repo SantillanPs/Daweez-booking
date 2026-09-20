@@ -51,6 +51,9 @@ export function PublicReservePortal() {
   })
 
   const [promoOn, setPromoOn] = useState<boolean>(() => isPromoActive())
+  // Breakfast is the ROOM's choice (card k140): the guest picks it here, the same
+  // way the desk picks it for the rooms on a walk-in booking. It starts OFF.
+  const [breakfastOn, setBreakfastOn] = useState(false)
   useEffect(() => {
     const sync = () => setPromoOn(isPromoActive())
     const onStorage = (e: StorageEvent) => { if (e.key === 'daweez_promo_active') sync() }
@@ -97,10 +100,10 @@ export function PublicReservePortal() {
     return venues.find(v => v.id === selectedUnitId)
   }, [selectedUnitId, selectedUnitType, rooms, venues])
 
-  // Pricing: website charges promo only while the global promo is ON.
+  // Pricing: ONE PRICE (card k128). The website quotes exactly what the desk
+  // charges — no sale mode to be in or out of.
   const pricing = useMemo(() => {
     if (!selectedUnit || nights <= 0) return null
-    const usePromo = promoOn
     return syncEngine.calculatePricing({
       roomId: selectedUnitType === 'room' ? selectedUnitId : undefined,
       venueId: selectedUnitType === 'venue' ? selectedUnitId : undefined,
@@ -108,12 +111,12 @@ export function PublicReservePortal() {
       checkOut,
       guestEmail,
       source: 'website',
-      breakfastEnabled: false, // the portal does not sell breakfast
+      // The guest's own breakfast answer (₱150 × the room's beds, once). Rooms only.
+      breakfastEnabled: selectedUnitType === 'room' ? breakfastOn : false,
       rooms,
       venues,
-      usePromo,
     })
-  }, [selectedUnit, selectedUnitType, selectedUnitId, nights, checkIn, checkOut, guestEmail, rooms, venues, promoOn])
+  }, [selectedUnit, selectedUnitType, selectedUnitId, nights, checkIn, checkOut, guestEmail, rooms, venues, breakfastOn])
 
   // Handle unit selection
   const handleSelectUnit = (id: string, type: 'room' | 'venue') => {
@@ -181,6 +184,8 @@ export function PublicReservePortal() {
         balance_due: pricing.balanceDue,
         security_deposit: pricing.securityDeposit,
         companions: companions.length > 0 ? companions : undefined,
+        // What the guest answered about breakfast, kept on the room's own row.
+        breakfast_included: selectedUnitType === 'room' ? breakfastOn : false,
         created_at: now.toISOString(),
         expires_at: new Date(now.getTime() + 30 * 60000).toISOString()
       }
@@ -308,7 +313,7 @@ export function PublicReservePortal() {
                       {rooms.map(room => {
                         const isAvailable = roomAvailability[room.id]
                         const roomPromoOn = promoOn && room.promo_price != null
-                        const displayPrice = getEffectiveNightlyPrice(room.base_price, room.promo_price, promoOn)
+                        const displayPrice = getEffectiveNightlyPrice(room.base_price, room.promo_price, true)
                         return (
                             <div key={room.id} className={`bg-card border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-all group ${isAvailable ? 'hover:border-brand-primary border-soft/80' : 'opacity-70 grayscale-[20%] border-soft'}`}>
                               <div className="h-44 overflow-hidden relative">
@@ -390,7 +395,7 @@ export function PublicReservePortal() {
                       {venues.map(venue => {
                         const isAvailable = venueAvailability[venue.id]
                         const venuePromoOn = promoOn && venue.promo_price != null
-                        const venueDisplayPrice = getEffectiveNightlyPrice(venue.base_price, venue.promo_price, promoOn)
+                        const venueDisplayPrice = getEffectiveNightlyPrice(venue.base_price, venue.promo_price, true)
                         return (
                           <div key={venue.id} className={`bg-card border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-all group ${isAvailable ? 'hover:border-brand-primary border-soft/80' : 'opacity-70 grayscale-[20%] border-soft'}`}>
                             <div className="h-44 overflow-hidden relative">
@@ -702,6 +707,27 @@ export function PublicReservePortal() {
                     <span>Balance Due upon Check-in:</span>
                     <span className="font-mono">₱{pricing.balanceDue.toLocaleString()}</span>
                   </div>
+
+                  {selectedUnitType === 'room' && (
+                    <label className="flex items-start gap-2.5 mt-3 pt-3 border-t border-dashed border-brand-border/60 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={breakfastOn}
+                        onChange={e => setBreakfastOn(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 accent-brand-primary shrink-0"
+                      />
+                      <span className="text-[11.5px] text-main font-semibold leading-snug">
+                        Add breakfast for this room
+                        {(selectedUnit as Room).beds ? (
+                          <span className="block text-[10.5px] text-muted font-medium">
+                            ₱150 for each of the room's {(selectedUnit as Room).beds} beds, once — added to your total.
+                          </span>
+                        ) : (
+                          <span className="block text-[10.5px] text-muted font-medium">Ask us at the desk for the price.</span>
+                        )}
+                      </span>
+                    </label>
+                  )}
                 </div>
               )}
 

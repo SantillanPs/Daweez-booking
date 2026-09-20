@@ -42,7 +42,6 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
   const [formTIN, setFormTIN] = useState('')
   const [formGuestEmail, setFormGuestEmail] = useState('')
   const [formGuestPhone, setFormGuestPhone] = useState('')
-  const [formUsePromo, setFormUsePromo] = useState(false)
   const [error, setError] = useState('')
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [trySave, setTrySave] = useState(false)
@@ -127,7 +126,6 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
           guestPhone: deal.contact_no || 'None',
           checkIn: sel.checkIn, checkOut: sel.checkOut,
           source: 'manual', status: 'confirmed',
-          usePromo: formUsePromo,
           partnerDealId: formPartnerDealId,
           companyName: deal.name,
           vehiclePlate: formVehiclePlate || undefined,
@@ -218,12 +216,8 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
                 {showErr('units') && <p className="text-[10px] text-rose-600 mt-1">{showErr('units')}</p>}
               </div>
 
-              <div className="pt-2 border-t border-soft">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input type="checkbox" checked={formUsePromo} onChange={e => setFormUsePromo(e.target.checked)} className="rounded text-brand-text focus:ring-[#B89251] w-3.5 h-3.5 cursor-pointer accent-brand-primary" />
-                  <span className="text-[10px] text-brand-text font-bold uppercase tracking-wider">Use Promo Price</span>
-                </label>
-              </div>
+              {/* No promo switch (card k128): one price, and a partner's
+                  contracted rate when the deal sets one. */}
 
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={onClose} className="text-xs text-muted font-bold px-4 py-3 rounded-md border border-soft bg-card hover:bg-page transition-all cursor-pointer">Cancel</button>

@@ -10,6 +10,8 @@ interface AnalyticsCalculations {
   totalVacationHouse: number
   totalGardenArea: number
   totalGazebo: number
+  /** Food and bar money this period (k69, part E). */
+  restaurantTotal: number
 }
 
 interface AnalyticsVisualsViewProps {
@@ -32,6 +34,7 @@ export const AnalyticsVisualsView: React.FC<AnalyticsVisualsViewProps> = ({
         totalVacationHouse={calculations.totalVacationHouse}
         totalGardenArea={calculations.totalGardenArea}
         totalGazebo={calculations.totalGazebo}
+        restaurantTotal={calculations.restaurantTotal}
       />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

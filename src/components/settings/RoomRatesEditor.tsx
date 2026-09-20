@@ -6,27 +6,33 @@ import { Check, ChevronDown, Loader2, Save } from 'lucide-react'
 interface RoomRatesEditorProps {
   rooms: Room[]
   updateRoomRate: (roomId: string, basePrice: number, promoPrice?: number | null) => Promise<Room | null>
+  /** How many beds the room has — what breakfast is charged against (k140). */
+  updateRoomBeds?: (roomId: string, beds: number) => Promise<void>
 }
 
 interface RoomDraft {
-  base: number
-  promo: number
+  price: number
+  beds: number
 }
 
 function RateField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   return (
     <label className="flex items-center justify-between gap-2 bg-page border border-soft rounded-lg px-3 py-2">
       <span className="text-[11px] text-muted font-medium">{label}</span>
-      <div className="flex items-center gap-1">
-        <span className="text-[11px] text-muted font-bold">₱</span>
-        <NumInput value={value} onChange={onChange}
-          className="w-24 bg-card border border-soft text-main px-2 py-1 rounded-md text-sm font-mono focus:outline-none focus:border-brand-primary text-right" />
-      </div>
+      <NumInput value={value} onChange={onChange}
+        className="w-24 bg-card border border-soft text-main px-2 py-1 rounded-md text-sm font-mono focus:outline-none focus:border-brand-primary text-right" />
     </label>
   )
 }
 
-export function RoomRatesEditor({ rooms, updateRoomRate }: RoomRatesEditorProps) {
+// One price per room (card k128), and the bed count breakfast is charged against
+// (card k140).
+//
+// The old Regular + Promo pair is gone: the owner's rule is that a room has a
+// single price. Both stored columns are written with it — `promo_price` is the
+// figure the pricing engine uses, and `base_price` is kept equal so nothing can
+// read the stale one and quote a different number.
+export function RoomRatesEditor({ rooms, updateRoomRate, updateRoomBeds }: RoomRatesEditorProps) {
   // Overlays: only rooms the staff member has started editing. Everything else
   // falls through to the live room value, so a save + refetch keeps the UI true.
   const [edits, setEdits] = useState<Record<string, Partial<RoomDraft>>>({})
@@ -35,8 +41,10 @@ export function RoomRatesEditor({ rooms, updateRoomRate }: RoomRatesEditorProps)
   const [savedId, setSavedId] = useState<string | null>(null)
 
   const draftFor = (room: Room): RoomDraft => ({
-    base: edits[room.id]?.base ?? room.base_price,
-    promo: edits[room.id]?.promo ?? (room.promo_price ?? 0),
+    // The price shown is the single price: the promo figure when one is set (the
+    // rule the pricing engine follows), otherwise the regular one.
+    price: edits[room.id]?.price ?? ((room.promo_price && room.promo_price > 0) ? room.promo_price : room.base_price),
+    beds: edits[room.id]?.beds ?? (room.beds ?? 0),
   })
 
   const handleSave = async (room: Room) => {
@@ -44,7 +52,9 @@ export function RoomRatesEditor({ rooms, updateRoomRate }: RoomRatesEditorProps)
     if (savingId) return
     setSavingId(room.id)
     try {
-      await updateRoomRate(room.id, draft.base, draft.promo > 0 ? draft.promo : null)
+      await updateRoomRate(room.id, draft.price, draft.price)
+      // The bed count rides along: it is what breakfast is charged against.
+      if (updateRoomBeds) await updateRoomBeds(room.id, draft.beds)
       setSavedId(room.id)
       setTimeout(() => setSavedId(id => (id === room.id ? null : id)), 1500)
     } catch {
@@ -58,7 +68,7 @@ export function RoomRatesEditor({ rooms, updateRoomRate }: RoomRatesEditorProps)
     <div className="bg-card border border-soft rounded-lg overflow-hidden font-sans shadow-sm">
       <div className="px-5 py-4 border-b border-soft">
         <h3 className="text-sm font-semibold text-main">Room Rates</h3>
-        <p className="text-xs text-muted mt-1">Set each room's Regular and Promo price. New bookings and invoices use these.</p>
+        <p className="text-xs text-muted mt-1">One price per room, and how many beds it has. New bookings and invoices use these.</p>
       </div>
       <div className="divide-y divide-soft">
         {rooms.map(room => {
@@ -74,9 +84,7 @@ export function RoomRatesEditor({ rooms, updateRoomRate }: RoomRatesEditorProps)
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[11px] text-muted font-mono">
-                    {room.promo_price && room.promo_price > 0
-                      ? `₱${room.base_price} / Promo ₱${room.promo_price}`
-                      : `₱${room.base_price}`}
+                    ₱{draft.price}{room.beds ? ` · ${room.beds} beds` : ''}
                   </span>
                   <ChevronDown className={'w-4 h-4 text-muted transition-transform ' + (isExpanded ? 'rotate-180' : '')} />
                 </div>
@@ -84,16 +92,19 @@ export function RoomRatesEditor({ rooms, updateRoomRate }: RoomRatesEditorProps)
               {isExpanded && (
                 <div className="px-5 pb-4 pt-1 space-y-2.5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <RateField label="Regular rate (per night)" value={draft.base}
-                      onChange={v => setEdits(s => ({ ...s, [room.id]: { ...s[room.id], base: v } }))} />
-                    <RateField label="Promo rate (per night, 0 = none)" value={draft.promo}
-                      onChange={v => setEdits(s => ({ ...s, [room.id]: { ...s[room.id], promo: v } }))} />
+                    <RateField label="Price (per night)" value={draft.price}
+                      onChange={v => setEdits(s => ({ ...s, [room.id]: { ...s[room.id], price: v } }))} />
+                    <RateField label="Beds (breakfast = ₱150 × beds)" value={draft.beds}
+                      onChange={v => setEdits(s => ({ ...s, [room.id]: { ...s[room.id], beds: v } }))} />
                   </div>
+                  <p className="text-[11px] text-muted">
+                    Breakfast is charged once for the stay at ₱150 for each bed — a room with 3 bunk beds counts as 6. Leave it at 0 and the room keeps the old per-person breakfast until you fill it in.
+                  </p>
                   <div className="flex items-center gap-3">
                     <button type="button" onClick={() => handleSave(room)} disabled={savingId === room.id}
                       className="inline-flex items-center gap-1.5 bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-60">
                       {savingId === room.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                      Save {room.name} rate
+                      Save {room.name}
                     </button>
                     {savedId === room.id && (
                       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">

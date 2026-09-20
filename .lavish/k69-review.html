@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>k69 · the guest tab — review, updated</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-700:#2E2E2E; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-100:#332B18; --color-gold-800:#E6C989;
+    --color-paper-50:#141414; --color-paper-100:#2A2A2A; --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A;
+    --color-danger-500:#F87171; --color-danger-50:#2A1615;
+    --color-good-600:#34D399; --color-good-50:#12261F;
+    --font-display:"Sora",system-ui,sans-serif;
+    --font-sans:"DM Sans",system-ui,sans-serif;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-100:#332B18;--gold-800:#E6C989;--paper-100:#2A2A2A;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--danger:#F87171;--good:#34D399;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,h4,li,label,button,td,th,span,b,code,i,summary){overflow-wrap:anywhere}
+  svg{max-width:100%;height:auto;display:block}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:#1F1F1F;border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(28,28,28,.07)}
+  .cap{font-size:13px;color:var(--ink-500);margin:10px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .tile{background:#1F1F1F;border:1px solid var(--paper-200);border-radius:10px;padding:11px 13px}
+  .money{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:6px 0;border-bottom:1px dashed var(--paper-200)}
+  .money:last-of-type{border-bottom:0}
+  .slip{background:#E6E2DA;border:1px solid var(--paper-300);border-radius:6px;padding:9px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#000;width:215px}
+  .slip .r{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;margin-top:3px}
+  .slip hr{border:0;border-top:1px dashed #6B6B6B;margin:6px 0}
+  .app{background:#181818;border:1px solid var(--paper-300);border-radius:10px;padding:10px;font-size:12px}
+  .appbox{background:#1F1F1F;border:1px solid var(--paper-200);border-radius:8px;padding:8px 9px}
+  .approw{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--paper-100);font-size:12px}
+  .approw:last-child{border-bottom:0}
+  .chk{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--paper-200);font-size:13.5px;line-height:1.35;cursor:pointer}
+  .chk:last-of-type{border-bottom:0}
+  .chk input{margin-top:3px;flex:none;width:16px;height:16px;accent-color:#F87171}
+  .qbtn{background:var(--gold-400);color:#141414;font-weight:700;font-size:13px;border:0;border-radius:8px;padding:9px 15px;cursor:pointer;font-family:inherit}
+  .qbtn.red{background:var(--danger);color:#F7F3EC}
+  @media (max-width:640px){.slip{width:100%}}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-5xl px-5 py-8 lg:px-8 space-y-6">
+
+  <header>
+    <p class="pill mb-2" style="background:#332B18;color:#E6C989">Updated after your review</p>
+    <h1 class="text-3xl lg:text-4xl font-bold tracking-tight">The guest tab — k69</h1>
+    <p class="cap mt-2">You said three things. Two were my mistakes in explaining, one was a real change — and that one is already built.</p>
+  </header>
+
+  <!-- ── what your review changed ─────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-3">What your three notes changed</h2>
+    <div class="grid gap-3 md:grid-cols-3">
+      <div class="tile" style="border-color:var(--good)">
+        <p class="pill mb-1" style="background:#12261F;color:var(--good)">Built ✓</p>
+        <p class="text-[13.5px] font-bold mb-1">The restaurant charges the room — in the restaurant</p>
+        <p class="text-[13px] text-ink-600">No menu board in the booking slide-over any more. The Restaurant screen has a <b>Charge to a room</b> list: pick the guest who is in the hotel, and their food goes on their bill. The booking's Guest tab now shows the food, the total and a button that takes you there with the guest already open.</p>
+      </div>
+      <div class="tile">
+        <p class="pill mb-1" style="background:#2A2A2A;color:#C9C4BB">My mistake</p>
+        <p class="text-[13.5px] font-bold mb-1">The money example I showed you</p>
+        <p class="text-[13px] text-ink-600">You are right: a guest must settle the rest <b>at check-in</b> before they can order anything, so the "food inside the deposit" case I drew cannot happen. The money section below is rewritten around the real sequence.</p>
+      </div>
+      <div class="tile">
+        <p class="pill mb-1" style="background:#2A2A2A;color:#C9C4BB">My wording</p>
+        <p class="text-[13.5px] font-bold mb-1">"A4 guest bill" was jargon</p>
+        <p class="text-[13px] text-ink-600">It is the guest's <b>printed bill</b> — the big one on ordinary A4 paper, the Guest Billing Statement. It says below exactly when it is printed and who prints it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── the new restaurant screen ────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--good)">
+    <div class="flex items-baseline justify-between gap-3 flex-wrap">
+      <h2 class="text-lg font-bold">The Restaurant screen now does both jobs</h2>
+      <span class="pill" style="background:#12261F;color:var(--good)">built ✓</span>
+    </div>
+    <p class="cap mt-1 mb-3">This is what the screen looks like. Charging a room is the first thing on the left, because that is the common case in a restaurant attached to rooms.</p>
+    <div class="app">
+      <div class="grid gap-3 md:grid-cols-[300px_minmax(0,1fr)]">
+        <div class="space-y-2">
+          <div class="appbox">
+            <p style="font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#A8A29A">Charge to a room</p>
+            <div style="border:1px solid var(--paper-200);border-radius:6px;padding:3px 6px;margin:6px 0;color:#A8A29A">Guest name or room</div>
+            <div class="approw" style="background:#332B18;border-radius:6px;padding:5px 6px">
+              <span><b>Room 3</b> · Mr. Cruz</span><span style="color:#A8A29A">in since Sep 18</span>
+            </div>
+            <div class="approw"><span><b>Room 7</b> · Mrs. Lim</span><span style="color:#A8A29A">in since Sep 19</span></div>
+            <div class="approw"><span><b>Vacation House</b> · Reyes family</span><span style="color:#A8A29A">in since Sep 17</span></div>
+          </div>
+          <div class="appbox">
+            <p style="font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#A8A29A">Open a tab for a diner</p>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <div style="flex:1;border:1px solid var(--paper-200);border-radius:6px;padding:4px 6px;color:#A8A29A">Name</div>
+              <div style="flex:1;border:1px solid var(--paper-200);border-radius:6px;padding:4px 6px;color:#A8A29A">Table</div>
+            </div>
+            <p style="margin:6px 0 0;font-size:10.5px;color:#A8A29A">They pay at the counter.</p>
+          </div>
+          <div class="appbox">
+            <p style="font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#A8A29A">Open now</p>
+            <div class="approw"><span>Table 2</span><b>₱330</b></div>
+            <div class="approw"><span>Mr. Tan</span><b>₱180</b></div>
+          </div>
+        </div>
+        <div class="appbox">
+          <p style="margin:0 0 8px;font-size:12.5px;font-weight:700">
+            <span class="pill" style="background:#332B18;color:#E6C989">On the room</span>
+            <span style="margin-left:6px">Room 3 · Mr. Cruz</span>
+          </p>
+          <div style="border:1px solid var(--paper-200);border-radius:6px;overflow:hidden">
+            <div class="approw" style="padding:7px 9px"><span><b>Hotsilog</b><br><span style="font-size:10.5px;color:#A8A29A">₱150</span></span><b>₱150</b></div>
+            <div class="approw" style="padding:7px 9px"><span><b>2 × San Mig Light</b><br><span style="font-size:10.5px;color:#A8A29A">2 × ₱90</span></span><b>₱180</b></div>
+            <div class="approw" style="padding:7px 9px"><span><b>Pancit Canton</b><br><span style="font-size:10.5px;color:#A8A29A">₱220</span></span><b>₱220</b></div>
+          </div>
+          <div class="approw" style="border:0"><span style="color:#A8A29A;font-weight:600">On the tab</span><b>₱550</b></div>
+          <p style="margin:8px 0 0;background:#181818;border:1px solid var(--paper-200);border-radius:8px;padding:7px 9px">
+            <b>Goes on the room bill.</b> It is received with the rest of the stay at check-out — a diner with no room settles at the counter instead.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="grid gap-3 md:grid-cols-2 mt-3">
+      <div class="tile">
+        <p class="text-[13.5px] font-bold mb-1">And in the booking slide-over</p>
+        <p class="text-[13px] text-ink-600">The Guest tab still lists the food, the running total, the bin and the print button — but no menu. In its place: <i>"Orders are taken in the Restaurant screen"</i> and a gold <b>Take orders for this guest</b> button that opens the restaurant with that guest ready.</p>
+      </div>
+      <div class="tile">
+        <p class="text-[13.5px] font-bold mb-1">Only guests in the hotel can be charged</p>
+        <p class="text-[13px] text-ink-600">The list is exactly the people who are checked in and not yet checked out — your rule, so nobody orders over the phone. Nobody checked in? The list says so instead of showing an empty box.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── the money, corrected ─────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--gold-400)">
+    <h2 class="text-lg font-bold mb-1">The money, in the right order this time</h2>
+    <p class="cap mt-1 mb-3">You were right, and here is the sequence as it actually is — three steps, and food only exists in the third.</p>
+    <div class="grid gap-4 md:grid-cols-3">
+      <div class="tile">
+        <p class="pill mb-2" style="background:#2A2A2A;color:#C9C4BB">Step 1 · Booking</p>
+        <p class="text-[13px] mb-2">The guest books and pays the agreed <b>deposit</b> or the full amount.</p>
+        <div class="money"><span>Room, 2 nights</span><b>₱2,000</b></div>
+        <div class="money"><span>Deposit (half the room)</span><b style="color:var(--good)">₱1,000</b></div>
+        <div class="money"><span>Still to receive</span><b>₱1,000</b></div>
+        <p class="cap mb-0">Worked out from the <b>room alone</b> — the food does not exist yet.</p>
+      </div>
+      <div class="tile">
+        <p class="pill mb-2" style="background:#2A2A2A;color:#C9C4BB">Step 2 · Check-in</p>
+        <p class="text-[13px] mb-2">The desk receives <b>the rest of the stay</b> and checks the guest in. Only now can they order anything.</p>
+        <div class="money"><span>Received at check-in</span><b>₱1,000</b></div>
+        <div class="money"><span>Stay paid in full</span><b style="color:var(--good)">₱2,000</b></div>
+        <div class="money"><span>Owed at this moment</span><b>₱0</b></div>
+        <p class="cap mb-0">The guest's tab is unlocked here, and it is empty.</p>
+      </div>
+      <div class="tile" style="border-color:var(--gold-400)">
+        <p class="pill mb-2 bg-gold-100 text-gold-800">Step 3 · During the stay</p>
+        <p class="text-[13px] mb-2">They eat. The food goes on the bill, and it is <b>received at check-out</b>.</p>
+        <div class="money"><span>Hotsilog, 2 beers, pancit</span><b>₱550</b></div>
+        <div class="money"><span>Stay (already paid)</span><b>₱2,000</b></div>
+        <div class="money"><span><b>Owed at check-out</b></span><b>₱550</b></div>
+        <p class="cap mb-0">Add food to a booking that was fully paid and the badge correctly goes back to <i>Partial</i>.</p>
+      </div>
+    </div>
+    <p class="cap mb-0"><b class="text-ink-900">So what was the "deposit stays room-only" rule for?</b> It keeps the deposit worked out from the room even if a tab somehow exists — a safety net under a case your check-in rule already prevents. It never asks a guest for half of a lunch they have not ordered.</p>
+  </section>
+
+  <!-- ── the printed bill, explained ──────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">"The A4 guest bill" — what it is and when it happens</h2>
+    <p class="cap mt-1 mb-3">Sorry: that was my shorthand. It is the <b>Guest Billing Statement</b> — the full bill on ordinary A4 paper, not the small till roll. It is printed in three moments:</p>
+    <div class="grid gap-3 md:grid-cols-3">
+      <div class="tile">
+        <p class="text-[13.5px] font-bold mb-1">When a booking is made</p>
+        <p class="text-[13px] text-ink-600">Straight after creating a walk-in or phone booking, the statement is what you hand the guest — no money is taken at that point.</p>
+      </div>
+      <div class="tile">
+        <p class="text-[13.5px] font-bold mb-1">When the guest asks for a bill</p>
+        <p class="text-[13px] text-ink-600">From the booking's quick view: <b>Print billing statement</b>. This is the one to use when a guest wants to see everything in writing mid-stay.</p>
+      </div>
+      <div class="tile">
+        <p class="text-[13.5px] font-bold mb-1">At check-out</p>
+        <p class="text-[13px] text-ink-600">The bill handed over when they settle — now including the food rows under the room, so the paper matches what is owed.</p>
+      </div>
+    </div>
+    <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_215px] mt-4">
+      <div class="tile">
+        <p class="text-[13.5px] font-bold mb-2">What that page shows for a guest with food</p>
+        <div class="money"><span>Room · 2 nights</span><b>₱2,000</b></div>
+        <div class="money"><span>Restaurant &amp; bar · Hotsilog</span><b>₱150</b></div>
+        <div class="money"><span>Restaurant &amp; bar · 2 × San Mig Light</span><b>₱180</b></div>
+        <div class="money"><span>Restaurant &amp; bar · Pancit Canton</span><b>₱220</b></div>
+        <div class="money"><span><b>Sub-Total</b></span><b>₱2,550</b></div>
+        <p class="cap mb-0">The food is printed as its own rows under the room, named <i>Restaurant &amp; bar</i>, so the guest can see what the ₱550 was.</p>
+      </div>
+      <div>
+        <div class="slip">
+          <p style="text-align:center;font-size:11px;font-weight:700;margin:0">DAWEEZ PENSION HOUSE</p>
+          <p style="text-align:center;font-size:8.5px;font-weight:700;margin:1px 0 0">RUNNING TAB</p>
+          <hr>
+          <p style="text-align:center;font-size:8.5px;margin:0;color:#4A4A4A">the small till roll slip</p>
+          <hr>
+          <div class="r"><span>Hotsilog</span><span>₱150</span></div>
+          <div class="r"><span>2 × San Mig Light</span><span>₱180</span></div>
+          <div class="r"><span>Pancit Canton</span><span>₱220</span></div>
+          <hr>
+          <div class="r" style="font-size:11px;font-weight:700"><span>TOTAL SO FAR</span><span>₱550</span></div>
+          <hr>
+          <p style="text-align:center;font-size:9px;font-weight:700;margin:0">NOT A RECEIPT</p>
+        </div>
+        <p class="cap"><b class="text-ink-900">58 mm, on request.</b> This is the other paper — not the bill.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── the flow, corrected ──────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">Two ways a tab happens, now that ordering lives in the restaurant</h2>
+    <p class="cap mt-1 mb-3">The till is one screen for both. What differs is where the money is received.</p>
+    <svg viewBox="0 0 920 250" role="img" aria-labelledby="flowTitle">
+      <title id="flowTitle">A staying guest pays the stay in full at check-in, orders in the Restaurant screen, and the food is received at check-out; a walk-in diner settles at the counter</title>
+      <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto"><path d="M0,0 L7,3.2 L0,6.4 z" fill="#A8A29A"/></marker></defs>
+
+      <text x="12" y="24" font-size="12" font-weight="700" fill="#E6C989">A guest staying in a room</text>
+      <g><rect x="12" y="36" width="158" height="58" rx="10" fill="#1F1F1F" stroke="#D0AB60" stroke-width="1.5"/>
+        <text x="91" y="58" text-anchor="middle" font-size="11.5" font-weight="700" fill="#EDEAE4">Check in</text>
+        <text x="91" y="74" text-anchor="middle" font-size="9.5" fill="#A8A29A">the rest of the stay is received</text></g>
+      <line x1="170" y1="65" x2="190" y2="65" stroke="#A8A29A" stroke-width="1.5" marker-end="url(#ar)"/>
+      <g><rect x="194" y="36" width="158" height="58" rx="10" fill="#1F1F1F" stroke="#3A3A3A"/>
+        <text x="273" y="58" text-anchor="middle" font-size="11.5" font-weight="700" fill="#EDEAE4">Eat in the restaurant</text>
+        <text x="273" y="74" text-anchor="middle" font-size="9.5" fill="#A8A29A">find the guest, tap the dishes</text></g>
+      <line x1="352" y1="65" x2="372" y2="65" stroke="#A8A29A" stroke-width="1.5" marker-end="url(#ar)"/>
+      <g><rect x="376" y="36" width="158" height="58" rx="10" fill="#332B18" stroke="#D0AB60"/>
+        <text x="455" y="58" text-anchor="middle" font-size="11.5" font-weight="700" fill="#EDEAE4">The tab grows</text>
+        <text x="455" y="74" text-anchor="middle" font-size="9.5" fill="#E6C989">printed on request</text></g>
+      <line x1="534" y1="65" x2="554" y2="65" stroke="#A8A29A" stroke-width="1.5" marker-end="url(#ar)"/>
+      <g><rect x="558" y="36" width="158" height="58" rx="10" fill="#1F1F1F" stroke="#3A3A3A"/>
+        <text x="637" y="58" text-anchor="middle" font-size="11.5" font-weight="700" fill="#EDEAE4">Check-out</text>
+        <text x="637" y="74" text-anchor="middle" font-size="9.5" fill="#A8A29A">the food is received here</text></g>
+      <line x1="716" y1="65" x2="736" y2="65" stroke="#A8A29A" stroke-width="1.5" marker-end="url(#ar)"/>
+      <g><rect x="740" y="36" width="158" height="58" rx="10" fill="#12261F" stroke="#34D399"/>
+        <text x="819" y="58" text-anchor="middle" font-size="11.5" font-weight="700" fill="#EDEAE4">Receipt + bill</text>
+        <text x="819" y="74" text-anchor="middle" font-size="9.5" fill="#34D399">food rows under the room</text></g>
+
+      <text x="12" y="136" font-size="12" font-weight="700" fill="#E6C989">A diner who just walked in</text>
+      <g><rect x="12" y="148" width="158" height="58" rx="10" fill="#1F1F1F" stroke="#3A3A3A"/>
+        <text x="91" y="170" text-anchor="middle" font-size="11.5" font-weight="700" fill="#EDEAE4">Diner sits down</text>
+        <text x="91" y="186" text-anchor="middle" font-size="9.5" fill="#A8A29A">no room, no booking</text></g>
+      <line x1="170" y1="177" x2="190" y2="177" stroke="#A8A29A" stroke-width="1.5" marker-end="url(#ar)"/>
+      <g><rect x="194" y="148" width="158" height="58" rx="10" fill="#1F1F1F" stroke="#D0AB60" stroke-width="1.5"/>
+        <text x="273" y="170" text-anchor="middle" font-size="11.5" font-weight="700" fill="#EDEAE4">Open a tab</text>
+        <text x="273" y="186" text-anchor="middle" font-size="9.5" fill="#A8A29A">a name or a table</text></g>
+      <line x1="352" y1="177" x2="372" y2="177" stroke="#A8A29A" stroke-width="1.5" marker-end="url(#ar)"/>
+      <g><rect x="376" y="148" width="158" height="58" rx="10" fill="#1F1F1F" stroke="#3A3A3A"/>
+        <text x="455" y="170" text-anchor="middle" font-size="11.5" font-weight="700" fill="#EDEAE4">Tap the dishes</text>
+        <text x="455" y="186" text-anchor="middle" font-size="9.5" fill="#A8A29A">same till as a stay</text></g>
+      <line x1="534" y1="177" x2="554" y2="177" stroke="#A8A29A" stroke-width="1.5" marker-end="url(#ar)"/>
+      <g><rect x="558" y="148" width="158" height="58" rx="10" fill="#332B18" stroke="#D0AB60"/>
+        <text x="637" y="170" text-anchor="middle" font-size="11.5" font-weight="700" fill="#EDEAE4">Settle at the counter</text>
+        <text x="637" y="186" text-anchor="middle" font-size="9.5" fill="#E6C989">the tab's own total</text></g>
+      <line x1="716" y1="177" x2="736" y2="177" stroke="#A8A29A" stroke-width="1.5" marker-end="url(#ar)"/>
+      <g><rect x="740" y="148" width="158" height="58" rx="10" fill="#12261F" stroke="#34D399"/>
+        <text x="819" y="170" text-anchor="middle" font-size="11.5" font-weight="700" fill="#EDEAE4">Numbered receipt</text>
+        <text x="819" y="186" text-anchor="middle" font-size="9.5" fill="#34D399">prints straight away</text></g>
+    </svg>
+  </section>
+
+  <!-- ── where everything lives ───────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">Where everything lives now</h2>
+    <p class="cap mt-1 mb-3">Updated for the change — ordering is on the restaurant screen for both kinds of guest.</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-[13px]" style="border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:1px solid var(--paper-300)">
+            <th class="py-2 pr-3 text-[10px] font-bold uppercase tracking-wider text-ink-500">What</th>
+            <th class="py-2 text-[10px] font-bold uppercase tracking-wider text-ink-500">Where</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--paper-200)"><td class="py-2.5 pr-3 font-bold">Charge a guest's room</td><td class="py-2.5"><b>Restaurant</b> → <i>Charge to a room</i> → pick the guest</td></tr>
+          <tr style="border-bottom:1px solid var(--paper-200)"><td class="py-2.5 pr-3 font-bold">Order for a guest in a room</td><td class="py-2.5">Same screen, right side — the menu board is there</td></tr>
+          <tr style="border-bottom:1px solid var(--paper-200)"><td class="py-2.5 pr-3 font-bold">Jump there from a booking</td><td class="py-2.5">Calendar → booking → <b>Guest tab</b> → <i>Take orders for this guest</i></td></tr>
+          <tr style="border-bottom:1px solid var(--paper-200)"><td class="py-2.5 pr-3 font-bold">A diner with no room</td><td class="py-2.5"><b>Restaurant</b> → <i>Open a tab for a diner</i></td></tr>
+          <tr style="border-bottom:1px solid var(--paper-200)"><td class="py-2.5 pr-3 font-bold">Settle a diner</td><td class="py-2.5">Under the open tab — <i>Receive ₱X &amp; close tab</i></td></tr>
+          <tr style="border-bottom:1px solid var(--paper-200)"><td class="py-2.5 pr-3 font-bold">A guest's food on paper</td><td class="py-2.5">Running printout: <b>Print the tab</b> in the Guest tab</td></tr>
+          <tr style="border-bottom:1px solid var(--paper-200)"><td class="py-2.5 pr-3 font-bold">The whole bill on paper</td><td class="py-2.5"><b>Print billing statement</b> in the booking quick view</td></tr>
+          <tr><td class="py-2.5 pr-3 font-bold">Food money in the report</td><td class="py-2.5"><b>Earnings Report</b> → the <i>Restaurant &amp; bar</i> row and column</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── the one SQL block ────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--danger)">
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+      <h2 class="text-lg font-bold">Done ✓ — you ran the SQL</h2>
+      <span class="pill" style="background:#12261F;color:#34D399">Applied</span>
+    </div>
+    <p class="cap mt-1 mb-3">You ran it and it went through — the guest tab is now stored in the database, not just in the browser. The block is kept below for the record (and in the project as <code>supabase/migrations/20260916120000_tabs_run_once.sql</code>); running it again changes nothing.</p>
+    <pre id="sql-tabs" style="background:#0F0F0F;border:1px solid var(--paper-200);border-radius:10px;padding:12px 14px;font-size:11.5px;line-height:1.55;overflow-x:auto;color:#E8E4DC;margin:0">-- ── Guest tab (k69): everything the tab needs. Safe to run more than once. ──
+
+-- 1. The two tables
+CREATE TABLE IF NOT EXISTS public.tabs (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    booking_id text,
+    label text,
+    table_label text,
+    status text DEFAULT 'open' NOT NULL,
+    opened_at timestamptz DEFAULT timezone('utc'::text, now()) NOT NULL,
+    closed_at timestamptz,
+    opened_by text,
+    created_at timestamptz DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT tabs_status_check CHECK (status IN ('open', 'closed'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS tabs_one_open_per_booking
+    ON public.tabs (booking_id) WHERE status = 'open' AND booking_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS tabs_booking_idx ON public.tabs (booking_id);
+CREATE INDEX IF NOT EXISTS tabs_status_idx ON public.tabs (status);
+
+CREATE TABLE IF NOT EXISTS public.tab_lines (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    tab_id uuid NOT NULL REFERENCES public.tabs(id) ON DELETE RESTRICT,
+    description text NOT NULL,
+    qty numeric DEFAULT 1 NOT NULL,
+    unit_price numeric DEFAULT 0 NOT NULL,
+    amount numeric NOT NULL,
+    kind text DEFAULT 'charge' NOT NULL,
+    corrects_line_id uuid REFERENCES public.tab_lines(id) ON DELETE CASCADE,
+    reason text,
+    created_by text,
+    created_at timestamptz DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT tab_lines_kind_check CHECK (kind IN ('charge', 'correction')),
+    CONSTRAINT tab_lines_correction_check CHECK (
+        kind &lt;&gt; 'correction'
+        OR (corrects_line_id IS NOT NULL AND amount &lt; 0 AND reason IS NOT NULL)
+    ),
+    CONSTRAINT tab_lines_description_check CHECK (length(btrim(description)) &gt; 0)
+);
+CREATE INDEX IF NOT EXISTS tab_lines_tab_idx ON public.tab_lines (tab_id);
+CREATE INDEX IF NOT EXISTS tab_lines_created_idx ON public.tab_lines (created_at);
+
+-- 2. A walk-in tab keeps its own numbered receipts when it is settled at the counter
+ALTER TABLE public.tabs ADD COLUMN IF NOT EXISTS payment_records jsonb;
+
+-- 3. Who may do what — the app works with the public (anon) key
+ALTER TABLE public.tabs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tab_lines ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "public read tabs" ON public.tabs;
+CREATE POLICY "public read tabs" ON public.tabs FOR SELECT TO public USING (true);
+DROP POLICY IF EXISTS "public add tabs" ON public.tabs;
+CREATE POLICY "public add tabs" ON public.tabs FOR INSERT TO public WITH CHECK (true);
+DROP POLICY IF EXISTS "public update tabs" ON public.tabs;
+CREATE POLICY "public update tabs" ON public.tabs FOR UPDATE TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "public read tab_lines" ON public.tab_lines;
+CREATE POLICY "public read tab_lines" ON public.tab_lines FOR SELECT TO public USING (true);
+DROP POLICY IF EXISTS "public add tab_lines" ON public.tab_lines;
+CREATE POLICY "public add tab_lines" ON public.tab_lines FOR INSERT TO public
+    WITH CHECK (kind = 'charge' OR (corrects_line_id IS NOT NULL AND amount &lt; 0));
+DROP POLICY IF EXISTS "public delete tab_lines" ON public.tab_lines;
+CREATE POLICY "public delete tab_lines" ON public.tab_lines FOR DELETE TO public USING (true);
+
+-- 4. Binning a charge takes any correction that answered it with it
+DO $$
+DECLARE c text;
+BEGIN
+    SELECT conname INTO c FROM pg_constraint
+     WHERE conrelid = 'public.tab_lines'::regclass AND contype = 'f'
+       AND conkey = ARRAY[(SELECT attnum::smallint FROM pg_attribute
+                            WHERE attrelid = 'public.tab_lines'::regclass
+                              AND attname = 'corrects_line_id')];
+    IF c IS NOT NULL THEN
+        EXECUTE format('ALTER TABLE public.tab_lines DROP CONSTRAINT %I', c);
+    END IF;
+    ALTER TABLE public.tab_lines
+        ADD CONSTRAINT tab_lines_corrects_line_id_fkey
+        FOREIGN KEY (corrects_line_id) REFERENCES public.tab_lines(id) ON DELETE CASCADE;
+END $$;
+
+-- 5. Live updates, so the other tablets see a new order
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tabs;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tab_lines;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;</pre>
+    <div class="grid gap-3 md:grid-cols-2 mt-3">
+      <div class="tile">
+        <p class="text-[13.5px] font-bold mb-1">What it builds</p>
+        <p class="text-[13px] text-ink-600">Two tables — <code>tabs</code> (the running bill) and <code>tab_lines</code> (the food on it) — with public read/write for the staff app, a line that can be binned but never rewritten, a place for a settled diner's receipts, and live updates for the other tablets.</p>
+      </div>
+      <div class="tile">
+        <p class="text-[13.5px] font-bold mb-1">How to tell it worked</p>
+        <p class="text-[13px] text-ink-600">Add a dish to a tab, then <b>reload the page</b>. If the dish is still on the tab, the database is doing its job. If it vanished, the SQL did not run — send me the error text and I will read it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── what to try ──────────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--gold-400)">
+    <p class="pill bg-gold-100 text-gold-800 mb-2">Your review</p>
+    <h2 class="text-lg font-bold mb-1">Eight things to try — tick the ones that go wrong</h2>
+    <p class="cap mt-1 mb-2">Tick only what misbehaves, then press the red button. I get the exact list and work through every one.</p>
+    <form data-lavish-question="k69-checks-2"
+      onsubmit="event.preventDefault(); const picked=[...event.currentTarget.querySelectorAll('input[name=checks]:checked')].map(i=>({id:i.value,label:i.dataset.label,disposition:'failed'})); if(!picked.length){return;} window.lavish.queuePrompt('These k69 checks failed or looked wrong. Fix them and give me an item-by-item report — account for every submitted ID (addressed with evidence, deferred with a reason, or rejected with a reason) before reporting completion.', {tag:'tracked-batch', text:'k69 checks that failed: '+picked.length, element:event.currentTarget, data:{items:picked}});">
+      <label class="chk"><input type="checkbox" name="checks" value="T1" data-label="Restaurant shows the checked-in guests"><span><b>T1</b> — <b>Restaurant</b> shows a <i>Charge to a room</i> list with everyone who is checked in; nobody checked in shows a plain sentence, not an empty box.</span></label>
+      <label class="chk"><input type="checkbox" name="checks" value="T2" data-label="Charging a room opens that guest's tab"><span><b>T2</b> — Pick a guest: their tab opens on the right marked <i>On the room</i>, and there is <b>no</b> counter settle button on it.</span></label>
+      <label class="chk"><input type="checkbox" name="checks" value="T3" data-label="Tap a dish for a room guest"><span><b>T3</b> — Tap a dish: it lands on that guest's tab, and the same dish tapped twice cannot land unnoticed (count badge).</span></label>
+      <label class="chk"><input type="checkbox" name="checks" value="T4" data-label="Booking quick view has no menu and jumps to the till"><span><b>T4</b> — In a booking's <b>Guest tab</b>: no menu board, the lines and total are there, and <i>Take orders for this guest</i> lands on the Restaurant screen with that guest open.</span></label>
+      <label class="chk"><input type="checkbox" name="checks" value="T5" data-label="Tab locked before check-in"><span><b>T5</b> — On a booking that is <b>not</b> checked in: <i>Check the guest in first</i>, and no ordering anywhere.</span></label>
+      <label class="chk"><input type="checkbox" name="checks" value="T6" data-label="Walk-in tab still settles at the counter"><span><b>T6</b> — A diner's tab still settles at the counter and prints its receipt; the tab leaves the list.</span></label>
+      <label class="chk"><input type="checkbox" name="checks" value="T7" data-label="Printed bill shows the food rows"><span><b>T7</b> — <b>Print billing statement</b>: the food appears as <i>Restaurant &amp; bar</i> rows and the Sub-Total is right.</span></label>
+      <label class="chk"><input type="checkbox" name="checks" value="T8" data-label="Earnings Report has the Restaurant & bar line"><span><b>T8</b> — <b>Earnings Report</b>: the <i>Restaurant &amp; bar</i> row and column carry the food money, and Total Money In counts it.</span></label>
+      <div class="pt-3" style="border-top:1px solid var(--paper-200);margin-top:12px">
+        <button type="submit" class="qbtn red">Send the failing checks</button>
+        <span class="cap inline ml-2">Or tell me in the note what looks off.</span>
+      </div>
+    </form>
+  </section>
+
+  <!-- ── limits ───────────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">Where I stopped, and why</h2>
+    <div class="space-y-2">
+      <p class="text-[13px]"><b class="text-ink-900">The report counts food when it is ordered, not when it is paid.</b> That matches how rooms are counted (a confirmed stay counts even while unpaid). Say the word if you would rather it follow the money.</p>
+      <p class="text-[13px]"><b class="text-ink-900">A guest's tab is never settled in the restaurant.</b> Their food joins the bill they already have, so the counter screen is only for diners with no room. That is deliberate — two ways to take the same money would be one too many.</p>
+      <p class="text-[13px]"><b class="text-ink-900">Only guests who are in the hotel appear in the charge list</b> — checked in, not yet checked out. A booking that has not arrived cannot be charged, which is the rule you set.</p>
+      <p class="text-[13px]"><b class="text-ink-900">Three restaurant follow-ups are still open on card k70</b>: editing the menu and prices yourself (k105), a photo on each dish tile (k107), and buttons for cooking choices (k109).</p>
+      <p class="text-[13px]" style="color:var(--danger)"><b>Yes — one block of SQL, run once.</b> It is in the section just above, with a Copy button. Without it a tab saves only in the browser and comes back wrong after a reload.</p>
+    </div>
+  </section>
+
+  <footer class="card p-4">
+    <p class="cap mt-0"><b class="text-ink-900">Nothing outside the guest tab changed.</b> The booking flow, the deposit rule, the balance rule and every other screen behave exactly as they did.</p>
+  </footer>
+
+</main>
+</body>
+</html>

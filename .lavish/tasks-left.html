@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What's left to do</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-700:#C9C4BB; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-100:#332B18; --color-gold-800:#E6C989;
+    --color-paper-50:#141414; --color-paper-100:#2A2A2A; --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A;
+    --color-danger-500:#F87171; --color-danger-50:#2A1615;
+    --color-good-600:#34D399; --color-good-50:#12261F;
+    --font-display:"Sora",system-ui,sans-serif;
+    --font-sans:"DM Sans",system-ui,sans-serif;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-100:#332B18;--gold-800:#E6C989;--paper-100:#2A2A2A;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--danger:#F87171;--good:#34D399;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,h4,li,label,button,td,th,span,b,code,i,em){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.35)}
+  .cap{font-size:13px;color:var(--ink-500);margin:10px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .row{display:grid;grid-template-columns:minmax(0,40px) minmax(0,1fr) auto;gap:10px;align-items:start;padding:9px 0;border-bottom:1px solid var(--paper-200)}
+  .row:last-of-type{border-bottom:0}
+  .num{font-family:"Sora",sans-serif;font-weight:700;font-size:13px;color:var(--gold-800)}
+  @media (max-width:640px){.row{grid-template-columns:minmax(0,34px) minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-5xl px-5 py-8 lg:px-8 space-y-6">
+
+  <header>
+    <p class="pill mb-2" style="background:#332B18;color:#E6C989">31 cards · 24 to do · 1 in progress · 6 in review</p>
+    <h1 class="text-3xl lg:text-4xl font-bold tracking-tight">What's left to do</h1>
+    <p class="cap mt-2">Everything from your changes file that is not built yet, in the order I would do it. <b class="text-ink-900">SQL</b> marks the ones that need a change in Supabase; <b class="text-ink-900">you</b> marks the ones that need a decision or a password from you first.</p>
+  </header>
+
+  <!-- ── finish the booking process ───────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--gold-400)">
+    <p class="pill mb-2" style="background:#332B18;color:#E6C989">Next — finish the booking process</p>
+    <h2 class="text-lg font-bold mb-1">1 · The rest of the booking form and its paper</h2>
+    <p class="cap mt-1 mb-2">Cards k134, k138, k140, k142, k144, k146, k148, k150.</p>
+    <div>
+      <div class="row">
+        <span class="num">k138</span>
+        <p class="text-[13.5px]"><b>Add-ons behind a More button, suited to the unit</b><br><span class="text-[12.5px] text-ink-600">A room is never offered a tent: rooms show linens, toiletries, an extra bed and breakfast; venues show tables, chairs, tent, water and extra hours. Everything else sits behind <i>More add-ons</i>.</span></p>
+        <span class="pill" style="background:#12261F;color:#34D399">no SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k140<br>k142</span>
+        <p class="text-[13.5px]"><b>Breakfast: ₱150 × the room's beds, once, inside the room rate</b><br><span class="text-[12.5px] text-ink-600">Each room gets a <b>number of beds</b> in Settings, and breakfast is charged once for the stay and folded into the room line — no breakfast row on the bill. This retires the day-by-day breakfast recorder.</span></p>
+        <span class="pill" style="background:#2A1615;color:#F87171">SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k134</span>
+        <p class="text-[13.5px]"><b>Open the new booking in the quick view after the bill</b><br><span class="text-[12.5px] text-ink-600">Statement first, then the booking you just made opens itself, instead of leaving you to hunt for it on the calendar.</span></p>
+        <span class="pill" style="background:#12261F;color:#34D399">no SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k148</span>
+        <p class="text-[13.5px]"><b>Vacation House: ₱2,000 reservation + ₱2,000 safety deposit</b><br><span class="text-[12.5px] text-ink-600">Flat ₱2,000 to reserve (never half), plus ₱2,000 kept aside and handed back at check-out as a refund line once you confirm no damage.</span></p>
+        <span class="pill" style="background:#2A1615;color:#F87171">SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k144</span>
+        <p class="text-[13.5px]"><b>Guest bill on A5</b><br><span class="text-[12.5px] text-ink-600">The statement is laid out for A5 paper. The 58 mm receipt is untouched.</span></p>
+        <span class="pill" style="background:#12261F;color:#34D399">no SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k146</span>
+        <p class="text-[13.5px]"><b>Email the bill and the receipt, from your Gmail</b><br><span class="text-[12.5px] text-ink-600">Only when staff press the button. Nothing sends by itself.</span></p>
+        <span class="pill" style="background:#2A1615;color:#F87171">you: app password</span>
+      </div>
+      <div class="row">
+        <span class="num">k150</span>
+        <p class="text-[13.5px]"><b>A photo of the payment, with the reference read from it</b><br><span class="text-[12.5px] text-ink-600">The photo is kept as proof and the reference box is filled by reading it; staff can correct what it read.</span></p>
+        <span class="pill" style="background:#2A1615;color:#F87171">you + SQL</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── restaurant ───────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">2 · The restaurant</h2>
+    <p class="cap mt-1 mb-2">Cards k105, k107, k109, k152.</p>
+    <div>
+      <div class="row">
+        <span class="num">k152</span>
+        <p class="text-[13.5px]"><b>Tables as tappable pills — several per tab, edited in Settings</b><br><span class="text-[12.5px] text-ink-600">No more typing "Table 2". One tab can sit on two tables; a table already running a tab shows as taken.</span></p>
+        <span class="pill" style="background:#2A1615;color:#F87171">SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k105</span>
+        <p class="text-[13.5px]"><b>Edit the menu and the prices yourself</b><br><span class="text-[12.5px] text-ink-600">Add a dish, rename one, change a price, retire one — without asking me. The menu tables are already in the database.</span></p>
+        <span class="pill" style="background:#12261F;color:#34D399">no SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k107</span>
+        <p class="text-[13.5px]"><b>Photos of the dishes on the tiles</b><br><span class="text-[12.5px] text-ink-600">A picture per dish so a new waiter finds it faster.</span></p>
+        <span class="pill" style="background:#2A1615;color:#F87171">SQL (storage)</span>
+      </div>
+      <div class="row">
+        <span class="num">k109</span>
+        <p class="text-[13.5px]"><b>Cooking choices on a dish (buttered / sinagang / tinola)</b><br><span class="text-[12.5px] text-ink-600">Buttons on the tile instead of a note the waiter has to say out loud.</span></p>
+        <span class="pill" style="background:#12261F;color:#34D399">no SQL</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── calendar & front desk ────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">3 · The calendar and the front desk</h2>
+    <p class="cap mt-1 mb-2">Cards k91, k93, k154, k73, k75 — and your Bookings-tab question sits here.</p>
+    <div>
+      <div class="row">
+        <span class="num">k91</span>
+        <p class="text-[13.5px]"><b>Block dates from the calendar toolbar</b><br><span class="text-[12.5px] text-ink-600">The thing that started all of this: a <b>Block dates</b> button beside <b>Log old booking</b>, and the reason shown on the calendar.</span></p>
+        <span class="pill" style="background:#12261F;color:#34D399">no SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k154</span>
+        <p class="text-[13.5px]"><b>The calendar starts at today</b><br><span class="text-[12.5px] text-ink-600">Today is the first column, with the days ahead beside it.</span></p>
+        <span class="pill" style="background:#12261F;color:#34D399">no SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k93</span>
+        <p class="text-[13.5px]"><b>Stays with no check-out date</b><br><span class="text-[12.5px] text-ink-600">The paper log never forced one. Needs a short talk with the front desk about how it is really handled.</span></p>
+        <span class="pill" style="background:#2A1615;color:#F87171">you</span>
+      </div>
+      <div class="row">
+        <span class="num">—</span>
+        <p class="text-[13.5px]"><b>The Bookings tab: what should it be?</b><br><span class="text-[12.5px] text-ink-600">My recommendation is on its own page — make it the <b>front desk screen</b>: today's arrivals and departures with Check in / Check out, who owes below with a Receive button.</span></p>
+        <span class="pill" style="background:#2A1615;color:#F87171">you</span>
+      </div>
+      <div class="row">
+        <span class="num">k73</span>
+        <p class="text-[13.5px]"><b>Money and performance view for the whole hotel</b><br><span class="text-[12.5px] text-ink-600">One page for how the hotel is doing — rooms, food, and what is left.</span></p>
+        <span class="pill" style="background:#12261F;color:#34D399">no SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k75</span>
+        <p class="text-[13.5px]"><b>Navigation: group the tabs into four parts</b><br><span class="text-[12.5px] text-ink-600">So staff stop hunting for a screen.</span></p>
+        <span class="pill" style="background:#12261F;color:#34D399">no SQL</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── back office ──────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">4 · The back office</h2>
+    <p class="cap mt-1 mb-2">Cards k71, k72, k74.</p>
+    <div>
+      <div class="row">
+        <span class="num">k71</span>
+        <p class="text-[13.5px]"><b>Inventory for food, drinks and hotel supplies</b><br><span class="text-[12.5px] text-ink-600">Supplies are tracked today; food and drinks are not, so a shortage is only noticed when a guest orders it.</span></p>
+        <span class="pill" style="background:#2A1615;color:#F87171">SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k72</span>
+        <p class="text-[13.5px]"><b>Housekeeping room board</b><br><span class="text-[12.5px] text-ink-600">One glance at which rooms are clean, being cleaned, or waiting.</span></p>
+        <span class="pill" style="background:#12261F;color:#34D399">no SQL</span>
+      </div>
+      <div class="row">
+        <span class="num">k74</span>
+        <p class="text-[13.5px]"><b>Know who did it — staff names and PINs</b><br><span class="text-[12.5px] text-ink-600">Every action carries the name of the person who did it, instead of one shared passcode.</span></p>
+        <span class="pill" style="background:#2A1615;color:#F87171">SQL</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── parked & fixed ───────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <div class="grid gap-4 md:grid-cols-2">
+      <div>
+        <p class="pill mb-1" style="background:#2A2A2A;color:#C9C4BB">Parked, as you asked</p>
+        <p class="text-[13.5px]"><b>k156 — Airbnb / Booking.com / Agoda.</b> <span class="text-[12.5px] text-ink-600">Last in the queue; nothing deleted.</span></p>
+      </div>
+      <div>
+        <p class="pill mb-1" style="background:#12261F;color:#34D399">Already fixed, waiting on you to try</p>
+        <p class="text-[13px] text-ink-600">k120 the receipt printing the booking · k122 the booking charging the price it shows · k124 the missing <i>Prepared by</i> name · plus the five booking-form cards now in Review (k126, k128, k130, k132, k136).</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="card p-4">
+    <p class="cap mt-0"><b class="text-ink-900">Three things only you can settle:</b> the <b>agencies</b> talk (my standing reminder), your pick for the <b>Bookings tab</b>, and a <b>Gmail app password</b> for the emailed bill. And one thing to run: the <b>agreed-deposit SQL</b> from the last message.</p>
+  </footer>
+
+</main>
+</body>
+</html>

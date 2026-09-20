@@ -36,6 +36,7 @@ export function recomputeBalance(
     venueDayBlocks: base.venue_day_blocks,
     breakfastDays: base.breakfast_days,
     breakfastRecords: base.breakfast_records,
+    breakfastIncluded: base.breakfast_included === true,
     usePromo: (base as Booking & { promo_applied?: boolean }).promo_applied === true,
     rooms: opts.rooms,
     venues: opts.venues,

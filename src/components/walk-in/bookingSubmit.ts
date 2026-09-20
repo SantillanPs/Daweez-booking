@@ -27,7 +27,7 @@ export interface ManualBookingInput {
   source: BookingSource
   status: 'pending' | 'confirmed' | 'blocked'
   equipmentRentals?: EquipmentRental
-  usePromo?: boolean
+  agreedDeposit?: number
   companions?: Companion[]
   partnerDealId?: string
   companyName?: string
@@ -57,6 +57,7 @@ export interface BookingSubmitParams {
   bookingType: 'individual' | 'partner'
   formStatus: 'confirmed' | 'blocked'
   bookingStatus: 'pending' | 'confirmed' | 'blocked'
+  formAgreedDeposit?: number
   formGuestName: string
   formGuestEmail: string
   formGuestPhone: string
@@ -69,8 +70,7 @@ export interface BookingSubmitParams {
   formVehiclePlate: string
   formInvoiceNumber: string
   formSource: BookingSource
-  formUsePromo: boolean
-  formGuestBreakfast: boolean
+  formBreakfastRoomIds: string[]
   formCompanions: Companion[]
   formExtraFoam: number
   formExtraPillow: number
@@ -125,7 +125,6 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
     return { ok: false, error: 'Guest name is required.' }
   }
 
-  const usePromoForBooking = p.formUsePromo
   const createdBookings: Booking[] = []
   const processedBookingIds = new Set<string>()
 
@@ -173,13 +172,15 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         source: p.bookingType === 'partner' ? 'manual' : p.formSource,
         status: p.bookingStatus,
         equipmentRentals: rentals,
-        usePromo: usePromoForBooking,
+        agreedDeposit: p.formAgreedDeposit || undefined,
         companions: p.bookingType === 'partner' ? undefined : (p.formCompanions.length > 0 ? p.formCompanions : undefined),
         partnerDealId: p.formPartnerDealId || undefined,
         companyName: p.formCompanyName || undefined,
         vehiclePlate: p.formVehiclePlate || undefined,
-        breakfastOrders: (p.formGuestBreakfast || p.formCompanions.some(c => c.breakfast)) ? undefined : ([] as BreakfastOrder[]),
-        breakfastIncluded: isBreakfastIncluded,
+        // Breakfast belongs to the ROOM (card k140): the row is marked when the desk
+        // tapped that room's chip, and the charge is ₱150 × the room's beds.
+        breakfastOrders: undefined,
+        breakfastIncluded: isBreakfastIncluded || p.formBreakfastRoomIds.includes(roomId),
         contractRateOverride: contractedPrice || undefined,
         paymentMethod: p.formPaymentMethod || undefined,
         paymentReference: p.formPaymentReference || undefined,
@@ -233,7 +234,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         source: p.bookingType === 'partner' ? 'manual' : p.formSource,
         status: p.bookingStatus,
         equipmentRentals: rentals,
-        usePromo: usePromoForBooking,
+        agreedDeposit: p.formAgreedDeposit || undefined,
         companions: p.bookingType === 'partner' ? undefined : (p.formCompanions.length > 0 ? p.formCompanions : undefined),
         partnerDealId: p.formPartnerDealId || undefined,
         companyName: p.formCompanyName || undefined,

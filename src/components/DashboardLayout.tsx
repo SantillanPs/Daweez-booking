@@ -6,7 +6,6 @@ import {
   Sparkles, RefreshCw, LogOut, BarChart3, TrendingUp,
   Calendar, Settings, Building, BookOpen, Tag, Boxes, Utensils
 } from 'lucide-react'
-import { isPromoActive, setPromoActive } from '../utils/promoMode'
 import { ToastHost } from './Toast'
 import { ConfirmHost } from './ConfirmDialog'
 
@@ -27,30 +26,16 @@ export function DashboardLayout() {
   const {
     rooms, venues, bookings, feeds, partnerDeals, expenses, expenseCategories,
     confirmBooking, cancelBooking, createManualBooking, updateBooking,
-    triggerOTASync, updateFeedUrls, updateRoomRate, isLoading, isConfirmingBooking,
+    triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBeds, isLoading, isConfirmingBooking,
     createPartnerDeal, savePartnerDeals, deletePartnerDeal,
     createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense
   } = useBookings()
 
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('')
   const [isSyncing, setIsSyncing] = useState(false)
-  const [promoActive, setPromoActiveState] = useState(() => isPromoActive())
-  useEffect(() => {
-    const sync = () => setPromoActiveState(isPromoActive())
-    const onStorage = (e: StorageEvent) => { if (e.key === 'daweez_promo_active') sync() }
-    const onPromoToggle = () => sync()
-    window.addEventListener('storage', onStorage)
-    window.addEventListener('promo-toggle' as never, onPromoToggle as never)
-    return () => {
-      window.removeEventListener('storage', onStorage)
-      window.removeEventListener('promo-toggle' as never, onPromoToggle as never)
-    }
-  }, [])
-  const togglePromo = () => {
-    const next = !promoActive
-    setPromoActive(next)
-    setPromoActiveState(next)
-  }
+  // The promo ON/OFF switch is retired (card k128): there is ONE price now, so
+  // there is nothing left to switch. A room's price is simply its price.
+
   const isCalendarTab = location.pathname === '/calendar' || location.pathname === '/'
 
   const handleLogout = () => {
@@ -86,7 +71,7 @@ export function DashboardLayout() {
       rooms, venues, bookings, feeds, partnerDeals, expenses, expenseCategories, isLoading,
       isConfirming: isConfirmingBooking,
       confirmBooking, cancelBooking, createManualBooking, updateBooking,
-      triggerOTASync, updateFeedUrls, updateRoomRate, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
+      triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBeds, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
       createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense,
       onLogout: handleLogout
     }}>
@@ -114,21 +99,7 @@ export function DashboardLayout() {
             </div>
 
             <div className="flex items-center gap-1.5">
-              {/* Promo sale toggle — lives here on the main dashboard per owner's request */}
-              <button
-                type="button"
-                onClick={togglePromo}
-                title={promoActive ? 'Promo ON — guests pay promo price. Click to end promo.' : 'Promo OFF — guests pay regular price. Click to start promo.'}
-                className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] font-bold rounded-xl px-3 py-1.5 border transition-colors cursor-pointer ${
-                  promoActive
-                    ? 'bg-gold-400 text-ink-900 border-gold-600 shadow-sm'
-                    : 'bg-card text-muted border-soft hover:bg-softbg hover:text-main'
-                }`}
-              >
-                <Tag className={`w-3.5 h-3.5 ${promoActive ? 'text-ink-900' : ''}`} />
-                <span className="hidden xl:inline">{promoActive ? 'Promo ON' : 'Promo OFF'}</span>
-                <span className="xl:hidden">{promoActive ? 'ON' : 'OFF'}</span>
-              </button>
+
               <button
                 onClick={handleTriggerSync}
                 disabled={isSyncing}

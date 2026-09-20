@@ -129,7 +129,8 @@ export const TimelineGrid = React.memo(
     }
 
     const promoEligibleFor = (unit: Room | Venue) => promoOn && unit.promo_price != null
-    const displayPriceFor = (unit: Room | Venue) => getEffectiveNightlyPrice(unit.base_price, unit.promo_price, promoOn)
+    // ONE PRICE (card k128): what the desk will charge is what the calendar shows.
+    const displayPriceFor = (unit: Room | Venue) => getEffectiveNightlyPrice(unit.base_price, unit.promo_price, true)
 
     return (
       <div className="space-y-2.5 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">

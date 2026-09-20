@@ -4,8 +4,16 @@ import { supabase, isSupabaseConfigured } from '../utils/supabaseClient'
 import { Booking } from '../types/booking'
 import { BookingSource, BookingStatus } from '../types/booking'
 
-/** Map a raw Supabase row to the app's Booking shape (ALL columns, so live
- *  UPDATE events never strip fields from the cache). */
+/** Map a raw Supabase row to the app's Booking shape.
+ *
+ *  EVERY column the app writes must be mapped here (the same list
+ *  `toBookingRecord` in `utils/db.ts` sends). A missing field is not a cosmetic
+ *  problem: this mapping replaces the cached booking, and the cache is what the
+ *  quick view saves back — so anything left out is silently wiped from the
+ *  database on the next save. That is exactly how the receptionist's
+ *  "Prepared by" name (bug B2), the check-in/check-out times, the recorded
+ *  payments, the staff discount, the block reason and the early/late hours were
+ *  disappearing. Keep this list in step with `Booking` and `toBookingRecord`. */
 function rowToBooking(b: Record<string, unknown>): Booking {
   return {
     id: b.id as string,
@@ -17,6 +25,7 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     guest_gender: (b.guest_gender as string) || undefined,
     guest_nationality: (b.guest_nationality as string) || undefined,
     guest_address: (b.guest_address as string) || undefined,
+    birthdate: (b.birthdate as string) || undefined,
     check_in: b.check_in as string,
     check_out: b.check_out as string,
     source: b.source as BookingSource,
@@ -46,6 +55,17 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     breakfast_records: (b.breakfast_records as Booking['breakfast_records']) || undefined,
     reference_number: (b.reference_number as string) || undefined,
     registered_on: (b.registered_on as string) || undefined,
+    // ── was missing, and each one was being wiped on the next save ──
+    applied_discount: (b.applied_discount as Booking['applied_discount']) || undefined,
+    early_check_in_hours: b.early_check_in_hours != null ? Number(b.early_check_in_hours) : undefined,
+    late_check_out_hours: b.late_check_out_hours != null ? Number(b.late_check_out_hours) : undefined,
+    actual_check_in: (b.actual_check_in as string) || undefined,
+    actual_check_out: (b.actual_check_out as string) || undefined,
+    notes: (b.notes as string) || undefined,
+    prepared_by: (b.prepared_by as string) || undefined,
+    payment_records: (b.payment_records as Booking['payment_records']) || undefined,
+    venue_day_blocks: b.venue_day_blocks != null ? Number(b.venue_day_blocks) : undefined,
+    breakfast_days: (b.breakfast_days as string[]) || undefined,
   }
 }
 

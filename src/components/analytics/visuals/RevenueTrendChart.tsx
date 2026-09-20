@@ -14,15 +14,18 @@ export interface TrendSlot {
   vacationHouse: number
   gardenArea: number
   gazebo: number
+  /** Food and bar money ordered in this slot (k69, part E). */
+  restaurant?: number
 }
 
-interface TrendRow { label: string; source: 'Pension' | 'House' | 'Garden' | 'Gazebo'; revenue: number }
+interface TrendRow { label: string; source: 'Pension' | 'House' | 'Garden' | 'Gazebo' | 'Restaurant'; revenue: number }
 
 const COLORS: Record<TrendRow['source'], string> = {
   Pension: '#B89251',
   House: '#4A90E2',
   Garden: '#2ECC71',
   Gazebo: '#F39C12',
+  Restaurant: '#D0AB60',
 }
 
 const pesoTicks = (value: number) => (value >= 1000 ? `₱${(value / 1000).toFixed(0)}k` : `₱${value}`)
@@ -32,7 +35,7 @@ export const RevenueTrendChart: React.FC<RevenueTrendChartProps> = ({ trendSlots
   // Real ordinal scale — satisfies "callable and copyable"; infer the source domain from `color: 'source'`.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const colorScale = useMemo(
-    () => scaleOrdinal<string, string>().domain(['Pension', 'House', 'Garden', 'Gazebo']).range(Object.values(COLORS)) as any,
+    () => scaleOrdinal<string, string>().domain(['Pension', 'House', 'Garden', 'Gazebo', 'Restaurant']).range(Object.values(COLORS)) as any,
     [],
   )
 
@@ -42,6 +45,7 @@ export const RevenueTrendChart: React.FC<RevenueTrendChartProps> = ({ trendSlots
       { label: s.label, source: 'House', revenue: s.vacationHouse },
       { label: s.label, source: 'Garden', revenue: s.gardenArea },
       { label: s.label, source: 'Gazebo', revenue: s.gazebo },
+      { label: s.label, source: 'Restaurant', revenue: s.restaurant || 0 },
     ])
     const hasAny = rows.some(r => r.revenue > 0)
     if (!hasAny) return null
@@ -67,6 +71,7 @@ export const RevenueTrendChart: React.FC<RevenueTrendChartProps> = ({ trendSlots
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#4A90E2]" />House</span>
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#2ECC71]" />Garden</span>
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#F39C12]" />Gazebo</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#D0AB60]" />Restaurant</span>
         </div>
       </div>
       {definition ? (

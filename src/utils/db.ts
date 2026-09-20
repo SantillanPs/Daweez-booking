@@ -125,6 +125,7 @@ export async function getRooms(): Promise<Room[]> {
           name: r.name,
           base_price: Number(r.base_price),
           promo_price: r.promo_price != null ? Number(r.promo_price) : null,
+          beds: r.beds != null ? Number(r.beds) : undefined,
           capacity: r.capacity,
           description: r.description || undefined,
           image_url: r.image_url || undefined
@@ -185,8 +186,36 @@ export async function updateRoomRate(roomId: string, basePrice: number, promoPri
     : { id: roomId, room_number: -1, name: '', base_price: base, promo_price: promo, capacity: 0, description: '', image_url: '' }
 }
 
-export async function getVenues(): Promise<Venue[]> {
+/**
+ * Saves how many beds a room has (card k140) — the number breakfast is charged
+ * against, ₱150 × beds once per stay.
+ *
+ * Same shape as `updateRoomRate` next to it: RLS gives the app SELECT only on
+ * `rooms`, so the write goes through a small SECURITY DEFINER function, and a
+ * failed write is remembered in the browser store so the desk can keep working
+ * offline. The bed count is configuration, not money, so a silent fallback is
+ * safe here — unlike a booking write.
+ */
+export async function updateRoomBeds(roomId: string, beds: number): Promise<void> {
+  const count = Math.max(0, Math.round(beds))
+
   if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.rpc('set_room_beds', { p_room_id: roomId, p_beds: count })
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase updateRoomBeds Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  const data = localStorage.getItem(ROOMS_KEY)
+  const overrides: Record<string, Partial<Room>> = data ? JSON.parse(data) : {}
+  overrides[roomId] = { ...overrides[roomId], beds: count }
+  localStorage.setItem(ROOMS_KEY, JSON.stringify(overrides))
+}
+
+export async function getVenues(): Promise<Venue[]> {  if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase.from('venues').select('*').order('name')
       if (error) throw error
@@ -360,6 +389,29 @@ function toBookingRecord(booking: Booking): Record<string, unknown> {
   }
 }
 
+/**
+ * Saves the deposit the desk agreed with the guest (card k130) through its own
+ * small SECURITY DEFINER writer.
+ *
+ * Why not the booking RPCs: `book_booking` / `update_booking` are the drifted
+ * jsonb functions (see the note in supabase/AGENTS.md) — they copy a fixed list
+ * of keys out of the payload by hand, so a new column means rebuilding them from
+ * the live definition. One narrow writer keeps this change contained, and a
+ * failure is never fatal: the rest of the booking is already saved and the column
+ * simply keeps its default, "work the deposit out from the stay".
+ */
+async function writeAgreedDeposit(bookingId: string, amount?: number): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('set_booking_agreed_deposit', {
+      p_booking_id: bookingId,
+      p_amount: amount ?? 0,
+    })
+    if (error) throw error
+  } catch (err) {
+    console.error('Could not save the agreed deposit:', err)
+  }
+}
+
 // Business-rule failures must surface to the UI — never silently fall back.
 function isBusinessRuleError(err: unknown): boolean {
   const msg = (err as { message?: string })?.message || ''
@@ -441,7 +493,11 @@ export async function insertBooking(booking: Booking): Promise<Booking> {
           }
           throw error
         }
-        return (data as unknown as Booking) ?? withId
+        await writeAgreedDeposit(withId.id, withId.agreed_deposit)
+        const saved = (data as unknown as Booking) ?? withId
+        // The booking RPC does not carry the agreed deposit (see the writer above),
+        // so put it back on the row the caller caches.
+        return { ...saved, agreed_deposit: withId.agreed_deposit }
       } catch (err) {
         if (isBusinessRuleError(err)) throw err
         console.error('Supabase insertBooking Error, falling back to LocalStorage:', err)
@@ -465,7 +521,9 @@ export async function updateBooking(booking: Booking): Promise<Booking> {
     try {
       const { data, error } = await supabase.rpc('update_booking', { p_booking: toBookingRecord(booking) })
       if (error) throw error
-      return (data as unknown as Booking) ?? booking
+      await writeAgreedDeposit(booking.id, booking.agreed_deposit)
+      const saved = (data as unknown as Booking) ?? booking
+      return { ...saved, agreed_deposit: booking.agreed_deposit }
     } catch (err) {
       if (isBusinessRuleError(err)) throw err
       // Network/transient write failures fall back to the browser store so the

@@ -146,6 +146,26 @@ export async function getTabLines(tabId: string): Promise<TabLine[]> {
   return readLocal<TabLine>(LINES_KEY).filter(l => l.tab_id === tabId)
 }
 
+/**
+ * Every line on every tab, read once (k69, part E).
+ *
+ * The Earnings Report needs the food money for a period across the whole hotel —
+ * the stay tabs and the walk-in tabs together — and reading them tab by tab would
+ * be one query per table on every filter change.
+ */
+export async function getAllTabLines(): Promise<TabLine[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('tab_lines').select('*').order('created_at', { ascending: true })
+      if (error) throw error
+      if (data) return data as TabLine[]
+    } catch (err) {
+      console.error('getAllTabLines fell back to the browser store:', err)
+    }
+  }
+  return readLocal<TabLine>(LINES_KEY)
+}
+
 async function insertLine(line: TabLine): Promise<TabLine> {
   if (isSupabaseConfigured) {
     try {

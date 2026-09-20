@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Booking, Room, Venue, PaymentRecord, BreakfastRecord } from '../../types/booking'
+import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
 import { computeCheckInOutHours } from '../../utils/checkInOut'
-import { getRateConfig, getBreakfastMenu } from '../../utils/rateConfig'
+import { getRateConfig } from '../../utils/rateConfig'
 import { dateToString } from '../../utils/helpers'
-import { BreakfastRecorder } from './BreakfastRecorder'
 import { X, Printer, Edit3 } from 'lucide-react'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
@@ -24,6 +23,8 @@ import { ReceivePaymentStep } from './ReceivePaymentStep'
 import { ExtendStayForm } from './ExtendStayForm'
 import { showToast } from '../../utils/toast'
 import { askConfirm } from '../../utils/confirm'
+import { useNavigate } from '@tanstack/react-router'
+import { focusGuestTab } from '../../utils/restaurantFocus'
 
 interface ExtendStayModalProps {
   booking: Booking
@@ -70,6 +71,7 @@ export function ExtendStayModal({
   onEditBooking
 }: ExtendStayModalProps) {
   const [showPrintModal, setShowPrintModal] = useState(false)
+  const navigate = useNavigate()
   const [localBooking, setLocalBooking] = useState(booking)
   const [payFlash, setPayFlash] = useState(false)
   // Something the pressed action could not do, said on the page beside the
@@ -304,8 +306,8 @@ export function ExtendStayModal({
     }
   }
 
-  // Breakfast is recorded day by day during the stay, then charged at check-out.
-  const breakfastMenu = getBreakfastMenu()
+  // Breakfast is no longer recorded day by day (card k140): it is one charge,
+  // ₱150 × the room's beds, already inside the room rate.
   const stayDays = (() => {
     const arr: string[] = []
     const d = new Date(booking.check_in)
@@ -313,11 +315,6 @@ export function ExtendStayModal({
     while (d < end) { arr.push(dateToString(d)); d.setDate(d.getDate() + 1) }
     return arr
   })()
-  const saveBreakfastRecords = async (records: BreakfastRecord[]) => {
-    const updated = withRecomputedBalance(localBooking, { breakfast_records: records })
-    setLocalBooking(updated)
-    try { await onUpdateBooking?.(updated) } catch { showToast('Could not save breakfast. Please try again.', 'error') }
-  }
 
   // The same plain-language status the calendar's payment dot stands for, said
   // in words here so staff never have to decode a colour.
@@ -540,22 +537,19 @@ export function ExtendStayModal({
                 tabTotal={tabAmount}
                 onChanged={reloadTab}
                 locked={!localBooking.actual_check_in}
+                slip={{
+                  who: localBooking.guest_name || 'Guest',
+                  place: { label: booking.room_id ? 'Room' : 'Venue', value: unitSub || unitName },
+                  note: booking.room_id ? 'Settles with the room bill at check-out.' : 'Settles with the bill at check-out.',
+                }}
+                /* The till lives in the Restaurant screen (k69): this panel shows the
+                   food and offers the way over, instead of squeezing a menu in here. */
+                ordering={false}
+                onOpenTill={() => { focusGuestTab(booking.id); onClose(); void navigate({ to: '/restaurant' }) }}
               />
             </SlideOverSection>
 
-            {booking.room_id && (
-              <SlideOverSection
-                title="Breakfast during the stay"
-                summary={breakfastRecords.length > 0 ? breakfastRecords.length + ' recorded' : 'None recorded'}
-              >
-                <BreakfastRecorder
-                  menu={breakfastMenu}
-                  records={breakfastRecords}
-                  stayDays={stayDays}
-                  onChange={saveBreakfastRecords}
-                />
-              </SlideOverSection>
-            )}
+
 
             <SlideOverSection title="Extend stay" summary={'Check-out ' + fmtShort(booking.check_out)}>
               <ExtendStayForm

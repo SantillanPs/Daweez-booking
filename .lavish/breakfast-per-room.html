@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Breakfast per room — compact</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-700:#C9C4BB; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-100:#332B18; --color-gold-800:#E6C989;
+    --color-paper-50:#141414; --color-paper-100:#2A2A2A; --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A;
+    --color-danger-500:#F87171; --color-danger-50:#2A1615;
+    --color-good-600:#34D399; --color-good-50:#12261F;
+    --font-display:"Sora",system-ui,sans-serif;
+    --font-sans:"DM Sans",system-ui,sans-serif;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-100:#332B18;--gold-800:#E6C989;--paper-100:#2A2A2A;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--danger:#F87171;--good:#34D399;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,h4,li,label,button,td,th,span,b,code,i,em){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.35)}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500)}
+  .chip{display:inline-flex;align-items:center;gap:6px;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700}
+  .chip.on{background:var(--gold-400);color:#141414;border:1px solid var(--gold-400)}
+  .chip.off{background:transparent;color:var(--ink-500);border:1px dashed var(--paper-300)}
+  .ghost{display:inline-flex;align-items:center;border-radius:8px;padding:5px 8px;font-size:10.5px;font-weight:700;color:var(--ink-600);border:1px solid var(--paper-300)}
+  .bill{background:#E6E2DA;color:#141414;border-radius:8px;padding:10px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+  .billrow{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+  .billrow.last{border-top:1px solid #8A8A8A;margin-top:4px;padding-top:6px;font-weight:700;font-size:12.5px}
+  .mini{background:#181818;border:1px solid var(--paper-300);border-radius:9px;padding:9px 10px}
+  .minirow{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#242424;border:1px solid var(--paper-200);border-radius:7px;padding:5px 8px;font-size:11.5px;margin-top:5px}
+  .chk{display:flex;gap:8px;align-items:center;font-size:12.5px;cursor:pointer;padding-top:8px;font-weight:700;color:#E6C989}
+  .chk input{width:16px;height:16px;accent-color:#D0AB60;flex:none}
+  .qbtn{background:var(--gold-400);color:#141414;font-weight:700;font-size:13px;border:0;border-radius:8px;padding:9px 15px;cursor:pointer;font-family:inherit}
+  .gone{color:#7D7871;text-decoration:line-through;text-decoration-color:#F87171}
+  .lock{filter:grayscale(1);opacity:.65}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-4xl px-5 py-8 space-y-5">
+
+  <header>
+    <p class="pill mb-2" style="background:#332B18;color:#E6C989">Breakfast · compact design</p>
+    <h1 class="text-3xl font-bold tracking-tight">One line. Not three.</h1>
+  </header>
+
+  <!-- before / after -->
+  <section class="card p-4">
+    <div class="grid gap-4 md:grid-cols-2">
+      <div>
+        <p class="lab mb-2" style="color:#F87171">Today — per person, 3+ lines</p>
+        <div class="mini" style="border-color:#5A2A2A">
+          <div class="minirow"><span>Mr. Cruz</span><span class="gone">Breakfast ₱150/night</span></div>
+          <div class="minirow"><span>Companion 1</span><span class="gone">Breakfast</span></div>
+          <div class="minirow"><span>Companion 2</span><span class="gone">Breakfast</span></div>
+        </div>
+      </div>
+      <div>
+        <p class="lab mb-2" style="color:#34D399">New — per room, one line</p>
+        <div class="mini" style="border-color:#2F6B52">
+          <div class="minirow" style="background:#1B2A24">
+            <span style="color:#E6C989;font-weight:700">Breakfast</span>
+            <span style="display:flex;gap:5px;flex-wrap:wrap">
+              <span class="chip on">Room 3 · ✓</span>
+              <span class="chip off">Room 5</span>
+              <span class="chip off">Room 7</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">Tapped rooms turn gold. One line whether it is one room or eight.</p>
+  </section>
+
+  <!-- the bill -->
+  <section class="card p-4">
+    <p class="lab mb-2">The bill — one row per room, breakfast inside it</p>
+    <div class="bill">
+      <div class="billrow"><span>Room 3 · Breakfast</span><span>₱3,300</span></div>
+      <div class="billrow"><span>Room 5</span><span>₱2,000</span></div>
+      <div class="billrow last"><span>Sub-Total</span><span>₱5,300</span></div>
+    </div>
+    <p class="cap">No breakfast row. Room 3 = ₱3,000 stay + ₱300 (2 beds). Room 5 has none.</p>
+  </section>
+
+  <!-- built + the portal question -->
+  <section class="card p-4" style="border-color:var(--good)">
+    <p class="lab mb-3" style="color:#34D399">Built ✓ — the three you ticked</p>
+    <div class="grid gap-3 md:grid-cols-3">
+      <div class="mini">
+        <p class="lab mb-1">1 · Where it sits</p>
+        <div class="minirow" style="opacity:.7"><span>Guest details…</span></div>
+        <div class="minirow" style="border-color:var(--gold-400);background:#2A2416">
+          <span style="color:#E6C989;font-weight:700">Breakfast</span>
+          <span style="display:flex;gap:5px"><span class="chip on">Room 3 · ₱300</span><span class="chip off">Room 5</span></span>
+        </div>
+        <div class="minirow" style="opacity:.6"><span>Add-ons</span></div>
+      </div>
+      <div class="mini">
+        <p class="lab mb-1">2 · Gone</p>
+        <div class="minirow"><span class="gone">Mr. Cruz — Breakfast</span></div>
+        <div class="minirow"><span class="gone">Companion — Breakfast</span></div>
+        <div class="minirow" style="opacity:.7"><span>Companion — name · nationality</span></div>
+      </div>
+      <div class="mini">
+        <p class="lab mb-1">3 · Old bookings</p>
+        <div class="minirow lock"><span>Room 2 · Breakfast</span><span>₱1,200</span></div>
+        <p class="cap mt-1 mb-0">Charged as before.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- the portal, drawn -->
+  <section class="card p-4" style="border-color:var(--gold-400)">
+    <p class="pill mb-2" style="background:#332B18;color:#E6C989">The one left</p>
+    <h2 class="text-lg font-bold mb-2">Where the guest portal is</h2>
+    <div class="grid gap-4 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
+      <div class="mini" style="background:#0F0F0F">
+        <p style="font-size:10px;color:#7D7871;font-family:ui-monospace,monospace">daweez-booking.vercel.app/reserve</p>
+        <div class="minirow" style="background:#1F1F1F"><span style="font-weight:700">Room 5</span><span style="color:#E6C989;font-weight:700">₱1,000/night</span></div>
+        <div class="minirow" style="opacity:.6"><span>Guest name · contact</span></div>
+        <div class="minirow" style="border-color:var(--gold-400);background:#2A2416">
+          <span style="color:#E6C989;font-weight:700">Breakfast</span>
+          <span class="chip on">✓ +₱900</span>
+        </div>
+        <div class="minirow" style="opacity:.6"><span>GCash downpayment</span><span style="color:#7D7871">send</span></div>
+      </div>
+      <div>
+        <p class="text-[13px] text-ink-600">That page is the public booking page a guest uses on their phone — the one with the live availability and the GCash downpayment. Today it has no breakfast question at all, so a guest who books online arrives with no breakfast on their room.</p>
+        <form class="mt-3" data-lavish-question="portal-breakfast"
+          onsubmit="event.preventDefault(); const c=new FormData(event.currentTarget).get('p'); if(!c) return; const labels={'yes':'Yes - put the same breakfast switch on the guest portal page, so a guest booking online can choose it for their room (the amount shown live).','no':'No - leave the guest portal alone. Breakfast is decided at the desk when the guest arrives or books by phone.'}; window.lavish.queuePrompt(labels[c], {tag:'choice', text:'Portal breakfast: '+c, element:event.currentTarget, data:{question:'portal-breakfast', answer:c}});">
+          <label class="chk"><input type="radio" name="p" value="yes" checked> <span><b>Put it on the guest page too</b> — same switch, amount shown live</span></label>
+          <label class="chk"><input type="radio" name="p" value="no"> <span><b>Leave the guest page alone</b> — breakfast is decided at the desk</span></label>
+          <div class="pt-3">
+            <button type="submit" class="qbtn">Queue my answer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>k69 finished — what's left on the board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-700:#2E2E2E; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-100:#332B18; --color-gold-800:#E6C989;
+    --color-paper-50:#141414; --color-paper-100:#2A2A2A; --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A;
+    --color-danger-500:#F87171; --color-danger-50:#2A1615;
+    --color-good-600:#34D399; --color-good-50:#12261F;
+    --font-display:"Sora",system-ui,sans-serif;
+    --font-sans:"DM Sans",system-ui,sans-serif;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-100:#332B18;--gold-800:#E6C989;--paper-100:#2A2A2A;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--danger:#F87171;--good:#34D399;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,h4,li,label,button,td,th,span,b,code,i){overflow-wrap:anywhere}
+  svg{max-width:100%;height:auto;display:block}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:#1F1F1F;border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(28,28,28,.07)}
+  .cap{font-size:13px;color:var(--ink-500);margin:10px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .tile{background:#1F1F1F;border:1px solid var(--paper-200);border-radius:10px;padding:11px 13px}
+  .mini{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--paper-200)}
+  .mini:last-child{border-bottom:0}
+  .opt label{display:flex;gap:9px;align-items:flex-start;padding:5px 0;font-size:14px;cursor:pointer;line-height:1.35}
+  .opt input[type=radio]{margin-top:3px;flex:none;accent-color:#D0AB60}
+  .qbtn{background:var(--gold-400);color:#141414;font-weight:700;font-size:13px;border:0;border-radius:8px;padding:9px 15px;cursor:pointer;font-family:inherit}
+  .slip{background:#E6E2DA;border:1px solid var(--paper-300);border-radius:6px;padding:9px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#000;width:210px}
+  .slip .r{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;margin-top:3px}
+  .slip hr{border:0;border-top:1px dashed #6B6B6B;margin:6px 0}
+  @media (max-width:640px){.slip{width:100%}}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-5xl px-5 py-8 lg:px-8 space-y-6">
+
+  <header>
+    <p class="pill mb-2" style="background:#12261F;color:var(--good)">k69 · finished</p>
+    <h1 class="text-3xl lg:text-4xl font-bold tracking-tight">The guest tab is done — all five pieces</h1>
+    <p class="cap mt-2">I built <b class="text-ink-900">D</b> and <b class="text-ink-900">E</b> just now. Here is what each one does, and what is left on the board.</p>
+  </header>
+
+  <!-- ── D ────────────────────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--good)">
+    <div class="flex items-baseline justify-between gap-3 flex-wrap">
+      <h2 class="text-lg font-bold">D · The running tab, on request</h2>
+      <span class="pill" style="background:#12261F;color:var(--good)">built ✓</span>
+    </div>
+    <p class="cap mt-1 mb-3">A guest asks to see what they have run up so far. Next to the running total on the Guest tab there is now a quiet <b>Print the tab</b> button, and out comes this — on the same roll as everything else:</p>
+    <div class="grid gap-4 md:grid-cols-[210px_minmax(0,1fr)]">
+      <div class="slip">
+        <p style="text-align:center;font-size:11px;font-weight:700;margin:0">DAWEEZ PENSION HOUSE</p>
+        <p style="text-align:center;font-size:8.5px;font-weight:700;margin:1px 0 0">RUNNING TAB</p>
+        <hr>
+        <div class="r"><span>Printed</span><span>Sep 19, 12:40 PM</span></div>
+        <hr>
+        <div style="font-size:8.5px;font-weight:700;margin-top:4px">GUEST</div>
+        <div style="font-size:10px;font-weight:700">Mr. Cruz</div>
+        <div style="font-size:8.5px;font-weight:700;margin-top:4px">ROOM</div>
+        <div style="font-size:10px;font-weight:700">Room 3</div>
+        <hr>
+        <div class="r"><span>Hotsilog</span><span>₱150</span></div>
+        <div class="r"><span>2 × San Mig Light</span><span>₱180</span></div>
+        <div class="r"><span>Pancit Canton</span><span>₱220</span></div>
+        <hr>
+        <div class="r" style="font-size:11px;font-weight:700"><span>TOTAL SO FAR</span><span>₱550</span></div>
+        <hr>
+        <p style="text-align:center;font-size:9px;font-weight:700;margin:0">NOT A RECEIPT</p>
+        <p style="text-align:center;font-size:8.5px;margin:2px 0 0">Settles with the room bill at check-out.</p>
+      </div>
+      <div class="space-y-2">
+        <p class="text-[13.5px]"><b class="text-ink-900">It is not a receipt, and it says so</b> — that was the point of stamping <i>NOT A RECEIPT</i> across it. No money has changed hands, so the paper must never look like one.</p>
+        <p class="text-[13.5px]"><b class="text-ink-900">The last line says what happens next</b>: on a stay <i>"Settles with the room bill at check-out."</i>, and on a walk-in tab <i>"Please settle this at the counter."</i></p>
+        <p class="text-[13.5px]"><b class="text-ink-900">Both kinds of tab can print it</b> — the stay's tab in the booking quick view, and the walk-in's tab in the Restaurant screen.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── E ────────────────────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--good)">
+    <div class="flex items-baseline justify-between gap-3 flex-wrap">
+      <h2 class="text-lg font-bold">E · Restaurant money in the Earnings Report</h2>
+      <span class="pill" style="background:#12261F;color:var(--good)">built ✓</span>
+    </div>
+    <p class="cap mt-1 mb-3">Food money had nowhere to go in the report — it would have landed in the room column or gone missing. The restaurant is now its own line, and it counts in the totals.</p>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="tile" style="border-color:var(--danger)">
+        <p class="pill mb-3" style="background:#2A1615;color:var(--danger)">Before</p>
+        <p class="text-[12.5px] text-ink-600">Pension ₱12,000 · Vacation House ₱4,000 · Garden ₱1,500 · Gazebo ₱1,500</p>
+        <p class="text-[12.5px] mt-2">Food and drinks ordered on tabs: <b style="color:var(--danger)">nowhere</b></p>
+        <hr style="border:0;border-top:1px solid var(--paper-200);margin:10px 0">
+        <p class="text-[12px] text-ink-500">Total Money In</p>
+        <p style="font-family:Sora,sans-serif;font-weight:700;font-size:22px">₱19,000</p>
+      </div>
+      <div class="tile" style="border-color:var(--good)">
+        <p class="pill mb-3" style="background:#12261F;color:var(--good)">Now</p>
+        <p class="text-[12.5px] text-ink-600">Pension ₱12,000 · Vacation House ₱4,000 · Garden ₱1,500 · Gazebo ₱1,500</p>
+        <p class="text-[12.5px] mt-2"><b style="color:var(--gold-800)">Restaurant &amp; bar ₱3,450</b></p>
+        <hr style="border:0;border-top:1px solid var(--paper-200);margin:10px 0">
+        <p class="text-[12px] text-ink-500">Total Money In</p>
+        <p style="font-family:Sora,sans-serif;font-weight:700;font-size:22px;color:var(--good)">₱22,450</p>
+      </div>
+    </div>
+    <div class="mt-3 space-y-1.5">
+      <p class="text-[13px]"><b class="text-ink-900">Counted on the day the food was ordered</b>, the same way a night is counted on the night it was slept — so a ₱220 lunch shows up on the day it was eaten, not spread over the stay.</p>
+      <p class="text-[13px]"><b class="text-ink-900">It follows the whole report</b>: its own row and column in the Earnings Report, its own card in the visual view, a slice in the donut, and a gold bar in Income Over Time.</p>
+      <p class="text-[13px]"><b class="text-ink-900">Both kinds of tab count</b> — food on a stay's bill and a walk-in diner's lunch.</p>
+      <p class="text-[13px] text-ink-600">One honest limit: it counts what was <i>ordered</i> in the period, like the report already does for rooms — not what has been paid for yet.</p>
+    </div>
+  </section>
+
+  <!-- ── the SQL ──────────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">The tab-receipt SQL</h2>
+    <p class="cap mt-1 mb-0">You marked this done — I am taking that as <b class="text-ink-900">already run</b>. If it is not, settling a walk-in tab will look closed but come back open after a reload. The line is <code>ALTER TABLE public.tabs ADD COLUMN IF NOT EXISTS payment_records jsonb;</code> — safe to run twice.</p>
+  </section>
+
+  <!-- ── k69 board ────────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-2">k69, all five pieces</h2>
+    <div class="grid gap-2 sm:grid-cols-5">
+      <div class="tile" style="border-color:var(--good);text-align:center;padding:9px 6px"><p class="pill mb-1" style="background:#12261F;color:var(--good)">A</p><p class="text-[12px] font-bold">Bill shows food</p><p class="text-[10.5px]" style="color:var(--good)">done ✓</p></div>
+      <div class="tile" style="border-color:var(--good);text-align:center;padding:9px 6px"><p class="pill mb-1" style="background:#12261F;color:var(--good)">B</p><p class="text-[12px] font-bold">Walk-in tabs</p><p class="text-[10.5px]" style="color:var(--good)">done ✓</p></div>
+      <div class="tile" style="border-color:var(--good);text-align:center;padding:9px 6px"><p class="pill mb-1" style="background:#12261F;color:var(--good)">C</p><p class="text-[12px] font-bold">Pay at counter</p><p class="text-[10.5px]" style="color:var(--good)">done ✓</p></div>
+      <div class="tile" style="border-color:var(--good);text-align:center;padding:9px 6px"><p class="pill mb-1" style="background:#12261F;color:var(--good)">D</p><p class="text-[12px] font-bold">Running printout</p><p class="text-[10.5px]" style="color:var(--good)">done ✓</p></div>
+      <div class="tile" style="border-color:var(--good);text-align:center;padding:9px 6px"><p class="pill mb-1" style="background:#12261F;color:var(--good)">E</p><p class="text-[12px] font-bold">Food in Earnings</p><p class="text-[10.5px]" style="color:var(--good)">done ✓</p></div>
+    </div>
+  </section>
+
+  <!-- ── the rest of the board ────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">What is left on the board</h2>
+    <p class="cap mt-1 mb-2">Nothing here is started. Worst first:</p>
+    <div>
+      <div class="mini">
+        <div><p class="text-[13.5px] font-bold">k91 · Block dates from the calendar <span class="pill ml-1" style="background:#2A1615;color:var(--danger)">your first ask</span></p>
+          <p class="text-[13px] text-ink-600">Blocking a date today means making a pretend booking first. The <b>Block dates</b> button moves out beside <b>Log old booking</b>, and the reason shows on the calendar. Small screen change, plainly worth it.</p></div>
+        <span class="text-[10.5px] font-bold text-ink-500">no SQL</span>
+      </div>
+      <div class="mini">
+        <div><p class="text-[13.5px] font-bold">k93 · Stays with no check-out date</p>
+          <p class="text-[13px] text-ink-600">The app forces a check-out date the paper log never asked for. Needs one talk with the front desk before building.</p></div>
+        <span class="text-[10.5px] font-bold text-ink-500">needs your input</span>
+      </div>
+      <div class="mini">
+        <div><p class="text-[13.5px] font-bold">k105 · Edit the menu and prices yourself</p>
+          <p class="text-[13px] text-ink-600">Rename a dish, change a price, hide one — without asking me. Only worth it when a price change is actually coming.</p></div>
+        <span class="text-[10.5px] font-bold text-ink-500">no SQL</span>
+      </div>
+      <div class="mini">
+        <div><p class="text-[13.5px] font-bold">k107 · Photos on the menu tiles &nbsp;·&nbsp; k109 · Cooking choices on a dish</p>
+          <p class="text-[13px] text-ink-600">Finishing touches on the restaurant till: a picture per dish, and buttons for <i>buttered / sinagang / tinola</i> instead of a written note.</p></div>
+        <span class="text-[10.5px] font-bold text-ink-500">no SQL</span>
+      </div>
+      <div class="mini">
+        <div><p class="text-[13.5px] font-bold">k74 · Staff names and PINs &nbsp;·&nbsp; k71 · Food &amp; supply inventory</p>
+          <p class="text-[13px] text-ink-600">Who did what, and what is running low.</p></div>
+        <span class="text-[10.5px] font-bold text-ink-500">no SQL</span>
+      </div>
+      <div class="mini">
+        <div><p class="text-[13.5px] font-bold">k72 · Housekeeping room board &nbsp;·&nbsp; k73 · Money view for the whole hotel &nbsp;·&nbsp; k75 · Navigation in four groups</p>
+          <p class="text-[13px] text-ink-600">The bigger screens, whenever you want them.</p></div>
+        <span class="text-[10.5px] font-bold text-ink-500">no SQL</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── the decision ─────────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--gold-400)">
+    <p class="pill bg-gold-100 text-gold-800 mb-2">Your call</p>
+    <h2 class="text-lg font-bold mb-1">What do you want next?</h2>
+    <p class="cap mt-1 mb-2">Pick one and queue it — I will start straight away.</p>
+
+    <form class="opt" data-lavish-question="after-k69"
+      onsubmit="event.preventDefault(); const c=new FormData(event.currentTarget).get('next'); if(!c) return; const labels={'k91':'Build k91 next: move Block dates out of the booking form to the calendar toolbar beside Log old booking, and show the block reason on the calendar.','k105':'Build k105 next: a Settings screen to edit the restaurant menu names and prices.','k93':'Talk through k93 next: stays with no check-out date — describe how the front desk really handles an open-ended stay so I can build it.','other':'Something else — see my note.'}; window.lavish.queuePrompt(labels[c], {tag:'choice', text:'Next: '+c, element:event.currentTarget, data:{question:'after-k69', answer:c}});">
+      <label class="tile" style="border-color:var(--gold-400)">
+        <input type="radio" name="next" value="k91" checked>
+        <span>
+          <b>k91 — Block dates from the calendar.</b>
+          <span class="block text-[13px] text-ink-600">My recommendation: it is the complaint that started all of this, and it is a small change — a button move plus printing the reason on the calendar.</span>
+        </span>
+      </label>
+      <label class="tile">
+        <input type="radio" name="next" value="k105">
+        <span>
+          <b>k105 — edit the menu and prices yourself.</b>
+          <span class="block text-[13px] text-ink-600">Do it if a price change is coming soon; otherwise we can change the menu for you in the meantime.</span>
+        </span>
+      </label>
+      <label class="tile">
+        <input type="radio" name="next" value="k93">
+        <span>
+          <b>k93 — stays with no check-out date.</b>
+          <span class="block text-[13px] text-ink-600">The app forces a check-out date the paper log never needed. I need to hear how the desk handles it before I build anything.</span>
+        </span>
+      </label>
+      <label class="tile">
+        <input type="radio" name="next" value="other">
+        <span>
+          <b>Something else.</b>
+          <span class="block text-[13px] text-ink-600">Say which one in the note, or send me a picture of what is bothering you.</span>
+        </span>
+      </label>
+      <div class="pt-3" style="border-top:1px solid var(--paper-200);margin-top:12px">
+        <button type="submit" class="qbtn">Queue my answer</button>
+        <span class="cap inline ml-2">Then press <b>Send to Agent</b>.</span>
+      </div>
+    </form>
+  </section>
+
+  <footer class="card p-4">
+    <p class="cap mt-0"><b class="text-ink-900">Also worth knowing:</b> if the restaurant screen still shows <i>"does not provide an export named settleTab"</i>, restart <code>npm run dev</code> and reload — the code itself is fine.</p>
+  </footer>
+
+</main>
+</body>
+</html>

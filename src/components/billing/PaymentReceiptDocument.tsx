@@ -70,7 +70,7 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
 
       {/* The 58 mm slip. Printed width comes from the @page box the modal sets,
           so in print it simply fills that page instead of a fixed 58 mm. */}
-      <div className={((embedded ? 'my-0 ' : 'my-2 ') + 'w-[58mm] max-w-full bg-white text-black font-sans leading-snug px-2.5 py-3 ' +
+      <div className={((embedded ? 'my-0 ' : 'my-2 ') + 'print-slip w-[58mm] max-w-full bg-white text-black font-sans leading-snug px-2.5 py-3 ' +
         'print:w-auto print:max-w-none print:px-0 print:py-0 print:my-0 print:shadow-none print:rounded-none')}>
         <div className="text-center">
           <h1 className="font-display font-extrabold text-[13px] uppercase leading-tight">Daweez Pension House</h1>

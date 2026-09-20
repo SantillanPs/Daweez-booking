@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Everything in the changes file — and the Bookings tab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-700:#C9C4BB; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-100:#332B18; --color-gold-800:#E6C989;
+    --color-paper-50:#141414; --color-paper-100:#2A2A2A; --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A;
+    --color-danger-500:#F87171; --color-danger-50:#2A1615;
+    --color-good-600:#34D399; --color-good-50:#12261F;
+    --font-display:"Sora",system-ui,sans-serif;
+    --font-sans:"DM Sans",system-ui,sans-serif;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-100:#332B18;--gold-800:#E6C989;--paper-100:#2A2A2A;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--danger:#F87171;--good:#34D399;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,h4,li,label,button,td,th,span,b,code,i,em){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.35)}
+  .cap{font-size:13px;color:var(--ink-500);margin:10px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--paper-200)}
+  .row:last-of-type{border-bottom:0}
+  .qbtn{background:var(--gold-400);color:#141414;font-weight:700;font-size:13px;border:0;border-radius:8px;padding:9px 15px;cursor:pointer;font-family:inherit}
+  .chk{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;cursor:pointer;padding:5px 0;line-height:1.35}
+  .chk input{margin-top:3px;width:15px;height:15px;accent-color:#D0AB60;flex:none}
+  .opt label{display:flex;gap:9px;align-items:flex-start;padding:6px 0;font-size:14px;cursor:pointer;line-height:1.35}
+  .opt input[type=radio]{margin-top:3px;flex:none;accent-color:#D0AB60}
+  .mock{background:#181818;border:1px solid var(--paper-300);border-radius:10px;padding:10px;font-size:11.5px}
+  .mockrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;background:#1F1F1F;border:1px solid var(--paper-200);border-radius:8px;padding:7px 9px;margin-top:6px}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-5xl px-5 py-8 lg:px-8 space-y-6">
+
+  <header>
+    <p class="pill mb-2" style="background:#332B18;color:#E6C989">Answering two things</p>
+    <h1 class="text-3xl lg:text-4xl font-bold tracking-tight">The whole changes file — and the Bookings tab</h1>
+    <p class="cap mt-2">Understood: <b class="text-ink-900">everything in that file is a must-do now</b>, and the booking process comes first. Here is the whole file marked up so nothing is done twice, then the honest answer about the Bookings tab.</p>
+  </header>
+
+  <!-- ── the booking process ──────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--gold-400)">
+    <p class="pill mb-2" style="background:#332B18;color:#E6C989">Starting now</p>
+    <h2 class="text-lg font-bold mb-1">The booking process, in the order I will build it</h2>
+    <p class="cap mt-1 mb-3">These cards already exist. I work down the list — the first five are one job really, because they are all the same form.</p>
+    <div>
+      <div class="row"><p class="text-[13.5px]"><b>1 · One form, no steps, no price summary</b> <span class="text-ink-500">k126</span><br><span class="text-[12.5px] text-ink-600">Everything on one page like the paper form — guest, companions, unit and dates, add-ons, discount, receptionist, deposit.</span></p><span class="pill" style="background:#12261F;color:#34D399">first</span></div>
+      <div class="row"><p class="text-[13.5px]"><b>2 · One price, promo gone</b> <span class="text-ink-500">k128</span><br><span class="text-[12.5px] text-ink-600">The promo figure becomes the price; the crossed-out price and the ON/OFF switch go.</span></p><span class="pill" style="background:#12261F;color:#34D399">with 1</span></div>
+      <div class="row"><p class="text-[13.5px]"><b>3 · Deposit: half by default, typable</b> <span class="text-ink-500">k130</span></p><span class="pill" style="background:#12261F;color:#34D399">with 1</span></div>
+      <div class="row"><p class="text-[13.5px]"><b>4 · The guest chooses how they pay</b> <span class="text-ink-500">k132</span><br><span class="text-[12.5px] text-ink-600">The form stops demanding a method.</span></p><span class="pill" style="background:#12261F;color:#34D399">with 1</span></div>
+      <div class="row"><p class="text-[13.5px]"><b>5 · Add-ons behind a More button, suited to the unit</b> <span class="text-ink-500">k138</span></p><span class="pill" style="background:#12261F;color:#34D399">with 1</span></div>
+      <div class="row"><p class="text-[13.5px]"><b>6 · Breakfast: ₱150 × the room's beds, once, inside the rate</b> <span class="text-ink-500">k140 · k142</span><br><span class="text-[12.5px] text-ink-600">Needs a "number of beds" on each room in Settings.</span></p><span class="pill" style="background:#2A2A2A;color:#C9C4BB">next</span></div>
+      <div class="row"><p class="text-[13.5px]"><b>7 · The booking opens in the quick view after the bill</b> <span class="text-ink-500">k134</span></p><span class="pill" style="background:#2A2A2A;color:#C9C4BB">next</span></div>
+      <div class="row"><p class="text-[13.5px]"><b>8 · The receptionist's name remembers itself</b> <span class="text-ink-500">k136</span></p><span class="pill" style="background:#2A2A2A;color:#C9C4BB">next</span></div>
+      <div class="row"><p class="text-[13.5px]"><b>9 · Vacation House: ₱2,000 reservation + ₱2,000 safety</b> <span class="text-ink-500">k148</span></p><span class="pill" style="background:#2A2A2A;color:#C9C4BB">then</span></div>
+      <div class="row"><p class="text-[13.5px]"><b>10 · A5 bill · email from Gmail · payment photo with the reference read from it</b> <span class="text-ink-500">k144 · k146 · k150</span></p><span class="pill" style="background:#2A2A2A;color:#C9C4BB">then</span></div>
+    </div>
+  </section>
+
+  <!-- ── the older half of the file ───────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">The older half of that file, marked up</h2>
+    <p class="cap mt-1 mb-3">Most of it is already built. I would rather show you than rebuild it — and these five look genuinely unfinished, so tell me if I read any wrong.</p>
+
+    <p class="pill mb-1" style="background:#12261F;color:#34D399">Already done</p>
+    <div>
+      <div class="row"><p class="text-[13px]">Corporate partners on the booking form</p><span class="text-[12px]" style="color:var(--good)">✓</span></div>
+      <div class="row"><p class="text-[13px]">Discount: 20% / 10% / custom price</p><span class="text-[12px]" style="color:var(--good)">✓</span></div>
+      <div class="row"><p class="text-[13px]">Gazebo &amp; Garden booked by 6-hour day blocks</p><span class="text-[12px]" style="color:var(--good)">✓</span></div>
+      <div class="row"><p class="text-[13px]">Staff can change the rates — rooms, venues, extras, late/early</p><span class="text-[12px]" style="color:var(--good)">✓</span></div>
+      <div class="row"><p class="text-[13px]">"Prepared by" at the end of the booking process</p><span class="text-[12px]" style="color:var(--good)">✓ now saves too</span></div>
+      <div class="row"><p class="text-[13px]">Date and time on every bill and receipt</p><span class="text-[12px]" style="color:var(--good)">✓</span></div>
+      <div class="row"><p class="text-[13px]">Hotel inventory + cleaning checklist</p><span class="text-[12px]" style="color:var(--good)">✓</span></div>
+      <div class="row"><p class="text-[13px]">Notes when blocking a room, with a reason</p><span class="text-[12px]" style="color:var(--good)">✓</span></div>
+      <div class="row"><p class="text-[13px]">Check in / check out at any time of day, with early and late charges</p><span class="text-[12px]" style="color:var(--good)">✓</span></div>
+      <div class="row"><p class="text-[13px]">One receipt per payment, only after the guest pays</p><span class="text-[12px]" style="color:var(--good)">✓</span></div>
+      <div class="row"><p class="text-[13px]">The booking flow: form → billing statement → guest pays</p><span class="text-[12px]" style="color:var(--good)">✓</span></div>
+      <div class="row"><p class="text-[13px]">Breakfast planned ahead, day by day</p><span class="text-[12px]" style="color:var(--gold-800)">replaced by the new rule</span></div>
+    </div>
+
+    <p class="pill mb-1 mt-4" style="background:#2A1615;color:#F87171">Looks unfinished — correct me if I am wrong</p>
+    <form data-lavish-question="audit-missing"
+      onsubmit="event.preventDefault(); const picked=[...event.currentTarget.querySelectorAll('input[name=miss]:checked')].map(i=>({id:i.value,label:i.dataset.label,disposition:'add-card'})); if(!picked.length){return;} window.lavish.queuePrompt('Add these missing items from the changes file to the kanban as must-do now: '+picked.map(p=>p.id).join(', ')+'. Account for every ID and tell me anything you cannot do.', {tag:'tracked-batch', text:'Add missing items: '+picked.length, element:event.currentTarget, data:{items:picked}});">
+      <label class="chk"><input type="checkbox" name="miss" value="M1" data-label="Created date and time shown on the booking"><span><b>M1</b> — <b>Date and time a booking was made</b>, shown on the booking (it is saved, but I cannot see it on screen).</span></label>
+      <label class="chk"><input type="checkbox" name="miss" value="M2" data-label="Age and gender removed in favour of nationality"><span><b>M2</b> — <b>Nationality instead of age and gender.</b> Nationality is there, but the form still asks Sex and the bill prints it.</span></label>
+      <label class="chk"><input type="checkbox" name="miss" value="M3" data-label="Billing statement opens at checkout when money is due"><span><b>M3</b> — <b>The billing statement pops up at check-out when money is still due.</b> Today check-out is simply blocked until it is paid, which may be what you meant.</span></label>
+      <label class="chk"><input type="checkbox" name="miss" value="M4" data-label="Printable blank guest booking form"><span><b>M4</b> — <b>A printable blank guest booking form</b> — the paper the guest fills in by hand. The statement and the receipt print; the empty form does not exist yet.</span></label>
+      <label class="chk"><input type="checkbox" name="miss" value="M5" data-label="Food prices editable by staff"><span><b>M5</b> — <b>Food prices editable by staff</b> — that is card k105, still in Todo.</span></label>
+      <div class="pt-3" style="border-top:1px solid var(--paper-200);margin-top:10px">
+        <button type="submit" class="qbtn">Add the ticked ones to the board</button>
+        <span class="cap inline ml-2">Leave them all unticked if I read them wrong.</span>
+      </div>
+    </form>
+  </section>
+
+  <!-- ── the bookings tab ─────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--gold-400)">
+    <p class="pill mb-2" style="background:#332B18;color:#E6C989">Your question</p>
+    <h2 class="text-lg font-bold mb-1">The Bookings tab — what it does, and what it does not</h2>
+
+    <div class="grid gap-4 md:grid-cols-2 mt-3">
+      <div class="tile">
+        <p class="text-[13.5px] font-bold mb-1" style="color:var(--good)">What it does today</p>
+        <p class="text-[13px] text-ink-600">It is a <b>list of every booking</b> with two jobs done well:</p>
+        <p class="text-[13px] text-ink-600 mt-1">· <b>Find a guest fast</b> — by name, invoice number, the paper log number, or the room.</p>
+        <p class="text-[13px] text-ink-600">· <b>Say who owes money</b> — a headline figure at the top, and one-tap filters for <i>Who owes</i> and <i>Paid</i>, with a plain badge on each row.</p>
+        <p class="text-[13px] text-ink-600 mt-1">Each row can <b>print the bill</b> or open <b>details</b>. Upcoming stays sort first.</p>
+      </div>
+      <div class="tile" style="border-color:var(--danger)">
+        <p class="text-[13.5px] font-bold mb-1" style="color:var(--danger)">What it does not do — and this is the honest problem</p>
+        <p class="text-[13px] text-ink-600">It cannot <b>do anything</b>. You cannot check a guest in, check them out, or receive money from it. It is a read-only list: every real action still sends you back to the calendar, opening one booking at a time.</p>
+        <p class="text-[13px] text-ink-600 mt-1">So today it solves <b>“where is this guest and what do they owe”</b> — not <b>“run my front desk”</b>.</p>
+      </div>
+    </div>
+
+    <div class="mock mt-4">
+      <p class="text-[13px] font-bold mb-1">What it looks like now</p>
+      <p class="text-[12px] text-ink-500">Who owes right now: <b style="color:#F87171">7 stays · ₱12,450</b> &nbsp;·&nbsp; filters: All stays / Who owes / Paid &nbsp;·&nbsp; search: name, invoice, log no., room</p>
+      <div class="mockrow"><span><b>Mr. Cruz</b> <span class="text-ink-500">· Room 3 · Sep 18–20</span></span><span class="pill" style="background:#2A1615;color:#F87171">Owes ₱1,550</span></div>
+      <div class="mockrow"><span><b>Mrs. Lim</b> <span class="text-ink-500">· Room 7 · Sep 19–21</span></span><span class="pill" style="background:#332B18;color:#E6C989">Partial · ₱700 left</span></div>
+      <div class="mockrow"><span><b>Reyes family</b> <span class="text-ink-500">· Vacation House · Sep 17–19</span></span><span class="pill" style="background:#12261F;color:#34D399">Paid</span></div>
+      <p class="text-[11.5px] text-ink-500 mt-2">Each row: <i>Print invoice</i> · <i>Details</i> — and nothing else.</p>
+    </div>
+
+    <form class="opt mt-4" data-lavish-question="bookings-tab"
+      onsubmit="event.preventDefault(); const c=new FormData(event.currentTarget).get('tab'); if(!c) return; const labels={'front-desk':'Turn the Bookings tab into the front desk screen: today\'s arrivals and departures at the top with Check in / Check out buttons, who owes below with a Receive action, then everything else - so the desk works from one list instead of jumping back to the calendar.','records':'Keep the Bookings tab as a records screen only: search, look up a guest, reprint a bill - and leave every action on the calendar.','fold':'Fold the Bookings tab into the calendar and drop the tab altogether - one screen for everything.','other':'Something else - see my note.'}; window.lavish.queuePrompt(labels[c], {tag:'choice', text:'Bookings tab: '+c, element:event.currentTarget, data:{question:'bookings-tab', answer:c}});">
+      <p class="text-[13.5px] font-bold mb-1">So what do you want it to be?</p>
+      <label class="tile" style="border-color:var(--gold-400)">
+        <input type="radio" name="tab" value="front-desk" checked>
+        <span><b>Make it the front desk screen.</b>
+          <span class="block text-[13px] text-ink-600">Today's arrivals and departures at the top with <b>Check in</b> and <b>Check out</b> right there, who owes below with a <b>Receive</b> button, then everything else. The desk works from one list instead of jumping back to the calendar — and the calendar stays the planner it is good at being.</span></span>
+      </label>
+      <label class="tile">
+        <input type="radio" name="tab" value="records">
+        <span><b>Keep it as a records screen.</b>
+          <span class="block text-[13px] text-ink-600">Search, look a guest up, reprint a bill. Every action stays on the calendar. Nothing to build.</span></span>
+      </label>
+      <label class="tile">
+        <input type="radio" name="tab" value="fold">
+        <span><b>Fold it into the calendar and drop the tab.</b>
+          <span class="block text-[13px] text-ink-600">One screen for everything — but a timeline is a poor place to search for a guest or to read who owes what.</span></span>
+      </label>
+      <label class="tile">
+        <input type="radio" name="tab" value="other">
+        <span><b>Something else.</b> <span class="block text-[13px] text-ink-600">Tell me in the note.</span></span>
+      </label>
+      <div class="pt-3" style="border-top:1px solid var(--paper-200);margin-top:12px">
+        <button type="submit" class="qbtn">Queue my answer</button>
+        <span class="cap inline ml-2">Then press <b>Send to Agent</b>.</span>
+      </div>
+    </form>
+  </section>
+
+  <footer class="card p-4">
+    <p class="cap mt-0"><b class="text-ink-900">What I do next, unless you say otherwise:</b> start on the booking process — card k126 with k128, k130, k132 and k138 inside it — because that is the one you said has to be complete. The rest of the list follows in the order above, and the bugs already fixed (receipt printing, promo price, Prepared by) are waiting on your next run of the app to be seen.</p>
+  </footer>
+
+</main>
+</body>
+</html>

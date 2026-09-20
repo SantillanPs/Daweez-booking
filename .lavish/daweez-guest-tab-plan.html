@@ -9,36 +9,36 @@
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
 <style type="text/tailwindcss">
   @theme {
-    --color-ink-900:#1C1C1C; --color-ink-700:#2E2E2E; --color-ink-600:#3D3D3D; --color-ink-500:#8A8A8A;
-    --color-gold-400:#D0AB60; --color-gold-100:#F5EAD1; --color-gold-800:#6F5420;
-    --color-paper-50:#F8F5EF; --color-paper-100:#F1ECE1; --color-paper-200:#E6DFD0; --color-paper-300:#D9D0BC;
-    --color-danger-500:#BE3A2B; --color-danger-50:#FBEDEA;
-    --color-good-600:#059669; --color-good-50:#ECFDF5;
+    --color-ink-900:#EDEAE4; --color-ink-700:#2E2E2E; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-100:#332B18; --color-gold-800:#E6C989;
+    --color-paper-50:#141414; --color-paper-100:#2A2A2A; --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A;
+    --color-danger-500:#F87171; --color-danger-50:#2A1615;
+    --color-good-600:#34D399; --color-good-50:#12261F;
     --font-display:"Sora",system-ui,sans-serif;
     --font-sans:"DM Sans",system-ui,sans-serif;
   }
 </style>
 <style>
-  :root{--ink-900:#1C1C1C;--ink-600:#3D3D3D;--ink-500:#8A8A8A;--gold-400:#D0AB60;--gold-100:#F5EAD1;--gold-800:#6F5420;--paper-200:#E6DFD0;--paper-300:#D9D0BC;--paper-50:#F8F5EF;--danger:#BE3A2B;--good:#059669;--card:#FFFFFF}
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-100:#332B18;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--danger:#F87171;--good:#34D399;--card:#1F1F1F}
   *,*::before,*::after{box-sizing:border-box}
   :where(.grid,.flex)>*{min-width:0}
   :where(p,h1,h2,h3,h4,li,label,button,td,th){overflow-wrap:anywhere}
   svg{max-width:100%;height:auto;display:block}
   body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
   h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
-  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(28,28,28,.07)}
+  .card{background:#1F1F1F;border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(28,28,28,.07)}
   .cap{font-size:13px;color:var(--ink-500);margin:10px 0 0}
   .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
   .chip{display:inline-block;font-size:12px;background:var(--paper-50);border:1px solid var(--paper-300);border-radius:99px;padding:3px 10px;margin:0 5px 5px 0;color:var(--ink-600)}
   .num{font-family:"Sora",sans-serif;font-weight:700;font-size:26px;line-height:1}
   .money{font-size:14px;display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed var(--paper-200)}
   .money:last-of-type{border-bottom:0}
-  .tile{background:#fff;border:1px solid var(--paper-200);border-radius:10px;padding:10px 12px}
+  .tile{background:#1F1F1F;border:1px solid var(--paper-200);border-radius:10px;padding:10px 12px}
   .tile b{display:block;font-size:13.5px}
   .tile span{font-size:11.5px;color:var(--ink-500)}
   .opt label{display:flex;gap:9px;align-items:flex-start;padding:4px 0;font-size:14px;cursor:pointer;line-height:1.35}
   .opt input[type=radio]{margin-top:3px;flex:none;accent-color:#D0AB60}
-  .qbtn{background:var(--gold-400);color:var(--ink-900);font-weight:700;font-size:12.5px;border:0;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:inherit}
+  .qbtn{background:var(--gold-400);color:#141414;font-weight:700;font-size:12.5px;border:0;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:inherit}
   .qbtn:disabled{opacity:.45;cursor:not-allowed}
   .state{font-size:12px;font-weight:700;color:var(--good)}
   table{border-collapse:collapse;width:100%}
@@ -62,18 +62,18 @@
       <title id="dA-title">A booking feeds a pricing engine, which produces the whole stay total; the balance due is that total minus the payments recorded</title>
       <defs><marker id="arA" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto"><path d="M0,0 L7,3.2 L0,6.4 z" fill="var(--ink-500)"/></marker></defs>
       <g id="dA-booking"><title>One booking row</title>
-        <rect x="8" y="60" width="140" height="58" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <rect x="8" y="60" width="140" height="58" rx="10" fill="#1F1F1F" stroke="var(--paper-300)"/>
         <text x="78" y="84" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink-900)">Booking</text>
         <text x="78" y="102" text-anchor="middle" font-size="11" fill="var(--ink-500)">one room or venue</text></g>
       <line x1="148" y1="89" x2="170" y2="89" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arA)"/>
       <g id="dA-engine"><title>Pricing engine</title>
-        <rect x="176" y="51" width="210" height="76" rx="10" fill="#fff" stroke="var(--gold-400)" stroke-width="1.5"/>
+        <rect x="176" y="51" width="210" height="76" rx="10" fill="#1F1F1F" stroke="var(--gold-400)" stroke-width="1.5"/>
         <text x="281" y="76" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ink-900)">The bill is worked out</text>
         <text x="281" y="96" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">room × nights + breakfast</text>
         <text x="281" y="111" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">+ extras, hours − discount</text></g>
       <line x1="386" y1="89" x2="408" y2="89" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arA)"/>
       <g id="dA-total"><title>Whole stay total</title>
-        <rect x="414" y="60" width="160" height="58" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <rect x="414" y="60" width="160" height="58" rx="10" fill="#1F1F1F" stroke="var(--paper-300)"/>
         <text x="494" y="84" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ink-900)">Whole stay total</text>
         <text x="494" y="102" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">worked out each time</text></g>
       <line x1="574" y1="89" x2="592" y2="89" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arA)"/>
@@ -82,11 +82,11 @@
         <text x="612" y="95" text-anchor="middle" font-size="17" font-weight="700" fill="var(--gold-800)">−</text></g>
       <line x1="627" y1="89" x2="650" y2="89" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arA)"/>
       <g id="dA-balance"><title>Balance due</title>
-        <rect x="656" y="60" width="180" height="58" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <rect x="656" y="60" width="180" height="58" rx="10" fill="#1F1F1F" stroke="var(--paper-300)"/>
         <text x="746" y="84" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ink-900)">What is still owed</text>
         <text x="746" y="102" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">the only stored figure</text></g>
       <g id="dA-payments"><title>Payments recorded, one receipt each</title>
-        <rect x="512" y="146" width="208" height="48" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <rect x="512" y="146" width="208" height="48" rx="10" fill="#1F1F1F" stroke="var(--paper-300)"/>
         <text x="616" y="167" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink-900)">Money already paid</text>
         <text x="616" y="183" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">one numbered receipt each</text></g>
       <line x1="616" y1="146" x2="613" y2="108" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arA)"/>
@@ -100,11 +100,11 @@
       <title id="dB-title">Room charges and new tab lines both feed one running total, which is then reduced by payments to give what is left at check-out</title>
       <defs><marker id="arB" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto"><path d="M0,0 L7,3.2 L0,6.4 z" fill="var(--ink-500)"/></marker></defs>
       <g id="dB-room"><title>Room, breakfast and extras</title>
-        <rect x="8" y="26" width="210" height="60" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <rect x="8" y="26" width="210" height="60" rx="10" fill="#1F1F1F" stroke="var(--paper-300)"/>
         <text x="113" y="51" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink-900)">Room · breakfast · extras</text>
         <text x="113" y="69" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">already priced today</text></g>
       <g id="dB-tab"><title>New food and bar lines</title>
-        <rect x="8" y="140" width="210" height="60" rx="10" fill="#fff" stroke="var(--gold-400)" stroke-width="1.5"/>
+        <rect x="8" y="140" width="210" height="60" rx="10" fill="#1F1F1F" stroke="var(--gold-400)" stroke-width="1.5"/>
         <text x="113" y="165" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink-900)">Restaurant &amp; bar</text>
         <text x="113" y="183" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">the lines we are adding</text>
         <rect x="182" y="132" width="44" height="18" rx="6" fill="var(--gold-400)"/>
@@ -112,7 +112,7 @@
       <path d="M218,56 H262 V96 H294" fill="none" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arB)"/>
       <path d="M218,170 H262 V132 H294" fill="none" stroke="var(--gold-400)" stroke-width="1.5" marker-end="url(#arB)"/>
       <g id="dB-total"><title>One running total for the stay</title>
-        <rect x="300" y="76" width="200" height="76" rx="10" fill="#fff" stroke="var(--gold-400)" stroke-width="1.5"/>
+        <rect x="300" y="76" width="200" height="76" rx="10" fill="#1F1F1F" stroke="var(--gold-400)" stroke-width="1.5"/>
         <text x="400" y="104" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ink-900)">One running total</text>
         <text x="400" y="122" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">the stay + the food</text>
         <text x="400" y="137" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">on the guest's tab</text></g>
@@ -122,11 +122,11 @@
         <text x="540" y="120" text-anchor="middle" font-size="17" font-weight="700" fill="var(--gold-800)">−</text></g>
       <line x1="555" y1="114" x2="576" y2="114" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arB)"/>
       <g id="dB-left"><title>What is left at check-out</title>
-        <rect x="582" y="86" width="190" height="56" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <rect x="582" y="86" width="190" height="56" rx="10" fill="#1F1F1F" stroke="var(--paper-300)"/>
         <text x="677" y="110" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ink-900)">Left at check-out</text>
         <text x="677" y="128" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">one figure, one bill</text></g>
       <g id="dB-gate"><title>Check-out already stops while money is owed</title>
-        <rect x="470" y="170" width="330" height="44" rx="10" fill="#FBEDEA" stroke="var(--danger)"/>
+        <rect x="470" y="170" width="330" height="44" rx="10" fill="#2A1615" stroke="var(--danger)"/>
         <text x="635" y="197" text-anchor="middle" font-size="12" font-weight="700" fill="var(--danger)">Check out already stops while money is owed</text></g>
     </svg>
     <p class="cap">Food lines must reach the same total as the room, or the bill and the balance disagree.</p>
@@ -139,18 +139,18 @@
       <title id="dD-title">The restaurant is most of the money; diners split into those staying in a room and walk-ins with no room</title>
       <defs><marker id="arD" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto"><path d="M0,0 L7,3.2 L0,6.4 z" fill="var(--ink-500)"/></marker></defs>
       <g id="dD-source"><title>Restaurant and bar, most of the money</title>
-        <rect x="8" y="60" width="200" height="70" rx="10" fill="#fff" stroke="var(--gold-400)" stroke-width="1.5"/>
+        <rect x="8" y="60" width="200" height="70" rx="10" fill="#1F1F1F" stroke="var(--gold-400)" stroke-width="1.5"/>
         <text x="108" y="88" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ink-900)">Restaurant &amp; bar</text>
         <text x="108" y="108" text-anchor="middle" font-size="11" fill="var(--gold-800)">most of the money</text></g>
       <path d="M208,95 H240" fill="none" stroke="var(--ink-500)" stroke-width="1.5"/>
       <path d="M240,95 H250 V52 H254" fill="none" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arD)"/>
       <path d="M240,95 H250 V138 H254" fill="none" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arD)"/>
       <g id="dD-staying"><title>Diners staying in a room</title>
-        <rect x="258" y="24" width="300" height="56" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <rect x="258" y="24" width="300" height="56" rx="10" fill="#1F1F1F" stroke="var(--paper-300)"/>
         <text x="408" y="48" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink-900)">Staying in a room</text>
         <text x="408" y="66" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">food goes on the room tab</text></g>
       <g id="dD-walkin"><title>Walk-in diners with no room</title>
-        <rect x="258" y="110" width="300" height="56" rx="10" fill="#fff" stroke="var(--gold-400)" stroke-width="1.5"/>
+        <rect x="258" y="110" width="300" height="56" rx="10" fill="#1F1F1F" stroke="var(--gold-400)" stroke-width="1.5"/>
         <text x="408" y="134" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink-900)">Walk-in diner, no room</text>
         <text x="408" y="152" text-anchor="middle" font-size="10.5" fill="var(--ink-500)">needs a tab of their own</text></g>
       <text x="578" y="56" font-size="12" fill="var(--ink-500)">tab lives on the booking</text>
@@ -163,7 +163,7 @@
     <h2 class="text-lg font-bold">4 · The number gets bigger</h2>
     <div class="grid gap-4 md:grid-cols-2 mt-3">
       <div class="tile">
-        <p class="pill bg-paper-100 text-ink-600 mb-3" style="background:#F1ECE1">Today</p>
+        <p class="pill bg-paper-100 text-ink-600 mb-3" style="background:#2A2A2A">Today</p>
         <div class="money"><span>Room</span><b>₱2,000</b></div>
         <div class="money"><span>Paid</span><b>− ₱1,000</b></div>
         <p class="mt-3 text-[12px] text-ink-500">Owed</p>
@@ -188,11 +188,11 @@
       <thead><tr><th style="width:38%">Question</th><th style="width:26%">You said</th><th>So the tab must…</th></tr></thead>
       <tbody>
         <tr><td>Room or counter?</td><td><span class="pill bg-gold-100 text-gold-800">Both</span></td><td>settle both ways</td></tr>
-        <tr><td>Can a non-guest run one?</td><td><span class="pill" style="background:#FBEDEA;color:var(--danger)">Yes</span></td><td>work with no room</td></tr>
+        <tr><td>Can a non-guest run one?</td><td><span class="pill" style="background:#2A1615;color:var(--danger)">Yes</span></td><td>work with no room</td></tr>
         <tr><td>One per room, or per guest?</td><td><span class="pill bg-gold-100 text-gold-800">Per room</span></td><td>stay one-per-booking</td></tr>
-        <tr><td>Change the deposit?</td><td><span class="pill" style="background:#ECFDF5;color:var(--good)">Never</span></td><td>keep the deposit room-only</td></tr>
+        <tr><td>Change the deposit?</td><td><span class="pill" style="background:#12261F;color:var(--good)">Never</span></td><td>keep the deposit room-only</td></tr>
         <tr><td>Guest sees a running total?</td><td><span class="pill bg-gold-100 text-gold-800">On request</span></td><td>be printable mid-stay</td></tr>
-        <tr><td>Delete a wrong line?</td><td><span class="pill" style="background:#ECFDF5;color:var(--good)">Yes</span></td><td>remove it, like a wrong payment</td></tr>
+        <tr><td>Delete a wrong line?</td><td><span class="pill" style="background:#12261F;color:var(--good)">Yes</span></td><td>remove it, like a wrong payment</td></tr>
       </tbody>
     </table>
   </section>
@@ -223,7 +223,7 @@
     <p class="cap mt-1 mb-3">This is the trap you asked about — and it is the reason for that choice.</p>
     <div class="grid gap-4 md:grid-cols-2">
       <div class="tile" style="border-color:var(--danger)">
-        <p class="pill mb-3" style="background:#FBEDEA;color:var(--danger)">If a food line were saved onto the booking</p>
+        <p class="pill mb-3" style="background:#2A1615;color:var(--danger)">If a food line were saved onto the booking</p>
         <div class="money"><span>1 · Ana adds a ₱300 lunch</span><b></b></div>
         <div class="money"><span>2 · That save is a booking save</span><b></b></div>
         <div class="money"><span>3 · It leaves out the payment method</span><b style="color:var(--danger)">→ blank</b></div>
@@ -231,7 +231,7 @@
         <p class="cap mb-0">The bill stays right. But nobody can prove how the guest paid.</p>
       </div>
       <div class="tile" style="border-color:var(--good)">
-        <p class="pill mb-3" style="background:#ECFDF5;color:var(--good)">What we are doing — food lines in their own table</p>
+        <p class="pill mb-3" style="background:#12261F;color:var(--good)">What we are doing — food lines in their own table</p>
         <div class="money"><span>1 · Ana adds a ₱300 lunch</span><b></b></div>
         <div class="money"><span>2 · Only the food table is written</span><b style="color:var(--good)">✓</b></div>
         <div class="money"><span>3 · The booking is never touched</span><b style="color:var(--good)">✓</b></div>
@@ -243,7 +243,7 @@
   </section>
 
   <section class="card p-5" style="border-color:var(--good)">
-    <p class="pill mb-2" style="background:#ECFDF5;color:var(--good)">Decided</p>
+    <p class="pill mb-2" style="background:#12261F;color:var(--good)">Decided</p>
     <h2 class="text-lg font-bold mb-1">9 · A · Anyone can run a tab</h2>
     <p class="cap mt-1 mb-0">Diners with no room get their own tab and settle it at the counter. Since the restaurant is most of the money, this is the version worth building — the guests-only shortcut (B) stays on the shelf as a smaller first slice if the work grows.</p>
   </section>

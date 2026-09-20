@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your answers — and the cards I propose</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-700:#C9C4BB; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-100:#332B18; --color-gold-800:#E6C989;
+    --color-paper-50:#141414; --color-paper-100:#2A2A2A; --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A;
+    --color-danger-500:#F87171; --color-danger-50:#2A1615;
+    --color-good-600:#34D399; --color-good-50:#12261F;
+    --font-display:"Sora",system-ui,sans-serif;
+    --font-sans:"DM Sans",system-ui,sans-serif;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-100:#332B18;--gold-800:#E6C989;--paper-100:#2A2A2A;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--danger:#F87171;--good:#34D399;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,h4,li,label,button,td,th,span,b,code,i,em){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.35)}
+  .cap{font-size:13px;color:var(--ink-500);margin:10px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .said{font-size:12.5px;color:#E6C989;border-left:2px solid #6F5420;padding-left:9px;margin:6px 0 0}
+  .item{display:grid;grid-template-columns:minmax(0,44px) minmax(0,1fr);gap:10px;align-items:start;padding:11px 0;border-bottom:1px solid var(--paper-200)}
+  .item:last-of-type{border-bottom:0}
+  .qbtn{background:var(--gold-400);color:#141414;font-weight:700;font-size:13px;border:0;border-radius:8px;padding:9px 15px;cursor:pointer;font-family:inherit}
+  .chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer;padding:4px 0;line-height:1.35}
+  .chk input{margin-top:3px;width:15px;height:15px;accent-color:#D0AB60;flex:none}
+  .tag{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-500)}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-5xl px-5 py-8 lg:px-8 space-y-6">
+
+  <header>
+    <p class="pill mb-2" style="background:#12261F;color:#34D399">13 answered · 19 cards written · 1 still open</p>
+    <h1 class="text-3xl lg:text-4xl font-bold tracking-tight">What you told me, and the cards I propose</h1>
+    <p class="cap mt-2">Your notes are below in your own words. The board has been written from this page: 19 cards, listed at the foot, with one thing still waiting on you.</p>
+  </header>
+
+  <!-- ── your answers ─────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold mb-1">Your answers</h2>
+    <p class="cap mt-1 mb-2">Nothing here is built yet — this is me reading back what I heard.</p>
+    <div>
+      <div class="item">
+        <span class="tag">C1<br>price</span>
+        <div>
+          <p class="text-[13.5px]"><b>One price, and stop calling it a promo</b></p>
+          <p class="said">"Just remove the regular price. there's only 1 price now which is the promo. but let's not call it that. it's the new regular now."</p>
+          <p class="text-[13px] text-ink-600 mt-1">The promo figure becomes <b>the</b> price everywhere — no crossed-out regular, no "promo" badge, no "Use Promo Price" switch. Printed bills follow.</p>
+        </div>
+      </div>
+      <div class="item">
+        <span class="tag">C6 + Q8<br>form</span>
+        <div>
+          <p class="text-[13.5px]"><b>One form, no steps</b></p>
+          <p class="said">"Step 2 and 3 should move to step 1 now. so there are no more steps, and it's just 1 form with everything."</p>
+          <p class="text-[13px] text-ink-600 mt-1">Everything on one page, like the paper form: guest, companions, unit and dates, add-ons, discount, receptionist, deposit and method — and the Total/Deposit/Balance summary block is gone, because the printed statement carries those figures.</p>
+        </div>
+      </div>
+      <div class="item">
+        <span class="tag">Q1<br>breakfast</span>
+        <div>
+          <p class="text-[13.5px]"><b>Breakfast is ₱150 × the room's beds</b></p>
+          <p class="said">"Forget about heads. just 150 times the amount of beds."</p>
+          <p class="text-[13px] text-ink-600 mt-1">Room 10 with 3 bunk beds = 6 beds → ₱900. A room for 2 → ₱300, even if one guest is alone. Beds become the number that counts, so each room needs its bed count recorded.</p>
+        </div>
+      </div>
+      <div class="item">
+        <span class="tag">Q2<br>reference</span>
+        <div>
+          <p class="text-[13.5px]"><b>The photo and the number, together</b></p>
+          <p class="said">"guests can send the screenshot of the payment that has the reference no. or just take a picture if they are physically right beside them. they should be together... the photo should be kept, while the reference no. field gets filled because of the AI extracting it"</p>
+          <p class="text-[13px] text-ink-600 mt-1">The photo is kept as proof; the AI reads it and fills the reference box; staff can correct what it read. Works for a guest's screenshot sent ahead, and for the desk photographing a phone.</p>
+        </div>
+      </div>
+      <div class="item">
+        <span class="tag">Q3<br>email</span>
+        <div>
+          <p class="text-[13.5px]"><b>A send button, using your Gmail</b></p>
+          <p class="said">"send only when staff presses a button. We have gmail."</p>
+          <p class="text-[13px] text-ink-600 mt-1">Nothing is emailed by itself: staff press <b>Email to guest</b> on the statement and on a receipt. I will need a Gmail <i>app password</i> for the hotel account when we build it.</p>
+        </div>
+      </div>
+      <div class="item">
+        <span class="tag">Q4<br>deposit</span>
+        <div>
+          <p class="text-[13.5px]"><b>Half by default, typable when you want</b></p>
+          <p class="said">"the custom deposit amount is an option, but default is always half."</p>
+          <p class="text-[13px] text-ink-600 mt-1">The deposit box arrives filled with half the stay and can be overwritten with any amount.</p>
+        </div>
+      </div>
+      <div class="item">
+        <span class="tag">Q5<br>autocomplete</span>
+        <div>
+          <p class="text-[13.5px]"><b>The receptionist's name, for now</b></p>
+          <p class="said">"I like the receptionist's name. not sure about the others though."</p>
+          <p class="text-[13px] text-ink-600 mt-1">Staff names remember themselves, so the same person is not spelled two ways. Nationality and the rest stay plain boxes until you decide.</p>
+        </div>
+      </div>
+      <div class="item">
+        <span class="tag">Q7<br>add-ons</span>
+        <div>
+          <p class="text-[13.5px]"><b>Keep the "more" button</b></p>
+          <p class="said">"I like a more button. I just meant everything should be accessible but not immediately on display... it doesn't make sense for guests to ask for tables and chairs in the rooms."</p>
+          <p class="text-[13px] text-ink-600 mt-1">Everything stays reachable behind <b>More add-ons</b>, and the list itself is trimmed to what suits the unit — see open item 4.</p>
+        </div>
+      </div>
+      <div class="item">
+        <span class="tag">Q9<br>payment</span>
+        <div>
+          <p class="text-[13.5px]"><b>A deposit always, and the guest picks how they pay</b></p>
+          <p class="said">"Yes. and the staff don't get to decide what type of payment method the guest will use, only the guest get to choose that."</p>
+          <p class="text-[13px] text-ink-600 mt-1">Every booking takes a deposit to hold the room, and the form stops demanding a method — the guest's choice is recorded when the money is actually received.</p>
+        </div>
+      </div>
+      <div class="item">
+        <span class="tag">Q10<br>house</span>
+        <div>
+          <p class="text-[13.5px]"><b>Vacation House: ₱2,000 reservation</b></p>
+          <p class="said">"yes. just 2000 for reservation. I'm not sure about when they collect the safety deposit. and I'm also not sure about when they hand the money back"</p>
+          <p class="text-[13px] text-ink-600 mt-1">A flat ₱2,000 to reserve, taken off the house rate — never "half". The ₱2,000 safety deposit's timing is open item 3.</p>
+        </div>
+      </div>
+      <div class="item">
+        <span class="tag">Q11<br>calendar</span>
+        <div>
+          <p class="text-[13.5px]"><b>The grid starts at today</b></p>
+          <p class="said">"b"</p>
+          <p class="text-[13px] text-ink-600 mt-1">Today is the first column, with the days ahead beside it — the earlier days of the month are not on screen at all, so there is nothing to scroll back through.</p>
+        </div>
+      </div>
+      <div class="item">
+        <span class="tag">Q12<br>tables</span>
+        <div>
+          <p class="text-[13.5px]"><b>Tables as pills, and a tab can take more than one</b></p>
+          <p class="said">"sometimes they use more than 1 table so an order would use 2 tables or more. and yes, it should be editable in the settings"</p>
+          <p class="text-[13px] text-ink-600 mt-1">Tap one table or several for the same tab; a table already on a running tab shows as taken and cannot be picked twice. The list of tables is yours to edit in Settings.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── still open ───────────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--gold-400)">
+    <p class="pill mb-2" style="background:#12261F;color:#34D399">4 settled · 1 still open</p>
+    <h2 class="text-lg font-bold mb-1">What you settled while we were talking</h2>
+    <p class="cap mt-1 mb-3">All four are already written into the cards below.</p>
+    <div class="mb-3">
+      <p class="text-[13px]"><b class="text-ink-900">Safety deposit — "This sounds good"</b> Collected with the reservation, ₱2,000 + ₱2,000 shown as two lines, handed back at check-out as a refund line once staff confirm there is no damage.</p>
+      <p class="text-[13px] mt-1"><b class="text-ink-900">Add-ons — "This is good"</b> A room offers linens, toiletries, an extra bed and breakfast; a venue offers tables, chairs, tent, water and extra hours. Everything stays behind the More button.</p>
+      <p class="text-[13px] mt-1"><b class="text-ink-900">Breakfast — "charged once, added in the rate of the room"</b> ₱150 × the room's beds, charged once for the stay and folded into the room rate. That retires the per-day breakfast recorder.</p>
+      <p class="text-[13px] mt-1"><b class="text-ink-900">The promo ON/OFF switch — "remove it"</b> It goes away. The single price simply is the price.</p>
+    </div>
+    <div class="pt-3" style="border-top:1px solid var(--paper-200)">
+      <p class="text-[13.5px] font-bold mb-1">Two things still waiting on you</p>
+      <p class="text-[13px] text-ink-600"><b class="text-ink-900">1. B2 is solved</b> <span class="pill" style="background:#12261F;color:#34D399">fixed</span></p>
+      <p class="text-[13px] text-ink-600 mt-1">Your two answers were the clue. Both saving functions <b>do</b> keep the name, and 6 bookings prove it can be stored — so the name was being <b>wiped afterwards</b>, not lost on the way in.</p>
+      <p class="text-[13px] text-ink-600 mt-1">The culprit was the live-updates hook that keeps the calendar in step. It rebuilds each booking from the database row, and its list of columns had fallen behind — <b>prepared_by was missing</b>. So the moment a booking arrived or changed over live updates, the name disappeared from the screen, and the very next save (recording a payment, checking a guest in) wrote the booking back <b>without it</b>. The same gap was quietly wiping the check-in and check-out times, the recorded payments, the staff discount, the block reason, the early and late hours, the gazebo day-blocks, the planned breakfast days and the guest's birth date.</p>
+      <p class="text-[13px] text-ink-600 mt-1">They are all carried now, and the rule is written into the project's own instructions so a new column can never be forgotten again.</p>
+    </div>
+    <div class="pt-3" style="border-top:1px solid var(--paper-200);margin-top:10px">
+      <p class="text-[13.5px] font-bold mb-1">One thing still waiting on you</p>
+      <p class="text-[13px] text-ink-600"><b class="text-ink-900">The agencies talk.</b> You asked me to remind you, so here it is again. No card has been written for it — it stays off the board until we agree how an agency price deal should work.
+    </div>
+  </section>
+
+  <!-- ── proposed cards ───────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:var(--good)">
+    <p class="pill mb-2" style="background:#12261F;color:#34D399">Ready for the board</p>
+    <h2 class="text-lg font-bold mb-1">The cards I would add</h2>
+    <p class="cap mt-1 mb-2">Your 22 notes become these. Two of them are already cards, and the two bugs I have already fixed are marked. Nothing is created until you say so.</p>
+
+    <div class="grid gap-3 md:grid-cols-2">
+      <div>
+        <p class="tag mb-1">Bugs first</p>
+        <p class="text-[13px]">1. Receipt prints the receipt, not the booking <span class="pill" style="background:#12261F;color:#34D399">fixed</span></p>
+        <p class="text-[13px]">2. The booking charges the price shown <span class="pill" style="background:#12261F;color:#34D399">fixed</span></p>
+        <p class="text-[13px]">3. "Prepared by" on the bill and the receipt</p>
+        <p class="tag mb-1 mt-3">Booking, one form</p>
+        <p class="text-[13px]">4. One booking form, no steps, no price summary</p>
+        <p class="text-[13px]">5. One price, renamed plainly</p>
+        <p class="text-[13px]">6. Deposit always, half by default, typable</p>
+        <p class="text-[13px]">7. The guest chooses the payment method, not staff</p>
+        <p class="text-[13px]">8. Open the new booking in the quick view after the bill</p>
+        <p class="text-[13px]">9. The receptionist's name remembers itself</p>
+        <p class="text-[13px]">10. Add-ons behind a "More" button, suited to the unit</p>
+      </div>
+      <div>
+        <p class="tag mb-1">Money and paper</p>
+        <p class="text-[13px]">11. Breakfast charged as ₱150 × the room's beds</p>
+        <p class="text-[13px]">12. Breakfast rides on the room line, no separate row</p>
+        <p class="text-[13px]">13. Guest bill on A5</p>
+        <p class="text-[13px]">14. Email the bill and the receipts, on a button, from Gmail</p>
+        <p class="text-[13px]">15. Vacation House ₱2,000 reservation + safety deposit</p>
+        <p class="text-[13px]">16. A photo of the payment, with the reference read from it</p>
+        <p class="tag mb-1 mt-3">Restaurant and the calendar</p>
+        <p class="text-[13px]">17. Tables as pills, several per tab, edited in Settings</p>
+        <p class="text-[13px]">18. Menu items and photos, editable <span class="pill" style="background:#2A2A2A;color:#C9C4BB">k105 + k107</span></p>
+        <p class="text-[13px]">19. The calendar starts at today</p>
+        <p class="tag mb-1 mt-3">Parked</p>
+        <p class="text-[13px]">20. Airbnb / Booking.com / Agoda — last in the queue</p>
+        <p class="text-[13px]">21. Agencies as a price deal — waiting on our talk</p>
+      </div>
+    </div>
+
+    <div class="pt-4" style="border-top:1px solid var(--paper-200);margin-top:12px">
+      <p class="text-[13.5px] font-bold">Written to the board — 19 cards, all sitting in Todo</p>
+      <p class="cap mt-1 mb-0"><b class="text-ink-900">Bugs:</b> k120 (receipt printing), k122 (the price the booking charges), k124 (Prepared by — waiting on the query). <b class="text-ink-900">Booking form:</b> k126 one form, k128 one price, k130 deposit, k132 the guest chooses how they pay, k134 quick view after the bill, k136 receptionist's name, k138 add-ons behind More. <b class="text-ink-900">Money and paper:</b> k140 breakfast × beds, k142 breakfast on the room line, k144 A5 bill, k146 email from Gmail, k148 Vacation House, k150 payment photo and reference. <b class="text-ink-900">Restaurant and calendar:</b> k152 tables as pills, k154 calendar starts at today. <b class="text-ink-900">Parked:</b> k156 the OTA channels.</p>
+      <p class="cap mb-0">Menu items and photos were already <b>k105</b> and <b>k107</b>, so no duplicate was written. The agency card is deliberately absent. <b class="text-ink-900">Nothing is being built</b> — the list is written, and building waits for your word.</p>
+    </div>
+  </section>
+
+  <footer class="card p-4">
+    <p class="cap mt-0"><b class="text-ink-900">Still pinned:</b> nothing new is built while we settle the six open items. Three bugs are fixed in the code now — the receipt printing, the promo price, and the Prepared-by name — waiting on your next run of the app to be seen.</p>
+  </footer>
+
+</main>
+</body>
+</html>

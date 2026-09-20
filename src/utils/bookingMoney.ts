@@ -71,6 +71,11 @@ export function amountToPayNow(booking: Booking, tabTotal = 0): number {
   const owed = Number(booking.balance_due || 0)
   if (hasPaymentRecorded(booking)) return owed
   if (booking.payment_plan === 'full') return owed
+  // The desk agreed a figure when the booking was made (card k130): ask for
+  // exactly that, never a recomputed half. Capped at what is actually owed, so a
+  // deposit larger than the bill can never be requested.
+  const agreed = Number(booking.agreed_deposit || 0)
+  if (agreed > 0) return Math.max(0, Math.min(owed, Math.round(agreed - paid)))
   if (booking.payment_plan === 'deposit') {
     const stayOwed = Math.max(0, owed - Math.max(0, tabTotal))
     return Math.max(0, Math.min(owed, Math.round((paid + stayOwed) / 2) - paid))

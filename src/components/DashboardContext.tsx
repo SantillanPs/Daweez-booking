@@ -49,6 +49,8 @@ export interface DashboardDataContextValue {
   updateBooking: (booking: Booking) => Promise<void>
   updateFeedUrls: (updatedFeeds: SyncFeed[]) => Promise<SyncFeed[]>
   updateRoomRate: (roomId: string, basePrice: number, promoPrice?: number | null) => Promise<Room | null>
+  /** How many beds a room has — what breakfast is charged against (k140). */
+  updateRoomBeds: (roomId: string, beds: number) => Promise<void>
   createPartnerDeal: (deal: PartnerDeal) => Promise<void>
   savePartnerDeals: (deals: PartnerDeal[]) => Promise<void>
   deletePartnerDeal: (dealId: string) => Promise<void>

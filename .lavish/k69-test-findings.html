@@ -9,34 +9,34 @@
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
 <style type="text/tailwindcss">
   @theme {
-    --color-ink-900:#1C1C1C; --color-ink-700:#2E2E2E; --color-ink-600:#3D3D3D; --color-ink-500:#8A8A8A;
-    --color-gold-400:#D0AB60; --color-gold-100:#F5EAD1; --color-gold-800:#6F5420;
-    --color-paper-50:#F8F5EF; --color-paper-100:#F1ECE1; --color-paper-200:#E6DFD0; --color-paper-300:#D9D0BC;
-    --color-danger-500:#BE3A2B; --color-danger-50:#FBEDEA;
-    --color-good-600:#059669; --color-good-50:#ECFDF5;
+    --color-ink-900:#EDEAE4; --color-ink-700:#2E2E2E; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-100:#332B18; --color-gold-800:#E6C989;
+    --color-paper-50:#141414; --color-paper-100:#2A2A2A; --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A;
+    --color-danger-500:#F87171; --color-danger-50:#2A1615;
+    --color-good-600:#34D399; --color-good-50:#12261F;
     --font-display:"Sora",system-ui,sans-serif;
     --font-sans:"DM Sans",system-ui,sans-serif;
   }
 </style>
 <style>
-  :root{--ink-900:#1C1C1C;--ink-600:#3D3D3D;--ink-500:#8A8A8A;--gold-400:#D0AB60;--gold-100:#F5EAD1;--gold-800:#6F5420;--paper-200:#E6DFD0;--paper-300:#D9D0BC;--paper-50:#F8F5EF;--danger:#BE3A2B;--good:#059669;--amber:#B45309;--card:#FFFFFF}
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-100:#332B18;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--danger:#F87171;--good:#34D399;--amber:#B45309;--card:#1F1F1F}
   *,*::before,*::after{box-sizing:border-box}
   :where(.grid,.flex)>*{min-width:0}
   :where(p,h1,h2,h3,li,label,button,span,b){overflow-wrap:anywhere}
   svg{max-width:100%;height:auto;display:block}
   body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
   h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
-  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(28,28,28,.07)}
+  .card{background:#1F1F1F;border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(28,28,28,.07)}
   .cap{font-size:13px;color:var(--ink-500);margin:10px 0 0}
   .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
-  .tile{background:#fff;border:1px solid var(--paper-200);border-radius:10px;padding:11px 13px}
+  .tile{background:#1F1F1F;border:1px solid var(--paper-200);border-radius:10px;padding:11px 13px}
   .num{font-family:"Sora",sans-serif;font-weight:700;font-size:22px;line-height:1}
   .opt label{display:flex;gap:9px;align-items:flex-start;padding:4px 0;font-size:14px;cursor:pointer;line-height:1.35}
   .opt input[type=radio]{margin-top:3px;flex:none;accent-color:#D0AB60}
-  .qbtn{background:var(--gold-400);color:var(--ink-900);font-weight:700;font-size:12.5px;border:0;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:inherit}
+  .qbtn{background:var(--gold-400);color:#141414;font-weight:700;font-size:12.5px;border:0;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:inherit}
   .qbtn:disabled{opacity:.45;cursor:not-allowed}
   .state{font-size:12px;font-weight:700;color:var(--good)}
-  .mock{border:1px solid var(--paper-200);border-radius:10px;padding:10px 12px;background:#fff}
+  .mock{border:1px solid var(--paper-200);border-radius:10px;padding:10px 12px;background:#1F1F1F}
 </style>
 </head>
 <body>
@@ -49,17 +49,17 @@
   </header>
 
   <section class="card p-5" style="border-color:var(--danger)">
-    <p class="pill mb-2" style="background:#FBEDEA;color:var(--danger)">1 · the error you hit</p>
+    <p class="pill mb-2" style="background:#2A1615;color:var(--danger)">1 · the error you hit</p>
     <h2 class="text-lg font-bold">“Could not add that line. Please try again.”</h2>
     <p class="cap mt-1 mb-3">That message was my fault twice over — it hid the reason, and one way it could fire was a cache write killing a save that had already worked.</p>
     <div class="grid gap-4 md:grid-cols-2">
       <div class="tile" style="border-color:var(--good)">
-        <p class="pill mb-2" style="background:#ECFDF5;color:var(--good)">Fixed</p>
+        <p class="pill mb-2" style="background:#12261F;color:var(--good)">Fixed</p>
         <p class="text-[13.5px]" style="border-left:3px solid var(--good);padding-left:10px"><b>The message now says why.</b> It reads <i>“Could not add that line — ”</i> followed by the real reason.</p>
         <p class="text-[13.5px] mt-2" style="border-left:3px solid var(--good);padding-left:10px"><b>A full browser cache can no longer break a save.</b> It is only an offline copy, so a failure there is now ignored instead of killing the order.</p>
       </div>
       <div class="tile" style="border-color:var(--amber)">
-        <p class="pill mb-2" style="background:#FEF3C7;color:var(--amber)">Still to find</p>
+        <p class="pill mb-2" style="background:#332B18;color:var(--amber)">Still to find</p>
         <p class="text-[13px] text-ink-600">Neither of those tells me which one you actually hit. So please add the ₱100 order once more and <b>send me the words after the dash</b> — that names the cause in one go.</p>
         <p class="text-[12.5px] text-ink-500 mt-2">If the dash is followed by nothing, the browser console has a line starting <span class="font-mono">Could not add that tab line</span>.</p>
       </div>
@@ -73,7 +73,7 @@
     <p class="cap mt-1 mb-3">Room ₱1,250, deposit ₱625 paid, then a ₱100 order. Adding food used to bury the room figure inside one bigger number:</p>
     <div class="grid gap-4 md:grid-cols-2">
       <div class="tile" style="border-color:var(--danger)">
-        <p class="pill mb-3" style="background:#FBEDEA;color:var(--danger)">Before</p>
+        <p class="pill mb-3" style="background:#2A1615;color:var(--danger)">Before</p>
         <div class="mock">
           <p class="text-[11px] font-bold text-amber-700">PARTLY PAID</p>
           <p class="text-[11.5px] font-semibold mt-1" style="color:var(--amber)">₱625 of ₱1,350 received · ₱725 still to receive</p>
@@ -81,7 +81,7 @@
         <p class="cap mb-0" style="color:var(--danger)">Where did the room's ₱1,250 go? Not shown anywhere.</p>
       </div>
       <div class="tile" style="border-color:var(--good)">
-        <p class="pill mb-3" style="background:#ECFDF5;color:var(--good)">Now</p>
+        <p class="pill mb-3" style="background:#12261F;color:var(--good)">Now</p>
         <div class="mock">
           <p class="text-[11px] font-bold text-amber-700">PARTLY PAID</p>
           <p class="text-[11.5px] font-semibold mt-1" style="color:var(--amber)">₱625 of ₱1,350 received · ₱725 still to receive</p>
@@ -102,15 +102,15 @@
       <title id="dC-title">Today food can be added right after booking; the proposal is that the guest must be checked in first</title>
       <defs><marker id="arC" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto"><path d="M0,0 L7,3.2 L0,6.4 z" fill="var(--ink-500)"/></marker></defs>
       <g id="dC-a"><title>Today</title>
-        <rect x="8" y="30" width="130" height="52" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <rect x="8" y="30" width="130" height="52" rx="10" fill="#1F1F1F" stroke="var(--paper-300)"/>
         <text x="73" y="61" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink-900)">Booked</text></g>
       <line x1="138" y1="56" x2="176" y2="56" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arC)"/>
       <g id="dC-b"><title>Food can already be added today</title>
-        <rect x="184" y="30" width="230" height="52" rx="10" fill="#FBEDEA" stroke="var(--danger)"/>
+        <rect x="184" y="30" width="230" height="52" rx="10" fill="#2A1615" stroke="var(--danger)"/>
         <text x="299" y="61" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--danger)">Food can be added — today</text></g>
       <line x1="414" y1="56" x2="452" y2="56" stroke="var(--ink-500)" stroke-width="1.5" marker-end="url(#arC)"/>
       <g id="dC-c"><title>Checked in</title>
-        <rect x="460" y="30" width="150" height="52" rx="10" fill="#fff" stroke="var(--paper-300)"/>
+        <rect x="460" y="30" width="150" height="52" rx="10" fill="#1F1F1F" stroke="var(--paper-300)"/>
         <text x="535" y="61" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink-900)">Checked in</text></g>
       <text x="630" y="61" font-size="12" fill="var(--ink-500)">today: the order lands before the guest arrives</text>
       <g id="dC-d"><title>With the rule</title>
@@ -125,14 +125,14 @@
         <p class="text-[11.5px] text-ink-500">Cheap to do — the check-in button already exists, so the guest is one press from ordering. It also matches the gazebo rule you described.</p>
       </div>
       <div class="tile">
-        <p class="pill mb-2" style="background:#F1ECE1;color:var(--ink-600)">What is built now</p>
+        <p class="pill mb-2" style="background:#2A2A2A;color:var(--ink-600)">What is built now</p>
         <p class="font-bold text-[15px] mb-1">B · Order any time</p>
         <p class="text-[13px] text-ink-600 mb-2">A booked guest can be charged food before arriving — useful for a phone order taken for a guest who is on the way.</p>
         <p class="text-[11.5px] text-ink-500">No change needed. But nothing stops a room that has not been handed over from collecting a bar tab.</p>
       </div>
     </div>
     <p class="mt-4 pt-4 text-[13.5px]" style="border-top:1px solid var(--paper-200)">
-      <span class="pill" style="background:#ECFDF5;color:var(--good)">Decided · built</span>
+      <span class="pill" style="background:#12261F;color:var(--good)">Decided · built</span>
       <b class="ml-2">A — check in first, then food.</b> Your reason, in your words: people never order on the phone here, they order when they are physically in the hotel. So a stay's tab now stays shut — it says <i>Check the guest in first</i> — until the guest is checked in. The walk-in <b>Restaurant</b> tab has no such gate, because that diner is standing there.
     </p>
   </section>

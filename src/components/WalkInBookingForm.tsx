@@ -10,7 +10,10 @@ import {
 import { DiscountPricingControls, DiscountType } from './calendar/DiscountPricingControls'
 import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
-import { BillingSummary } from './walk-in/BillingSummary'
+import { BookingDepositFields } from './walk-in/BookingDepositFields'
+import { BreakfastRoomChips } from './walk-in/BreakfastRoomChips'
+import { focusBookingAfterCreate } from '../utils/bookingFocus'
+import { getRateConfig } from '../utils/rateConfig'
 import { computeBookingEstimate } from './walk-in/bookingEstimate'
 import { submitBookingForm } from './walk-in/bookingSubmit'
 import { PartnerBookingFields } from './walk-in/PartnerBookingFields'
@@ -79,7 +82,6 @@ export function WalkInBookingForm({
   initialBookingType
 }: WalkInBookingFormProps) {
   // ── Core form state ──
-  const [formStep, setFormStep] = useState<number>(1)
   const [bookingType, setBookingType] = useState<'individual' | 'partner'>(initialBookingType || 'individual')
 
   // ── Corporate / Partner presets state ──
@@ -199,11 +201,12 @@ export function WalkInBookingForm({
   const [formStatus, setFormStatus] = useState<'confirmed' | 'blocked'>('confirmed')
   const [formError, setFormError] = useState('')
   const [formCompanions, setFormCompanions] = useState<Companion[]>([])
-  const [formGuestBreakfast, setFormGuestBreakfast] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   // Explicit promo override — staff picks "Use Promo Price" per booking
-  // (replaces the old automatic 20% discount).
-  const [formUsePromo, setFormUsePromo] = useState(false)
+  // (replaces the old automatic 20% discount). It STARTS from the global promo
+  // switch (bug B3): the calendar already showed promo prices while the form
+  // quietly charged the regular ones, so a booking made during a promo sale came
+  // out at the wrong price unless staff noticed this switch.
   const [createdBookingList, setCreatedBookingList] = useState<Booking[]>([])
 
 
@@ -226,6 +229,13 @@ export function WalkInBookingForm({
 
   // ── Quick-form parity fields ──
   const [formPreparedBy, setFormPreparedBy] = useState('')
+  // What the guest agreed to pay now (card k130): half the stay by default,
+  // typable when the desk agrees something else. 0 means "work it out".
+  const [formAgreedDeposit, setFormAgreedDeposit] = useState(0)
+  // Which ROOMS take breakfast (breakfast is ₱150 × the room's beds, card k140).
+  // It builds OFF: the desk taps the rooms that want it.
+  const [formBreakfastRoomIds, setFormBreakfastRoomIds] = useState<string[]>([])
+  const [depositTouched, setDepositTouched] = useState(false)
   const [formBirthdate, setFormBirthdate] = useState('')
   const [formBlockNotes, setFormBlockNotes] = useState('')
   const [discountType, setDiscountType] = useState<DiscountType>('none')
@@ -350,9 +360,9 @@ export function WalkInBookingForm({
     units: Object.keys(unitSelections).length === 0 ? 'Select at least one room or venue.' : '',
     dates: Object.keys(unitSelections).length === 0 ? '' : (isValidDates ? '' : 'Please select valid check-in and check-out dates for all units.'),
     guestName: (formStatus === 'confirmed' && bookingType === 'individual' && !formGuestName.trim()) ? 'Guest name is required.' : '',
-    // The method decides how the payment gets verified on arrival, so it can no
-    // longer be left blank. ("Not decided" was removed from the picker.)
-    paymentMethod: (formStatus === 'confirmed' && bookingType === 'individual' && !formPaymentMethod.trim()) ? 'Choose how the guest will pay.' : '',
+    // There is deliberately NO payment-method rule any more (card k132): the
+    // guest chooses how they pay, and that choice is recorded when the money is
+    // actually received. Staff are not made to guess it at booking time.
   }
   const showErr = (k: keyof typeof fieldErrors) => (touched[k] || trySave) ? fieldErrors[k] : ''
   const isInvalid = (k: keyof typeof fieldErrors) => Boolean(showErr(k))
@@ -363,11 +373,28 @@ export function WalkInBookingForm({
   // ── Pricing calculations (estimate for totals; real nightly rate goes through calculatePricing) ──
   const { estBreakfast, estRentals, estAddons, estTotal, estDown, estDue } = useMemo(
     () => computeBookingEstimate({
-      unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formUsePromo, formStatus, hasVenues,
-      formGuestBreakfast, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
+      unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues,
+      formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
       formEventTable, formEventTent, formChairs,
     }),
-    [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formUsePromo, formStatus, hasVenues, formGuestBreakfast, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs]
+    [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues, formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs]
+  )
+
+  // The deposit box arrives filled with half the stay and keeps following the
+  // stay until somebody types their own figure (card k130).
+  useEffect(() => {
+    if (depositTouched) return
+    setFormAgreedDeposit(Math.max(0, Math.round(estTotal / 2)))
+  }, [estTotal, depositTouched])
+  const staffNames = useMemo(
+    () => Array.from(new Set((bookings || []).map(b => (b.prepared_by || '').trim()).filter(Boolean))).sort(),
+    [bookings]
+  )
+
+  // The picked rooms, in calendar order — what the breakfast chips offer.
+  const pickedRooms = useMemo(
+    () => Array.from(formRoomIds).map(id => rooms.find(r => r.id === id)).filter(Boolean) as Room[],
+    [formRoomIds, rooms]
   )
 
   const hasAddons = estBreakfast > 0 || estRentals > 0 || estAddons > 0
@@ -399,12 +426,12 @@ export function WalkInBookingForm({
       partnerDeals, formPartnerDealId, bookingType, formStatus, formGuestName,
       formGuestEmail, formGuestPhone, formGuestGender, formGuestNationality, formGuestAddress,
       formBirthdate, formPreparedBy, formCompanyName, formVehiclePlate, formInvoiceNumber,
-      formSource, formUsePromo, formGuestBreakfast, formCompanions,
+      formSource, formBreakfastRoomIds, formCompanions,
       formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
       formChairs, formEventTable, formEventTent, formVenueExcessHours,
       formBlockNotes, discountType, discountValue, venueDayBlocks, editingBookings,
       formPaymentMethod, formPaymentReference, formPaymentPlan, derivedPaymentStatus, formDownpaymentPaid,
-      formBalanceDue, formSecurityDeposit, createManualBooking, cancelBooking,
+      formBalanceDue, formSecurityDeposit, formAgreedDeposit, createManualBooking, cancelBooking,
     })
     if (!result.ok) { setFormError(result.error); setIsSubmitting(false); return }
     setCreatedBookingList(result.bookings)
@@ -418,7 +445,9 @@ export function WalkInBookingForm({
         rooms={rooms}
         venues={venues}
         bookings={bookings}
-        onClose={onClose}
+        /* The statement is handed over first; closing it opens the booking that
+           was just made in the quick view (card k134). */
+        onClose={() => { focusBookingAfterCreate(createdBookingList[0]?.id); onClose() }}
       />,
       document.body
     )
@@ -432,8 +461,6 @@ export function WalkInBookingForm({
           hasVenues={hasVenues}
           hasRooms={hasRooms}
           bookingType={bookingType}
-          formStep={formStep}
-          setFormStep={setFormStep}
           formStatus={formStatus}
           setFormStatus={setFormStatus}
           formGuestName={formGuestName}
@@ -473,8 +500,6 @@ export function WalkInBookingForm({
                     venues={venues}
                     partnerDeals={partnerDeals}
                     formPartnerDealId={formPartnerDealId}
-                    formUsePromo={formUsePromo}
-                    setFormUsePromo={setFormUsePromo}
                     isSubmitting={isSubmitting}
                     onClose={onClose}
                   />
@@ -483,31 +508,16 @@ export function WalkInBookingForm({
 
                     {showErr('units') && <p className="text-[10px] text-error mt-1">{showErr('units')}</p>}
 
-                    {/* STEP 1: Guest Information + Companions */}
-                    {formStatus === 'blocked' && (
-                      <div className="space-y-2.5">
-                        <div className="bg-base-200 border border-base-300 rounded-lg px-2.5 py-2 space-y-1.5">
-                          <p className="text-[10px] font-bold text-base-content flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Block — just blocks the calendar (no charge).
-                          </p>
-                          <label className="text-[10px] text-base-content/60 font-bold block">Block reason (maintenance / cleaning)</label>
-                          <input value={formBlockNotes} onChange={e => setFormBlockNotes(e.target.value.toUpperCase())} placeholder="e.g. Room maintenance" className="input input-sm input-bordered w-full" />
-                        </div>
-                        <div className="flex justify-end gap-2 pt-1">
-                          <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
-                          <button type="submit" disabled={isSubmitting} className="btn btn-neutral">{isSubmitting ? 'Creating...' : 'Create Block'}</button>
-                        </div>
-                      </div>
-                    )}
-
-                    {formStatus === 'confirmed' && formStep === 1 && (
+                    {/* ONE FORM (cards k126, k128, k130, k132, k138): guest,
+                        companions, unit and dates, add-ons, discount, the
+                        receptionist and the deposit are all on this page — the
+                        paper form the staff already know, with no steps. */}
+                    {formStatus === 'confirmed' && (
                       <div className="space-y-2.5">
                         <RoomDetailsForm
                           formStatus={formStatus}
                           formGuestName={formGuestName}
                           setFormGuestName={setFormGuestName}
-                          formGuestBreakfast={formGuestBreakfast}
-                          setFormGuestBreakfast={setFormGuestBreakfast}
                           formGuestEmail={formGuestEmail}
                           setFormGuestEmail={setFormGuestEmail}
                           formGuestPhone={formGuestPhone}
@@ -542,18 +552,17 @@ export function WalkInBookingForm({
                           guestNameError={showErr('guestName')}
                           onGuestNameBlur={markTouched('guestName')}
                         />
-                        <div className="flex justify-between items-center pt-2">
-                          <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
-                          <button type="button" disabled={formStatus === 'confirmed' && !formGuestName.trim()} onClick={() => setFormStep(2)} className="btn btn-primary">
-                            Next Step &rarr;
-                          </button>
-                        </div>
-                      </div>
-                    )}
 
-                    {/* STEP 2: Add-ons & Discount + Billing + Receptionist */}
-                    {formStatus === 'confirmed' && formStep === 2 && (
-                      <div className="space-y-2.5">
+                        {/* Breakfast is a ROOM's choice, not a guest's (card k140): one line of
+                            room chips, right above the add-ons. */}
+                        <BreakfastRoomChips
+                          rooms={pickedRooms}
+                          chosen={formBreakfastRoomIds}
+                          onToggle={id => setFormBreakfastRoomIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                          onAll={on => setFormBreakfastRoomIds(on ? pickedRooms.map(r => r.id) : [])}
+                          pricePerBed={getRateConfig().breakfastPrice}
+                        />
+
                         <AmenitiesForm
                           hasRooms={hasRooms}
                           hasVenues={hasVenues}
@@ -577,6 +586,7 @@ export function WalkInBookingForm({
                           formVenueExcessHours={formVenueExcessHours}
                           setFormVenueExcessHours={setFormVenueExcessHours}
                         />
+
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 items-start">
                           <DiscountPricingControls
                             isDayBlock={hasDayBlock}
@@ -592,46 +602,21 @@ export function WalkInBookingForm({
                               <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><UserCheck className="w-3 h-3" /></span>
                               <h4 className="text-[10px] font-bold text-base-content tracking-widest uppercase">Receptionist on duty</h4>
                             </div>
-                            <input value={formPreparedBy} onChange={e => setFormPreparedBy(e.target.value.toUpperCase())} placeholder="Staff name" className="input input-bordered w-full" />
+                            {/* The names used before suggest themselves (card k136), so
+                                the same person is never written two different ways. */}
+                            <input list="staff-names" value={formPreparedBy}
+                              onChange={e => setFormPreparedBy(e.target.value.toUpperCase())}
+                              placeholder="Staff name" className="input input-bordered w-full" />
+                            <datalist id="staff-names">
+                              {staffNames.map(name => <option key={name} value={name} />)}
+                            </datalist>
                           </div>
                         </div>
-                        <div className="flex justify-between items-center pt-2">
-                          <button type="button" onClick={() => setFormStep(1)} className="btn btn-ghost btn-sm">&larr; Back</button>
-                          <button type="button" onClick={() => setFormStep(3)} className="btn btn-primary">
-                            Next Step &rarr;
-                          </button>
-                        </div>
-                      </div>
-                    )}
 
-                    {/* STEP 3: Billing & Confirm */}
-                    {formStatus === 'confirmed' && formStep === 3 && (
-                      <div className="space-y-2.5">
-                        <BillingSummary
-                          formStatus={formStatus}
-                          unitSelections={unitSelections}
-                          rooms={rooms}
-                          venues={venues}
-                          estBreakfast={estBreakfast}
-                          estRentals={estRentals}
-                          estAddons={estAddons}
+                        <BookingDepositFields
                           estTotal={estTotal}
-                          estDown={estDown}
-                          estDue={estDue}
-                          formSource={formSource}
-                          formAdditionalDiscount={discountType === 'percent' ? discountValue : 0}
-                          guestEmail={formGuestEmail}
-                          bookingType={bookingType}
-                          formUsePromo={formUsePromo}
-                          partnerDeals={partnerDeals}
-                          formPartnerDealId={formPartnerDealId}
-                          formPaymentMethod={formPaymentMethod}
-                          setFormPaymentMethod={setFormPaymentMethod}
-                          paymentMethodError={showErr('paymentMethod')}
-                          onPaymentMethodBlur={markTouched('paymentMethod')}
-                          formPaymentPlan={formPaymentPlan}
-                          setFormPaymentPlan={setFormPaymentPlan}
-                          formVenueExcessHours={formVenueExcessHours}
+                          agreedDeposit={formAgreedDeposit}
+                          setAgreedDeposit={v => { setDepositTouched(true); setFormAgreedDeposit(v) }}
                           isEditMode={!!editingBookings}
                           formInvoiceNumber={formInvoiceNumber}
                           setFormInvoiceNumber={setFormInvoiceNumber}
@@ -642,8 +627,9 @@ export function WalkInBookingForm({
                           formSecurityDeposit={formSecurityDeposit}
                           setFormSecurityDeposit={setFormSecurityDeposit}
                         />
-                        <div className="flex justify-between items-center pt-2">
-                          <button type="button" onClick={() => setFormStep(2)} className="btn btn-ghost btn-sm">&larr; Back</button>
+
+                        <div className="flex justify-end items-center gap-2 pt-2">
+                          <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
                           <button type="submit" disabled={isSubmitting} className="btn btn-primary">
                             {isSubmitting ? 'Booking...' : 'Confirm Booking'}
                           </button>

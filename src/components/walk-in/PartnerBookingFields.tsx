@@ -27,8 +27,6 @@ interface PartnerBookingFieldsProps {
   venues: Venue[]
   partnerDeals: PartnerDeal[]
   formPartnerDealId: string
-  formUsePromo: boolean
-  setFormUsePromo: (v: boolean) => void
   isSubmitting: boolean
   onClose: () => void
 }
@@ -41,7 +39,7 @@ export function PartnerBookingFields({
   formCompanyName, formCheckIn, formCheckOut, handlePartnerDateChange,
   markTouched, isInvalid, showErr, dateField, dateFieldErr,
   unitSelections, rooms, venues, partnerDeals, formPartnerDealId,
-  formUsePromo, setFormUsePromo, isSubmitting, onClose,
+  isSubmitting, onClose,
 }: PartnerBookingFieldsProps) {
   return (
     <div className="space-y-4 font-sans bg-base-100 border border-base-300 rounded-xl p-5 shadow-sm">
@@ -172,19 +170,10 @@ export function PartnerBookingFields({
           </div>
         </div>
 
-        {/* Promo Price Checkbox */}
+        {/* There is no promo switch any more (card k128): one price, and the
+            partner's contracted rate when a deal sets one. */}
         <div className="pt-2 border-t border-base-300">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={formUsePromo}
-              onChange={e => setFormUsePromo(e.target.checked)}
-              className="checkbox checkbox-primary"
-            />
-            <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Use Promo Price</span>
-          </label>
-          {formUsePromo && <p className="text-xs text-base-content/60 mt-1">Guests are charged the exact promo price from the rate card.</p>}
-          <div className="pt-4 border-t border-base-300 mt-4 flex gap-2">
+          <div className="pt-4 flex gap-2">
             <button
               type="button"
               onClick={onClose}

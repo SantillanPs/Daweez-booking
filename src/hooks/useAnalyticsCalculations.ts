@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
 import { Booking, Room, Venue } from '../types/booking'
+import { TabLine } from '../types/tab'
 import { Expense } from '../types/expense'
 import { calculatePricing } from '../utils/syncEngine'
 import { getRateConfig } from '../utils/rateConfig'
+import { foodMoneyIn } from '../utils/tabRevenue'
 
 // Helper: check if a date is within start and end strings (YYYY-MM-DD)
 function isDateBetween(dStr: string, startStr: string, endStr: string): boolean {
@@ -26,6 +28,8 @@ interface UseAnalyticsCalculationsProps {
   rooms: Room[]
   venues: Venue[]
   expenses: Expense[]
+  /** Every food and bar line on every tab, for the restaurant's own line in the report (k69, part E). */
+  tabLines: TabLine[]
   isLoading: boolean
   timeframe: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
   customStart: string
@@ -38,6 +42,7 @@ export function useAnalyticsCalculations({
   rooms,
   venues,
   expenses,
+  tabLines,
   isLoading,
   timeframe,
   customStart,
@@ -103,6 +108,10 @@ export function useAnalyticsCalculations({
     
     let totalExpenses = 0
 
+    // Food and bar money ordered in this period (k69, part E). It is its own line
+    // in the report — the restaurant is a business of its own, not a room extra.
+    const food = foodMoneyIn(tabLines, dateRange.start, dateRange.end)
+
     // Individual room revenues
     const roomRevenues: Record<string, { id: string, room_number: number, name: string, base: number, breakfast: number, rentals: number, total: number }> = {}
     rooms.forEach(r => {
@@ -123,7 +132,7 @@ export function useAnalyticsCalculations({
     }
 
     // Initialize trend slots based on timeframe grouping
-    let trendSlots: { label: string; start: string; end: string; pension: number; vacationHouse: number; gardenArea: number; gazebo: number }[] = []
+    let trendSlots: { label: string; start: string; end: string; pension: number; vacationHouse: number; gardenArea: number; gazebo: number; restaurant?: number }[] = []
 
     if (timeframe === 'daily' || (timeframe === 'custom' && allRangeDates.length <= 7)) {
       trendSlots = allRangeDates.map(d => ({
@@ -189,6 +198,14 @@ export function useAnalyticsCalculations({
       })
     }
 
+    // Food money lands in the slot it was ordered in — a lunch is earned on the
+    // day it was eaten, not spread across the stay it belonged to.
+    Object.entries(food.byDay).forEach(([day, amount]) => {
+      trendSlots.forEach(slot => {
+        if (isDateBetween(day, slot.start, slot.end)) slot.restaurant = (slot.restaurant || 0) + amount
+      })
+    })
+
     // Process each booking — honors whatever the booking actually charged (promo_applied).
     relevantBookings.forEach(b => {
       // 1. Calculate pricing details — use the booking's stored choice (promo vs. regular)
@@ -203,6 +220,7 @@ export function useAnalyticsCalculations({
         eventAddons: b.event_addons,
         bookingsList: bookings,
         companions: b.companions,
+        breakfastIncluded: b.breakfast_included === true,
         contractRateOverride: b.contract_rate_override,
         usePromo: (b as Booking & { promo_applied?: boolean }).promo_applied === true,
         rooms,
@@ -311,7 +329,8 @@ export function useAnalyticsCalculations({
     const reportVacation = Math.round(totalVacationHouse + vacationExtras)
     const reportGarden = Math.round(totalGardenArea + gardenExtras)
     const reportGazebo = Math.round(totalGazebo + gazeboExtras)
-    const reportRevenue = reportPension + reportVacation + reportGarden + reportGazebo
+    const restaurantTotal = Math.round(food.total)
+    const reportRevenue = reportPension + reportVacation + reportGarden + reportGazebo + restaurantTotal
 
     return {
       periodLabel,
@@ -333,6 +352,7 @@ export function useAnalyticsCalculations({
       gardenTotal: reportGarden,
       totalGazebo: Math.round(totalGazebo),
       gazeboTotal: reportGazebo,
+      restaurantTotal,
       totalAddonsRentals: Math.round(totalAddonsRentals),
       roomOccupancyRate,
       adr,
@@ -340,20 +360,21 @@ export function useAnalyticsCalculations({
       trendSlots,
       roomRevenues: Object.values(roomRevenues).sort((a, b) => a.room_number - b.room_number)
     }
-  }, [isLoading, bookings, venues, rooms, expenses, dateRange, includePending, timeframe])
+  }, [isLoading, bookings, venues, rooms, expenses, tabLines, dateRange, includePending, timeframe])
 
   // Custom donut calculations
   const donutSegments = useMemo(() => {
     if (!calculations) return []
-    const { totalPension, vacationTotal, gardenTotal, gazeboTotal } = calculations
-    const sum = totalPension + vacationTotal + gardenTotal + gazeboTotal
+    const { totalPension, vacationTotal, gardenTotal, gazeboTotal, restaurantTotal } = calculations
+    const sum = totalPension + vacationTotal + gardenTotal + gazeboTotal + restaurantTotal
     if (sum === 0) return []
 
     const segments = [
       { name: 'Pension (Rooms 1-10)', value: totalPension, color: '#B89251' },
       { name: 'Vacation House', value: vacationTotal, color: '#4A90E2' },
       { name: 'Garden Area', value: gardenTotal, color: '#2ECC71' },
-      { name: 'Gazebo', value: gazeboTotal, color: '#F39C12' }
+      { name: 'Gazebo', value: gazeboTotal, color: '#F39C12' },
+      { name: 'Restaurant & bar', value: restaurantTotal, color: '#D0AB60' }
     ]
 
     let exactCumulative = 0

@@ -80,7 +80,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
     : ''
 
   return (
-    <div className={'bg-card w-full max-w-3xl mx-auto rounded-xl shadow-2xl overflow-hidden flex flex-col print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none ' + (embedded ? 'my-0 shadow-xl' : 'my-8')}>
+    <div className={'print-page bg-card w-full max-w-3xl mx-auto rounded-xl shadow-2xl overflow-hidden flex flex-col print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none ' + (embedded ? 'my-0 shadow-xl' : 'my-8')}>
       {/* Modal controls (hidden when printing) */}
       <div className="flex items-center justify-between px-5 py-3 bg-slate-800 text-white shrink-0 print:hidden">
         <div className="flex items-center gap-2">
@@ -163,9 +163,8 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-y border-slate-400/60 text-left text-[10px] uppercase tracking-wider text-slate-600">
-                  <th className="py-1 px-1 font-bold w-1/3">Name</th>
-                  <th className="py-1 px-1 font-bold w-1/3">Nationality</th>
-                  <th className="py-1 px-1 font-bold w-1/3">Breakfast</th>
+                  <th className="py-1 px-1 font-bold w-1/2">Name</th>
+                  <th className="py-1 px-1 font-bold w-1/2">Nationality</th>
                 </tr>
               </thead>
               <tbody>
@@ -173,7 +172,6 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
                   <tr key={i} className="border-b border-slate-300/60">
                     <td className="py-1 px-1 text-[13px]">{c.name}</td>
                     <td className="py-1 px-1 text-[13px] capitalize">{c.nationality || ''}</td>
-                    <td className="py-1 px-1 text-[13px]">{c.breakfast ? '✓' : ''}</td>
                   </tr>
                 ))}
               </tbody>

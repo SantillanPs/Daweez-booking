@@ -10,26 +10,26 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style type="text/tailwindcss">
   @theme {
-    --color-ink-900:#1C1C1C; --color-ink-600:#3D3D3D; --color-ink-500:#8A8A8A;
-    --color-gold-400:#D0AB60; --color-gold-100:#F5EAD1; --color-gold-800:#6F5420;
-    --color-paper-50:#F8F5EF; --color-paper-200:#E6DFD0; --color-paper-300:#D9D0BC;
-    --color-danger-500:#BE3A2B; --color-good-600:#059669;
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-100:#332B18; --color-gold-800:#E6C989;
+    --color-paper-50:#141414; --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A;
+    --color-danger-500:#F87171; --color-good-600:#34D399;
     --font-display:"Sora",system-ui,sans-serif; --font-sans:"DM Sans",system-ui,sans-serif;
   }
 </style>
 <style>
-  :root{--ink-900:#1C1C1C;--ink-600:#3D3D3D;--ink-500:#8A8A8A;--gold-400:#D0AB60;--gold-100:#F5EAD1;--gold-800:#6F5420;--paper-200:#E6DFD0;--paper-300:#D9D0BC;--paper-50:#F8F5EF;--danger:#BE3A2B;--good:#059669;--card:#FFFFFF}
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-100:#332B18;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--danger:#F87171;--good:#34D399;--card:#1F1F1F}
   *,*::before,*::after{box-sizing:border-box}
   :where(.grid,.flex)>*{min-width:0}
   :where(p,h1,h2,h3,li,label,button,span,b){overflow-wrap:anywhere}
   body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
   h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
-  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(28,28,28,.07)}
+  .card{background:#1F1F1F;border:1px solid var(--paper-200);border-radius:12px;box-shadow:0 4px 24px rgba(28,28,28,.07)}
   .cap{font-size:13px;color:var(--ink-500);margin:10px 0 0}
   .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
-  .board{background:#fff;border:1px solid var(--paper-300);border-radius:12px;padding:8px}
+  .board{background:#1F1F1F;border:1px solid var(--paper-300);border-radius:12px;padding:8px}
   .chips{display:flex;gap:5px;overflow-x:auto;padding-bottom:7px;border-bottom:1px solid var(--paper-200);margin-bottom:8px}
-  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:5px 9px;border-radius:8px;border:1px solid var(--paper-300);background:#fff;color:var(--ink-600);white-space:nowrap}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:5px 9px;border-radius:8px;border:1px solid var(--paper-300);background:#1F1F1F;color:var(--ink-600);white-space:nowrap}
   .chip.on{background:var(--gold-400);border-color:var(--gold-400);color:var(--ink-900)}
   .chip svg{width:14px;height:14px;color:var(--gold-800)}
   .chip.on svg{color:var(--ink-900)}
@@ -38,7 +38,7 @@
   .grp span{font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink-500)}
   .g3{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
   @media(min-width:640px){.g3{grid-template-columns:repeat(3,minmax(0,1fr))}}
-  .tile{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:6px;background:#fff;border:1px solid var(--paper-200);border-radius:10px;padding:9px 10px;min-height:62px}
+  .tile{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:6px;background:#1F1F1F;border:1px solid var(--paper-200);border-radius:10px;padding:9px 10px;min-height:62px}
   .tile .top{display:flex;align-items:flex-start;gap:6px}
   .tile .top svg{width:14px;height:14px;flex:none;margin-top:1px;color:var(--ink-500)}
   .tile .nm{font-size:12.5px;font-weight:700;line-height:1.15}
@@ -46,9 +46,9 @@
   .tile.on{border-color:var(--gold-400);background:var(--gold-100)}
   .tile .n{position:absolute;top:6px;right:6px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--gold-400);color:var(--ink-900);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
   /* The old board, kept on the page only to show the change. */
-  .flat{background:#fff;border:1px solid var(--paper-200);border-radius:8px;padding:9px 10px;font-size:12.5px;font-weight:700;color:var(--ink-600)}
+  .flat{background:#1F1F1F;border:1px solid var(--paper-200);border-radius:8px;padding:9px 10px;font-size:12.5px;font-weight:700;color:var(--ink-600)}
   .flat i{display:block;font-size:12px;font-weight:700;color:var(--gold-800);font-style:normal;margin-top:3px}
-  .qbtn{background:var(--gold-400);color:var(--ink-900);font-weight:700;font-size:12.5px;border:0;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:inherit}
+  .qbtn{background:var(--gold-400);color:#141414;font-weight:700;font-size:12.5px;border:0;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:inherit}
   .qbtn:disabled{opacity:.45;cursor:not-allowed}
   .opt label{display:flex;gap:9px;align-items:flex-start;padding:4px 0;font-size:14px;cursor:pointer}
   .opt input{margin-top:3px;flex:none;accent-color:#D0AB60}
@@ -68,7 +68,7 @@
     <h2 class="text-lg font-bold mb-3">Before → now</h2>
     <div class="grid gap-4 md:grid-cols-2">
       <div>
-        <p class="pill mb-2" style="background:#F1ECE1;color:var(--ink-600)">Before — words on tiles</p>
+        <p class="pill mb-2" style="background:#2A2A2A;color:var(--ink-600)">Before — words on tiles</p>
         <div class="g3">
           <div class="flat">Cornsilog<i>₱200</i></div>
           <div class="flat">Hotsilog<i>₱200</i></div>
@@ -236,7 +236,7 @@
   </section>
 
   <section class="card p-5" style="border-color:var(--good)">
-    <p class="pill mb-2" style="background:#ECFDF5;color:var(--good)">Fixed ✓</p>
+    <p class="pill mb-2" style="background:#12261F;color:var(--good)">Fixed ✓</p>
     <h2 class="text-lg font-bold mb-1">The menu now lives in the database</h2>
     <p class="text-[13.5px] text-ink-600 mb-0">All <b>61 items in 15 groups</b> are seeded into two new tables (`menu_categories`, `menu_items`), so every tablet shows the same menu and the same prices. The list typed into the code stays only as the offline fallback. <b>One SQL run</b> applies it.</p>
   </section>
@@ -245,7 +245,7 @@
     <p class="pill bg-gold-100 text-gold-800 mb-2">Your call</p>
     <h2 class="text-lg font-bold mb-2">Decided · built · on the board</h2>
     <p class="mt-2 text-[13.5px]">
-      <span class="pill" style="background:#ECFDF5;color:var(--good)">Decided</span>
+      <span class="pill" style="background:#12261F;color:var(--good)">Decided</span>
       <b class="ml-2">The menu moved into the database.</b> Done — 61 items seeded, one SQL run to apply.
     </p>
     <p class="mt-2 text-[13.5px]">

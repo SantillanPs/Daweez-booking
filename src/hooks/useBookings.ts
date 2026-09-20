@@ -218,7 +218,7 @@ export function useBookings() {
     appliedDiscount?: AppliedDiscount
     earlyCheckInHours?: number; lateCheckOutHours?: number; venueDayBlocks?: number
     notes?: string; preparedBy?: string; breakfastDays?: string[]
-    referenceNumber?: string; registeredOn?: string; paymentRecords?: PaymentRecord[]
+    referenceNumber?: string; registeredOn?: string; paymentRecords?: PaymentRecord[]; agreedDeposit?: number
   }, MutationContext>({
     mutationFn: async (params) => {
       const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, guestGender, guestNationality, guestAddress, birthdate, checkIn, checkOut,
@@ -228,7 +228,7 @@ export function useBookings() {
         paymentMethod, paymentReference, paymentPlan, venueExcessHours = 0,
         paymentStatus, downpaymentPaid, balanceDue, securityDeposit,
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, notes, preparedBy, breakfastDays,
-        referenceNumber, registeredOn, paymentRecords } = params
+        referenceNumber, registeredOn, paymentRecords, agreedDeposit } = params
 
       if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings, id)) {
         throw new Error('The room is already booked or blocked for these dates.')
@@ -290,7 +290,8 @@ export function useBookings() {
         registered_on: registeredOn,
         payment_records: paymentRecords,
         notes,
-        prepared_by: preparedBy
+        prepared_by: preparedBy,
+        agreed_deposit: agreedDeposit
       }
 
       if (id) {
@@ -385,6 +386,16 @@ export function useBookings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
+    }
+  })
+
+  // 10b2. Mutation: Update a room's bed count (card k140) — what breakfast is charged against.
+  const updateRoomBedsMutation = useMutation({
+    mutationFn: async (params: { roomId: string; beds: number }) => {
+      return await syncEngine.updateRoomBeds(params.roomId, params.beds)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] })
     }
   })
 
@@ -513,6 +524,9 @@ export function useBookings() {
     updateRoomRate: async (roomId: string, basePrice: number, promoPrice?: number | null) =>
       updateRoomRateMutation.mutateAsync({ roomId, basePrice, promoPrice }),
     isUpdatingRoomRate: updateRoomRateMutation.isPending,
+
+    updateRoomBeds: async (roomId: string, beds: number) =>
+      updateRoomBedsMutation.mutateAsync({ roomId, beds }),
 
     createPartnerDeal: createPartnerDealMutation.mutateAsync,
     savePartnerDeals: savePartnerDealsMutation.mutateAsync,

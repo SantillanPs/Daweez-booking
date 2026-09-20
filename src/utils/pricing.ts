@@ -30,6 +30,8 @@ export function calculatePricing(params: {
   contractRateOverride?: number
   venueExcessHours?: number
   breakfastEnabled?: boolean
+  /** What the saved booking holds: this room has breakfast (card k140). */
+  breakfastIncluded?: boolean
   breakfastGuestCount?: number
   breakfastDays?: string[]
   rooms?: Room[]
@@ -41,7 +43,7 @@ export function calculatePricing(params: {
   venueDayBlocks?: number
   rates?: RateConfig
 }) {
-  const { roomId, venueId, checkIn, checkOut, breakfastOrders, equipmentRentals, eventAddons, rateMultiplier, companions, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastGuestCount, breakfastDays, breakfastRecords, rooms: liveRooms, venues: liveVenues, usePromo, appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, rates: ratesOverride } = params
+  const { roomId, venueId, checkIn, checkOut, breakfastOrders, breakfastIncluded, equipmentRentals, eventAddons, rateMultiplier, companions, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastGuestCount, breakfastDays, breakfastRecords, rooms: liveRooms, venues: liveVenues, usePromo, appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, rates: ratesOverride } = params
   const rates = ratesOverride ?? DEFAULT_RATE_CONFIG
 
   let basePrice = 0
@@ -73,14 +75,24 @@ export function calculatePricing(params: {
     const room = roomList.find(r => r.id === roomId)
     const regular = room ? room.base_price : 0
     const promo = room ? (room.promo_price ?? null) : null
+    // ONE PRICE (owner's decision, card k128): the promo figure IS the price
+    // whenever the room has one — there is no sale mode to switch on any more,
+    // and no crossed-out second price. `base_price` survives only as the
+    // fallback for a unit with no promo figure.
+    //
+    // `usePromo === false` still means "charge the regular figure", which is how
+    // a booking made before this rule keeps the price it was actually made at
+    // (the statement, analytics and balance all pass the booking's own
+    // `promo_applied`, never `undefined`).
+    const singlePrice = promo != null && promo > 0 ? promo : regular
     undiscountedBasePrice = regular
     if (usePromo !== undefined) {
-      basePrice = usePromo && promo != null && promo > 0 ? promo : regular
+      basePrice = usePromo ? singlePrice : regular
     } else if (rateMultiplier !== undefined && rateMultiplier !== 1) {
       basePrice = Math.round(regular * rateMultiplier)
       discountPercent = Math.round((1 - rateMultiplier) * 100)
     } else {
-      basePrice = regular
+      basePrice = singlePrice
     }
     nights = Math.max(1, diffDays(checkIn, checkOut))
     stayQuantity = nights
@@ -97,14 +109,15 @@ export function calculatePricing(params: {
     } else {
       const regular = venue ? venue.base_price : 0
       const promo = venue ? (venue.promo_price ?? null) : null
+      const singlePrice = promo != null && promo > 0 ? promo : regular
       undiscountedBasePrice = regular
       if (usePromo !== undefined) {
-        basePrice = usePromo && promo != null && promo > 0 ? promo : regular
+        basePrice = usePromo ? singlePrice : regular
       } else if (rateMultiplier !== undefined && rateMultiplier !== 1) {
         basePrice = Math.round(regular * rateMultiplier)
         discountPercent = Math.round((1 - rateMultiplier) * 100)
       } else {
-        basePrice = regular
+        basePrice = singlePrice
       }
       nights = Math.max(1, diffDays(checkIn, checkOut))
       stayQuantity = nights
@@ -136,8 +149,30 @@ export function calculatePricing(params: {
 
   let breakfastTotal = 0
   const brkRecords = breakfastRecords || []
+  // Breakfast for a room is ONE charge for the whole stay (owner's rule, card
+  // k140): ₱150 × the number of beds in the room — not per person, and not per
+  // day. A room with 3 bunk beds is 6 beds, so ₱900; a room for 2 is ₱300 even
+  // with one guest in it.
+  //
+  // A room whose bed count has not been filled in yet keeps the older figures
+  // below (a recorded day-by-day breakfast, or the person × night estimate), so
+  // nothing changes for it until the desk writes the beds down in Settings.
+  const roomForBreakfast = roomId ? roomList.find(r => r.id === roomId) : undefined
+  const beds = roomForBreakfast ? Number(roomForBreakfast.beds || 0) : 0
   if (brkRecords.length > 0) {
+    // A booking made while breakfast was still recorded day by day keeps the
+    // figure it was actually charged (the owner's rule: old bookings are left
+    // alone).
     breakfastTotal = brkRecords.reduce((sum, r) => sum + ((r.price || 0) * (r.quantity || 0)), 0)
+  } else if (roomId && beds > 0) {
+    // Breakfast is the ROOM's choice (card k140): on only for the rooms the desk
+    // ticked. `breakfastEnabled` is the caller's explicit answer (the booking
+    // form, the guest portal); `breakfastIncluded` is what the saved booking
+    // holds. One charge for the stay: ₱150 × the room's beds.
+    const wantsBreakfast = breakfastEnabled !== undefined
+      ? breakfastEnabled
+      : breakfastIncluded === true
+    if (wantsBreakfast) breakfastTotal = rates.breakfastPrice * beds
   } else if (roomId) {
     const optedOut = breakfastOrders != null && breakfastOrders.length === 0
     if (!optedOut) {
