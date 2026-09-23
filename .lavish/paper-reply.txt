@@ -1,8 +1,8 @@
-Good catch — that **OUT** mark was a real mistake, not just cosmetics: a short stay stores its check-out as the next day (that is what keeps the whole day blocked for housekeeping), and the grid was drawing its usual rose “checks out this day” mark on that next morning. So a 3-hour booking read as an overnight one.
+Removed — the **Short stay** row is gone from the booking form, both in a normal booking and in a short-stay one. The form no longer asks about hours at all.
 
-Fixed:
+Where the hours come from now: **the calendar's action bar**, where you tap `3h · 6h · 12h` on the day. The form opens with them already settled, and states them where the deposit used to be: **`3-hour stay · ₱550 — paid in full at the counter`**.
 
-- **the calendar** — a short stay never gets the rose OUT mark now. It leaves the same day it arrived; the block already says `out 1:12 PM`.
-- I swept the same mistake in two other places while I was in there, because they used the stored next-day check-out too: the **bookings list** and the **booking details** now read `Sep 25 · 3 hours` instead of `Sep 25 → Sep 26`.
+Two things follow from it, so you know:
 
-Nothing else on the calendar changes. The one choice still open on this page is the block's line order (name first — built — time first, or wider columns for long names).
+- **22 hours is no longer sellable anywhere.** It was only in that row, and 22 hours is the room's own price — an ordinary overnight booking from a date range. (The pricing rule still accepts it, so an older booking saved with 22 keeps its price.)
+- The picker file is deleted, not just hidden.

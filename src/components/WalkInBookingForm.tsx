@@ -12,7 +12,6 @@ import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
 import { BookingDepositFields } from './walk-in/BookingDepositFields'
 import { BreakfastRoomChips } from './walk-in/BreakfastRoomChips'
-import { ShortStayPicker } from './walk-in/ShortStayPicker'
 import { breakfastSellable } from '../utils/breakfast'
 import { focusBookingAfterCreate } from '../utils/bookingFocus'
 import { computeBookingEstimate } from './walk-in/bookingEstimate'
@@ -240,9 +239,12 @@ export function WalkInBookingForm({
   // It builds OFF: the desk taps the rooms that want it.
   const [formBreakfastRoomIds, setFormBreakfastRoomIds] = useState<string[]>([])
   const [depositTouched, setDepositTouched] = useState(false)
-  // SHORT STAY (the printed rate board): the hours the room is being sold for —
-  // 3, 6, 12 or 22 — or null for an ordinary overnight booking.
-  const [shortStayHours, setShortStayHours] = useState<number | null>(initialStayHours ?? null)
+  // SHORT STAY (the printed rate board): the hours the room is being sold for — 3, 6
+  // or 12 — or null for an ordinary overnight booking. It is SETTLED BEFORE this form
+  // opens: the calendar's action bar carries the hours at the room's own board prices,
+  // so there is no hours picker here any more (the owner's instruction) and the hours
+  // are read-only for the rest of the booking.
+  const shortStayHours = initialStayHours ?? null
   const [formBirthdate, setFormBirthdate] = useState('')
   const [formBlockNotes, setFormBlockNotes] = useState('')
   const [discountType, setDiscountType] = useState<DiscountType>('none')
@@ -536,14 +538,14 @@ export function WalkInBookingForm({
                         paper form the staff already know, with no steps. */}
                     {formStatus === 'confirmed' && (
                       <div className="space-y-2.5">
-                        {/* SHORT STAY (the printed rate board): a room sold for 3, 6,
-                            12 or 22 hours. It takes the room for the whole day, is paid
-                            in full at the counter, and so needs no breakfast, no
-                            add-ons, no discount and no deposit — those blocks below
-                            simply step out of the way. */}
-                        {hasRooms && !editingBookings && (
-                          <ShortStayPicker rooms={pickedRooms} hours={shortStayHours} onPick={setShortStayHours} />
-                        )}
+                        {/* THE HOURS ARE CHOSEN ON THE CALENDAR, NOT HERE (the owner's
+                            instruction): the bar that pops up on the day the desk picked
+                            carries `3h · 6h · 12h` at the room's own board prices, and
+                            the hours arrive in this form already settled. A SHORT STAY
+                            takes the room for the whole day and is paid in full at the
+                            counter, so breakfast, add-ons, discount and deposit simply
+                            step out of the way — the hours and what they cost are stated
+                            on the gold line where the deposit would be. */}
 
                         <RoomDetailsForm
                           formStatus={formStatus}
