@@ -12,6 +12,7 @@ import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
 import { BookingDepositFields } from './walk-in/BookingDepositFields'
 import { BreakfastRoomChips } from './walk-in/BreakfastRoomChips'
+import { breakfastSellable } from '../utils/breakfast'
 import { focusBookingAfterCreate } from '../utils/bookingFocus'
 import { getRateConfig } from '../utils/rateConfig'
 import { computeBookingEstimate } from './walk-in/bookingEstimate'
@@ -371,7 +372,7 @@ export function WalkInBookingForm({
   const dateFieldErr = 'input input-bordered input-error w-full'
 
   // ── Pricing calculations (estimate for totals; real nightly rate goes through calculatePricing) ──
-  const { estBreakfast, estRentals, estAddons, estTotal, estDown, estDue } = useMemo(
+  const { estBreakfast, estRentals, estAddons, estSubtotal, estTotal, estDown, estDue } = useMemo(
     () => computeBookingEstimate({
       unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues,
       formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
@@ -386,6 +387,17 @@ export function WalkInBookingForm({
     if (depositTouched) return
     setFormAgreedDeposit(Math.max(0, Math.round(estTotal / 2)))
   }, [estTotal, depositTouched])
+  // How many nights the picked dates add up to — the figure the deposit is
+  // worked from, shown to the desk so half the stay is never a mystery sum.
+  const stayNights = useMemo(
+    () => Math.max(1, ...Object.values(unitSelections).map(sel =>
+      sel.checkIn && sel.checkOut
+        ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
+        : 1
+    )),
+    [unitSelections]
+  )
+
   const staffNames = useMemo(
     () => Array.from(new Set((bookings || []).map(b => (b.prepared_by || '').trim()).filter(Boolean))).sort(),
     [bookings]
@@ -559,8 +571,7 @@ export function WalkInBookingForm({
                           rooms={pickedRooms}
                           chosen={formBreakfastRoomIds}
                           onToggle={id => setFormBreakfastRoomIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                          onAll={on => setFormBreakfastRoomIds(on ? pickedRooms.map(r => r.id) : [])}
-                          pricePerBed={getRateConfig().breakfastPrice}
+                          onAll={on => setFormBreakfastRoomIds(on ? pickedRooms.filter(breakfastSellable).map(r => r.id) : [])}
                         />
 
                         <AmenitiesForm
@@ -615,6 +626,10 @@ export function WalkInBookingForm({
 
                         <BookingDepositFields
                           estTotal={estTotal}
+                          nights={stayNights}
+                          stayAmount={estSubtotal}
+                          breakfast={estBreakfast}
+                          extras={estRentals + estAddons}
                           agreedDeposit={formAgreedDeposit}
                           setAgreedDeposit={v => { setDepositTouched(true); setFormAgreedDeposit(v) }}
                           isEditMode={!!editingBookings}

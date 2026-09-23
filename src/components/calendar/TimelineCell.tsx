@@ -11,6 +11,9 @@ export interface TimelineCellProps {
   span: number
   isCheckIn: boolean
   isHighlighted: boolean
+  /** The stay began before the first day on screen (the grid opens at today,
+   *  card k154), so the pill is cut off at the left edge and says so. */
+  isContinuation?: boolean
   isWeekend: boolean
   isToday: boolean
   checkoutBooking?: Booking | null
@@ -33,6 +36,7 @@ export const TimelineCell = React.memo(
     span,
     isCheckIn,
     isHighlighted,
+    isContinuation,
     isWeekend,
     isToday,
     checkoutBooking,
@@ -81,7 +85,10 @@ export const TimelineCell = React.memo(
             title={booking.guest_name}
             className={'h-8 mx-0.5 flex items-center justify-between gap-0.5 px-1 rounded-md border cursor-pointer select-none transition-shadow hover:shadow-sm text-[10px] font-bold ' + getBookingStyle(booking)}
           >
-            <span className="min-w-0 truncate">{booking.guest_name}</span>
+            <span className="min-w-0 truncate">
+              {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
+              {booking.guest_name}
+            </span>
             <span className="flex items-center gap-1 shrink-0">
               {span > 1 && (
                 <span className="text-[8.5px] opacity-70 font-mono">{span}n</span>
@@ -161,6 +168,13 @@ export const TimelineCell = React.memo(
     )
   },
   (prevProps, nextProps) => {
+    // The booking this cell renders is ALSO the object handed to the quick view
+    // when the pill is clicked, so a field left out of this comparison is a field
+    // the slide-over can open stale. That is exactly what happened after a
+    // check-in: only `actual_check_in` changed, the comparator called the two
+    // props equal, the cell kept the old object, and reopening the booking showed
+    // "Check in" again for a guest who was already in the room. Keep the stage and
+    // the money in here (the pill's own dot and every figure the panel shows).
     return (
       prevProps.date.getTime() === nextProps.date.getTime() &&
       prevProps.isoStr === nextProps.isoStr &&
@@ -169,13 +183,22 @@ export const TimelineCell = React.memo(
       prevProps.onCellClick === nextProps.onCellClick &&
       prevProps.isCheckIn === nextProps.isCheckIn &&
       prevProps.isHighlighted === nextProps.isHighlighted &&
+      prevProps.isContinuation === nextProps.isContinuation &&
       prevProps.isWeekend === nextProps.isWeekend &&
       prevProps.isToday === nextProps.isToday &&
       prevProps.checkoutBooking?.id === nextProps.checkoutBooking?.id &&
-            prevProps.span === nextProps.span &&
+      prevProps.span === nextProps.span &&
       prevProps.booking?.id === nextProps.booking?.id &&
       prevProps.booking?.status === nextProps.booking?.status &&
-      prevProps.booking?.payment_status === nextProps.booking?.payment_status
+      prevProps.booking?.payment_status === nextProps.booking?.payment_status &&
+      prevProps.booking?.actual_check_in === nextProps.booking?.actual_check_in &&
+      prevProps.booking?.actual_check_out === nextProps.booking?.actual_check_out &&
+      prevProps.booking?.check_in === nextProps.booking?.check_in &&
+      prevProps.booking?.check_out === nextProps.booking?.check_out &&
+      prevProps.booking?.guest_name === nextProps.booking?.guest_name &&
+      prevProps.booking?.downpayment_paid === nextProps.booking?.downpayment_paid &&
+      prevProps.booking?.balance_due === nextProps.booking?.balance_due &&
+      (prevProps.booking?.payment_records?.length || 0) === (nextProps.booking?.payment_records?.length || 0)
     )
   }
 )

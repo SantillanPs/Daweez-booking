@@ -1,25 +1,25 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
 import { computeCheckInOutHours } from '../../utils/checkInOut'
 import { getRateConfig } from '../../utils/rateConfig'
-import { dateToString } from '../../utils/helpers'
 import { X, Printer, Edit3 } from 'lucide-react'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
 import { SOURCE_LABELS, roomDisplayName } from './bookingStyles'
 import { statusAfterPayment } from '../../utils/bookingStatus'
-import { hasOutstandingBalance, amountToPayNow, hasPaymentRecorded, getPaymentView, paymentStatusWord, PAYMENT_BADGE_CLASSES } from '../../utils/bookingMoney'
+import { hasOutstandingBalance, amountToPayNow, getPaymentView, paymentStatusWord, PAYMENT_BADGE_CLASSES } from '../../utils/bookingMoney'
 import { paymentMethodLabel, methodNeedsReference } from '../../utils/paymentMethod'
 import { nextReceiptNumber } from '../../utils/receiptNumber'
 import { SlideOverSection } from './SlideOverSection'
 import { GuestTabPanel } from './GuestTabPanel'
-import { recomputeBalance } from '../../utils/bookingBalance'
+import { recomputeBalance, pendingEarlyCharge } from '../../utils/bookingBalance'
 import { useGuestTab } from '../../hooks/useGuestTab'
 import { BookingMoneyPanel } from './BookingMoneyPanel'
+import { SettledPaidTag } from './SettledPaidTag'
 import { BookingReceipts } from './BookingReceipts'
-import { ReceivePaymentStep } from './ReceivePaymentStep'
+import { GuestMethodPicker } from './GuestMethodPicker'
 import { ExtendStayForm } from './ExtendStayForm'
 import { showToast } from '../../utils/toast'
 import { askConfirm } from '../../utils/confirm'
@@ -43,11 +43,6 @@ interface ExtendStayModalProps {
 
 const fmtShort = (d: string) => (d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—')
 const fmtPeso = (n: number) => '₱' + n.toLocaleString()
-
-// How the guest said they would pay, matched to the form's own option labels.
-function agreedMethod(b: Booking): string {
-  return paymentMethodLabel(b.payment_method)
-}
 
 // What the guest agreed to pay now is shared with the money card
 // (`amountToPayNow`), so the figure displayed and the figure pre-filled into the
@@ -73,21 +68,27 @@ export function ExtendStayModal({
   const [showPrintModal, setShowPrintModal] = useState(false)
   const navigate = useNavigate()
   const [localBooking, setLocalBooking] = useState(booking)
-  const [payFlash, setPayFlash] = useState(false)
   // Something the pressed action could not do, said on the page beside the
   // button (e.g. checking out while money is still owed). Replaced every popup.
   const [actionNotice, setActionNotice] = useState('')
-  // Taking money is a DECISION, not a default: a deposit booking sits quietly as
-  // "partly paid" until the staff press Receive money / Check in, and only then
-  // does the card open up and ask for the method, the reference and the amount.
-  const [takingPayment, setTakingPayment] = useState(false)
+  // The money block always shows where the money stands AND the one action that
+  // writes a payment down (method · reference · `Record ₱X received`); there is no
+  // separate opener button in front of it, because the staff take the money first
+  // and the press only records it (the owner's correction, k132).
+  // `closeAfterPayment` closes this whole slide-over once the receipt for a
+  // recorded payment is dismissed — the money is in, the job here is done.
+  const [closeAfterPayment, setCloseAfterPayment] = useState(false)
   const [addReceiptOpen, setAddReceiptOpen] = useState(false)
   // Only used by the Payment receipts block for an in-stay charge or a
   // part-payment, where the staff member types the amount from scratch. Every
   // other payment takes its amount straight from the card's "Amount to pay".
   const [receiptAmount, setReceiptAmount] = useState(() => amountToPayNow(booking))
-  const [receiptMethod, setReceiptMethod] = useState(() => agreedMethod(booking))
-  const [receiptRef, setReceiptRef] = useState('')
+  // Nothing is preselected: an empty method stays empty and the picker reads
+  // "Choose…", because defaulting to 'Cash' here is what once printed a Cash
+  // receipt for a guest who had paid by GCash. The desk picks what they were told.
+  const [receiptMethod, setReceiptMethod] = useState(() => booking.payment_method || '')
+  // A reference the guest already gave (the portal stores one) starts filled in.
+  const [receiptRef, setReceiptRef] = useState(() => booking.payment_reference || '')
   const [tryPayment, setTryPayment] = useState(false)
   const [receiptFor, setReceiptFor] = useState<PaymentRecord | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
@@ -106,13 +107,10 @@ export function ExtendStayModal({
   })
 
   // The deposit is agreed on the STAY alone, so the food tab is taken out of it.
-  // The tab arrives a moment after the first render, so the pre-filled amount has
-  // to be worked out again once it is known — otherwise a deposit booking with a
-  // lunch on it would ask at the desk for half the food as well.
-  useEffect(() => {
-    if (!hasPaymentRecorded(localBooking)) setReceiptAmount(amountToPayNow(localBooking, tabAmount))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabAmount])
+  // The "record a payment" box in Payment receipts is filled from that figure when
+  // it is opened (see its `setOpen` below) rather than from an effect — the tab
+  // arrives a moment after the first render, and an effect writing state on every
+  // tab change was both a lint error and a re-render.
 
   const room = booking.room_id ? rooms.find(r => r.id === booking.room_id) : undefined
   const venue = booking.venue_id ? venues.find(v => v.id === booking.venue_id) : undefined
@@ -124,21 +122,36 @@ export function ExtendStayModal({
   const due = Number(localBooking.balance_due || 0)
   const paidSoFar = Number(localBooking.downpayment_paid || 0)
   const totalCharge = paidSoFar + due
+  // Early check-in money that is recorded but deliberately NOT billed yet (the owner:
+  // *"just add it to their bill for when they checkout"*). Shown as its own pending line
+  // so the desk can see what the guest will owe without the badge flipping to Partly
+  // paid and without the desk chasing money at the door.
+  const earlyHoursRecorded = Number(localBooking.early_check_in_hours || 0)
+  const pendingEarly = pendingEarlyCharge(localBooking, { rooms, venues, tabTotal: tabAmount })
   // Every payment the guest has made, each with its own receipt to reprint.
   // This is the one place the money received is itemised (amount, method, when),
   // so the money card above does not repeat it.
   const receiptRecords = localBooking.payment_records || []
-  // The guest agreed to a 50% deposit or the full amount when they booked.
-  const plan = booking.payment_plan === 'full' ? 'full' : booking.payment_plan === 'deposit' ? 'deposit' : ''
+  const receiptTotal = receiptRecords.reduce((a, r) => a + (r.amount || 0), 0)
   // GCash and bank payments need the reference number; cash does not.
+  // The guest's own payment method and reference are the money card's inputs now
+  // (see `GuestMethodPicker`): how the guest pays is asked for once.
   const methodNeedsRef = methodNeedsReference(receiptMethod)
-  // The card only OPENS by itself while nothing has been recorded: right after a
-  // booking the payment is expected, so the panel is shown with the amount, the
-  // agreed method and — for GCash/bank — the reference. Every later payment is
-  // taken through the guided step below, when the staff start it.
-  const nothingRecordedYet = !hasPaymentRecorded(localBooking)
-  const showPaymentForm = due > 0 && nothingRecordedYet
-  const paymentOpen = due > 0 && nothingRecordedYet
+  // Missing method / reference are answered inline, under the control that needs
+  // filling — never as a popup, and never by quietly writing down "Cash".
+  const referenceError = tryPayment && methodNeedsRef && !receiptRef.trim()
+    ? 'Enter the ' + paymentMethodLabel(receiptMethod) + ' reference number.' : ''
+  const paymentError = tryPayment && !receiptMethod.trim()
+    ? 'Choose how the guest paid.' : referenceError
+  // The position in one line, said while the Payment accordion is shut — the same
+  // fact the header chip carries, in words, with the numbers.
+  const paymentSummary = (() => {
+    const paidNow = Number(localBooking.downpayment_paid || 0)
+    const owedNow = Number(localBooking.balance_due || 0)
+    if (owedNow <= 0) return 'Fully paid · ' + fmtPeso(paidNow) + ' received'
+    if (paidNow > 0) return 'Partly paid · ' + fmtPeso(paidNow) + ' of ' + fmtPeso(paidNow + owedNow) + ' received'
+    return 'Nothing received yet · ' + fmtPeso(owedNow) + ' owed'
+  })()
   const hasEmail = booking.guest_email && booking.guest_email !== 'admin@daweez-booking.vercel.app'
   // "None" is the placeholder the bookings store writes when no phone was taken.
   const hasPhone = !!booking.guest_phone && booking.guest_phone.trim() !== 'None'
@@ -156,6 +169,33 @@ export function ExtendStayModal({
   const handleExtendSubmit = (e: React.FormEvent) => {
     if (Object.values(fieldErrors).some(v => v)) { e.preventDefault(); setTrySave(true); return }
     onExtendStaySubmit(e)
+  }
+
+  // The guest's own payment method (card k132 follow-up). The choice is theirs —
+  // the printed bill carries the boxes they tick — and this writes down what the
+  // desk was told, so the bill and the receipt can name it. No money moves here,
+  // and there is no Save button in the UI: tapping a method saves it, and the
+  // reference saves when the box is left. It ALSO feeds the payment being taken:
+  // the first payment used to record 'Cash' whatever the guest had chosen, because
+  // nothing updated the method the card had been seeded with at open.
+  const savePaymentMethod = async (method: string, reference: string) => {
+    const updated: Booking = {
+      ...localBooking,
+      payment_method: method,
+      payment_reference: reference || localBooking.payment_reference,
+    }
+    setLocalBooking(updated)
+    try {
+      await onUpdateBooking?.(updated)
+    } catch {
+      showToast('Could not save the payment method. Please try again.', 'error')
+    }
+  }
+
+  // Tapping a method: keep it for the payment about to be taken, and write it down.
+  const pickGuestMethod = (m: string) => {
+    setReceiptMethod(m)
+    void savePaymentMethod(m, receiptRef)
   }
 
   // Money can be corrected: removing a receipt that was logged by mistake puts
@@ -195,6 +235,12 @@ export function ExtendStayModal({
   // Records the arrival time and auto-computes the early hours. `base` is the
   // booking to check in — the live one normally, or the just-paid copy when the
   // check-in follows a payment.
+  //
+  // The early hours are RECORDED here but deliberately NOT charged here: the balance
+  // is left exactly as it was, so checking a fully-paid guest in never flips them back
+  // to "partly paid" and never asks the desk for money at the door. The stored hours
+  // are picked up by the recompute at check-out, which is where the owner wants the
+  // extra night to land ("just add it to their bill for when they checkout").
   const performCheckIn = async (base: Booking) => {
     const actualCheckIn = new Date().toISOString()
     const rates = getRateConfig()
@@ -202,8 +248,15 @@ export function ExtendStayModal({
       checkIn: base.check_in, checkOut: base.check_out, actualCheckIn,
       standardCheckInTime: rates.standardCheckInTime, standardCheckOutTime: rates.standardCheckOutTime,
     })
-    const updated = withRecomputedBalance(base, { actual_check_in: actualCheckIn, early_check_in_hours: earlyHours, status: 'confirmed' as const })
+    const updated: Booking = { ...base, actual_check_in: actualCheckIn, early_check_in_hours: earlyHours, status: 'confirmed' }
     setLocalBooking(updated)
+    if (earlyHours > 0) {
+      const hours = earlyHours + ' hour' + (earlyHours > 1 ? 's' : '')
+      const why = earlyHours > rates.lateEarlyCapHours
+        ? hours + ' early — past the ' + rates.lateEarlyCapHours + '-hour cap, so a night'
+        : hours + ' early'
+      showToast('Checked in ' + why + ' goes on the bill at check-out.', 'info')
+    }
     try { await onUpdateBooking?.(updated) } catch { showToast('Could not check in. Please try again.', 'error') }
   }
 
@@ -225,7 +278,6 @@ export function ExtendStayModal({
       // Said on the page, next to the button that was pressed — and the card
       // opens its payment panel so the money can be taken right there.
       setActionNotice('This guest still owes ' + owed + '. Receive it first, then check them out.')
-      setTakingPayment(true)
       return
     }
     setActionNotice('')
@@ -238,10 +290,20 @@ export function ExtendStayModal({
     const updated = withRecomputedBalance(localBooking, { actual_check_out: actualCheckOut, late_check_out_hours: lateHours })
     setLocalBooking(updated)
     try { await onUpdateBooking?.(updated) } catch { showToast('Could not check out. Please try again.', 'error') }
-    // A late check-out adds hours, which can put the guest back in debt — that
-    // debt must be settled too before they leave.
+    // The bill is recomputed at check-out, and this is where the money a stay grew by
+    // actually lands — a late check-out's hours AND the early check-in hours recorded
+    // on arrival (the owner's rule: early check-in goes on the bill at check-out, never
+    // in the desk's face at the door). That money must be settled before the guest
+    // leaves, and the notice names what grew rather than blaming it all on lateness.
     if (hasOutstandingBalance(updated)) {
-      setActionNotice('Late check-out added ' + fmtPeso(Number(updated.balance_due || 0)) + ' to this stay. Record the payment before the guest leaves.')
+      const owed = fmtPeso(Number(updated.balance_due || 0))
+      const grew = []
+      if (Number(updated.early_check_in_hours || 0) > 0) grew.push('early check-in')
+      if (lateHours > 0) grew.push('late check-out')
+      setActionNotice(
+        (grew.length ? 'Added for ' + grew.join(' and ') + '. ' : 'This stay still owes ' + owed + '. ') +
+        'Receive ' + owed + ' before the guest leaves.'
+      )
       if (!showPrintModal) setShowPrintModal(true)
     }
   }
@@ -256,6 +318,9 @@ export function ExtendStayModal({
     // Missing amount / reference are shown inline on the form itself, under the
     // box that needs filling — not as a popup that hides which box it means.
     if (amount <= 0) return
+    // The method is the guest's own choice, so it is never assumed: no method,
+    // no receipt. Writing down "Cash" by default is what printed the wrong method.
+    if (!receiptMethod.trim()) return
     // The reference lives on the money card for GCash / bank, and in the form
     // for the booking deposit — either way it is the same `receiptRef`.
     if (methodNeedsRef && !receiptRef.trim()) return
@@ -288,13 +353,18 @@ export function ExtendStayModal({
     }
     setLocalBooking(updated)
     setActionNotice('')
-    setTakingPayment(false)
-    setReceiptAmount(0); setReceiptRef(''); setAddReceiptOpen(false); setTryPayment(false)
-    setPayFlash(true); setTimeout(() => setPayFlash(false), 1500)
+    setReceiptAmount(0); setAddReceiptOpen(false); setTryPayment(false)
     try {
       await onUpdateBooking?.(updated)
       setReceiptFor(rec)
       setShowReceipt(true)
+      // Dismissing the receipt closes this whole slide-over **only when this was the
+      // first money recorded** (unpaid → partly paid): that payment is the errand, and
+      // the desk goes back to the calendar instead of staring at a booking they have
+      // finished with. Taking the REST of a partly-paid bill is not the end of the job
+      // — the desk may still extend the stay, print a statement or settle the tab — so
+      // there the panel stays open behind the receipt (the owner's rule).
+      setCloseAfterPayment(paidSoFar <= 0)
       // Arrival payment (thenCheckIn): now the money is in, finish the check-in
       // in the same action — one button, no second trip. Never on a booking
       // deposit, which is paid long before the guest arrives.
@@ -305,16 +375,6 @@ export function ExtendStayModal({
       showToast('Could not record the payment. Please try again.', 'error')
     }
   }
-
-  // Breakfast is no longer recorded day by day (card k140): it is one charge,
-  // ₱150 × the room's beds, already inside the room rate.
-  const stayDays = (() => {
-    const arr: string[] = []
-    const d = new Date(booking.check_in)
-    const end = new Date(booking.check_out)
-    while (d < end) { arr.push(dateToString(d)); d.setDate(d.getDate() + 1) }
-    return arr
-  })()
 
   // The same plain-language status the calendar's payment dot stands for, said
   // in words here so staff never have to decode a colour.
@@ -354,14 +414,18 @@ export function ExtendStayModal({
     }
   })()
 
-  const receiptTotal = receiptRecords.reduce((a, r) => a + (r.amount || 0), 0)
-  const breakfastRecords = localBooking.breakfast_records || []
   const canCheckIn = localBooking.status !== 'blocked' && !localBooking.actual_check_in
   const canCheckOut = localBooking.status !== 'blocked' && !!localBooking.actual_check_in && !localBooking.actual_check_out
 
   const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
-      <div className="w-full max-w-md bg-card rounded-xl shadow-softLg overflow-hidden flex flex-col max-h-[88vh]">
+      {/* The panel is as wide as its contents, not a fixed number (the owner: *"don't
+          make the width fixed of the entire fucking quick review"*). A fixed max-width
+          meant every short row — `EXTEND STAY  Check-out Sep 22`, the guest row — ended
+          in dead space to the right. `w-fit` lets the widest row set the width and the
+          short rows fill it, and the cap only stops a long guest name or email from
+          stretching the panel across the screen. */}
+      <div className="w-fit max-w-[min(92vw,34rem)] bg-card rounded-xl shadow-softLg overflow-hidden flex flex-col max-h-[88vh]">
 
         {/* Header — the unit is what staff clicked, so it leads. */}
         <div className="flex items-start justify-between gap-3 px-5 py-3.5 border-b border-soft shrink-0">
@@ -388,8 +452,17 @@ export function ExtendStayModal({
         </div>
 
         <div className="px-5 overflow-y-auto flex-1">
-          {/* Who is staying */}
-          <div className="pt-4">
+          {/* ONE COLUMN (the owner's correction): guest, then the money while it is
+              still owed, then the collapsed blocks. There is no side-by-side any
+              more — the money column made the panel wide and left the left column
+              half empty.
+
+              A SETTLED booking has no money block at all: `Fully paid ✓` and the next
+              step sit beside the guest's name, because a paid booking has nothing
+              left to explain. */}
+          {/* Who is staying — with the settled money and its action on the right */}
+          <div className="pt-4 flex items-start justify-between gap-3">
+            <div className="min-w-0">
             <p className="font-display font-bold text-[19px] text-main leading-tight">{booking.guest_name}</p>
             {/* The store writes the literal "None" when no phone was taken, so
                 treat that (and a missing email) as nothing and skip the line
@@ -417,88 +490,93 @@ export function ExtendStayModal({
               {booking.vehicle_plate && <span>Plate <strong className="text-main uppercase">{booking.vehicle_plate}</strong></span>}
               {booking.company_name && <span>Company <strong className="text-main">{booking.company_name}</strong></span>}
             </p>
+            </div>
+            {totalCharge > 0 && due <= 0 && (
+              <SettledPaidTag
+                paid={paidSoFar}
+                action={canCheckIn ? (
+                  <button
+                    type="button"
+                    onClick={handleCheckIn}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11.5px] font-bold rounded-md px-2.5 py-1.5 transition-colors cursor-pointer shadow-sm"
+                  >
+                    Check in
+                  </button>
+                ) : canCheckOut ? (
+                  <button
+                    type="button"
+                    onClick={handleCheckOut}
+                    className="bg-gold-400 hover:bg-gold-600 text-ink-900 text-[11.5px] font-bold rounded-md px-2.5 py-1.5 transition-colors cursor-pointer shadow-sm"
+                  >
+                    Check out
+                  </button>
+                ) : undefined}
+              />
+            )}
           </div>
 
-          {/* The money card: a quiet status strip normally, the full payment
-              panel only while money is actually being taken. */}
-          {totalCharge > 0 && (
-            <div className="mt-4">
-              <BookingMoneyPanel
-                localBooking={localBooking}
-                payFlash={payFlash}
-                tabTotal={tabAmount}
-                open={paymentOpen}
-                method={receiptMethod} setMethod={setReceiptMethod}
-                reference={receiptRef} setReference={setReceiptRef}
-                referenceError={tryPayment && methodNeedsRef && !receiptRef.trim()
-                  ? 'Enter the ' + receiptMethod + ' reference number.' : ''}
-              />
+          {/* Recorded early check-in, not billed yet: one amber line saying what the
+              guest will owe and when it lands, so the money never moves in silence and
+              the desk can quote it — without the badge flipping to Partly paid and
+              without asking for it at the door (the owner's rule). */}
+          {pendingEarly > 0 && (
+            <p className="mt-2 rounded-md border border-gold-200 bg-gold-100/50 px-2.5 py-1.5 text-[11px] font-semibold text-brand-text leading-snug">
+              Early check-in {earlyHoursRecorded} hour{earlyHoursRecorded > 1 ? 's' : ''}
+              {earlyHoursRecorded > getRateConfig().lateEarlyCapHours ? ' (past the ' + getRateConfig().lateEarlyCapHours + '-hour cap)' : ''}
+              {' — '}{fmtPeso(pendingEarly)} goes on the bill at check-out.
+            </p>
+          )}
+
+          {/* Why the action just pressed did not go through — on the page, beside
+              the action, where it can be read while acting. */}
+          {actionNotice && (
+            <p className="text-[11px] font-semibold text-danger-600 leading-snug mt-2">{actionNotice}</p>
+          )}
+
+          {/* The money, while something is still owed: the compact panel (four rows
+              and the bar) with the receive step under it. A settled booking never
+              reaches here — its single line lives beside the guest's name. */}
+          {totalCharge > 0 && due > 0 && (
+            <div className="mt-3">
+              <SlideOverSection title="Payment" summary={paymentSummary} hideSummaryWhenOpen forceOpenOnDesktop>
+                <div className="space-y-2.5">
+                  <BookingMoneyPanel
+                    localBooking={localBooking}
+                    tabTotal={tabAmount}
+                  />
+
+                  {/* While money is owed, the receive step is the block's one action.
+                      Its controls are on screen as soon as the block is open — no
+                      opener button in front of them (the owner's correction: the
+                      drawing he approved showed them together, and the money is taken
+                      by the desk BEFORE anything is pressed, so the press is only the
+                      writing-down). One thing per line, so nothing wraps on a narrow
+                      screen: the method list, the reference under it, then one
+                      full-width button. Check in / Check out are not here — a settled
+                      booking carries them beside the guest's name. */}
+                  <div className="space-y-2">
+                    <GuestMethodPicker
+                      method={receiptMethod}
+                      reference={receiptRef}
+                      error={paymentError}
+                      onPick={pickGuestMethod}
+                      onReference={setReceiptRef}
+                      onReferenceCommit={() => { if (receiptRef.trim()) void savePaymentMethod(receiptMethod, receiptRef) }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleAddReceipt(amountToPayNow(localBooking, tabAmount))}
+                      className="w-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm"
+                    >
+                      Record {fmtPeso(due)} received
+                    </button>
+                  </div>
+                </div>
+              </SlideOverSection>
             </div>
           )}
 
-          {/* One loud action, right below the card, and never two. Taking money
-              at the door is the staff's decision: pressing "Receive money &
-              check in" starts a guided step they have to finish — choose how the
-              guest pays, enter the reference where one is needed, then confirm. */}
-          {(canCheckOut || canCheckIn || showPaymentForm) && (
-            <div className="mt-3 space-y-2.5">
-              {takingPayment && due > 0 ? (
-                <ReceivePaymentStep
-                  amount={due}
-                  method={receiptMethod} setMethod={setReceiptMethod}
-                  reference={receiptRef} setReference={setReceiptRef}
-                  referenceError={tryPayment && methodNeedsRef && !receiptRef.trim()
-                    ? 'Enter the ' + receiptMethod + ' reference number.' : ''}
-                  submitLabel={localBooking.actual_check_in
-                    ? 'Receive ' + fmtPeso(due)
-                    : 'Receive ' + fmtPeso(due) + ' & check in'}
-                  note={localBooking.actual_check_in
-                    ? 'The stay grew after check-in — take the payment before the guest leaves.'
-                    : 'Guest is at the desk. Take the payment and they are checked in.'}
-                  onSubmit={() => handleAddReceipt(due, !localBooking.actual_check_in)}
-                  onCancel={() => { setActionNotice(''); setTakingPayment(false); setTryPayment(false) }}
-                />
-              ) : canCheckOut ? (
-                <button type="button" onClick={handleCheckOut}
-                  className="w-full bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold py-3 rounded-xl transition-colors cursor-pointer shadow-sm">
-                  Check out now
-                </button>
-              ) : showPaymentForm && !localBooking.actual_check_in ? (
-                /* Nothing recorded yet: the booking is expected to be paid for
-                   now. The agreed deposit (or the full amount) is already the
-                   card's "Amount to pay". */
-                <button type="button" onClick={() => handleAddReceipt(amountToPayNow(localBooking, tabAmount))}
-                  className="w-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-bold py-3 rounded-xl transition-colors cursor-pointer shadow-sm">
-                  {plan === 'full' ? 'Confirm full payment & print receipt' : plan === 'deposit' ? 'Confirm deposit paid & print receipt' : 'Save payment & print receipt'}
-                </button>
-              ) : canCheckIn && due > 0 ? (
-                /* The deposit is in and the guest has not arrived. Nothing is
-                   asked for here — the card just says the stay is partly paid.
-                   Taking the rest is the staff's decision, when they walk in. */
-                <button type="button" onClick={() => { setActionNotice(''); setTakingPayment(true) }}
-                  className="w-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-bold py-3 rounded-xl transition-colors shadow-sm cursor-pointer">
-                  Receive money & check in
-                </button>
-              ) : canCheckIn && due <= 0 ? (
-                /* The check-in button appears ONLY once the whole bill is paid.
-                   Nothing owed means paid — including a booking whose money was
-                   recorded before receipts existed (imported / old paper logs),
-                   which must never be left without an arrival button. */
-                <button type="button" onClick={handleCheckIn}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3 rounded-xl transition-colors shadow-sm cursor-pointer">
-                  Check in now
-                </button>
-              ) : null}
-              {/* Why the button just pressed did not go through — on the page,
-                  under the button, where it can be read while acting. */}
-              {actionNotice && (
-                <p className="text-[11px] font-semibold text-danger-600 leading-snug">{actionNotice}</p>
-              )}
-            </div>
-          )}
-
-          {/* Collapsed detail blocks — opened only when needed */}
-          <div className="mt-4">
+          <div className="mt-3">
             <SlideOverSection
               title="Payment receipts"
               summary={receiptRecords.length > 0
@@ -510,7 +588,13 @@ export function ExtendStayModal({
                 records={receiptRecords}
                 showAdd={due > 0}
                 open={addReceiptOpen}
-                setOpen={setAddReceiptOpen}
+                setOpen={o => {
+                  setAddReceiptOpen(o)
+                  // Opening the box fills it with what is actually due — the agreed
+                  // deposit while nothing is paid, the rest afterwards, with the
+                  // guest's food tab taken back out of it.
+                  if (o) setReceiptAmount(amountToPayNow(localBooking, tabAmount))
+                }}
                 amount={receiptAmount}
                 setAmount={setReceiptAmount}
                 method={receiptMethod}
@@ -518,25 +602,29 @@ export function ExtendStayModal({
                 reference={receiptRef}
                 setReference={setReceiptRef}
                 referenceRequired={methodNeedsRef}
-                referenceError={tryPayment && methodNeedsRef && !receiptRef.trim() ? 'Enter the ' + receiptMethod + ' reference number.' : ''}
+                referenceError={referenceError}
                 onAdd={handleAddReceipt}
                 onRemove={handleRemoveReceipt}
                 onPrint={r => { setReceiptFor(r); setShowReceipt(true) }}
               />
             </SlideOverSection>
 
-            <SlideOverSection
-              title="Guest tab"
-              summary={tabLines.length > 0
-                ? tabLines.length + ' line' + (tabLines.length > 1 ? 's' : '') + ' · ' + fmtPeso(tabAmount)
-                : 'Nothing on the tab'}
-            >
+            {/* The guest tab only exists once the guest is IN the hotel: nobody
+                orders before check-in (the owner's rule), so the block is hidden
+                rather than shown locked. */}
+            {localBooking.actual_check_in && (
+              <SlideOverSection
+                title="Guest tab"
+                summary={tabLines.length > 0
+                  ? tabLines.length + ' line' + (tabLines.length > 1 ? 's' : '') + ' · ' + fmtPeso(tabAmount)
+                  : 'Nothing on the tab'}
+              >
               <GuestTabPanel
                 resolveTabId={resolveTabId}
                 lines={tabLines}
                 tabTotal={tabAmount}
                 onChanged={reloadTab}
-                locked={!localBooking.actual_check_in}
+                locked={false}
                 slip={{
                   who: localBooking.guest_name || 'Guest',
                   place: { label: booking.room_id ? 'Room' : 'Venue', value: unitSub || unitName },
@@ -547,7 +635,8 @@ export function ExtendStayModal({
                 ordering={false}
                 onOpenTill={() => { focusGuestTab(booking.id); onClose(); void navigate({ to: '/restaurant' }) }}
               />
-            </SlideOverSection>
+              </SlideOverSection>
+            )}
 
 
 
@@ -615,7 +704,13 @@ export function ExtendStayModal({
           record={receiptFor}
           rooms={rooms}
           venues={venues}
-          onClose={() => setShowReceipt(false)}
+          /* The receipt for a payment just taken is the end of the errand: closing
+             it closes the whole quick view, so the desk is back at the calendar
+             instead of holding a booking they have finished with. */
+          onClose={() => {
+            setShowReceipt(false)
+            if (closeAfterPayment) { setCloseAfterPayment(false); onClose() }
+          }}
         />
       )}
     </div>

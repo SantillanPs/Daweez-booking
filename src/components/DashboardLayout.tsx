@@ -26,7 +26,7 @@ export function DashboardLayout() {
   const {
     rooms, venues, bookings, feeds, partnerDeals, expenses, expenseCategories,
     confirmBooking, cancelBooking, createManualBooking, updateBooking,
-    triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBeds, isLoading, isConfirmingBooking,
+    triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, isLoading, isConfirmingBooking,
     createPartnerDeal, savePartnerDeals, deletePartnerDeal,
     createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense
   } = useBookings()
@@ -71,7 +71,7 @@ export function DashboardLayout() {
       rooms, venues, bookings, feeds, partnerDeals, expenses, expenseCategories, isLoading,
       isConfirming: isConfirmingBooking,
       confirmBooking, cancelBooking, createManualBooking, updateBooking,
-      triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBeds, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
+      triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
       createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense,
       onLogout: handleLogout
     }}>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The booking panel, cleaned up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-800:#E6C989;
+    --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A; --color-paper-50:#141414;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,span,b,i,li){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500)}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .panel{background:#171717;border:1px solid var(--paper-300);border-radius:10px;padding:12px}
+  .unit{font-family:"Sora";font-weight:700;font-size:15px}
+  .chip{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:#2A2A2A;color:#C9C4BB}
+  .chip.ok{background:#12261F;color:#34D399}
+  .chip.partial{background:#3A2E14;color:#F5B759}
+  .name{font-family:"Sora";font-weight:700;font-size:17px;margin-top:10px}
+  .rule{border-top:1px solid var(--paper-200);margin-top:11px;padding-top:8px}
+  .sect{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-500)}
+  .sub{font-size:11.5px;color:var(--ink-500);margin-top:2px}
+  .gone{color:#F87171;text-decoration:line-through}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-3xl px-5 py-8 space-y-5">
+
+  <header class="space-y-2">
+    <p class="pill" style="background:#12261F;color:#34D399">Built · the same booking, before and after</p>
+    <h1 class="text-3xl font-bold tracking-tight">One chip, one payment row</h1>
+    <p class="cap" style="margin-top:2px">Two things were making it feel busy: <b>two status chips</b> saying the same thing, and the <b>same ₱625 stated in two stacked rows</b>. Both gone.</p>
+  </header>
+
+  <section class="grid gap-4 md:grid-cols-2">
+    <div class="card p-4 space-y-2">
+      <span class="pill" style="background:#2A2A2A;color:#C9C4BB">Before</span>
+      <div class="panel">
+        <div class="flex items-center gap-2 flex-wrap"><span class="unit">Full Double</span><span class="chip ok">Confirmed</span><span class="chip partial">Partial</span></div>
+        <p class="sub">Room 4 · Sep 21 → Sep 22 · 1 night</p>
+        <p class="name">SEB</p>
+        <p class="sub">Booked from <b>Walk-in</b></p>
+        <div class="rule"><span class="sect">Payment</span><span class="sub" style="display:block">Partly paid · ₱625 of ₱1,250 received</span></div>
+        <div class="rule"><span class="sect">Payment receipts</span><span class="sub" style="display:block"><span class="gone">1 payment · ₱625 received</span></span></div>
+        <div class="rule"><span class="sect">Extend stay</span><span class="sub" style="display:block">Check-out Sep 22</span></div>
+      </div>
+      <p class="cap">Three rules, two chips, and ₱625 twice.</p>
+    </div>
+
+    <div class="card p-4 space-y-2" style="border-color:var(--gold-400)">
+      <span class="pill" style="background:#332B18;color:var(--gold-800)">After · my change</span>
+      <div class="panel">
+        <div class="flex items-center gap-2 flex-wrap"><span class="unit">Full Double</span><span class="chip partial">Partial</span></div>
+        <p class="sub">Room 4 · Sep 21 → Sep 22 · 1 night</p>
+        <p class="name">SEB</p>
+        <p class="sub">Booked from <b>Walk-in</b></p>
+        <div class="rule"><span class="sect">Payment</span><span class="sub" style="display:block">Partly paid · ₱625 of ₱1,250 received</span></div>
+        <div class="rule"><span class="sect">Extend stay</span><span class="sub" style="display:block">Check-out Sep 22</span></div>
+      </div>
+      <p class="cap">One chip, two rules, and the receipts moved <b>inside</b> Payment — where they belong — so the money is stated once.</p>
+    </div>
+  </section>
+
+  <section class="card p-4 space-y-2.5">
+    <h2 class="text-lg font-bold">What changed, in one line each</h2>
+    <div class="card p-3" style="background:#181818">
+      <p style="margin:0;font-size:13px"><b>The second chip is gone.</b> “CONFIRMED” and “PARTIAL” said the same thing — the payment chip already means <i>Owes</i> (old “on hold”) or <i>Paid</i> (old “confirmed”). Only a blocked date shows a booking chip now.</p>
+    </div>
+    <div class="card p-3" style="background:#181818">
+      <p style="margin:0;font-size:13px"><b>“Payment receipts” is no longer its own row.</b> Open <b>Payment</b> and the receipts are inside it, under the money — so “₱625 received” is said once, not twice.</p>
+    </div>
+    <div class="card p-3" style="background:#181818">
+      <p style="margin:0;font-size:13px"><b>Tighter spacing</b> between the blocks, so the panel is shorter without losing anything.</p>
+    </div>
+    <p class="cap">Nothing was removed that staff need: the receipts, the record-a-payment box, Print billing statement and Cancel booking are all still there.</p>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">ExtendStayModal · k132 · types pass, lint clean</footer>
+</main>
+</body>
+</html>

@@ -1,19 +1,12 @@
 import React from 'react'
 import { Booking, Room, Venue } from '../../types/booking'
-import { getEffectiveNightlyPrice, isPromoActive } from '../../utils/promoMode'
+import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { getBookingStyle, getVenueBookingStyle, roomDisplayName } from './bookingStyles'
 import { normalizeVenueId } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
+import { TimelineDayInfo } from './timelineDays'
 
-export interface TimelineDayInfo {
-  date: Date
-  isoStr: string
-  time: number
-  dayNum: number
-  weekday: string
-  isToday: boolean
-  isWeekend: boolean
-}
+export type { TimelineDayInfo }
 
 interface TimelineGridProps {
   rooms: Room[]
@@ -45,7 +38,12 @@ export const TimelineGrid = React.memo(
     setExtendCheckoutDate,
     setExtendError
   }: TimelineGridProps) {
-    const [promoOn, setPromoOn] = React.useState<boolean>(() => isPromoActive())
+    const scrollRef = React.useRef<HTMLDivElement>(null)
+
+    // The window is rebuilt from today on every month change (card k154), so the
+    // left edge — the day the desk is working on — must never stay scrolled off.
+    const windowStartIso = daysList[0]?.isoStr
+    React.useEffect(() => { scrollRef.current?.scrollTo({ left: 0 }) }, [windowStartIso])
 
     // Crosshair: know the hovered day so the column + row read at a glance.
     const [hoverDay, setHoverDay] = React.useState<string | null>(null)
@@ -54,17 +52,6 @@ export const TimelineGrid = React.memo(
       setHoverDay(t ? t.getAttribute('data-day') : null)
     }
     const handleGridMouseLeave = () => setHoverDay(null)
-    React.useEffect(() => {
-      const sync = () => setPromoOn(isPromoActive())
-      const onStorage = (e: StorageEvent) => { if (e.key === 'daweez_promo_active') sync() }
-      const onPromoToggle = () => sync()
-      window.addEventListener('storage', onStorage)
-      window.addEventListener('promo-toggle' as never, onPromoToggle as never)
-      return () => {
-        window.removeEventListener('storage', onStorage)
-        window.removeEventListener('promo-toggle' as never, onPromoToggle as never)
-      }
-    }, [])
 
     // Which booking checks out on each unit+day (for the small "out" mark).
     const checkoutByUnitAndDate = React.useMemo(() => {
@@ -111,7 +98,7 @@ export const TimelineGrid = React.memo(
             else break
           }
           cells.push(
-            <TimelineCell key={dayInfo.isoStr} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} isCheckIn={false} isHighlighted={false} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={type === 'room' ? getBookingStyle : getVenueBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={dayInfo.isoStr} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} isCheckIn={false} isHighlighted={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={type === 'room' ? getBookingStyle : getVenueBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           dIdx += span
         } else {
@@ -128,8 +115,9 @@ export const TimelineGrid = React.memo(
       return cells
     }
 
-    const promoEligibleFor = (unit: Room | Venue) => promoOn && unit.promo_price != null
-    // ONE PRICE (card k128): what the desk will charge is what the calendar shows.
+    // ONE PRICE (card k128): there is only one figure per room, so the calendar
+    // shows it plainly — no crossed-out second price standing beside it, which
+    // only invited staff to read the old regular figure as the real one.
     const displayPriceFor = (unit: Room | Venue) => getEffectiveNightlyPrice(unit.base_price, unit.promo_price, true)
 
     return (
@@ -159,7 +147,7 @@ export const TimelineGrid = React.memo(
         )}
 
         <div className="flex-1 min-h-0 bg-card border border-soft rounded-xl overflow-hidden flex flex-col shadow-soft">
-          <div className="flex-1 min-h-0 overflow-auto relative" onMouseMove={handleGridMouseMove} onMouseLeave={handleGridMouseLeave}>
+          <div className="flex-1 min-h-0 overflow-auto relative" ref={scrollRef} onMouseMove={handleGridMouseMove} onMouseLeave={handleGridMouseLeave}>
             <table className="w-full table-fixed border-collapse">
               <thead>
                 <tr className="bg-paper-50">
@@ -167,14 +155,15 @@ export const TimelineGrid = React.memo(
                     Room / Venue
                   </th>
                   {daysList.map((dayInfo, i) => (
-                    <th key={i} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft p-1 text-center w-[54px] min-w-[54px] ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-paper-50') + (hoverDay === dayInfo.isoStr ? ' !bg-gold-200/70' : '')}>
+                    <th key={i} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft p-1 text-center w-[54px] min-w-[54px] ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-paper-50') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + (hoverDay === dayInfo.isoStr ? ' !bg-gold-200/70' : '')}>
                       <div className={'text-[9px] font-bold uppercase ' + (dayInfo.isToday ? 'text-gold-700' : 'text-muted/70')}>{dayInfo.weekday}</div>
-                      <div className="mt-0.5 flex justify-center">
+                      <div className="mt-0.5 flex items-center justify-center gap-0.5">
                         {dayInfo.isToday ? (
                           <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gold-400 text-ink-900 text-[11px] font-bold">{dayInfo.dayNum}</span>
                         ) : (
                           <span className="text-[11px] font-semibold text-main">{dayInfo.dayNum}</span>
                         )}
+                        {dayInfo.monthLabel && <span className="text-[8px] font-bold uppercase text-gold-800">{dayInfo.monthLabel}</span>}
                       </div>
                     </th>
                   ))}
@@ -190,14 +179,7 @@ export const TimelineGrid = React.memo(
                         </div>
                         <div>
                           <span className="text-xs font-semibold text-main block">{roomDisplayName(room)}</span>
-                          {promoEligibleFor(room) ? (
-                            <span className="text-[10px] font-mono">
-                              <span className="text-muted line-through">₱{room.base_price.toLocaleString()}</span>
-                              <span className="text-gold-700 font-semibold ml-1">₱{displayPriceFor(room).toLocaleString()}/night</span>
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-gold-700 font-medium">₱{room.base_price.toLocaleString()}/night</span>
-                          )}
+                          <span className="text-[10px] text-gold-700 font-medium">₱{displayPriceFor(room).toLocaleString()}/night</span>
                         </div>
                       </div>
                     </td>
@@ -220,14 +202,7 @@ export const TimelineGrid = React.memo(
                         </div>
                         <div>
                           <span className="text-xs font-semibold text-main block">{venue.name}</span>
-                          {promoEligibleFor(venue) ? (
-                            <span className="text-[10px] font-mono">
-                              <span className="text-muted line-through">₱{venue.base_price.toLocaleString()}</span>
-                              <span className="text-gold-700 font-semibold ml-1">₱{displayPriceFor(venue).toLocaleString()}/day</span>
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-gold-700 font-medium">₱{venue.base_price.toLocaleString()}/day</span>
-                          )}
+                          <span className="text-[10px] text-gold-700 font-medium">₱{displayPriceFor(venue).toLocaleString()}/day</span>
                         </div>
                       </div>
                     </td>

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The quick view is choices now</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-800:#E6C989;
+    --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A; --color-paper-50:#141414;
+    --color-good-600:#34D399;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,span,b,i,li){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500)}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .mini{background:#181818;border:1px solid var(--paper-300);border-radius:9px;padding:11px 12px}
+  .mini p{margin:0;font-size:12.5px;color:var(--ink-600);line-height:1.45}
+  .row{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;line-height:1.4;padding:4px 0}
+  .n{flex:none;width:19px;height:19px;border-radius:999px;background:var(--gold-400);color:#141414;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .chip{display:inline-block;font-size:11.5px;font-weight:700;border-radius:8px;padding:6px 10px;border:1px dashed var(--paper-300);color:var(--ink-500);background:#1A1A1A}
+  .chip.on{background:var(--gold-400);color:#141414;border:1px solid #8A6A28}
+  .btn{display:inline-block;font-size:12.5px;font-weight:700;border-radius:10px;padding:10px 14px}
+  .btn.gold{background:var(--gold-400);color:#141414}
+  .btn.good{background:#059669;color:#fff}
+  .btn.quiet{background:#1F1F1F;border:1px solid var(--paper-300);color:var(--ink-900)}
+  .btn.off{background:#222;color:#5E5A55;border:1px solid #2E2E2E}
+  .kv{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:var(--ink-600)}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-3xl px-5 py-8 space-y-5">
+
+  <header class="space-y-2">
+    <p class="pill" style="background:#332B18;color:#E6C989">Built · your notes on the quick view</p>
+    <h1 class="text-3xl font-bold tracking-tight">The quick view is choices now</h1>
+    <p class="cap" style="margin-top:2px">Nothing in it is a demand any more, the bill lost the line you could not read, and taking the money is one flow: pick GCash, type the reference, confirm, print.</p>
+  </header>
+
+  <section class="card p-4 space-y-3">
+    <h2 class="text-lg font-bold">1 · The printed bill: “Balance on arrival” is gone</h2>
+    <div class="grid gap-3 md:grid-cols-2">
+      <div class="mini">
+        <p class="lab">Before</p>
+        <div class="kv"><span>Sub-Total</span><span>₱1,250</span></div>
+        <div class="kv" style="color:#F87171"><span>Amount Due <i>Deposit (50%)</i></span><span>₱625</span></div>
+        <div class="kv" style="color:#F87171"><span>Balance on arrival</span><span>₱625</span></div>
+        <p class="cap">Two figures, one page — it read as if ₱1,250 was owed today.</p>
+      </div>
+      <div class="mini" style="border-color:#34D399">
+        <p class="lab" style="color:#34D399">Now</p>
+        <div class="kv"><span>Sub-Total</span><span>₱1,250</span></div>
+        <div class="kv" style="color:var(--gold-800)"><span>Amount Due <i>Deposit (50%)</i></span><span>₱625</span></div>
+        <p class="cap">One figure — what the guest hands over now — and the label already says it is the deposit.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4 space-y-3">
+    <h2 class="text-lg font-bold">2 · Paying: one flow, no “Save method”, no circles</h2>
+    <div class="mini">
+      <p class="lab" style="margin-bottom:8px">Guest pays by</p>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="chip">Cash</span>
+        <span class="chip on">GCash</span>
+        <span class="chip">Bank transfer</span>
+      </div>
+      <p class="cap" style="margin-top:8px">Plain words. The chosen one is gold — <b>no tick, no circle, no icon</b>.</p>
+      <div style="margin-top:10px;border-top:1px solid var(--paper-200);padding-top:9px">
+        <p class="lab">GCash reference no. *</p>
+        <p style="margin:4px 0 0;background:#0F0F0F;border:1px solid var(--gold-400);border-radius:8px;padding:7px 10px;font-family:ui-monospace,monospace;color:var(--gold-800);font-size:12.5px">1234 567 890123</p>
+      </div>
+      <p class="cap"><b>No Save method button.</b> It saves when you leave the box, and the confirm below uses it.</p>
+    </div>
+    <div class="row"><span class="n">1</span><span>Tap <b>GCash</b>.</span></div>
+    <div class="row"><span class="n">2</span><span>Type the reference the guest gives.</span></div>
+    <div class="row"><span class="n">3</span><span>Press <b>Confirm deposit paid &amp; print receipt</b> — one action, and the receipt prints.</span></div>
+  </section>
+
+  <section class="card p-4 space-y-3" style="border-color:#6F5420">
+    <h2 class="text-lg font-bold">3 · The booking is a set of choices now</h2>
+    <div class="mini">
+      <p class="lab">Partly paid — what it looks like on opening</p>
+      <div style="margin-top:8px;border:1px solid var(--paper-300);border-radius:9px;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 11px;background:#242424;border-bottom:1px solid var(--paper-200)">
+          <span class="pill" style="background:#3A2E14;color:#F5B759">PARTIAL</span>
+          <span class="lab" style="margin:0">Deposit (50%)</span>
+        </div>
+        <div style="display:flex">
+          <div style="flex:1;padding:11px;border-right:1px solid var(--paper-200)">
+            <p class="lab" style="margin:0">Whole stay total</p>
+            <p style="font-family:Sora;font-weight:700;font-size:21px;margin:6px 0 0">₱1,250</p>
+          </div>
+          <div style="flex:1;padding:11px;background:#332B18">
+            <p class="lab" style="margin:0;color:var(--gold-800)">Amount to pay</p>
+            <p style="font-family:Sora;font-weight:700;font-size:21px;margin:6px 0 0;color:#EDEAE4">₱625</p>
+          </div>
+        </div>
+        <div style="padding:10px 11px;border-top:1px solid var(--paper-200)">
+          <div style="height:7px;border-radius:99px;background:#2E2E2E;overflow:hidden"><div style="width:50%;height:100%;background:#34D399"></div></div>
+          <p class="cap" style="margin-top:6px;color:#34D399">✓ ₱625 of ₱1,250 received</p>
+        </div>
+      </div>
+      <p class="cap">It <b>reports</b>. It does not ask for a method, a reference or a decision.</p>
+    </div>
+    <div class="mini" style="border-color:var(--gold-400)">
+      <p class="lab" style="margin-bottom:9px;color:var(--gold-800)">On opening — ONE thing only, nothing else</p>
+      <div class="flex flex-wrap gap-2">
+        <span class="btn gold">Receive money</span>
+      </div>
+      <p class="cap">No Cash / GCash / Bank buttons. No reference box. No check-in button. Nothing is on screen until it is needed.</p>
+    </div>
+    <div class="mini">
+      <p class="lab" style="margin-bottom:9px">Pressing it opens what receiving needs — and only that</p>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="chip">Cash</span>
+        <span class="chip on">GCash</span>
+        <span class="chip">Bank transfer</span>
+      </div>
+      <div style="margin-top:9px"><span class="btn gold">Confirm deposit paid &amp; print receipt</span> <span class="btn quiet">Cancel</span></div>
+      <p class="cap">The method row appears inside the step. Cancel puts it away again.</p>
+    </div>
+    <div class="mini" style="border-color:#34D399">
+      <p class="lab" style="margin-bottom:6px;color:#34D399">After the money is in</p>
+      <div class="flex flex-wrap gap-2"><span class="btn good">Check in</span></div>
+      <p class="cap">The receive button is <b>replaced</b> by Check in — the two are never on screen together. After check-in, that same place offers <b>Check out</b>.</p>
+    </div>
+    <div class="mini">
+      <p class="lab" style="margin-bottom:6px">And after the money is in</p>
+      <p>The receipt prints, and <b>closing the receipt closes this booking</b> — you are back at the calendar instead of holding a booking you have finished with. Reopening it now offers <b>Check in</b> alone.</p>
+    </div>
+    <div class="mini">
+      <p class="lab" style="margin-bottom:6px">Guest tab</p>
+      <p><b>Hidden until the guest is checked in.</b> Nobody orders before check-in, so it no longer sits there locked.</p>
+    </div>
+  </section>
+
+  <section class="card p-4 space-y-2" style="border-color:#6F5420">
+    <h2 class="text-lg font-bold">Would you check these two</h2>
+    <div class="row"><span class="n">a</span><span>Open a booking → tap <b>GCash</b> → type the ref → <b>Confirm deposit paid &amp; print receipt</b>: the receipt must say GCash with that reference, and the panel must close when you dismiss the receipt.</span></div>
+    <div class="row"><span class="n">b</span><span>Reopen a partly-paid booking: it must <b>report</b> only, with <b>Receive / Check in / Check out</b> as choices underneath.</span></div>
+    <p class="cap">The extra guided “receive payment” step was the confusing part, so it is retired. Types pass; lint clean on every file touched.</p>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">ExtendStayModal · BookingMoneyPanel (rewritten) · GuestMethodPicker (rewritten) · InvoiceDocument · k132</footer>
+</main>
+</body>
+</html>

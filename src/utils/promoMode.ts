@@ -1,21 +1,8 @@
-const STORAGE_KEY = 'daweez_promo_active'
-
-export function isPromoActive(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === '1'
-  } catch { return false }
-}
-
-export function setPromoActive(v: boolean) {
-  try { localStorage.setItem(STORAGE_KEY, v ? '1' : '0') } catch { /* no-op */ }
-  // Broadcast so background tabs/portal see it (storage event only fires cross-tab;
-  // fire a synthetic same-document event for the local tab).
-  try {
-    window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: v ? '1' : '0' } as unknown as StorageEventInit))
-    window.dispatchEvent(new CustomEvent('promo-toggle', { detail: { active: v } }))
-  } catch { /* no-op */ }
-}
-
+// ONE PRICE (card k128): there is a single price per room and per venue, so the
+// old sale-mode switch is gone — nothing here writes or reads a "promo is on"
+// flag any more. What survives is the one function that picks the figure:
+// `promo_price` holds the real price whenever a unit has one, and `base_price`
+// is only the fallback for a unit that has never been given one.
 export function getEffectiveNightlyPrice(
   regular: number,
   promo: number | null | undefined,

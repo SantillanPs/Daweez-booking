@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What should be hidden on opening? Pick A, B or C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-800:#E6C989;
+    --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A; --color-paper-50:#141414;
+    --color-good-600:#34D399;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,span,b,i,li){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500)}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  /* the panel being drawn */
+  .panel{background:#171717;border:1px solid var(--paper-300);border-radius:10px;padding:10px 11px}
+  .unit{font-family:"Sora";font-weight:700;font-size:13px}
+  .chip{display:inline-block;font-size:9.5px;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:#2A2A2A;color:#C9C4BB}
+  .chip.partial{background:#3A2E14;color:#F5B759}
+  .guest{font-family:"Sora";font-weight:700;font-size:14px;margin-top:9px}
+  .sub{font-size:11px;color:var(--ink-500)}
+  .money{display:flex;border:1px solid var(--paper-200);border-radius:8px;overflow:hidden;margin-top:9px}
+  .money > div{flex:1;padding:9px 10px}
+  .money > div + div{border-left:1px solid var(--paper-200);background:#332B18}
+  .money .fig{font-family:"Sora";font-weight:700;font-size:18px;margin:4px 0 0}
+  .oneline{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--paper-200);border-radius:8px;padding:8px 10px;margin-top:9px;font-size:11.5px;color:var(--ink-600)}
+  .bar{height:6px;border-radius:99px;background:#2E2E2E;overflow:hidden;margin-top:8px}
+  .bar > i{display:block;height:100%;width:50%;background:#34D399}
+  .btn{display:inline-block;font-size:12px;font-weight:700;border-radius:9px;padding:9px 13px;background:var(--gold-400);color:#141414;margin-top:9px}
+  .ghost{background:#1F1F1F;border:1px solid var(--paper-300);color:var(--ink-900)}
+  .pick{background:#181818;border:1px dashed var(--paper-300);border-radius:9px;padding:9px 11px;font-size:12.5px;color:var(--ink-600)}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-3xl px-5 py-8 space-y-5">
+
+  <header class="space-y-2">
+    <p class="pill" style="background:#332B18;color:#E6C989">Plan · nothing changed in the app yet</p>
+    <h1 class="text-3xl font-bold tracking-tight">What should be hidden when a booking opens?</h1>
+    <p class="cap" style="margin-top:2px">You are right that it is still on display — I hid the <i>actions</i>, but the money card still shows everything the moment you open a booking. Three readings of “hidden”, drawn. <b>Tell me A, B or C and I build exactly that.</b> Nothing in the app changes until you pick.</p>
+  </header>
+
+  <section class="grid gap-4 md:grid-cols-3">
+
+    <!-- A -->
+    <div class="card p-4 space-y-2">
+      <span class="pill" style="background:#2A2A2A;color:#C9C4BB">A</span>
+      <h3 style="margin-top:6px">Money kept, actions hidden — what is in the app now</h3>
+      <div class="panel">
+        <div class="flex items-center gap-2"><span class="unit">Room 4</span><span class="chip partial">Partial</span></div>
+        <p class="sub" style="margin:5px 0 0">1 Oct → 3 Oct · 2 nights</p>
+        <p class="guest">SEB</p>
+        <div class="money">
+          <div><p class="lab" style="margin:0">Whole stay total</p><p class="fig">₱1,250</p></div>
+          <div><p class="lab" style="margin:0;color:var(--gold-800)">Amount to pay</p><p class="fig" style="color:#EDEAE4">₱625</p></div>
+        </div>
+        <div class="bar"><i></i></div>
+        <p class="sub" style="margin:5px 0 0;color:#34D399">✓ ₱625 of ₱1,250 received</p>
+        <span class="btn">Receive money</span>
+      </div>
+      <p class="cap">Two big figures and a bar are on screen the second the booking opens.</p>
+    </div>
+
+    <!-- B -->
+    <div class="card p-4 space-y-2" style="border-color:var(--gold-400)">
+      <span class="pill" style="background:#332B18;color:var(--gold-800)">B · my pick</span>
+      <h3 style="margin-top:6px">One quiet money line, one button</h3>
+      <div class="panel">
+        <div class="flex items-center gap-2"><span class="unit">Room 4</span><span class="chip partial">Partial</span></div>
+        <p class="sub" style="margin:5px 0 0">1 Oct → 3 Oct · 2 nights</p>
+        <p class="guest">SEB</p>
+        <div class="oneline"><span>Partly paid · <b style="color:#EDEAE4">₱625 of ₱1,250</b></span><span style="color:var(--ink-500)">show ▾</span></div>
+        <span class="btn">Receive money</span>
+      </div>
+      <p class="cap">The two big figures and the progress bar only appear when you tap <b>show</b> — or inside the receive step. Opening a booking gives you the state in one line and one action.</p>
+    </div>
+
+    <!-- C -->
+    <div class="card p-4 space-y-2">
+      <span class="pill" style="background:#2A2A2A;color:#C9C4BB">C</span>
+      <h3 style="margin-top:6px">Nothing about money at all</h3>
+      <div class="panel">
+        <div class="flex items-center gap-2"><span class="unit">Room 4</span><span class="chip partial">Partial</span></div>
+        <p class="sub" style="margin:5px 0 0">1 Oct → 3 Oct · 2 nights</p>
+        <p class="guest">SEB</p>
+        <span class="btn">Receive money</span>
+      </div>
+      <p class="cap">No figures, no bar, no line — the money appears only when you press the button. The chip in the header still says <i>Partial</i>.</p>
+    </div>
+  </section>
+
+  <section class="card p-4 space-y-3" style="border-color:#6F5420">
+    <h2 class="text-lg font-bold">And the same three, once the money is in</h2>
+    <div class="grid gap-4 md:grid-cols-3">
+      <div class="pick"><b>A</b> — the green “Fully paid ✓” strip + <b>Check in</b> button.</div>
+      <div class="pick"><b>B</b> — one line (“Fully paid · ₱1,250 received”) + <b>Check in</b>. The strip appears if you tap <i>show</i>.</div>
+      <div class="pick"><b>C</b> — just <b>Check in</b>, nothing else.</div>
+    </div>
+    <p class="cap">In all three: the receive button is replaced by Check in, never shown beside it; the method row only appears inside the receive step; and closing the receipt closes the booking.</p>
+  </section>
+
+  <section class="card p-4 space-y-2">
+    <h2 class="text-lg font-bold">How I will work from here</h2>
+    <p class="text-sm" style="margin:0">You are right that I should show the plan first when your words can be read more than one way. From now on: when a change is about <b>what appears when</b>, you get a drawn plan with A/B/C and I build only after you pick. When it is a plain fix (a wrong figure, a missing line), I just do it and show you the result.</p>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">k132 · nothing in the app was changed for this page</footer>
+</main>
+</body>
+</html>

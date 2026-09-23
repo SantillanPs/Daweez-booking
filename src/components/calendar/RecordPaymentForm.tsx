@@ -47,9 +47,13 @@ export function RecordPaymentForm({
   // An empty Amount is answered right under the box, not with a popup.
   const [tried, setTried] = useState(false)
   const amountMissing = tried && !(amount > 0)
+  // The method is the guest's own choice, so nothing is preselected and the
+  // record is refused until the desk says which one it was — assuming "Cash" is
+  // what once printed a Cash receipt for a guest who had paid by GCash.
+  const methodMissing = tried && !method.trim()
   const submit = () => {
     setTried(true)
-    if (!(amount > 0)) return
+    if (!(amount > 0) || !method.trim()) return
     onSubmit()
   }
 
@@ -68,12 +72,15 @@ export function RecordPaymentForm({
         </label>
         <label className="text-[10px] text-muted font-bold block">Method
           <select value={method} onChange={e => setMethod(e.target.value)}
-            className="w-full mt-1 bg-card border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500">
-            <option>Cash</option><option>GCash</option><option>Bank transfer</option><option>Other</option>
+            className={'w-full mt-1 bg-card border text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 ' +
+              (methodMissing ? 'border-danger-400 focus:border-danger-500' : 'border-soft')}>
+            <option value="" disabled>Choose…</option>
+            <option>Cash</option><option>GCash</option><option>Bank transfer</option>
           </select>
         </label>
       </div>
       {amountMissing && <p className="text-[10px] font-semibold text-danger-600">Enter the payment amount.</p>}
+      {methodMissing && <p className="text-[10px] font-semibold text-danger-600">Choose how the guest paid.</p>}
 
       <label className="text-[10px] text-muted font-bold block">
         Reference No.{referenceRequired ? <span className="text-danger-500"> *</span> : ' (optional)'}

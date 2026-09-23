@@ -158,21 +158,22 @@ export function calculatePricing(params: {
   // below (a recorded day-by-day breakfast, or the person × night estimate), so
   // nothing changes for it until the desk writes the beds down in Settings.
   const roomForBreakfast = roomId ? roomList.find(r => r.id === roomId) : undefined
-  const beds = roomForBreakfast ? Number(roomForBreakfast.beds || 0) : 0
+  // The room's own breakfast price, typed by the desk in Settings.
+  const roomBreakfastPrice = roomForBreakfast ? Number(roomForBreakfast.breakfast_price || 0) : 0
   if (brkRecords.length > 0) {
     // A booking made while breakfast was still recorded day by day keeps the
     // figure it was actually charged (the owner's rule: old bookings are left
     // alone).
     breakfastTotal = brkRecords.reduce((sum, r) => sum + ((r.price || 0) * (r.quantity || 0)), 0)
-  } else if (roomId && beds > 0) {
+  } else if (roomId && roomBreakfastPrice > 0) {
     // Breakfast is the ROOM's choice (card k140): on only for the rooms the desk
-    // ticked. `breakfastEnabled` is the caller's explicit answer (the booking
-    // form, the guest portal); `breakfastIncluded` is what the saved booking
-    // holds. One charge for the stay: ₱150 × the room's beds.
+    // ticked, and charged at the room's OWN breakfast price — one charge for the
+    // stay. `breakfastEnabled` is the caller's explicit answer (the booking form,
+    // the guest portal); `breakfastIncluded` is what the saved booking holds.
     const wantsBreakfast = breakfastEnabled !== undefined
       ? breakfastEnabled
       : breakfastIncluded === true
-    if (wantsBreakfast) breakfastTotal = rates.breakfastPrice * beds
+    if (wantsBreakfast) breakfastTotal = roomBreakfastPrice
   } else if (roomId) {
     const optedOut = breakfastOrders != null && breakfastOrders.length === 0
     if (!optedOut) {

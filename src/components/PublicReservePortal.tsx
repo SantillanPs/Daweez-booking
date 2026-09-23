@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Calendar, User, Mail, Phone, CheckCircle2, Users, ArrowRight, Info, AlertCircle, Tag } from 'lucide-react'
+import { Calendar, User, Mail, Phone, CheckCircle2, Users, ArrowRight, Info, AlertCircle } from 'lucide-react'
 import { Booking, Room, Venue, Companion, PaymentRecord } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
-import { isPromoActive, getEffectiveNightlyPrice } from '../utils/promoMode'
+import { getEffectiveNightlyPrice } from '../utils/promoMode'
 import { dateToString } from '../utils/helpers'
 import { getPaymentAccounts } from '../utils/paymentAccounts'
 import { nextReceiptNumber } from '../utils/receiptNumber'
@@ -50,21 +50,9 @@ export function PublicReservePortal() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const [promoOn, setPromoOn] = useState<boolean>(() => isPromoActive())
   // Breakfast is the ROOM's choice (card k140): the guest picks it here, the same
   // way the desk picks it for the rooms on a walk-in booking. It starts OFF.
   const [breakfastOn, setBreakfastOn] = useState(false)
-  useEffect(() => {
-    const sync = () => setPromoOn(isPromoActive())
-    const onStorage = (e: StorageEvent) => { if (e.key === 'daweez_promo_active') sync() }
-    const onPromoToggle = () => sync()
-    window.addEventListener('storage', onStorage)
-    window.addEventListener('promo-toggle' as never, onPromoToggle as never)
-    return () => {
-      window.removeEventListener('storage', onStorage)
-      window.removeEventListener('promo-toggle' as never, onPromoToggle as never)
-    }
-  }, [])
 
   const nights = useMemo(() => {
     if (!checkIn || !checkOut || checkIn >= checkOut) return 0
@@ -177,6 +165,10 @@ export function PublicReservePortal() {
         check_out: checkOut,
         source: 'website',
         status: 'pending',
+        // ONE PRICE (card k128): the guest is quoted the single figure above, so
+        // the booking records that it was charged it — otherwise every later
+        // screen re-priced the stay at the old regular figure.
+        promo_applied: true,
         payment_status: 'downpayment',
         payment_method: 'gcash',
         payment_reference: paymentRef,
@@ -312,7 +304,8 @@ export function PublicReservePortal() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {rooms.map(room => {
                         const isAvailable = roomAvailability[room.id]
-                        const roomPromoOn = promoOn && room.promo_price != null
+                        // ONE PRICE (card k128): the guest is shown the figure the
+                        // desk charges — never the retired regular price beside it.
                         const displayPrice = getEffectiveNightlyPrice(room.base_price, room.promo_price, true)
                         return (
                             <div key={room.id} className={`bg-card border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-all group ${isAvailable ? 'hover:border-brand-primary border-soft/80' : 'opacity-70 grayscale-[20%] border-soft'}`}>
@@ -321,11 +314,6 @@ export function PublicReservePortal() {
                                 <span className="absolute top-3 left-3 bg-card/95 text-main text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
                                   Room {room.room_number}
                                 </span>
-                                {isAvailable && roomPromoOn && (
-                                  <span className="absolute bottom-3 right-3 bg-brand-primary text-ink-900 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center gap-1">
-                                    <Tag className="w-3 h-3" /> PROMO
-                                  </span>
-                                )}
                                 {!isAvailable && (
                                   <span className="absolute bottom-3 right-3 bg-rose-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider animate-in fade-in">
                                     Occupied
@@ -342,18 +330,9 @@ export function PublicReservePortal() {
                                 </div>
                                 <div className="flex items-center justify-between border-t border-soft pt-3 shrink-0">
                                   <div>
-                                    {roomPromoOn ? (
-                                      <>
-                                        <span className="text-[10px] text-muted line-through block font-mono">₱{room.base_price.toLocaleString()}</span>
-                                        <span className="text-sm font-extrabold text-brand-text font-mono">
-                                          ₱{displayPrice.toLocaleString()}<span className="text-[10px] text-muted font-normal">/night</span>
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <span className="text-sm font-extrabold text-brand-text font-mono">
-                                        ₱{(room.base_price).toLocaleString()}<span className="text-[10px] text-muted font-normal">/night</span>
-                                      </span>
-                                    )}
+                                    <span className="text-sm font-extrabold text-brand-text font-mono">
+                                      ₱{displayPrice.toLocaleString()}<span className="text-[10px] text-muted font-normal">/night</span>
+                                    </span>
                                   </div>
                                   {isAvailable ? (
                                     <button
@@ -394,7 +373,7 @@ export function PublicReservePortal() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {venues.map(venue => {
                         const isAvailable = venueAvailability[venue.id]
-                        const venuePromoOn = promoOn && venue.promo_price != null
+                        // ONE PRICE (card k128), same rule as the rooms above.
                         const venueDisplayPrice = getEffectiveNightlyPrice(venue.base_price, venue.promo_price, true)
                         return (
                           <div key={venue.id} className={`bg-card border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-all group ${isAvailable ? 'hover:border-brand-primary border-soft/80' : 'opacity-70 grayscale-[20%] border-soft'}`}>
@@ -403,11 +382,6 @@ export function PublicReservePortal() {
                               <span className="absolute top-3 left-3 bg-card/95 text-main text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
                                 Venue
                               </span>
-                              {isAvailable && venuePromoOn && (
-                                <span className="absolute bottom-3 right-3 bg-brand-primary text-ink-900 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center gap-1">
-                                  <Tag className="w-3 h-3" /> PROMO
-                                </span>
-                              )}
                               {!isAvailable && (
                                 <span className="absolute bottom-3 right-3 bg-rose-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider animate-in fade-in">
                                   Occupied
@@ -424,18 +398,9 @@ export function PublicReservePortal() {
                               </div>
                               <div className="flex items-center justify-between border-t border-soft pt-3 shrink-0">
                                 <div>
-                                  {venuePromoOn ? (
-                                    <>
-                                      <span className="text-[10px] text-muted line-through block font-mono">₱{venue.base_price.toLocaleString()}</span>
-                                      <span className="text-sm font-extrabold text-brand-text font-mono">
-                                        ₱{venueDisplayPrice.toLocaleString()}<span className="text-[10px] text-muted font-normal">/day</span>
-                                      </span>
-                                    </>
-                                  ) : (
-                                    <span className="text-sm font-extrabold text-brand-text font-mono">
-                                      ₱{venue.base_price.toLocaleString()}<span className="text-[10px] text-muted font-normal">/day</span>
-                                    </span>
-                                  )}
+                                  <span className="text-sm font-extrabold text-brand-text font-mono">
+                                    ₱{venueDisplayPrice.toLocaleString()}<span className="text-[10px] text-muted font-normal">/day</span>
+                                  </span>
                                 </div>
                                 {isAvailable ? (
                                   <button
@@ -690,7 +655,7 @@ export function PublicReservePortal() {
                   </div>
                   {pricing.discountAmount > 0 && (
                     <div className="flex justify-between text-emerald-600 font-semibold animate-in fade-in">
-                      <span>Promo Price{pricing.discountPercent ? ` (-${pricing.discountPercent}%)` : ''}:</span>
+                      <span>Price{pricing.discountPercent ? ` (-${pricing.discountPercent}%)` : ''}:</span>
                       <span className="font-mono">-₱{pricing.discountAmount.toLocaleString()}</span>
                     </div>
                   )}
@@ -718,12 +683,12 @@ export function PublicReservePortal() {
                       />
                       <span className="text-[11.5px] text-main font-semibold leading-snug">
                         Add breakfast for this room
-                        {(selectedUnit as Room).beds ? (
+                        {Number((selectedUnit as Room).breakfast_price || 0) > 0 ? (
                           <span className="block text-[10.5px] text-muted font-medium">
-                            ₱150 for each of the room's {(selectedUnit as Room).beds} beds, once — added to your total.
+                            ₱{Number((selectedUnit as Room).breakfast_price).toLocaleString()} for the stay — added to your total.
                           </span>
                         ) : (
-                          <span className="block text-[10.5px] text-muted font-medium">Ask us at the desk for the price.</span>
+                          <span className="block text-[10.5px] text-muted font-medium">Ask us at the desk for this room's breakfast.</span>
                         )}
                       </span>
                     </label>

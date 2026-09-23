@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>k132 · Horizontal space only — three options</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-800:#E6C989;
+    --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A; --color-paper-50:#141414;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,span,b,i,li){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  /* A mock of the panel body: same inner width as the slide-over, so the gaps are true. */
+  .panel{background:#171717;border:1px solid var(--paper-300);border-radius:10px;padding:14px 20px}
+  .w512{width:512px}
+  .w448{width:448px}
+  .w400{width:400px}
+  .row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .name{font-family:Sora;font-weight:700;font-size:19px;color:#EDEAE4}
+  .meta{font-size:11px;color:var(--ink-500);margin-top:2px}
+  .tag{display:flex;align-items:center;gap:8px;border:1px solid #34D399;background:#161F1B;border-radius:9px;padding:6px 10px;flex-shrink:0}
+  .tag .t1{font-family:Sora;font-weight:700;font-size:13.5px;color:#34D399;display:block;line-height:1.15}
+  .tag .t2{font-size:10.5px;color:#7FBFa4;display:block}
+  .act{font-size:11.5px;font-weight:700;border-radius:7px;padding:6px 10px;background:var(--gold-400);color:#141414;flex-shrink:0}
+  .acc{border-top:1px solid var(--paper-200);margin-top:14px;padding-top:12px}
+  .acc .l1{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-500)}
+  .acc .l2{font-size:11px;color:var(--ink-500);margin-top:3px}
+  .acc1{border-top:1px solid var(--paper-200);margin-top:14px;padding-top:12px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .gap{display:inline-block;height:10px;border-radius:3px;background:repeating-linear-gradient(45deg,#2A2114,#2A2114 5px,#1F1A10 5px,#1F1A10 10px);border:1px dashed #5A4A22}
+  .mockwrap{overflow-x:auto}
+  .measure{font-size:11px;color:#B99C5B;margin-top:4px}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[900px] p-6 space-y-5">
+
+  <header class="card p-5">
+    <span class="pill" style="background:#2A1615;color:#F87171">Nothing built — showing first</span>
+    <h1 class="text-2xl font-bold mt-3">Horizontal space only — three ways</h1>
+    <p class="text-sm" style="margin:8px 0 0">My mistake: I read your note as “make everything smaller” and changed the heights too. I have put all of that back — the panel is exactly as you see it now. Below, only the <b>left-to-right</b> emptiness is changed; nothing gets shorter or taller. The dashed bar is empty space.</p>
+  </header>
+
+  <section class="card p-4">
+    <span class="pill" style="background:#2A2A2A;color:#C9C4BB">Now (what you have)</span>
+    <div class="mockwrap" style="margin-top:10px">
+      <div class="panel w512">
+        <div class="row">
+          <div>
+            <div class="name">SEB</div>
+            <div class="meta">Booked from <b style="color:#EDEAE4">Walk-in</b></div>
+          </div>
+          <div class="tag"><span><span class="t1">Fully paid ✓</span><span class="t2">₱1,250 received</span></span><span class="act">Check out</span></div>
+        </div>
+        <div class="acc"><div class="l1">Payment receipts</div><div class="l2">2 payments · ₱1,250 received</div></div>
+        <div class="acc"><div class="l1">Guest tab</div><div class="l2">Nothing on the tab</div></div>
+        <div class="acc"><div class="l1">Extend stay</div><div class="l2">Check-out Sep 22</div></div>
+        <div class="measure">the name row leaves ≈210px of nothing between “SEB” and the green box; each block row leaves ≈230px of nothing to the right of its words</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <span class="pill" style="background:#12261F;color:#34D399">A · recommended</span>
+    <h2 class="text-lg font-bold" style="margin-top:10px">The green box grows to fill the row</h2>
+    <p class="text-sm" style="margin:6px 0 0">Same height, same rows — the box simply stops being a small chip pinned to the right edge and becomes the rest of the row: <b>Fully paid ✓ / ₱1,250 received</b> on its left, <b>Check out</b> on its right. The gap disappears because the green area is where the gap was.</p>
+    <div class="mockwrap" style="margin-top:12px">
+      <div class="panel w512">
+        <div class="row" style="gap:14px">
+          <div style="flex-shrink:0">
+            <div class="name">SEB</div>
+            <div class="meta">Booked from <b style="color:#EDEAE4">Walk-in</b></div>
+          </div>
+          <div class="tag" style="flex:1;justify-content:space-between">
+            <span><span class="t1">Fully paid ✓</span><span class="t2">₱1,250 received</span></span>
+            <span class="act">Check out</span>
+          </div>
+        </div>
+        <div class="acc"><div class="l1">Payment receipts</div><div class="l2">2 payments · ₱1,250 received</div></div>
+        <div class="acc"><div class="l1">Guest tab</div><div class="l2">Nothing on the tab</div></div>
+        <div class="acc"><div class="l1">Extend stay</div><div class="l2">Check-out Sep 22</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <span class="pill" style="background:#332B18;color:var(--gold-800)">B</span>
+    <h2 class="text-lg font-bold" style="margin-top:10px">The green box sits right after the name</h2>
+    <p class="text-sm" style="margin:6px 0 0">Literally “move them closer”: the box follows “SEB” with a normal gap, and the empty space ends up at the far right of the row instead of between them.</p>
+    <div class="mockwrap" style="margin-top:12px">
+      <div class="panel w512">
+        <div class="row" style="justify-content:flex-start">
+          <div style="flex-shrink:0">
+            <div class="name">SEB</div>
+            <div class="meta">Booked from <b style="color:#EDEAE4">Walk-in</b></div>
+          </div>
+          <div class="tag"><span><span class="t1">Fully paid ✓</span><span class="t2">₱1,250 received</span></span><span class="act">Check out</span></div>
+          <span class="gap" style="flex:1;height:44px;margin-top:2px"></span>
+        </div>
+        <div class="acc"><div class="l1">Payment receipts</div><div class="l2">2 payments · ₱1,250 received</div></div>
+        <div class="acc"><div class="l1">Guest tab</div><div class="l2">Nothing on the tab</div></div>
+        <div class="acc"><div class="l1">Extend stay</div><div class="l2">Check-out Sep 22</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <span class="pill" style="background:#2A2A2A;color:#C9C4BB">C</span>
+    <h2 class="text-lg font-bold" style="margin-top:10px">Narrower panel, nothing rearranged</h2>
+    <p class="text-sm" style="margin:6px 0 0">The simplest of the three: the panel comes in from 512px to 448px (or 400px), so every gap is shorter without a single element moving. Heights are untouched.</p>
+    <div class="mockwrap" style="margin-top:12px">
+      <div class="panel w448">
+        <div class="row">
+          <div>
+            <div class="name">SEB</div>
+            <div class="meta">Booked from <b style="color:#EDEAE4">Walk-in</b></div>
+          </div>
+          <div class="tag"><span><span class="t1">Fully paid ✓</span><span class="t2">₱1,250 received</span></span><span class="act">Check out</span></div>
+        </div>
+        <div class="acc"><div class="l1">Payment receipts</div><div class="l2">2 payments · ₱1,250 received</div></div>
+        <div class="acc"><div class="l1">Guest tab</div><div class="l2">Nothing on the tab</div></div>
+        <div class="acc"><div class="l1">Extend stay</div><div class="l2">Check-out Sep 22</div></div>
+        <div class="measure">448px — and 400px is also possible if you want it tighter still</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-lg font-bold mb-1">The block rows (Payment receipts / Guest tab / Extend stay)</h2>
+    <p class="text-sm" style="margin:0">Their words sit on the left and the right side of each row is empty too. Putting the small grey line <i>beside</i> the title instead of under it would use that width — but it also makes each row shorter, which is <b>vertical</b>, so I am leaving it alone unless you tell me to.</p>
+    <p class="cap" style="color:var(--gold-800)"><b>Tell me which:</b> A (box fills the row), B (box right after the name), C (panel narrower), or a mix — and whether the block rows should also move their grey line up. Nothing is built until you say.</p>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">k132 · horizontal spacing — shown, not built</footer>
+</main>
+</body>
+</html>

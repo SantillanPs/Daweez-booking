@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Breakfast chip — does it read as selected now?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-700:#C9C4BB; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-100:#332B18; --color-gold-800:#E6C989;
+    --color-paper-50:#141414; --color-paper-100:#2A2A2A; --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A;
+    --color-danger-500:#F87171; --color-good-600:#34D399;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.flex,.grid)>*{min-width:0}
+  :where(p,h1,h2,span,b,i){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500)}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .mini{background:#181818;border:1px solid var(--paper-300);border-radius:9px;padding:11px 12px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;border-radius:8px;padding:6px 10px;border:1px solid}
+  .chip.on{background:var(--gold-400);color:#141414;border-color:#8A6A28}
+  .chip.off{background:#1A1A1A;color:var(--ink-500);border-style:dashed;border-color:var(--paper-300)}
+  .chip.none{background:#141414;color:#5E5A55;border-style:dashed;border-color:#333}
+  .ring{width:13px;height:13px;border-radius:999px;border:2px solid currentColor;opacity:.4;flex:none}
+  .tick{width:13px;height:13px;flex:none}
+  .allrooms{font-size:10.5px;font-weight:700;color:var(--ink-500);border:1px solid var(--paper-300);border-radius:8px;padding:6px 8px}
+  .sum{font-size:11.5px;margin-top:7px}
+  .rule{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;line-height:1.35}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-3xl px-5 py-8 space-y-5">
+
+  <header class="space-y-2">
+    <p class="pill" style="background:#12261F;color:#34D399">Fixed · booking form, Breakfast line</p>
+    <h1 class="text-2xl font-bold tracking-tight">Brown alone meant nothing — now the chip ticks</h1>
+    <p class="cap" style="margin-top:2px">Your note: the gold chip did not read as “this room has breakfast”. So the state is now said with a tick, not with colour.</p>
+  </header>
+
+  <section class="card p-4 space-y-3">
+    <p class="lab">Before — your screenshot</p>
+    <div class="mini">
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="lab" style="margin-right:4px">Breakfast</span>
+        <span class="chip off">Room 2 · —</span>
+        <span class="chip off">Room 4 · —</span>
+        <span class="chip on">Room 6 · —</span>
+        <span class="allrooms">All</span>
+      </div>
+      <p class="sum" style="color:var(--ink-500)">One charge for the stay, at each room's own breakfast price — only the rooms you tap are charged.</p>
+    </div>
+    <p class="cap" style="color:#F87171">Nothing on the row says “Room 6 is on”. And “—” could mean anything.</p>
+  </section>
+
+  <section class="card p-4 space-y-3" style="border-color:#6F5420">
+    <p class="lab" style="color:var(--gold-800)">After — a tick, an empty circle, and the amount in words</p>
+
+    <div class="mini" style="border-color:var(--gold-400)">
+      <p class="lab" style="margin-bottom:7px">Room 6 ticked · rooms 2 and 4 have no price yet</p>
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="lab" style="margin-right:4px">Breakfast</span>
+        <span class="chip on"><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Room 6<span>₱450</span></span>
+        <span class="chip none"><span class="ring"></span>Room 2<span style="font-weight:600;opacity:.75">no price</span></span>
+        <span class="chip none"><span class="ring"></span>Room 4<span style="font-weight:600;opacity:.75">no price</span></span>
+        <span class="allrooms">All rooms</span>
+      </div>
+      <p class="sum" style="color:var(--gold-800);font-weight:700">Breakfast added: ₱450 once for the stay · Room 6</p>
+      <p class="sum" style="color:var(--ink-500)">Room 2 and Room 4 have no breakfast price yet — set it in Settings → Room Rates.</p>
+    </div>
+
+    <div class="mini">
+      <p class="lab" style="margin-bottom:7px">Nothing ticked · the normal case</p>
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="lab" style="margin-right:4px">Breakfast</span>
+        <span class="chip off"><span class="ring"></span>Room 2<span style="opacity:.75">₱300</span></span>
+        <span class="chip off"><span class="ring"></span>Room 4<span style="opacity:.75">₱300</span></span>
+        <span class="chip off"><span class="ring"></span>Room 6<span style="opacity:.75">₱450</span></span>
+        <span class="allrooms">All rooms</span>
+      </div>
+      <p class="sum" style="font-weight:700;color:var(--ink-600)">No breakfast on this booking.</p>
+    </div>
+
+    <div class="mini">
+      <p class="lab" style="margin-bottom:7px">Two ticked · the amount adds itself up</p>
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="lab" style="margin-right:4px">Breakfast</span>
+        <span class="chip on"><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Room 2<span>₱300</span></span>
+        <span class="chip on"><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Room 6<span>₱450</span></span>
+        <span class="chip off"><span class="ring"></span>Room 4<span style="opacity:.75">₱300</span></span>
+        <span class="allrooms">None</span>
+      </div>
+      <p class="sum" style="color:var(--gold-800);font-weight:700">Breakfast added: ₱750 once for the stay · Room 2 and Room 6</p>
+    </div>
+  </section>
+
+  <section class="card p-4 space-y-2.5">
+    <p class="lab">The three rules behind it</p>
+    <div class="rule"><span style="color:var(--gold-800);font-weight:700">✓</span><span><b>Tick = breakfast on that room.</b> Empty circle + dashed edge = off. No colour to learn.</span></div>
+    <div class="rule"><span style="color:var(--gold-800);font-weight:700">₱</span><span><b>The line under it repeats it in words</b> — “Breakfast added: ₱450 once for the stay · Room 6”, or “No breakfast on this booking.”</span></div>
+    <div class="rule"><span style="color:var(--ink-500);font-weight:700">—</span><span><b>A room with no breakfast price can no longer be tapped.</b> It used to look ticked and quietly charge ₱0. It now says <i>no price</i> and the line tells you to set it in Settings → Room Rates.</span></div>
+  </section>
+
+  <section class="card p-4 space-y-2" style="border-color:#6F5420">
+    <p class="lab" style="color:var(--gold-800)">One question</p>
+    <p class="text-sm">Is the tick enough, or do you want the ticked chip to also print the word <b>Breakfast</b> inside it (e.g. <span class="chip on" style="font-size:11px"><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Breakfast · Room 6 · ₱450</span>)? It makes the chip wider, so fewer fit on one line.</p>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">BreakfastRoomChips.tsx · WalkInBookingForm.tsx · typecheck passes · reload the Calendar/booking page to see it</footer>
+</main>
+</body>
+</html>

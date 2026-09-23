@@ -63,12 +63,12 @@ export function computeBookingEstimate(p: BookingEstimateParams): BookingEstimat
 
     const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
     if (sel.type === 'room') {
-      // Breakfast is the ROOM's choice (card k140): ₱150 × its beds, ONCE for the
-      // stay — not per person and not per night. A partner deal that includes
-      // breakfast does not charge it again.
-      const roomBeds = Number(room?.beds || 0)
+      // Breakfast is the ROOM's choice, at the room's OWN breakfast price — one
+      // charge for the stay (card k140). A partner deal that includes breakfast
+      // does not charge it again.
+      const roomBreakfast = Number(room?.breakfast_price || 0)
       const wantsBreakfast = isBreakfastIncluded || p.formBreakfastRoomIds.includes(id)
-      if (wantsBreakfast && roomBeds > 0) breakfast += 150 * roomBeds
+      if (wantsBreakfast && roomBreakfast > 0) breakfast += roomBreakfast
       rentals += (p.formExtraFoam * 200 + p.formExtraPillow * 50 + p.formExtraBlanket * 50 + p.formExtraTowel * 50) * n
     }
   })

@@ -34,7 +34,7 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
 }
 
 export function SettingsTab() {
-  const { rooms, feeds, updateFeedUrls, updateRoomRate, updateRoomBeds } = useDashboardData()
+  const { rooms, feeds, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice } = useDashboardData()
   const [activeTab, setActiveTab] = useState<RatesTab>('channels')
 
   // Rates editing
@@ -203,7 +203,7 @@ export function SettingsTab() {
               <MoneyField label="Extras: Pension + Vacation House (report)" value={rates.accommodationExtras} onChange={v => setRates(s => ({ ...s, accommodationExtras: v }))} />
               <MoneyField label="Extras: Garden + Gazebo (report)" value={rates.venueExtras} onChange={v => setRates(s => ({ ...s, venueExtras: v }))} />
             </div>
-            <p className="px-5 pb-4 text-[11px] text-muted">These are the shared, extra rates. Each room's Regular and Promo prices are set under Room Rates below.</p>
+            <p className="px-5 pb-4 text-[11px] text-muted">These are the shared, extra rates. Each room has one price, set under Room Rates below, along with its own breakfast price.</p>
             </div>
             <div className="bg-card border border-soft rounded-lg overflow-hidden font-sans shadow-sm">
               <div className="px-5 py-3 border-b border-soft">
@@ -249,7 +249,7 @@ export function SettingsTab() {
                   <input value={pay.bankAccountNumber} onChange={e => setPay(s => ({ ...s, bankAccountNumber: e.target.value }))} className="mt-1 w-full bg-page border border-soft text-main px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-brand-primary" /></label>
               </div>
             </div>
-            <RoomRatesEditor rooms={rooms} updateRoomRate={updateRoomRate} updateRoomBeds={updateRoomBeds} />
+            <RoomRatesEditor rooms={rooms} updateRoomRate={updateRoomRate} updateRoomBreakfastPrice={updateRoomBreakfastPrice} />
           </div>
         )}
       </div>

@@ -51,7 +51,7 @@ export function OldBookingPayment({ payMode, setPayMode, payDate, setPayDate, de
       </div>
       <div className="flex items-center gap-2 pt-1 select-none">
         <input type="checkbox" id="use-promo" checked={usePromo} onChange={e => setUsePromo(e.target.checked)} className="rounded text-gold-600 accent-gold-600 w-3.5 h-3.5 cursor-pointer" />
-        <label htmlFor="use-promo" className="text-[10px] font-bold text-muted cursor-pointer">Use Promo Price</label>
+        <label htmlFor="use-promo" className="text-[10px] font-bold text-muted cursor-pointer">Use the price on the board today</label>
       </div>
       <div className="flex items-center justify-between text-[12px] pt-1 border-t border-paper-200">
         <span className={balance <= 0 ? 'text-emerald-600' : 'text-danger-600'}>{balance <= 0 ? 'Fully paid' : 'Total Due'}</span>

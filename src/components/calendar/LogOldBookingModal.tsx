@@ -13,6 +13,10 @@ interface LogOldBookingInput {
   referenceNumber?: string; registeredOn?: string
   paymentMethod?: string; downpaymentPaid?: number; balanceDue?: number
   paymentStatus?: 'unpaid' | 'downpayment' | 'paid'; paymentRecords?: Booking['payment_records']
+  /** The price choice above — today's board price, or the older regular figure —
+   *  passed through so the row RECORDS which one it was logged at. Without it
+   *  every later read would silently re-price the log at the other figure. */
+  usePromo?: boolean
   preparedBy?: string
 }
 
@@ -43,7 +47,11 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
     return s
   })
   const [payMode, setPayMode] = useState('Cash')
-  const [usePromo, setUsePromo] = useState(false)
+  // Which price this paper log was written at. ON (the default) is the price on
+  // the board today; untick it only for an old log that was written at the older
+  // regular figure — the card k128 rule is one price, so "promo" is not a thing
+  // staff are asked about any more.
+  const [usePromo, setUsePromo] = useState(true)
   const [deposit, setDeposit] = useState('')
   const [fullyPaid, setFullyPaid] = useState(false)
   const [payDate, setPayDate] = useState(() => dateToString(new Date()))
@@ -139,6 +147,7 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
           balanceDue: bal,
           paymentStatus: status,
           paymentRecords: recs,
+          usePromo,
           preparedBy: preparedBy.trim() || undefined,
         })
       }

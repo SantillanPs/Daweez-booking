@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>k154 · Calendar toolbar — three ways</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-800:#E6C989;
+    --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A; --color-paper-50:#141414;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,span,b,i,li){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  /* the app's own light toolbar, drawn true to the live one */
+  .bar{background:#F1EDE4;border:1px solid #DED7C8;border-radius:12px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px}
+  .title{font-family:Sora;font-weight:700;font-size:17px;color:#1C1C1C;display:flex;align-items:center;gap:8px}
+  .badge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6F5420;background:#F1E3C2;border:1px solid #E3D2A8;border-radius:99px;padding:2px 7px}
+  .group{display:flex;align-items:center;gap:4px;background:#F8F5EF;border:1px solid #E2DBCB;border-radius:9px;padding:4px}
+  .ico{color:#6B655C;font-size:15px;line-height:1;padding:4px 6px}
+  .field{background:#fff;border:1px solid #E2DBCB;border-radius:7px;font-size:12px;color:#1C1C1C;padding:5px 8px;text-align:center}
+  .field.clip{width:115px;overflow:hidden;white-space:nowrap;color:#1C1C1C}
+  .field.wide{width:150px}
+  .field.gold{border-color:#D0AB60;background:#fff}
+  .today{font-size:12px;font-weight:600;color:#6F5420;padding:5px 8px}
+  .btn{display:flex;align-items:center;gap:6px;background:#D0AB60;color:#141414;font-size:12px;font-weight:700;padding:8px 14px;border-radius:0 8px 8px 0}
+  .btn.l{display:flex;align-items:center;gap:6px;background:#D0AB60;color:#141414;font-size:12px;font-weight:700;padding:8px 14px;border-radius:8px 0 0 8px}
+  .btn.alt{background:#fff;border:1px solid #E2DBCB;border-radius:0 8px 8px 0;color:#6F5420}
+  .chip{background:#1F1F1F;border:1px solid var(--paper-300);border-radius:7px;font-size:12px;color:#EDEAE4;padding:5px 8px}
+  .gap{display:inline-block;height:9px;border-radius:3px;background:repeating-linear-gradient(45deg,#2A2114,#2A2114 5px,#1F1A10 5px,#1F1A10 10px);border:1px dashed #5A4A22}
+  .mockwrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[940px] p-6 space-y-5">
+
+  <header class="card p-5">
+    <span class="pill" style="background:#2A1615;color:#F87171">Nothing built — showing first</span>
+    <h1 class="text-2xl font-bold mt-3">The month picker in a 31-day calendar</h1>
+    <p class="text-sm" style="margin:8px 0 0">You are right that it no longer fits: the grid shows a rolling <b>31-day window</b>, and the control next to it is a <b>month</b> picker — which is also squeezed to 115px, so the name is cut off (<i>“September&nbsp;&nbsp;20:”</i> in your screenshot). The title on the left already names the window (<i>September 2026</i>, or <i>20 Sep – 20 Oct 2026</i> when it runs past the month end), so the picker is saying the same thing twice, badly.</p>
+  </header>
+
+  <section class="card p-4">
+    <span class="pill" style="background:#2A2A2A;color:#C9C4BB">Now</span>
+    <div class="mockwrap" style="margin-top:10px">
+      <div class="bar" style="min-width:900px">
+        <div class="title">📅 September 2026 <span class="badge">from today</span></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="group">
+            <span class="ico">‹</span>
+            <span class="field clip">September&nbsp;&nbsp;20:</span>
+            <span class="ico">›</span>
+            <span style="width:1px;height:16px;background:#E2DBCB;margin:0 4px"></span>
+            <span class="today">Today</span>
+          </div>
+          <span class="btn l">+ New booking</span><span class="btn alt">Corporate</span>
+        </div>
+      </div>
+    </div>
+    <p class="cap">Tight for the window, and the month name is clipped. The arrows still step a whole month at a time.</p>
+  </section>
+
+  <section class="card p-4">
+    <span class="pill" style="background:#12261F;color:#34D399">A · recommended</span>
+    <h2 class="text-lg font-bold" style="margin-top:10px">Jump to a <i>day</i>, because the window starts on a day</h2>
+    <p class="text-sm" style="margin:6px 0 0">The picker becomes a date, not a month: pick <b>15 Dec 2026</b> and the grid runs 15 Dec → 14 Jan. That is the one control the rolling window actually needs — no amount of arrow-clicking gets you to December. ‹ › still step one month, <b>Today</b> still comes home, and the field is wide enough that nothing is clipped.</p>
+    <div class="mockwrap" style="margin-top:12px">
+      <div class="bar" style="min-width:900px">
+        <div class="title">📅 20 Sep – 20 Oct 2026 <span class="badge">from today</span></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="group">
+            <span class="ico">‹</span>
+            <span class="field wide">20 Sep 2026</span>
+            <span class="ico">›</span>
+            <span style="width:1px;height:16px;background:#E2DBCB;margin:0 4px"></span>
+            <span class="today">Today</span>
+          </div>
+          <span class="btn l">+ New booking</span><span class="btn alt">Corporate</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <span class="pill" style="background:#332B18;color:var(--gold-800)">B</span>
+    <h2 class="text-lg font-bold" style="margin-top:10px">Keep jumping by month, just stop clipping it</h2>
+    <p class="text-sm" style="margin:6px 0 0">The smallest change: the same month control, wide enough to read (<b>September 2026</b>), with a small “Month” hint before it so nobody expects a date. Everything else untouched.</p>
+    <div class="mockwrap" style="margin-top:12px">
+      <div class="bar" style="min-width:900px">
+        <div class="title">📅 September 2026 <span class="badge">from today</span></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="group">
+            <span class="ico">‹</span>
+            <span style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#8A8377;text-transform:uppercase">month</span>
+            <span class="field wide">September 2026</span>
+            <span class="ico">›</span>
+            <span style="width:1px;height:16px;background:#E2DBCB;margin:0 4px"></span>
+            <span class="today">Today</span>
+          </div>
+          <span class="btn l">+ New booking</span><span class="btn alt">Corporate</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <span class="pill" style="background:#2A2A2A;color:#C9C4BB">C</span>
+    <h2 class="text-lg font-bold" style="margin-top:10px">Drop the picker entirely</h2>
+    <p class="text-sm" style="margin:6px 0 0">The leanest: the title names the window, ‹ › step a month, <b>Today</b> comes home — and nothing else sits in the nav. Moving far away (December, next summer) then means arrow-clicking a month at a time.</p>
+    <div class="mockwrap" style="margin-top:12px">
+      <div class="bar" style="min-width:900px">
+        <div class="title">📅 September 2026 <span class="badge">from today</span></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="group">
+            <span class="ico">‹</span>
+            <span class="today">Today</span>
+            <span class="ico">›</span>
+          </div>
+          <span class="btn l">+ New booking</span><span class="btn alt">Corporate</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-lg font-bold mb-1">What stays the same in all three</h2>
+    <p class="text-sm" style="margin:0">The window still starts on today for the current month and on the 1st for any month you navigate to; the title still names the window and carries the <b>from today</b> badge; New booking / Corporate / Log old booking do not move.</p>
+    <p class="cap" style="color:var(--gold-800)"><b>Pick one:</b> A (jump to a day — recommended), B (keep month jumping, unclipped), C (drop it), or tell me what you want instead. Nothing is built until you say.</p>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">k154 · calendar toolbar — shown, not built</footer>
+</main>
+</body>
+</html>

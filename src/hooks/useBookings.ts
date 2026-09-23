@@ -105,12 +105,12 @@ export function useBookings() {
         throw new Error('This event venue is already reserved for the selected date(s).')
       }
 
-      const { isPromoActive: _isPromoActive } = await import('../utils/promoMode')
-      const usePromo = _isPromoActive()
+      // ONE PRICE (card k128): the promo figure IS the price, so this path
+      // charges and records the same figure the desk charges.
       const pricing = syncEngine.calculatePricing({
         roomId, venueId, checkIn, checkOut, guestEmail,
         breakfastOrders, equipmentRentals, eventAddons, bookingsList: bookings,
-        rooms, venues, usePromo, rates: getRateConfig(),
+        rooms, venues, rates: getRateConfig(),
       })
 
       const now = new Date()
@@ -121,7 +121,7 @@ export function useBookings() {
         check_in: checkIn, check_out: checkOut,
         source: 'website', status: 'pending',
         payment_status: 'unpaid',
-        promo_applied: usePromo || undefined,
+        promo_applied: true,
         downpayment_paid: 0,
         balance_due: pricing.grandTotal,
         security_deposit: pricing.securityDeposit,
@@ -262,7 +262,14 @@ export function useBookings() {
         birthdate: birthdate || undefined,
         check_in: checkIn, check_out: checkOut,
         source, status,
-        promo_applied: usePromo ?? undefined,
+        // ONE PRICE (card k128): the walk-in form no longer has a price switch,
+        // so what it charges IS the single (promo) figure — and that has to be
+        // RECORDED. Leaving this undefined made every later reader (quick view,
+        // printed bill, analytics) fall back to the old regular figure and show a
+        // phantom balance on a booking the guest had already paid in full.
+        // Callers that still choose explicitly (Log old booking's Regular/Promo
+        // toggle) pass their own value and are left alone.
+        promo_applied: usePromo ?? true,
         payment_status: paymentStatus !== undefined ? paymentStatus : (status === 'blocked' ? undefined : 'unpaid'),
         downpayment_paid: downpaymentPaid !== undefined ? downpaymentPaid : 0,
         payment_method: paymentMethod,
@@ -389,10 +396,10 @@ export function useBookings() {
     }
   })
 
-  // 10b2. Mutation: Update a room's bed count (card k140) — what breakfast is charged against.
-  const updateRoomBedsMutation = useMutation({
-    mutationFn: async (params: { roomId: string; beds: number }) => {
-      return await syncEngine.updateRoomBeds(params.roomId, params.beds)
+  // 10b2. Mutation: Update a room's breakfast price (card k140) — one charge for the stay.
+  const updateRoomBreakfastMutation = useMutation({
+    mutationFn: async (params: { roomId: string; price: number }) => {
+      return await syncEngine.updateRoomBreakfastPrice(params.roomId, params.price)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] })
@@ -525,8 +532,8 @@ export function useBookings() {
       updateRoomRateMutation.mutateAsync({ roomId, basePrice, promoPrice }),
     isUpdatingRoomRate: updateRoomRateMutation.isPending,
 
-    updateRoomBeds: async (roomId: string, beds: number) =>
-      updateRoomBedsMutation.mutateAsync({ roomId, beds }),
+    updateRoomBreakfastPrice: async (roomId: string, price: number) =>
+      updateRoomBreakfastMutation.mutateAsync({ roomId, price }),
 
     createPartnerDeal: createPartnerDealMutation.mutateAsync,
     savePartnerDeals: savePartnerDealsMutation.mutateAsync,

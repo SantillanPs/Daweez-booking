@@ -1,0 +1,7 @@
+P2, with your change drawn — the category buttons are gone.
+
+The till is now **one long menu under category headings**: Breakfast · 6–10 am, then Value meals, then Rice · Appetizers · Chicken …, and the staff just scroll. A dish already on the bill shows its **count on that same line**, and cooking choices (Shuttered · Sinigang · Tinola) sit quietly under the dish name.
+
+Everything else in P2 is as you saw it: one strip of open tabs on top, the bill still on the left while the menu scrolls past it.
+
+**Nothing is built yet.** Tap **Build P2 as drawn**, or annotate the drawing and I will change it first.

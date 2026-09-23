@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>k154 — the calendar starts at today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-700:#C9C4BB; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-100:#332B18; --color-gold-800:#E6C989;
+    --color-paper-50:#141414; --color-paper-100:#2A2A2A; --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A;
+    --color-danger-500:#F87171; --color-danger-50:#2A1615;
+    --color-good-600:#34D399; --color-good-50:#12261F;
+    --font-display:"Sora",system-ui,sans-serif; --font-sans:"DM Sans",system-ui,sans-serif;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-100:#332B18;--gold-800:#E6C989;--paper-100:#2A2A2A;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,label,span,b,i,li){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500)}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .mini{background:#181818;border:1px solid var(--paper-300);border-radius:9px;padding:9px 10px}
+  .cal{display:grid;gap:2px;font-size:9px;text-align:center;align-items:center}
+  .cal .h{background:#242424;border:1px solid var(--paper-200);border-radius:4px;padding:3px 0;color:var(--ink-500);font-weight:700;line-height:1.25}
+  .cal .h.today{background:var(--gold-400);color:#141414;border-color:var(--gold-400)}
+  .cal .h.mo{background:#2A2416;color:var(--gold-800);border-color:#6F5420}
+  .cal .c{background:#1B1B1B;border:1px solid #2E2E2E;border-radius:4px;height:17px}
+  .cal .c.wk{background:#222222}
+  .cal .c.today{background:#2A2416;border-color:#6F5420}
+  .cal .rlab{background:#242424;border:1px solid var(--paper-200);border-radius:4px;padding:3px 6px;text-align:left;color:var(--ink-600);font-weight:700;white-space:nowrap;overflow:hidden}
+  .bar{height:17px;border-radius:4px;background:#3B2F16;border:1px solid var(--gold-400);color:var(--gold-800);font-size:8.5px;font-weight:700;display:flex;align-items:center;gap:3px;padding:0 4px;overflow:hidden;white-space:nowrap}
+  .bar.g{background:#12261F;border-color:#34D399;color:#34D399}
+  .edge{border:1px dashed var(--paper-300);border-radius:4px;height:17px;display:flex;align-items:center;justify-content:center;color:var(--ink-500);font-size:9px}
+  .step{display:flex;gap:9px;align-items:flex-start;font-size:13px;line-height:1.35}
+  .n{flex:none;width:19px;height:19px;border-radius:999px;background:var(--gold-400);color:#141414;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .kv{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--paper-200)}
+  .kv:last-child{border-bottom:0}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-4xl px-5 py-8 space-y-5">
+
+  <header class="space-y-2">
+    <p class="pill" style="background:#12261F;color:#34D399">Built · in Review on the board (k154)</p>
+    <h1 class="text-3xl font-bold tracking-tight">The calendar starts at today</h1>
+    <p class="cap" style="margin-top:2px">Your notes line 22: <i>“make the current day as the first day shown in the calendar, no more scrolling left to right.”</i> That is what it does now.</p>
+  </header>
+
+  <section class="card p-4 space-y-4">
+    <h2 class="text-lg font-bold">Before &amp; after — the same day, Sun 20 Sep 2026</h2>
+
+    <div class="mini">
+      <p class="lab mb-2">Before · the grid opened on the 1st</p>
+      <div class="cal" style="grid-template-columns:78px repeat(12,minmax(0,1fr)) 34px">
+        <div class="rlab">Room / Venue</div>
+        <div class="h">Mon<br>1</div><div class="h">Tue<br>2</div><div class="h">Wed<br>3</div><div class="h">Thu<br>4</div><div class="h">Fri<br>5</div><div class="h">Sat<br>6</div><div class="h">Sun<br>7</div><div class="h">Mon<br>8</div><div class="h">Tue<br>9</div><div class="h">Wed<br>10</div><div class="h">Thu<br>11</div><div class="h">Fri<br>12</div>
+        <div class="edge">…</div>
+
+        <div class="rlab">Room 3</div>
+        <div class="c"></div><div class="c wk"></div><div class="c"></div><div class="c"></div><div class="c wk"></div><div class="c wk"></div><div class="c wk"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div>
+        <div class="edge">→</div>
+
+        <div class="rlab">Room 4</div>
+        <div class="c"></div><div class="c wk"></div><div class="c"></div><div class="c"></div><div class="c wk"></div><div class="c wk"></div><div class="c wk"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div>
+        <div class="edge">→</div>
+      </div>
+      <p class="cap">Today sits <b style="color:#F87171">19 columns</b> off the right side. You had to drag the grid sideways before you could even see the day you were working on.</p>
+    </div>
+
+    <div class="mini" style="border-color:var(--gold-400)">
+      <p class="lab mb-2" style="color:var(--gold-800)">After · the grid opens on today</p>
+      <div class="cal" style="grid-template-columns:78px repeat(14,minmax(0,1fr)) 30px">
+        <div class="rlab">Room / Venue</div>
+        <div class="h today">Sun<br>20</div><div class="h">Mon<br>21</div><div class="h">Tue<br>22</div><div class="h">Wed<br>23</div><div class="h">Thu<br>24</div><div class="h">Fri<br>25</div><div class="h">Sat<br>26</div><div class="h">Sun<br>27</div><div class="h">Mon<br>28</div><div class="h">Tue<br>29</div><div class="h">Wed<br>30</div><div class="h">Thu<br>31</div><div class="h mo">Fri<br>1 Oct</div><div class="h">Sat<br>2</div>
+        <div class="edge">…</div>
+
+        <div class="rlab">Room 3</div>
+        <div class="bar" style="grid-column:span 2">‹ M. Reyes</div>
+        <div class="c"></div><div class="c"></div><div class="c wk"></div><div class="c wk"></div><div class="c wk"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c mo"></div><div class="c wk"></div>
+        <div class="edge">→</div>
+
+        <div class="rlab">Room 4</div>
+        <div class="c today"></div><div class="c"></div>
+        <div class="bar g" style="grid-column:span 3">Cruz</div>
+        <div class="c wk"></div><div class="c wk"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c mo"></div><div class="c wk"></div>
+        <div class="edge">→</div>
+
+        <div class="rlab">Vacation House</div>
+        <div class="c today"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c wk"></div><div class="c wk"></div><div class="c wk"></div><div class="c"></div>
+        <div class="bar" style="grid-column:span 5">Santos · 5n</div>
+        <div class="c"></div><div class="c"></div><div class="c mo"></div><div class="c wk"></div>
+        <div class="edge">→</div>
+      </div>
+      <p class="cap">Today is the first column, in the gold circle. Nothing before it is drawn at all — there is nothing to scroll back through.</p>
+    </div>
+  </section>
+
+  <section class="grid gap-4 md:grid-cols-2">
+    <div class="card p-4">
+      <p class="lab mb-1">1 · Today first</p>
+      <p class="text-sm">The window begins at today's date while you are on the current month. Sep 20 opens at Sep 20, not Sep 1.</p>
+    </div>
+    <div class="card p-4">
+      <p class="lab mb-1">2 · Always 31 days wide</p>
+      <p class="text-sm">Late in a month it keeps going into the days ahead instead of squashing a handful of columns across the screen. <b style="color:var(--gold-800)">1 Oct</b> is written in the header so the month change is obvious.</p>
+    </div>
+    <div class="card p-4">
+      <p class="lab mb-1">3 · A <b style="color:var(--gold-800)">Today</b> button</p>
+      <p class="text-sm">The old “This month” button is now <b>Today</b> — it brings you back from any month, and a small <span class="pill" style="background:#332B18;color:#E6C989">from today</span> badge sits by the title while the grid really does start today.</p>
+    </div>
+    <div class="card p-4">
+      <p class="lab mb-1">4 · A stay that started earlier</p>
+      <p class="text-sm">Any guest already in the house shows a small <b style="color:var(--gold-800)">‹</b> before their name, so a cut-off block is never read as a fresh arrival. Hovering still tells you the real arrival date.</p>
+    </div>
+  </section>
+
+  <section class="card p-4 space-y-3">
+    <h2 class="text-lg font-bold">What you see when you open Calendar today</h2>
+    <div class="mini">
+      <div class="flex flex-wrap items-center gap-2 mb-2">
+        <span style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px">Sep 20 – Oct 20, 2026</span>
+        <span class="pill" style="background:#332B18;color:#E6C989">from today</span>
+        <span class="flex-1"></span>
+        <span class="pill" style="background:#2A2A2A;color:#C9C4BB">‹ Sep</span>
+        <span class="pill" style="background:#2A2A2A;color:#C9C4BB">2026-09</span>
+        <span class="pill" style="background:#2A2A2A;color:#C9C4BB">Oct ›</span>
+        <span class="pill" style="background:#D0AB60;color:#141414">Today</span>
+      </div>
+      <div class="kv"><span style="color:var(--ink-500)">Month you navigate to (e.g. Nov, or Aug)</span><span>opens on its 1st, as before</span></div>
+      <div class="kv"><span style="color:var(--ink-500)">Current month</span><span style="color:var(--gold-800);font-weight:700">opens on today</span></div>
+      <div class="kv"><span style="color:var(--ink-500)">Scrolling sideways, then changing month</span><span>snaps back to the left edge</span></div>
+    </div>
+    <p class="cap">Bookings, blocking, group selection, New booking, Corporate and Log old booking all work exactly as they did — only the set of day columns changed.</p>
+  </section>
+
+  <section class="card p-4 space-y-3">
+    <h2 class="text-lg font-bold">Check it in 10 seconds</h2>
+    <div class="step"><span class="n">1</span><span>Open the <b>Calendar</b> tab.</span></div>
+    <div class="step"><span class="n">2</span><span>The first column must be <b>today, 20 Sep</b>, in the gold circle.</span></div>
+    <div class="step"><span class="n">3</span><span>Press <b>Oct ›</b> then <b>Today</b> — you come straight back to 20 Sep at the left edge.</span></div>
+    <p class="cap">Type-check passes (<code>npx tsc -b --force</code> → exit 0). If the tab was already open, reload the page once.</p>
+  </section>
+
+  <section class="card p-4 space-y-3" style="border-color:#6F5420">
+    <h2 class="text-lg font-bold">One thing to decide</h2>
+    <p class="text-sm">A minute before midnight on the 30th you would see <b>31 columns</b>: one day of September and then all of October. Is that right, or would you rather the grid always stop at the last day of the month and just leave the rest of the screen empty?</p>
+    <div class="grid gap-3 md:grid-cols-2">
+      <div class="mini" style="border-color:var(--gold-400)">
+        <p class="lab mb-1" style="color:var(--gold-800)">A · What it does now (my pick)</p>
+        <p class="text-sm">Never shrinks, always 31 days of “what's coming”, month change marked in the header.</p>
+      </div>
+      <div class="mini">
+        <p class="lab mb-1">B · Stop at the month end</p>
+        <p class="text-sm">Late in the month the grid is shorter and the right side is empty. Booking over a month end needs the Oct › button first.</p>
+      </div>
+    </div>
+    <p class="cap" style="color:var(--gold-800)">Reply “A” or “B” on the card, or annotate the page.</p>
+  </section>
+
+  <section class="card p-4 space-y-2">
+    <p class="lab">Reminder you asked for</p>
+    <p class="text-sm">You asked me to bring this up: the <b>agencies</b> talk — an agency should be a custom price deal for them, and must <b>not</b> auto-book rooms. Say the word and we discuss it before I write the card.</p>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">k154 · files: timelineDays.ts (new), CalendarTab.tsx, TimelineGrid.tsx, TimelineCell.tsx, CalendarToolbar.tsx</footer>
+</main>
+</body>
+</html>

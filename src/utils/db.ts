@@ -125,7 +125,7 @@ export async function getRooms(): Promise<Room[]> {
           name: r.name,
           base_price: Number(r.base_price),
           promo_price: r.promo_price != null ? Number(r.promo_price) : null,
-          beds: r.beds != null ? Number(r.beds) : undefined,
+          breakfast_price: r.breakfast_price != null ? Number(r.breakfast_price) : null,
           capacity: r.capacity,
           description: r.description || undefined,
           image_url: r.image_url || undefined
@@ -187,8 +187,8 @@ export async function updateRoomRate(roomId: string, basePrice: number, promoPri
 }
 
 /**
- * Saves how many beds a room has (card k140) — the number breakfast is charged
- * against, ₱150 × beds once per stay.
+ * Saves what a room charges for breakfast (card k140) — one charge for the
+ * stay, set by the desk. A room with no price sells no breakfast.
  *
  * Same shape as `updateRoomRate` next to it: RLS gives the app SELECT only on
  * `rooms`, so the write goes through a small SECURITY DEFINER function, and a
@@ -196,22 +196,22 @@ export async function updateRoomRate(roomId: string, basePrice: number, promoPri
  * offline. The bed count is configuration, not money, so a silent fallback is
  * safe here — unlike a booking write.
  */
-export async function updateRoomBeds(roomId: string, beds: number): Promise<void> {
-  const count = Math.max(0, Math.round(beds))
+export async function updateRoomBreakfastPrice(roomId: string, price: number): Promise<void> {
+  const amount = Math.max(0, Math.round(price))
 
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.rpc('set_room_beds', { p_room_id: roomId, p_beds: count })
+      const { error } = await supabase.rpc('set_room_breakfast_price', { p_room_id: roomId, p_price: amount })
       if (error) throw error
       return
     } catch (err) {
-      console.error('Supabase updateRoomBeds Error, falling back to LocalStorage:', err)
+      console.error('Supabase updateRoomBreakfastPrice Error, falling back to LocalStorage:', err)
     }
   }
 
   const data = localStorage.getItem(ROOMS_KEY)
   const overrides: Record<string, Partial<Room>> = data ? JSON.parse(data) : {}
-  overrides[roomId] = { ...overrides[roomId], beds: count }
+  overrides[roomId] = { ...overrides[roomId], breakfast_price: amount }
   localStorage.setItem(ROOMS_KEY, JSON.stringify(overrides))
 }
 

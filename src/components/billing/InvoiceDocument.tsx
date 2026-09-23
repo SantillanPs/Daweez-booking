@@ -188,7 +188,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
                 <th className="py-1.5 px-2 font-bold text-center w-16">Qty/Night</th>
                 <th className="py-1.5 px-2 font-bold text-center w-16">Unit</th>
                 <th className="py-1.5 px-2 font-bold text-right w-20">Price</th>
-                <th className="py-1.5 px-2 font-bold text-center w-20">Discount/Promos</th>
+                <th className="py-1.5 px-2 font-bold text-center w-20">Discount</th>
                 <th className="py-1.5 px-2 font-bold text-right w-24">Amount</th>
               </tr>
             </thead>
@@ -286,13 +286,10 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
               </span>
               <span className="font-display text-[22px] font-extrabold text-slate-900">{money(statement.amountDue)}</span>
             </div>
-            {/* A deposit is not the whole bill — say what is still to come. */}
-            {statement.balanceAfter > 0 && (
-              <div className="flex justify-between text-slate-600">
-                <span>Balance on arrival</span>
-                <span className="font-mono">{money(statement.balanceAfter)}</span>
-              </div>
-            )}
+            {/* The owner read "Balance on arrival" as a second demand on the same
+                page. A deposit bill says what is due NOW (named under the figure,
+                Deposit (50%)); the rest is the guest's own payment plan, and the
+                desk explains it. No second line. */}
           </div>
         </div>
 

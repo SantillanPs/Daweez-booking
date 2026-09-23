@@ -3,6 +3,7 @@ import * as syncEngine from './syncEngine'
 import { normalizeVenueId } from './helpers'
 import { getRateConfig } from './rateConfig'
 import { amountToPayNow } from './bookingMoney'
+import { chargeableEarlyHours } from './checkInOut'
 import { roomDisplayName } from '../components/calendar/bookingStyles'
 import { TabLine } from '../types/tab'
 
@@ -92,7 +93,9 @@ function bookingPricing(b: Booking, o: StatementInput) {
     bookingsList: o.bookingsList,
     contractRateOverride: b.contract_rate_override,
     appliedDiscount: b.applied_discount,
-    earlyCheckInHours: b.early_check_in_hours,
+    // Early check-in is collected at check-out, so it stays off the bill until then —
+    // the paper and the screen must never disagree (see `chargeableEarlyHours`).
+    earlyCheckInHours: chargeableEarlyHours(b),
     lateCheckOutHours: b.late_check_out_hours,
     venueDayBlocks: b.venue_day_blocks,
     breakfastDays: b.breakfast_days,
@@ -120,13 +123,15 @@ export function buildStatement(o: StatementInput): Statement {
 
   relatedBookings.forEach(b => {
     const pricing = bookingPricing(b, o)
-    const usePromo = (b as Booking & { promo_applied?: boolean }).promo_applied === true
     const isRoom = !!b.room_id
     const nights = nightsFor(b)
     const stayQty = pricing.stayQuantity > 0 ? pricing.stayQuantity : nights
 
     const regularNightly = stayQty > 0 ? Math.round(pricing.undiscountedSubtotal / stayQty) : Math.round(pricing.subtotal / Math.max(1, stayQty))
-    const rateLabel = b.contract_rate_override != null ? ' · corporate' : usePromo ? ' · promo' : ''
+    // No "promo" wording on the printed paper (card k128): there is one price, so
+    // the room line simply names the room. Only a partner's contracted rate is
+    // worth calling out, because it is not the price on the board.
+    const rateLabel = b.contract_rate_override != null ? ' · corporate' : ''
 
     // The stay itself — one row per unit. For a room, breakfast rides ON this row
     // (owner's rule, card k142): it is already inside the room rate, so the line

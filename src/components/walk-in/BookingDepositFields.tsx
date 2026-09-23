@@ -5,6 +5,12 @@ import { NumInput } from '../NumInput'
 interface BookingDepositFieldsProps {
   /** What the stay comes to, so half of it can be offered as the deposit. */
   estTotal: number
+  /** The working behind `estTotal` — nights, the room/venue part, breakfast and
+   *  extras — so the half is shown as a sum instead of a bare figure. */
+  nights: number
+  stayAmount: number
+  breakfast: number
+  extras: number
   agreedDeposit: number
   setAgreedDeposit: (v: number) => void
   /** Correcting an existing booking: its invoice number and its figures. */
@@ -38,6 +44,10 @@ const label = 'text-[10px] text-base-content/60 font-bold'
  */
 export function BookingDepositFields({
   estTotal,
+  nights,
+  stayAmount,
+  breakfast,
+  extras,
   agreedDeposit,
   setAgreedDeposit,
   isEditMode,
@@ -67,10 +77,26 @@ export function BookingDepositFields({
           <NumInput value={agreedDeposit} onChange={setAgreedDeposit} className={input} />
         </label>
         <p className="text-[11px] text-base-content/70 sm:pt-4">
-          {estTotal > 0
-            ? <>Half the stay is <b>₱{half.toLocaleString()}</b> — the whole stay comes to ₱{estTotal.toLocaleString()}. </>
-            : <>Half the stay is filled in for you once the dates and unit are chosen. </>}
-          Type another figure if that is what you agreed. The guest chooses how they pay; it is recorded when the money arrives.
+          {estTotal > 0 ? (
+            <>
+              {/* The working, not just the answer: the owner could not tell where
+                  half the stay came from when the stay was more than one night. */}
+              <span className="block">
+                <b>{nights} {nights === 1 ? 'night' : 'nights'}</b>
+                {' · Room '}<b>₱{stayAmount.toLocaleString()}</b>
+                {breakfast > 0 && <>{' · Breakfast '}<b>₱{breakfast.toLocaleString()}</b></>}
+                {extras > 0 && <>{' · Extras '}<b>₱{extras.toLocaleString()}</b></>}
+              </span>
+              <span className="block mt-0.5">
+                Whole stay <b>₱{estTotal.toLocaleString()}</b> — half of it is <b>₱{half.toLocaleString()}</b>.
+              </span>
+              <span className="block mt-0.5">
+                Type another figure if that is what you agreed. The guest chooses how they pay; it is recorded when the money arrives.
+              </span>
+            </>
+          ) : (
+            <>Half the stay is filled in for you once the dates and unit are chosen.</>
+          )}
         </p>
       </div>
 

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Just now — what we did</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-800:#E6C989;
+    --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A; --color-paper-50:#141414;
+    --color-good-600:#34D399;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,span,b,i,li){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500)}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .mini{background:#181818;border:1px solid var(--paper-300);border-radius:9px;padding:10px 12px}
+  .mini p{margin:0;font-size:12.5px;color:var(--ink-600);line-height:1.45}
+  .mini h3{font-size:14px;margin:0 0 4px}
+  .row{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;line-height:1.4;padding:4px 0}
+  .tick{flex:none;width:18px;height:18px;border-radius:999px;background:#12261F;color:#34D399;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;margin-top:1px}
+  .warn{flex:none;width:18px;height:18px;border-radius:999px;background:#2A1615;color:#F87171;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;margin-top:1px}
+  .big{font-family:"Sora",system-ui,sans-serif;font-weight:700;font-size:22px;line-height:1}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-3xl px-5 py-8 space-y-5">
+
+  <header class="space-y-2">
+    <p class="pill" style="background:#332B18;color:#E6C989">Since the last recap · this sitting</p>
+    <h1 class="text-3xl font-bold tracking-tight">What we did just now</h1>
+    <p class="cap" style="margin-top:2px">One real bug found and fixed, an audit of everything in Review, your card IDs on the board, and the payment-method work you asked for — with its own bug caught in testing.</p>
+  </header>
+
+  <section class="card p-4 space-y-3">
+    <h2 class="text-lg font-bold">1 · The bug you found: “I paid in full and it says Partly paid”</h2>
+    <div class="grid gap-3 md:grid-cols-3">
+      <div class="mini" style="border-color:#34D399">
+        <p class="lab">What you charged</p>
+        <p class="big" style="color:#34D399;margin-top:6px">₱2,850</p>
+        <p class="cap" style="margin-top:4px">The one price on the room</p>
+      </div>
+      <div class="mini" style="border-color:#F87171">
+        <p class="lab">What the quick view re-read</p>
+        <p class="big" style="color:#F87171;margin-top:6px">₱3,800</p>
+        <p class="cap" style="margin-top:4px">The old regular price</p>
+      </div>
+      <div class="mini">
+        <p class="lab">The gap you saw</p>
+        <p class="big" style="color:var(--gold-800);margin-top:6px">₱950</p>
+        <p class="cap" style="margin-top:4px">“Still to receive” on money already paid</p>
+      </div>
+    </div>
+    <div class="mini">
+      <p><b>Why:</b> when the promo switch was retired, nothing recorded WHICH price a booking was made at — so it was created at the single price and re-read at the old regular one. <b>Fixed:</b> every booking now records the figure it was charged, the retired switch and its hidden flag are deleted, and the crossed-out old price is gone from the calendar and the guest page.</p>
+    </div>
+    <p class="cap">Old test rows still carry no marker: open one → <b>Edit booking</b> → <b>Confirm</b> and it re-saves at the single price, reading Paid.</p>
+  </section>
+
+  <section class="card p-4 space-y-3">
+    <h2 class="text-lg font-bold">2 · The audit you asked for — all 12 cards in Review, checked against the code</h2>
+    <div class="row"><span class="tick">✓</span><span><b>9 were done:</b> one form, one price, typable deposit, guest chooses how they pay, receptionist name, add-ons behind More, breakfast (note rewritten), breakfast on the room line, calendar starts today.</span></div>
+    <div class="row"><span class="warn">!</span><span><b>3 need your hands:</b> the guest tab (you closed it anyway), the new booking opening itself, and the price bug above.</span></div>
+    <div class="mini">
+      <p class="lab" style="margin-bottom:6px">And 5 leftovers nobody had noticed — all fixed</p>
+      <p>1 · The printed bill was about to say <i>Room 6 · promo</i> on <b>every</b> booking.</p>
+      <p>2 · The guest page said “Promo Price” → now <b>Price</b>.</p>
+      <p>3 · The bill's column header said “Discount/Promos” → now <b>Discount</b>.</p>
+      <p>4 · Settings said “Regular and Promo prices” → one price per room.</p>
+      <p>5 · Log old booking quietly priced paper logs at the <b>old higher figure</b> under a “Use Promo Price” box → now <b>Use the price on the board today</b>, ticked.</p>
+    </div>
+  </section>
+
+  <section class="card p-4 space-y-3">
+    <h2 class="text-lg font-bold">3 · Your notes, built</h2>
+    <div class="mini">
+      <h3>Card IDs on the board</h3>
+      <p>Every card title now starts with its ID, so <b>k140 · Breakfast…</b> on a page is the same text on the board. 31 titles.</p>
+    </div>
+    <div class="mini">
+      <h3>Guest pays by — the desk can record the guest's choice</h3>
+      <p>New row under the money card: tap what the guest told you and it saves with no money recorded; the bill and the receipt then name it.</p>
+    </div>
+    <div class="mini">
+      <h3>Then your three follow-ups on it</h3>
+      <p>“Other” removed (Cash · GCash · Bank transfer everywhere) · GCash and Bank transfer now ask for the reference number · and <b>the receipt that said Cash on a GCash booking is fixed</b> — the money card had picked its method once when the panel opened, so your tap never reached the payment.</p>
+    </div>
+    <div class="mini">
+      <h3>The deposit figure that looked wrong</h3>
+      <p>Room 4 ₱950 + breakfast ₱300 = ₱2,200 read as a mistake. It was <b>two nights</b> (2 × ₱950 + ₱300). The box now prints the working — nights · room · breakfast → whole stay → half — so the nights are visible instead of guessed.</p>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-lg font-bold" style="margin-bottom:10px">Board, right now</h2>
+    <div class="grid gap-3" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+      <div class="mini"><p class="lab">You closed</p><p class="big" style="color:#34D399">4</p><p class="cap" style="margin-top:4px">k126 · k128 · k130 · k69</p></div>
+      <div class="mini"><p class="lab">In Review</p><p class="big" style="color:var(--gold-800)">8</p></div>
+      <div class="mini"><p class="lab">In progress</p><p class="big">1</p><p class="cap" style="margin-top:4px">k70 · Restaurant</p></div>
+      <div class="mini"><p class="lab">To do</p><p class="big" style="color:var(--ink-500)">18</p></div>
+    </div>
+  </section>
+
+  <section class="card p-4 space-y-2" style="border-color:#6F5420">
+    <h2 class="text-lg font-bold">Waiting on you</h2>
+    <div class="row"><span class="warn">!</span><span><b>The GCash test:</b> tap GCash → type the ref → Save method → print the bill → record the money → the receipt must say GCash with that reference.</span></div>
+    <div class="row"><span class="warn">!</span><span><b>A or B</b> on the calendar window (k154) — the only open question. A keeps the grid running into the next month; B stops at the month end.</span></div>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">files touched just now: useBookings · PublicReservePortal · TimelineGrid · LogOldBookingModal · promoMode · statement · InvoiceDocument · SettingsTab · GuestMethodPicker (new) · ExtendStayModal · BookingDepositFields · WalkInBookingForm · utils/breakfast.ts (new) · the AGENTS docs · types pass, lint clean</footer>
+</main>
+</body>
+</html>

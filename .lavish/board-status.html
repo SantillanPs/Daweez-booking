@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The board, at a glance</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-800:#E6C989;
+    --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A; --color-paper-50:#141414;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12px;color:var(--ink-500);margin:6px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  @media (max-width:900px){.cols{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .tile{background:#1A1A1A;border:1px solid #2E2E2E;border-left-width:4px;border-radius:9px;padding:8px 9px;margin-top:7px}
+  .tile .t{font-size:12px;color:#DCD8D0;line-height:1.25;display:block;margin-top:2px}
+  .tile .id{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--gold-800);font-weight:700}
+  .tile.h{border-left-color:#E5484D}
+  .tile.m{border-left-color:#D0AB60}
+  .tile.l{border-left-color:#6B6B6B}
+  .tile.done{border-left-color:#34D399;background:#16211C;opacity:.62}
+  .tile.wip{border-left-color:#E6C989;background:#221E14}
+  .tile.lock{border-left-color:#E5484D;background:#221514}
+  .badge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:1px 5px;border-radius:4px;margin-left:4px}
+  .badge.retest{background:#332B18;color:#E6C989}
+  .badge.sql{background:#2A1615;color:#F87171}
+  .colhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .colhead .n{font-family:"Sora";font-weight:800;font-size:20px}
+  .step{background:#1A1A1A;border:1px solid #2E2E2E;border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:center}
+  .step .n{flex-shrink:0;width:26px;height:26px;border-radius:99px;background:#332B18;color:#E6C989;font-family:"Sora";font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .step .big{font-family:"Sora";font-weight:700;font-size:13.5px}
+  .step .sub{font-size:11.5px;color:var(--ink-500);margin-top:2px}
+  .steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+  @media (max-width:900px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .legend{display:flex;gap:14px;align-items:center;font-size:11.5px;color:var(--ink-500);flex-wrap:wrap}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+  .lockdot{background:#E5484D}.mid{background:#D0AB60}.low{background:#6B6B6B}.good{background:#34D399}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1180px] p-6 space-y-5">
+
+  <header class="card p-4 flex items-center justify-between gap-4 flex-wrap">
+    <div>
+      <h1 class="text-xl font-bold">The board, at a glance</h1>
+      <p class="cap" style="margin-top:4px">6 high · 10 medium · 2 low left to build. Two red tiles are blocked on SQL, three amber ones need your eyes.</p>
+    </div>
+    <div class="legend">
+      <span><i class="dot lockdot"></i>high</span>
+      <span><i class="dot mid"></i>medium</span>
+      <span><i class="dot low"></i>low</span>
+      <span><i class="dot good"></i>done</span>
+    </div>
+  </header>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold" style="margin-bottom:10px">Do these four, in this order</h2>
+    <div class="steps">
+      <div class="step" style="border-color:#6F5420">
+        <span class="n">1</span>
+        <span><span class="big">Run the 2 SQL files</span><span class="sub">breakfast price · agreed deposit</span></span>
+      </div>
+      <div class="step">
+        <span class="n">2</span>
+        <span><span class="big">Test one stay</span><span class="sub">deposit → arrival → food → check-out</span></span>
+      </div>
+      <div class="step">
+        <span class="n">3</span>
+        <span><span class="big">Close the 3 in Review</span><span class="sub">k136 · k138 · k142</span></span>
+      </div>
+      <div class="step">
+        <span class="n">4</span>
+        <span><span class="big">Build k120 + k124</span><span class="sub">the two receipt/bill bugs</span></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="cols">
+
+    <!-- TODO -->
+    <div class="card p-4">
+      <div class="colhead"><h2 class="text-base font-bold">To build</h2><span class="n">18</span></div>
+      <div class="tile lock"><span class="id">k140<span class="badge sql">needs SQL</span></span><span class="t">Breakfast price per room — saves in this browser only until the file runs</span></div>
+      <div class="tile lock"><span class="id">k130<span class="badge sql">needs SQL</span></span><span class="t">Agreed deposit — same</span></div>
+      <div class="tile h"><span class="id">k120</span><span class="t">Receipt prints the receipt, not the booking behind it</span></div>
+      <div class="tile h"><span class="id">k124</span><span class="t">“Prepared by” on the bill and the receipt</span></div>
+      <div class="tile h"><span class="id">k93</span><span class="t">Bookings with no check-out date — the paper log never forced one</span></div>
+      <div class="tile h"><span class="id">k74</span><span class="t">Staff names and PINs — know who did it</span></div>
+      <div class="tile h"><span class="id">k71</span><span class="t">Inventory: food, drinks, hotel supplies</span></div>
+      <div class="tile h"><span class="id">k148</span><span class="t">Vacation House: ₱2,000 + ₱2,000 safety deposit</span></div>
+      <div class="tile m"><span class="id">k75</span><span class="t">Navigation: four parts</span></div>
+      <div class="tile m"><span class="id">k73</span><span class="t">Money &amp; performance view for the hotel</span></div>
+      <div class="tile m"><span class="id">k91</span><span class="t">Block dates from the toolbar (+ reason on the grid)</span></div>
+      <div class="tile m"><span class="id">k72</span><span class="t">Housekeeping room board</span></div>
+      <div class="tile m"><span class="id">k105</span><span class="t">Edit the menu &amp; prices</span></div>
+      <div class="tile m"><span class="id">k109</span><span class="t">Cooking choices on a dish</span></div>
+      <div class="tile m"><span class="id">k152</span><span class="t">Tables as pills</span></div>
+      <div class="tile m"><span class="id">k144</span><span class="t">Guest bill on A5</span></div>
+      <div class="tile m"><span class="id">k146</span><span class="t">Email the bill (needs your Gmail password)</span></div>
+      <div class="tile m"><span class="id">k150</span><span class="t">Photo of the payment</span></div>
+      <div class="tile l"><span class="id">k107</span><span class="t">Dish photos</span></div>
+      <div class="tile l"><span class="id">k156</span><span class="t">Airbnb / Booking / Agoda — parked</span></div>
+    </div>
+
+    <!-- IN PROGRESS -->
+    <div class="card p-4">
+      <div class="colhead"><h2 class="text-base font-bold">Being built</h2><span class="n">1</span></div>
+      <div class="tile wip" style="padding:12px"><span class="id">k70</span><span class="t" style="font-size:13px">Restaurant / Bar — orders, charge to room, settle a diner</span></div>
+      <p class="cap">Its follow-ups sit in To build: <b>k105</b> menu editor · <b>k109</b> cooking choices · <b>k152</b> tables</p>
+    </div>
+
+    <!-- REVIEW -->
+    <div class="card p-4">
+      <div class="colhead"><h2 class="text-base font-bold">Owe you a look</h2><span class="n">3</span></div>
+      <div class="tile m"><span class="id">k136<span class="badge retest">try it</span></span><span class="t">Type a receptionist name → it is offered next time</span></div>
+      <div class="tile m"><span class="id">k138<span class="badge retest">try it</span></span><span class="t">Add-ons suited to the unit, behind “More add-ons”</span></div>
+      <div class="tile m"><span class="id">k142<span class="badge retest">try it</span></span><span class="t">Bill: breakfast inside the room line, no separate row</span></div>
+    </div>
+
+    <!-- DONE -->
+    <div class="card p-4">
+      <div class="colhead"><h2 class="text-base font-bold">Closed</h2><span class="n" style="color:#34D399">9</span></div>
+      <div class="tile done"><span class="id">k128</span><span class="t">One price, no “promo”</span></div>
+      <div class="tile done"><span class="id">k122</span><span class="t">The booking charges the price it shows</span></div>
+      <div class="tile done"><span class="id">k140<span class="badge sql">SQL</span></span><span class="t">Breakfast: the room’s own price, once</span></div>
+      <div class="tile done"><span class="id">k130<span class="badge sql">SQL</span></span><span class="t">Deposit: half by default, typable</span></div>
+      <div class="tile done"><span class="id">k132</span><span class="t">The guest chooses how they pay</span></div>
+      <div class="tile done"><span class="id">k126</span><span class="t">One booking form, no steps</span></div>
+      <div class="tile done"><span class="id">k134</span><span class="t">Open the new booking after the bill</span></div>
+      <div class="tile done"><span class="id">k69</span><span class="t">Guest tab — charge anything to the room</span></div>
+      <div class="tile done"><span class="id">k154</span><span class="t">Calendar starts at today</span></div>
+    </div>
+
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:6px">Say the tile to start on — or drag nothing, just tell me the number.</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P4 in detail — three money states, receipts, extend stay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-800:#E6C989;
+    --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A; --color-paper-50:#141414;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,span,b,i,li){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .lab{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-500)}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .panel{background:#171717;border:1px solid var(--paper-300);border-radius:10px;padding:12px;font-size:12px}
+  .h1m{font-family:"Sora";font-weight:700;font-size:14.5px}
+  .chip{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:#2A2A2A;color:#C9C4BB}
+  .chip.p{background:#3A2E14;color:#F5B759}
+  .chip.g{background:#12261F;color:#34D399}
+  .chip.r{background:#2A1615;color:#F87171}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .money{background:#1C1C1C;border:1px solid var(--paper-200);border-radius:9px;padding:10px}
+  .money.gold{border-color:#6F5420}
+  .money.ok{border-color:#34D399}
+  .kv{display:flex;justify-content:space-between;gap:8px;color:var(--ink-600);font-size:11.5px}
+  .amount{font-family:"Sora";font-weight:700;font-size:19px;margin-top:8px;color:#EDEAE4}
+  .acc{border-top:1px solid var(--paper-200);margin-top:9px;padding-top:7px}
+  .btn{display:block;text-align:center;font-size:12px;font-weight:700;border-radius:9px;padding:9px 13px;background:var(--gold-400);color:#141414;margin-top:9px}
+  .btn.good{background:#059669;color:#fff}
+  .btn.quiet{background:#1F1F1F;border:1px solid var(--paper-300);color:var(--ink-900)}
+  .rowline{display:flex;justify-content:space-between;font-size:11.5px;background:#1C1C1C;border:1px solid var(--paper-200);border-radius:7px;padding:6px 8px;margin-top:5px;color:var(--ink-600)}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-4xl px-5 py-8 space-y-5">
+
+  <header class="space-y-2">
+    <p class="pill" style="background:#332B18;color:#E6C989">P4 · the one you picked — drawn in full</p>
+    <h1 class="text-3xl font-bold tracking-tight">Two columns, in every state</h1>
+    <p class="cap" style="margin-top:2px">Same booking: Full Double · Room 4 · 21→22 Sep · SEB. Left column = the facts and the two blocks; right column = the money, and only the money.</p>
+  </header>
+
+  <!-- ============ the three money states ============ -->
+  <section class="space-y-4">
+    <h2 class="text-lg font-bold">The three money states — same shape every time</h2>
+    <div class="grid gap-4 md:grid-cols-3">
+
+      <!-- UNPAID -->
+      <div class="card p-4 space-y-2">
+        <span class="pill" style="background:#2A1615;color:#F87171">Unpaid</span>
+        <div class="panel">
+          <div class="flex items-center gap-2"><span class="h1m">Full Double</span><span class="chip r">Owes</span></div>
+          <p class="cap" style="margin:4px 0 0">Room 4 · 21 Sep → 22 Sep · 1 night</p>
+          <div class="two" style="margin-top:9px">
+            <div>
+              <span class="lab">Guest</span>
+              <p style="font-family:Sora;font-weight:700;font-size:14px;margin:3px 0 0">SEB</p>
+              <p class="cap" style="margin:1px 0 0">Walk-in</p>
+              <div class="acc"><span class="lab">Payment receipts</span><div class="cap" style="margin:1px 0 0">None yet</div></div>
+              <div class="acc"><span class="lab">Extend stay</span><div class="cap" style="margin:1px 0 0">Check-out 22 Sep</div></div>
+            </div>
+            <div class="money">
+              <span class="lab">Money</span>
+              <div class="kv" style="margin-top:5px"><span>Whole stay</span><span style="color:#EDEAE4">₱1,250</span></div>
+              <div class="kv" style="margin-top:3px"><span>Received</span><span>Nothing yet</span></div>
+              <div class="amount">₱1,250</div>
+              <p class="cap" style="margin:0">Amount to pay · full payment</p>
+              <span class="btn">Receive ₱1,250</span>
+            </div>
+          </div>
+        </div>
+        <p class="cap">Nothing in: the amount to pay is the whole stay and the button asks for all of it. No green anywhere.</p>
+      </div>
+
+      <!-- PARTIAL -->
+      <div class="card p-4 space-y-2" style="border-color:var(--gold-400)">
+        <span class="pill" style="background:#332B18;color:var(--gold-800)">Partial · what you saw</span>
+        <div class="panel">
+          <div class="flex items-center gap-2"><span class="h1m">Full Double</span><span class="chip p">Partial</span></div>
+          <p class="cap" style="margin:4px 0 0">Room 4 · 21 Sep → 22 Sep · 1 night</p>
+          <div class="two" style="margin-top:9px">
+            <div>
+              <span class="lab">Guest</span>
+              <p style="font-family:Sora;font-weight:700;font-size:14px;margin:3px 0 0">SEB</p>
+              <p class="cap" style="margin:1px 0 0">Walk-in</p>
+              <div class="acc"><span class="lab">Payment receipts</span><div class="cap" style="margin:1px 0 0">1 payment · ₱625</div></div>
+              <div class="acc"><span class="lab">Extend stay</span><div class="cap" style="margin:1px 0 0">Check-out 22 Sep</div></div>
+            </div>
+            <div class="money gold">
+              <span class="lab" style="color:#E6C989">Money</span>
+              <div class="kv" style="margin-top:5px"><span>Whole stay</span><span style="color:#EDEAE4">₱1,250</span></div>
+              <div class="kv" style="margin-top:3px"><span>Received</span><span style="color:#34D399">₱625</span></div>
+              <div class="amount">₱625</div>
+              <p class="cap" style="margin:0">Amount to pay · rest of the stay</p>
+              <span class="btn">Receive ₱625</span>
+            </div>
+          </div>
+        </div>
+        <p class="cap">Gold edge, and the figure is what is left — never the whole stay again.</p>
+      </div>
+
+      <!-- FULLY PAID -->
+      <div class="card p-4 space-y-2">
+        <span class="pill" style="background:#12261F;color:#34D399">Fully paid</span>
+        <div class="panel">
+          <div class="flex items-center gap-2"><span class="h1m">Full Double</span><span class="chip g">Paid</span></div>
+          <p class="cap" style="margin:4px 0 0">Room 4 · 21 Sep → 22 Sep · 1 night</p>
+          <div class="two" style="margin-top:9px">
+            <div>
+              <span class="lab">Guest</span>
+              <p style="font-family:Sora;font-weight:700;font-size:14px;margin:3px 0 0">SEB</p>
+              <p class="cap" style="margin:1px 0 0">Walk-in</p>
+              <div class="acc"><span class="lab">Payment receipts</span><div class="cap" style="margin:1px 0 0">2 payments · ₱1,250</div></div>
+              <div class="acc"><span class="lab">Extend stay</span><div class="cap" style="margin:1px 0 0">Check-out 22 Sep</div></div>
+            </div>
+            <div class="money ok">
+              <span class="lab" style="color:#34D399">Money</span>
+              <div class="kv" style="margin-top:5px"><span>Whole stay</span><span style="color:#EDEAE4">₱1,250</span></div>
+              <div class="kv" style="margin-top:3px"><span>Received</span><span style="color:#34D399">₱1,250</span></div>
+              <div style="border-top:1px solid var(--paper-200);margin-top:8px;padding-top:7px">
+                <p style="font-family:Sora;font-weight:700;font-size:14px;margin:0;color:#34D399">Fully paid ✓</p>
+                <p class="cap" style="margin:1px 0 0">Nothing left to receive</p>
+              </div>
+              <span class="btn good">Check in</span>
+            </div>
+          </div>
+        </div>
+        <p class="cap">The figure block becomes the confirmation — no “₱0”, no empty bar — and the button is the next step, **Check in** (then **Check out** after check-in).</p>
+      </div>
+    </div>
+    <p class="cap">In all three: the right column keeps the same three lines (whole stay · received · the one figure that matters), so the panel never changes shape — only the colour of the edge and the button's job.</p>
+  </section>
+
+  <!-- ============ receipts + extend stay ============ -->
+  <section class="space-y-4">
+    <h2 class="text-lg font-bold">Payment receipts and Extend stay — how they open</h2>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="card p-4 space-y-2">
+        <span class="pill" style="background:#2A2A2A;color:#C9C4BB">Closed</span>
+        <div class="panel">
+          <div class="two">
+            <div>
+              <span class="lab">Guest</span>
+              <p style="font-family:Sora;font-weight:700;font-size:14px;margin:3px 0 0">SEB</p>
+              <p class="cap" style="margin:1px 0 0">Walk-in</p>
+              <div class="acc" style="display:flex;justify-content:space-between"><span><span class="lab" style="display:block">Payment receipts</span><span class="cap" style="margin:1px 0 0">1 payment · ₱625</span></span><span style="color:var(--ink-500)">⌄</span></div>
+              <div class="acc" style="display:flex;justify-content:space-between"><span><span class="lab" style="display:block">Extend stay</span><span class="cap" style="margin:1px 0 0">Check-out 22 Sep</span></span><span style="color:var(--ink-500)">⌄</span></div>
+            </div>
+            <div class="money gold">
+              <span class="lab" style="color:#E6C989">Money</span>
+              <div class="kv" style="margin-top:5px"><span>Whole stay</span><span style="color:#EDEAE4">₱1,250</span></div>
+              <div class="kv" style="margin-top:3px"><span>Received</span><span style="color:#34D399">₱625</span></div>
+              <div class="amount">₱625</div>
+              <span class="btn">Receive ₱625</span>
+            </div>
+          </div>
+        </div>
+        <p class="cap">Two quiet rows under the guest. They keep behaving exactly as they do now — collapsed, one line of summary, tap to open.</p>
+      </div>
+
+      <div class="card p-4 space-y-2">
+        <span class="pill" style="background:#332B18;color:var(--gold-800)">Extend stay opened</span>
+        <div class="panel">
+          <div class="two">
+            <div>
+              <span class="lab">Guest</span>
+              <p style="font-family:Sora;font-weight:700;font-size:14px;margin:3px 0 0">SEB</p>
+              <p class="cap" style="margin:1px 0 0">Walk-in</p>
+              <div class="acc"><span class="lab">Payment receipts</span><div class="cap" style="margin:1px 0 0">1 payment · ₱625</div></div>
+              <div class="acc">
+                <span class="lab">Extend stay</span>
+                <p class="cap" style="margin:3px 0 4px">New check-out date</p>
+                <div class="rowline"><span>23 Sep 2026</span><span style="color:#EDEAE4">+₱950 · 1 night</span></div>
+                <span class="btn" style="margin-top:7px">Extend to 23 Sep</span>
+              </div>
+            </div>
+            <div class="money gold">
+              <span class="lab" style="color:#E6C989">Money</span>
+              <div class="kv" style="margin-top:5px"><span>Whole stay</span><span style="color:#EDEAE4">₱1,250</span></div>
+              <div class="kv" style="margin-top:3px"><span>Received</span><span style="color:#34D399">₱625</span></div>
+              <div class="amount">₱625</div>
+              <p class="cap" style="margin:0">Amount to pay · rest of the stay</p>
+              <span class="btn">Receive ₱625</span>
+            </div>
+          </div>
+        </div>
+        <p class="cap">The form opens <b>inside the left column</b>, right where its row is. The money on the right never moves — the night's cost is shown in the form, and the money column updates only after you confirm the extension.</p>
+      </div>
+    </div>
+
+    <div class="card p-4 space-y-2">
+      <span class="pill" style="background:#2A2A2A;color:#C9C4BB">Payment receipts opened</span>
+      <div class="panel">
+        <div class="two">
+          <div>
+            <span class="lab">Guest</span>
+            <p style="font-family:Sora;font-weight:700;font-size:14px;margin:3px 0 0">SEB</p>
+            <p class="cap" style="margin:1px 0 0">Walk-in</p>
+            <div class="acc">
+              <span class="lab">Payment receipts</span>
+              <div class="rowline"><span>PR-202609-001 · GCash</span><span style="color:#EDEAE4">₱625</span></div>
+              <p class="cap" style="margin:4px 0 0">Reprint · remove · or record another payment</p>
+              <span class="btn quiet" style="margin-top:7px">+ Record another payment</span>
+            </div>
+            <div class="acc"><span class="lab">Extend stay</span><div class="cap" style="margin:1px 0 0">Check-out 22 Sep</div></div>
+          </div>
+          <div class="money gold">
+            <span class="lab" style="color:#E6C989">Money</span>
+            <div class="kv" style="margin-top:5px"><span>Whole stay</span><span style="color:#EDEAE4">₱1,250</span></div>
+            <div class="kv" style="margin-top:3px"><span>Received</span><span style="color:#34D399">₱625</span></div>
+            <div class="amount">₱625</div>
+            <span class="btn">Receive ₱625</span>
+          </div>
+        </div>
+      </div>
+      <p class="cap">Receipts stay a block of their own — never folded into the money — and each one can be reprinted or removed, as now.</p>
+    </div>
+  </section>
+
+  <section class="card p-4 space-y-2">
+    <h2 class="text-lg font-bold">On a phone (and one thing to confirm)</h2>
+    <p class="text-sm" style="margin:0"><b>Narrow screen:</b> the two columns stack — guest, the two blocks, then the money box last. The money box is then collapsed like the others (one line: “Partly paid · ₱625 of ₱1,250”), so the panel still opens short. <b>Wide screen:</b> the money sits in the right column, always visible, because it no longer pushes anything down.</p>
+    <p class="cap" style="color:var(--gold-800)"><b>Confirm:</b> is that right — money always visible on a wide screen, collapsed only when stacked? Or do you want it collapsed on wide screens too?</p>
+  </section>
+
+  <section class="card p-4" style="border-color:#332B18;background:#1F1F1F">
+    <span class="pill" style="background:#12261F;color:#34D399">Built</span>
+    <p class="text-sm" style="margin:8px 0 0">P4 is now in the booking quick view (k132). Open any booking on the calendar: two columns on a wide screen, money on the right and always visible, on a phone it stacks guest → blocks → money last and the money is the collapsed <b>Payment</b> line.</p>
+    <p class="cap" style="margin:6px 0 0">Still open above: the one confirm under <b>On a phone</b>. Reply here and I will adjust.</p>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">k132 · P4 · built — reply with the confirm and anything that looks off in the real panel</footer>
+</main>
+</body>
+</html>

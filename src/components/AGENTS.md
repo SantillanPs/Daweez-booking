@@ -1,0 +1,72 @@
+# Screens & Shell (src/components) AGENTS.md
+
+## Purpose
+
+Every screen, layout shell and the single booking form of the staff dashboard, plus the guest-facing reservation portal. Sub-folders keep their own contracts: `calendar/`, `billing/`, `restaurant/`, `walk-in/`.
+
+## Ownership
+
+- Primary Owner: Frontend Engineers / Antigravity Agent
+- Scope: page-level components in `src/components/`, the router's view shells, and `src/components/walk-in/` building blocks.
+
+## Local Contracts
+
+  - [router.tsx](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/router.tsx) - Sets up routes (`/login`, `/reserve`, `/`, `/calendar`, `/bookings`, `/guests`, `/analytics`, `/expenses`, `/housekeeping`, `/restaurant`, `/settings`) and handles redirects.
+
+
+  - [PublicReservePortal](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/PublicReservePortal.tsx) - Guest-facing reservation page with live availability checking, **one price** from the rate card (card k128 — the single figure the desk charges, with no crossed-out second price and no PROMO badge left over from the retired sale mode), and GCash downpayment submission. Uses the shared React Query cache (`getBookings`/`getRooms`/`getVenues`), the unified `calculatePricing` engine (so portal and staff invoices match), records `promo_applied: true` on the booking because the single figure **is** the price, offers a **breakfast switch for the room being booked** (card k140 — priced live at that room's own breakfast price and saved as `breakfast_included` on its row), stores `payment_reference` properly, applies a 30-minute hold (`expires_at`) so abandoned reservations free the room, and **records the online downpayment as a numbered `PaymentRecord`** (`utils/receiptNumber.ts`) so the money taken online has a reprintable receipt and the booking never looks unpaid to staff.
+
+
+  - [DashboardLayout](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/DashboardLayout.tsx) - Responsive PMS layout shell (header, desktop/mobile bottom tabs, context provider). The global **Promo ON/OFF** toggle was removed with the single-price rule (card k128): there is one price per room and one per venue, changed in Settings, and `utils/promoMode.ts` now holds nothing but `getEffectiveNightlyPrice` (see the One Price rule below).
+
+
+  - [CalendarTab](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/CalendarTab.tsx) - Orchestrates the calendar page: month toolbar + legend, the room×day timeline grid, group selection, and the single booking slide-over. Clicking a booking opens `ExtendStayModal` **on the live row** (`bookings.find(b => b.id === …)`, never the object the memoized cell was holding — a stale snapshot is exactly how a guest who had been checked in reopened showing `Check in` again, card k132); clicking an empty day (or New booking, or editing) opens the single `WalkInBookingForm`; the ⋯ More → Corporate action opens the separate `CorporateBookingForm`. **The grid opens on today** (card k154): the window is 31 days, beginning on **today** while the current month is being viewed (the earlier days of the month are not drawn at all, so nobody scrolls right to find today), on the **1st** of any month reached with ‹ ›, and on the **day the desk picked** in the toolbar's date box — the k154 follow-up, where the box changed from a *month* picker (a leftover of the monthly calendar, clipped to 115px) to a **date** (`15 Dec 2026` runs the grid 15 Dec – 14 Jan). Its state is one **anchor date**; which day the window actually starts on is decided by [timelineDays.ts](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/calendar/timelineDays.ts).
+  - Calendar subcomponents live under `src/components/calendar/`:
+
+
+    - [WalkInBookingForm](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/WalkInBookingForm.tsx) — the **single booking form**, used for New booking, clicking an empty day, group booking, and editing. (The old `QuickBookingSheet` slide-over and its step components were removed.)
+
+
+  - [BookingsListTab](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/BookingsListTab.tsx) - Money-first bookings list built for non-technical staff: big guest-name search, one-tap filters (`All stays` / `Who owes` / `Paid`), a "Who owes right now: N stays · ₱X" headline, plain-language payment badges (Owes / Partial / Paid), and per-row actions (Print invoice, Details). Upcoming stays sort first. Payment logic lives in `utils/bookingMoney.ts`; the detail view in `billing/BookingDetailsModal.tsx`. There is **no payment-status control** anywhere in the list or the detail view — the badge is read-only and follows the payments recorded on the booking.
+
+
+  - [DirectoryTab](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/DirectoryTab.tsx) - Guests & Partners listing for guest stay records and agency/partner contract presets.
+
+
+  - [SettingsTab](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/SettingsTab.tsx) - Settings panel for OTA iCal feeds and an editable **Rates** tab. It holds **Shared Rates** (late/early hourly + cap, breakfast menu (staff-editable items + prices), venue hourly, Gazebo/Garden day blocks, standard check-in/out, security deposit via `rateConfig.ts`) and a per-room **Room Rates** editor (`settings/RoomRatesEditor.tsx`) for each room's **single price** (card k128 — the old Regular + Promo pair is gone; both stored columns are written with the same figure so nothing can quote the stale one) plus its **own breakfast price** — one charge for the stay (card k140), blank until the desk types it. The rate goes through `updateRoomRate`, the breakfast price through `set_room_breakfast_price` via `updateRoomBreakfastPrice`.
+
+
+  - [WalkInBookingForm](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/WalkInBookingForm.tsx) - The single booking form (default). Its extracted subcomponents/modules live in `src/components/walk-in/`: [PartnerBookingFields](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/walk-in/PartnerBookingFields.tsx) (corporate/agency panel), [BookingWizardHeader](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/walk-in/BookingWizardHeader.tsx) (header + 3-step indicator + Booking/Block toggle), [BookingCreatedPanel](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/walk-in/BookingCreatedPanel.tsx) (the printable Guest Billing Statement shown after a booking is created — **no payment is taken here**; the statement is handed to the guest first), [bookingEstimate.ts](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/walk-in/bookingEstimate.ts) (`computeBookingEstimate` — pure wizard totals), and [bookingSubmit.ts](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/walk-in/bookingSubmit.ts) (`submitBookingForm` — collision checks + per-unit create/update/cancel), and [BookingDepositFields.tsx](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/walk-in/BookingDepositFields.tsx) (what the guest pays now: the deposit, half by default and typable, plus the edit-mode figures). The **individual** flow is **ONE PAGE, no steps** (owner's decision, card k126): a **Booking / Block dates** toggle in the modal header (Block dates stays a compact block-only mode — room/dates + reason + Create Block), and otherwise every section stacked in the order of the paper form — Guest Information (name / contact / nationality / address / email & birth date) with companions, the unit and dates, then **Breakfast** — one line of ROOM chips, off by default, showing what each room adds ([BreakfastRoomChips](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/walk-in/BreakfastRoomChips.tsx), card k140: breakfast is one charge at the room's own price, so it is the room's choice and never the guest's). **The chip states its own condition, never by colour alone** (the owner could not read the gold fill as “on”): a tick means that room has breakfast, an empty circle and a dashed edge mean it does not, and one line under the row repeats it in words — `Breakfast added: ₱450 once for the stay · Room 6`, or `No breakfast on this booking.` A room the desk has never priced is **not tappable**: it reads `no price`, spelled out instead of a bare “—” that said nothing, and the same line names it and says where to set it — a tappable chip that charged ₱0 only looked like it had worked. `breakfastSellable(room)` is the single rule for “this room can sell breakfast”, shared with the **All rooms** button so it only ever ticks priced rooms), Add-ons, Discount, **Receptionist on duty** (its box suggests the names already used, card k136), then **What the guest pays now** ([BookingDepositFields](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/walk-in/BookingDepositFields.tsx): the deposit is half the stay by default and can be typed, card k130) and one **Confirm Booking**. There is no Total/Deposit/Balance summary any more — the printed statement carries those figures — there is **no payment-method field or rule** (the guest chooses how they pay, card k132), and there is **no promo switch** (card k128). The header draws no step indicator, and the old `BillingSummary` component was deleted with the step it belonged to. After the booking is created the panel shows **only** the printable Guest Billing Statement — nothing sits above it — and closing that statement opens the booking that was just made in the quick view (`utils/bookingFocus.ts`, card k134), so nobody hunts for it on the calendar. The **Add-ons** section lists only what suits the unit being booked and sits behind a **More add-ons** line until it is wanted, keeping any added amount visible (card k138). Money is never taken at that point: the guest is given the statement, and the payment is recorded afterwards from the booking's quick view, which is what prints their Payment Receipt. Corporate/partner bookings (`bookType === 'partner'` here, i.e. `bookingTy... (line truncated to 2000 chars)
+
+
+  - [LoginPortal](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/LoginPortal.tsx) - Staff passcode validation gate component.
+
+
+  - [MainLayout](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/MainLayout.tsx) - Wrapper providing basic container styling.
+
+
+  - [Toast](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/Toast.tsx) — the single place the staff app speaks to the user: `<ToastHost />`, mounted once in `DashboardLayout`, renders whatever [`utils/toast.ts`](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/utils/toast.ts) currently holds (`showToast(text, 'success' | 'error' | 'info')`, auto-dismissed after ~3.2s, errors after 5s). It is bottom-centre so it clears both the header tabs and the calendar's top-right sync notice. **There are no `alert()` calls anywhere in the app** — a browser alert freezes the whole app until it is dismissed and does not say which action produced it.
+
+
+  - [ConfirmDialog](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/ConfirmDialog.tsx) — the app's own "are you sure?": `<ConfirmHost />`, mounted beside `<ToastHost />` in `DashboardLayout` at `z-[70]` so it also sits above the booking slide-overs (`z-50`) that ask their own questions. Cancel on the left, the action on the right — red for destructive, gold otherwise — and **Escape always means no**.
+
+
+  - [HousekeepingTab](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/HousekeepingTab.tsx) — the `/housekeeping` tab combining **Hotel Inventory** (add/remove items, adjust counts) and **Cleaning Checklist** (log item + who cleaned + who checked).
+
+
+## Child DOX Index
+
+- [calendar/AGENTS.md](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/calendar/AGENTS.md): the timeline grid and the booking quick view.
+- [billing/AGENTS.md](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/billing/AGENTS.md): statements, receipts and thermal slips.
+- [restaurant/AGENTS.md](file:///c:/Users/dev4s/Documents/Programming/Daweez/src/components/restaurant/AGENTS.md): the till, guest tabs and settling.
+
+`src/components/walk-in/` has no doc of its own on purpose: its building blocks (`PartnerBookingFields`, `BookingWizardHeader`, `BookingCreatedPanel`, `bookingEstimate`, `bookingSubmit`, `BookingDepositFields`, `BreakfastRoomChips`) are described in this file, in the `WalkInBookingForm` paragraph they belong to.
+
+## Work Guidance
+
+- **One page, no steps**: the individual booking flow is a single scrolling form (owner's decision, card k126). Do not reintroduce a wizard, a step indicator or a Total/Deposit/Balance summary — the printed statement carries the figures.
+- **The Add-ons section** lists only what suits the unit being booked and stays behind **More add-ons** until it is wanted (card k138).
+- **The Block dates toggle** is a compact block-only mode (room · dates · reason · Create block), not a second form.
+- **After a booking is created the panel shows only the printable statement**; closing it opens that booking in the quick view (`utils/bookingFocus.ts`, card k134) so nobody hunts for it on the calendar.
+- **The booking form never takes money**: no payment-method field, no amount, no promo switch (cards k132/k128). The guest gets the statement; the payment is recorded from the quick view, which is what prints their Payment Receipt.
+

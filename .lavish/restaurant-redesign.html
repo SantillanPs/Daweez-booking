@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Restaurant screen — three ways to give it a purpose</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-800:#E6C989;
+    --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A; --color-paper-50:#141414;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  /* wireframe kit — deliberately flat, so the LAYOUT is what you read */
+  .wf{background:#171717;border:1px solid var(--paper-300);border-radius:10px;padding:12px;overflow-x:auto}
+  .box{border:1px solid #3E3E3E;border-radius:8px;padding:8px 10px;background:#1D1D1D}
+  .box.soft{background:#191919;border-style:dashed}
+  .box.gold{border-color:#6F5420;background:#221E14}
+  .lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8A8377}
+  .t{font-size:12.5px;color:#DCD8D0}
+  .big{font-family:"Sora";font-weight:800;font-size:19px;color:#EDEAE4}
+  .money{font-family:"Sora";font-weight:800;font-size:20px;color:var(--gold-800)}
+  .seg{display:inline-flex;border:1px solid #3E3E3E;border-radius:8px;overflow:hidden}
+  .seg span{font-size:11.5px;font-weight:700;padding:6px 12px;color:#A8A29A}
+  .seg span.on{background:var(--gold-400);color:#141414}
+  .chip{display:inline-block;font-size:11.5px;font-weight:700;border:1px solid #3E3E3E;border-radius:99px;padding:3px 9px;color:#C9C4BB}
+  .chip.on{background:#332B18;border-color:#6F5420;color:#E6C989}
+  .tile{border:1px solid #3E3E3E;border-radius:8px;padding:9px 10px;background:#1D1D1D}
+  .tile.on{background:#221E14;border-color:#6F5420}
+  .line{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#C9C4BB;border-top:1px solid #2C2C2C;padding:5px 0}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .flag{display:flex;gap:8px;font-size:12px;color:#C9C4BB;padding:4px 0;align-items:flex-start}
+  .flag b{color:#EDEAE4}
+  .n{flex-shrink:0;width:17px;height:17px;border-radius:99px;background:#2A2A2A;color:#C9C4BB;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .now{background:#1A1A1A;border:1px dashed #3E3E3E}
+  .bad{border-color:#5A2A28 !important}
+  .btn{font:inherit;font-size:12.5px;font-weight:700;border:1px solid #3E3E3E;border-radius:8px;padding:8px 14px;background:#262626;color:#EDEAE4;cursor:pointer}
+  .btn.gold{background:var(--gold-400);border-color:var(--gold-400);color:#141414}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1180px] p-6 space-y-5">
+
+  <header class="card p-5">
+    <span class="pill" style="background:#2A1615;color:#F87171">Proposal — nothing built</span>
+    <h1 class="text-2xl font-bold mt-3">The restaurant screen has two jobs and no shape</h1>
+    <div style="margin-top:10px">
+      <div class="flag"><span class="n">1</span><span><b>Two jobs share one column.</b> “Charge to a room” and “Open a tab for a diner” are two separate cards, plus a third card repeating the open tabs — so the left rail is three boxes competing, and you scroll it before you can do anything.</span></div>
+      <div class="flag"><span class="n">2</span><span><b>The money is the quietest thing on screen.</b> The tab total (₱600) is smaller than the dish names, and “on the tables” is a sentence in the header instead of a figure.</span></div>
+      <div class="flag"><span class="n">3</span><span><b>Everything below the bill is one long stack.</b> Lines, then the total, then a 3-row menu grid, then a note — nothing says “the till is where you work, the bill is what you are building”.</span></div>
+    </div>
+  </header>
+
+  <!-- ── NOW ───────────────────────────────────────────────────────────────── -->
+  <section class="card p-4">
+    <span class="pill" style="background:#2A2A2A;color:#C9C4BB">Now</span>
+    <p class="cap" style="margin:6px 0 10px">Wireframe of your screenshot, same pieces, so the three proposals can be compared against it.</p>
+    <div class="wf">
+      <div style="display:grid;grid-template-columns:250px 1fr;gap:12px;min-width:900px">
+        <div style="display:grid;gap:8px;align-content:start">
+          <div class="box now"><span class="lbl">Charge to a room</span><div class="t" style="margin-top:6px">search box</div><div class="t" style="margin-top:6px">▸ SEBAST · Room 3</div></div>
+          <div class="box now"><span class="lbl">Open a tab for a diner</span><div class="t" style="margin-top:6px">Name · Table</div><div class="t" style="margin-top:6px">+ Open tab</div></div>
+          <div class="box now"><span class="lbl">Open now</span><div class="t" style="margin-top:6px">David · Table 4 · ₱0</div></div>
+        </div>
+        <div class="box now">
+          <div class="lbl">On the room · Room 3 · SEBAST</div>
+          <div class="line"><span>Cornsilog</span><span>₱200</span></div>
+          <div class="line"><span>Bangsilog</span><span>₱200</span></div>
+          <div class="line"><span>Hotsilog</span><span>₱200</span></div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px"><span class="lbl">On the tab · print the tab</span><span class="t"><b>₱600</b></span></div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px"><span class="chip on">Breakfast</span><span class="chip">Value Meals</span><span class="chip">Rice</span><span class="chip">Appetizers</span><span class="chip">Chicken</span><span class="chip">Pork</span><span class="chip">Beef</span><span class="chip">Seafood</span><span class="chip">Noodles</span><span class="chip">…</span></div>
+          <div class="grid3" style="margin-top:8px">
+            <div class="tile on">Cornsilog <span class="t">₱200</span></div><div class="tile on">Hotsilog <span class="t">₱200</span></div><div class="tile">Porksilog <span class="t">₱200</span></div>
+            <div class="tile on">Bangsilog <span class="t">₱200</span></div><div class="tile">Lumpiasilog <span class="t">₱200</span></div><div class="tile">Beefsilog <span class="t">₱210</span></div>
+          </div>
+          <div class="box soft" style="margin-top:8px"><span class="t">Goes on the room bill · settled at check-out</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── P1 ────────────────────────────────────────────────────────────────── -->
+  <section class="card p-4" style="border-color:#1E5A45">
+    <span class="pill" style="background:#2A2A2A;color:#C9C4BB">P1 · not this one</span>
+    <h2 class="text-lg font-bold" style="margin-top:10px">One job at a time: who, then till</h2>
+    <p class="cap" style="margin:6px 0 10px">The left rail stops being three cards. A two-way switch chooses the job — <b>On the room</b> / <b>Walk-in diner</b> — and only that job’s form is on screen. The right side becomes the <b>bill</b>: who and where at the top with the total as the loudest figure, the lines under it, and the till filling everything below.</p>
+    <div class="wf">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:900px;margin-bottom:10px">
+        <div class="seg"><span class="on">On the room</span><span>Walk-in diner</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="lbl">Open tabs</span><span class="money">₱600</span><span class="lbl">on 2 tables</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:250px 1fr;gap:12px;min-width:900px">
+        <div style="display:grid;gap:8px;align-content:start">
+          <div class="box"><span class="lbl">Who</span><div class="t" style="margin-top:6px;color:#8A8377">search name or room</div><div class="t" style="margin-top:6px">▸ SEBAST · Room 3 <span class="lbl">in since 8:10</span></div><div class="t" style="margin-top:6px;color:#8A8377">▸ David · Table 4 · walk-in</div></div>
+          <div class="box" style="background:#191919"><span class="t"><b>+ Open a tab for a diner</b></span><span class="cap" style="margin-top:4px">name or table — one of the two is enough</span></div>
+        </div>
+        <div class="box">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+            <span><span class="big">SEBAST</span> <span class="lbl">Room 3 · on the room</span></span>
+            <span style="display:flex;align-items:baseline;gap:10px"><span class="money">₱600</span><span class="chip">Print the tab</span></span>
+          </div>
+          <div class="line" style="margin-top:8px"><span>Cornsilog</span><span>₱200 ✕</span></div>
+          <div class="line"><span>Bangsilog</span><span>₱200 ✕</span></div>
+          <div class="line"><span>Hotsilog</span><span>₱200 ✕</span></div>
+          <div style="border-top:1px solid #3E3E3E;margin-top:10px;padding-top:10px">
+            <div style="display:flex;gap:5px;flex-wrap:wrap"><span class="chip on">Breakfast</span><span class="chip">Value Meals</span><span class="chip">Rice</span><span class="chip">Chicken</span><span class="chip">Pork</span><span class="chip">Drinks</span><span class="chip">…</span></div>
+            <div class="grid3" style="margin-top:8px">
+              <div class="tile on">Hotsilog <span class="t">₱200</span></div><div class="tile on">Bangsilog <span class="t">₱200</span></div><div class="tile">Porksilog <span class="t">₱200</span></div>
+              <div class="tile on">Cornsilog <span class="t">₱200</span></div><div class="tile">Lumpiasilog <span class="t">₱200</span></div><div class="tile">Beefsilog <span class="t">₱210</span></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px"><span class="cap" style="margin:0">Goes on the room bill · received at check-out</span><span class="cap" style="margin:0">+ Something not on the menu</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="flag"><span class="n">✓</span><span><b>Purpose:</b> the switch answers “am I charging a room or opening a diner?” before anything else.</span></div>
+      <div class="flag"><span class="n">✓</span><span><b>Money leads:</b> ₱600 is the biggest figure in the bill header, and the day’s takings sit top-right as a number, not a sentence.</span></div>
+      <div class="flag"><span class="n">✓</span><span><b>Two zones, not one stack:</b> the bill is the top strip, the till owns the space below it.</span></div>
+    </div>
+  </section>
+
+  <!-- ── P2 ────────────────────────────────────────────────────────────────── -->
+  <section class="card p-4" style="border-color:#1E5A45">
+    <span class="pill" style="background:#12261F;color:#34D399">P2 · your pick</span>
+    <h2 class="text-lg font-bold" style="margin-top:10px">Everyone open, always visible: bill left, till right</h2>
+    <p class="cap" style="margin:6px 0 10px">No cards and no switch. One strip across the top lists <b>everyone you are serving</b> — every guest who is in the hotel, plus every diner tab — each with their own total, so switching tables is one tap. The selected bill is a running receipt on the left, and the till takes the rest as <b>one long menu, separated by category</b>: the staff just scroll, the way they read the paper card.</p>
+    <div class="wf">
+      <div style="display:flex;align-items:center;gap:8px;min-width:900px;margin-bottom:10px">
+        <span class="lbl">Being served</span>
+        <span class="chip on">SEBAST · Room 3 · ₱600</span>
+        <span class="chip">David · Table 4 · ₱0</span>
+        <span class="chip">Maria · Room 5 · —</span>
+        <span class="chip" style="border-style:dashed">+ New diner</span>
+        <span class="cap" style="margin:0 0 0 4px">scrolls sideways · “—” = nothing ordered yet</span>
+      </div>
+      <div style="display:grid;grid-template-columns:280px 1fr;gap:12px;min-width:900px">
+        <div class="box">
+          <div style="display:flex;align-items:baseline;justify-content:space-between"><span class="lbl">SEBAST · Room 3</span><span class="money">₱600</span></div>
+          <div class="line" style="margin-top:8px"><span>Cornsilog</span><span>₱200 ✕</span></div>
+          <div class="line"><span>Bangsilog</span><span>₱200 ✕</span></div>
+          <div class="line"><span>Hotsilog</span><span>₱200 ✕</span></div>
+          <div style="margin-top:8px"><span class="chip">Print the tab</span></div>
+          <div class="box soft" style="margin-top:8px"><span class="cap" style="margin:0">On the room bill · received at check-out</span></div>
+        </div>
+        <div class="box">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+            <span class="cap" style="margin:0">The menu — tap a line to put it on the bill</span>
+            <span class="cap" style="margin:0">scroll ↓</span>
+          </div>
+          <div style="max-height:330px;overflow:hidden">
+            <div class="lbl" style="color:#E6C989;border-bottom:1px solid #332B18;padding-bottom:4px">Breakfast · 6–10 am</div>
+            <div class="line"><span>Hotsilog <span class="lbl">egg · garlic rice · hotdog</span></span><span>₱200 &nbsp;<span class="chip on">1</span></span></div>
+            <div class="line"><span>Bangsilog <span class="lbl">egg · garlic rice · bangus</span></span><span>₱200 &nbsp;<span class="chip on">1</span></span></div>
+            <div class="line"><span>Cornsilog <span class="lbl">egg · garlic rice · corned beef</span></span><span>₱200 &nbsp;<span class="chip on">1</span></span></div>
+            <div class="line"><span>Porksilog <span class="lbl">egg · garlic rice · pork</span></span><span>₱200</span></div>
+            <div class="line"><span>Lumpiasilog <span class="lbl">egg · garlic rice · lumpia</span></span><span>₱200</span></div>
+            <div class="line"><span>Beefsilog <span class="lbl">egg · garlic rice · beef</span></span><span>₱210</span></div>
+            <div class="lbl" style="color:#E6C989;border-bottom:1px solid #332B18;padding:10px 0 4px">Value meals</div>
+            <div class="line"><span>Chicken adobo rice bowl</span><span>₱180</span></div>
+            <div class="line"><span>Pork sisig rice bowl</span><span>₱190</span></div>
+            <div class="line"><span>Shrimp <span class="lbl">buttered · sinigang · tinola</span></span><span>₱260</span></div>
+            <div class="lbl" style="color:#E6C989;border-bottom:1px solid #332B18;padding:10px 0 4px">Rice · Appetizers · Chicken · Pork …</div>
+            <div class="line"><span>Steamed rice</span><span>₱25</span></div>
+            <div class="line"><span>Pork barbecue</span><span>₱180</span></div>
+            <div style="text-align:center;padding:8px 0;border-top:1px dashed #3E3E3E" class="lbl">scroll on — Drinks · Beer &amp; Spirits · Desserts</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px"><span class="cap" style="margin:0">+ Something not on the menu</span><span class="cap" style="margin:0">Diner with no room? settle at the counter</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="flag"><span class="n">✓</span><span><b>One scroll, no filter:</b> category headings run down one list — <i>Breakfast · 6–10 am</i>, <i>Value meals</i>, <i>Rice</i> … — so nothing has to be chosen before ordering, and the staff read it like the paper card.</span></div>
+      <div class="flag"><span class="n">✓</span><span><b>Everyone you may charge is in that one strip:</b> the guests who are in the hotel right now (checked in, not yet checked out) and the diner tabs with no room behind them. A guest with nothing ordered reads <i>—</i>, and tapping them starts their food bill — so a room can always be charged without hunting.</span></div>
+      <div class="flag"><span class="n">✓</span><span><b>The count badge survives:</b> a dish already on the bill shows its number on that same line, so the same order can’t land twice unnoticed.</span></div>
+      <div class="flag"><span class="n">✓</span><span><b>Cooking choices fit naturally:</b> <i>Shrimp — buttered · sinigang · tinola</i> is a quiet line under the name, which is where card k109 lands without a popup.</span></div>
+      <div class="flag"><span class="n">✓</span><span><b>Fastest for a busy counter:</b> every open tab and its total is visible at the top without scrolling; the bill sits still while the menu scrolls past it.</span></div>
+    </div>
+  </section>
+
+  <!-- ── P3 ────────────────────────────────────────────────────────────────── -->
+  <section class="card p-4">
+    <span class="pill" style="background:#2A2A2A;color:#C9C4BB">P3 · not this one</span>
+    <h2 class="text-lg font-bold" style="margin-top:10px">A board of open tabs, then the till</h2>
+    <p class="cap" style="margin:6px 0 10px">The screen opens as <b>tiles, one per open tab</b>, each carrying its own total — the “who am I serving?” question answered by looking. Tapping a tile opens that bill and slides the till in beside it; a new diner is a tile too.</p>
+    <div class="wf">
+      <div style="min-width:900px">
+        <div style="display:flex;gap:10px">
+          <div class="box gold" style="width:220px"><span class="lbl" style="color:#E6C989">Room 3 · SEBAST</span><div class="money" style="margin-top:4px">₱600</div><span class="cap" style="margin-top:2px">3 items · since 8:10</span></div>
+          <div class="box" style="width:220px"><span class="lbl">Table 4 · David</span><div class="money" style="margin-top:4px;color:#C9C4BB">₱0</div><span class="cap" style="margin-top:2px">nothing yet</span></div>
+          <div class="box soft" style="width:160px;display:flex;align-items:center;justify-content:center"><span class="t">+ New diner</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+          <div class="box">
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><span class="lbl">Room 3 · SEBAST</span><span class="money">₱600</span></div>
+            <div class="line" style="margin-top:8px"><span>Cornsilog</span><span>₱200 ✕</span></div>
+            <div class="line"><span>Bangsilog</span><span>₱200 ✕</span></div>
+            <div class="line"><span>Hotsilog</span><span>₱200 ✕</span></div>
+            <div style="margin-top:8px"><span class="chip">Print the tab</span></div>
+          </div>
+          <div class="box">
+            <div style="display:flex;gap:5px;flex-wrap:wrap"><span class="chip on">Breakfast</span><span class="chip">Value Meals</span><span class="chip">Rice</span><span class="chip">Chicken</span><span class="chip">Drinks</span></div>
+            <div class="grid3" style="margin-top:8px">
+              <div class="tile on">Hotsilog <span class="t">₱200</span></div><div class="tile on">Bangsilog <span class="t">₱200</span></div><div class="tile on">Cornsilog <span class="t">₱200</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="flag"><span class="n">✓</span><span><b>Best when several tabs are open</b> and the question is “which one next?”.</span></div>
+      <div class="flag"><span class="n">!</span><span><b>Trade-off:</b> one extra tap before you can take an order, and the till is smaller than in P1/P2.</span></div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-lg font-bold mb-1">What stays true in P2</h2>
+    <p class="text-sm" style="margin:0">One tap = one line on the bill (never typed), the count badge so the same order can’t land twice, the bill line’s ✕ removes it, the food joins the room bill at check-out (a diner with no room settles at the counter), and “Print the tab” stays on the bill. No new features — only the shape changes.</p>
+  </section>
+
+  <section class="card p-4" style="border-color:#6F5420;background:#1B1811">
+    <h2 class="text-lg font-bold mb-1">Build P2 as drawn?</h2>
+    <p class="cap" style="margin:4px 0 10px">Same screen, same features — the layout changes to: one strip of open tabs on top, the selected bill on the left, and the till as <b>one long scrolling menu under category headings</b>, no category buttons.</p>
+    <form data-lavish-question="build-p2" onsubmit="event.preventDefault(); const a = event.submitter ? event.submitter.value : ''; window.lavish.queuePrompt(a === 'build' ? 'Build P2 as drawn: one strip of every open tab across the top, the selected bill as a running receipt on the left, and the till as one long scrolling menu under category headings (Breakfast · 6–10 am, Value meals, Rice, …) with no category buttons, matching a dish already on the bill showing its count on that line.' : 'Change something in P2 before building it — I will read your annotation.', { tag: 'choice', text: 'Build P2: ' + a, element: event.currentTarget, data: { question: 'build-p2', answer: a } });">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="submit" class="btn gold" value="build">Build P2 as drawn</button>
+        <button type="submit" class="btn" value="tweak">Change something first</button>
+      </div>
+    </form>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">k70 · restaurant screen — proposed, nothing built</footer>
+</main>
+</body>
+</html>

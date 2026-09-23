@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tell me what you picture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-800:#E6C989;
+    --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A; --color-paper-50:#141414;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,span,b,i,li,label){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500)}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .item{display:flex;gap:10px;align-items:flex-start;background:#181818;border:1px solid var(--paper-300);border-radius:9px;padding:10px 12px;font-size:13px}
+  .box{flex:none;width:15px;height:15px;border:1.5px solid var(--ink-500);border-radius:4px;margin-top:2px}
+  .blank{border:1px dashed var(--gold-400);border-radius:9px;padding:12px;background:#161600}
+  .blank p{font-size:13px;color:var(--ink-600);margin:0 0 8px}
+  .line{border-bottom:1px dashed var(--paper-300);height:22px}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-3xl px-5 py-8 space-y-5">
+
+  <header class="space-y-2">
+    <p class="pill" style="background:#332B18;color:#E6C989">Still nothing changed in the app</p>
+    <h1 class="text-3xl font-bold tracking-tight">“None of them” — so tell me which bits to hide</h1>
+    <p class="cap" style="margin-top:2px">I clearly still do not have the picture in your head. Instead of a fourth guess, here is everything the quick view can show. Annotate the line(s) you do <b>not</b> want to see when a booking opens — or write your version in the dashed box at the bottom.</p>
+  </header>
+
+  <section class="card p-4 space-y-2.5">
+    <h2 class="text-lg font-bold">On opening, which of these should NOT be there?</h2>
+    <div class="item"><span class="box"></span><span><b>the two money figures</b> — Whole stay total ₱1,250 / Amount to pay ₱625</span></div>
+    <div class="item"><span class="box"></span><span><b>the progress bar</b> — the green “✓ ₱625 of ₱1,250 received” line</span></div>
+    <div class="item"><span class="box"></span><span><b>the status chip in the header</b> — Owes / Partial / Paid</span></div>
+    <div class="item"><span class="box"></span><span><b>the Receive money button</b></span></div>
+    <div class="item"><span class="box"></span><span><b>the whole money area</b> — figures, bar and button together</span></div>
+    <div class="item"><span class="box"></span><span><b>the guest's own details</b> — name, phone, companions, booked-from</span></div>
+    <div class="item"><span class="box"></span><span><b>the collapsed blocks at the bottom</b> — Payment receipts / Guest tab / Extend stay</span></div>
+    <div class="item"><span class="box"></span><span><b>something else</b> — the thing I keep missing (say it below)</span></div>
+    <p class="cap">Annotate any of these lines. One is enough if it is the right one.</p>
+  </section>
+
+  <section class="blank">
+    <p class="lab" style="color:var(--gold-800)">Your version — in your words, as short as you like</p>
+    <p>“When I open a booking I want to see: ______”</p>
+    <div class="line"></div>
+    <p style="margin-top:10px">“And I only want the money / the buttons to appear when: ______”</p>
+    <div class="line"></div>
+  </section>
+
+  <section class="card p-4 space-y-3" style="border-color:#34D399">
+    <h2 class="text-lg font-bold" style="color:#34D399">Built — this is what it is now</h2>
+    <p class="text-sm" style="margin:0">Compact, and hidden under an accordion, exactly as you said.</p>
+
+    <div class="item" style="border-color:var(--paper-200)">
+      <span style="flex:1"><b>On opening</b> — the money is one collapsed line; tap it to open.</span>
+    </div>
+    <div style="background:#171717;border:1px solid var(--paper-300);border-radius:10px;padding:10px 11px">
+      <div style="display:flex;gap:8px;align-items:center"><span style="font-family:Sora;font-weight:700;font-size:13px">Room 4</span><span class="pill" style="background:#3A2E14;color:#F5B759">Partial</span></div>
+      <p style="font-size:11px;color:var(--ink-500);margin:5px 0 0">1 Oct → 3 Oct · 2 nights</p>
+      <p style="font-family:Sora;font-weight:700;font-size:14px;margin:7px 0 0">SEB</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--paper-200);margin-top:9px;padding-top:9px">
+        <span><span class="lab" style="display:block">Payment</span><span style="font-size:11px;color:var(--ink-500)">Partly paid · ₱625 of ₱1,250 received</span></span>
+        <span style="color:var(--ink-500)">⌄</span>
+      </div>
+    </div>
+
+    <div class="item" style="border-color:var(--paper-200)">
+      <span style="flex:1"><b>Opened</b> — four tight rows, no big golden cells, one button.</span>
+    </div>
+    <div style="background:#171717;border:1px solid var(--paper-300);border-radius:10px;padding:10px 11px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-600)"><span>Whole stay total</span><span style="color:#EDEAE4">₱1,250</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-600);margin-top:4px"><span>Received</span><span style="color:#34D399">₱625</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--paper-200);margin-top:8px;padding-top:8px">
+        <span class="lab" style="color:var(--gold-800)">Amount to pay</span>
+        <span style="font-family:Sora;font-weight:700;font-size:17px">₱625</span>
+      </div>
+      <div style="height:6px;border-radius:99px;background:#2E2E2E;overflow:hidden;margin-top:8px"><div style="width:50%;height:100%;background:#34D399"></div></div>
+      <p style="font-size:10px;color:var(--ink-500);margin:5px 0 0">✓ ₱625 of ₱1,250 received</p>
+      <span class="btn" style="display:inline-block;font-size:12px;font-weight:700;border-radius:9px;padding:9px 13px;background:var(--gold-400);color:#141414;margin-top:9px">Receive money</span>
+    </div>
+    <p class="cap">Inside the same accordion: press <b>Receive money</b> and the method row + reference + confirm appear there. Once the money is in, that button becomes <b>Check in</b>.</p>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">k132 · the app is untouched — this page is only asking</footer>
+</main>
+</body>
+</html>

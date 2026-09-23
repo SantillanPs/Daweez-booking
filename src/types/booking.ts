@@ -5,11 +5,11 @@ export interface Room {
   base_price: number // Regular price (PHP)
   promo_price?: number | null // Promo price when a sale is active
   /**
-   * How many beds the room has. Breakfast is charged as ₱150 × this number,
-   * once for the stay (card k140) — a room with 3 bunk beds is 6 beds. Left
-   * unset, breakfast falls back to the old per-person, per-day figure.
+   * What this room charges for breakfast — one charge for the stay, typed by the
+   * desk in Settings (card k140). `null`/absent means the room does not sell
+   * breakfast yet, and the booking form says so instead of charging ₱0.
    */
-  beds?: number
+  breakfast_price?: number | null
   capacity: number
   description: string
   image_url: string

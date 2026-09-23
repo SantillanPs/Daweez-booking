@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quick review booking — 4 design proposals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-ink-900:#EDEAE4; --color-ink-600:#C9C4BB; --color-ink-500:#A8A29A;
+    --color-gold-400:#D0AB60; --color-gold-800:#E6C989;
+    --color-paper-200:#3A3A3A; --color-paper-300:#4A4A4A; --color-paper-50:#141414;
+  }
+</style>
+<style>
+  :root{--ink-900:#EDEAE4;--ink-600:#C9C4BB;--ink-500:#A8A29A;--gold-400:#D0AB60;--gold-800:#E6C989;--paper-200:#3A3A3A;--paper-300:#4A4A4A;--paper-50:#141414;--card:#1F1F1F}
+  *,*::before,*::after{box-sizing:border-box}
+  :where(.grid,.flex)>*{min-width:0}
+  :where(p,h1,h2,h3,span,b,i,li){overflow-wrap:anywhere}
+  body{background:var(--paper-50);color:var(--ink-900);font-family:"DM Sans",system-ui,sans-serif;margin:0}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--paper-200);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--ink-500);margin:8px 0 0}
+  .lab{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-500)}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .panel{background:#171717;border:1px solid var(--paper-300);border-radius:10px;padding:12px;font-size:12px}
+  .h1m{font-family:"Sora";font-weight:700;font-size:15px}
+  .chip{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:#2A2A2A;color:#C9C4BB}
+  .chip.p{background:#3A2E14;color:#F5B759}
+  .chip.g{background:#12261F;color:#34D399}
+  .rule{border-top:1px solid var(--paper-200);margin-top:10px;padding-top:8px}
+  .kv{display:flex;justify-content:space-between;gap:10px;color:var(--ink-600)}
+  .softcard{background:#1C1C1C;border:1px solid var(--paper-200);border-radius:9px;padding:9px 10px;margin-top:8px}
+  .btn{display:inline-block;font-size:12px;font-weight:700;border-radius:9px;padding:9px 13px;background:var(--gold-400);color:#141414;margin-top:9px}
+  .btnq{display:inline-block;font-size:12px;font-weight:700;border-radius:9px;padding:9px 13px;background:#1F1F1F;border:1px solid var(--paper-300);color:var(--ink-900);margin-top:9px}
+  .leader{display:flex;align-items:baseline;gap:6px;color:var(--ink-500)}
+  .leader .dots{flex:1;border-bottom:1px dotted var(--paper-300);transform:translateY(-3px)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-4xl px-5 py-8 space-y-5">
+
+  <header class="space-y-2">
+    <p class="pill" style="background:#332B18;color:#E6C989">Proposals · nothing to build yet</p>
+    <h1 class="text-3xl font-bold tracking-tight">Quick review booking — 4 designs</h1>
+    <p class="cap" style="margin-top:2px">Structural change is reverted: <b>Payment</b> and <b>Payment receipts</b> are separate blocks again, exactly as before. Same content in all four proposals below (Full Double · Room 4 · 21→22 Sep · SEB · ₱1,250 / ₱625 paid) — only the <b>look</b> differs. Annotate the one you want, or say “P2 with P4's header”.</p>
+    <p class="cap" style="color:var(--ink-500)">These pages are dark for your eyes; in the app it stays the usual light charcoal-and-gold.</p>
+  </header>
+
+  <section class="grid gap-4 md:grid-cols-2">
+
+    <!-- P1 -->
+    <div class="card p-4 space-y-2">
+      <span class="pill" style="background:#2A2A2A;color:#C9C4BB">P1 · Folio, refined</span>
+      <h3 style="margin-top:6px">Quiet and typographic</h3>
+      <div class="panel">
+        <div class="flex items-center gap-2"><span class="h1m">Full Double</span><span class="chip p">Partial</span></div>
+        <p class="cap" style="margin:4px 0 0">Room 4 · 21 Sep → 22 Sep · 1 night</p>
+        <p style="font-family:Sora;font-weight:700;font-size:16px;margin:9px 0 0">SEB <span class="cap" style="margin:0">· Walk-in</span></p>
+        <div class="rule">
+          <div class="kv"><span>Whole stay total</span><span style="color:#EDEAE4">₱1,250</span></div>
+          <div class="kv" style="margin-top:3px"><span>Received</span><span style="color:#34D399">₱625</span></div>
+          <div class="kv" style="margin-top:6px"><span style="font-weight:700;color:#E6C989">Amount to pay</span><span style="font-family:Sora;font-weight:700;font-size:15px;color:#EDEAE4">₱625</span></div>
+          <span class="btn">Receive ₱625</span>
+        </div>
+        <div class="rule"><span class="lab">Payment receipts</span><div class="cap" style="margin:1px 0 0">1 payment · ₱625 received</div></div>
+        <div class="rule"><span class="lab">Extend stay</span><div class="cap" style="margin:1px 0 0">Check-out 22 Sep</div></div>
+      </div>
+      <p class="cap">Hairlines, small-caps labels, one gold action. Closest to what you have, just tidier and with the money in plain rows.</p>
+    </div>
+
+    <!-- P2 -->
+    <div class="card p-4 space-y-2" style="border-color:var(--gold-400)">
+      <span class="pill" style="background:#332B18;color:var(--gold-800)">P2 · Soft cards</span>
+      <h3 style="margin-top:6px">Each block its own card</h3>
+      <div class="panel" style="background:#141414">
+        <div class="flex items-center gap-2"><span class="h1m">Full Double</span><span class="chip p">Partial</span></div>
+        <p class="cap" style="margin:4px 0 0">Room 4 · 21 Sep → 22 Sep · 1 night</p>
+        <div class="softcard" style="margin-top:10px">
+          <p style="font-family:Sora;font-weight:700;font-size:15px;margin:0">SEB</p>
+          <p class="cap" style="margin:1px 0 0">Walk-in · 0910 000 0000</p>
+        </div>
+        <div class="softcard" style="border-color:#6F5420">
+          <span class="lab" style="color:#E6C989">Money</span>
+          <div class="kv" style="margin-top:5px"><span>Whole stay</span><span style="color:#EDEAE4">₱1,250</span></div>
+          <div class="kv" style="margin-top:3px"><span>Received</span><span style="color:#34D399">₱625</span></div>
+          <div style="border-top:1px solid var(--paper-200);margin-top:7px;padding-top:7px" class="kv"><span style="font-weight:700;color:#E6C989">Amount to pay</span><span style="font-family:Sora;font-weight:700;font-size:16px;color:#EDEAE4">₱625</span></div>
+          <span class="btn" style="width:100%;text-align:center;box-sizing:border-box">Receive ₱625</span>
+        </div>
+        <div class="softcard"><span class="lab">Payment receipts</span><div class="cap" style="margin:1px 0 0">1 payment · ₱625 received</div></div>
+        <div class="softcard"><span class="lab">Extend stay</span><div class="cap" style="margin:1px 0 0">Check-out 22 Sep</div></div>
+      </div>
+      <p class="cap">Every block is a card with a clear edge, and the money card is the gold-accented one. Boldest, easiest to scan at a glance.</p>
+    </div>
+
+    <!-- P3 -->
+    <div class="card p-4 space-y-2">
+      <span class="pill" style="background:#2A2A2A;color:#C9C4BB">P3 · One ledger</span>
+      <h3 style="margin-top:6px">Flat list, no accordions</h3>
+      <div class="panel">
+        <div class="flex items-center gap-2"><span class="h1m">Full Double</span><span class="chip p">Partial</span></div>
+        <p class="cap" style="margin:4px 0 0">Room 4 · 21 Sep → 22 Sep · 1 night</p>
+        <p style="font-family:Sora;font-weight:700;font-size:16px;margin:9px 0 9px">SEB <span class="cap" style="margin:0">· Walk-in</span></p>
+        <div class="leader"><span>Whole stay total</span><span class="dots"></span><span style="color:#EDEAE4">₱1,250</span></div>
+        <div class="leader" style="margin-top:5px"><span>Received</span><span class="dots"></span><span style="color:#34D399">₱625</span></div>
+        <div class="leader" style="margin-top:5px"><span style="font-weight:700;color:#E6C989">Amount to pay</span><span class="dots"></span><span style="font-family:Sora;font-weight:700;font-size:15px;color:#EDEAE4">₱625</span></div>
+        <div class="leader" style="margin-top:5px"><span>Payments recorded</span><span class="dots"></span><span>1</span></div>
+        <div class="leader" style="margin-top:5px"><span>Check-out</span><span class="dots"></span><span>22 Sep</span></div>
+        <span class="btn">Receive ₱625</span> <span class="btnq">Check in</span>
+      </div>
+      <p class="cap">Everything on one flat sheet — nothing collapsed, nothing to open. Reads like the paper folio, fastest to learn.</p>
+    </div>
+
+    <!-- P4 -->
+    <div class="card p-4 space-y-2">
+      <span class="pill" style="background:#2A2A2A;color:#C9C4BB">P4 · Two columns</span>
+      <h3 style="margin-top:6px">Guest left, money right</h3>
+      <div class="panel">
+        <div class="flex items-center gap-2"><span class="h1m">Full Double</span><span class="chip p">Partial</span></div>
+        <p class="cap" style="margin:4px 0 0">Room 4 · 21 Sep → 22 Sep · 1 night</p>
+        <div class="two" style="margin-top:10px">
+          <div>
+            <span class="lab">Guest</span>
+            <p style="font-family:Sora;font-weight:700;font-size:15px;margin:3px 0 0">SEB</p>
+            <p class="cap" style="margin:1px 0 0">Walk-in</p>
+            <span class="lab" style="display:block;margin-top:10px">Payment receipts</span>
+            <p class="cap" style="margin:2px 0 0">1 payment · ₱625</p>
+            <span class="lab" style="display:block;margin-top:10px">Extend stay</span>
+            <p class="cap" style="margin:2px 0 0">Check-out 22 Sep</p>
+          </div>
+          <div style="background:#1C1C1C;border:1px solid #6F5420;border-radius:9px;padding:10px">
+            <span class="lab" style="color:#E6C989">Money</span>
+            <div class="kv" style="margin-top:5px"><span>Whole stay</span><span style="color:#EDEAE4">₱1,250</span></div>
+            <div class="kv" style="margin-top:3px"><span>Received</span><span style="color:#34D399">₱625</span></div>
+            <div style="font-family:Sora;font-weight:700;font-size:20px;margin-top:8px;color:#EDEAE4">₱625</div>
+            <p class="cap" style="margin:0">Amount to pay</p>
+            <span class="btn" style="width:100%;text-align:center;box-sizing:border-box">Receive ₱625</span>
+          </div>
+        </div>
+      </div>
+      <p class="cap">On a wide screen the facts sit left and the money right, so the panel is half as tall. On a phone it stacks.</p>
+    </div>
+  </section>
+
+  <section class="card p-4 space-y-2">
+    <h2 class="text-lg font-bold">What is the same in all four</h2>
+    <p class="text-sm" style="margin:0">Payment and Payment receipts stay <b>separate blocks</b> · the money block is still collapsed until opened · methods and the reference appear only after <b>Receive money</b> · one action at a time (Receive → Check in → Check out) · the guest tab is hidden until check-in.</p>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:8px">k132 · nothing built from this page yet — annotate P1/P2/P3/P4</footer>
+</main>
+</body>
+</html>

@@ -6,7 +6,8 @@ import { dateToString } from '../utils/helpers'
 import { WalkInBookingForm } from './WalkInBookingForm'
 import { takeFocusedBooking } from '../utils/bookingFocus'
 import { ExtendStayModal } from './calendar/ExtendStayModal'
-import { TimelineGrid, TimelineDayInfo } from './calendar/TimelineGrid'
+import { TimelineGrid } from './calendar/TimelineGrid'
+import { TimelineDayInfo, buildTimelineDays, timelineHeader, sameMonth } from './calendar/timelineDays'
 import { LogOldBookingModal } from './calendar/LogOldBookingModal'
 import { CorporateBookingForm } from './corporate/CorporateBookingForm'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
@@ -22,8 +23,11 @@ export function CalendarTab() {
   const { rooms, venues, bookings, createManualBooking, cancelBooking, updateBooking } = useDashboardData()
 
   // ── Month / timeline state ──
-  const [schedulerStartDate, setSchedulerStartDate] = useState<Date>(() => {
-    const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d
+  // The anchor IS the day the 31-day window starts on (card k154 follow-up): Today
+  // sets today, ‹ › set the 1st of the month they step to, and the toolbar's date box
+  // sets the day the desk picked.
+  const [monthAnchor, setMonthAnchor] = useState<Date>(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); return d
   })
   const [timelineSelection, setTimelineSelection] = useState<Selection | null>(null); const [groupSelection, setGroupSelection] = useState<GroupSel | null>(null)
 
@@ -49,7 +53,23 @@ export function CalendarTab() {
     timelineSelectionRef.current = timelineSelection; groupSelectionRef.current = groupSelection; bookingsRef.current = bookings; roomsRef.current = rooms; venuesRef.current = venues
   })
 
-  const daysCount = useMemo(() => new Date(schedulerStartDate.getFullYear(), schedulerStartDate.getMonth() + 1, 0).getDate(), [schedulerStartDate])
+  // Today's own key: the list is rebuilt if the app is left open past midnight.
+  const todayKey = dateToString(new Date())
+  const daysList = useMemo<TimelineDayInfo[]>(
+    () => buildTimelineDays(monthAnchor),
+    [monthAnchor, todayKey]
+  )
+  const monthHeader = useMemo(() => timelineHeader(daysList), [daysList])
+  const startsToday = daysList[0]?.isToday === true
+
+  // The slide-over opens on the LIVE row, never on the object the grid happened to
+  // be holding when the pill was clicked. The grid is memoized, so a cell can keep
+  // an older booking after a save that only changed the stage (check-in / check-out
+  // are not part of the pill's own badge, so nothing forced it to re-render) — and
+  // reopening the booking then showed "Check in" again for a guest already in.
+  const liveExtendBooking = selectedExtendBooking
+    ? bookings.find(b => b.id === selectedExtendBooking.id) || selectedExtendBooking
+    : null
 
   const toDateKey = (y: number, m: number, d: number) => y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0')
 
@@ -72,25 +92,6 @@ export function CalendarTab() {
     })
     return map
   }, [bookings])
-
-  const daysList = useMemo(() => {
-    const list: TimelineDayInfo[] = []
-    const todayStr = new Date().toDateString()
-    for (let i = 0; i < daysCount; i++) {
-      const d = new Date(schedulerStartDate)
-      d.setDate(schedulerStartDate.getDate() + i)
-      list.push({
-        date: d,
-        isoStr: dateToString(d),
-        time: d.getTime(),
-        dayNum: d.getDate(),
-        weekday: d.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 1),
-        isToday: d.toDateString() === todayStr,
-        isWeekend: d.getDay() === 0 || d.getDay() === 6
-      })
-    }
-    return list
-  }, [schedulerStartDate, daysCount])
 
   const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date) => {
     const curTimeline = timelineSelectionRef.current
@@ -192,16 +193,35 @@ export function CalendarTab() {
   }
 
 
-  const datePickerValue = schedulerStartDate.getFullYear() + '-' + String(schedulerStartDate.getMonth() + 1).padStart(2, '0')
+  // What the toolbar's date box shows, and the three ways the window moves (card
+  // k154 follow-up). Each control decides the day itself — nothing is guessed from
+  // the date afterwards, because "the 1st of the current month" is exactly what the
+  // desk types when they want the 1st: guessing sent 1 September back to today.
+  const datePickerValue = dateToString(monthAnchor)
+  const todayStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d }
+  const stepMonth = (delta: number) => {
+    const target = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + delta, 1)
+    // Stepping back into the month we are living in opens on today, so arriving by
+    // arrow never buries today off the right edge (that is the k154 rule).
+    setMonthAnchor(sameMonth(target, new Date()) ? todayStart() : target)
+  }
+  const jumpToDay = (value: string) => {
+    // Parsed by hand: `new Date('2026-12-15')` is UTC midnight, which is 15 Dec only
+    // from 8am in UTC+8 — the desk would pick a day and land on the one before it.
+    const [y, m, d] = value.split('-').map(Number)
+    if (!y || !m || !d) return
+    setMonthAnchor(new Date(y, m - 1, d))
+  }
   return (
     <div className="space-y-3 font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
       <CalendarToolbar
-        monthHeader={schedulerStartDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        monthHeader={monthHeader}
+        startsToday={startsToday}
         datePickerValue={datePickerValue}
-        onPrevMonth={() => { const p = new Date(schedulerStartDate); p.setMonth(p.getMonth() - 1); setSchedulerStartDate(p) }}
-        onNextMonth={() => { const n = new Date(schedulerStartDate); n.setMonth(n.getMonth() + 1); setSchedulerStartDate(n) }}
-        onMonthChange={value => { const [y, m] = value.split('-').map(Number); setSchedulerStartDate(new Date(y, m - 1, 1)) }}
-        onThisMonth={() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); setSchedulerStartDate(d) }}
+        onPrevMonth={() => stepMonth(-1)}
+        onNextMonth={() => stepMonth(1)}
+        onJumpToDate={jumpToDay}
+        onToday={() => setMonthAnchor(todayStart())}
         newBookingDisabled={!groupSelection || Object.keys(groupSelection).length === 0}
         logOldDisabled={!groupSelection || Object.keys(groupSelection).length === 0}
         onNewBooking={confirmGroup}
@@ -234,10 +254,10 @@ export function CalendarTab() {
       </div>
 
 
-      {selectedExtendBooking && (
+      {liveExtendBooking && (
         <ExtendStayModal
-          key={selectedExtendBooking.id}
-          booking={selectedExtendBooking}
+          key={liveExtendBooking.id}
+          booking={liveExtendBooking}
           rooms={rooms}
           venues={venues}
           bookings={bookings}
@@ -248,7 +268,7 @@ export function CalendarTab() {
           setExtendCheckoutDate={setExtendCheckoutDate}
           onCancelBooking={cancelBooking}
           onUpdateBooking={updateBooking}
-          onEditBooking={() => { setEditingBooking(selectedExtendBooking); setShowManualForm(true); setSelectedExtendBooking(null) }}
+          onEditBooking={() => { setEditingBooking(liveExtendBooking); setShowManualForm(true); setSelectedExtendBooking(null) }}
         />
       )}
 
