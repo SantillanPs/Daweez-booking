@@ -10,6 +10,15 @@ export interface Room {
    * breakfast yet, and the booking form says so instead of charging ₱0.
    */
   breakfast_price?: number | null
+  /**
+   * Short stays: what the room charges for 3, 6 and 12 hours, typed by the desk in
+   * Settings from the hotel's printed board. `null`/absent means the room is NOT
+   * sold short — the dash on that board. The 22-hour price is the room's own
+   * single price above, so a 22-hour stay needs nothing new.
+   */
+  hour3_price?: number | null
+  hour6_price?: number | null
+  hour12_price?: number | null
   capacity: number
   description: string
   image_url: string
@@ -139,6 +148,14 @@ export interface Booking {
    * `undefined` means "work it out", which `amountToPayNow` does.
    */
   agreed_deposit?: number
+  /**
+   * Short stay: how many hours the room was taken for — 3, 6, 12 or 22. `undefined`
+   * is an ordinary overnight booking. The stay still blocks the WHOLE day for that
+   * room, because housekeeping cleans it afterwards (the owner's ruling), so every
+   * availability check, the calendar and the bill keep working exactly as they do
+   * for a night.
+   */
+  stay_hours?: number
   balance_due: number      // Remaining 50% + rentals/addons + security deposit
   security_deposit: number // ₱500 flat
   breakfast_orders?: BreakfastOrder[]

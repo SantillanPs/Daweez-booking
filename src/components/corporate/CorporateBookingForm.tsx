@@ -39,9 +39,6 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
   const [formPartnerDealId, setFormPartnerDealId] = useState('')
   const [formCompanyName, setFormCompanyName] = useState('')
   const [formVehiclePlate, setFormVehiclePlate] = useState('')
-  const [formTIN, setFormTIN] = useState('')
-  const [formGuestEmail, setFormGuestEmail] = useState('')
-  const [formGuestPhone, setFormGuestPhone] = useState('')
   const [error, setError] = useState('')
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [trySave, setTrySave] = useState(false)
@@ -70,10 +67,7 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
     if (deal) {
       setFormPartnerDealId(deal.id)
       setFormCompanyName(deal.name)
-      setFormTIN(deal.tin || '')
       setFormVehiclePlate(deal.vehicle_plate || '')
-      setFormGuestEmail(deal.email || '')
-      setFormGuestPhone(deal.contact_no || '')
       const initial: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }> = {}
       if (deal.contracted_rates) {
         Object.entries(deal.contracted_rates).forEach(([id, rate]) => {
@@ -87,7 +81,7 @@ export function CorporateBookingForm({ rooms, venues, bookings, initialSelection
       }
       setUnitSelections(initial)
     } else {
-      setFormPartnerDealId(''); setFormCompanyName(''); setFormTIN(''); setFormVehiclePlate(''); setFormGuestEmail(''); setFormGuestPhone(''); setUnitSelections({})
+      setFormPartnerDealId(''); setFormCompanyName(''); setFormVehiclePlate(''); setUnitSelections({})
     }
   }
 

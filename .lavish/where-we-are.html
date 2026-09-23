@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Where we are — and what we take first</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .raised{background:var(--raised);border:1px solid var(--line);border-radius:10px}
+  .cap{font-size:13px;color:var(--sec);margin:6px 0 0}
+  .mut{color:var(--mut)} .gold{color:var(--gold)}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:6px}
+  .ok{background:#12261F;color:#34D399} .warn{background:#2A2312;color:#E6C989} .neu{background:#2A2A2A;color:#C9C4BB}
+  .num{font-family:"Sora";font-weight:800;font-size:36px;line-height:1.05}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #2C2C2C;padding:9px 0;font-size:13.5px;color:var(--sec)}
+  .row b{color:var(--body);font-weight:600}
+  .opt{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--raised);cursor:pointer;display:flex;gap:12px}
+  .opt.pick{border-color:var(--gold);background:#221E14}
+  .btn{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:12px 18px;background:var(--raised);color:var(--body);cursor:pointer}
+  .btn.gold{background:var(--gold);border-color:var(--gold);color:#141414}
+  input[type=radio]{accent-color:#D0AB60;width:18px;height:18px;margin-top:3px;flex-shrink:0}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[860px] p-6 space-y-4">
+
+  <header class="card p-5" style="border-color:#6F5420">
+    <h1 class="text-2xl font-bold">Where we are — and what we take first</h1>
+    <p class="cap" style="margin-top:10px">The rule from now on: <b>we talk here, one thing at a time, and I build only after you rule.</b> A drawing is never a green light.</p>
+  </header>
+
+  <section class="card p-5">
+    <div class="grid md:grid-cols-3 gap-3">
+      <div class="raised p-4">
+        <span class="pill ok">built, handed to you</span>
+        <div class="row" style="border:0;padding:6px 0"><span>Restaurant screen</span><b>k70</b></div>
+        <div class="row" style="padding:6px 0"><span>Tablet tap sizes</span><b>done</b></div>
+        <div class="row" style="padding:6px 0"><span>The dish search</span><b>done</b></div>
+        <div class="row" style="padding:6px 0"><span>The code checker, wired</span><b>done</b></div>
+      </div>
+
+      <div class="raised p-4">
+        <span class="pill warn">waiting on your ruling</span>
+        <p class="num" style="color:#E6C989;margin-top:8px">18</p>
+        <p class="cap" style="margin-top:0">questions — the safety deposit, corporate joining new booking, payment method on the first payment, what happens when money is owed at check-out, breakfast for long stays, rooms with no check-out date, two stale docs, the 327 colour notes.</p>
+      </div>
+
+      <div class="raised p-4">
+        <span class="pill neu">drawn, not decided</span>
+        <p class="num" style="color:#C9C4BB;margin-top:8px">1</p>
+        <p class="cap" style="margin-top:0">new thing — <b>short stays</b> (3 / 6 / 12 / 22 hours). Your board maps exactly onto the app's rooms, and the 22-hour column is already the price the app charges.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-5" style="border-color:#6F5420;background:#1B1811">
+    <h2 class="text-lg font-bold">What do we take first?</h2>
+    <p class="cap" style="margin:6px 0 14px">Whatever you pick, I open that one thing, we settle it, and only then do I build it.</p>
+    <form data-lavish-question="take-first" onsubmit="event.preventDefault(); const c=new FormData(event.currentTarget).get('first'); if(c) window.lavish.queuePrompt('Take this first: ' + c, { tag:'choice', text:'First: ' + c, element:event.currentTarget, data:{ question:'take-first', answer:c } });">
+      <div class="space-y-3">
+        <label class="opt pick">
+          <input type="radio" name="first" value="the safety deposit, end to end (D1–D7) — three of his new notes" checked>
+          <span><b style="font-size:14px">The safety deposit, end to end</b> <span class="pill ok" style="margin-left:6px">my recommendation</span>
+          <span class="cap" style="display:block">Three of your new notes are one job: ₱2,000 in on the bill, returned at check-out, and a receipt when part of it is kept for damage. The first question is whether the ₱2,000 reservation is flat — today the bill asks <b>half the stay</b>.</span></span>
+        </label>
+        <label class="opt">
+          <input type="radio" name="first" value="short stays (3/6/12/22 hours) — the board drawing">
+          <span><b style="font-size:14px">Short stays</b>
+          <span class="cap" style="display:block">The board drawing is ready: the four durations, the four-tap booking, and the question of how a 3-hour stay shows on a calendar built around whole days.</span></span>
+        </label>
+        <label class="opt">
+          <input type="radio" name="first" value="something else from the 18-question list — I will name it">
+          <span><b style="font-size:14px">Something else on the list</b>
+          <span class="cap" style="display:block">I put the 18 back on screen and you pick from it.</span></span>
+        </label>
+      </div>
+      <div style="margin-top:16px"><button type="submit" class="btn gold">Queue my answer</button></div>
+    </form>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:6px">Nothing is built from a note, a list or a guess — only from your ruling</footer>
+</main>
+</body>
+</html>

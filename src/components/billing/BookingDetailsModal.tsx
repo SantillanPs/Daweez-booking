@@ -46,7 +46,11 @@ export function BookingDetailsModal({ booking, rooms, venues, bookingsList, onCl
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
             <div>
               <div className="text-muted mb-0.5">Stay</div>
-              <div className="font-medium text-main">{fmtDate(booking.check_in)} → {fmtDate(booking.check_out)}</div>
+              <div className="font-medium text-main">
+                {booking.stay_hours
+                  ? <>{fmtDate(booking.check_in)} <span className="text-brand-text">· {booking.stay_hours} hours</span></>
+                  : <>{fmtDate(booking.check_in)} → {fmtDate(booking.check_out)}</>}
+              </div>
             </div>
             <div>
               <div className="text-muted mb-0.5">Unit</div>

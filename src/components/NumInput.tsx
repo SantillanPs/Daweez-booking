@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 
 interface NumInputProps {
   value: number
@@ -19,14 +19,14 @@ interface NumInputProps {
 // It still reports a clean number to the caller via onChange.
 export function NumInput({ value, onChange, className, placeholder = '0', min = 0, disabled, allowDecimal = true, onFocus, onKeyDown, ...rest }: NumInputProps) {
   const [text, setText] = useState(value ? String(value) : '')
-
-  // Re-sync the displayed text when the value changes from outside (e.g. reset,
-  // edit load, or a minus/plus button).
-  useEffect(() => {
-    const next = value ? String(value) : ''
-    if (next !== text) setText(next)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value])
+  // Re-sync the displayed text when the value changes from outside (a reset, an
+  // edit loading, a minus/plus button). Adjusted DURING RENDER, not in an effect:
+  // the effect version re-rendered twice for every outside change.
+  const [lastValue, setLastValue] = useState(value)
+  if (value !== lastValue) {
+    setLastValue(value)
+    setText(value ? String(value) : '')
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let s = e.target.value

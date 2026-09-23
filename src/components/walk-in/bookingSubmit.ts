@@ -43,6 +43,8 @@ export interface ManualBookingInput {
   downpaymentPaid?: number
   balanceDue?: number
   securityDeposit?: number
+  /** Short stay (printed rate board): the hours the room was taken for — 3/6/12/22. */
+  stayHours?: number
 }
 
 export interface BookingSubmitParams {
@@ -88,6 +90,11 @@ export interface BookingSubmitParams {
   formPaymentMethod: string
   formPaymentReference: string
   formPaymentPlan: 'deposit' | 'full'
+  /**
+   * Short stay: the hours the room is being sold for (3/6/12/22). Set only by the
+   * booking form's Short stay switch; undefined means an ordinary overnight stay.
+   */
+  stay_hours?: number
   /** Derived from the money on the booking — never typed in by staff. */
   derivedPaymentStatus: 'unpaid' | 'downpayment' | 'paid'
   formDownpaymentPaid: number
@@ -188,7 +195,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         paymentStatus: p.editingBookings ? p.derivedPaymentStatus : undefined,
         downpaymentPaid: p.editingBookings ? p.formDownpaymentPaid : undefined,
         balanceDue: p.editingBookings && p.formBalanceDue !== null ? p.formBalanceDue : undefined,
-        securityDeposit: p.editingBookings && p.formSecurityDeposit !== null ? p.formSecurityDeposit : undefined
+        securityDeposit: p.editingBookings && p.formSecurityDeposit !== null ? p.formSecurityDeposit : undefined,
+        stayHours: p.stay_hours || undefined
       })
       createdBookings.push(b)
     }

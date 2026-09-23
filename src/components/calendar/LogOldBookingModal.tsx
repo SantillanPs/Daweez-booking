@@ -34,7 +34,6 @@ interface LogOldBookingModalProps {
 export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose, initialSelections }: LogOldBookingModalProps) {
   const [guestName, setGuestName] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
-  const [guestEmail, setGuestEmail] = useState('')
   const [guestAddress, setGuestAddress] = useState('')
   const [guestNationality, setGuestNationality] = useState('')
   const [companions, setCompanions] = useState<Companion[]>([])
@@ -134,7 +133,7 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
           roomId: sel.type === 'room' ? id : undefined,
           venueId: sel.type === 'venue' ? id : undefined,
           guestName: guestName.trim(),
-          guestEmail: guestEmail.trim() || 'admin@daweez-booking.vercel.app',
+          guestEmail: 'admin@daweez-booking.vercel.app',
           guestPhone: guestPhone.trim() || 'None',
           guestAddress: guestAddress.trim() || undefined,
           guestNationality: guestNationality.trim() || undefined,

@@ -74,7 +74,19 @@ Default section order:
 5. Run existing verification when relevant
 6. Report any docs intentionally left unchanged and why
 
+## Lint & Verification
+
+- `npm run lint` = `eslint .` over the repo, configured in `eslint.config.js`: `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`, plus **`@shadcn/lint`** (the Tailwind design-system linter). It must exit **0**.
+- **The `shadcn/*` levels are deliberate and measured** (every rule was run over `src/`; the numbers are in `.lavish/lint-what-it-found.html`): `no-raw-colors`, `no-arbitrary-values` (with `allow: ['layout','typography']` for the dense type scale) and `no-unknown-classes` (with daisyUI + tailwindcss-animate names allowed, because the Tailwind **v3** loader cannot see plugin classes) are **warnings** while their findings are worked through; `no-inline-styles` is an error, with width/background-color/animation-delay allowed as genuinely dynamic values. **`no-restyle` and `require-static-classes` are errors but silent until `settings.shadcn` names a component directory** — naming one today reports the ~92 places that style `NumInput` through `className`, which is how every screen styles it. Never raise a warning to `error` or add `settings.shadcn` without the owner's say-so.
+- Type-check every change with `npx tsc -b --force` (must exit 0). Per-area checks are in `src/AGENTS.md`.
+
 ## User Preferences
+
+### Working Agreement — discuss, then build
+- **Never implement from a note, a list or an inference.** Every change starts as a discussion: the owner's words *"Make sure we discuss things first before doing any implementations so that we're always on the same page."*
+- The order is fixed: **I bring a drawing (Lavish) and the open questions → he rules on one item at a time → only then do I build.** A drawing is discussion, not a green light; approval is a ruling, in his words.
+- **One item at a time.** Do not batch several of his open questions into one build, and do not start the next one until the previous is built and handed to Review.
+- When an answer is ambiguous or two of his notes disagree, **ask, and show the two consequences side by side** — never pick silently.
 
 ### File Size & Modularity
 - **Maximum file size: 300 lines per file.** Any file exceeding 300 lines must be split into smaller modules.

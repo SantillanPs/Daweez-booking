@@ -59,7 +59,7 @@ export function useGuestTab({ booking, rooms, venues, setBooking, onUpdateBookin
 
   /** A line was added or corrected: read the tab back, then put the bill right. */
   const reload = async (): Promise<void> => {
-    let read: TabLine[] = []
+    let read: TabLine[]
     try {
       read = await readLines()
     } catch {

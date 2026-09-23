@@ -1,0 +1,9 @@
+Both fixed — thank you, those were good catches.
+
+**“the buttons are far from the date and room selected”** — the bar was lined up with the *date* but anchored to the top of the grid. It is now pinned to the **cell you picked**: same row, sitting just under it, starting at that day's column. It also lives inside the scrolling grid, so it travels with it instead of drifting away, and it flips above the row when the row is near the bottom.
+
+**“the cancel button doesn't work”** — it only cleared a *single day*, so once you had picked a full range (Sep 24 → Sep 25) there was nothing for it to clear. Cancel now clears both.
+
+I also shortened it: the “or tap the check-out day for a normal stay” line moved into the button's tooltip, so the bar is narrower and covers less of the grid.
+
+Refresh the calendar and pick a range on Room 6.

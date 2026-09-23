@@ -1,0 +1,13 @@
+All 40 notes reviewed — nothing in that file says “do not read”, so I read everything.
+
+Three things worth knowing before you scroll:
+
+1. **Two of your old notes are out of date — you changed them yourself later.** Breakfast “per head, ₱150 × the beds” and “prompt breakfast every day” are now **one charge per room at that room's own price**. The app follows the newer decision, not the note.
+
+2. **Five notes are already built** and only sit in Todo because you haven't looked at them: the one-price rule, the receipt printing correctly, “Prepared by” on the bill and receipt, breakfast folded into the room line, and the new booking opening in the quick view after the bill.
+
+3. **Three of your five new notes are one job**: the Vacation House safety deposit — ₱2,000 in on the bill, ₱2,000 back at check-out, and a receipt when part of it is kept for damage. The bill already prints a deposit line when one is set; there is simply no rule setting it and no way to give it back.
+
+Also: `NOTES.md` and `TODO.md` now describe an app that no longer exists (a 2-step wizard, breakfast per person, a promo price). Say the word and I'll refresh or delete them.
+
+At the bottom there's one question: which of your new notes to take first.

@@ -126,6 +126,9 @@ export async function getRooms(): Promise<Room[]> {
           base_price: Number(r.base_price),
           promo_price: r.promo_price != null ? Number(r.promo_price) : null,
           breakfast_price: r.breakfast_price != null ? Number(r.breakfast_price) : null,
+          hour3_price: r.hour3_price != null ? Number(r.hour3_price) : null,
+          hour6_price: r.hour6_price != null ? Number(r.hour6_price) : null,
+          hour12_price: r.hour12_price != null ? Number(r.hour12_price) : null,
           capacity: r.capacity,
           description: r.description || undefined,
           image_url: r.image_url || undefined
@@ -212,6 +215,42 @@ export async function updateRoomBreakfastPrice(roomId: string, price: number): P
   const data = localStorage.getItem(ROOMS_KEY)
   const overrides: Record<string, Partial<Room>> = data ? JSON.parse(data) : {}
   overrides[roomId] = { ...overrides[roomId], breakfast_price: amount }
+  localStorage.setItem(ROOMS_KEY, JSON.stringify(overrides))
+}
+
+/**
+ * Saves what a room charges for a short stay — 3, 6 and 12 hours (from the
+ * hotel's printed rate board). Zero / blank means the room is NOT sold short,
+ * which is the dash on that board; the 22-hour price stays the room's own price.
+ *
+ * Same shape as `updateRoomBreakfastPrice`: one small SECURITY DEFINER writer,
+ * with a browser-store fallback so the desk can keep working offline.
+ */
+export async function updateRoomHourPrices(
+  roomId: string,
+  hour3: number,
+  hour6: number,
+  hour12: number,
+): Promise<void> {
+  const h3 = Math.max(0, Math.round(hour3 || 0))
+  const h6 = Math.max(0, Math.round(hour6 || 0))
+  const h12 = Math.max(0, Math.round(hour12 || 0))
+
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.rpc('set_room_hour_prices', {
+        p_room_id: roomId, p_hour3: h3, p_hour6: h6, p_hour12: h12,
+      })
+      if (error) throw error
+      return
+    } catch (err) {
+      console.error('Supabase updateRoomHourPrices Error, falling back to LocalStorage:', err)
+    }
+  }
+
+  const data = localStorage.getItem(ROOMS_KEY)
+  const overrides: Record<string, Partial<Room>> = data ? JSON.parse(data) : {}
+  overrides[roomId] = { ...overrides[roomId], hour3_price: h3 || null, hour6_price: h6 || null, hour12_price: h12 || null }
   localStorage.setItem(ROOMS_KEY, JSON.stringify(overrides))
 }
 
@@ -386,6 +425,9 @@ function toBookingRecord(booking: Booking): Record<string, unknown> {
     venue_day_blocks: booking.venue_day_blocks ?? null,
     breakfast_days: booking.breakfast_days || null,
     breakfast_records: booking.breakfast_records || null,
+    // Short stay (hours the room was taken for). Written by its own small writer
+    // after the booking lands, like the agreed deposit above.
+    stay_hours: booking.stay_hours ?? null,
   }
 }
 
@@ -409,6 +451,27 @@ async function writeAgreedDeposit(bookingId: string, amount?: number): Promise<v
     if (error) throw error
   } catch (err) {
     console.error('Could not save the agreed deposit:', err)
+  }
+}
+
+/**
+ * Marks a booking as a SHORT STAY — the hours the room was taken for (3/6/12/22).
+ *
+ * Its own small writer for the same reason as the agreed deposit above: the
+ * booking RPCs are the drifted jsonb functions, so a new column is threaded
+ * through a narrow SECURITY DEFINER writer instead of rebuilding them. A lost
+ * write only means the booking reads as an ordinary overnight stay.
+ */
+async function writeStayHours(bookingId: string, hours?: number): Promise<void> {
+  if (!hours) return
+  try {
+    const { error } = await supabase.rpc('set_booking_stay_hours', {
+      p_booking_id: bookingId,
+      p_hours: hours,
+    })
+    if (error) throw error
+  } catch (err) {
+    console.error('Could not save the short-stay hours:', err)
   }
 }
 
@@ -494,10 +557,11 @@ export async function insertBooking(booking: Booking): Promise<Booking> {
           throw error
         }
         await writeAgreedDeposit(withId.id, withId.agreed_deposit)
+        await writeStayHours(withId.id, withId.stay_hours)
         const saved = (data as unknown as Booking) ?? withId
-        // The booking RPC does not carry the agreed deposit (see the writer above),
-        // so put it back on the row the caller caches.
-        return { ...saved, agreed_deposit: withId.agreed_deposit }
+        // The booking RPC does not carry the agreed deposit or the short-stay hours
+        // (see the writers above), so put them back on the row the caller caches.
+        return { ...saved, agreed_deposit: withId.agreed_deposit, stay_hours: withId.stay_hours }
       } catch (err) {
         if (isBusinessRuleError(err)) throw err
         console.error('Supabase insertBooking Error, falling back to LocalStorage:', err)
@@ -522,8 +586,9 @@ export async function updateBooking(booking: Booking): Promise<Booking> {
       const { data, error } = await supabase.rpc('update_booking', { p_booking: toBookingRecord(booking) })
       if (error) throw error
       await writeAgreedDeposit(booking.id, booking.agreed_deposit)
+      await writeStayHours(booking.id, booking.stay_hours)
       const saved = (data as unknown as Booking) ?? booking
-      return { ...saved, agreed_deposit: booking.agreed_deposit }
+      return { ...saved, agreed_deposit: booking.agreed_deposit, stay_hours: booking.stay_hours }
     } catch (err) {
       if (isBusinessRuleError(err)) throw err
       // Network/transient write failures fall back to the browser store so the

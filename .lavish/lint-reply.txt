@@ -1,0 +1,7 @@
+Restarted, and rewritten in plain words — the last one was written for a developer, not for you.
+
+**In one breath:** the checker found **22 real mistakes** in your code and all 22 are fixed. What is left is **327 small notes** — tidy-ups, not faults. 245 of them are ordinary colours sitting where your gold / charcoal / red should be.
+
+**Nothing you have to do.** The only choice is at the bottom of the page: leave the colours for now (my recommendation), or have me start that tidy-up as its own job with a before/after.
+
+When you next open the app, glance at two boxes on the booking form — the deposit box and the money boxes. Both should feel exactly as before.

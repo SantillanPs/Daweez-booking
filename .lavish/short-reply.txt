@@ -1,0 +1,9 @@
+Built, exactly as you picked.
+
+- The calendar toolbar now has **Short stay**, beside New booking and Corporate.
+- Tap it → a gold line appears above the grid: *“tap the room and the day — one tap is the whole booking”* → **one tap** opens the form with that day filled in and check-out set to the next day for you. A Cancel sits on that line.
+- **New booking** is untouched — still two dates.
+
+So step 2 on this page is now what the app does. Steps 3–6 (the hours row, the price filling itself, the receipt, the `3h` on the block) are all in as well.
+
+One thing left for you: run **supabase/RUN-THESE-THREE-2026-09-23.sql** once in Supabase → SQL Editor. Then try one on Room 8.

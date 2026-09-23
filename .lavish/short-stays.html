@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Short stay — the flow</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .raised{background:var(--raised);border:1px solid var(--line);border-radius:10px}
+  .cap{font-size:13px;color:var(--sec);margin:6px 0 0}
+  .mut{color:var(--mut)} .gold{color:var(--gold)}
+  .step{display:flex;gap:14px;align-items:flex-start}
+  .n{flex-shrink:0;width:26px;height:26px;border-radius:99px;background:var(--gold);color:#141414;font-family:"Sora";font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .chip{border:1px solid #4A4A4A;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:700;color:var(--body);white-space:nowrap}
+  .chip.on{background:#D0AB60;border-color:#D0AB60;color:#141414}
+  .chip.off{opacity:.45}
+  .field{background:#1B1B1B;border:1px dashed #4A4A4A;border-radius:6px;padding:5px 8px;font-size:11px;color:var(--mut)}
+  .btn{background:var(--gold);color:#141414;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:800;display:inline-block}
+  .cell{background:#1D1D1D;border:1px solid #3E3E3E;border-radius:8px;padding:8px;min-width:200px}
+  .now{color:#34D399;font-weight:700}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[820px] p-6 space-y-4">
+
+  <header class="card p-5">
+    <h1 class="text-2xl font-bold">Taking a short stay — six steps</h1>
+    <p class="cap" style="margin-top:8px">Exactly what the desk does, from an empty calendar to a printed receipt.</p>
+  </header>
+
+  <!-- 1 -->
+  <section class="card p-5">
+    <div class="step">
+      <span class="n">1</span>
+      <div style="flex:1">
+        <h2 class="text-lg font-bold">Settings → Room Rates — once, when a price changes</h2>
+        <p class="cap" style="margin-bottom:10px">Three boxes for a room that sells short stays. Leave one at 0 and the room isn't sold for those hours.</p>
+        <div class="raised" style="padding:14px">
+          <p style="font-size:12px;font-weight:700;margin:0 0 10px">Room 8 · Double</p>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <div><p class="mut" style="font-size:10.5px;margin:0 0 3px">Price (per night)</p><div class="field" style="color:var(--body)">850</div></div>
+            <div><p class="mut" style="font-size:10.5px;margin:0 0 3px">3 hours</p><div class="field" style="color:var(--body)">550</div></div>
+            <div><p class="mut" style="font-size:10.5px;margin:0 0 3px">6 hours</p><div class="field" style="color:var(--body)">600</div></div>
+            <div><p class="mut" style="font-size:10.5px;margin:0 0 3px">12 hours</p><div class="field" style="color:var(--body)">650</div></div>
+          </div>
+          <p class="cap">Rooms 2, 3 and 4 (Full Double) are the other ones you sell short: 600 · 650 · 700.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="card p-5" style="border-color:#6F5420">
+    <div class="step">
+      <span class="n">2</span>
+      <div style="flex:1">
+        <h2 class="text-lg font-bold">On the calendar — <span class="gold">one</span> tap, then the hours</h2>
+        <p class="cap" style="margin-bottom:10px">A short stay is one day, so it needs one tap. The booking buttons are no longer in the toolbar — they pop up on the row you tapped, carrying the hours themselves:</p>
+
+        <div class="raised" style="padding:14px">
+          <p class="mut" style="font-size:10.5px;margin:0 0 8px">THE BAR, ONE DAY TAPPED ON ROOM 8</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span class="chip">Double Room 8 · Sep 25</span>
+            <span class="chip on">3h · ₱550</span>
+            <span class="chip">6h · ₱600</span>
+            <span class="chip">12h · ₱650</span>
+            <span class="chip">Cancel</span>
+            <span class="cap" style="margin:0">← tap the hours you are selling</span>
+          </div>
+          <p class="cap" style="margin:8px 0 0">No <b>Short stay</b> button to press first, and <b>no 22-hour option</b>: 22 hours is the room's own price, so it is an ordinary overnight stay — book it from a date range.</p>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-top:14px">
+            <div class="cell">
+              <p class="mut" style="font-size:10px;margin:0 0 6px">ROOM 8 · TODAY</p>
+              <div class="field" style="border-style:solid;border-color:#D0AB60;color:#D0AB60;font-weight:700">one tap here</div>
+              <p class="mut" style="font-size:10px;margin:7px 0 0">today → tomorrow, filled in for you</p>
+            </div>
+            <div style="flex:1;min-width:220px">
+              <div class="row" style="border:0;padding:2px 0;font-size:12.5px"><span>Tap the room and the day, then <b>3h</b></span><b class="mut">form opens</b></div>
+              <div class="row" style="border:0;padding:2px 0;font-size:12.5px"><span>The form already knows the room, the date <b>and the 3 hours</b></span><b class="mut">nothing retyped</b></div>
+              <div class="row" style="border:0;padding:2px 0;font-size:12.5px"><span>Check-out is set to the next day for you</span><b class="mut">the room is taken all day</b></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="cap" style="margin-top:12px">The ordinary <b>New booking</b> keeps working exactly as it does now — two dates, for a stay that runs over nights. Only the short-stay path is one tap.</p>
+
+        <div class="raised" style="padding:12px;margin-top:12px;border-color:#1E5A45;background:#121B16">
+          <b style="font-size:13.5px">Settled — you picked A, and it is built.</b>
+          <span class="cap" style="display:block">Tap the room and the day: the bar pops up on that row with <b>3h · 6h · 12h</b>, priced from the room's own board. One tap on the hours opens the form with the room, the date, the next day and the hours already in it. Cancel is right there if you change your mind. A venue never shows the hour buttons — only a room is sold short.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="card p-5" style="border-color:#6F5420">
+    <div class="step">
+      <span class="n">3</span>
+      <div style="flex:1">
+        <h2 class="text-lg font-bold">The form opens with <span class="gold">Short stay</span> at the top</h2>
+        <p class="cap" style="margin-bottom:10px">Tap the hours. The price fills itself from the room — nothing is typed. <b>No Overnight button</b> — leave the row alone and the booking stays a normal overnight stay.</p>
+        <div class="raised" style="padding:14px">
+          <p style="font-size:12px;font-weight:700;margin:0 0 8px">Short stay <span class="mut" style="font-weight:400">— leave this alone for a normal overnight booking</span></p>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="chip on">3 hours · ₱550</span>
+            <span class="chip">6 hours · ₱600</span>
+            <span class="chip">12 hours · ₱650</span>
+            <span class="chip">22 hours · ₱850</span>
+          </div>
+          <p class="cap">A room with no price for those hours shows <span class="mut">—</span> and can't be tapped.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="card p-5">
+    <div class="step">
+      <span class="n">4</span>
+      <div style="flex:1">
+        <h2 class="text-lg font-bold">Name, then Confirm</h2>
+        <p class="cap" style="margin-bottom:10px">Breakfast, add-ons and discount step out of the way. The deposit box becomes one line.</p>
+        <div class="raised" style="padding:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><p class="mut" style="font-size:10.5px;margin:0 0 3px">Guest name</p><div class="field" style="color:var(--body)">Juan</div></div>
+            <div><p class="mut" style="font-size:10.5px;margin:0 0 3px">Contact number (optional)</p><div class="field"></div></div>
+          </div>
+          <div style="background:#F1E7CF;border:1px solid #C9A94E;border-radius:8px;padding:10px;margin-top:12px">
+            <p style="font-size:12.5px;font-weight:800;color:#1C1C1C;margin:0">3-hour stay · ₱550 — paid in full at the counter</p>
+            <p style="font-size:11px;color:#5B543F;margin:4px 0 0">No deposit, no statement. The room is taken for the rest of the day.</p>
+          </div>
+          <div style="margin-top:12px;display:flex;justify-content:flex-end;gap:8px">
+            <span class="chip" style="font-weight:600">Cancel</span>
+            <span class="btn">Confirm Booking</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="card p-5">
+    <div class="step">
+      <span class="n">5</span>
+      <div style="flex:1">
+        <h2 class="text-lg font-bold">Take the money — the receipt prints</h2>
+        <p class="cap" style="margin-bottom:10px">The desk has the cash in hand, so it taps Cash and records it. One numbered receipt, same as every payment.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+          <div class="raised" style="padding:14px;flex:1;min-width:240px">
+            <p class="mut" style="font-size:10.5px;margin:0 0 3px">Guest pays by</p>
+            <div class="field" style="margin-bottom:10px;color:var(--body)">Cash</div>
+            <p class="mut" style="font-size:10.5px;margin:0 0 3px">Amount</p>
+            <div class="field" style="margin-bottom:10px;color:var(--body)">₱550</div>
+            <span class="btn">Record ₱550 received</span>
+          </div>
+          <div style="flex:1;min-width:200px">
+            <div style="background:#E6E2DA;color:#1C1C1C;border-radius:6px;padding:12px;font-size:10.5px;line-height:1.5">
+              <p style="text-align:center;font-weight:800;margin:0">DAWEEZ PENSION HOUSE</p>
+              <p style="text-align:center;font-size:9px;margin:3px 0 8px">PAYMENT RECEIPT</p>
+              <p style="margin:0">Guest: Juan</p>
+              <p style="margin:0">Room 8 · 3 hours</p>
+              <p style="margin:6px 0 0;font-weight:800">₱550.00</p>
+            </div>
+            <p class="cap">Come out of the printer straight away.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="card p-5">
+    <div class="step">
+      <span class="n">6</span>
+      <div style="flex:1">
+        <h2 class="text-lg font-bold">The calendar shows it as <span class="now">3h</span></h2>
+        <p class="cap" style="margin-bottom:10px">The room stays taken for the rest of the day — it is cleaned after, so it is never sold again that day.</p>
+        <div class="cell" style="max-width:320px">
+          <p class="mut" style="font-size:10px;margin:0 0 6px">ROOM 8 · TODAY</p>
+          <span style="background:#332B18;color:#E6C989;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;display:flex;justify-content:space-between;gap:8px">
+            <span>Juan</span><span>3h</span>
+          </span>
+          <p class="mut" style="font-size:10px;margin:7px 0 0">Green dot = paid. Tap it to see the stay or reprint the receipt.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:6px">
+    Before the very first one: run <b class="gold">supabase/RUN-THESE-THREE-2026-09-23.sql</b> once in Supabase → SQL Editor.
+  </footer>
+</main>
+</body>
+</html>

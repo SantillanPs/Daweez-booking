@@ -152,7 +152,7 @@ export async function saveMenu(menu: MenuCategory[]): Promise<void> {
   if (!isSupabaseConfigured) return
   try {
     const cats = menu.map((c, i) => ({ id: c.id, name: c.name, note: c.note ?? null, sort_order: i + 1 }))
-    const items = menu.flatMap((c, i) =>
+    const items = menu.flatMap(c =>
       c.items.map((it, j) => ({
         id: it.id,
         category_id: c.id,

@@ -18,6 +18,8 @@ import { recomputeBalance, pendingEarlyCharge } from '../../utils/bookingBalance
 import { useGuestTab } from '../../hooks/useGuestTab'
 import { BookingMoneyPanel } from './BookingMoneyPanel'
 import { SettledPaidTag } from './SettledPaidTag'
+import { ShortStayClock } from './ShortStayClock'
+import { stayHoursOf } from '../../utils/shortStay'
 import { BookingReceipts } from './BookingReceipts'
 import { GuestMethodPicker } from './GuestMethodPicker'
 import { ExtendStayForm } from './ExtendStayForm'
@@ -39,6 +41,8 @@ interface ExtendStayModalProps {
   onCancelBooking?: (id: string) => void
   onUpdateBooking?: (booking: Booking) => Promise<void>
   onEditBooking?: () => void
+  /** A short stay whose hours have run out — the panel turns its clock red. */
+  shortStayDue?: boolean
 }
 
 const fmtShort = (d: string) => (d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—')
@@ -63,7 +67,8 @@ export function ExtendStayModal({
   setExtendCheckoutDate,
   onCancelBooking,
   onUpdateBooking,
-  onEditBooking
+  onEditBooking,
+  shortStayDue = false
 }: ExtendStayModalProps) {
   const [showPrintModal, setShowPrintModal] = useState(false)
   const navigate = useNavigate()
@@ -244,10 +249,14 @@ export function ExtendStayModal({
   const performCheckIn = async (base: Booking) => {
     const actualCheckIn = new Date().toISOString()
     const rates = getRateConfig()
-    const { earlyHours } = computeCheckInOutHours({
-      checkIn: base.check_in, checkOut: base.check_out, actualCheckIn,
-      standardCheckInTime: rates.standardCheckInTime, standardCheckOutTime: rates.standardCheckOutTime,
-    })
+    // A short stay has no early/late hours at all: the room was sold for a few
+    // hours at its own board price, so a 10am arrival is not "four hours early".
+    const { earlyHours } = base.stay_hours
+      ? { earlyHours: 0 }
+      : computeCheckInOutHours({
+        checkIn: base.check_in, checkOut: base.check_out, actualCheckIn,
+        standardCheckInTime: rates.standardCheckInTime, standardCheckOutTime: rates.standardCheckOutTime,
+      })
     const updated: Booking = { ...base, actual_check_in: actualCheckIn, early_check_in_hours: earlyHours, status: 'confirmed' }
     setLocalBooking(updated)
     if (earlyHours > 0) {
@@ -283,10 +292,13 @@ export function ExtendStayModal({
     setActionNotice('')
     const actualCheckOut = new Date().toISOString()
     const rates = getRateConfig()
-    const { lateHours } = computeCheckInOutHours({
-      checkIn: booking.check_in, checkOut: booking.check_out, actualCheckOut,
-      standardCheckInTime: rates.standardCheckInTime, standardCheckOutTime: rates.standardCheckOutTime,
-    })
+    // Same rule as check-in: a short stay carries no late-checkout hours.
+    const { lateHours } = localBooking.stay_hours
+      ? { lateHours: 0 }
+      : computeCheckInOutHours({
+        checkIn: booking.check_in, checkOut: booking.check_out, actualCheckOut,
+        standardCheckInTime: rates.standardCheckInTime, standardCheckOutTime: rates.standardCheckOutTime,
+      })
     const updated = withRecomputedBalance(localBooking, { actual_check_out: actualCheckOut, late_check_out_hours: lateHours })
     setLocalBooking(updated)
     try { await onUpdateBooking?.(updated) } catch { showToast('Could not check out. Please try again.', 'error') }
@@ -436,7 +448,9 @@ export function ExtendStayModal({
               {paymentChip}
             </div>
             <p className="text-[11px] text-muted mt-1 truncate">
-              {unitSub ? unitSub + ' · ' : ''}{fmtShort(booking.check_in)} → {fmtShort(booking.check_out)} · {nights} {nights === 1 ? 'night' : 'nights'}
+              {unitSub ? unitSub + ' · ' : ''}{stayHoursOf(booking) > 0
+                ? fmtShort(booking.check_in) + ' · ' + stayHoursOf(booking) + '-hour stay'
+                : fmtShort(booking.check_in) + ' → ' + fmtShort(booking.check_out) + ' · ' + nights + (nights === 1 ? ' night' : ' nights')}
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0 pt-0.5">
@@ -514,6 +528,10 @@ export function ExtendStayModal({
               />
             )}
           </div>
+
+          {/* The short-stay clock: the time the room is free, and a red word once it
+              has passed. Nothing renders for an ordinary stay. */}
+          <div className="mt-2"><ShortStayClock booking={localBooking} due={shortStayDue} /></div>
 
           {/* Recorded early check-in, not billed yet: one amber line saying what the
               guest will owe and when it lands, so the money never moves in silence and

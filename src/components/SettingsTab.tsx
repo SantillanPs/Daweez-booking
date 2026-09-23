@@ -34,7 +34,7 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
 }
 
 export function SettingsTab() {
-  const { rooms, feeds, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice } = useDashboardData()
+  const { rooms, feeds, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices } = useDashboardData()
   const [activeTab, setActiveTab] = useState<RatesTab>('channels')
 
   // Rates editing
@@ -249,7 +249,7 @@ export function SettingsTab() {
                   <input value={pay.bankAccountNumber} onChange={e => setPay(s => ({ ...s, bankAccountNumber: e.target.value }))} className="mt-1 w-full bg-page border border-soft text-main px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-brand-primary" /></label>
               </div>
             </div>
-            <RoomRatesEditor rooms={rooms} updateRoomRate={updateRoomRate} updateRoomBreakfastPrice={updateRoomBreakfastPrice} />
+            <RoomRatesEditor rooms={rooms} updateRoomRate={updateRoomRate} updateRoomBreakfastPrice={updateRoomBreakfastPrice} updateRoomHourPrices={updateRoomHourPrices} />
           </div>
         )}
       </div>

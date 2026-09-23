@@ -43,6 +43,10 @@ export function computeCheckInOutHours(opts: {
  * night), and merely adding a plate of food mid-stay would have done the same thing
  * through the same recompute.
  */
-export function chargeableEarlyHours(b: { early_check_in_hours?: number; actual_check_out?: string }): number {
+export function chargeableEarlyHours(b: { early_check_in_hours?: number; actual_check_out?: string; stay_hours?: number }): number {
+  // A SHORT STAY has no "early": a guest who takes a room for three hours at 10am
+  // is not four hours early for a 2pm check-in, and charging them a whole night for
+  // it would be nonsense.
+  if (b.stay_hours) return 0
   return b.actual_check_out ? Number(b.early_check_in_hours || 0) : 0
 }

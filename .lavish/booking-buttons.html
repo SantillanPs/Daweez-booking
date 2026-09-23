@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Booking buttons — five designs, popping up at the top</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .raised{background:var(--raised);border:1px solid var(--line);border-radius:10px}
+  .cap{font-size:13px;color:var(--sec);margin:6px 0 0}
+  .mut{color:var(--mut)} .gold{color:var(--gold)}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:6px}
+  .ok{background:#12261F;color:#34D399} .neu{background:#2A2A2A;color:#C9C4BB} .pickpill{background:#332B18;color:#E6C989}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #2C2C2C;padding:8px 0;font-size:13px;color:var(--sec)}
+  .row b{color:var(--body);font-weight:600}
+  .wf{background:#171717;border:1px solid #3E3E3E;border-radius:10px;padding:12px}
+  .tb{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#202020;border:1px solid #3E3E3E;border-radius:8px;padding:6px 8px;font-size:11px;color:#A8A29A}
+  .chip{border:1px solid #4A4A4A;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:700;color:var(--body);white-space:nowrap}
+  .chip.gold{background:#D0AB60;border-color:#D0AB60;color:#141414}
+  .chip.dim{opacity:.35}
+  .day{background:#1D1D1D;border:1px solid #3E3E3E;border-radius:6px;width:52px;height:44px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#C9C4BB}
+  .day.sel{background:#332B18;border-color:#D0AB60;color:#E6C989;font-weight:700}
+  .day.range{background:#2A2312;border-color:#6F5420;color:#E6C989}
+  .float{background:#1F1F1F;border:1px solid #D0AB60;border-radius:99px;padding:5px 7px;display:inline-flex;gap:6px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+  .opt{border:1px solid var(--line);border-radius:10px;padding:13px;background:var(--raised);cursor:pointer;display:flex;gap:12px}
+  .opt.pick{border-color:var(--gold);background:#221E14}
+  .btn{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:12px 18px;background:var(--raised);color:var(--body);cursor:pointer}
+  .btn.gold{background:var(--gold);border-color:var(--gold);color:#141414}
+  input[type=radio]{accent-color:#D0AB60;width:18px;height:18px;margin-top:3px;flex-shrink:0}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[900px] p-6 space-y-4">
+
+  <header class="card p-5">
+    <h1 class="text-2xl font-bold">Buttons that pop up at the top — five designs</h1>
+    <p class="cap" style="margin-top:10px">Same rule in all five: <b>nothing appears until you pick dates</b>, and what appears depends on what you picked — <b>one day</b> gives Short stay, a <b>range</b> gives New booking and Corporate.</p>
+  </header>
+
+  <section class="card p-5" style="border-color:#1E5A45;background:#121B16">
+    <span class="pill ok">built — design 1, then fixed three times</span>
+    <h2 class="text-lg font-bold" style="margin-top:8px">Why Short stay never appeared</h2>
+    <p class="cap" style="color:var(--body)">A picked day draws itself as the gold <b>“In”</b> cell — and that cell was the one cell in the grid with no position markers on it, so the bar could not find where to hang. Single day = the Short stay offer, which is exactly when nothing showed. Fixed: that cell carries the markers now, so the button appears.</p>
+    <div class="row"><span>“I chose room 6 and the buttons are far from the date and room”</span><b>the bar is pinned to that cell, not the top of the grid</b></div>
+    <div class="row" style="border-bottom:0"><span>“the buttons are popping up below the dates”</span><b>moved up onto the picked row — then one step higher again, see below</b></div>
+  </section>
+
+  <section class="card p-5" style="border-color:#1E5A45;background:#121B16">
+    <span class="pill ok">settled</span>
+    <h2 class="text-lg font-bold" style="margin-top:8px">It sits just above the picked row</h2>
+    <p class="cap" style="color:var(--body)">Your catch: on the row, it covered the very dates you had just chosen. It now floats <b>one bar height above</b> the picked row — plus a small gap so it does not read as touching the row above either — so the room and its dates stay visible. For the top rows, where the sticky day header is, it drops below the row instead, because that is the only room left on screen.</p>
+    <div class="row" style="margin-top:8px"><span>“move the buttons 2 columns to the left”</span><b>its left edge now starts two day columns before the picked day</b></div>
+    <div class="row"><span>“move the buttons a tiny bit more up”</span><b>gap above the row widened to 18px</b></div>
+    <div class="row" style="background:#121B16"><span>“instead of the Short stay button, show the 3 options — 3, 6 and 12 hours”</span><b class="gold">one day now offers <b>3h · 6h · 12h</b> with the room's own prices, and tapping one opens the form with those hours already chosen</b></div>
+    <div class="row" style="border-bottom:0"><span>Picked day is in the first two columns</span><b class="mut">clamped — it can never slide over the room names</b></div>
+  </section>
+
+  <!-- 1 -->
+  <section class="card p-5">
+    <span class="pill neu">design 1</span>
+    <h2 class="text-lg font-bold" style="margin-top:8px">Hung under the toolbar, sitting above the day you picked</h2>
+    <p class="cap" style="margin:6px 0 10px">The bar's left edge lines up with the picked column, so it is plainly tied to that date.</p>
+    <div class="wf">
+      <div class="tb"><span>‹ Sep 2026 › · Today · date box</span><span class="mut">toolbar</span></div>
+      <div style="margin:10px 0 0 62px"><span class="float"><span class="chip gold">Short stay</span><span class="chip">Cancel</span></span></div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <span class="day">23</span><span class="day sel">24</span><span class="day">25</span><span class="day">26</span><span class="day">27</span>
+      </div>
+    </div>
+    <div class="row"><span>Feels attached to the date</span><b class="mut">good</b></div>
+    <div class="row" style="border-bottom:1px solid #2C2C2C"><span>Picking a late date pushes it right — it needs clamping at the screen edge</span><b class="mut">watch out</b></div>
+  </section>
+
+  <!-- 2 -->
+  <section class="card p-5">
+    <span class="pill neu">design 2</span>
+    <h2 class="text-lg font-bold" style="margin-top:8px">In the toolbar itself, where the buttons are today</h2>
+    <p class="cap" style="margin:6px 0 10px">The same corner, except nothing is greyed out: the buttons <i>appear</i> when you pick, with the dates written beside them.</p>
+    <div class="wf">
+      <div class="tb">
+        <span>‹ Sep 2026 › · Today · date box</span>
+        <span style="display:flex;gap:6px;align-items:center"><span class="mut">Sep 24 → Sep 26 ·</span><span class="chip gold">+ New booking</span><span class="chip">Corporate</span><span class="chip">✕</span></span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:12px">
+        <span class="day">23</span><span class="day sel">24</span><span class="day range">25</span><span class="day sel">26</span><span class="day">27</span>
+      </div>
+    </div>
+    <div class="row"><span>Never covers a date — it lives in a row that already exists</span><b class="mut">good</b></div>
+    <div class="row" style="border-bottom:1px solid #2C2C2C"><span>Furthest from the dates, and the toolbar gets crowded on a small screen</span><b class="mut">watch out</b></div>
+  </section>
+
+  <!-- 3 -->
+  <section class="card p-5">
+    <span class="pill neu">design 3</span>
+    <h2 class="text-lg font-bold" style="margin-top:8px">A strip across the top of the grid</h2>
+    <p class="cap" style="margin:6px 0 10px">Room for everything: what you picked on the left, the buttons on the right. It floats over the first row of rooms, so nothing shifts.</p>
+    <div class="wf">
+      <div class="tb"><span>‹ Sep 2026 › · Today · date box</span><span class="mut">toolbar</span></div>
+      <div style="margin-top:8px;background:#1F1F1F;border:1px solid #D0AB60;border-radius:8px;padding:7px 10px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11.5px;color:#C9C4BB">Sep 24 → Sep 26 · 2 nights · Room 8</span>
+        <span style="display:flex;gap:6px"><span class="chip gold">+ New booking</span><span class="chip">Corporate</span><span class="chip">Cancel</span></span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <span class="day">23</span><span class="day sel">24</span><span class="day range">25</span><span class="day sel">26</span><span class="day">27</span>
+      </div>
+    </div>
+    <div class="row"><span>Clearest: it says what you picked AND what you can do</span><b class="mut">good</b></div>
+    <div class="row" style="border-bottom:1px solid #2C2C2C"><span>Covers the first room row until you pick something else</span><b class="mut">watch out</b></div>
+  </section>
+
+  <!-- 4 -->
+  <section class="card p-5">
+    <span class="pill neu">design 4</span>
+    <h2 class="text-lg font-bold" style="margin-top:8px">A bubble with a tail, pointing at the day</h2>
+    <p class="cap" style="margin:6px 0 10px">Hangs from the top edge with a small pointer down to the picked column — impossible to misread which date it belongs to.</p>
+    <div class="wf">
+      <div class="tb"><span>‹ Sep 2026 › · Today · date box</span><span class="mut">toolbar</span></div>
+      <div style="margin:12px 0 0 44px;display:inline-block">
+        <span class="float"><span class="chip gold">Short stay</span><span class="chip">Cancel</span></span>
+        <div style="width:2px;height:8px;background:#D0AB60;margin:0 auto"></div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <span class="day">23</span><span class="day sel">24</span><span class="day">25</span><span class="day">26</span><span class="day">27</span>
+      </div>
+    </div>
+    <div class="row"><span>Unmistakable which day it belongs to</span><b class="mut">good</b></div>
+    <div class="row" style="border-bottom:1px solid #2C2C2C"><span>The pointer is fiddly, and a range of dates has no single column to point at</span><b class="mut">watch out</b></div>
+  </section>
+
+  <!-- 5 -->
+  <section class="card p-5">
+    <span class="pill neu">design 5</span>
+    <h2 class="text-lg font-bold" style="margin-top:8px">The day header grows the buttons</h2>
+    <p class="cap" style="margin:6px 0 10px">The picked date's own column header widens and carries the buttons inside it — the closest to the date anything can be.</p>
+    <div class="wf">
+      <div class="tb"><span>‹ Sep 2026 › · Today · date box</span><span class="mut">toolbar</span></div>
+      <div style="display:flex;gap:6px;margin-top:12px;align-items:flex-start">
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:center"><span class="mut" style="font-size:10px">23</span><span class="day">—</span></div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+          <span style="font-size:10px" class="gold">24</span>
+          <div style="display:flex;gap:4px"><span class="chip gold">Short stay</span><span class="chip">✕</span></div>
+          <span class="day sel">—</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:center"><span class="mut" style="font-size:10px">25</span><span class="day">—</span></div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:center"><span class="mut" style="font-size:10px">26</span><span class="day">—</span></div>
+      </div>
+    </div>
+    <div class="row"><span>As close to the date as possible</span><b class="mut">good</b></div>
+    <div class="row" style="border-bottom:1px solid #2C2C2C"><span>A narrow column cannot hold three buttons, and a range spans several</span><b class="mut">watch out</b></div>
+  </section>
+
+  <!-- 6 -->
+  <section class="card p-5">
+    <span class="pill neu">design 6</span>
+    <h2 class="text-lg font-bold" style="margin-top:8px">A thin line across the very top of the grid — no buttons, just a hint that opens them</h2>
+    <p class="cap" style="margin:6px 0 10px">The calmest version: one line saying what you picked and “Book this”, which opens a small menu with the three choices.</p>
+    <div class="wf">
+      <div class="tb"><span>‹ Sep 2026 › · Today · date box</span><span class="mut">toolbar</span></div>
+      <div style="margin-top:8px;background:#1F1F1F;border:1px solid #3E3E3E;border-radius:99px;padding:5px 10px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11.5px;color:#C9C4BB">Room 8 · Sep 24 → Sep 26</span>
+        <span style="display:flex;gap:6px;align-items:center"><span class="chip gold">Book this ▾</span><span class="chip">✕</span></span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <span class="day">23</span><span class="day sel">24</span><span class="day range">25</span><span class="day sel">26</span><span class="day">27</span>
+      </div>
+    </div>
+    <div class="row"><span>Least clutter; the three choices are one tap deeper</span><b class="mut">trade-off</b></div>
+    <div class="row" style="border-bottom:1px solid #2C2C2C"><span>Two taps to book instead of one</span><b class="mut">watch out</b></div>
+  </section>
+
+  <!-- my pick -->
+  <section class="card p-5" style="border-color:#1E5A45;background:#121B16">
+    <span class="pill ok">what I would choose</span>
+    <h2 class="text-lg font-bold" style="margin-top:8px">Design 3, with design 1's placement when only one day is picked</h2>
+    <p class="cap" style="color:var(--body)">The full strip has room for the dates, the room and the buttons, and it never hides a date because it sits above the grid instead of over it. For a single day I would still line it up over that column, so the tie to the date is obvious.</p>
+  </section>
+
+  <!-- the choice -->
+  <section class="card p-5" style="border-color:#6F5420;background:#1B1811">
+    <h2 class="text-lg font-bold">Which design?</h2>
+    <form style="margin-top:12px" data-lavish-question="button-design" onsubmit="event.preventDefault(); const c=new FormData(event.currentTarget).get('design'); if(c) window.lavish.queuePrompt('Booking buttons, popping up at the top: ' + c + '. Log old booking stays a small icon in the toolbar.', { tag:'choice', text:'Design: ' + c, element:event.currentTarget, data:{ question:'button-design', answer:c } });">
+      <div class="grid md:grid-cols-2 gap-2.5">
+        <label class="opt"><input type="radio" name="design" value="1 — hung under the toolbar, above the picked column"><span><b style="font-size:13.5px">1 · Under the toolbar, above the day</b></span></label>
+        <label class="opt"><input type="radio" name="design" value="2 — in the toolbar itself, where the buttons are today"><span><b style="font-size:13.5px">2 · In the toolbar itself</b></span></label>
+        <label class="opt pick"><input type="radio" name="design" value="3 — a strip across the top of the grid (dates + room + buttons)" checked><span><b style="font-size:13.5px">3 · Strip across the top of the grid</b> <span class="gold">← my pick</span></span></label>
+        <label class="opt"><input type="radio" name="design" value="4 — a bubble with a tail pointing at the picked day"><span><b style="font-size:13.5px">4 · Bubble with a tail</b></span></label>
+        <label class="opt"><input type="radio" name="design" value="5 — the day header itself grows the buttons"><span><b style="font-size:13.5px">5 · Buttons in the day header</b></span></label>
+        <label class="opt"><input type="radio" name="design" value="6 — a thin line and a Book this button that opens the three choices"><span><b style="font-size:13.5px">6 · One line + “Book this”</b></span></label>
+      </div>
+      <div style="margin-top:16px"><button type="submit" class="btn gold">Queue my answer</button></div>
+    </form>
+    <p class="cap">Nothing is built from this page. Whatever you pick, I draw it once more at real size before touching the calendar.</p>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:6px">Five shapes for the same rule: pick the dates first, then the buttons appear</footer>
+</main>
+</body>
+</html>

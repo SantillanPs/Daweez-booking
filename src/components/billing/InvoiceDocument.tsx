@@ -6,6 +6,10 @@ import { getRateConfig } from '../../utils/rateConfig'
 import { getPaymentAccounts } from '../../utils/paymentAccounts'
 import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
 import { paymentPlanLabel } from '../../utils/bookingMoney'
+import { HOTEL_POLICY } from '../../utils/hotelPolicy'
+import { shortStayLine, stayHoursOf } from '../../utils/shortStay'
+import { fmtTime, fmtStayTime } from './stayLines'
+import { StatementChargesTable } from './StatementChargesTable'
 
 interface InvoiceDocumentProps {
   primaryBooking: Booking
@@ -18,21 +22,6 @@ interface InvoiceDocumentProps {
 }
 
 const money = (n: number) => '₱' + n.toLocaleString()
-const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '')
-const fmtTime = (t?: string) => {
-  if (!t) return ''
-  const [h, m] = t.split(':').map(Number)
-  const period = h >= 12 ? 'pm' : 'am'
-  const hh = h % 12 === 0 ? 12 : h % 12
-  const label = hh + ':' + String(m).padStart(2, '0') + period
-  return h === 12 && m === 0 ? label.replace('pm', 'nn') : label
-}
-// Check-in/out TIMES aren't planned — they're recorded at the actual check-in/out.
-// Show the recorded actual time (date + time) when present, else just the date.
-const fmtStayTime = (dateStr?: string, actual?: string) =>
-  actual
-    ? new Date(actual).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-    : fmtDate(dateStr)
 
 // One labelled line, like the paper form. A field the booking does not hold is
 // skipped completely — never printed as an empty labelled blank, which just ate
@@ -63,6 +52,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
 
   const guestCount = 1 + (b.companions ? b.companions.length : 0)
   const hasCompanions = !!(b.companions && b.companions.length > 0)
+  const stayHours = stayHoursOf(b)
 
   const method = (statement.paymentMethod || '').trim()
   const kind = paymentKind(method)
@@ -145,13 +135,23 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           </div>
         </div>
 
-        {/* Stay */}
+        {/* Stay. A SHORT STAY is hours, not nights (the owner's S3 ruling): the stored
+            check-out is the next day because the room is taken for the whole day, so
+            printing it would name a check-out the guest never had. Before the desk
+            presses Check in the bill says `3 hours from arrival`; after that it says
+            when the hours run out. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 py-2 border-t border-soft">
           <Line label="Room No." value={roomNo} />
           <Line label="Room Type" value={roomType} />
           <Line label="Check In Date &amp; Time" value={fmtStayTime(b.check_in, b.actual_check_in)} />
-          <Line label="Check Out Date &amp; Time" value={fmtStayTime(b.check_out, b.actual_check_out)} />
-          <Line label="Standard Check-in / Out" value={fmtTime(rates.standardCheckInTime) + ' / ' + fmtTime(rates.standardCheckOutTime)} />
+          {stayHours > 0 ? (
+            <Line label="Short Stay" value={shortStayLine(b.actual_check_in, stayHours)} />
+          ) : (
+            <>
+              <Line label="Check Out Date &amp; Time" value={fmtStayTime(b.check_out, b.actual_check_out)} />
+              <Line label="Standard Check-in / Out" value={fmtTime(rates.standardCheckInTime) + ' / ' + fmtTime(rates.standardCheckOutTime)} />
+            </>
+          )}
         </div>
 
         {/* Companions — only when there are companions to list. With nobody
@@ -180,32 +180,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
         )}
 
         {/* Charges */}
-        <div className="py-3 border-t border-soft">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-paper-100 border-y-2 border-slate-600 text-left text-[10px] uppercase tracking-wider text-slate-800">
-                <th className="py-1.5 px-2 font-bold">Description</th>
-                <th className="py-1.5 px-2 font-bold text-center w-16">Qty/Night</th>
-                <th className="py-1.5 px-2 font-bold text-center w-16">Unit</th>
-                <th className="py-1.5 px-2 font-bold text-right w-20">Price</th>
-                <th className="py-1.5 px-2 font-bold text-center w-20">Discount</th>
-                <th className="py-1.5 px-2 font-bold text-right w-24">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {statement.lineItems.map((it) => (
-                <tr key={it.key} className="border-b border-slate-300/60">
-                  <td className="py-1.5 px-2 text-[13px]">{it.description}</td>
-                  <td className="py-1.5 px-2 text-center font-mono text-[13px]">{it.qty}</td>
-                  <td className="py-1.5 px-2 text-center text-[11px] uppercase tracking-wide text-slate-600">{it.unit}</td>
-                  <td className="py-1.5 px-2 text-right font-mono text-[13px]">{it.price ? money(it.price) : '—'}</td>
-                  <td className="py-1.5 px-2 text-center text-[11px] text-slate-600">{it.discount ? money(it.discount) : '—'}</td>
-                  <td className="py-1.5 px-2 text-right font-mono text-[13px]">{money(it.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <StatementChargesTable items={statement.lineItems} />
 
         {/* Payment + totals */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 py-3 border-t-2 border-slate-700">
@@ -293,11 +268,12 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           </div>
         </div>
 
-        {/* Pension Policies */}
+        {/* Pension Policies — the hotel's own wording, VERBATIM (the owner's ruling):
+            the guest must read the same text on the bill as on the form they signed.
+            Never paraphrase it, and never let the figures drift from the form. */}
         <div className="mt-5 border-t border-dashed border-slate-400 pt-3 space-y-1 text-[9.5px] text-slate-600 leading-snug">
           <p className="text-[10px] font-bold uppercase tracking-wider text-main">Pension Policies</p>
-          <p>Early check-in &amp; late checkout — ₱{rates.lateEarlyRatePesos}/hour (after {rates.lateEarlyCapHours} hours, 1 night). Standard check-in {fmtTime(rates.standardCheckInTime)} / check-out {fmtTime(rates.standardCheckOutTime)}.</p>
-          <p>No smoking inside rooms. Key card deposit — ₱500. Security deposit — ₱{rates.securityDeposit}. The guest is responsible for loss or damage.</p>
+          <p>{HOTEL_POLICY}</p>
         </div>
 
         {/* Prepared by + Guest Signature */}

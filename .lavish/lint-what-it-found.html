@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The code checker — what happened, and the one choice</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .raised{background:var(--raised);border:1px solid var(--line);border-radius:10px}
+  .cap{font-size:13px;color:var(--sec);margin:6px 0 0}
+  .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
+  .num{font-family:"Sora";font-weight:800;font-size:40px;line-height:1.05}
+  .gold{color:var(--gold)} .mut{color:var(--mut)}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:6px}
+  .ok{background:#12261F;color:#34D399}
+  .neu{background:#2A2A2A;color:#C9C4BB}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;color:var(--sec);border-top:1px solid #2C2C2C;padding:11px 0}
+  .row b{color:var(--body);font-weight:600}
+  .opt{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--raised);cursor:pointer}
+  .opt.pick{border-color:var(--gold);background:#221E14}
+  .btn{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:12px 18px;background:var(--raised);color:var(--body);cursor:pointer}
+  .btn.gold{background:var(--gold);border-color:var(--gold);color:#141414}
+  input[type=radio]{accent-color:#D0AB60;width:18px;height:18px;margin-top:3px;flex-shrink:0}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[820px] p-6 space-y-4">
+
+  <header class="card p-5" style="border-color:#1E5A45">
+    <span class="pill ok">Nothing is broken</span>
+    <h1 class="text-2xl font-bold" style="margin-top:12px">A code checker now guards your colours and sizes</h1>
+    <p class="cap" style="margin-top:10px">It reads the app's code and tells me when something drifts from your look — a colour that isn't yours, a size nobody chose. <b>You never run it. I do, every time I change something.</b></p>
+  </header>
+
+  <section class="card p-5">
+    <div class="grid grid-cols-2 gap-4">
+      <div class="raised p-4">
+        <p class="lbl">Mistakes it found in your code</p>
+        <p class="num" style="color:#F87171;margin-top:6px">22</p>
+        <p class="cap" style="margin-top:0">…and all 22 are fixed.</p>
+      </div>
+      <div class="raised p-4">
+        <p class="lbl">Small notes left</p>
+        <p class="num" style="color:#E6C989;margin-top:6px">327</p>
+        <p class="cap" style="margin-top:0">Nothing is broken. These are tidy-ups.</p>
+      </div>
+    </div>
+
+    <p class="lbl" style="margin:16px 0 0">What the 327 notes are</p>
+    <div style="margin-top:4px">
+      <div class="row"><span><b>245</b> places still painted with ordinary colours instead of your gold, charcoal and red</span><span class="mut">cosmetic</span></div>
+      <div class="row"><span><b>81</b> places with a colour code typed by hand — including the old teal you dropped</span><span class="mut">cosmetic</span></div>
+      <div class="row"><span><b>1</b> dropdown that borrows a style from the button library</span><span class="mut">cosmetic</span></div>
+    </div>
+  </section>
+
+  <section class="card p-5">
+    <h2 class="text-lg font-bold">What I did today</h2>
+    <div style="margin-top:8px">
+      <div class="row"><span>Cleared out 13 leftovers nobody was using</span><b>done</b></div>
+      <div class="row"><span>Two bits of code were making screens work twice as hard</span><b>rebuilt</b></div>
+      <div class="row"><span>The receipt's helper code lived in the wrong file</span><b>moved</b></div>
+      <div class="row"><span>Four settings nobody could see or change</span><b>deleted</b></div>
+    </div>
+  </section>
+
+  <section class="card p-5" style="border-color:#6F5420">
+    <h2 class="text-lg font-bold">Look at two boxes when you next open the app</h2>
+    <p class="cap" style="margin-top:8px">Both are on the booking form, and both should feel exactly as they did before. If either feels wrong, tell me.</p>
+    <div class="grid grid-cols-2 gap-3" style="margin-top:12px">
+      <div class="raised p-4">
+        <p style="font-size:14px;font-weight:700">The deposit box</p>
+        <p class="cap">Arrives at half the stay · stops following the moment you type your own figure</p>
+      </div>
+      <div class="raised p-4">
+        <p style="font-size:14px;font-weight:700">The money boxes</p>
+        <p class="cap">Backspace still clears them · still no spinner</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-5" style="border-color:#6F5420;background:#1B1811">
+    <h2 class="text-lg font-bold">The only thing I need from you</h2>
+    <p class="cap" style="margin:6px 0 14px">Those 245 ordinary colours are the whole work list. Nothing breaks if they stay — but your screens will keep looking slightly generic until they go.</p>
+
+    <form data-lavish-question="colour-job" onsubmit="event.preventDefault(); const c = new FormData(event.currentTarget).get('job'); if (c) window.lavish.queuePrompt('Colour tidy-up: ' + c, { tag:'choice', text:'Colour tidy-up: ' + c, element:event.currentTarget, data:{ question:'colour-job', answer:c } });">
+      <div class="space-y-3">
+        <label class="opt pick" style="display:flex;gap:12px">
+          <input type="radio" name="job" value="leave it for now — show me the list whenever I ask" checked>
+          <span><b style="font-size:14px">Leave it for now</b> <span class="pill neu" style="margin-left:6px">my recommendation</span>
+          <span class="cap" style="display:block">The checker keeps noting them quietly. Nothing to do.</span></span>
+        </label>
+        <label class="opt" style="display:flex;gap:12px">
+          <input type="radio" name="job" value="do it as a job — show me before/after of the screens that change">
+          <span><b style="font-size:14px">Do the colour tidy-up next</b>
+          <span class="cap" style="display:block">I'd put it on the board, and show you before/after of each screen it changes before you agree.</span></span>
+        </label>
+      </div>
+      <div style="margin-top:16px"><button type="submit" class="btn gold">Queue my answer</button></div>
+    </form>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:6px">Your app checks clean: no mistakes left. The 327 notes are tidy-ups, not faults.</footer>
+</main>
+</body>
+</html>

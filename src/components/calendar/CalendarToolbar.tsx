@@ -1,5 +1,5 @@
 import React from 'react'
-import { Calendar, ChevronLeft, ChevronRight, Plus, Users, FilePlus } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, FilePlus } from 'lucide-react'
 
 interface CalendarToolbarProps {
   monthHeader: string
@@ -13,15 +13,13 @@ interface CalendarToolbarProps {
   /** Jump the window to the day the desk picked (option A, card k154). */
   onJumpToDate: (value: string) => void
   onToday: () => void
-  onNewBooking: () => void
-  onNewCorporate: () => void
   onLogOldBooking: () => void
-  newBookingDisabled: boolean
   logOldDisabled: boolean
 }
 
-// Calendar top bar: window title, day navigation, and the primary actions.
-export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onPrevMonth, onNextMonth, onJumpToDate, onToday, onNewBooking, onNewCorporate, onLogOldBooking, newBookingDisabled, logOldDisabled }: CalendarToolbarProps) {
+// Calendar top bar: window title and day navigation. The booking actions live in the
+// grid's own action bar (see TimelineGrid) — they appear once dates are picked.
+export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onPrevMonth, onNextMonth, onJumpToDate, onToday, onLogOldBooking, logOldDisabled }: CalendarToolbarProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-card px-3 py-2 rounded-xl border border-soft flex-shrink-0 shadow-soft">
       <h2 className="font-display font-bold text-lg text-main tracking-tight flex items-center gap-2">
@@ -59,18 +57,11 @@ export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onP
           </button>
         </div>
 
-        <div className="flex items-center rounded-lg overflow-hidden border border-soft shadow-sm">
-          <button onClick={onNewBooking} disabled={newBookingDisabled} className="flex items-center gap-1.5 bg-gold-400 hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed text-ink-900 text-xs font-bold px-4 py-2 transition-colors cursor-pointer">
-            <Plus className="w-3.5 h-3.5" />
-            New booking
-          </button>
-          <div className="w-px h-5 bg-soft" />
-          <button onClick={onNewCorporate} disabled={newBookingDisabled} title={newBookingDisabled ? 'Pick a date range on the calendar first' : 'Corporate / partner booking'} className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-gold-700 bg-card hover:bg-gold-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer">
-            <Users className="w-3.5 h-3.5" />
-            Corporate
-          </button>
-        </div>
-
+        {/* The booking actions are NOT here any more (the owner's design): they appear
+            in the action bar under this toolbar, lined up over the day that was picked
+            (see TimelineGrid), so nothing has to be greyed out and the rule reads
+            itself — pick the dates first. Log old booking stays: it is a back-office
+            job rather than a stay, and it needs a range that the grid does not give it. */}
         <button onClick={onLogOldBooking} disabled={logOldDisabled} title={logOldDisabled ? 'Pick a date range on the calendar first' : 'Log old booking'} aria-label="Log old booking" className="flex items-center justify-center w-9 h-9 rounded-lg bg-card border border-soft text-muted hover:text-main hover:bg-page disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer">
           <FilePlus className="w-4 h-4 text-gold-600" />
         </button>

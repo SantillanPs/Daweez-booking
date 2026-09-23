@@ -37,13 +37,19 @@ export function calculatePricing(params: {
   rooms?: Room[]
   venues?: Venue[]
   usePromo?: boolean
+  /**
+   * Short stay: the hours the room was taken for — 3, 6, 12 or 22. The price comes
+   * from the room's own short-stay figure (the 22-hour one IS the room's price), and
+   * the stay is ONE charge, not nights × rate.
+   */
+  shortStayHours?: number
   appliedDiscount?: AppliedDiscount
   earlyCheckInHours?: number
   lateCheckOutHours?: number
   venueDayBlocks?: number
   rates?: RateConfig
 }) {
-  const { roomId, venueId, checkIn, checkOut, breakfastOrders, breakfastIncluded, equipmentRentals, eventAddons, rateMultiplier, companions, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastGuestCount, breakfastDays, breakfastRecords, rooms: liveRooms, venues: liveVenues, usePromo, appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, rates: ratesOverride } = params
+  const { roomId, venueId, checkIn, checkOut, breakfastOrders, breakfastIncluded, equipmentRentals, eventAddons, rateMultiplier, companions, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastGuestCount, breakfastDays, breakfastRecords, rooms: liveRooms, venues: liveVenues, usePromo, appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, rates: ratesOverride, shortStayHours } = params
   const rates = ratesOverride ?? DEFAULT_RATE_CONFIG
 
   let basePrice = 0
@@ -56,7 +62,6 @@ export function calculatePricing(params: {
   const roomList = liveRooms && liveRooms.length > 0 ? liveRooms : DEFAULT_ROOMS
   const venueList = liveVenues && liveVenues.length > 0 ? liveVenues : DEFAULT_VENUES
   const venue = venueId ? venueList.find(v => v.id === normalizeVenueId(venueId)) : undefined
-  const isVacationHouse = venue ? venue.name === 'Vacation House' : false
   const isVenue = !!venueId
   const isDayBlockVenue = venue ? (venue.name === 'Gazebo' || venue.name === 'Garden Area') : false
 
@@ -94,11 +99,25 @@ export function calculatePricing(params: {
     } else {
       basePrice = singlePrice
     }
-    nights = Math.max(1, diffDays(checkIn, checkOut))
-    stayQuantity = nights
-    stayUnit = 'NIGHT'
-  } else if (venueId) {
-    if (isDayBlockVenue) {
+    // SHORT STAY: ONE charge for the hours the room was taken for, straight off the
+    // room's own board price — 3, 6 and 12 hours carry their own figure, and 22
+    // hours IS the room's price. No nights, and no early/late hours: a 10am arrival
+    // is not "4 hours early" when the stay is three hours long.
+    const shortPrice = shortStayHours === 3 ? room?.hour3_price
+      : shortStayHours === 6 ? room?.hour6_price
+      : shortStayHours === 12 ? room?.hour12_price
+      : singlePrice
+    if (shortStayHours) {
+      basePrice = shortPrice != null && shortPrice > 0 ? shortPrice : singlePrice
+      nights = 1
+      stayQuantity = 1
+      stayUnit = shortStayHours + ' HOURS'
+    } else {
+      nights = Math.max(1, diffDays(checkIn, checkOut))
+      stayQuantity = nights
+      stayUnit = 'NIGHT'
+    }
+  } else if (venueId) {    if (isDayBlockVenue) {
       const perBlock = rates.dayBlockRate > 0 ? rates.dayBlockRate : (venue ? venue.base_price : 0)
       undiscountedBasePrice = perBlock
       let blocks = venueDayBlocks ?? Math.max(1, diffDays(checkIn, checkOut))

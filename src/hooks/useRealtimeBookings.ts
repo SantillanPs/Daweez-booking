@@ -66,6 +66,9 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     payment_records: (b.payment_records as Booking['payment_records']) || undefined,
     venue_day_blocks: b.venue_day_blocks != null ? Number(b.venue_day_blocks) : undefined,
     breakfast_days: (b.breakfast_days as string[]) || undefined,
+    // Short stay (the hours the room was taken for). Missing here would wipe it on
+    // the next save, exactly like the fields the comment above warns about.
+    stay_hours: b.stay_hours != null ? Number(b.stay_hours) : undefined,
   }
 }
 

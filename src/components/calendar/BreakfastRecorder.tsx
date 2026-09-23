@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Utensils, Plus, X } from 'lucide-react'
+import { Utensils, X } from 'lucide-react'
 import { BreakfastMenuOption, BreakfastRecord } from '../../types/booking'
 import { NumInput } from '../NumInput'
 

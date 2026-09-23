@@ -103,6 +103,9 @@ function bookingPricing(b: Booking, o: StatementInput) {
     rooms: o.rooms,
     venues: o.venues,
     usePromo,
+    // The hours the room was sold for: without them the printed bill charges the
+    // whole night for a 3-hour stay (the screen says ₱550, the paper printed ₱850).
+    shortStayHours: b.stay_hours,
     rates: getRateConfig(),
   })
 }

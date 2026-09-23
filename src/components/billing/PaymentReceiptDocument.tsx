@@ -3,7 +3,8 @@ import { Printer, X } from 'lucide-react'
 import { Booking, PaymentRecord, Room, Venue } from '../../types/booking'
 import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
 import { receiptNumberFor, paymentBreakdown } from '../../utils/receiptNumber'
-import { Block, Row, Rule, fmtDateTime, money } from './receiptPrimitives'
+import { Block, Row, Rule } from './receiptPrimitives'
+import { fmtDateTime, fmtDay, money } from './receiptText'
 
 interface PaymentReceiptDocumentProps {
   booking: Booking
@@ -95,6 +96,12 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
         <p className="text-[8px] font-bold uppercase tracking-wider">Received From</p>
         <Block label="Guest" value={booking.guest_name} />
         <Block label="Room No" value={unitLabel} />
+        {/* A short stay says WHICH day and HOW LONG under the room, so the slip the
+            guest keeps proves what was bought — "Room Accommodation" alone could be
+            3 hours or a night. Ordinary stays print nothing here. */}
+        {booking.stay_hours ? (
+          <Block label="Stay" value={fmtDay(booking.check_in) + ' · ' + booking.stay_hours + ' hours'} />
+        ) : null}
         <Block label="Status" value={statusLine} />
 
         <Rule />

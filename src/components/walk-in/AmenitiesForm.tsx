@@ -38,7 +38,6 @@ export const AmenitiesForm = React.memo(
   ({
     hasRooms,
     hasVenues,
-    hasAddons,
     estRentals,
     estAddons,
     formChairs,

@@ -4,6 +4,7 @@ import { Booking } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { dateToString } from '../utils/helpers'
 import { WalkInBookingForm } from './WalkInBookingForm'
+import { shortStayEnd, stayHoursOf } from '../utils/shortStay'
 import { takeFocusedBooking } from '../utils/bookingFocus'
 import { ExtendStayModal } from './calendar/ExtendStayModal'
 import { TimelineGrid } from './calendar/TimelineGrid'
@@ -40,7 +41,17 @@ export function CalendarTab() {
   const [extendCheckoutDate, setExtendCheckoutDate] = useState(''); const [extendError, setExtendError] = useState('')
 
   // ── Full wizard (editing + advanced) ──
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null); const [showManualForm, setShowManualForm] = useState(false); const [formSelections, setFormSelections] = useState<Record<string, UnitSel>>({}); const [manualBookingType, setManualBookingType] = useState<'individual' | 'partner'>('individual')
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null); const [showManualForm, setShowManualForm] = useState(false); const [formSelections, setFormSelections] = useState<Record<string, UnitSel>>({}); const [manualBookingType, setManualBookingType] = useState<'individual' | 'partner'>('individual'); const [formStayHours, setFormStayHours] = useState<number | null>(null)
+
+  // ── The short-stay clock (the owner's ruling) ────────────────────────────────
+  // No countdown is ever printed: the calendar block shows the TIME the room is free,
+  // and when that time arrives the booking's panel opens BY ITSELF so the desk can
+  // check the guest out. It waits while the desk is mid-task (another panel or form
+  // open) — the block simply stays red — and due rooms are opened ONE AFTER ANOTHER,
+  // because only one panel is ever on screen.
+  const [dueShortStayIds, setDueShortStayIds] = useState<string[]>([])
+  const poppedDueRef = useRef<Set<string>>(new Set())
+  const deskBusy = showManualForm || showCorporate || showLogOld || !!selectedExtendBooking
 
   // Latest-value refs keep the click handler stable so a date click never
   // re-renders the whole grid.
@@ -53,10 +64,38 @@ export function CalendarTab() {
     timelineSelectionRef.current = timelineSelection; groupSelectionRef.current = groupSelection; bookingsRef.current = bookings; roomsRef.current = rooms; venuesRef.current = venues
   })
 
+  // The scan: which short stays are past their hours, and popping the panel for the
+  // first one nobody has dealt with yet. A closed panel is never reopened — the desk
+  // said "not now" — the block just stays red until they tap it.
+  React.useEffect(() => {
+    const scan = () => {
+      const now = Date.now()
+      const due = bookings.filter(b => {
+        const end = shortStayEnd(b.actual_check_in, stayHoursOf(b))
+        return !!end && end.getTime() <= now && !b.actual_check_out && b.status !== 'blocked'
+      })
+      setDueShortStayIds(prev => {
+        const ids = due.map(b => b.id)
+        return prev.length === ids.length && prev.every((found, i) => found === ids[i]) ? prev : ids
+      })
+      if (deskBusy) return
+      const next = due.find(b => !poppedDueRef.current.has(b.id))
+      if (!next) return
+      poppedDueRef.current.add(next.id)
+      setSelectedExtendBooking(next)
+    }
+    scan()
+    const timer = window.setInterval(scan, 15000)
+    return () => window.clearInterval(timer)
+  }, [bookings, deskBusy])
+
   // Today's own key: the list is rebuilt if the app is left open past midnight.
   const todayKey = dateToString(new Date())
   const daysList = useMemo<TimelineDayInfo[]>(
     () => buildTimelineDays(monthAnchor),
+    // todayKey is not read inside on purpose: it IS the midnight roll-over trigger,
+    // so leaving the app open overnight rebuilds the day list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [monthAnchor, todayKey]
   )
   const monthHeader = useMemo(() => timelineHeader(daysList), [daysList])
@@ -166,6 +205,23 @@ export function CalendarTab() {
     }
   }
 
+  /** Short stay: the SAME flow as New booking — pick on the grid first, then press the button — except a short stay needs ONE day rather than a range, because the room is taken for that whole day. Check-out is filled in as the next day for the desk, and the hours tapped on the bar (3, 6 or 12) travel into the form already chosen. */
+  const confirmShortStay = (hours: number) => {
+    const picked = timelineSelectionRef.current
+    const roomId = picked?.roomId
+    if (!roomId) return
+    const checkIn = new Date(picked.checkIn)
+    const checkOut = new Date(picked.checkIn)
+    checkOut.setDate(checkOut.getDate() + 1)
+    setTimelineSelection(null)
+    setGroupSelection(null)
+    setEditingBooking(null)
+    setManualBookingType('individual')
+    setFormStayHours(hours)
+    setFormSelections({ [roomId]: { checkIn: dateToString(checkIn), checkOut: dateToString(checkOut), type: 'room' } })
+    setShowManualForm(true)
+  }
+
   const confirmGroup = () => {
     if (!groupSelection) return
     const serialized: Record<string, UnitSel> = {}
@@ -174,6 +230,7 @@ export function CalendarTab() {
     })
     setGroupSelection(null)
     setTimelineSelection(null)
+    setFormStayHours(null)
     setFormSelections(serialized)
     setEditingBooking(null)
     setManualBookingType('individual')
@@ -222,10 +279,7 @@ export function CalendarTab() {
         onNextMonth={() => stepMonth(1)}
         onJumpToDate={jumpToDay}
         onToday={() => setMonthAnchor(todayStart())}
-        newBookingDisabled={!groupSelection || Object.keys(groupSelection).length === 0}
         logOldDisabled={!groupSelection || Object.keys(groupSelection).length === 0}
-        onNewBooking={confirmGroup}
-        onNewCorporate={confirmGroupCorporate}
         onLogOldBooking={() => {
           const serialized: Record<string, UnitSel> = {}
           if (groupSelection) Object.entries(groupSelection).forEach(([id, sel]) => { serialized[id] = { checkIn: dateToString(sel.checkIn), checkOut: dateToString(sel.checkOut), type: sel.type } })
@@ -244,12 +298,16 @@ export function CalendarTab() {
           daysList={daysList}
           bookingByRoomAndDate={bookingByRoomAndDate}
           timelineSelection={timelineSelection}
-          setTimelineSelection={setTimelineSelection}
           groupSelection={groupSelection}
           handleCellClick={handleCellClick}
           setSelectedExtendBooking={setSelectedExtendBooking}
           setExtendCheckoutDate={setExtendCheckoutDate}
           setExtendError={setExtendError}
+          onNewBooking={confirmGroup}
+          onNewCorporate={confirmGroupCorporate}
+          onNewShortStay={confirmShortStay}
+          onClearSelection={() => { setTimelineSelection(null); setGroupSelection(null) }}
+          dueShortStayIds={dueShortStayIds}
         />
       </div>
 
@@ -268,13 +326,14 @@ export function CalendarTab() {
           setExtendCheckoutDate={setExtendCheckoutDate}
           onCancelBooking={cancelBooking}
           onUpdateBooking={updateBooking}
-          onEditBooking={() => { setEditingBooking(liveExtendBooking); setShowManualForm(true); setSelectedExtendBooking(null) }}
+          onEditBooking={() => { setEditingBooking(liveExtendBooking); setFormStayHours(null); setShowManualForm(true); setSelectedExtendBooking(null) }}
+          shortStayDue={dueShortStayIds.indexOf(liveExtendBooking.id) !== -1}
         />
       )}
 
       {showManualForm && (
         <WalkInBookingForm
-          key={editingBooking ? 'edit-' + editingBooking.id : Object.keys(formSelections).join(',')}
+          key={editingBooking ? 'edit-' + editingBooking.id : Object.keys(formSelections).join(',') + (formStayHours ? '-h' + formStayHours : '')}
           rooms={rooms}
           venues={venues}
           bookings={bookings}
@@ -287,8 +346,9 @@ export function CalendarTab() {
             ? (editingBooking.invoice_number ? bookings.filter(b => b.invoice_number === editingBooking.invoice_number) : [editingBooking])
             : undefined}
           initialBookingType={manualBookingType}
+          initialStayHours={formStayHours ?? undefined}
           onClose={() => {
-            setShowManualForm(false); setEditingBooking(null); setFormSelections({})
+            setShowManualForm(false); setEditingBooking(null); setFormSelections({}); setFormStayHours(null)
             // Once the billing statement is closed, the booking just made opens
             // itself in the quick view (card k134).
             const created = takeFocusedBooking()

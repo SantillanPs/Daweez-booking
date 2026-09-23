@@ -17,6 +17,11 @@ export interface BookingEstimateParams {
   formEventTable: number
   formEventTent: number
   formChairs: number
+  /**
+   * Short stay: the hours the room is being sold for (3/6/12/22). The price is the
+   * room's own figure for those hours and is charged ONCE — never per night.
+   */
+  shortStayHours?: number | null
 }
 
 export interface BookingEstimate {
@@ -58,11 +63,27 @@ export function computeBookingEstimate(p: BookingEstimateParams): BookingEstimat
       : (venue?.promo_price ?? null)
     // ONE PRICE (card k128): the promo figure is the price whenever there is one.
     const effectiveRate = promo != null && promo > 0 ? promo : regular
-    regularTotal += regular * n
-    discountedTotal += effectiveRate * n
+
+    // SHORT STAY: ONE charge off the room's own board price for those hours — the
+    // 22-hour figure IS the room's price. No nights, and no breakfast or rentals:
+    // a three-hour guest does not buy either.
+    const shortStay = p.shortStayHours ?? null
+    const shortPrice = sel.type === 'room' && shortStay
+      ? (shortStay === 3 ? room?.hour3_price : shortStay === 6 ? room?.hour6_price : shortStay === 12 ? room?.hour12_price : effectiveRate)
+      : null
+    const quantity = shortStay ? 1 : n
+
+    if (shortStay) {
+      const price = shortPrice != null && shortPrice > 0 ? Number(shortPrice) : effectiveRate
+      regularTotal += price
+      discountedTotal += price
+    } else {
+      regularTotal += regular * quantity
+      discountedTotal += effectiveRate * quantity
+    }
 
     const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
-    if (sel.type === 'room') {
+    if (sel.type === 'room' && !shortStay) {
       // Breakfast is the ROOM's choice, at the room's OWN breakfast price — one
       // charge for the stay (card k140). A partner deal that includes breakfast
       // does not charge it again.

@@ -49,6 +49,25 @@
   .bad{border-color:#5A2A28 !important}
   .btn{font:inherit;font-size:12.5px;font-weight:700;border:1px solid #3E3E3E;border-radius:8px;padding:8px 14px;background:#262626;color:#EDEAE4;cursor:pointer}
   .btn.gold{background:var(--gold-400);border-color:var(--gold-400);color:#141414}
+  /* the till drawn as the menu it actually is — a paper card, dimmed off-white so it still reads as paper */
+  .mp{background:#E6E2DA;color:#1C1C1C;border-radius:6px;padding:12px 16px 10px;box-shadow:0 1px 0 #00000055, inset 0 0 0 1px #CFC9BD}
+  .mp-head{text-align:center;border-bottom:2px solid #1C1C1C;padding-bottom:7px;margin-bottom:6px}
+  .mp-name{font-family:"Sora";font-weight:800;font-size:14.5px;letter-spacing:.16em;text-transform:uppercase;margin:0;color:#1C1C1C}
+  .mp-sub{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#6B655B;margin:3px 0 0}
+  .mp-cols{display:grid;grid-template-columns:1fr 1fr;gap:0 26px}
+  .mp-cat{font-family:"Sora";font-weight:700;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:#8A6A22;margin:11px 0 3px;display:flex;align-items:center;gap:8px}
+  .mp-cat::before,.mp-cat::after{content:"";flex:1;border-top:1px solid #B9B3A6}
+  .mp-cat i{font-style:normal;font-size:9px;font-weight:600;color:#6B655B;letter-spacing:.06em}
+  .mp-row{display:block;padding:3px 5px;border-radius:4px;cursor:pointer}
+  .mp-row:hover{background:#DAD4C7}
+  .mp-row.on{background:#F1E7CF;box-shadow:inset 0 0 0 1px #C9A94E}
+  .mp-line{display:flex;align-items:baseline;gap:5px}
+  .mp-dish{font-size:12.5px;font-weight:700;color:#1C1C1C}
+  .mp-lead{flex:1;border-bottom:1px dotted #A9A395;transform:translateY(-3px)}
+  .mp-price{font-family:"Sora";font-weight:700;font-size:12.5px;color:#1C1C1C}
+  .mp-count{min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:#1C1C1C;color:#E6C989;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;align-self:center}
+  .mp-note{display:block;font-size:9.5px;font-style:italic;color:#6B655B;margin-top:-1px}
+  .mp-foot{margin-top:8px;padding-top:6px;border-top:1px solid #C4BEB1;font-size:9.5px;letter-spacing:.04em;color:#6B655B;text-align:center}
 </style>
 </head>
 <body>
@@ -137,7 +156,7 @@
   <section class="card p-4" style="border-color:#1E5A45">
     <span class="pill" style="background:#12261F;color:#34D399">P2 · your pick</span>
     <h2 class="text-lg font-bold" style="margin-top:10px">Everyone open, always visible: bill left, till right</h2>
-    <p class="cap" style="margin:6px 0 10px">No cards and no switch. One strip across the top lists <b>everyone you are serving</b> — every guest who is in the hotel, plus every diner tab — each with their own total, so switching tables is one tap. The selected bill is a running receipt on the left, and the till takes the rest as <b>one long menu, separated by category</b>: the staff just scroll, the way they read the paper card.</p>
+    <p class="cap" style="margin:6px 0 10px">No cards and no switch. One strip across the top lists <b>everyone you are serving</b> — every guest who is in the hotel, plus every diner tab — each with their own total, so switching tables is one tap. The selected bill is a running receipt on the left, and the till takes the rest as <b>the printed menu card itself</b>: one scroll, every line live.</p>
     <div class="wf">
       <div style="display:flex;align-items:center;gap:8px;min-width:900px;margin-bottom:10px">
         <span class="lbl">Being served</span>
@@ -156,34 +175,62 @@
           <div style="margin-top:8px"><span class="chip">Print the tab</span></div>
           <div class="box soft" style="margin-top:8px"><span class="cap" style="margin:0">On the room bill · received at check-out</span></div>
         </div>
-        <div class="box">
+        <div>
           <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
-            <span class="cap" style="margin:0">The menu — tap a line to put it on the bill</span>
+            <span class="cap" style="margin:0">The till — the menu card itself, and every line on it is tappable</span>
             <span class="cap" style="margin:0">scroll ↓</span>
           </div>
-          <div style="max-height:330px;overflow:hidden">
-            <div class="lbl" style="color:#E6C989;border-bottom:1px solid #332B18;padding-bottom:4px">Breakfast · 6–10 am</div>
-            <div class="line"><span>Hotsilog <span class="lbl">egg · garlic rice · hotdog</span></span><span>₱200 &nbsp;<span class="chip on">1</span></span></div>
-            <div class="line"><span>Bangsilog <span class="lbl">egg · garlic rice · bangus</span></span><span>₱200 &nbsp;<span class="chip on">1</span></span></div>
-            <div class="line"><span>Cornsilog <span class="lbl">egg · garlic rice · corned beef</span></span><span>₱200 &nbsp;<span class="chip on">1</span></span></div>
-            <div class="line"><span>Porksilog <span class="lbl">egg · garlic rice · pork</span></span><span>₱200</span></div>
-            <div class="line"><span>Lumpiasilog <span class="lbl">egg · garlic rice · lumpia</span></span><span>₱200</span></div>
-            <div class="line"><span>Beefsilog <span class="lbl">egg · garlic rice · beef</span></span><span>₱210</span></div>
-            <div class="lbl" style="color:#E6C989;border-bottom:1px solid #332B18;padding:10px 0 4px">Value meals</div>
-            <div class="line"><span>Chicken adobo rice bowl</span><span>₱180</span></div>
-            <div class="line"><span>Pork sisig rice bowl</span><span>₱190</span></div>
-            <div class="line"><span>Shrimp <span class="lbl">buttered · sinigang · tinola</span></span><span>₱260</span></div>
-            <div class="lbl" style="color:#E6C989;border-bottom:1px solid #332B18;padding:10px 0 4px">Rice · Appetizers · Chicken · Pork …</div>
-            <div class="line"><span>Steamed rice</span><span>₱25</span></div>
-            <div class="line"><span>Pork barbecue</span><span>₱180</span></div>
-            <div style="text-align:center;padding:8px 0;border-top:1px dashed #3E3E3E" class="lbl">scroll on — Drinks · Beer &amp; Spirits · Desserts</div>
+          <div class="mp">
+            <div class="mp-head">
+              <p class="mp-name">Daweez Restaurant &amp; Bar</p>
+              <p class="mp-sub">Tap a dish to put it on the bill</p>
+            </div>
+            <div style="max-height:322px;overflow:hidden">
+              <div class="mp-cols">
+                <div>
+                  <p class="mp-cat">Breakfast <i>6–10 am</i></p>
+                  <div class="mp-row on"><span class="mp-line"><span class="mp-dish">Hotsilog</span><span class="mp-lead"></span><span class="mp-price">₱200</span><span class="mp-count">1</span></span><span class="mp-note">egg · garlic rice · hotdog</span></div>
+                  <div class="mp-row on"><span class="mp-line"><span class="mp-dish">Bangsilog</span><span class="mp-lead"></span><span class="mp-price">₱200</span><span class="mp-count">1</span></span><span class="mp-note">egg · garlic rice · bangus</span></div>
+                  <div class="mp-row on"><span class="mp-line"><span class="mp-dish">Cornsilog</span><span class="mp-lead"></span><span class="mp-price">₱200</span><span class="mp-count">1</span></span><span class="mp-note">egg · garlic rice · corned beef</span></div>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Porksilog</span><span class="mp-lead"></span><span class="mp-price">₱200</span></span><span class="mp-note">egg · garlic rice · pork</span></div>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Lumpiasilog</span><span class="mp-lead"></span><span class="mp-price">₱200</span></span><span class="mp-note">egg · garlic rice · lumpia</span></div>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Beefsilog</span><span class="mp-lead"></span><span class="mp-price">₱210</span></span><span class="mp-note">egg · garlic rice · beef</span></div>
+                  <p class="mp-cat">Value meals</p>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Chicken adobo rice bowl</span><span class="mp-lead"></span><span class="mp-price">₱180</span></span></div>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Pork sisig rice bowl</span><span class="mp-lead"></span><span class="mp-price">₱190</span></span></div>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Shrimp</span><span class="mp-lead"></span><span class="mp-price">₱260</span></span><span class="mp-note">buttered · sinigang · tinola</span></div>
+                  <p class="mp-cat">Rice</p>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Steamed rice</span><span class="mp-lead"></span><span class="mp-price">₱25</span></span></div>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Garlic rice</span><span class="mp-lead"></span><span class="mp-price">₱40</span></span></div>
+                </div>
+                <div>
+                  <p class="mp-cat">Appetizers</p>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Lumpiang Shanghai</span><span class="mp-lead"></span><span class="mp-price">₱150</span></span></div>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Chicharon bulaklak</span><span class="mp-lead"></span><span class="mp-price">₱180</span></span></div>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Calamares</span><span class="mp-lead"></span><span class="mp-price">₱200</span></span></div>
+                  <p class="mp-cat">Chicken</p>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Fried chicken</span><span class="mp-lead"></span><span class="mp-price">₱220</span></span></div>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Chicken curry</span><span class="mp-lead"></span><span class="mp-price">₱240</span></span></div>
+                  <p class="mp-cat">Pork</p>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Pork barbecue</span><span class="mp-lead"></span><span class="mp-price">₱180</span></span></div>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Pork sisig</span><span class="mp-lead"></span><span class="mp-price">₱210</span></span></div>
+                  <p class="mp-cat">Beef</p>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Beef tapa</span><span class="mp-lead"></span><span class="mp-price">₱230</span></span></div>
+                  <p class="mp-cat">Drinks</p>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Softdrinks in can</span><span class="mp-lead"></span><span class="mp-price">₱60</span></span></div>
+                  <div class="mp-row"><span class="mp-line"><span class="mp-dish">Bottled water</span><span class="mp-lead"></span><span class="mp-price">₱30</span></span></div>
+                </div>
+              </div>
+            </div>
+            <p class="mp-foot">scroll on — Seafood · Noodles · Vegetables &amp; Salad · Snacks · Desserts &amp; Shakes · Beer &amp; Spirits</p>
           </div>
           <div style="display:flex;justify-content:space-between;margin-top:8px"><span class="cap" style="margin:0">+ Something not on the menu</span><span class="cap" style="margin:0">Diner with no room? settle at the counter</span></div>
         </div>
       </div>
     </div>
     <div style="margin-top:10px">
-      <div class="flag"><span class="n">✓</span><span><b>One scroll, no filter:</b> category headings run down one list — <i>Breakfast · 6–10 am</i>, <i>Value meals</i>, <i>Rice</i> … — so nothing has to be chosen before ordering, and the staff read it like the paper card.</span></div>
+      <div class="flag"><span class="n">✓</span><span><b>It looks like the menu on the table:</b> an off-white card with the house name across the top, each category centred between its own rules (<i>Breakfast · 6–10 am</i>, <i>Value meals</i> …), dishes on the left and the price on the right joined by dotted leaders, and two columns like a printed card — one scroll, nothing to choose first.</span></div>
+      <div class="flag"><span class="n">✓</span><span><b>Still a till, not a poster:</b> the whole line is the tap target (a finger never aims at an 8px price), the row lifts under the cursor, and a dish already on the bill gets its count written on the right of its own line.</span></div>
       <div class="flag"><span class="n">✓</span><span><b>Everyone you may charge is in that one strip:</b> the guests who are in the hotel right now (checked in, not yet checked out) and the diner tabs with no room behind them. A guest with nothing ordered reads <i>—</i>, and tapping them starts their food bill — so a room can always be charged without hunting.</span></div>
       <div class="flag"><span class="n">✓</span><span><b>The count badge survives:</b> a dish already on the bill shows its number on that same line, so the same order can’t land twice unnoticed.</span></div>
       <div class="flag"><span class="n">✓</span><span><b>Cooking choices fit naturally:</b> <i>Shrimp — buttered · sinigang · tinola</i> is a quiet line under the name, which is where card k109 lands without a popup.</span></div>
@@ -233,8 +280,8 @@
 
   <section class="card p-4" style="border-color:#6F5420;background:#1B1811">
     <h2 class="text-lg font-bold mb-1">Build P2 as drawn?</h2>
-    <p class="cap" style="margin:4px 0 10px">Same screen, same features — the layout changes to: one strip of open tabs on top, the selected bill on the left, and the till as <b>one long scrolling menu under category headings</b>, no category buttons.</p>
-    <form data-lavish-question="build-p2" onsubmit="event.preventDefault(); const a = event.submitter ? event.submitter.value : ''; window.lavish.queuePrompt(a === 'build' ? 'Build P2 as drawn: one strip of every open tab across the top, the selected bill as a running receipt on the left, and the till as one long scrolling menu under category headings (Breakfast · 6–10 am, Value meals, Rice, …) with no category buttons, matching a dish already on the bill showing its count on that line.' : 'Change something in P2 before building it — I will read your annotation.', { tag: 'choice', text: 'Build P2: ' + a, element: event.currentTarget, data: { question: 'build-p2', answer: a } });">
+    <p class="cap" style="margin:4px 0 10px">Same screen, same features — the layout changes to: one strip of everyone you may charge across the top, the selected bill on the left, and the till as <b>the printed menu card</b> you can tap, one scroll, no category buttons.</p>
+    <form data-lavish-question="build-p2" onsubmit="event.preventDefault(); const a = event.submitter ? event.submitter.value : ''; window.lavish.queuePrompt(a === 'build' ? 'Build P2 as drawn: one strip of everyone you may charge (in-house guests + walk-in diner tabs) across the top, the selected bill as a running receipt on the left, and the till drawn as the printed menu card — off-white card, house name on top, categories centred between rules, dishes left with dotted leaders to the price on the right, two columns, one scroll, no category buttons — where every line is tappable and a dish already on the bill shows its count on its own line.' : 'Change something in P2 before building it — I will read your annotation.', { tag: 'choice', text: 'Build P2: ' + a, element: event.currentTarget, data: { question: 'build-p2', answer: a } });">
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button type="submit" class="btn gold" value="build">Build P2 as drawn</button>
         <button type="submit" class="btn" value="tweak">Change something first</button>

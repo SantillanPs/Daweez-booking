@@ -1,7 +1,10 @@
-P2, with your change drawn — the category buttons are gone.
+Fair — that was a list wearing a menu's name. It is now drawn as the actual menu card.
 
-The till is now **one long menu under category headings**: Breakfast · 6–10 am, then Value meals, then Rice · Appetizers · Chicken …, and the staff just scroll. A dish already on the bill shows its **count on that same line**, and cooking choices (Shuttered · Sinigang · Tinola) sit quietly under the dish name.
+- **Off-white card**, house name across the top, so it reads as paper, not as another panel.
+- **Each category centred between its own thin rules** — Breakfast 6–10 am, Value meals, Rice …
+- **Dish on the left, price on the right, dotted leaders between them**, two columns like the printed card, one scroll.
+- Cooking choices printed in italic under the dish (Shrimp — buttered · sinigang · tinola), the way a real card prints them.
 
-Everything else in P2 is as you saw it: one strip of open tabs on top, the bill still on the left while the menu scrolls past it.
+It stays a till: **the whole line is the tap target**, the row lifts under the cursor, and a dish already on the bill has its **1** written on that same line.
 
-**Nothing is built yet.** Tap **Build P2 as drawn**, or annotate the drawing and I will change it first.
+Is this the menu you meant? Tap **Build P2 as drawn**, or annotate what is still off.

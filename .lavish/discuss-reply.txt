@@ -1,0 +1,9 @@
+Here is the whole list — **18 open questions in 5 groups**, each with what the app does today and what needs your ruling.
+
+The three groups that matter most:
+
+1. **The safety deposit (D1–D7)** — your three new notes are one job, and almost every detail is still open: who takes one, whether the ₱2,000 reservation is flat even for one night (today the deposit is *half the stay*), when the safety ₱2,000 is collected, how it is handed back, and what happens when part of it is kept for damage.
+2. **One booking button (D8–D10)** — whether Corporate disappears or stays for company deals, whether company fields always show, and how an agency's special price gets picked if the agency never books for the guest.
+3. **Where the app answers an older note differently (D12–D15)** — the biggest one: with money still owed, the app today **refuses to check the guest out**; your note wanted check-out first and a bill after. Also: breakfast is one charge per room per *stay* (your note said every day), rooms have a ₱500 deposit sitting in Settings, and the form still refuses a booking with no check-out date.
+
+Tick the ones you want settled first and I'll take them **one at a time — ruling, then build.** Nothing gets built before you rule on it.

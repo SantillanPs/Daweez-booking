@@ -1,5 +1,12 @@
 
-# New Changes
+# More booking Changes
+- safety deposit in vacation house add in guest billing
+- checkout safety deposit returned 
+- receipt for safety deposit if things are damaged, it should deduct the safety deposit total
+- join corporate and new booking 
+- add changeable payment methods in quick review booking
+
+# Changes
 ## booking changes
 - replace original room price with promo, remove the original price. 
 - payment receipt isn't printing, when pressing print, it's trying to print the quick review booking, not the receipt

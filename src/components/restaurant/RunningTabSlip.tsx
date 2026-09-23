@@ -1,6 +1,7 @@
 import React from 'react'
 import { TabLine } from '../../types/tab'
-import { Block, Row, Rule, fmtDateTime, money } from '../billing/receiptPrimitives'
+import { Block, Row, Rule } from '../billing/receiptPrimitives'
+import { fmtDateTime, money } from '../billing/receiptText'
 import { SlipModal } from '../billing/SlipModal'
 
 interface RunningTabSlipProps {

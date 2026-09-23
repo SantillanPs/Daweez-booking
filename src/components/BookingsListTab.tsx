@@ -172,7 +172,9 @@ export function BookingsListTab() {
 
                   <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
                     <span className="text-main font-medium">
-                      {fmtDate(b.check_in)} <span className="text-muted mx-0.5">→</span> {fmtDate(b.check_out)}
+                      {b.stay_hours
+                        ? <>{fmtDate(b.check_in)} <span className="text-brand-text">· {b.stay_hours} hours</span></>
+                        : <>{fmtDate(b.check_in)} <span className="text-muted mx-0.5">→</span> {fmtDate(b.check_out)}</>}
                     </span>
                     <span className="flex items-center gap-1">
                       {isVenue

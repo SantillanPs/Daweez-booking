@@ -96,7 +96,6 @@ export function useAnalyticsCalculations({
     const statusSet = includePending ? ['confirmed', 'pending'] : ['confirmed']
     const relevantBookings = bookings.filter(b => statusSet.includes(b.status))
 
-    let totalRevenue = 0
     let totalPensionBase = 0
     let totalPensionBreakfast = 0
     let totalPensionRentals = 0
@@ -223,6 +222,8 @@ export function useAnalyticsCalculations({
         breakfastIncluded: b.breakfast_included === true,
         contractRateOverride: b.contract_rate_override,
         usePromo: (b as Booking & { promo_applied?: boolean }).promo_applied === true,
+        // A short stay earns its hours price, not a night's.
+        shortStayHours: b.stay_hours,
         rooms,
         venues
       })
@@ -243,7 +244,6 @@ export function useAnalyticsCalculations({
           const nightlyTotal = priceResult.grandTotal / totalNights
 
           // Add to aggregate values
-          totalRevenue += nightlyTotal
           totalAddonsRentals += nightlyRentals + nightlyAddons
 
           // Categorize

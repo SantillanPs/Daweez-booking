@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal } from '../types/booking'
 import { useDashboardData } from './DashboardContext'
 import {
-  AlertCircle, UserCheck, CheckCircle2
+  AlertCircle, UserCheck
 } from 'lucide-react'
 
 // Import modular subcomponents
@@ -12,9 +12,9 @@ import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
 import { BookingDepositFields } from './walk-in/BookingDepositFields'
 import { BreakfastRoomChips } from './walk-in/BreakfastRoomChips'
+import { ShortStayPicker } from './walk-in/ShortStayPicker'
 import { breakfastSellable } from '../utils/breakfast'
 import { focusBookingAfterCreate } from '../utils/bookingFocus'
-import { getRateConfig } from '../utils/rateConfig'
 import { computeBookingEstimate } from './walk-in/bookingEstimate'
 import { submitBookingForm } from './walk-in/bookingSubmit'
 import { PartnerBookingFields } from './walk-in/PartnerBookingFields'
@@ -69,6 +69,8 @@ interface WalkInBookingFormProps {
   editingBookings?: Booking[]
   onClose: () => void
   initialBookingType?: 'individual' | 'partner'
+  /** The hours tapped on the calendar's bar (3, 6 or 12), already chosen when the form opens. */
+  initialStayHours?: number
 }
 
 export function WalkInBookingForm({
@@ -80,7 +82,8 @@ export function WalkInBookingForm({
   initialSelections,
   editingBookings,
   onClose,
-  initialBookingType
+  initialBookingType,
+  initialStayHours
 }: WalkInBookingFormProps) {
   // ── Core form state ──
   const [bookingType, setBookingType] = useState<'individual' | 'partner'>(initialBookingType || 'individual')
@@ -237,6 +240,9 @@ export function WalkInBookingForm({
   // It builds OFF: the desk taps the rooms that want it.
   const [formBreakfastRoomIds, setFormBreakfastRoomIds] = useState<string[]>([])
   const [depositTouched, setDepositTouched] = useState(false)
+  // SHORT STAY (the printed rate board): the hours the room is being sold for —
+  // 3, 6, 12 or 22 — or null for an ordinary overnight booking.
+  const [shortStayHours, setShortStayHours] = useState<number | null>(initialStayHours ?? null)
   const [formBirthdate, setFormBirthdate] = useState('')
   const [formBlockNotes, setFormBlockNotes] = useState('')
   const [discountType, setDiscountType] = useState<DiscountType>('none')
@@ -372,21 +378,22 @@ export function WalkInBookingForm({
   const dateFieldErr = 'input input-bordered input-error w-full'
 
   // ── Pricing calculations (estimate for totals; real nightly rate goes through calculatePricing) ──
-  const { estBreakfast, estRentals, estAddons, estSubtotal, estTotal, estDown, estDue } = useMemo(
+  const { estBreakfast, estRentals, estAddons, estSubtotal, estTotal, estDue } = useMemo(
     () => computeBookingEstimate({
       unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues,
       formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
       formEventTable, formEventTent, formChairs,
+      shortStayHours,
     }),
-    [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues, formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues, formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, shortStayHours]
   )
 
   // The deposit box arrives filled with half the stay and keeps following the
-  // stay until somebody types their own figure (card k130).
-  useEffect(() => {
-    if (depositTouched) return
-    setFormAgreedDeposit(Math.max(0, Math.round(estTotal / 2)))
-  }, [estTotal, depositTouched])
+  // stay until somebody types their own figure (card k130). DERIVED, not copied
+  // into state by an effect: an effect here re-rendered the whole form on every
+  // estimate change, and the figure is only ever read below.
+  const agreedDeposit = depositTouched ? formAgreedDeposit : Math.max(0, Math.round(estTotal / 2))
   // How many nights the picked dates add up to — the figure the deposit is
   // worked from, shown to the desk so half the stay is never a mystery sum.
   const stayNights = useMemo(
@@ -442,8 +449,11 @@ export function WalkInBookingForm({
       formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
       formChairs, formEventTable, formEventTent, formVenueExcessHours,
       formBlockNotes, discountType, discountValue, venueDayBlocks, editingBookings,
-      formPaymentMethod, formPaymentReference, formPaymentPlan, derivedPaymentStatus, formDownpaymentPaid,
-      formBalanceDue, formSecurityDeposit, formAgreedDeposit, createManualBooking, cancelBooking,
+      formPaymentMethod, formPaymentReference, derivedPaymentStatus, formDownpaymentPaid,
+      formBalanceDue, formSecurityDeposit, formAgreedDeposit: shortStayHours ? estTotal : agreedDeposit, createManualBooking, cancelBooking,
+      // A short stay is paid in full at the counter, so its plan is the whole amount.
+      formPaymentPlan: shortStayHours ? 'full' : formPaymentPlan,
+      stay_hours: shortStayHours ?? undefined,
     })
     if (!result.ok) { setFormError(result.error); setIsSubmitting(false); return }
     setCreatedBookingList(result.bookings)
@@ -526,6 +536,15 @@ export function WalkInBookingForm({
                         paper form the staff already know, with no steps. */}
                     {formStatus === 'confirmed' && (
                       <div className="space-y-2.5">
+                        {/* SHORT STAY (the printed rate board): a room sold for 3, 6,
+                            12 or 22 hours. It takes the room for the whole day, is paid
+                            in full at the counter, and so needs no breakfast, no
+                            add-ons, no discount and no deposit — those blocks below
+                            simply step out of the way. */}
+                        {hasRooms && !editingBookings && (
+                          <ShortStayPicker rooms={pickedRooms} hours={shortStayHours} onPick={setShortStayHours} />
+                        )}
+
                         <RoomDetailsForm
                           formStatus={formStatus}
                           formGuestName={formGuestName}
@@ -566,15 +585,18 @@ export function WalkInBookingForm({
                         />
 
                         {/* Breakfast is a ROOM's choice, not a guest's (card k140): one line of
-                            room chips, right above the add-ons. */}
-                        <BreakfastRoomChips
-                          rooms={pickedRooms}
-                          chosen={formBreakfastRoomIds}
-                          onToggle={id => setFormBreakfastRoomIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                          onAll={on => setFormBreakfastRoomIds(on ? pickedRooms.filter(breakfastSellable).map(r => r.id) : [])}
-                        />
+                            room chips, right above the add-ons. Not for a short stay —
+                            a three-hour guest buys no breakfast. */}
+                        {!shortStayHours && (
+                          <>
+                            <BreakfastRoomChips
+                              rooms={pickedRooms}
+                              chosen={formBreakfastRoomIds}
+                              onToggle={id => setFormBreakfastRoomIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                              onAll={on => setFormBreakfastRoomIds(on ? pickedRooms.filter(breakfastSellable).map(r => r.id) : [])}
+                            />
 
-                        <AmenitiesForm
+                            <AmenitiesForm
                           hasRooms={hasRooms}
                           hasVenues={hasVenues}
                           hasAddons={hasAddons}
@@ -596,18 +618,22 @@ export function WalkInBookingForm({
                           setFormEventTent={setFormEventTent}
                           formVenueExcessHours={formVenueExcessHours}
                           setFormVenueExcessHours={setFormVenueExcessHours}
-                        />
+                            />
+                          </>
+                        )}
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 items-start">
-                          <DiscountPricingControls
-                            isDayBlock={hasDayBlock}
-                            discountType={discountType}
-                            setDiscountType={setDiscountType}
-                            discountValue={discountValue}
-                            setDiscountValue={setDiscountValue}
-                            venueDayBlocks={venueDayBlocks}
-                            setVenueDayBlocks={setVenueDayBlocks}
-                          />
+                          {!shortStayHours && (
+                            <DiscountPricingControls
+                              isDayBlock={hasDayBlock}
+                              discountType={discountType}
+                              setDiscountType={setDiscountType}
+                              discountValue={discountValue}
+                              setDiscountValue={setDiscountValue}
+                              venueDayBlocks={venueDayBlocks}
+                              setVenueDayBlocks={setVenueDayBlocks}
+                            />
+                          )}
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
                               <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><UserCheck className="w-3 h-3" /></span>
@@ -624,13 +650,23 @@ export function WalkInBookingForm({
                           </div>
                         </div>
 
+                        {shortStayHours ? (
+                          <div className="bg-gold-100 border border-gold-400 rounded-lg px-3.5 py-3">
+                            <p className="text-[13px] font-bold text-ink-900">
+                              {shortStayHours}-hour stay · ₱{estTotal.toLocaleString()} — paid in full at the counter
+                            </p>
+                            <p className="text-[11px] text-ink-600 mt-1">
+                              No deposit and no statement: the guest pays the whole amount now, and the receipt is printed from the booking. The room stays taken for the rest of the day while it is cleaned.
+                            </p>
+                          </div>
+                        ) : (
                         <BookingDepositFields
                           estTotal={estTotal}
                           nights={stayNights}
                           stayAmount={estSubtotal}
                           breakfast={estBreakfast}
                           extras={estRentals + estAddons}
-                          agreedDeposit={formAgreedDeposit}
+                          agreedDeposit={agreedDeposit}
                           setAgreedDeposit={v => { setDepositTouched(true); setFormAgreedDeposit(v) }}
                           isEditMode={!!editingBookings}
                           formInvoiceNumber={formInvoiceNumber}
@@ -642,6 +678,7 @@ export function WalkInBookingForm({
                           formSecurityDeposit={formSecurityDeposit}
                           setFormSecurityDeposit={setFormSecurityDeposit}
                         />
+                        )}
 
                         <div className="flex justify-end items-center gap-2 pt-2">
                           <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>

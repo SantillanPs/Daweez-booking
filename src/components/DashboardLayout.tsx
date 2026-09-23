@@ -4,7 +4,7 @@ import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
 import {
   Sparkles, RefreshCw, LogOut, BarChart3, TrendingUp,
-  Calendar, Settings, Building, BookOpen, Tag, Boxes, Utensils
+  Calendar, Settings, Building, BookOpen, Boxes, Utensils
 } from 'lucide-react'
 import { ToastHost } from './Toast'
 import { ConfirmHost } from './ConfirmDialog'
@@ -26,7 +26,7 @@ export function DashboardLayout() {
   const {
     rooms, venues, bookings, feeds, partnerDeals, expenses, expenseCategories,
     confirmBooking, cancelBooking, createManualBooking, updateBooking,
-    triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, isLoading, isConfirmingBooking,
+    triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, isLoading, isConfirmingBooking,
     createPartnerDeal, savePartnerDeals, deletePartnerDeal,
     createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense
   } = useBookings()
@@ -71,7 +71,7 @@ export function DashboardLayout() {
       rooms, venues, bookings, feeds, partnerDeals, expenses, expenseCategories, isLoading,
       isConfirming: isConfirmingBooking,
       confirmBooking, cancelBooking, createManualBooking, updateBooking,
-      triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
+      triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
       createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense,
       onLogout: handleLogout
     }}>

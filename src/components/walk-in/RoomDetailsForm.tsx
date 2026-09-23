@@ -1,6 +1,5 @@
 import React from 'react'
 import { Companion, PartnerDeal } from '../../types/booking'
-import { getRateConfig } from '../../utils/rateConfig'
 import { User, Phone, Mail, Users, Trash2, Plus, CheckCircle2 } from 'lucide-react'
 
 interface RoomDetailsFormProps {
@@ -65,8 +64,6 @@ export const RoomDetailsForm = React.memo(
     setFormBlockNotes,
     formCompanions,
     setFormCompanions,
-    showCompanions,
-    setShowCompanions,
     guestNameError,
     onGuestNameBlur
   }: RoomDetailsFormProps) => {

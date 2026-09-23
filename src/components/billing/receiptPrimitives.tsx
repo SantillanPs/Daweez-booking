@@ -6,11 +6,6 @@
 // from these, so they cannot drift apart.
 import React from 'react'
 
-export const money = (n: number) => '₱' + Number(n || 0).toLocaleString()
-
-export const fmtDateTime = (d?: string) =>
-  d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''
-
 /** Dashed rule, the way a receipt separates its blocks. */
 export function Rule() {
   return <div className="border-t border-dashed border-black my-1.5" />

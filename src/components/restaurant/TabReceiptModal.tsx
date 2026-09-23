@@ -2,7 +2,8 @@ import React from 'react'
 import { Tab, TabLine } from '../../types/tab'
 import { PaymentRecord } from '../../types/booking'
 import { paymentMethodLabel } from '../../utils/paymentMethod'
-import { Block, Row, Rule, fmtDateTime, money } from '../billing/receiptPrimitives'
+import { Block, Row, Rule } from '../billing/receiptPrimitives'
+import { fmtDateTime, money } from '../billing/receiptText'
 import { SlipModal } from '../billing/SlipModal'
 
 interface TabReceiptModalProps {

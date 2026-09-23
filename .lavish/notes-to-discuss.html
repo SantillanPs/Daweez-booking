@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>What we need to be on the same page about</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:14.5px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .raised{background:var(--raised);border:1px solid var(--line);border-radius:10px}
+  .cap{font-size:12.5px;color:var(--sec);margin:5px 0 0}
+  .mut{color:var(--mut)} .gold{color:var(--gold)}
+  .pill{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 7px;border-radius:5px;white-space:nowrap}
+  .new{background:#2A2312;color:#E6C989}
+  .diff{background:#2A1615;color:#F87171}
+  .old{background:#2A2A2A;color:#C9C4BB}
+  .id{font-family:"Sora";font-weight:800;font-size:11.5px;color:var(--mut);min-width:26px;display:inline-block}
+  .q{display:flex;gap:11px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;background:var(--raised);padding:12px;cursor:pointer;margin-top:9px}
+  .q:hover{border-color:#565656}
+  .q.on{border-color:var(--gold);background:#221E14}
+  input[type=checkbox]{accent-color:#D0AB60;width:18px;height:18px;margin-top:2px;flex-shrink:0}
+  .btn{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:12px 18px;background:var(--raised);color:var(--body);cursor:pointer}
+  .btn.gold{background:var(--gold);border-color:var(--gold);color:#141414}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[900px] p-6 space-y-4">
+
+  <header class="card p-5" style="border-color:#6F5420">
+    <h1 class="text-2xl font-bold">The 18 places your notes and the app might disagree</h1>
+    <p class="cap" style="margin-top:10px">Nothing here is broken. These are the decisions where I had to guess, or where your newer note and your older note point different ways. <b>Tick the ones you want to settle first</b> — or just tell me an order in the chat.</p>
+    <p class="cap"><span class="pill new">from your new notes</span> <span class="pill diff">the app does it differently today</span> <span class="pill old">old note, still open</span></p>
+  </header>
+
+  <form data-lavish-question="discuss-list" onsubmit="event.preventDefault(); const f=event.currentTarget; const picked=[...f.querySelectorAll('input[name=d]:checked')].map(i=>i.value); window.lavish.queuePrompt('Let us settle these, in this order: ' + (picked.length?picked.join(' → '):'nothing picked yet — wait for me to choose'), { tag:'tracked-batch', text:'Discuss ' + picked.length + ' item(s)', element:f, data:{ question:'discuss-list', items: picked.map(v=>({ id:v.split(' · ')[0], label:v, disposition:'must-address' })) } });">
+
+  <!-- ── group 1 ─────────────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold">1 · The safety deposit <span class="pill new" style="margin-left:6px">your 3 new notes</span></h2>
+    <p class="cap">A ₱2,000 the guest hands over and expects back. Everything about it is still undecided except that it should exist.</p>
+
+    <label class="q"><input type="checkbox" name="d" value="D1 · Who takes a safety deposit — Vacation House only, or rooms too?">
+      <span><span class="id">D1</span><b>Who takes one — Vacation House only, or every room too?</b>
+      <span class="cap">Today: Settings has a ₱500 default and the form has a box you can type in, so a room <i>can</i> have one — but nothing ever asks for it.</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D2 · Vacation House reservation is always a flat ₱2,000">
+      <span><span class="id">D2</span><b>Is the ₱2,000 reservation always flat, even for one night?</b>
+      <span class="cap">Today: the deposit is <b>half the stay</b> unless you type another figure — so a ₱15,000 stay asks ₱7,500 on the bill.</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D3 · Does the ₱2,000 reservation count as money received on the bill?">
+      <span><span class="id">D3</span><b>Does that ₱2,000 count as money received, and does the bill show it?</b>
+      <span class="cap">Your note says it is “deducted from the house rate”. Today a payment simply reduces the balance — there is no separate reservation pot.</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D4 · When is the safety deposit collected — at booking, or on arrival?">
+      <span><span class="id">D4</span><b>When is the safety deposit collected — with the reservation, or on arrival?</b>
+      <span class="cap">Today: not modelled at all. The guest pays ₱2,000 + ₱2,000 in one go, or in two moments?</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D5 · How the safety deposit is returned at check-out">
+      <span><span class="id">D5</span><b>How is it handed back at check-out — and does anything get printed?</b>
+      <span class="cap">Today: nothing returns it. Needs: cash back? A line on the final bill saying “₱2,000 returned”? A slip the guest signs?</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D6 · Damage: who decides, and is the kept money income or a deduction?">
+      <span><span class="id">D6</span><b>If something is damaged: who decides the amount, and is the kept money income?</b>
+      <span class="cap">This is your “receipt for safety deposit” note. Today: nothing. Needs: the amount, a reason, the guest's signature, and whether the kept ₱ goes down as earnings.</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D7 · Is the returned deposit shown on the final statement?">
+      <span><span class="id">D7</span><b>Does the returned deposit appear on the guest's final bill?</b>
+      <span class="cap">Today the deposit is printed as an <i>Add:</i> line when the booking carries one — but never as money going back.</span></span></label>
+  </section>
+
+  <!-- ── group 2 ─────────────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold">2 · One booking button <span class="pill new" style="margin-left:6px">your new note</span></h2>
+
+    <label class="q"><input type="checkbox" name="d" value="D8 · Does the Corporate button disappear, or stay for company deals?">
+      <span><span class="id">D8</span><b>Does the Corporate button disappear, or stay for company deals?</b>
+      <span class="cap">Today: two buttons on the calendar, two different forms. Your note says join them.</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D9 · In the joined form, are company fields always visible or behind a switch?">
+      <span><span class="id">D9</span><b>In one form, do the company fields always show, or hide behind a switch?</b>
+      <span class="cap">Company name, TIN, contract rates, company contact. Always-on makes a normal walk-in scroll past fields that don't apply.</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D10 · Agencies change prices, they do not book — how does the desk pick an agency price?">
+      <span><span class="id">D10</span><b>Agencies change prices, they never book for the guest — how does the desk pick that price?</b>
+      <span class="cap">Your older note, still waiting for our sit-down. Today the corporate flow assumes the desk books on the company's behalf.</span></span></label>
+  </section>
+
+  <!-- ── group 3 ─────────────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold">3 · Payment method in the quick view <span class="pill new" style="margin-left:6px">your new note</span></h2>
+
+    <label class="q"><input type="checkbox" name="d" value="D11 · May the desk override the method on the FIRST payment?">
+      <span><span class="id">D11</span><b>May the desk change the method on the <i>first</i> payment?</b>
+      <span class="cap">Today: the first payment is fixed to what the guest chose at booking; from the second payment on the desk can pick. One small change if you want it always changeable.</span></span></label>
+  </section>
+
+  <!-- ── group 4 ─────────────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold">4 · Where the app answers your older notes differently <span class="pill diff" style="margin-left:6px">needs your ruling</span></h2>
+
+    <label class="q"><input type="checkbox" name="d" value="D12 · Check-out with money owed: block it, or allow it then show the bill?">
+      <span><span class="id">D12</span><b>Check-out with money still owed: block it, or let it through and show the bill?</b>
+      <span class="cap">Today: the app <b>refuses</b> to check the guest out until it is settled, and says so under the button. Your note asked for a pop-up bill after check-out.</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D13 · Breakfast is one charge per room per stay — even for a 5-night stay?">
+      <span><span class="id">D13</span><b>Breakfast is one charge per room for the whole stay — even when they eat every morning for 5 nights?</b>
+      <span class="cap">Today: yes, one charge, folded into the room's line. Your older note said breakfast every day — say if that still applies to long stays.</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D14 · Room safety deposit: the ₱500 in Settings, or ₱2,000 like the house?">
+      <span><span class="id">D14</span><b>Rooms: is there a safety deposit, and is it the ₱500 sitting in Settings or ₱2,000 like the house?</b>
+      <span class="cap">Today: ₱500 is printed in the policies text on the bill; no room booking ever asks for it automatically.</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D15 · Bookings with no check-out date — how should the app treat them?">
+      <span><span class="id">D15</span><b>A booking with no check-out date — what should the app do with it?</b>
+      <span class="cap">Your paper log never needed one. Today the form insists on a check-out date, so an open-ended stay cannot be written down. (Card k93.)</span></span></label>
+  </section>
+
+  <!-- ── group 5 ─────────────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold">5 · Smaller loose ends</h2>
+
+    <label class="q"><input type="checkbox" name="d" value="D16 · Rooms: ₱100 an hour early/late, one night after 3 hours — still right?">
+      <span><span class="id">D16</span><b>Rooms: ₱100 an hour for early or late, becoming a whole night after 3 hours — still right?</b>
+      <span class="cap">That is what Settings holds today, and both charges land on the bill at check-out.</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D17 · NOTES.md and TODO.md describe an app that no longer exists">
+      <span><span class="id">D17</span><b>Two of my own files describe an app that no longer exists — refresh or delete?</b>
+      <span class="cap"><span class="mut">NOTES.md</span> still says two-step wizard; <span class="mut">TODO.md</span> still says breakfast per person and a promo price.</span></span></label>
+
+    <label class="q"><input type="checkbox" name="d" value="D18 · The 327 colour notes from the new checker: leave or tidy as a job?">
+      <span><span class="id">D18</span><b>The 327 colour notes from the new code checker — leave them, or tidy them as a job?</b>
+      <span class="cap">Nothing breaks either way. They are places still painted with ordinary Tailwind colours instead of your palette.</span></span></label>
+  </section>
+
+  <section class="card p-5" style="border-color:#6F5420;background:#1B1811">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div>
+        <h2 class="text-lg font-bold">Tick the ones you want settled first</h2>
+        <p class="cap">I'll take them in the order you tick, one at a time — decision, then build. Nothing gets built before you have ruled on it.</p>
+      </div>
+      <button type="submit" class="btn gold">Queue the list</button>
+    </div>
+  </section>
+  </form>
+
+  <footer class="cap" style="text-align:center;padding-bottom:6px">18 open questions · 5 groups · nothing built until you rule</footer>
+</main>
+</body>
+</html>

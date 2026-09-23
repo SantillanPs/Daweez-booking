@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Your booking notes — where each one stands</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:14.5px}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .raised{background:var(--raised);border:1px solid var(--line);border-radius:10px}
+  .cap{font-size:12.5px;color:var(--sec);margin:6px 0 0}
+  .mut{color:var(--mut)} .gold{color:var(--gold)}
+  .pill{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 7px;border-radius:5px;white-space:nowrap}
+  .done{background:#12261F;color:#34D399}
+  .half{background:#2A2312;color:#E6C989}
+  .no{background:#2A1615;color:#F87171}
+  .talk{background:#1E2436;color:#93B4F5}
+  .neu{background:#2A2A2A;color:#C9C4BB}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:14px;border-top:1px solid #2C2C2C;padding:9px 0;font-size:13.5px}
+  .row span:first-child{color:var(--body)}
+  .row .k{color:var(--mut);font-size:12px;font-weight:600}
+  .opt{border:1px solid var(--line);border-radius:10px;padding:13px;background:var(--raised);cursor:pointer;display:flex;gap:12px}
+  .opt.pick{border-color:var(--gold);background:#221E14}
+  .btn{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:11px 17px;background:var(--raised);color:var(--body);cursor:pointer}
+  .btn.gold{background:var(--gold);border-color:var(--gold);color:#141414}
+  input[type=radio]{accent-color:#D0AB60;width:17px;height:17px;margin-top:3px;flex-shrink:0}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[900px] p-6 space-y-4">
+
+  <header class="card p-5">
+    <span class="pill neu">Read the whole file</span>
+    <h1 class="text-2xl font-bold" style="margin-top:11px">Your booking notes — where each one stands</h1>
+    <p class="cap" style="margin-top:9px">No line in <span class="mut">Daweez booking process changes.md</span> says “do not read”, so I went through all of it — the 5 you just added and the 35 older ones. Two of the older ones have been overtaken by decisions you made later; those are called out.</p>
+  </header>
+
+  <!-- ── the new five ───────────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:#6F5420">
+    <h2 class="text-lg font-bold">The 5 you just added</h2>
+
+    <div class="raised p-4" style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">
+        <b style="font-size:14px">Safety deposit shows on the Vacation House bill</b>
+        <span class="pill half">half there</span>
+      </div>
+      <p class="cap">The bill already prints a <span class="mut">Security Deposit</span> line whenever the booking carries one, and the form has a box to type it. What is missing is the rule itself: Vacation House always ₱2,000 reservation + ₱2,000 deposit. That is card <b>k148</b>.</p>
+    </div>
+
+    <div class="raised p-4" style="margin-top:10px">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">
+        <b style="font-size:14px">Deposit returned at check-out</b>
+        <span class="pill no">not built</span>
+      </div>
+      <p class="cap">Nothing anywhere returns it. Today the deposit is only a number on the bill — there is no “give the ₱2,000 back” step, and no record that it happened.</p>
+    </div>
+
+    <div class="raised p-4" style="margin-top:10px">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">
+        <b style="font-size:14px">A receipt when the deposit is kept for damage</b>
+        <span class="pill no">not built</span>
+      </div>
+      <p class="cap">Also nothing. Keeping part of a deposit needs its own paper: how much is kept, what it was for, and what the guest signs — otherwise the ₱2,000 just quietly disappears from the books.</p>
+    </div>
+
+    <div class="raised p-4" style="margin-top:10px">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">
+        <b style="font-size:14px">Join Corporate into New booking</b>
+        <span class="pill no">not built</span>
+      </div>
+      <p class="cap">Still two buttons on the calendar opening two different forms. Worth drawing before building — the corporate form asks for things the normal one doesn't (contract rates, TIN, company), so merging them is a design decision, not a copy-paste.</p>
+    </div>
+
+    <div class="raised p-4" style="margin-top:10px">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">
+        <b style="font-size:14px">Changeable payment method in the quick view</b>
+        <span class="pill half">mostly there</span>
+      </div>
+      <p class="cap">The quick view asks how the guest pays whenever money is recorded, and every payment carries its own method. The one exception: the <b>first</b> payment is fixed to whatever was agreed at booking, because the guest already chose it. Say the word if the desk should be able to override even that.</p>
+    </div>
+  </section>
+
+  <!-- ── changed your mind ──────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:#3A3A3A">
+    <h2 class="text-lg font-bold">Two older notes you have since changed</h2>
+    <p class="cap" style="margin:6px 0 10px">These are built — just not the way the note says. The note is out of date, not the app.</p>
+    <div class="raised p-4">
+      <span class="pill neu">superseded</span>
+      <p style="margin-top:8px"><b>“breakfast is per head … ₱150 × 6 beds”</b></p>
+      <p class="cap">You later changed this: breakfast is now <b>one charge per room, at that room's own price</b>, and the desk types that price per room in Settings. No bed count is used anywhere.</p>
+    </div>
+    <div class="raised p-4" style="margin-top:10px">
+      <span class="pill neu">superseded</span>
+      <p style="margin-top:8px"><b>“breakfast should be prompted per day”</b></p>
+      <p class="cap">Also replaced by the one-charge-per-room rule. The day-by-day recorder is retired and no longer on screen.</p>
+    </div>
+  </section>
+
+  <!-- ── built ──────────────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold">Built already <span class="mut" style="font-size:13px">— 20 of the older notes</span></h2>
+    <p class="cap" style="margin:6px 0 4px">Nothing to decide. Five of these sit in Todo only because you haven't looked at them yet — the code is done.</p>
+    <div style="margin-top:6px">
+      <div class="row"><span>One price — original price and “promo” wording gone</span><span class="k">k128 · code done</span></div>
+      <div class="row"><span>Receipt prints the receipt, not the booking behind it</span><span class="k">k120 · code done</span></div>
+      <div class="row"><span>“Prepared by” prints on the bill and on the receipt</span><span class="k">k124 · code done</span></div>
+      <div class="row"><span>Breakfast folded into the room's own line on the bill</span><span class="k">k142 · code done</span></div>
+      <div class="row"><span>The new booking opens in the quick view once the bill is closed</span><span class="k">k134 · code done</span></div>
+      <div class="row"><span>One form, no steps, no price summary</span><span class="k">k126</span></div>
+      <div class="row"><span>Deposit half the stay by default, and typable</span><span class="k">k130</span></div>
+      <div class="row"><span>The guest chooses how they pay</span><span class="k">k132</span></div>
+      <div class="row"><span>Calendar opens on today</span><span class="k">k154</span></div>
+      <div class="row"><span>New booking suits the unit — add-ons behind More</span><span class="k">k138</span></div>
+      <div class="row"><span>The receptionist's name remembers itself</span><span class="k">k136</span></div>
+      <div class="row"><span>Room early-in / late-out: ₱100 an hour, after 3 hours one night</span><span class="k">built</span></div>
+      <div class="row"><span>Vacation House early / late: ₱500 an hour</span><span class="k">built</span></div>
+      <div class="row"><span>Gazebo and Garden booked in 6-hour day blocks</span><span class="k">built</span></div>
+      <div class="row"><span>Discounts: 20%, 10%, or a flat price you type</span><span class="k">built</span></div>
+      <div class="row"><span>Staff can change every rate in Settings</span><span class="k">built</span></div>
+      <div class="row"><span>Hotel inventory and the cleaning checklist</span><span class="k">built</span></div>
+      <div class="row"><span>Nationality on the form, and the paper form's fields</span><span class="k">built</span></div>
+      <div class="row"><span>Date and time on every bill and receipt</span><span class="k">built</span></div>
+      <div class="row"><span>Guest tab, restaurant till, corporate booking</span><span class="k">k69 · k70</span></div>
+    </div>
+  </section>
+
+  <!-- ── not started ────────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold">Not started <span class="mut" style="font-size:13px">— 11</span></h2>
+    <div style="margin-top:8px">
+      <div class="row"><span>Vacation House: ₱2,000 reservation + ₱2,000 safety deposit</span><span class="k">k148</span></div>
+      <div class="row"><span>Guest bill on A5 paper</span><span class="k">k144</span></div>
+      <div class="row"><span>Photograph the payment and let AI read the reference</span><span class="k">k150</span></div>
+      <div class="row"><span>Email the bill and the receipt, from your Gmail</span><span class="k">k146</span></div>
+      <div class="row"><span>Edit the menu and prices, and dish photos</span><span class="k">k105 · k107</span></div>
+      <div class="row"><span>Tables as pills, several per tab</span><span class="k">k152</span></div>
+      <div class="row"><span>Show the block reason on the calendar</span><span class="k">k91</span></div>
+      <div class="row"><span>Cooking choices on a dish (buttered / sinigang / tinola)</span><span class="k">k109</span></div>
+      <div class="row"><span>Food and drink inventory</span><span class="k">k71</span></div>
+      <div class="row"><span>Bookings with no check-out date</span><span class="k">k93</span></div>
+      <div class="row"><span>Airbnb / Booking / Agoda — parked last, by your own note</span><span class="k">k156</span></div>
+    </div>
+  </section>
+
+  <!-- ── needs a talk ───────────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:#2A3A5A">
+    <h2 class="text-lg font-bold">Two that need a talk first</h2>
+    <div class="raised p-4" style="margin-top:12px">
+      <span class="pill talk">your call</span>
+      <p style="margin-top:8px"><b>Agencies change the price, they don't book for the guest</b></p>
+      <p class="cap">Your note says an agency deal should only change what the rooms cost for them — never create the booking itself. That card was deliberately kept off the board until we sit down with it, because today's corporate flow assumes the desk books on the company's behalf.</p>
+    </div>
+    <div class="raised p-4" style="margin-top:10px">
+      <span class="pill talk">your call</span>
+      <p style="margin-top:8px"><b>“After check-out the bill pops up if money is due”</b></p>
+      <p class="cap">Today the app instead <b>refuses to check the guest out</b> until the money is settled — and says so right under the button. That is stronger than a pop-up, but it is not what the note asked. If you want the softer version (check out, then the bill appears), say so.</p>
+    </div>
+  </section>
+
+  <!-- ── docs that lie ──────────────────────────────────────────────────── -->
+  <section class="card p-5">
+    <h2 class="text-lg font-bold">Two of my own files now describe an app that no longer exists</h2>
+    <div class="row"><span><span class="mut">NOTES.md</span> still says the booking form is a 2-step wizard</span><span class="k">refresh or delete</span></div>
+    <div class="row"><span><span class="mut">TODO.md</span> still lists breakfast per person and a promo price</span><span class="k">refresh or delete</span></div>
+    <p class="cap">They are not contracts (the AGENTS.md files are), but they will mislead the next session. Say the word and they go.</p>
+  </section>
+
+  <!-- ── the one choice ─────────────────────────────────────────────────── -->
+  <section class="card p-5" style="border-color:#6F5420;background:#1B1811">
+    <h2 class="text-lg font-bold">What I'd do next, unless you say otherwise</h2>
+    <p class="cap" style="margin:6px 0 14px">Three of your five new notes are one job — the safety deposit on the Vacation House is the only one that touches money the guest hands over and gets back.</p>
+    <form data-lavish-question="notes-next" onsubmit="event.preventDefault(); const c = new FormData(event.currentTarget).get('next'); if (c) window.lavish.queuePrompt('From the notes review: ' + c, { tag:'choice', text:'Notes next: ' + c, element:event.currentTarget, data:{ question:'notes-next', answer:c } });">
+      <div class="space-y-3">
+        <label class="opt pick">
+          <input type="radio" name="next" value="do the safety-deposit job — k148 plus returning it at check-out and the damage receipt, drawn first" checked>
+          <span><b style="font-size:14px">The safety deposit, end to end</b> <span class="pill done" style="margin-left:6px">my recommendation</span>
+          <span class="cap" style="display:block">₱2,000 in on the bill, ₱2,000 back at check-out, and a receipt when part of it is kept for damage. Drawn before built.</span></span>
+        </label>
+        <label class="opt">
+          <input type="radio" name="next" value="join corporate into new booking — draw it first">
+          <span><b style="font-size:14px">Join Corporate into New booking</b>
+          <span class="cap" style="display:block">One button instead of two. I'd draw how the company fields appear before touching it.</span></span>
+        </label>
+        <label class="opt">
+          <input type="radio" name="next" value="let the desk override the method on the first payment too">
+          <span><b style="font-size:14px">Let the desk change the method on the first payment</b>
+          <span class="cap" style="display:block">A small change to the quick view — the only part of that note not already done.</span></span>
+        </label>
+        <label class="opt">
+          <input type="radio" name="next" value="nothing yet — just keep the list as it stands">
+          <span><b style="font-size:14px">Nothing yet</b>
+          <span class="cap" style="display:block">The list stays as it is and I pick up whatever you name next.</span></span>
+        </label>
+      </div>
+      <div style="margin-top:16px"><button type="submit" class="btn gold">Queue my answer</button></div>
+    </form>
+  </section>
+
+  <footer class="cap" style="text-align:center;padding-bottom:6px">40 notes reviewed · 20 already built · 11 not started · 2 changed by you · 2 need a talk · 5 new</footer>
+</main>
+</body>
+</html>

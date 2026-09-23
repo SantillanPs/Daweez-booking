@@ -52,13 +52,16 @@ export async function getOpenTabForBooking(bookingId: string): Promise<Tab | nul
 }
 
 /**
- * Tabs with no booking behind them — the restaurant's walk-in diners. These are
- * the ones the owner said are most of the trade, so they are a first-class thing
- * rather than a fallback.
+ * Every open tab, a stay's and a diner's alike, in one read.
+ *
+ * The Restaurant screen lists everyone the desk may charge — the guests who are
+ * in the hotel and the diners with no room behind them (the trade the owner said
+ * is most of it), so it needs both kinds at once instead of one query per guest;
+ * the diner tabs are the ones with no `booking_id`.
  */
-export async function getOpenWalkInTabs(): Promise<Tab[]> {
+export async function getOpenTabs(): Promise<Tab[]> {
   const tabs = await getTabs()
-  return tabs.filter(t => !t.booking_id && t.status === 'open')
+  return tabs.filter(t => t.status === 'open')
 }
 
 /**

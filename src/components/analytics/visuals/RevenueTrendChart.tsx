@@ -33,9 +33,8 @@ const pesoTicks = (value: number) => (value >= 1000 ? `₱${(value / 1000).toFix
 interface RevenueTrendChartProps { trendSlots: TrendSlot[] }
 export const RevenueTrendChart: React.FC<RevenueTrendChartProps> = ({ trendSlots }) => {
   // Real ordinal scale — satisfies "callable and copyable"; infer the source domain from `color: 'source'`.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const colorScale = useMemo(
-    () => scaleOrdinal<string, string>().domain(['Pension', 'House', 'Garden', 'Gazebo', 'Restaurant']).range(Object.values(COLORS)) as any,
+    () => scaleOrdinal<string, string>().domain(['Pension', 'House', 'Garden', 'Gazebo', 'Restaurant']).range(Object.values(COLORS) as string[]),
     [],
   )
 

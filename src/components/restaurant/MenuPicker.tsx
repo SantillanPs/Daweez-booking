@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   BadgePercent, Beer, Beef, Coffee, Cookie, CupSoda, Drumstick, Fish, Ham,
-  IceCreamCone, Salad, Sandwich, Soup, Utensils, Wheat,
+  IceCreamCone, Salad, Sandwich, Search, Soup, Utensils, Wheat, X,
 } from 'lucide-react'
 import { MenuCategory, MenuItem, getMenu } from '../../utils/restaurantMenu'
 
@@ -36,18 +36,103 @@ interface MenuPickerProps {
   counts?: Record<string, number>
 }
 
+// A printed menu reads in two columns, so the card keeps them: the categories are
+// cut in half by item count — never through a category — so the two halves stay
+// level AND the order still reads straight down the left column first, then the
+// right, the way a real menu is read.
+function splitColumns(menu: MenuCategory[]): [MenuCategory[], MenuCategory[]] {
+  const total = menu.reduce((n, c) => n + c.items.length + 1, 0)
+  const left: MenuCategory[] = []
+  let count = 0
+  for (const category of menu) {
+    const weight = category.items.length + 1
+    if (left.length > 0 && count + weight > total / 2) break
+    left.push(category)
+    count += weight
+  }
+  const onTheLeft = new Set(left.map(c => c.id))
+  return [left, menu.filter(c => !onTheLeft.has(c.id))]
+}
+
+function MenuColumn({ categories, onPick, busy, counts }: {
+  categories: MenuCategory[]
+  onPick: (item: MenuItem) => void
+  busy: boolean
+  counts: Record<string, number>
+}) {
+  return (
+    <div>
+      {categories.map(category => {
+        const GroupIcon = ICONS[category.id] || Utensils
+        return (
+          <section key={category.id}>
+            {/* The category sits centred between its own thin rules, the way it is
+                printed on the laminated card the staff already know. */}
+            <p className="sticky top-0 z-10 bg-paper-50 flex items-center gap-2 pt-4 pb-1.5 text-[11px] font-bold uppercase tracking-[0.13em] text-brand-text">
+              <span className="flex-1 border-t border-paper-300" />
+              <GroupIcon className="w-4 h-4" />
+              <span className="whitespace-nowrap">
+                {category.name}
+                {category.note && <span className="ml-1.5 font-semibold tracking-normal normal-case text-muted">{category.note}</span>}
+              </span>
+              <span className="flex-1 border-t border-paper-300" />
+            </p>
+
+            {category.items.map(item => {
+              const alreadyOn = counts[item.name] || 0
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onPick(item)}
+                  title={item.note ? item.name + ' — ' + item.note : item.name}
+                  // A finger, not a mouse: every dish is a 48px row whatever its
+                  // text, because the staff hold the tablet in front of the guest.
+                  className={'flex w-full flex-col justify-center text-left min-h-[48px] px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-50 ' +
+                    (alreadyOn > 0 ? 'bg-gold-100' : 'hover:bg-paper-100')}
+                >
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-[13.5px] font-bold text-main">{item.name}</span>
+                    <span className="flex-1 border-b border-dotted border-paper-400 translate-y-[-4px]" />
+                    <span className="font-display text-[14px] font-bold text-main">{fmtPeso(item.price)}</span>
+                    {alreadyOn > 0 && (
+                      <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-gold-400 text-ink-900 text-[10.5px] font-bold inline-flex items-center justify-center self-center">
+                        {alreadyOn}
+                      </span>
+                    )}
+                  </span>
+                  {item.note && <span className="block text-[10.5px] italic text-muted mt-0.5">{item.note}</span>}
+                </button>
+              )
+            })}
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
 // The menu board (board card k70).
 //
-// Built for a staff member taking an order at the counter, never for a guest
-// holding the tablet: big targets, the food group shown by an icon, and the PRICE
-// as the loudest thing on the tile, because the price is what gets said out loud.
-// A dish already on the tab lights up with a count, so the same order cannot
+// The owner's correction after the first two builds: it must look like the menu
+// the hotel actually uses — a paper card, the house name across the top, each
+// category between its own rules, dishes on the left and prices on the right
+// joined by dotted leaders — and it must be ONE scroll with nothing to choose
+// first, so a hand just runs down it.
+//
+// It is still a till, never a poster: the whole line is the tap target (a finger
+// never aims at an 8px price), the row lifts under the cursor, and a dish already
+// on the bill has its count written on its own line, so the same order cannot
 // quietly land twice.
 export function MenuPicker({ onPick, busy = false, counts = {} }: MenuPickerProps) {
   // The menu is read from the database so every tablet shows the same one, so it
   // arrives a moment after the first render.
   const [menu, setMenu] = useState<MenuCategory[] | null>(null)
-  const [categoryId, setCategoryId] = useState('')
+  // Finding one dish on a 61-item card is slow by scrolling, so there is a box for
+  // it. It narrows the CARD — the paper look, the categories and the count badges
+  // all stay — and empties back to the whole menu in one tap.
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -58,6 +143,15 @@ export function MenuPicker({ onPick, busy = false, counts = {} }: MenuPickerProp
     return () => { cancelled = true }
   }, [])
 
+  const found = useMemo(() => {
+    if (!menu) return []
+    const q = query.trim().toLowerCase()
+    if (!q) return menu
+    return menu
+      .map(c => ({ ...c, items: c.items.filter(i => (i.name + ' ' + (i.note || '')).toLowerCase().includes(q)) }))
+      .filter(c => c.items.length > 0)
+  }, [menu, query])
+
   if (!menu) {
     return (
       <div className="border border-soft rounded-lg bg-card px-3 py-6 text-center">
@@ -66,66 +160,51 @@ export function MenuPicker({ onPick, busy = false, counts = {} }: MenuPickerProp
     )
   }
 
-  const category = menu.find(c => c.id === categoryId) || menu[0]
-  const GroupIcon = ICONS[category?.id || ''] || Utensils
+  const [left, right] = splitColumns(found)
 
   return (
-    <div className="border border-soft rounded-lg overflow-hidden bg-card">
-      {/* Food groups. Icon first, word second, so the row is scanned, not read. */}
-      <div className="flex gap-1.5 px-2.5 py-2 bg-paper-50 border-b border-soft overflow-x-auto no-scrollbar">
-        {menu.map(c => {
-          const CatIcon = ICONS[c.id] || Utensils
-          const on = c.id === category?.id
-          return (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setCategoryId(c.id)}
-              title={c.name}
-              className={'shrink-0 inline-flex items-center gap-1.5 text-[11.5px] font-bold px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ' +
-                (on ? 'bg-gold-400 text-ink-900' : 'bg-card border border-soft text-ink-600 hover:bg-gold-100')}
-            >
-              <CatIcon className={'w-3.5 h-3.5 ' + (on ? 'text-ink-900' : 'text-gold-700')} />
-              {c.name}
-            </button>
-          )
-        })}
+    <div className="space-y-2">
+      {/* The search sits ABOVE the card on purpose: the card itself stays a paper
+          menu, and this is the till's own tool. */}
+      <div className="flex items-center gap-2 bg-card border border-soft focus-within:border-gold-500 rounded-lg px-3 min-h-[44px]">
+        <Search className="w-4 h-4 text-muted shrink-0" />
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Find a dish"
+          aria-label="Find a dish on the menu"
+          className="w-full bg-transparent text-[13px] text-main py-2 focus:outline-none"
+        />
+        {query && (
+          <button type="button" onClick={() => setQuery('')} aria-label="Clear the search"
+            className="shrink-0 inline-flex items-center justify-center w-8 h-8 -mr-1.5 rounded-lg text-muted hover:text-main transition-colors cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      <div className="p-2.5">
-        <p className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-muted mb-2">
-          <GroupIcon className="w-3.5 h-3.5 text-gold-600" />
-          {category?.name}{category?.note ? ' · ' + category.note : ''}
-        </p>
+      <div className="rounded-lg border border-paper-300 bg-paper-50 overflow-hidden">
+        <div className="px-4 pt-3 pb-2 text-center border-b-2 border-ink-900">
+          <p className="font-display font-extrabold uppercase tracking-[0.16em] text-[13.5px] text-main">
+            Daweez Restaurant &amp; Bar
+          </p>
+          <p className="text-[9.5px] uppercase tracking-[0.1em] text-muted mt-0.5">
+            {query ? `${found.reduce((n, c) => n + c.items.length, 0)} dish(es) match “${query.trim()}”` : 'Tap a dish to put it on the bill'}
+          </p>
+        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-          {(category?.items || []).map(item => {
-            const alreadyOn = counts[item.name] || 0
-            return (
-              <button
-                key={item.id}
-                type="button"
-                disabled={busy}
-                onClick={() => onPick(item)}
-                title={item.note ? item.name + ' — ' + item.note : item.name}
-                className={'relative text-left rounded-lg pl-2.5 pr-2 py-2.5 min-h-[64px] flex flex-col justify-between border transition-colors cursor-pointer disabled:opacity-50 ' +
-                  (alreadyOn > 0 ? 'border-gold-400 bg-gold-100' : 'border-soft bg-card hover:border-gold-400 hover:bg-gold-100')}
-              >
-                {alreadyOn > 0 && (
-                  <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-gold-400 text-ink-900 text-[10px] font-bold flex items-center justify-center">
-                    {alreadyOn}
-                  </span>
-                )}
-                <span className="flex items-start gap-1.5">
-                  <GroupIcon className="w-3.5 h-3.5 text-muted shrink-0 mt-0.5" />
-                  <span className="text-[12.5px] font-bold text-main leading-tight">{item.name}</span>
-                </span>
-                <span className="font-display text-[16px] font-extrabold text-brand-text leading-none mt-1.5">
-                  {fmtPeso(item.price)}
-                </span>
-              </button>
-            )
-          })}
+        <div className="max-h-[62vh] overflow-y-auto px-3 py-1.5">
+          {found.length === 0 ? (
+            <p className="px-4 py-10 text-center text-[13px] text-muted">
+              Nothing on the menu matches “{query.trim()}”.
+              <span className="block mt-1 text-[12px]">If the kitchen can make it, write it under the card.</span>
+            </p>
+          ) : (
+            <div className="grid gap-x-7 sm:grid-cols-2">
+              <MenuColumn categories={left} onPick={onPick} busy={busy} counts={counts} />
+              <MenuColumn categories={right} onPick={onPick} busy={busy} counts={counts} />
+            </div>
+          )}
         </div>
       </div>
     </div>

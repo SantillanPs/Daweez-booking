@@ -219,6 +219,8 @@ export function useBookings() {
     earlyCheckInHours?: number; lateCheckOutHours?: number; venueDayBlocks?: number
     notes?: string; preparedBy?: string; breakfastDays?: string[]
     referenceNumber?: string; registeredOn?: string; paymentRecords?: PaymentRecord[]; agreedDeposit?: number
+    /** Short stay (printed rate board): the hours the room was taken for. */
+    stayHours?: number
   }, MutationContext>({
     mutationFn: async (params) => {
       const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, guestGender, guestNationality, guestAddress, birthdate, checkIn, checkOut,
@@ -228,7 +230,7 @@ export function useBookings() {
         paymentMethod, paymentReference, paymentPlan, venueExcessHours = 0,
         paymentStatus, downpaymentPaid, balanceDue, securityDeposit,
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, notes, preparedBy, breakfastDays,
-        referenceNumber, registeredOn, paymentRecords, agreedDeposit } = params
+        referenceNumber, registeredOn, paymentRecords, agreedDeposit, stayHours } = params
 
       if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings, id)) {
         throw new Error('The room is already booked or blocked for these dates.')
@@ -246,6 +248,9 @@ export function useBookings() {
         usePromo,
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks,
         breakfastDays,
+        // A short stay must be priced for its hours, or the booking is stored owing a
+        // whole night (see `utils/AGENTS.md`).
+        shortStayHours: stayHours,
         rates: getRateConfig(),
       })
 
@@ -298,7 +303,8 @@ export function useBookings() {
         payment_records: paymentRecords,
         notes,
         prepared_by: preparedBy,
-        agreed_deposit: agreedDeposit
+        agreed_deposit: agreedDeposit,
+        stay_hours: stayHours
       }
 
       if (id) {
@@ -410,6 +416,17 @@ export function useBookings() {
   const updateRoomRateMutation = useMutation({
     mutationFn: async (params: { roomId: string; basePrice: number; promoPrice?: number | null }) => {
       return await syncEngine.updateRoomRate(params.roomId, params.basePrice, params.promoPrice)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] })
+    }
+  })
+
+  // 10b3. Mutation: Update a room's short-stay prices — 3, 6 and 12 hours, from the
+  // printed rate board. Zero in a box means the room is not sold for those hours.
+  const updateRoomHourPricesMutation = useMutation({
+    mutationFn: async (params: { roomId: string; hour3: number; hour6: number; hour12: number }) => {
+      return await syncEngine.updateRoomHourPrices(params.roomId, params.hour3, params.hour6, params.hour12)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] })
@@ -534,6 +551,9 @@ export function useBookings() {
 
     updateRoomBreakfastPrice: async (roomId: string, price: number) =>
       updateRoomBreakfastMutation.mutateAsync({ roomId, price }),
+
+    updateRoomHourPrices: async (roomId: string, hour3: number, hour6: number, hour12: number) =>
+      updateRoomHourPricesMutation.mutateAsync({ roomId, hour3, hour6, hour12 }),
 
     createPartnerDeal: createPartnerDealMutation.mutateAsync,
     savePartnerDeals: savePartnerDealsMutation.mutateAsync,

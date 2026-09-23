@@ -1,0 +1,8 @@
+Good catch — that **OUT** mark was a real mistake, not just cosmetics: a short stay stores its check-out as the next day (that is what keeps the whole day blocked for housekeeping), and the grid was drawing its usual rose “checks out this day” mark on that next morning. So a 3-hour booking read as an overnight one.
+
+Fixed:
+
+- **the calendar** — a short stay never gets the rose OUT mark now. It leaves the same day it arrived; the block already says `out 1:12 PM`.
+- I swept the same mistake in two other places while I was in there, because they used the stored next-day check-out too: the **bookings list** and the **booking details** now read `Sep 25 · 3 hours` instead of `Sep 25 → Sep 26`.
+
+Nothing else on the calendar changes. The one choice still open on this page is the block's line order (name first — built — time first, or wider columns for long names).
