@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rooms &amp; prices — the final design, drawn in full</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:6px 0 0}
+  .mut{color:var(--mut)} .gold{color:var(--gold)}
+  .pill{border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800}
+  .pill.gold{background:#332B18;color:#E6C989}
+  .pill.bad{background:#2A1615;color:#F87171}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:18px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin-top:8px;cursor:pointer;font-size:13.5px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12.5px;margin-top:2px}
+  .rec{background:#332B18;color:#E6C989;border-radius:6px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:6px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;margin-top:12px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:10px}
+  .q-status.on{color:#34D399}
+  .fact{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .fact:last-child{border-bottom:0}
+  .d{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;margin-top:12px}
+  .dwrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px}
+  .dnum{font-family:"Sora";font-weight:800;font-size:12.5px;color:var(--gold)}
+
+  /* the app, light and full size */
+  .wrap{background:#F6F3EC;border-radius:12px;border:1px solid #E2DCD0;padding:14px;box-shadow:0 16px 36px rgba(0,0,0,.5)}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px}
+  .head h3{font-family:"Sora";font-size:15px;font-weight:800;color:#1C1C1C;margin:0}
+  .head p{font-size:11px;color:#8A8377;margin:3px 0 0}
+  .cols{display:grid;grid-template-columns:1.05fr 1fr;gap:14px}
+  .list{background:#fff;border:1px solid #E7E1D6;border-radius:11px;overflow:hidden}
+  .lrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 13px;border-bottom:1px solid #F1ECE1;font-size:12.5px;cursor:pointer}
+  .lrow:last-child{border-bottom:0}
+  .lrow .l{font-weight:800;color:#1C1C1C}
+  .lrow .l span{font-weight:400;color:#8A8377;font-size:11px}
+  .lrow .r{font-family:ui-monospace,Menlo,monospace;font-weight:700;color:#1C1C1C}
+  .lrow.on{background:#FDFAF2;box-shadow:inset 3px 0 0 #D0AB60}
+  .lhead{padding:8px 13px;background:#FBF9F5;border-bottom:1px solid #E7E1D6;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A8377;display:flex;justify-content:space-between}
+  .dot{width:7px;height:7px;border-radius:99px;background:#D0AB60;display:inline-block}
+
+  .panel{background:#fff;border:1px solid #E7E1D6;border-radius:11px;padding:13px 14px;align-self:start}
+  .panel .t{font-family:"Sora";font-size:13.5px;font-weight:800;color:#1C1C1C}
+  .panel .s{font-size:10.5px;color:#8A8377;margin-top:2px}
+  .hr{border-top:1px solid #EFEAE1;margin:11px 0}
+  .fld{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #F5F1E8}
+  .fld:last-child{border-bottom:0}
+  .fld span{font-size:11.5px;color:#5E594F}
+  .fld i{font-style:normal;font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:13px;background:#F8F5EF;border:1px solid #E7E1D6;border-radius:6px;padding:3px 9px;color:#1C1C1C}
+  .lab{font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#8A8377}
+  .save{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #E4CE97;border-radius:99px;padding:7px 8px 7px 16px;margin-top:14px;box-shadow:0 8px 20px rgba(0,0,0,.12)}
+  .save b{font-size:12px;color:#1C1C1C}
+  .btn{background:#D0AB60;color:#141414;border-radius:99px;padding:7px 14px;font-weight:800;font-size:12px;display:inline-block}
+  .flat{color:#8A8377;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  .narrow{display:grid;grid-template-columns:1fr;gap:10px}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1000px] p-5 space-y-4">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="pill gold">drawn in full — for your yes</span>
+      <h1 class="text-xl font-bold">Rooms &amp; prices — the design you picked, at full size</h1>
+    </div>
+    <p class="cap">Design 6: the room list on the left, and a small panel that follows whichever room you click. Nothing pops over the list, nothing grows, nothing is left empty. <b>This is not built</b> — say yes, or tell me what to change.</p>
+  </header>
+
+  <section class="card p-4">
+    <span class="pill gold">desktop · the whole page</span>
+    <div class="wrap" style="margin-top:12px">
+      <div class="head">
+        <div>
+          <h3>Rooms &amp; prices</h3>
+          <p>One price per room, its breakfast, and what it is sold for by the hour.</p>
+        </div>
+      </div>
+      <div class="cols">
+        <div class="list">
+          <div class="lhead"><span>Room</span><span>A night</span></div>
+          <div class="lrow"><span class="l">Room 1 <span>· Full Double Deluxe</span></span><span class="r">₱1,050</span></div>
+          <div class="lrow on"><span class="l">Room 2 <span>· Full Double</span></span><span class="r">₱950 <span class="dot" style="margin-left:6px"></span></span></div>
+          <div class="lrow"><span class="l">Room 3 <span>· Full Double</span></span><span class="r">₱950</span></div>
+          <div class="lrow"><span class="l">Room 4 <span>· Full Double</span></span><span class="r">₱950</span></div>
+          <div class="lrow"><span class="l">Room 5 <span>· Matrimonial</span></span><span class="r">₱1,200</span></div>
+          <div class="lrow"><span class="l">Room 6 <span>· Family Room</span></span><span class="r">₱1,800</span></div>
+          <div class="lrow"><span class="l">Room 7 <span>· Bunk Bed 3</span></span><span class="r">₱1,100</span></div>
+          <div class="lrow"><span class="l">Room 8 <span>· Double Room</span></span><span class="r">₱850</span></div>
+          <div class="lrow"><span class="l">Room 9 <span>· Bunk Bed 2</span></span><span class="r">₱900</span></div>
+          <div class="lrow"><span class="l">Room 10 <span>· Bunk Bed 6</span></span><span class="r">₱2,400</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="t">Room 2</div>
+          <div class="s">Full Double · breakfast ₱300</div>
+          <div class="hr"></div>
+          <div class="lab">Overnight</div>
+          <div class="fld" style="margin-top:5px"><span>A night</span><i>950</i></div>
+          <div class="fld"><span>Breakfast, once for the stay</span><i>300</i></div>
+          <div class="hr"></div>
+          <div class="lab">Short stay — leave 0 for not sold</div>
+          <div class="fld" style="margin-top:5px"><span>3 hours</span><i>600</i></div>
+          <div class="fld"><span>6 hours</span><i>650</i></div>
+          <div class="fld"><span>12 hours</span><i>700</i></div>
+          <div class="fld"><span>22 hours</span><i class="flat">the night price · ₱950</i></div>
+        </div>
+      </div>
+
+      <div class="save">
+        <b>2 changes not saved</b>
+        <span class="btn">Save changes</span>
+      </div>
+    </div>
+
+    <div class="d">
+      <div class="dwrap">
+        <div class="dnum">HOW IT BEHAVES</div>
+        <div class="fact"><span>Tap any room on the left</span><b class="gold">the panel changes to that room</b></div>
+        <div class="fact"><span>Nothing opens over the list</span><b class="gold">no pop-up to close</b></div>
+        <div class="fact"><span>A room you have typed in keeps a small gold dot beside its price</span><b class="gold">you can see what is pending</b></div>
+        <div class="fact"><span>Saving is still the one bar at the foot</span><b class="gold">your ruling</b></div>
+        <div class="fact"><span>The panel shows the room's name and its breakfast, so you know which room you are in</span><b class="gold">no guessing</b></div>
+      </div>
+      <div class="dwrap">
+        <div class="dnum">ON A TABLET, OR A NARROW WINDOW</div>
+        <div class="wrap narrow">
+          <div class="list">
+            <div class="lrow on"><span class="l">Room 2 <span>· Full Double</span></span><span class="r">₱950</span></div>
+            <div class="lrow"><span class="l">Room 3 <span>· Full Double</span></span><span class="r">₱950</span></div>
+          </div>
+          <div class="panel">
+            <div class="t">Room 2</div>
+            <div class="fld" style="margin-top:6px"><span>A night</span><i>950</i></div>
+            <div class="fld"><span>Breakfast, once</span><i>300</i></div>
+            <div class="fld"><span>3 hours</span><i>600</i></div>
+          </div>
+        </div>
+        <p class="cap">The panel drops under the list instead of beside it — same two pieces, stacked.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Two small things, then I build it</h2>
+
+    <p class="cap" style="margin-top:12px"><b>a ·</b> On a narrow screen, the panel goes <b>under the list</b> (as drawn), or should it <b>slide in over the list</b> like a drawer?</p>
+    <form data-lavish-question="narrow" onsubmit="return queueOne(this,'narrow','Settings → Rooms')">
+      <label class="opt"><input type="radio" name="narrow" value="Under the list, as drawn"><span>Under the list, as drawn<span class="rec">my pick</span></span></label>
+      <label class="opt"><input type="radio" name="narrow" value="As a drawer that slides over the list"><span>A drawer over the list</span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+
+    <p class="cap" style="margin-top:16px"><b>b ·</b> The <b>breakfast menu</b> card — it stays on the page, under the panel? Or does it belong on the Other charges tab?</p>
+    <form data-lavish-question="bfwhere" onsubmit="return queueOne(this,'bfwhere','Settings → Rooms')">
+      <label class="opt"><input type="radio" name="bfwhere" value="Keep it on Rooms & prices, under the list and panel"><span>Stays on Rooms &amp; prices<span class="rec">my pick</span></span></label>
+      <label class="opt"><input type="radio" name="bfwhere" value="Move it to Other charges — the rooms tab is only about room prices"><span>Move it to Other charges</span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+
+    <form data-lavish-question="go" onsubmit="return queueOne(this,'go','Settings → Rooms')">
+      <label class="opt"><input type="radio" name="go" value="Yes — build it like this"><span><b>Yes — build it like this</b></span></label>
+      <label class="opt"><input type="radio" name="go" value="Not yet — I want changes first (I will write them below)"><span>Not yet — changes first</span></label>
+      <textarea name="go" placeholder="Anything to change before I build it (optional)"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = new FormData(form).get(key)
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

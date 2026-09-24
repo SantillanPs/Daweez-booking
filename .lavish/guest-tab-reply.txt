@@ -1,0 +1,16 @@
+**Nothing is built from this page — first the picture, then your rulings.**
+
+What the block does today, and what is wrong with it:
+
+- it says *“nothing on the tab”* **three times** — two sentences and a boxed paragraph about where orders are taken
+- the desk has to **leave the booking** to order: go to the restaurant, find the guest in the strip, then find the booking again
+- the tab's money is only readable **after expanding** the block
+
+Four directions, drawn on the page:
+
+1. **A** — the till comes back, small: a search box and the most-tapped dishes inside the block
+2. **B** — stay in the Restaurant screen, but it opens already on this guest and comes straight back
+3. **C** — no Guest tab block at all: food becomes a line in the money card
+4. **D** — the till slides **over** the booking at full width, so nothing is navigated away from *(my pick)*
+
+Below that, three smaller things: hide the block until the guest is checked in, what the collapsed line should say, and whether food may be settled on its own mid-stay.

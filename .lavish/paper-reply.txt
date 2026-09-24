@@ -1,8 +1,3 @@
-Removed — the **Short stay** row is gone from the booking form, both in a normal booking and in a short-stay one. The form no longer asks about hours at all.
+Narrowed — day columns **96 → 84 px**, which trims about an eighth off the grid's width without touching the block.
 
-Where the hours come from now: **the calendar's action bar**, where you tap `3h · 6h · 12h` on the day. The form opens with them already settled, and states them where the deposit used to be: **`3-hour stay · ₱550 — paid in full at the counter`**.
-
-Two things follow from it, so you know:
-
-- **22 hours is no longer sellable anywhere.** It was only in that row, and 22 hours is the room's own price — an ordinary overnight booking from a date range. (The pricing rule still accepts it, so an older booking saved with 22 keeps its price.)
-- The picker file is deleted, not just hidden.
+84 is the useful floor: `SEBASTIAN` and `out 8:02 AM` both still fit on their two lines at that width. Go narrower and the name starts cutting again — so if the columns still feel too wide, the better lever is the block's own wording rather than the column.

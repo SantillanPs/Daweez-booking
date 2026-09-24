@@ -1,0 +1,12 @@
+Design 6, drawn at full size so you can see the real thing before I touch any code.
+
+**The page:** the ten rooms on the left (one line each — `Room 2 · Full Double ₱950`), and the small panel on the right showing **whichever room you clicked**: its name, a night, breakfast once, then 3 / 6 / 12 hours, with 22 hours stated as the night price. A room you have typed in keeps a **small gold dot** beside its price, and the one save bar at the foot says `2 changes not saved`.
+
+**Nothing pops over the list, nothing grows, nothing is left empty** — which was the whole problem with what I built.
+
+Two small things to settle, then the yes:
+
+- **a ·** on a narrow screen, does the panel go **under the list** (as drawn) or **slide over it** like a drawer?
+- **b ·** does the **breakfast menu** card stay on Rooms & prices, or move to Other charges?
+
+And at the bottom: **“Yes — build it like this”**, or “changes first” with a box to write them in. Nothing gets built until you tap one of those.

@@ -82,9 +82,11 @@ Default section order:
 
 ## User Preferences
 
-### Working Agreement — discuss, then build
+### Working Agreement — show it first, always
+- **NEVER IMPLEMENT IMMEDIATELY. SHOW HIM FIRST, ALWAYS.** His words, in capitals, after I built a Settings redesign he had only approved in outline: even when a change looks obvious, agreed or already ruled on, the build starts **only after he has seen the drawing and said yes to it**. No exceptions for small changes.
 - **Never implement from a note, a list or an inference.** Every change starts as a discussion: the owner's words *"Make sure we discuss things first before doing any implementations so that we're always on the same page."*
 - The order is fixed: **I bring a drawing (Lavish) and the open questions → he rules on one item at a time → only then do I build.** A drawing is discussion, not a green light; approval is a ruling, in his words.
+- **When several drawings miss in a row, stop drawing variations and ask him what he pictures**, in plain words, with a box to write it in — then draw the thing he described. That is how the room-price pop-up was found after six misses.
 - **One item at a time.** Do not batch several of his open questions into one build, and do not start the next one until the previous is built and handed to Review.
 - When an answer is ambiguous or two of his notes disagree, **ask, and show the two consequences side by side** — never pick silently.
 
