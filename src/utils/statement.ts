@@ -136,6 +136,14 @@ export function buildStatement(o: StatementInput): Statement {
     // worth calling out, because it is not the price on the board.
     const rateLabel = b.contract_rate_override != null ? ' · corporate' : ''
 
+    // A SHORT STAY (the owner's ruling, 2026-09): its hours price IS the price, so the
+    // line prints what is actually charged — never the room's night price with the
+    // difference shown as a "discount" nobody gave. The hours are named on the room
+    // line (`Double · 12 hours`) and the unit column then reads HOURS, so the paper
+    // cannot say it twice. The Discount column keeps only a real staff discount.
+    const stayHours = Number(b.stay_hours || 0)
+    const isShortStay = stayHours > 0
+
     // The stay itself — one row per unit. For a room, breakfast rides ON this row
     // (owner's rule, card k142): it is already inside the room rate, so the line
     // is named "Room 2 · Breakfast" and the amount includes it. Breakfast never
@@ -143,11 +151,15 @@ export function buildStatement(o: StatementInput): Statement {
     const breakfastOnRoomLine = isRoom ? Math.round(pricing.breakfastTotal) : 0
     lineItems.push({
       key: b.id + '-stay',
-      description: unitName(b, rooms, venues) + (breakfastOnRoomLine > 0 ? ' · Breakfast' : '') + rateLabel,
+      description: unitName(b, rooms, venues)
+        + (isShortStay ? ' · ' + stayHours + ' hours' : '')
+        + (breakfastOnRoomLine > 0 ? ' · Breakfast' : '') + rateLabel,
       qty: String(stayQty),
-      unit: pricing.stayUnit,
-      price: regularNightly,
-      discount: Math.round(pricing.discountAmount + pricing.appliedDiscountAmount),
+      unit: isShortStay ? 'HOURS' : pricing.stayUnit,
+      price: isShortStay ? Math.round(pricing.subtotal / Math.max(1, stayQty)) : regularNightly,
+      discount: isShortStay
+        ? Math.round(pricing.appliedDiscountAmount)
+        : Math.round(pricing.discountAmount + pricing.appliedDiscountAmount),
       amount: Math.round(pricing.stayTotal + breakfastOnRoomLine),
     })
 

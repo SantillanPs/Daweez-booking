@@ -1,0 +1,14 @@
+Both approved fixes are built.
+
+**1 · The statement's charges line for a short stay.** It now prints `Double · 12 hours · 1 · HOURS · ₱650 · — · ₱650` — the hours named on the room line, the price that is actually charged, and the Discount column empty unless you gave a real discount. No more `₱850` with a phantom `₱200` off.
+
+**2 · Closing the receipt no longer loses the Check in.** The panel stays open behind the receipt while the guest has not been checked in yet, so the **Check in** button is still there — the clock can start in the same visit. An ordinary booking still closes exactly as before; taking the rest of a partly-paid bill behaves as it did.
+
+`tsc -b --force` exit 0 · `npm run lint` exit 0.
+
+**Now your two steps, in this order:**
+
+1. **Settings → Rooms & prices** → Room 8 → `3h 550`, `6h 600`, `12h 650` → **Save changes**. Same for whichever other rooms you sell short. That is the one that makes every machine agree.
+2. That booking (**GRF-2026-09-0013**, ₱800 taken on a 12-hour stay) — correct its payment from the quick view once the price is in, as you chose.
+
+If you want, I can also clear the stale room copy sitting in your browser so it can never override the database for you alone — one line, just say so.

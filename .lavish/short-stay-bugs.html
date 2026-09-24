@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Short stays — why the prices are wrong</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:6px 0 0}
+  .mut{color:var(--mut)} .gold{color:var(--gold)}
+  .pill{border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800}
+  .pill.bad{background:#2A1615;color:#F87171}
+  .pill.ok{background:#12261F;color:#34D399}
+  .pill.gold{background:#332B18;color:#E6C989}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:18px}
+  .qn{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:24px;padding:0 8px;border-radius:99px;background:var(--gold);color:#141414;font-family:"Sora";font-weight:800;font-size:12px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin-top:8px;cursor:pointer;font-size:13.5px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12.5px;margin-top:2px}
+  .rec{background:#332B18;color:#E6C989;border-radius:6px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:6px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;margin-top:12px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:10px}
+  .q-status.on{color:#34D399}
+  .d{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:12px}
+  .dwrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px}
+  .dnum{font-family:"Sora";font-weight:800;font-size:12.5px;color:var(--gold)}
+  .fact{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .fact:last-child{border-bottom:0}
+  .money{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .m{flex:1;min-width:140px;background:#262626;border:1px solid #3A3A3A;border-radius:10px;padding:11px 12px}
+  .m .t{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#A8A29A}
+  .m .v{font-family:"Sora";font-weight:800;font-size:24px;margin-top:5px}
+  .m .w{font-size:11px;color:#A8A29A;margin-top:4px}
+  .m.bad{border-color:#5A2A26} .m.bad .v{color:#F87171}
+  .m.gold{border-color:#6F5420} .m.gold .v{color:#E6C989}
+  .paper{background:#E6E2DA;color:#111;border-radius:8px;padding:12px;font-size:11px}
+  .paper table{width:100%;border-collapse:collapse}
+  .paper th{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#4A463E;text-align:right;padding:3px 5px;border-bottom:1.5px solid #6B6558}
+  .paper th:first-child{text-align:left}
+  .paper td{padding:4px 5px;border-bottom:1px solid #BFB8A9;text-align:right;font-family:ui-monospace,Menlo,monospace}
+  .paper td:first-child{text-align:left;font-family:"DM Sans"}
+  .strike{color:#9E1B22;text-decoration:line-through}
+  .good{color:#1E5A45;font-weight:800}
+  .tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  .tbl th{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#A8A29A;text-align:right;padding:4px 8px;border-bottom:1px solid #3A3A3A}
+  .tbl th:first-child{text-align:left}
+  .tbl td{padding:7px 8px;border-bottom:1px solid #2C2C2C;text-align:right;font-family:ui-monospace,Menlo,monospace}
+  .tbl td:first-child{text-align:left;font-family:"DM Sans"}
+  .dash{color:#F87171;font-weight:800}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1000px] p-5 space-y-4">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="pill bad">two bugs · diagnosis</span>
+      <h1 class="text-xl font-bold">Short stays — why the prices are wrong, and what to fix</h1>
+    </div>
+    <p class="cap">I looked at the actual booking in the database (<b>GRF-2026-09-0013</b>, Room 8, 12 hours). Nothing is changed yet — this is what I found and what I propose.</p>
+  </header>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">One booking, three different totals</h2>
+    <div class="money">
+      <div class="m"><div class="t">The printed statement said</div><div class="v">₱650</div><div class="w">12 hours</div></div>
+      <div class="m bad"><div class="t">The app asked for, and took</div><div class="v">₱800</div><div class="w">recorded as a Cash payment, receipt PR-202609-001</div></div>
+      <div class="m gold"><div class="t">The app now believes the stay is worth</div><div class="v">₱1,000</div><div class="w">₱800 paid + ₱200 still owed</div></div>
+    </div>
+    <p class="cap">The same room, the same 12 hours, three figures — because each screen read a different price for Room 8.</p>
+  </section>
+
+  <section class="card p-4">
+    <span class="pill bad">the root cause</span>
+    <h2 class="text-base font-bold" style="margin-top:8px">Room 8 has no short-stay prices in the database at all</h2>
+    <table class="tbl">
+      <thead><tr><th>Room 8 · Double</th><th>A night</th><th>3 hours</th><th>6 hours</th><th>12 hours</th></tr></thead>
+      <tbody>
+        <tr><td>What the database holds</td><td>₱850</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td></tr>
+        <tr><td>What your browser shows</td><td>₱850</td><td>₱550</td><td>₱600</td><td>₱650</td></tr>
+      </tbody>
+    </table>
+    <p class="cap">You typed those three prices while the app was still running without a database, so they were saved <b>inside your browser only</b> — the same trap as the local bookings. Every other machine, including the live site, sees a dash: no 3, 6 or 12-hour price for any room.</p>
+    <div class="d">
+      <div class="dwrap">
+        <div class="dnum">WHAT THAT CAUSES</div>
+        <div class="fact"><span>A 12-hour stay priced on the live site falls back to the room's <b>normal price</b></span><b class="bad">wrong money</b></div>
+        <div class="fact"><span>The statement, the desk's screen and the booking each read a different Room 8</span><b class="bad">three totals</b></div>
+      </div>
+      <div class="dwrap">
+        <div class="dnum">YOUR OWN FIX, NO CODE NEEDED</div>
+        <div class="fact"><span><b>Settings → Rooms &amp; prices</b>: pick Room 8, type 3h / 6h / 12h, <b>Save changes</b> — now it goes to the database</span><b class="gold">do this first</b></div>
+        <div class="fact"><span>Then the same for the other rooms you sell short (Rooms 2, 3, 4 and 7 by your board)</span><b class="gold">and every other machine sees them</b></div>
+        <div class="fact"><span>Your browser may still hold its stale copy and quietly override the database for you alone — I can clear that for you when you say</span><b class="gold">one line, no code</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="q">
+    <div style="display:flex;gap:12px;align-items:center">
+      <span class="qn">1</span>
+      <h2 class="text-base font-bold">The statement shows a ₱200 “discount” that nobody gave</h2>
+    </div>
+    <div class="d">
+      <div class="dwrap">
+        <div class="dnum">TODAY</div>
+        <div class="paper" style="margin-top:9px">
+          <table>
+            <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Price</th><th>Discount</th><th>Amount</th></tr></thead>
+            <tbody><tr><td>Double</td><td>1</td><td>12 HOURS</td><td>₱850</td><td class="strike">₱200</td><td>₱650</td></tr></tbody>
+          </table>
+        </div>
+        <p class="cap">The ₱650 is simply the room's <b>12-hour price</b>. Printing ₱850 with a ₱200 discount says the guest was given something off — they were not.</p>
+      </div>
+      <div class="dwrap">
+        <div class="dnum">PROPOSED</div>
+        <div class="paper" style="margin-top:9px">
+          <table>
+            <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Price</th><th>Discount</th><th>Amount</th></tr></thead>
+            <tbody><tr><td>Double · 12 hours</td><td>1</td><td>HOURS</td><td class="good">₱650</td><td>—</td><td class="good">₱650</td></tr></tbody>
+          </table>
+        </div>
+        <p class="cap">The price column carries the price actually charged, the Discount column stays empty (unless you gave a real discount), and the room line names the hours so the paper can't be misread.</p>
+      </div>
+    </div>
+    <form data-lavish-question="stmt" onsubmit="return queueOne(this,'stmt','Short stays')">
+      <label class="opt"><input type="radio" name="stmt" value="Build the proposed statement line: the short-stay price is the price, no phantom discount, and the hours named on the room line"><span>Build it as proposed<span class="rec">my pick</span></span></label>
+      <label class="opt"><input type="radio" name="stmt" value="Leave the statement exactly as it is and only fix the prices"><span>Leave the statement alone</span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+  <section class="q">
+    <div style="display:flex;gap:12px;align-items:center">
+      <span class="qn">2</span>
+      <h2 class="text-base font-bold">Closing the receipt closes the booking panel — and with it, the Check in</h2>
+    </div>
+    <p class="cap">For a short stay the clock only starts when you press <b>Check in</b>. Today, recording the first money prints the receipt, and closing that receipt closes the panel — so the check-in step disappears with it and you have to find the booking again.</p>
+    <div class="d">
+      <div class="dwrap">
+        <div class="dnum">PROPOSED</div>
+        <div class="fact"><span>Closing the receipt leaves the panel open <b>while the guest has not been checked in yet</b></span><b class="gold">the Check in is still there</b></div>
+        <div class="fact"><span>For an ordinary booking, where nothing is left to do, it closes as it does today</span><b class="gold">unchanged</b></div>
+      </div>
+      <div class="dwrap">
+        <div class="dnum">OR, SIMPLER</div>
+        <div class="fact"><span>Never close the panel when a receipt is dismissed — the desk closes it</span><b class="gold">one rule, everywhere</b></div>
+        <div class="fact"><span>Cost: one extra tap after every first payment</span><b class="mut">more taps</b></div>
+      </div>
+    </div>
+    <form data-lavish-question="receipt" onsubmit="return queueOne(this,'receipt','Short stays')">
+      <label class="opt"><input type="radio" name="receipt" value="Keep the panel open while the guest has not been checked in yet; a normal booking still closes as today"><span>Keep it open until the guest is checked in<span class="rec">my pick</span></span></label>
+      <label class="opt"><input type="radio" name="receipt" value="Never close the panel when a receipt is dismissed — the desk closes it themselves"><span>Never auto-close from a receipt</span></label>
+      <label class="opt"><input type="radio" name="receipt" value="Leave it as it is — closing the receipt closes the panel"><span>Leave it as it is</span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+  <section class="q">
+    <div style="display:flex;gap:12px;align-items:center">
+      <span class="qn">3</span>
+      <h2 class="text-base font-bold">And the booking that is already wrong (₱800 paid, ₱200 owed)</h2>
+    </div>
+    <p class="cap">This one is money already taken. Once the room's 12-hour price is in the database, the app would price that stay at ₱650 against a ₱800 payment — it needs one of these:</p>
+    <form data-lavish-question="wrong" onsubmit="return queueOne(this,'wrong','Short stays')">
+      <label class="opt"><input type="radio" name="wrong" value="Fix the price first, then let me correct the payment on that booking myself from its quick view"><span>Fix the price, then I'll correct the payment myself<span class="rec">my pick</span></span></label>
+      <label class="opt"><input type="radio" name="wrong" value="Leave that booking alone — it is test data and can be cancelled or deleted"><span>Leave it — it is test data</span></label>
+      <label class="opt"><input type="radio" name="wrong" value="Show me a small tool that re-prices every short-stay booking from the room board and tells me what each one becomes"><span>Give me a re-price list for all short stays</span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = new FormData(form).get(key)
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

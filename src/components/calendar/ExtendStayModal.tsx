@@ -376,7 +376,12 @@ export function ExtendStayModal({
       // finished with. Taking the REST of a partly-paid bill is not the end of the job
       // — the desk may still extend the stay, print a statement or settle the tab — so
       // there the panel stays open behind the receipt (the owner's rule).
-      setCloseAfterPayment(paidSoFar <= 0)
+      //
+      // A SHORT STAY is the exception (the owner's ruling): its clock only starts when
+      // the desk presses Check in, so the errand is NOT over while the guest has not
+      // arrived — closing the panel took the Check in button away with it.
+      const shortStayNotArrived = stayHoursOf(localBooking) > 0 && !localBooking.actual_check_in
+      setCloseAfterPayment(paidSoFar <= 0 && !shortStayNotArrived)
       // Arrival payment (thenCheckIn): now the money is in, finish the check-in
       // in the same action — one button, no second trip. Never on a booking
       // deposit, which is paid long before the guest arrives.

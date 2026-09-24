@@ -345,7 +345,15 @@ export async function getBookings(): Promise<Booking[]> {
           payment_records: (b as { payment_records?: Booking['payment_records'] }).payment_records || undefined,
           venue_day_blocks: b.venue_day_blocks != null ? Number(b.venue_day_blocks) : undefined,
           breakfast_days: (b as { breakfast_days?: string[] }).breakfast_days || undefined,
-          breakfast_records: (b as { breakfast_records?: Booking['breakfast_records'] }).breakfast_records || undefined
+          breakfast_records: (b as { breakfast_records?: Booking['breakfast_records'] }).breakfast_records || undefined,
+          // SHORT STAY: this mapping used to stop at `breakfast_records`, so every short
+          // stay arrived in the app WITHOUT its hours — the quick view read it as an
+          // ordinary overnight booking (`Sep 24 → Sep 25 · 1 night`), priced it as a whole
+          // night, and the ₱800 already taken on a ₱650 twelve-hour stay made it look
+          // **partly paid**. The database still held `stay_hours` (that writer refuses a
+          // blank), which is why the row and the screen disagreed. The realtime mapper
+          // always carried this field; this read path must carry it too.
+          stay_hours: b.stay_hours != null ? Number(b.stay_hours) : undefined
         }))
       }
     } catch (err) {
