@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payment plan — built</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:6px 0 0}
+  .mut{color:var(--mut)} .gold{color:var(--gold)}
+  .pill{border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800}
+  .pill.gold{background:#332B18;color:#E6C989}
+  .pill.good{background:#12261F;color:#34D399}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:18px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin-top:8px;cursor:pointer;font-size:13.5px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12.5px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;margin-top:12px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:10px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:10px 12px;margin-top:8px;min-height:58px}
+  .d{display:grid;grid-template-columns:1fr;gap:14px;margin-top:12px}
+  @media(min-width:820px){.d{grid-template-columns:1fr 1fr}}
+  .dwrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px}
+  .dnum{font-family:"Sora";font-weight:800;font-size:12.5px;color:var(--gold)}
+  .app{background:#fff;border-radius:10px;border:1px solid #E2DCD0;padding:11px 12px;color:#1C1C1C;box-shadow:0 10px 24px rgba(0,0,0,.4)}
+  .lab{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#7C766C}
+  .line{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .opts{display:inline-flex;border:1px solid #E7E1D6;border-radius:8px;overflow:hidden;background:#F8F5EF}
+  .opts span{padding:5px 10px;font-size:11px;font-weight:800;color:#7C766C}
+  .opts span.on{background:#D0AB60;color:#141414}
+  .money{font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:14px;color:#1C1C1C}
+  .money i{font-style:normal;color:#8A8377;font-weight:600;font-size:12px}
+  .box{border:1px solid #E7E1D6;border-radius:7px;padding:4px 8px;font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:12px;background:#F8F5EF}
+  .help{font-size:11px;color:#6E6A62;margin:9px 0 0;line-height:1.5}
+  .help b{color:#1C1C1C}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td,th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+  td.k{font-weight:700;white-space:nowrap}
+  .todo{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:8px;font-size:13.5px}
+  .todo b{color:var(--gold)}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1000px] p-5 space-y-4">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="pill good">built ✓</span>
+      <span class="pill gold">paid · no money taken in the form</span>
+      <h1 class="text-xl font-bold">The payment plan is in the booking form</h1>
+    </div>
+    <p class="cap">Deposit is still the standard. Full pay and Custom sit beside it. Nothing is asked for unless the desk taps it.</p>
+  </header>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Where you will see it</h2>
+    <p class="cap">Calendar → pick a day (or a range) → <b>New booking</b> → scroll to <b>WHAT THE GUEST PAYS NOW</b>. One line, three states:</p>
+
+    <div class="d">
+      <div class="dwrap">
+        <div class="dnum">1 · DEPOSIT — the default, nothing to tap</div>
+        <div class="app" style="margin-top:9px">
+          <div class="line">
+            <span class="lab">What the guest pays now</span>
+          </div>
+          <div class="line" style="margin-top:7px">
+            <span class="opts"><span class="on">Deposit</span><span>Full pay</span><span>Custom</span></span>
+            <span class="money" style="margin-left:auto">₱1,250</span>
+          </div>
+          <p class="help"><b>2 nights</b> · Room <b>₱2,500</b> — whole stay <b>₱2,500</b>. Half is ₱1,250; the rest is collected at check-out.</p>
+        </div>
+        <p class="cap">Read-only, exactly as you said. Just the figure.</p>
+      </div>
+
+      <div class="dwrap">
+        <div class="dnum">2 · FULL PAY — for the guest who pays it all</div>
+        <div class="app" style="margin-top:9px">
+          <div class="line">
+            <span class="lab">What the guest pays now</span>
+          </div>
+          <div class="line" style="margin-top:7px">
+            <span class="opts"><span>Deposit</span><span class="on">Full pay</span><span>Custom</span></span>
+            <span class="money" style="margin-left:auto">₱2,500</span>
+          </div>
+          <p class="help"><b>2 nights</b> · Room <b>₱2,500</b> — whole stay <b>₱2,500</b>. Paid in full now — nothing left at check-out.</p>
+        </div>
+        <p class="cap">Read-only too. One tap, and the whole stay is what is asked for.</p>
+      </div>
+
+      <div class="dwrap">
+        <div class="dnum">3 · CUSTOM — the only one you type in</div>
+        <div class="app" style="margin-top:9px">
+          <div class="line">
+            <span class="lab">What the guest pays now</span>
+          </div>
+          <div class="line" style="margin-top:7px">
+            <span class="opts"><span>Deposit</span><span>Full pay</span><span class="on">Custom</span></span>
+            <span class="box" style="margin-left:auto">1,000</span>
+            <span class="money"><i>· ₱1,500 after</i></span>
+          </div>
+          <p class="help"><b>2 nights</b> · Room <b>₱2,500</b> — whole stay <b>₱2,500</b>. The rest is owed with the stay.</p>
+        </div>
+        <p class="cap">Here the second number is a <b>different</b> number, so it stays beside it.</p>
+      </div>
+
+      <div class="dwrap">
+        <div class="dnum">4 · SHORT STAY — untouched</div>
+        <div class="app" style="margin-top:9px">
+          <div style="background:#F7EDD3;border:1px solid #D0AB60;border-radius:8px;padding:9px 11px">
+            <p style="margin:0;font-size:12.5px;font-weight:800;color:#1C1C1C">3-hour stay · ₱550 — paid in full at the counter</p>
+            <p style="margin:5px 0 0;font-size:10.5px;color:#5C5A54">No deposit and no statement: the guest pays the whole amount now.</p>
+          </div>
+        </div>
+        <p class="cap">A 3/6/12-hour stay still skips the plan line entirely.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">What is behind it</h2>
+    <table style="margin-top:8px">
+      <tr><th>Plan</th><th>The figure</th><th>Saved with the booking</th></tr>
+      <tr><td class="k">Deposit</td><td>half the stay, read-only</td><td><code>payment_plan = deposit</code> + that figure</td></tr>
+      <tr><td class="k">Full pay</td><td>the whole stay, read-only</td><td><code>payment_plan = full</code> + that figure</td></tr>
+      <tr><td class="k">Custom</td><td>what you type</td><td><code>payment_plan = custom</code> + what you typed</td></tr>
+    </table>
+    <p class="cap">The printed bill names it: <span class="money" style="color:var(--body)">Deposit (50%)</span> · <span class="money" style="color:var(--body)">Full payment</span> · <span class="money" style="color:var(--body)">Custom · ₱1,000 now</span> — a bare “Custom” would tell the guest nothing.</p>
+    <p class="cap">Re-opening a booking for an edit puts the plan and the typed figure back in the line, so saving never blanks them.</p>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">What did not change</h2>
+    <p class="cap">· The form still takes <b>no money</b> — the guest gets the statement, and you record the payment from the booking's quick view, which prints their receipt.<br>
+    · <b>Deposit stays the default</b> on every new booking.<br>
+    · Deposit and Full pay can’t be typed into — the figures are the app’s.</p>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Two things still on your side</h2>
+    <div class="todo"><span>1</span><span><b>Retype the short-stay prices in Settings → Rooms &amp; prices</b>, then Save. Room 8: 3h ₱550 · 6h ₱600 · 12h ₱650 — plus Rooms 2, 3, 4 and 7. The old figures live only in this browser, so the database still says <i>no price</i> for them.</span></div>
+    <div class="todo"><span>2</span><span><b>Booking GRF-2026-09-0013</b> reads ₱800 received against a ₱1,000 stay — ₱200 owed. Fix the payment on that booking when you get a moment.</span></div>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">One thing to confirm</h2>
+    <p class="cap">Open a booking on the calendar and look at the line. Is it right?</p>
+    <form data-lavish-question="ok" onsubmit="return queueOne(this,'ok','Payment plan built')">
+      <label class="opt"><input type="radio" name="ok" value="Yes — it reads right. Card k130 can be closed."><span><b>Yes — it reads right</b><span>Move k130 to Done yourself; I never close cards.</span></span></label>
+      <label class="opt"><input type="radio" name="ok" value="Not quite — something to change (written below)"><span><b>Not quite — something to change</b><span>Write it below and I will draw it before touching anything.</span></span></label>
+      <textarea name="ok" placeholder="What looks wrong (optional)"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = new FormData(form).get(key)
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

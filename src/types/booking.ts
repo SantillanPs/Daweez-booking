@@ -141,7 +141,7 @@ export interface Booking {
   // What the guest agreed to pay when they booked: a 50% deposit or the full
   // amount. Shown as "expecting" in the booking quick view; the booking's
   // payment STATUS itself follows the money actually recorded.
-  payment_plan?: 'deposit' | 'full'
+  payment_plan?: 'deposit' | 'full' | 'custom'
   /**
    * What the desk and the guest agreed the guest would pay now, in pesos
    * (card k130). Half the stay by default, but the desk may type any figure —

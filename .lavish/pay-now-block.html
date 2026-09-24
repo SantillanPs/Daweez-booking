@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pay now — one row, no empty band</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:6px 0 0}
+  .pill{border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800}
+  .pill.gold{background:#332B18;color:#E6C989}
+  .pill.grey{background:#2A2A2A;color:#C9C4BB}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:7px;cursor:pointer;font-size:13.5px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12.5px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;margin-top:10px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:10px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:7px;min-height:50px}
+  .dnum{font-family:"Sora";font-weight:800;font-size:12.5px;color:var(--gold);margin-bottom:5px}
+  .hlabel{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#F87171;margin:0 0 4px}
+  .hlabel.ok{color:#34D399}
+
+  /* ---------- the staff app ---------- */
+  .app{background:#F1EDE5;border:1px solid #DED7C9;border-radius:12px;padding:8px;color:#1C1C1C}
+  .grid2{display:grid;grid-template-columns:1fr;gap:8px;align-items:start}
+  @media(min-width:820px){.grid2{grid-template-columns:1fr 1fr}}
+  .bcard{background:#fff;border:1px solid #E4DED2;border-radius:10px;padding:9px 10px;display:flex;flex-direction:column;gap:7px}
+  .oneline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .bh{display:flex;align-items:center;gap:6px;flex-shrink:0}
+  .bic{width:17px;height:17px;border-radius:99px;background:#F6EFDF;color:#8A6A22;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0}
+  .bt{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#4A463F;white-space:nowrap}
+  .bhint{font-size:10.5px;color:#8A8377;font-weight:400;letter-spacing:0;text-transform:none;margin-left:4px}
+  .ctrls{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+  .cbtn{border:1px solid #E0DACD;background:#fff;border-radius:7px;padding:5px 10px;font-size:11.5px;font-weight:700;color:#4A463F;line-height:1}
+  .cbtn.on{background:#D0AB60;border-color:#C9A14F;color:#141414}
+  .foot{font-size:10.5px;color:#7C766C;line-height:1.4;margin:0}
+  .foot b{color:#1C1C1C}
+  .goldcell{background:#FBF4E4;border:1px solid #E7D3A6;border-radius:8px;padding:4px 9px;text-align:right;margin-left:auto;flex-shrink:0}
+  .goldcell small{display:block;font-size:8.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#8A6A22;line-height:1.15}
+  .goldcell b{font-family:ui-monospace,Menlo,monospace;font-size:16px;color:#1C1C1C;letter-spacing:-.02em}
+  .goldcell em{font-style:normal;font-size:9.5px;color:#8A6A22;display:block;line-height:1.2}
+  .numbox{border:1px solid #E0DACD;border-radius:7px;padding:5px 7px;font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:11.5px;background:#FAF8F4;width:66px;text-align:right}
+  .after{font-size:10.5px;color:#8A8377;font-weight:600}
+  .field{border:1px solid #E0DACD;border-radius:7px;padding:6px 9px;font-size:11.5px;color:#A29B90;background:#fff;flex:1;min-width:0}
+  .actions{display:flex;justify-content:flex-end;gap:6px;align-items:center}
+  .gb{border:1px solid #E0DACD;background:#fff;border-radius:7px;padding:6px 12px;font-size:11.5px;font-weight:700;color:#4A463F}
+  .pb{border:0;background:#D0AB60;border-radius:7px;padding:6px 14px;font-size:11.5px;font-weight:800;color:#141414}
+  .ruler{display:grid;grid-template-columns:1fr;gap:9px}
+  @media(min-width:820px){.ruler{grid-template-columns:1fr 1fr}}
+  .stale{background:#FAF8F4;border:1px dashed #DED7C9;border-radius:8px}
+  .htag{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px}
+  .htag.bad{background:#2A1615;color:#F87171}
+  .htag.good{background:#12261F;color:#34D399}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1000px] p-4 space-y-3">
+
+  <header class="card p-3">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="pill gold">one row per card</span>
+      <span class="pill grey">nothing built</span>
+      <h1 class="text-lg font-bold">The empty band is the mess — here is the fix</h1>
+    </div>
+    <p class="cap">Your screenshot shows it: the two cards are stretched to the same height, so the Discount card carries a <b>big empty band under its buttons</b> (left of the picture), and the payment card needs a third row for its sentence. Give each card <b>exactly one row</b> and the band disappears — the whole pair drops from ≈164 px to ≈46 px.</p>
+  </header>
+
+  <section class="card p-3">
+    <div class="ruler">
+      <div>
+        <p class="hlabel">Now — <span class="htag bad">≈164 px</span> and a dead band on the left</p>
+        <div class="app">
+          <div class="grid2" style="align-items:stretch">
+            <div class="bcard">
+              <div class="oneline"><span class="bt">Discount</span><span class="bhint">% off the room charge, or a custom peso discount.</span></div>
+              <div class="ctrls"><span class="cbtn on">None</span><span class="cbtn">20%</span><span class="cbtn">10%</span><span class="cbtn">Custom price</span></div>
+              <div class="stale" style="height:44px"></div>
+            </div>
+            <div class="bcard">
+              <div class="oneline">
+                <div class="bh"><span class="bic">₱</span><span class="bt">What the guest pays now</span></div>
+                <div class="goldcell"><small>Pays now</small><b>₱475</b></div>
+              </div>
+              <div class="oneline">
+                <span class="ctrls"><span class="cbtn on">Deposit</span><span class="cbtn">Full pay</span><span class="cbtn">Custom</span></span>
+              </div>
+              <p class="foot"><b>1 night</b> · Room <b>₱950</b> — half ₱475 now, rest at check-out.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="hlabel ok">Fixed — <span class="htag good">≈46 px</span>, both cards one row</p>
+        <div class="app">
+          <div class="grid2">
+            <div class="bcard">
+              <div class="oneline">
+                <div class="bh"><span class="bic">%</span><span class="bt">Discount</span></div>
+                <span class="ctrls"><span class="cbtn on">None</span><span class="cbtn">20%</span><span class="cbtn">10%</span><span class="cbtn">Custom price</span></span>
+              </div>
+            </div>
+            <div class="bcard">
+              <div class="oneline">
+                <div class="bh"><span class="bic">₱</span><span class="bt">Guest pays now</span></div>
+                <span class="ctrls"><span class="cbtn on">Deposit</span><span class="cbtn">Full pay</span><span class="cbtn">Custom</span></span>
+                <div class="goldcell"><small>Pays now</small><b>₱475</b><em>of ₱950 stay</em></div>
+              </div>
+            </div>
+          </div>
+          <div class="grid2" style="margin-top:8px">
+            <div class="bcard" style="flex-direction:row;align-items:center;gap:8px">
+              <div class="bh"><span class="bic">✓</span><span class="bt">Receptionist</span></div>
+              <div class="field">Staff name</div>
+            </div>
+            <div class="actions"><span class="gb">Cancel</span><span class="pb">Confirm Booking</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">The stay total moves <b>inside the gold cell</b> (“₱475 · of ₱950 stay”), so the sentence under the card is gone — that sentence was the extra row. The whole lower half of the form is now <b>two slim rows</b>: the two chooses, then Receptionist with the buttons beside it.</p>
+  </section>
+
+  <section class="card p-3">
+    <h2 class="text-base font-bold">The three choices, one row each</h2>
+    <div class="app" style="margin-top:7px;display:flex;flex-direction:column;gap:8px">
+      <div class="bcard">
+        <div class="oneline">
+          <div class="bh"><span class="bic">₱</span><span class="bt">Guest pays now</span></div>
+          <span class="ctrls"><span class="cbtn on">Deposit</span><span class="cbtn">Full pay</span><span class="cbtn">Custom</span></span>
+          <div class="goldcell"><small>Pays now</small><b>₱475</b><em>rest at check-out</em></div>
+        </div>
+      </div>
+      <div class="bcard">
+        <div class="oneline">
+          <div class="bh"><span class="bic">₱</span><span class="bt">Guest pays now</span></div>
+          <span class="ctrls"><span class="cbtn">Deposit</span><span class="cbtn on">Full pay</span><span class="cbtn">Custom</span></span>
+          <div class="goldcell"><small>Pays now</small><b>₱950</b><em>nothing left after</em></div>
+        </div>
+      </div>
+      <div class="bcard">
+        <div class="oneline">
+          <div class="bh"><span class="bic">₱</span><span class="bt">Guest pays now</span></div>
+          <span class="ctrls"><span class="cbtn">Deposit</span><span class="cbtn">Full pay</span><span class="cbtn on">Custom</span><span class="numbox">300</span><span class="after">· ₱650 after</span></span>
+          <div class="goldcell"><small>Pays now</small><b>₱300</b><em>of ₱950 stay</em></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">Only the gold moves; the typed box appears beside the buttons only for Custom.</p>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">One thing to settle, then I build</h2>
+    <p class="cap">To get both cards onto one row, the Discount card loses its grey hint sentence — it says what the buttons already say. Where should that sentence go?</p>
+    <form data-lavish-question="go" onsubmit="return queueOne(this,'go','Pay-now block slim')">
+      <label class="opt"><input type="radio" name="go" value="Build it slim — the Discount hint moves to a hover tooltip, both cards one row (≈46 px)"><span><b>Build it slim</b><span>Hint on hover. Both cards one row, no empty band, nothing lost — just not shouted.</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="Keep the Discount hint visible — the left card stays two rows and the cards are NOT stretched to match"><span><b>Keep the hint visible</b><span>Left card two rows, right card one — nothing stretched, so still no dead band, just uneven.</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="Something else (written below)"><span><b>Something else</b><span>Say it in plain words and I'll draw that.</span></span></label>
+      <textarea name="go" placeholder="Optional — anything to change about the slim version"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = new FormData(form).get(key)
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

@@ -37,7 +37,7 @@ export interface ManualBookingInput {
   contractRateOverride?: number
   paymentMethod?: string
   paymentReference?: string
-  paymentPlan?: 'deposit' | 'full'
+  paymentPlan?: 'deposit' | 'full' | 'custom'
   venueExcessHours?: number
   paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
   downpaymentPaid?: number
@@ -89,7 +89,7 @@ export interface BookingSubmitParams {
   editingBookings?: Booking[]
   formPaymentMethod: string
   formPaymentReference: string
-  formPaymentPlan: 'deposit' | 'full'
+  formPaymentPlan: 'deposit' | 'full' | 'custom'
   /**
    * Short stay: the hours the room is being sold for (3/6/12/22). Set only by the
    * booking form's Short stay switch; undefined means an ordinary overnight stay.

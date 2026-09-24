@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Why Amount Due is ₱1,800 on a ₱2,400 stay</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:6px 0 0}
+  .pill{border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800}
+  .pill.gold{background:#332B18;color:#E6C989}
+  .pill.bad{background:#2A1615;color:#F87171}
+  .pill.good{background:#12261F;color:#34D399}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:7px;cursor:pointer;font-size:13.5px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12.5px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;margin-top:10px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:10px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:7px;min-height:52px}
+  .two{display:grid;grid-template-columns:1fr;gap:10px}
+  @media(min-width:820px){.two{grid-template-columns:1fr 1fr}}
+  .mono{font-family:ui-monospace,Menlo,monospace}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  td{padding:6px 8px;border-bottom:1px solid var(--line)}
+  td.n{text-align:right;font-family:ui-monospace,Menlo,monospace;font-weight:700;white-space:nowrap}
+  td.t{color:var(--sec)}
+  tr.tot td{border-top:1px solid var(--line);border-bottom:0;font-weight:800;font-size:15px}
+  .bad{color:#F87171} .good{color:#34D399} .gold{color:var(--gold)}
+  .note{background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13px;margin-top:8px}
+  .note b{color:var(--gold)}
+  .bar{height:10px;border-radius:99px;background:#2A2A2A;overflow:hidden;margin-top:6px}
+  .bar i{display:block;height:100%;background:#D0AB60}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1000px] p-4 space-y-3">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill bad">a real bug — nothing built yet</span>
+      <span class="pill gold">GRF-2026-09-0014 · Room 6 · Sep 24</span>
+      <h1 class="text-lg font-bold">Why Amount Due is ₱1,800 on a ₱2,400 stay</h1>
+    </div>
+    <p class="cap">The paper and the saved booking were worked out <b>in two different places</b>, and one of them was never told the room has breakfast. The gap is exactly the breakfast: <b>₱600</b>.</p>
+  </header>
+
+  <section class="card p-4">
+    <div class="two">
+      <div>
+        <p class="cap" style="margin:0 0 4px"><span class="pill gold">the paper</span> asks the SAVED booking what the stay costs</p>
+        <table>
+          <tr><td class="t">Family Room · Breakfast</td><td class="n">₱2,400</td></tr>
+          <tr><td class="t">Sub-Total</td><td class="n">₱2,400</td></tr>
+          <tr class="tot"><td>Amount Due <span class="bad">← the odd one</span></td><td class="n bad">₱1,800</td></tr>
+        </table>
+        <div class="bar"><i style="width:75%"></i></div>
+        <p class="cap">The paper knows the stay is ₱2,400 — and then asks for ₱1,800, because the “Amount Due” figure is not worked out from the Sub-Total above it. It is copied from the booking's stored balance.</p>
+      </div>
+      <div>
+        <p class="cap" style="margin:0 0 4px"><span class="pill bad">the booking as saved</span> what was written when it was made</p>
+        <table>
+          <tr><td class="t">Room 6, one night</td><td class="n">₱1,800</td></tr>
+          <tr><td class="t">Breakfast, once for the stay</td><td class="n bad">₱0</td></tr>
+          <tr class="tot"><td>balance_due</td><td class="n bad">₱1,800</td></tr>
+        </table>
+        <div class="bar"><i style="width:75%"></i></div>
+        <p class="cap">Breakfast <b>is</b> ticked on the booking (<span class="mono">breakfast_included: true</span>) — but the price it was saved with was worked out before that flag was handed to the pricing engine.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">The cause, in one line</h2>
+    <p class="cap" style="font-size:13.5px">When a booking is saved, the app asks the price engine for the figures and <b>forgets to say “this room has breakfast”</b> — so the saved balance is the room alone. Every other reader (the printed bill, the badge after check-in, the Earnings report) <b>does</b> pass that flag, which is why the paper and the balance disagree by exactly the breakfast.</p>
+    <p class="cap mono" style="font-size:12px">src/hooks/useBookings.ts → createManualBooking → calculatePricing({ … }) — <span class="bad">breakfastIncluded is missing</span></p>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">What it does at the desk — three ways</h2>
+    <div class="note"><b>1.</b> The booking badge reads <b>Owes ₱1,800</b> for a ₱2,400 stay, and the check-in gate uses that same number — so ₱1,800 can be taken at the desk and the booking still counts as settled for entry.</div>
+    <div class="note"><b>2.</b> The moment the guest is checked in, the app re-prices the stay <b>with</b> breakfast — and ₱600 quietly appears as owed again. That is the “where did this come from?” moment.</div>
+    <div class="note"><b>3.</b> A <b>Deposit</b> booking loses half of it too (half of ₱1,800 instead of half of ₱2,400), and the guest portal's copy of the same rule is priced the old way (₱150 × guests × days) rather than the room's own figure.</div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">The fix, drawn — one flag, one line</h2>
+    <div class="two" style="margin-top:8px">
+      <div>
+        <p class="cap" style="margin:0 0 4px"><span class="pill bad">before</span></p>
+        <table>
+          <tr><td class="t">Sub-Total</td><td class="n">₱2,400</td></tr>
+          <tr class="tot"><td>Amount Due</td><td class="n bad">₱1,800</td></tr>
+        </table>
+        <p class="cap">The badge, the gate and the paper all read ₱1,800.</p>
+      </div>
+      <div>
+        <p class="cap" style="margin:0 0 4px"><span class="pill good">after</span></p>
+        <table>
+          <tr><td class="t">Sub-Total</td><td class="n">₱2,400</td></tr>
+          <tr class="tot"><td>Amount Due</td><td class="n good">₱2,400</td></tr>
+        </table>
+        <p class="cap">The saved balance carries the breakfast, so every screen, the badge and the paper agree with the Sub-Total.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Separate flag — your room prices are not in the database</h2>
+    <p class="cap">Your browser knows Room 6's breakfast is ₱600 (that is where the ₱2,400 comes from). The database says <b>blank</b> for every breakfast price and every short-stay price — the same thing that happened with Room 8's 3h/6h/12h figures. On another device, or for a guest booking online, those prices do not exist.</p>
+    <table style="margin-top:8px">
+      <tr><td class="t">Room 6 breakfast</td><td class="n">this browser ₱600</td><td class="n bad">database blank</td></tr>
+      <tr><td class="t">Room 8 short stay 3h/6h/12h</td><td class="n">this browser ₱550/₱600/₱650</td><td class="n bad">database blank</td></tr>
+      <tr><td class="t">Rooms 2, 3, 4, 7 short stays</td><td class="n">this browser set</td><td class="n bad">database blank</td></tr>
+    </table>
+    <p class="cap">Not part of this fix — it needs its own drawing. Retuning those figures in Settings → Rooms &amp; prices now would write them to the database.</p>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Fix it?</h2>
+    <form data-lavish-question="fix" onsubmit="return queueOne(this,'fix','Amount due')">
+      <label class="opt"><input type="radio" name="fix" value="Yes — fix the code, and correct the bookings already saved short (GRF-2026-09-0014)"><span><b>Yes — fix it, and correct this booking too</b><span>One line in the save path, plus I put ₱2,400 on GRF-2026-09-0014 so the desk is not chasing ₱600.</span></span></label>
+      <label class="opt"><input type="radio" name="fix" value="Yes — fix the code only; let the already-saved one correct itself at check-in"><span><b>Fix the code only</b><span>New bookings are right; this one stays ₱1,800 until the guest is checked in.</span></span></label>
+      <label class="opt"><input type="radio" name="fix" value="Not yet — I want to talk about it first"><span><b>Not yet</b><span>Nothing changes; say what you want to look at.</span></span></label>
+      <textarea name="fix" placeholder="Optional — anything to add"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = new FormData(form).get(key)
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

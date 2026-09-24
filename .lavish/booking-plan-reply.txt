@@ -1,0 +1,9 @@
+Right you are — **₱1,250 · rest ₱1,250** says one thing twice. Fixed in the design you liked:
+
+- **Deposit** — `₱1,250 · half the stay` *(one figure, and the word says where it came from)*
+- **Full pay** — `₱2,500 · paid in full` *(nothing left for check-out)*
+- **Custom** — `1,000 · ₱1,500 after` *(here the second number really is a different number, so it earns its place)*
+
+The paper is unchanged from what you ruled: `Deposit (50%)`, `Full payment`, `Custom · ₱1,000 now`.
+
+One choice left — the word after the figure: **half the stay / paid in full** (as drawn), or **name the whole stay** (`₱1,250 · of ₱2,500`), or **nothing after the figure** (just `₱1,250`). Then the yes to build it.

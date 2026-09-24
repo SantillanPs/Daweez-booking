@@ -210,7 +210,7 @@ export function useBookings() {
     breakfastOrders?: BreakfastOrder[]; equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons; rateMultiplier?: number; usePromo?: boolean; companions?: Companion[]
     partnerDealId?: string; companyName?: string; vehiclePlate?: string
-    paymentMethod?: string; paymentReference?: string; paymentPlan?: 'deposit' | 'full'; venueExcessHours?: number
+    paymentMethod?: string; paymentReference?: string; paymentPlan?: 'deposit' | 'full' | 'custom'; venueExcessHours?: number
     paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
     downpaymentPaid?: number; balanceDue?: number; securityDeposit?: number
     breakfastIncluded?: boolean; contractRateOverride?: number
@@ -246,6 +246,14 @@ export function useBookings() {
         contractRateOverride, venueExcessHours,
         rooms, venues,
         usePromo,
+        // Breakfast is the ROOM's own charge, once for the stay (card k140), and the
+        // booking stores that flag — so the price it is SAVED with has to carry it too.
+        // Leaving it out priced every new booking as the room alone: GRF-2026-09-0014
+        // (Room 6, breakfast ₱600) was stored owing ₱1,800 on a ₱2,400 stay, while the
+        // printed bill — which does pass this — showed Sub-Total ₱2,400 and an Amount
+        // Due of ₱1,800 copied from that short balance. A Deposit booking lost half of
+        // it as well.
+        breakfastIncluded,
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks,
         breakfastDays,
         // A short stay must be priced for its hours, or the booking is stored owing a

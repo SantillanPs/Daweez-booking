@@ -10,7 +10,7 @@ import {
 import { DiscountPricingControls, DiscountType } from './calendar/DiscountPricingControls'
 import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
-import { BookingDepositFields } from './walk-in/BookingDepositFields'
+import { BookingDepositFields, PayPlan } from './walk-in/BookingDepositFields'
 import { BreakfastRoomChips } from './walk-in/BreakfastRoomChips'
 import { breakfastSellable } from '../utils/breakfast'
 import { focusBookingAfterCreate } from '../utils/bookingFocus'
@@ -225,8 +225,9 @@ export function WalkInBookingForm({
 
   // ── Payment Details ──
   const [formPaymentMethod, setFormPaymentMethod] = useState('')
-  // What the guest agreed to pay now — a 50% deposit or the full amount.
-  const [formPaymentPlan, setFormPaymentPlan] = useState<'deposit' | 'full'>('deposit')
+  // What the guest pays now (the owner's ruling, 2026-09): Deposit is the standard,
+  // Full pay and Custom are the two other things a guest ever asks for.
+  const [formPaymentPlan, setFormPaymentPlan] = useState<PayPlan>('deposit')
   const [formPaymentReference, setFormPaymentReference] = useState('')
   const [formInvoiceNumber, setFormInvoiceNumber] = useState('')
 
@@ -294,7 +295,12 @@ export function WalkInBookingForm({
 
       setFormPaymentMethod(b.payment_method || '')
       setFormPaymentReference(b.payment_reference || '')
-      setFormPaymentPlan(b.payment_plan === 'full' ? 'full' : 'deposit')
+      setFormPaymentPlan(b.payment_plan === 'full' ? 'full' : b.payment_plan === 'custom' ? 'custom' : 'deposit')
+      // The Custom figure the desk typed when the booking was made, put back in the box —
+      // without this, editing any booking showed Custom as ₱0 and saving wrote that zero
+      // over the agreed deposit.
+      setFormAgreedDeposit(b.agreed_deposit ?? 0)
+      setDepositTouched(b.agreed_deposit != null)
       setFormVenueExcessHours(b.venue_excess_hours || 0)
       setFormInvoiceNumber(b.invoice_number || '')
       
@@ -380,7 +386,7 @@ export function WalkInBookingForm({
   const dateFieldErr = 'input input-bordered input-error w-full'
 
   // ── Pricing calculations (estimate for totals; real nightly rate goes through calculatePricing) ──
-  const { estBreakfast, estRentals, estAddons, estSubtotal, estTotal, estDue } = useMemo(
+  const { estBreakfast, estRentals, estAddons, estTotal, estDue } = useMemo(
     () => computeBookingEstimate({
       unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues,
       formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
@@ -391,21 +397,16 @@ export function WalkInBookingForm({
     [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues, formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, shortStayHours]
   )
 
-  // The deposit box arrives filled with half the stay and keeps following the
-  // stay until somebody types their own figure (card k130). DERIVED, not copied
-  // into state by an effect: an effect here re-rendered the whole form on every
-  // estimate change, and the figure is only ever read below.
-  const agreedDeposit = depositTouched ? formAgreedDeposit : Math.max(0, Math.round(estTotal / 2))
-  // How many nights the picked dates add up to — the figure the deposit is
-  // worked from, shown to the desk so half the stay is never a mystery sum.
-  const stayNights = useMemo(
-    () => Math.max(1, ...Object.values(unitSelections).map(sel =>
-      sel.checkIn && sel.checkOut
-        ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
-        : 1
-    )),
-    [unitSelections]
-  )
+  // The figure the desk asks for now, by plan (the owner's ruling): the half for a
+  // deposit, the whole stay for Full pay, and the typed figure for Custom. `depositTouched`
+  // still means "the desk has typed in the Custom box". DERIVED, not copied into state by
+  // an effect: an effect here re-rendered the whole form on every estimate change, and the
+  // figure is only ever read below.
+  const agreedDeposit = formPaymentPlan === 'full'
+    ? Math.max(0, Math.round(estTotal))
+    : formPaymentPlan === 'custom'
+      ? (depositTouched ? formAgreedDeposit : 0)
+      : Math.max(0, Math.round(estTotal / 2))
 
   const staffNames = useMemo(
     () => Array.from(new Set((bookings || []).map(b => (b.prepared_by || '').trim()).filter(Boolean))).sort(),
@@ -624,8 +625,12 @@ export function WalkInBookingForm({
                           </>
                         )}
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 items-start">
-                          {!shortStayHours && (
+                        {/* The money row, side by side, each block exactly ONE line tall (the
+                            owner's design, 2026-09): the discount and the guest's payment plan
+                            are the same kind of choose-one control, so they sit as a pair and
+                            neither card is stretched into a band of empty white. */}
+                        {!shortStayHours && (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 items-start">
                             <DiscountPricingControls
                               isDayBlock={hasDayBlock}
                               discountType={discountType}
@@ -635,58 +640,59 @@ export function WalkInBookingForm({
                               venueDayBlocks={venueDayBlocks}
                               setVenueDayBlocks={setVenueDayBlocks}
                             />
-                          )}
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><UserCheck className="w-3 h-3" /></span>
-                              <h4 className="text-[10px] font-bold text-base-content tracking-widest uppercase">Receptionist on duty</h4>
-                            </div>
+                            <BookingDepositFields
+                              estTotal={estTotal}
+                              plan={formPaymentPlan}
+                              setPlan={setFormPaymentPlan}
+                              agreedDeposit={agreedDeposit}
+                              setAgreedDeposit={v => { setDepositTouched(true); setFormAgreedDeposit(v) }}
+                              isEditMode={!!editingBookings}
+                              formInvoiceNumber={formInvoiceNumber}
+                              setFormInvoiceNumber={setFormInvoiceNumber}
+                              formDownpaymentPaid={formDownpaymentPaid}
+                              setFormDownpaymentPaid={setFormDownpaymentPaid}
+                              formBalanceDue={formBalanceDue}
+                              setFormBalanceDue={setFormBalanceDue}
+                              formSecurityDeposit={formSecurityDeposit}
+                              setFormSecurityDeposit={setFormSecurityDeposit}
+                            />
+                          </div>
+                        )}
+
+                        {shortStayHours ? (
+                          <div className="bg-gold-100 border border-gold-400 rounded-lg px-3.5 py-2">
+                            <p className="text-[13px] font-bold text-ink-900">
+                              {shortStayHours}-hour stay · ₱{estTotal.toLocaleString()} — paid in full at the counter
+                            </p>
+                            <p className="text-[11px] text-ink-600 mt-0.5">
+                              No deposit and no statement: the guest pays the whole amount now, and the receipt is printed from the booking. The room stays taken for the rest of the day while it is cleaned.
+                            </p>
+                          </div>
+                        ) : null}
+
+                        {/* Receptionist and the form's buttons share one row: the half beside a
+                            short field is exactly where a blank band used to sit. */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 items-center">
+                          <div className="bg-base-100 border border-base-300 rounded-xl px-3 py-2 flex items-center gap-2">
+                            <span className="flex items-center gap-1.5 shrink-0" title="Who took this booking — it prints on the bill and the receipt.">
+                              <span className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><UserCheck className="w-2.5 h-2.5" /></span>
+                              <span className="text-[10px] font-bold text-base-content/70 whitespace-nowrap">Receptionist</span>
+                            </span>
                             {/* The names used before suggest themselves (card k136), so
                                 the same person is never written two different ways. */}
-                            <input list="staff-names" value={formPreparedBy}
+                            <input list="staff-names" value={formPreparedBy} aria-label="Receptionist on duty"
                               onChange={e => setFormPreparedBy(e.target.value.toUpperCase())}
-                              placeholder="Staff name" className="input input-bordered w-full" />
+                              placeholder="Staff name" className="input input-bordered input-sm flex-1 min-w-0" />
                             <datalist id="staff-names">
                               {staffNames.map(name => <option key={name} value={name} />)}
                             </datalist>
                           </div>
-                        </div>
-
-                        {shortStayHours ? (
-                          <div className="bg-gold-100 border border-gold-400 rounded-lg px-3.5 py-3">
-                            <p className="text-[13px] font-bold text-ink-900">
-                              {shortStayHours}-hour stay · ₱{estTotal.toLocaleString()} — paid in full at the counter
-                            </p>
-                            <p className="text-[11px] text-ink-600 mt-1">
-                              No deposit and no statement: the guest pays the whole amount now, and the receipt is printed from the booking. The room stays taken for the rest of the day while it is cleaned.
-                            </p>
+                          <div className="flex justify-end items-center gap-2">
+                            <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
+                            <button type="submit" disabled={isSubmitting} className="btn btn-primary">
+                              {isSubmitting ? 'Booking...' : 'Confirm Booking'}
+                            </button>
                           </div>
-                        ) : (
-                        <BookingDepositFields
-                          estTotal={estTotal}
-                          nights={stayNights}
-                          stayAmount={estSubtotal}
-                          breakfast={estBreakfast}
-                          extras={estRentals + estAddons}
-                          agreedDeposit={agreedDeposit}
-                          setAgreedDeposit={v => { setDepositTouched(true); setFormAgreedDeposit(v) }}
-                          isEditMode={!!editingBookings}
-                          formInvoiceNumber={formInvoiceNumber}
-                          setFormInvoiceNumber={setFormInvoiceNumber}
-                          formDownpaymentPaid={formDownpaymentPaid}
-                          setFormDownpaymentPaid={setFormDownpaymentPaid}
-                          formBalanceDue={formBalanceDue}
-                          setFormBalanceDue={setFormBalanceDue}
-                          formSecurityDeposit={formSecurityDeposit}
-                          setFormSecurityDeposit={setFormSecurityDeposit}
-                        />
-                        )}
-
-                        <div className="flex justify-end items-center gap-2 pt-2">
-                          <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
-                          <button type="submit" disabled={isSubmitting} className="btn btn-primary">
-                            {isSubmitting ? 'Booking...' : 'Confirm Booking'}
-                          </button>
                         </div>
                       </div>
                     )}

@@ -40,8 +40,8 @@ export interface Statement {
   // What is still owed AFTER that payment, so the guest can see the deposit is
   // not the whole bill and knows what to bring on arrival.
   balanceAfter: number
-  // What the guest agreed to pay when they booked: 'deposit' | 'full' | ''.
-  paymentPlan: '' | 'deposit' | 'full'
+  // What the guest agreed to pay when they booked: 'deposit' | 'full' | 'custom' | ''.
+  paymentPlan: '' | 'deposit' | 'full' | 'custom'
   paymentMethod: string
 }
 
@@ -119,8 +119,8 @@ export function buildStatement(o: StatementInput): Statement {
   let amountDue = 0
   let balanceAfter = 0
   let paymentMethod = ''
-  const paymentPlan: '' | 'deposit' | 'full' =
-    primaryBooking.payment_plan === 'deposit' || primaryBooking.payment_plan === 'full'
+  const paymentPlan: '' | 'deposit' | 'full' | 'custom' =
+    primaryBooking.payment_plan === 'deposit' || primaryBooking.payment_plan === 'full' || primaryBooking.payment_plan === 'custom'
       ? primaryBooking.payment_plan
       : ''
 

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pay now — every component one row</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:5px 0 0}
+  .pill{border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800}
+  .pill.gold{background:#332B18;color:#E6C989}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:#262626;border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:7px;cursor:pointer;font-size:13.5px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12.5px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;margin-top:10px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:10px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:#262626;border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:8px;min-height:52px}
+
+  /* ---------- the staff app, at real width (two ~455 px columns) ---------- */
+  .app{background:#F1EDE5;border:1px solid #DED7C9;border-radius:12px;padding:8px;color:#1C1C1C;max-width:940px}
+  .grid2{display:grid;grid-template-columns:1fr;gap:8px;align-items:start}
+  @media(min-width:820px){.grid2{grid-template-columns:1fr 1fr}}
+  .bcard{background:#fff;border:1px solid #E4DED2;border-radius:10px;padding:8px 10px}
+  .row{display:flex;align-items:center;gap:8px;min-width:0}
+  .lab{display:flex;align-items:center;gap:5px;flex-shrink:0}
+  .bic{width:16px;height:16px;border-radius:99px;background:#F6EFDF;color:#8A6A22;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0}
+  .bt{font-size:10.5px;font-weight:800;color:#4A463F;white-space:nowrap}
+  .seg{display:inline-flex;border:1px solid #E0DACD;border-radius:7px;overflow:hidden;background:#fff;flex-shrink:0}
+  .seg span{padding:5px 9px;font-size:11px;font-weight:700;color:#4A463F;line-height:1}
+  .seg span+span{border-left:1px solid #EDE7DC}
+  .seg span.on{background:#D0AB60;color:#141414}
+  .fig{margin-left:auto;display:flex;align-items:baseline;gap:5px;white-space:nowrap;flex-shrink:0}
+  .fig b{font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:15px;color:#1C1C1C;letter-spacing:-.02em}
+  .fig i{font-style:normal;font-size:10px;color:#8A8377;font-weight:600}
+  .numbox{border:1px solid #E0DACD;border-radius:7px;padding:4px 7px;font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:12px;background:#FAF8F4;width:58px;text-align:right;flex-shrink:0}
+  .field{border:1px solid #E0DACD;border-radius:7px;padding:5px 9px;font-size:11.5px;color:#A29B90;background:#fff;flex:1;min-width:0}
+  .gb{border:1px solid #E0DACD;background:#fff;border-radius:7px;padding:6px 12px;font-size:11.5px;font-weight:700;color:#4A463F}
+  .pb{border:0;background:#D0AB60;border-radius:7px;padding:6px 14px;font-size:11.5px;font-weight:800;color:#141414}
+  .actions{display:flex;justify-content:flex-end;gap:6px;align-items:center}
+  .stack{display:flex;flex-direction:column;gap:8px}
+  .tall{font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#34D399;text-align:right;margin:0 0 3px}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[980px] p-4 space-y-3">
+
+  <header class="card p-3">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="pill gold">single row · ≈38 px per component</span>
+      <h1 class="text-lg font-bold">Slim — one row per component</h1>
+    </div>
+    <p class="cap">Nothing else changed: same three choices, same figures, same cards. Each component is now <b>one line</b> — label, choices and figure side by side — so nothing is stretched and no band is left empty.</p>
+  </header>
+
+  <section class="card p-3">
+    <p class="tall">the whole block below ≈ 84 px tall (two rows + the actions row)</p>
+    <div class="app">
+      <div class="grid2">
+        <div class="bcard">
+          <div class="row">
+            <span class="lab"><span class="bic">%</span><span class="bt">Discount</span></span>
+            <span class="seg"><span class="on">None</span><span>20%</span><span>10%</span><span>Custom price</span></span>
+          </div>
+        </div>
+        <div class="bcard">
+          <div class="row">
+            <span class="lab"><span class="bic">₱</span><span class="bt">Pays now</span></span>
+            <span class="seg"><span class="on">Deposit</span><span>Full pay</span><span>Custom</span></span>
+            <span class="fig"><b>₱475</b><i>of ₱950</i></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:8px">
+        <div class="bcard">
+          <div class="row">
+            <span class="lab"><span class="bic">✓</span><span class="bt">Receptionist</span></span>
+            <span class="field">Staff name</span>
+          </div>
+        </div>
+        <div class="actions"><span class="gb">Cancel</span><span class="pb">Confirm Booking</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-3">
+    <h2 class="text-base font-bold">The same row, in every state</h2>
+    <div class="stack" style="margin-top:8px">
+      <div class="app">
+        <div class="bcard">
+          <div class="row">
+            <span class="lab"><span class="bic">₱</span><span class="bt">Pays now</span></span>
+            <span class="seg"><span class="on">Deposit</span><span>Full pay</span><span>Custom</span></span>
+            <span class="fig"><b>₱475</b><i>half · rest at check-out</i></span>
+          </div>
+        </div>
+      </div>
+      <div class="app">
+        <div class="bcard">
+          <div class="row">
+            <span class="lab"><span class="bic">₱</span><span class="bt">Pays now</span></span>
+            <span class="seg"><span>Deposit</span><span class="on">Full pay</span><span>Custom</span></span>
+            <span class="fig"><b>₱950</b><i>paid in full</i></span>
+          </div>
+        </div>
+      </div>
+      <div class="app">
+        <div class="bcard">
+          <div class="row">
+            <span class="lab"><span class="bic">₱</span><span class="bt">Pays now</span></span>
+            <span class="seg"><span>Deposit</span><span>Full pay</span><span class="on">Custom</span></span>
+            <span class="fig"><span class="numbox">300</span><i>now · ₱650 after</i></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">Custom is the only one you type in — its box sits where the figure sits, so the row never grows.</p>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Build it like this?</h2>
+    <form data-lavish-question="go" onsubmit="return queueOne(this,'go','Pay-now slim')">
+      <label class="opt"><input type="radio" name="go" value="Yes — build it: one row per component, swapped so Pays now sits beside Discount, Receptionist half width with the buttons beside it"><span><b>Yes — build this</b><span>One row each, nothing stretched, Deposit still the default.</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="Yes, but keep the label words exactly as they are (What the guest pays now / Receptionist on duty)"><span><b>Yes, with the full labels</b><span>Longer words — still one row, the row just starts further right.</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="Still not right — written below"><span><b>Still not right</b><span>Say what to change and I'll change only that.</span></span></label>
+      <textarea name="go" placeholder="Optional"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = new FormData(form).get(key)
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

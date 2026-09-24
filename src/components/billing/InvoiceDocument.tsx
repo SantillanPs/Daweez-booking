@@ -61,8 +61,12 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
   const methodLabel = method ? paymentMethodLabel(method) : ''
 
   // The guest's own choice at booking, printed so the statement can never look
-  // like it is asking for the whole stay when only a deposit was agreed.
-  const planLabel = paymentPlanLabel(statement.paymentPlan || undefined)
+  // like it is asking for the whole stay when only a deposit was agreed. A CUSTOM plan
+  // names the figure itself — `Custom · ₱1,000 now` — because the word alone says nothing
+  // (the owner's ruling, 2026-09); what is due now IS that figure while nothing is paid.
+  const planLabel = statement.paymentPlan === 'custom'
+    ? 'Custom · ' + money(statement.downpaymentPaid > 0 ? statement.downpaymentPaid : statement.amountDue) + ' now'
+    : paymentPlanLabel(statement.paymentPlan || undefined)
   // What the big "Amount Due" figure actually is, spelled out under its label.
   const dueLabel =
     statement.paymentPlan === 'deposit' && statement.downpaymentPaid === 0 ? 'Deposit (50%)'

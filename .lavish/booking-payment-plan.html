@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pay now — one line, no repeated number</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:6px 0 0}
+  .mut{color:var(--mut)} .gold{color:var(--gold)}
+  .pill{border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800}
+  .pill.gold{background:#332B18;color:#E6C989}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:18px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin-top:8px;cursor:pointer;font-size:13.5px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12.5px;margin-top:2px}
+  .rec{background:#332B18;color:#E6C989;border-radius:6px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:6px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;margin-top:12px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:10px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:10px 12px;margin-top:8px;min-height:60px}
+  .d{display:grid;grid-template-columns:1fr;gap:14px;margin-top:12px}
+  .dwrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px}
+  .dnum{font-family:"Sora";font-weight:800;font-size:12.5px;color:var(--gold)}
+  .app{background:#fff;border-radius:10px;border:1px solid #E2DCD0;padding:10px 12px;color:#1C1C1C;box-shadow:0 10px 24px rgba(0,0,0,.4);max-width:640px}
+  .lab{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#7C766C}
+  .line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .opts{display:inline-flex;border:1px solid #E7E1D6;border-radius:8px;overflow:hidden;background:#F8F5EF}
+  .opts span{padding:5px 10px;font-size:11px;font-weight:800;color:#7C766C}
+  .opts span.on{background:#D0AB60;color:#141414}
+  .money{font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:13px;color:#1C1C1C}
+  .money i{font-style:normal;color:#8A8377;font-weight:600}
+  .box{border:1px solid #E7E1D6;border-radius:7px;padding:4px 8px;font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:12px;background:#F8F5EF}
+  .bad{color:#9E1B22;text-decoration:line-through}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1000px] p-5 space-y-4">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="pill gold">the one you liked, corrected — nothing built</span>
+      <h1 class="text-xl font-bold">Pay now — one line, and the number said once</h1>
+    </div>
+    <p class="cap">You are right: <span class="bad">₱1,250 · rest ₱1,250</span> says the same thing twice. The line now carries <b>what is paid now</b> and a word for the rest — and the second figure appears only when it is genuinely a different number.</p>
+  </header>
+
+  <section class="card p-4">
+    <div class="d">
+
+      <div class="dwrap">
+        <div class="dnum">DEPOSIT · the default, nothing to tap</div>
+        <div class="app" style="margin-top:9px">
+          <div class="line">
+            <span class="lab">Pays now</span>
+            <span class="opts"><span class="on">Deposit</span><span>Full pay</span><span>Custom</span></span>
+            <span class="money" style="margin-left:auto">₱1,250 <i>· half the stay</i></span>
+          </div>
+        </div>
+        <p class="cap">One figure, and the word <b>half</b> says where it came from. Nothing repeated.</p>
+      </div>
+
+      <div class="dwrap">
+        <div class="dnum">FULL PAY · one tap</div>
+        <div class="app" style="margin-top:9px">
+          <div class="line">
+            <span class="lab">Pays now</span>
+            <span class="opts"><span>Deposit</span><span class="on">Full pay</span><span>Custom</span></span>
+            <span class="money" style="margin-left:auto">₱2,500 <i>· paid in full</i></span>
+          </div>
+        </div>
+        <p class="cap">The whole stay, and the words say nothing is left for check-out.</p>
+      </div>
+
+      <div class="dwrap">
+        <div class="dnum">CUSTOM · the only box</div>
+        <div class="app" style="margin-top:9px">
+          <div class="line">
+            <span class="lab">Pays now</span>
+            <span class="opts"><span>Deposit</span><span>Full pay</span><span class="on">Custom</span></span>
+            <span class="box" style="margin-left:auto">1,000</span>
+            <span class="money"><i>· ₱1,500 after</i></span>
+          </div>
+        </div>
+        <p class="cap">Here the second figure <b>is</b> a different number, so it earns its place.</p>
+      </div>
+
+    </div>
+
+    <div class="d" style="margin-top:14px">
+      <div class="dwrap">
+        <div class="dnum">WAS → IS</div>
+        <p class="cap" style="margin-top:8px">
+          <span class="bad">₱1,250 · rest ₱1,250</span><br>
+          <span class="money">₱1,250 · half the stay</span>
+        </p>
+      </div>
+      <div class="dwrap">
+        <div class="dnum">AND THE PAPER DOES NOT CHANGE</div>
+        <p class="cap" style="margin-top:8px">
+          <span class="money">Deposit (50%)</span> · Amount Due ₱1,250<br>
+          <span class="money">Full payment</span> · Amount Due ₱2,500<br>
+          <span class="money">Custom · ₱1,000 now</span> · Amount Due ₱1,000
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">One choice left: the word after the figure</h2>
+    <form data-lavish-question="word" onsubmit="return queueOne(this,'word','Booking payment plan')">
+      <label class="opt"><input type="radio" name="word" value="Half the stay / paid in full — a word, no second figure (as drawn)"><span><b>Half the stay</b> · <b>paid in full</b><span>One figure per state, nothing repeated. <em style="font-style:normal">(as drawn, my pick)</em></span></span></label>
+      <label class="opt"><input type="radio" name="word" value="Deposit of ₱2,500 / full stay ₱2,500 — name the whole stay instead of the half"><span>Name the <b>whole stay</b> instead<span>“₱1,250 · of ₱2,500” — two different numbers, but it repeats the total on every booking.</span></span></label>
+      <label class="opt"><input type="radio" name="word" value="Nothing after the figure for Deposit and Full pay — just ₱1,250 or ₱2,500"><span>Nothing after the figure<span>Shortest of all, but the desk has to know “half” by heart.</span></span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+
+    <form data-lavish-question="go" onsubmit="return queueOne(this,'go','Booking payment plan')">
+      <label class="opt"><input type="radio" name="go" value="Yes — build it like this"><span><b>Yes — build it like this</b></span></label>
+      <label class="opt"><input type="radio" name="go" value="Not yet — something else to change (I will write it below)"><span>Not yet — change something</span></label>
+      <textarea name="go" placeholder="Anything else before I build it (optional)"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = new FormData(form).get(key)
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>
