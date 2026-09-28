@@ -1,6 +1,6 @@
 import React from 'react'
 import { Companion, PartnerDeal } from '../../types/booking'
-import { User, Phone, Mail, Users, Trash2, Plus, CheckCircle2 } from 'lucide-react'
+import { User, Phone, Mail, Users, Trash2, Plus, CheckCircle2, Building2 } from 'lucide-react'
 
 interface RoomDetailsFormProps {
   formStatus: 'confirmed' | 'blocked'
@@ -39,6 +39,16 @@ interface RoomDetailsFormProps {
   onSelectPartnerDeal: (deal: PartnerDeal | null) => void
   guestNameError: string
   onGuestNameBlur: () => void
+  /** An agency is paying: the ⋯ menu offers it, and `agencySlot` sits above the name. */
+  agencyOn: boolean
+  /** What the slot currently shows — compared by the memo so it can never go stale. */
+  agencyKey: string
+  /** Is the bill-to picker open? The memo MUST compare this too, or **Change does nothing**. */
+  agencyPicking: boolean
+  onAddAgency: () => void
+  onRemoveAgency: () => void
+  /** The bill-to line / picker, built by the form (see AgencyFields). */
+  agencySlot?: React.ReactNode
 }
 
 export const RoomDetailsForm = React.memo(
@@ -65,8 +75,14 @@ export const RoomDetailsForm = React.memo(
     formCompanions,
     setFormCompanions,
     guestNameError,
-    onGuestNameBlur
+    onGuestNameBlur,
+    agencyOn,
+    onAddAgency,
+    onRemoveAgency,
+    agencySlot
   }: RoomDetailsFormProps) => {
+    /** The ⋯ menu: the only way into the agency feature the owner asked for. */
+    const [menuOpen, setMenuOpen] = React.useState(false)
     // Read the staff-editable rate so the form never quotes a price the bill
     // won't charge (the price used to be hardcoded at ₱150).
 
@@ -88,7 +104,37 @@ export const RoomDetailsForm = React.memo(
         <div className="flex items-center gap-2 pb-2 border-b border-base-300">
           <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><User className="w-3 h-3" /></span>
           <h4 className="text-[10px] font-bold text-base-content tracking-widest uppercase">Guest Information</h4>
+          {/* The ⋯ — the owner's own idea (2026-09): one small dot menu at the end of this
+              row, holding "Add agency?" and, once an agency is on the booking, only
+              "Remove agency" — **Change lives on the bill-to line itself** (the owner took
+              the duplicate out of this menu), and the popup hangs to the LEFT of the dot
+              rather than across the card. */}
+          <div className="relative ml-auto">
+            <button type="button" onClick={() => setMenuOpen(o => !o)} title="More for this guest"
+              aria-label="More for this guest"
+              className={'w-6 h-6 rounded-md border flex items-center justify-center font-bold tracking-widest leading-none cursor-pointer transition-colors ' +
+                (menuOpen ? 'bg-gold-100 border-gold-400 text-brand-text' : 'bg-card border-soft text-muted hover:text-main')}>
+              ⋯
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-7 z-30 min-w-[176px] bg-base-100 border border-base-300 rounded-lg shadow-lg overflow-hidden">
+                {!agencyOn ? (
+                  <button type="button" onClick={() => { setMenuOpen(false); onAddAgency() }}
+                    className="w-full text-left px-3 py-2 text-[11.5px] font-bold text-main hover:bg-gold-100 flex items-center gap-1.5 cursor-pointer">
+                    <Building2 className="w-3.5 h-3.5 text-brand-text" /> Add agency?
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => { setMenuOpen(false); onRemoveAgency() }}
+                    className="w-full text-left px-3 py-2 text-[11.5px] font-bold text-danger-600 hover:bg-gold-100 cursor-pointer">Remove agency</button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* The agency line (BILL TO …) sits ABOVE the guest's name — the paper's own order,
+            COMPANY over NAME OF GUEST. */}
+        {agencySlot}
         
         <div className="space-y-3">
 
@@ -272,6 +318,12 @@ export const RoomDetailsForm = React.memo(
       prevProps.formVehiclePlate === nextProps.formVehiclePlate &&
       prevProps.showCompanions === nextProps.showCompanions &&
       prevProps.guestNameError === nextProps.guestNameError &&
+      // The agency slot is a ReactNode, so the memo compares WHAT IT SHOWS (the agency's
+      // identity) rather than the node itself — otherwise the card could keep an older
+      // bill-to line after the agency changed.
+      prevProps.agencyOn === nextProps.agencyOn &&
+      prevProps.agencyKey === nextProps.agencyKey &&
+      prevProps.agencyPicking === nextProps.agencyPicking &&
 
       prevProps.hasRooms === nextProps.hasRooms &&
       compsEqual

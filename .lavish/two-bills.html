@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Two bills — the normal one, and the agency one</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:5px 0 0}
+  .pill{border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;white-space:nowrap}
+  .p-gold{background:#332B18;color:#E6C989}
+  .p-mut{background:#2A2A2A;color:#C9C4BB}
+  .p-bad{background:#2A1615;color:#F87171}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-top:6px;cursor:pointer;font-size:13px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:7px 13px;font-weight:800;font-size:12px;margin-top:9px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:9px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:7px;min-height:44px}
+  /* the two papers, off-white so they still read as paper */
+  .paper{background:#E6E2DA;color:#1C1C1C;border-radius:6px;padding:12px 14px;font-size:9.5px;line-height:1.35;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .paper h4{font-family:"Sora";font-weight:800;font-size:11px;text-align:center;margin:0;letter-spacing:.04em}
+  .paper .sub{text-align:center;color:#5A564F;font-size:8px;margin:1px 0 0}
+  .paper .ttl{text-align:center;font-weight:800;font-size:10px;letter-spacing:.08em;margin-top:7px;text-decoration:underline}
+  .paper hr{border:0;border-top:1px solid #B9B2A6;margin:6px 0}
+  .paper .kv{display:flex;gap:5px}
+  .paper .kv b{font-size:8.5px;text-transform:uppercase;white-space:nowrap}
+  .paper .kv span{flex:1;border-bottom:1px solid #B9B2A6}
+  .paper table{width:100%;border-collapse:collapse;font-size:8.5px}
+  .paper th,.paper td{border:1px solid #9A948A;padding:1.5px 3px}
+  .paper th{background:#D8D3C8;font-size:7.5px;text-transform:uppercase;text-align:center}
+  .paper td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .paper td.ctr{text-align:center}
+  .paper .tot{display:flex;justify-content:flex-end;gap:14px;font-weight:800;font-size:10px;margin-top:4px}
+  .paper .small{font-size:8px;color:#4A463F}
+  .paper .thanks{text-align:center;font-size:8px;font-weight:700;letter-spacing:.06em;color:#8A6A22;margin-top:6px}
+  .mark{outline:2px solid #D0AB60;outline-offset:1px;border-radius:3px}
+  .two{display:grid;grid-template-columns:1fr;gap:14px}
+  @media(min-width:900px){.two{grid-template-columns:1fr 1fr}}
+  .note{font-size:11px;color:#E6C989;font-weight:800}
+  .diff{background:#241F14;border:1px solid #6F5420;border-radius:10px;padding:10px 12px}
+  .diff h5{margin:0 0 4px;font-family:"Sora";font-size:12px;color:#E6C989}
+  .diff ul{margin:0;padding-left:16px}
+  .diff li{font-size:12.5px;color:#EDEAE4;margin-bottom:3px}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1080px] p-4 space-y-3">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill p-gold">your photo, read</span>
+      <span class="pill p-mut">discussion — nothing built</span>
+    </div>
+    <h1 class="text-lg font-bold">Two bills: the normal one, and the agency one</h1>
+    <p class="cap">A normal booking keeps the statement exactly as it is today. When an <b>agency</b> is on the booking, the paper in your photo is a <b>different document</b> — I have read it line by line and put the two side by side, with the six differences that matter called out on the right.</p>
+  </header>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Side by side</h2>
+    <div class="two" style="margin-top:10px">
+      <!-- TODAY -->
+      <div>
+        <p class="cap" style="margin:0 0 6px"><span class="pill p-mut">what we print today</span></p>
+        <div class="paper">
+          <h4>DAWEEZ PENSION HOUSE</h4>
+          <p class="sub">San Agustin Sur, Tandag City · daweezpensionhouse@gmail.com · 0910-7163830</p>
+          <p class="ttl">GUEST BILLING STATEMENT</p>
+          <p class="sub">Bill / Invoice No. GRF-2026-09-0014 &nbsp;·&nbsp; Date Issued</p>
+          <hr>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px">
+            <div class="kv"><b>Company</b><span>PGO</span></div>
+            <div class="kv"><b>Birth Date</b><span></span></div>
+            <div class="kv"><b>Name of Guest</b><span>c/o Monching Morales</span></div>
+            <div class="kv"><b>Sex</b><span></span></div>
+            <div class="kv"><b>Address</b><span>Tandag City</span></div>
+            <div class="kv"><b>Contact No.</b><span>0912…</span></div>
+            <div class="kv"><b>Email</b><span></span></div>
+            <div class="kv"><b>TIN</b><span>000-000</span></div>
+            <div class="kv"><b>Nationality</b><span></span></div>
+            <div class="kv"><b>No. of Guests</b><span>Total 1</span></div>
+          </div>
+          <hr>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px">
+            <div class="kv"><b>Room No.</b><span>4</span></div>
+            <div class="kv"><b>Room Type</b><span>Double</span></div>
+            <div class="kv"><b>Check In</b><span>Sep 25, 2:00 PM</span></div>
+            <div class="kv"><b>Check Out</b><span>Sep 26, 12:00 PM</span></div>
+          </div>
+          <table style="margin-top:6px">
+            <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Price</th><th>Amount</th></tr></thead>
+            <tbody>
+              <tr><td>Room 4 · Double</td><td class="ctr">1</td><td class="ctr">NIGHT</td><td class="num">950</td><td class="num">950.00</td></tr>
+              <tr><td>Room 5 · Matrimonial</td><td class="ctr">1</td><td class="ctr">NIGHT</td><td class="num">1,200</td><td class="num">1,200.00</td></tr>
+            </tbody>
+          </table>
+          <div class="tot"><span>Amount Due</span><span>₱2,150</span></div>
+          <hr>
+          <div class="small"><b>PAYMENT METHOD</b> — the one method chosen; one bank account; GCash.</div>
+          <div class="small" style="margin-top:4px"><b>PENSION POLICIES</b> — the hotel's own wording, word for word, on every bill.</div>
+          <div style="display:flex;gap:14px;margin-top:6px" class="small"><span><b>PREPARED BY:</b> ________</span><span><b>GUEST SIGNATURE:</b> ________</span></div>
+        </div>
+        <p class="cap">Unchanged for a normal booking.</p>
+      </div>
+
+      <!-- THE PAPER -->
+      <div>
+        <p class="cap" style="margin:0 0 6px"><span class="pill p-gold">the PGO paper you photographed</span></p>
+        <div class="paper">
+          <h4>DAWEEZ PENSION HOUSE</h4>
+          <p class="sub">National Highway, San Agustin Sur, Tandag City · daweezpensionhouse@gmail.com · 0981-3585500</p>
+          <p class="ttl">GUEST BILLING STATEMENT</p>
+          <p class="sub">Bill No.: 09-006</p>
+          <hr>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px">
+            <div class="kv"><b>Company</b><span>PROVINCIAL GOVERNOR'S OFFICE (PGO)</span></div>
+            <div class="kv"><b>Contact No.</b><span>09124498698</span></div>
+            <div class="kv"><b>Name of Guest</b><span>c/o Mr. Monching Morales</span></div>
+            <div class="kv"><b>Vehicle Plate #</b><span></span></div>
+            <div class="kv"><b>Address</b><span>Tandag City, Surigao del Sur</span></div>
+            <div class="kv"><b>&nbsp;</b><span></span></div>
+            <div class="kv"><b>Email Address</b><span></span></div>
+          </div>
+          <table style="margin-top:6px">
+            <thead>
+              <tr><th rowspan="2">Room / Particulars</th><th rowspan="2">Rate</th><th colspan="2">Date</th><th rowspan="2">No. of Night</th><th rowspan="2">Total</th></tr>
+              <tr><th>Check In</th><th>Check Out</th></tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="6" style="background:#D8D3C8;font-weight:700">Room Accommodation:</td></tr>
+              <tr><td>Room 2</td><td class="num">950.00</td><td class="ctr">09/09/26</td><td class="ctr">09/10/26</td><td class="ctr">1</td><td class="num">950.00</td></tr>
+              <tr><td>Room 4</td><td class="num">950.00</td><td class="ctr">09/09/26</td><td class="ctr">09/10/26</td><td class="ctr">1</td><td class="num">950.00</td></tr>
+              <tr><td>Room 6</td><td class="num">1,800.00</td><td class="ctr">09/09/26</td><td class="ctr">09/10/26</td><td class="ctr">1</td><td class="num">1,800.00</td></tr>
+              <tr><td>Room 10</td><td class="num">2,400.00</td><td class="ctr">09/09/26</td><td class="ctr">09/10/26</td><td class="ctr">1</td><td class="num">2,400.00</td></tr>
+            </tbody>
+          </table>
+          <div class="tot"><span>TOTAL</span><span>11,100.00</span></div>
+          <hr>
+          <div class="small"><b>Payment Method: Bank Transfer / Cash / Check</b></div>
+          <div class="small" style="margin-top:3px">Bank Name: <b>LAND BANK OF THE PHILIPPINES (LB)</b> · Account Name: <b>JONATHAN E. DANGO</b> · Account Number: <b>0795-0035-25</b></div>
+          <div class="small" style="margin-top:3px">Bank Name: <b>BANK OF THE PHILIPPINE ISLANDS (BPI)</b> · Account Name: <b>DAWEEZ PENSION HOUSE</b> · Account Number: <b>5636-0544-12</b></div>
+          <div class="small" style="margin-top:3px">GCASH NO.: <b>0910-7934988</b> · Name: <b>NARLINA D.</b></div>
+          <hr>
+          <div class="small"><b>Prepared by</b> — HELEN B. ACEJO <span style="color:#8A6A22">(handwritten)</span></div>
+          <p class="thanks">THANK YOU FOR CHOOSING DAWEEZ PENSION HOUSE</p>
+        </div>
+        <p class="cap">No Pension Policies. No guest signature. <b>TOTAL</b>, not Amount Due.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">The six differences</h2>
+    <div class="two" style="margin-top:8px">
+      <div class="diff">
+        <h5>1 · The charges table</h5>
+        <ul>
+          <li>Paper: one row <b>per room</b> — Room / Rate / <b>Check In</b> / <b>Check Out</b> / No. of Night / Total, under a <b>“Room Accommodation:”</b> band.</li>
+          <li>Ours: Description / Qty / Unit / Price / Discount / Amount.</li>
+        </ul>
+      </div>
+      <div class="diff">
+        <h5>2 · The money line</h5>
+        <ul>
+          <li>Paper prints <b>TOTAL</b> only — no Sub-Total, no Deposit, no Amount Due.</li>
+          <li>Ours prints Sub-Total → less deposit → <b>Amount Due</b>.</li>
+        </ul>
+      </div>
+      <div class="diff">
+        <h5>3 · The bottom of the page</h5>
+        <ul>
+          <li>Paper: <b>Prepared by</b> only — <b>no Pension Policies and no Guest Signature</b>.</li>
+          <li>Ours prints the policies verbatim and both signature lines, on every bill.</li>
+        </ul>
+      </div>
+      <div class="diff">
+        <h5>4 · Ways to pay</h5>
+        <ul>
+          <li>Paper adds <b>Check</b> and lists <b>BOTH bank accounts</b> — Landbank (Jonathan E. Dango) and BPI — plus GCash.</li>
+          <li>Ours holds <b>one</b> bank account and has no Check; it prints only the method chosen.</li>
+        </ul>
+      </div>
+      <div class="diff">
+        <h5>5 · The guest block</h5>
+        <ul>
+          <li>Paper: Company · Name of Guest (c/o) · Address · Email · Contact No. · <b>Vehicle Plate #</b>.</li>
+          <li>Ours adds Nationality, Birth Date, Sex, No. of Guests and prints <b>TIN</b> instead of the plate.</li>
+        </ul>
+      </div>
+      <div class="diff">
+        <h5>6 · The last line</h5>
+        <ul>
+          <li>Paper ends with <b>“THANK YOU FOR CHOOSING DAWEEZ PENSION HOUSE”</b>.</li>
+          <li>Ours ends with the signing sentence.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">A · The table on an agency bill</h2>
+    <form data-lavish-question="table" onsubmit="return queueOne(this,'table','Agency bill')">
+      <label class="opt"><input type="radio" name="table" value="A — the paper's table exactly: Room / Rate / Check In / Check Out / No. of Night / Total, with the Room Accommodation band"><span><b>A — the paper's table</b> <span class="pill p-gold">my pick</span><span>Looks like the bill the office already receives and files.</span></span></label>
+      <label class="opt"><input type="radio" name="table" value="B — keep our Description/Qty/Unit/Price/Amount table, just titled for an agency"><span><b>B — keep our own table</b><span>Less work, but it will not look like their filing copy.</span></span></label>
+      <label class="opt"><input type="radio" name="table" value="C — the paper's table, and extras (breakfast, add-ons, food) get their own bands under it"><span><b>C — the paper's table, plus bands for extras</b><span>Rooms in one band, then e.g. “Breakfast” and “Restaurant &amp; bar” bands — the total is still one figure.</span></span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+
+    <h2 class="text-base font-bold" style="margin-top:16px">B · The money line on an agency bill</h2>
+    <form data-lavish-question="money" onsubmit="return queueOne(this,'money','Agency bill')">
+      <label class="opt"><input type="radio" name="money" value="A — TOTAL only, exactly like the paper"><span><b>A — TOTAL only</b> <span class="pill p-gold">my pick</span><span>The office is billed for the whole stay; nothing is asked at the desk.</span></span></label>
+      <label class="opt"><input type="radio" name="money" value="B — TOTAL, plus what has already been paid and what is still owed"><span><b>B — TOTAL, plus paid and still owed</b><span>Useful when the agency pays part of it up front.</span></span></label>
+      <label class="opt"><input type="radio" name="money" value="C — keep our Sub-Total / Amount Due block as it is"><span><b>C — keep ours</b><span>Sub-Total → less deposit → Amount Due.</span></span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+
+    <h2 class="text-base font-bold" style="margin-top:16px">C · The bottom of an agency bill</h2>
+    <form data-lavish-question="bottom" onsubmit="return queueOne(this,'bottom','Agency bill')">
+      <label class="opt"><input type="radio" name="bottom" value="A — like the paper: Prepared by only, no Pension Policies, no Guest Signature, and the thank-you line"><span><b>A — like the paper</b> <span class="pill p-gold">my pick</span><span>Prepared by + “Thank you for choosing Daweez Pension House”.</span></span></label>
+      <label class="opt"><input type="radio" name="bottom" value="B — keep the Pension Policies on it too (they cover the rooms being used), drop only the guest signature"><span><b>B — keep the policies, drop the signature</b><span>The rooms are still the hotel's, and the guest still signed at the desk.</span></span></label>
+      <label class="opt"><input type="radio" name="bottom" value="C — keep everything exactly as today (policies + both signature lines)"><span><b>C — keep everything</b><span>The safest for the guest, the least like their filing copy.</span></span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+
+    <h2 class="text-base font-bold" style="margin-top:16px">D · Ways to pay — Check, and the second bank account</h2>
+    <form data-lavish-question="pay" onsubmit="return queueOne(this,'pay','Agency bill')">
+      <label class="opt"><input type="radio" name="pay" value="A — add Check as a method, and let Settings hold a SECOND bank account (Landbank · Jonathan E. Dango · 0795-0035-25); the agency bill prints both banks and GCash"><span><b>A — add Check + a second bank account</b> <span class="pill p-gold">my pick</span><span>The agency bill then matches the paper; Settings gets one more bank row.</span></span></label>
+      <label class="opt"><input type="radio" name="pay" value="B — add Check only; keep the single bank account we already have"><span><b>B — Check only</b><span>Simplest; the agency bill prints the one BPI account.</span></span></label>
+      <label class="opt"><input type="radio" name="pay" value="C — change nothing about payment methods for now"><span><b>C — leave payments alone</b><span>The agency bill prints only the method actually chosen, as today.</span></span></label>
+      <label class="opt"><input type="radio" name="pay" value="D — something else (written below)"><span><b>D — something else</b><span>Tell me the accounts and methods you want.</span></span></label>
+      <textarea name="pay" placeholder="Anything else — the exact bank details, who signs, whether the normal bill changes too"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Anything about either bill?</h2>
+    <form data-lavish-question="notes" onsubmit="return queueOne(this,'notes','Agency bill')">
+      <p class="cap" style="margin:0">A layout you picture, a line you want said differently, or something the photo shows that I have not listed.</p>
+      <textarea name="notes" placeholder="e.g. “the normal bill should get the thank-you line too”, “no TIN anywhere”, …"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = (new FormData(form).get(key) || '').toString().trim()
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

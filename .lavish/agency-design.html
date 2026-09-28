@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The agency design — silent trigger, no rail, block as an icon</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:5px 0 0}
+  .pill{border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;white-space:nowrap}
+  .p-gold{background:#332B18;color:#E6C989}
+  .p-bad{background:#2A1615;color:#F87171}
+  .p-mut{background:#2A2A2A;color:#C9C4BB}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:7px;cursor:pointer;font-size:13.5px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12.5px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;margin-top:10px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:10px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:7px;min-height:46px}
+
+  /* ---------- the app ---------- */
+  .shell{background:#F1EDE5;border:1px solid #DED7C9;border-radius:14px;padding:11px;color:#1C1C1C;font-size:11.5px}
+  .wcard{background:#fff;border:1px solid #E4DED2;border-radius:12px;padding:9px 11px}
+  .wcard + .wcard{margin-top:8px}
+  .head{display:flex;align-items:center;gap:8px}
+  .ttl{font-family:"Sora";font-weight:800;font-size:12.5px;color:#1C1C1C}
+  .lab{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#8A8377}
+  .seg{display:inline-flex;border:1px solid #E0DACD;border-radius:8px;overflow:hidden;background:#fff}
+  .seg span{padding:5px 10px;font-size:11px;font-weight:700;color:#4A463F}
+  .seg span.on{background:#D0AB60;color:#141414}
+  .gh{border:1px solid #E0DACD;background:#fff;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#4A463F}
+  .pr{background:#D0AB60;border:0;border-radius:8px;padding:6px 13px;font-size:11.5px;font-weight:800;color:#141414}
+  .pr.off{background:#EDE7DC;color:#A8A29A}
+  .inp{border:1px solid #E0DACD;border-radius:8px;padding:6px 9px;font-size:11.5px;color:#9A948A;background:#fff}
+  .inp.set{color:#1C1C1C;font-weight:700}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:6px}
+  .row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:6px}
+  .quieter{margin-left:auto;display:flex;align-items:center;gap:5px;color:#A8A29A;font-size:10.5px;font-weight:700;cursor:pointer}
+  .quieter svg{width:12px;height:12px;stroke:#A8A29A;fill:none;stroke-width:1.7}
+  .roomline{display:flex;align-items:center;gap:7px;font-size:11.5px;margin-top:5px}
+  .rate{font-family:ui-monospace,Menlo,monospace;font-weight:800}
+  .mini{font-size:10px;color:#8A8377;margin:5px 0 0}
+  .pick{border:1px solid #E0DACD;border-radius:9px;background:#fff;margin-top:6px;overflow:hidden}
+  .pick div{padding:6px 9px;font-size:11.5px;border-bottom:1px solid #EFEAE1;display:flex;gap:8px}
+  .pick div:last-child{border-bottom:0}
+  .pick div span:last-child{margin-left:auto;color:#8A8377;font-size:10px}
+  .pick div.on{background:#FBF4E4;font-weight:800}
+  .paper{background:#E6E2DA;color:#1C1C1C;border-radius:9px;padding:11px;font-size:10.5px;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .paper h4{margin:0;font-family:"Sora",serif;font-size:12px;letter-spacing:.04em;color:#8A6A22;text-align:center;text-transform:uppercase}
+  .paper .title{text-align:center;font-weight:800;font-size:11px;letter-spacing:.05em;margin-top:6px;color:#8A6A22}
+  .paper .fields div{display:flex;gap:6px;margin-top:3px}
+  .paper .fields span:first-child{width:92px;font-weight:800;font-size:9px}
+  .paper .fields span:last-child{border-bottom:1px solid #9A948A;flex:1;font-size:9px}
+  .two{display:grid;grid-template-columns:1fr;gap:11px}
+  @media(min-width:900px){.two{grid-template-columns:1fr 1fr}}
+  .fhead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .fnum{width:22px;height:22px;border-radius:99px;background:#332B18;color:#E6C989;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .fname{font-family:"Sora";font-weight:800;font-size:13px}
+  .fcap{font-size:12px;color:var(--sec)}
+  .dim{opacity:.45}
+  .cal{background:#F1EDE5;border:1px solid #DED7C9;border-radius:14px;padding:11px;color:#1C1C1C;font-size:11px}
+  .calrow{display:grid;grid-template-columns:58px 1fr 1fr 1fr;gap:5px;align-items:center;margin-top:4px}
+  .day{background:#EDE7DC;border-radius:6px;height:22px}
+  .day.pick{background:#F6EFDF;border:1px solid #D0AB60}
+  .bar{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #D0AB60;border-radius:10px;padding:6px 8px;box-shadow:0 6px 16px rgba(28,28,28,.14)}
+  .bar .lbl2{font-size:10px;font-weight:800;color:#8A6A22;text-transform:uppercase;letter-spacing:.05em;margin-right:2px}
+  .ibtn{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid #D0AB60;border-radius:7px;background:#fff}
+  .ibtn svg{width:14px;height:14px;stroke:#8A6A22;fill:none;stroke-width:1.8}
+  .gone{text-decoration:line-through;color:#B4AEA4}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1040px] p-4 space-y-3">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill p-gold">the design, corrected again</span>
+      <span class="pill p-bad">nothing built</span>
+    </div>
+    <h1 class="text-lg font-bold">Silent trigger, no rail, no prices, block as an icon</h1>
+    <p class="cap">All five taken: the agency trigger is <b>not a row of its own</b> — it is tiny and grey at the end of the header; the agency only <b>adds a block to the normal form</b>, no rail and no form of its own; the hours lose their prices; and Block is <b>an icon</b> in both bars.</p>
+  </header>
+
+  <!-- 1 -->
+  <section class="card p-4">
+    <div class="fhead"><span class="fnum">1</span><span class="fname">The form opens — nothing agency anywhere</span><span class="fcap">just a grey mark at the end of the header</span></div>
+    <div class="shell" style="max-width:560px">
+      <div class="wcard">
+        <div class="head">
+          <span class="ttl">New booking</span>
+          <span class="mini" style="margin:0 0 0 8px">Room 2 · Sep 24 → 25</span>
+          <span class="quieter" title="Booking for an agency?">
+            <svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5"/></svg>
+            agency
+          </span>
+        </div>
+      </div>
+      <div class="wcard">
+        <div class="lab">Guest</div>
+        <div class="row"><span class="inp set" style="flex:1">Mr. Monching Morales</span></div>
+        <div class="g2"><span class="inp">09124498698</span><span class="inp">Nationality</span></div>
+      </div>
+      <div class="wcard">
+        <div class="lab">Rooms &amp; dates</div>
+        <div class="roomline"><span>Room 2 · Sep 24 → 25 · 1 night</span><span class="rate" style="margin-left:auto">₱950</span></div>
+      </div>
+      <div class="wcard"><div class="lab">Breakfast · Add-ons · Discount · Pays now · Receptionist</div>
+        <p class="mini">The whole form as it is today — single page, no steps.</p>
+      </div>
+      <div class="row" style="justify-content:flex-end"><span class="gh">Cancel</span><span class="pr">Confirm Booking</span></div>
+    </div>
+    <p class="cap">Small, grey, in the header row that already exists — no extra height, nothing to read unless you are looking for it.</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="card p-4">
+    <div class="fhead"><span class="fnum">2</span><span class="fname">“agency” tapped → a block is added to the same form</span><span class="fcap">no rail, no second form</span></div>
+    <div class="shell" style="max-width:560px">
+      <div class="wcard">
+        <div class="head">
+          <span class="ttl">New booking</span>
+          <span class="mini" style="margin:0 0 0 8px">Room 2 · Sep 24 → 25</span>
+          <span class="quieter" style="color:#8A6A22">
+            <svg viewBox="0 0 24 24" style="stroke:#8A6A22"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5"/></svg>
+            agency
+          </span>
+        </div>
+      </div>
+
+      <div class="wcard" style="border-color:#E0C98F">
+        <div class="lab" style="color:#8A6A22">Agency — the bill is addressed here</div>
+        <div class="row"><span class="inp set" style="flex:1">PROVINCIAL GOVERNOR'S OFFICE (PGO)</span></div>
+        <div class="pick">
+          <div class="on"><span>Provincial Governor's Office (PGO)</span><span>Tandag City</span></div>
+          <div><span>DepEd Surigao del Sur</span><span>Tandag City</span></div>
+          <div><span>+ Add a new agency…</span><span></span></div>
+        </div>
+        <div class="g2"><span class="inp">Address</span><span class="inp">Contact no.</span><span class="inp">TIN</span><span class="inp">Vehicle plate</span></div>
+      </div>
+
+      <div class="wcard">
+        <div class="lab">Guest — the person who walked in</div>
+        <div class="row"><span class="inp set" style="flex:1">Mr. Monching Morales</span></div>
+        <p class="mini">Prints as <b>c/o Mr. Monching Morales</b> because an agency is paying.</p>
+      </div>
+
+      <div class="wcard">
+        <div class="lab">Rooms &amp; dates</div>
+        <div class="roomline"><span>Room 2 · Sep 24 → 25 · 1 night</span><span class="rate" style="margin-left:auto">₱900</span></div>
+        <p class="mini">PGO's agreed price. You still pick the rooms.</p>
+      </div>
+
+      <div class="row" style="justify-content:flex-end"><span class="gh">Cancel</span><span class="pr off">Confirm Booking</span></div>
+      <p class="mini" style="text-align:right">Confirm wakes up once the agency is chosen.</p>
+    </div>
+    <p class="cap">One block added above the guest, in the same single page — exactly your card k126 rule, still one page and no steps.</p>
+  </section>
+
+  <!-- 3 -->
+  <section class="card p-4">
+    <h2 class="text-base font-bold">The calendar's bars — hours without prices, Block as an icon</h2>
+    <div class="two" style="margin-top:9px">
+      <div>
+        <div class="fhead"><span class="fnum">3</span><span class="fname">1 date picked</span><span class="fcap">hours only, then the block icon</span></div>
+        <div class="cal">
+          <div class="calrow" style="font-weight:800;color:#8A8377"><span></span><span>Wed 23</span><span>Thu 24</span><span>Fri 25</span></div>
+          <div class="calrow"><span style="font-weight:800">Room 2</span><span class="day"></span><span class="day pick"></span><span class="day"></span></div>
+          <div class="row">
+            <span class="bar">
+              <span class="lbl2">Sep 24</span>
+              <span class="gh">3h</span><span class="gh">6h</span><span class="gh">12h</span>
+              <span class="ibtn" title="Block this day"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></span>
+              <span class="gh" style="border:0;color:#8A8377">Cancel</span>
+            </span>
+          </div>
+          <p class="mini">The price shows on the room, not on the button — so the bar stays short.</p>
+        </div>
+      </div>
+      <div>
+        <div class="fhead"><span class="fnum">4</span><span class="fname">2 dates picked</span><span class="fcap">New booking, then the same icon</span></div>
+        <div class="cal">
+          <div class="calrow" style="font-weight:800;color:#8A8377"><span></span><span>Wed 23</span><span>Thu 24</span><span>Fri 25</span></div>
+          <div class="calrow"><span style="font-weight:800">Room 2</span><span class="day"></span><span class="day pick"></span><span class="day pick"></span></div>
+          <div class="row">
+            <span class="bar">
+              <span class="lbl2">Sep 24 → 25</span>
+              <span class="pr">New booking</span>
+              <span class="ibtn" title="Block dates"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></span>
+              <span class="gh" style="border:0;color:#8A8377">Cancel</span>
+            </span>
+          </div>
+          <p class="mini">Same icon both ways, so it reads as one action. The Corporate button is gone.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="card p-4">
+    <div class="fhead"><span class="fnum">5</span><span class="fname">The block icon tapped → the small pane</span><span class="fcap">unchanged from before</span></div>
+    <div class="shell" style="max-width:520px">
+      <div class="wcard">
+        <div class="head"><span class="ttl">Block these dates</span><span class="mini" style="margin:0 0 0 auto">Cancel</span></div>
+        <div class="row"><span class="inp set" style="flex:1">Room 2</span></div>
+        <div class="g2"><span class="inp set">Sep 24</span><span class="inp set">Sep 25</span></div>
+        <div class="row"><span class="gh" style="border-color:#D0AB60">Cleaning</span><span class="gh">Maintenance</span><span class="gh">Owner use</span><span class="gh">Other</span></div>
+        <div class="row"><span class="inp" style="flex:1">Note (optional)</span></div>
+        <div class="row" style="justify-content:flex-end"><span class="gh">Cancel</span><span class="pr">Create block</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="card p-4">
+    <div class="fhead"><span class="fnum">6</span><span class="fname">And the bill the agency booking prints</span><span class="fcap">the only paper that changes</span></div>
+    <div class="paper" style="max-width:520px">
+      <h4>Daweez Pension House</h4>
+      <p class="title">Guest Billing Statement</p>
+      <div class="fields" style="margin-top:5px">
+        <div><span>COMPANY</span><span>PROVINCIAL GOVERNOR'S OFFICE (PGO)</span></div>
+        <div><span>NAME OF GUEST</span><span>c/o Mr. Monching Morales</span></div>
+        <div><span>ADDRESS</span><span>Tandag City, Surigao del Sur</span></div>
+        <div><span>CONTACT NO.</span><span>09124498698</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Build it like this?</h2>
+    <form data-lavish-question="go" onsubmit="return queueOne(this,'go','Agency design v3')">
+      <label class="opt"><input type="radio" name="go" value="Yes — build it exactly like this"><span><b>Yes — build this</b><span>Grey “agency” in the header · one added block, no steps · hours without prices · Block as an icon on both picks.</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="Almost — one thing (written below)"><span><b>Almost — one thing</b><span>Say which screen and what to change.</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="Not this — I will describe it (below)"><span><b>Not this</b><span>Plain words and I'll draw it.</span></span></label>
+      <textarea name="go" placeholder="Optional"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = (new FormData(form).get(key) || '').toString().trim()
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

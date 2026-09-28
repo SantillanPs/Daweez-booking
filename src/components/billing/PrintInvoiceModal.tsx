@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom'
 import { Booking, Room, Venue } from '../../types/booking'
 import { TabLine } from '../../types/tab'
 import { InvoiceDocument } from './InvoiceDocument'
+import { AgencyInvoiceDocument } from './AgencyInvoiceDocument'
 import { buildStatement } from '../../utils/statement'
 import { getOpenTabLinesByBooking } from '../../utils/tabs'
+import { useDashboardData } from '../DashboardContext'
 
 interface PrintInvoiceModalProps {
   booking?: Booking
@@ -25,6 +27,9 @@ interface PrintInvoiceModalProps {
 // without it would disagree with what the guest actually owes.
 export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, bookingsList, onClose, embedded = false }: PrintInvoiceModalProps) {
   const primaryBooking = booking || (bookingsToPrint && bookingsToPrint[0])
+  // The agency that is paying, if any: its address, contact and TIN print on the bill
+  // straight from the profile, so no booking column is needed for them.
+  const { partnerDeals } = useDashboardData()
 
   const relatedBookings = primaryBooking
     ? (bookingsToPrint ||
@@ -58,11 +63,44 @@ export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, boo
   if (!primaryBooking) return null
   if (!tabLinesByBooking) return null
 
-  const statement = buildStatement({ primaryBooking, relatedBookings, rooms, venues, bookingsList, tabLinesByBooking })
+  const statement = buildStatement({
+    primaryBooking, relatedBookings, rooms, venues, bookingsList, tabLinesByBooking,
+    deal: partnerDeals.find(d => d.id === primaryBooking.partner_deal_id) ?? null,
+  })
 
-  const handlePrint = () => window.print()
+  // The statement prints on A5 (the hotel's own bill pad) with the page box set to **zero margin**: that is what
+  // stops the browser printing its own header (the date/time and the page title) and
+  // footer (the URL and page number) across the top and bottom of the bill — the paper
+  // carries its own margins instead (see `StatementShell`). The style is injected for the
+  // moment of printing only, the way the 58 mm receipt modal sets its own page box.
+  const handlePrint = () => {
+    const style = document.createElement('style')
+    style.textContent = '@page { size: A5; margin: 0; }'
+    document.head.appendChild(style)
+    const done = () => {
+      style.remove()
+      window.removeEventListener('afterprint', done)
+    }
+    window.addEventListener('afterprint', done)
+    window.print()
+    // Backstop: some browsers never fire afterprint.
+    window.setTimeout(done, 60000)
+  }
 
-  const doc = (
+  // WHICH BILL (the owner's design, 2026-09): an ordinary booking gets the usual Guest
+  // Billing Statement; **an agency booking gets its own document**, read line by line from
+  // the hotel's real PGO bill — the paper's banded room table, `TOTAL` only, both bank
+  // accounts, `Prepared by` and the thank-you line, with no Pension Policies and no guest
+  // signature. The two never mix, and the normal bill is untouched by any of it.
+  const doc = statement.companyName ? (
+    <AgencyInvoiceDocument
+      primaryBooking={primaryBooking}
+      statement={statement}
+      onClose={onClose}
+      onPrint={handlePrint}
+      embedded={embedded}
+    />
+  ) : (
     <InvoiceDocument
       primaryBooking={primaryBooking}
       rooms={rooms}

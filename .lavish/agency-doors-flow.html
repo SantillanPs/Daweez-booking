@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The doors — main path first</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:5px 0 0}
+  .pill{border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;white-space:nowrap}
+  .p-gold{background:#332B18;color:#E6C989}
+  .p-mut{background:#2A2A2A;color:#C9C4BB}
+  .p-bad{background:#2A1615;color:#F87171}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:7px;cursor:pointer;font-size:13.5px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12.5px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;margin-top:10px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:10px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:7px;min-height:46px}
+  svg{width:100%;height:auto;display:block}
+  .t{font-family:"DM Sans",system-ui,sans-serif;fill:#EDEAE4;font-weight:700}
+  .s{font-family:"DM Sans",system-ui,sans-serif;fill:#A8A29A;font-weight:500}
+  .lbl{font-family:"DM Sans",system-ui,sans-serif;fill:#D0AB60;font-weight:800;font-size:11px}
+  .box{fill:#262626;stroke:#3A3A3A}
+  .boxbig{fill:#2B2B2B;stroke:#6E6A63}
+  .boxgold{fill:#2A2418;stroke:#D0AB60}
+  .doorline{stroke:#C9C4BB;stroke-width:1.8;fill:none}
+  .doorlinegold{stroke:#D0AB60;stroke-width:1.6;fill:none}
+  .knob{fill:#C9C4BB}
+  .flow{stroke:#A8A29A;stroke-width:2.4;fill:none}
+  .flowsmall{stroke:#7D7871;stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+  .flowgold{stroke:#D0AB60;stroke-width:2;fill:none}
+  .paper{fill:#E6E2DA;stroke:#B9B2A5}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1040px] p-4 space-y-3">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill p-gold">flowchart, corrected</span>
+      <span class="pill p-bad">nothing built</span>
+    </div>
+    <h1 class="text-lg font-bold">Normal booking is the road — the agency is a small side door</h1>
+    <p class="cap">You are right: an agency is rare, so it must not stand beside the normal booking as an equal. <b>The booking door opens straight into the normal process, every time.</b> The agency is one small door off it, off to the side.</p>
+  </header>
+
+  <section class="card p-4">
+    <svg viewBox="0 0 1000 680" role="img" aria-label="Flowchart: the calendar opens a short-stay door for one day, and the booking door for a date range; the booking door leads straight into the normal booking, with a small agency side door that walks four steps and prints the company bill">
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#A8A29A"/>
+        </marker>
+        <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#D0AB60"/>
+        </marker>
+        <marker id="as" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#7D7871"/>
+        </marker>
+      </defs>
+
+      <!-- calendar -->
+      <rect class="box" x="350" y="10" width="300" height="54" rx="11"/>
+      <text class="t" x="500" y="33" text-anchor="middle" font-size="13">CALENDAR</text>
+      <text class="s" x="500" y="50" text-anchor="middle" font-size="11">you pick the dates first — nothing else exists yet</text>
+
+      <path class="flow" d="M500,64 V107 H205 V150" marker-end="url(#a)"/>
+      <path class="flow" d="M500,64 V107 H595 V150" marker-end="url(#a)"/>
+      <text class="lbl" x="300" y="99" text-anchor="middle">1 day picked</text>
+      <text class="lbl" x="548" y="99" text-anchor="middle">2 dates picked</text>
+
+      <!-- short stay door -->
+      <rect class="box" x="50" y="150" width="300" height="64" rx="11"/>
+      <rect class="doorline" x="66" y="172" width="20" height="30" rx="3"/>
+      <circle class="knob" cx="81" cy="188" r="1.8"/>
+      <text class="t" x="213" y="177" text-anchor="middle" font-size="12.5">SHORT STAY</text>
+      <text class="s" x="213" y="195" text-anchor="middle" font-size="11">3h · 6h · 12h — one day, paid at the counter</text>
+
+      <!-- the main door: normal booking -->
+      <rect class="boxbig" x="430" y="150" width="330" height="86" rx="12" stroke-width="2"/>
+      <rect class="doorline" x="448" y="176" width="26" height="38" rx="3"/>
+      <circle class="knob" cx="469" cy="195" r="2"/>
+      <text class="t" x="612" y="180" text-anchor="middle" font-size="14">NORMAL BOOKING</text>
+      <text class="s" x="612" y="199" text-anchor="middle" font-size="11">the main door — this is what always opens</text>
+      <text class="s" x="612" y="216" text-anchor="middle" font-size="11">the guest pays</text>
+
+      <!-- the small side door -->
+      <path class="flowsmall" d="M760,196 H800" marker-end="url(#as)"/>
+      <text class="s" x="762" y="188" font-size="10" fill="#7D7871">rare</text>
+
+      <rect class="boxgold" x="806" y="164" width="172" height="62" rx="10"/>
+      <rect class="doorlinegold" x="818" y="182" width="18" height="28" rx="3"/>
+      <circle cx="831" cy="196" r="1.8" fill="#D0AB60"/>
+      <text class="t" x="906" y="188" text-anchor="middle" font-size="11.5" fill="#E6C989">AGENCY DEAL?</text>
+      <text class="s" x="906" y="205" text-anchor="middle" font-size="10">a small door off it</text>
+
+      <!-- agency steps -->
+      <path class="flowgold" d="M892,226 V300" marker-end="url(#ag)"/>
+      <rect class="boxgold" x="700" y="300" width="280" height="182" rx="11"/>
+      <text class="t" x="840" y="322" text-anchor="middle" font-size="11.5" fill="#E6C989">THE AGENCY STEPS — IN THIS ORDER</text>
+      <rect x="712" y="334" width="256" height="30" rx="8" fill="#1F1F1F" stroke="#4A4230"/>
+      <text class="s" x="724" y="353" font-size="10.5">1 · the agency — pick or add</text>
+      <rect x="712" y="368" width="256" height="30" rx="8" fill="#1F1F1F" stroke="#4A4230"/>
+      <text class="s" x="724" y="387" font-size="10.5">2 · the guest — who walked in</text>
+      <rect x="712" y="402" width="256" height="30" rx="8" fill="#1F1F1F" stroke="#4A4230"/>
+      <text class="s" x="724" y="421" font-size="10.5">3 · rooms at the agency's price</text>
+      <rect x="712" y="436" width="256" height="30" rx="8" fill="#1F1F1F" stroke="#4A4230"/>
+      <text class="s" x="724" y="455" font-size="10.5">4 · confirm — then the bill prints</text>
+
+      <!-- terminals -->
+      <path class="flow" d="M205,214 V560" marker-end="url(#a)"/>
+      <rect class="paper" x="50" y="560" width="300" height="76" rx="10"/>
+      <text x="200" y="586" text-anchor="middle" font-size="11.5" font-weight="800" fill="#1C1C1C">PAID IN FULL AT THE COUNTER</text>
+      <text x="200" y="605" text-anchor="middle" font-size="10.5" fill="#5C5A54">receipt printed from the booking</text>
+      <text x="200" y="622" text-anchor="middle" font-size="10.5" fill="#5C5A54">the room stays taken while it is cleaned</text>
+
+      <path class="flow" d="M595,236 V560" marker-end="url(#a)"/>
+      <rect class="paper" x="430" y="560" width="330" height="76" rx="10"/>
+      <text x="595" y="586" text-anchor="middle" font-size="11.5" font-weight="800" fill="#1C1C1C">GUEST BILLING STATEMENT</text>
+      <text x="595" y="605" text-anchor="middle" font-size="10.5" fill="#5C5A54">NAME OF GUEST: Mr. Monching Morales</text>
+      <text x="595" y="622" text-anchor="middle" font-size="10.5" fill="#5C5A54">the app's own bill number (GRF-…)</text>
+
+      <path class="flowgold" d="M840,482 V560" marker-end="url(#ag)"/>
+      <rect x="700" y="560" width="280" height="76" rx="10" fill="#E6E2DA" stroke="#D0AB60" stroke-width="2"/>
+      <text x="840" y="586" text-anchor="middle" font-size="11.5" font-weight="800" fill="#8A6A22">GUEST BILLING STATEMENT</text>
+      <text x="840" y="605" text-anchor="middle" font-size="10.5" fill="#1C1C1C">COMPANY: PROVINCIAL GOVERNOR'S OFFICE</text>
+      <text x="840" y="622" text-anchor="middle" font-size="10.5" fill="#5C5A54">NAME OF GUEST: c/o Mr. Monching Morales</text>
+    </svg>
+    <p class="cap">Thick line = the road every booking takes. Thin dashed = the small door off it, which is the only path that walks steps before it can confirm.</p>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">What it means in the app</h2>
+    <p class="cap">· Picking dates and confirming always lands in the <b>normal booking form</b> — unchanged, first, and the only thing the staff see by default.<br>
+    · One quiet line sits in that form, near the top, that says <b>“Booking for an agency?”</b> — small, not a button of equal weight. Tapping it opens the agency steps.<br>
+    · The calendar bar keeps only <b>New booking</b> (the separate Corporate button goes — no second door of equal size).<br>
+    · Only the agency path walks steps and prints the COMPANY line on the bill.</p>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Is this the hierarchy now?</h2>
+    <form data-lavish-question="flow" onsubmit="return queueOne(this,'flow','Doors flowchart v2')">
+      <label class="opt"><input type="radio" name="flow" value="Yes — normal booking is the road, and the agency is a small door off it (the quiet “Booking for an agency?” line inside the form)"><span><b>Yes — that's right</b><span>Normal booking first; the agency is a small door inside it.</span></span></label>
+      <label class="opt"><input type="radio" name="flow" value="Yes, but the small agency door should sit on the calendar bar as a small link instead of inside the form"><span><b>Yes, but put the small door on the calendar</b><span>A small “Agency” link beside New booking, deliberately quieter.</span></span></label>
+      <label class="opt"><input type="radio" name="flow" value="Nearly — one part is wrong (written below)"><span><b>Nearly — one part is wrong</b><span>Point at the box and I'll redraw only that.</span></span></label>
+      <textarea name="flow" placeholder="Optional"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = (new FormData(form).get(key) || '').toString().trim()
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

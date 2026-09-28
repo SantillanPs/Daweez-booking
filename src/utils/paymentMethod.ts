@@ -3,7 +3,7 @@
 // tick "Cash" on every GCash booking and print the wrong method (and the wrong
 // account details) on receipts.
 
-export type PaymentKind = 'cash' | 'gcash' | 'bank' | 'other'
+export type PaymentKind = 'cash' | 'gcash' | 'bank' | 'check' | 'other'
 
 // Split a label into words so 'Bank Transfer' can't match 'cash' and 'GCash'
 // can't match 'cash'.
@@ -18,6 +18,9 @@ export function paymentKind(method?: string): PaymentKind {
   const parts = words(method || '')
   if (parts.includes('gcash') || parts.includes('g-cash')) return 'gcash'
   if (parts.includes('bank') || parts.includes('transfer')) return 'bank'
+  // A **check** is its own way to pay (the owner, 2026-09: the hotel's real PGO bill names
+  // `Bank Transfer / Cash / Check`). It carries no reference number, like cash.
+  if (parts.includes('check') || parts.includes('cheque')) return 'check'
   if (parts.includes('cash')) return 'cash'
   return 'other'
 }
@@ -28,6 +31,7 @@ export function paymentMethodLabel(method?: string): string {
   const kind = paymentKind(raw)
   if (kind === 'gcash') return 'GCash'
   if (kind === 'bank') return 'Bank Transfer'
+  if (kind === 'check') return 'Check'
   if (kind === 'cash') return 'Cash'
   return raw || 'Cash'
 }

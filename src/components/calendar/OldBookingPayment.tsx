@@ -36,7 +36,7 @@ export function OldBookingPayment({ payMode, setPayMode, payDate, setPayDate, de
       <div className="grid grid-cols-2 gap-2">
         <label className={label}>Mode of payment
           <select value={payMode} onChange={e => setPayMode(e.target.value)} className={field + ' mt-1'}>
-            <option>Cash</option><option>GCash</option><option>Bank transfer</option><option>Other</option>
+            <option>Cash</option><option>GCash</option><option>Bank transfer</option><option>Check</option><option>Other</option>
           </select>
         </label>
         <label className={label}>Date paid

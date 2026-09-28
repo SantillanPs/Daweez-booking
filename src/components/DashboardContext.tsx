@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import { Room, Venue, Booking, SyncFeed, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal } from '../types/booking'
+import { Room, Venue, Booking, SyncFeed, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal, AppliedDiscount, PaymentRecord } from '../types/booking'
 import { Expense, ExpenseCategory } from '../types/expense'
 
 export interface DashboardDataContextValue {
@@ -44,6 +44,26 @@ export interface DashboardDataContextValue {
     downpaymentPaid?: number
     balanceDue?: number
     securityDeposit?: number
+    /* The rest of what the booking write path accepts, so this shared type can never
+     * fall behind the real mutation again — a type narrower than the writer is how a
+     * caller ends up unable to save a field the database has held all along. */
+    notes?: string
+    preparedBy?: string
+    breakfastDays?: string[]
+    referenceNumber?: string
+    registeredOn?: string
+    agreedDeposit?: number
+    stayHours?: number
+    usePromo?: boolean
+    guestGender?: string
+    guestNationality?: string
+    guestAddress?: string
+    birthdate?: string
+    appliedDiscount?: AppliedDiscount
+    earlyCheckInHours?: number
+    lateCheckOutHours?: number
+    venueDayBlocks?: number
+    paymentRecords?: PaymentRecord[]
   }) => Promise<Booking>
   triggerOTASync: () => Promise<number>
   updateBooking: (booking: Booking) => Promise<void>

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Creating an agency — its profile, with its own room prices</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:5px 0 0}
+  .pill{border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;white-space:nowrap}
+  .p-gold{background:#332B18;color:#E6C989}
+  .p-mut{background:#2A2A2A;color:#C9C4BB}
+  .p-good{background:#12261F;color:#34D399}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-top:6px;cursor:pointer;font-size:13px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:7px 13px;font-weight:800;font-size:12px;margin-top:9px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:9px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:7px;min-height:44px}
+  .app{background:#F1EDE5;border:1px solid #DED7C9;border-radius:12px;padding:9px;color:#1C1C1C;font-size:11px}
+  .wcard{background:#fff;border:1px solid #E4DED2;border-radius:10px;padding:9px 11px}
+  .wcard + .wcard{margin-top:7px}
+  .lab{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A8377}
+  .lab.g{color:#8A6A22}
+  .inp{border:1px solid #E0DACD;border-radius:7px;padding:5px 8px;font-size:11px;color:#9A948A;background:#fff}
+  .inp.set{color:#1C1C1C;font-weight:700}
+  .inp.money{font-family:ui-monospace,Menlo,monospace;font-weight:800;text-align:right;width:78px;color:#1C1C1C}
+  .mini{font-size:9.5px;color:#8A8377;margin:4px 0 0}
+  .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:5px}
+  .rooms{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;margin-top:6px}
+  .rrow{display:flex;align-items:center;gap:6px;font-size:10.5px}
+  .rrow .nm{flex:1;color:#1C1C1C;font-weight:700}
+  .rrow .bd{font-family:ui-monospace,Menlo,monospace;color:#8A8377;font-size:9.5px}
+  .btn{border:1px solid #E0DACD;background:#fff;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;color:#4A463F}
+  .btn.p{background:#D0AB60;border-color:#C9A14F;color:#141414;font-weight:800}
+  .two{display:grid;grid-template-columns:1fr;gap:10px}
+  @media(min-width:900px){.two{grid-template-columns:1fr 1fr}}
+  .fnum{width:21px;height:21px;border-radius:99px;background:#332B18;color:#E6C989;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .fname{font-family:"Sora";font-weight:800;font-size:13px}
+  .hrow{display:flex;align-items:center;gap:6px}
+  .pick{border:1px solid #E0DACD;border-radius:8px;background:#fff;margin-top:6px;overflow:hidden}
+  .pick div{padding:6px 9px;font-size:11px;border-bottom:1px solid #EFEAE1;display:flex;gap:8px}
+  .pick div:last-child{border-bottom:0}
+  .pick .none{color:#8A8377}
+  .pick .create{background:#F6EFDF;color:#8A6A22;font-weight:800}
+  .bill{display:flex;align-items:center;gap:6px;background:#FBF4E4;border:1px dashed #E0C98F;border-radius:8px;padding:6px 8px;margin-bottom:7px}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1040px] p-4 space-y-3">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill p-gold">your direction, drawn</span>
+      <span class="pill p-mut">nothing built</span>
+    </div>
+    <h1 class="text-lg font-bold">Creating an agency opens its profile — details, and its own room prices</h1>
+    <p class="cap">Not a name typed into the booking: a real <b>agency profile</b>, with its details and <b>the prices it pays per room</b>. Saved once, picked forever after.</p>
+  </header>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Where it starts — the same picker, one line that creates</h2>
+    <div class="app" style="max-width:560px">
+      <div class="wcard">
+        <div class="hrow"><span class="lab g">Guest information</span><span class="lab" style="margin-left:auto">⋯</span></div>
+        <div class="bill"><span style="font-size:10px;font-weight:800;color:#8A6A22">BILL TO</span><span class="inp set" style="flex:1">Provincial Assessor</span></div>
+        <div class="pick">
+          <div class="none"><span>No saved agency with that name.</span><span></span></div>
+          <div class="create"><span>+ Create “Provincial Assessor” as a new agency</span><span></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">The profile it opens</h2>
+    <div class="two" style="margin-top:8px">
+      <div class="app">
+        <div class="wcard">
+          <div class="hrow">
+            <span style="font-family:'Sora';font-weight:800;font-size:12px">New agency</span>
+            <span class="mini" style="margin:0 0 0 auto">Cancel</span>
+          </div>
+          <div class="lab" style="margin-top:7px">Agency details</div>
+          <div class="row"><span class="inp set" style="flex:1">Provincial Assessor's Office</span></div>
+          <div class="g2"><span class="inp">Address</span><span class="inp">Contact no.</span><span class="inp">TIN</span><span class="inp">Vehicle plate</span></div>
+
+          <div class="lab g" style="margin-top:9px">What this agency pays per room</div>
+          <div class="rooms">
+            <div class="rrow"><span class="nm">Room 1 · Deluxe</span><span class="bd">₱1,050</span><span class="inp money">1,000</span></div>
+            <div class="rrow"><span class="nm">Room 2 · Double</span><span class="bd">₱950</span><span class="inp money">900</span></div>
+            <div class="rrow"><span class="nm">Room 3 · Double</span><span class="bd">₱950</span><span class="inp money">900</span></div>
+            <div class="rrow"><span class="nm">Room 4 · Double</span><span class="bd">₱950</span><span class="inp money">900</span></div>
+            <div class="rrow"><span class="nm">Room 5 · Matrimonial</span><span class="bd">₱1,200</span><span class="inp money"></span></div>
+            <div class="rrow"><span class="nm">Room 6 · Family</span><span class="bd">₱1,800</span><span class="inp money"></span></div>
+            <div class="rrow"><span class="nm">Room 7 · Bunk 3</span><span class="bd">₱1,100</span><span class="inp money"></span></div>
+            <div class="rrow"><span class="nm">Room 8 · Double</span><span class="bd">₱850</span><span class="inp money"></span></div>
+            <div class="rrow"><span class="nm">Room 9 · Bunk 2</span><span class="bd">₱900</span><span class="inp money"></span></div>
+            <div class="rrow"><span class="nm">Room 10 · Bunk 6</span><span class="bd">₱2,400</span><span class="inp money"></span></div>
+          </div>
+          <p class="mini">The grey figure is the price on the board (a hint, never charged to them). Leave a box empty and that room stays at the board price.</p>
+          <div class="row" style="justify-content:flex-end"><span class="btn">Cancel</span><span class="btn p">Save agency</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="app">
+          <div class="wcard">
+            <div class="lab g">Guest information</div>
+            <div class="bill"><span style="font-size:10px;font-weight:800;color:#8A6A22">BILL TO</span><span class="inp set" style="flex:1">PROVINCIAL ASSESSOR'S OFFICE</span></div>
+            <div class="row"><span class="inp set" style="flex:1">Mr. Monching Morales</span></div>
+          </div>
+          <div class="wcard">
+            <div class="lab">Rooms &amp; dates</div>
+            <div class="rrow"><span class="nm">Room 2 · 1 night</span><span class="bd">board ₱950</span><span class="money" style="font-family:ui-monospace,Menlo,monospace;font-weight:800">₱900</span></div>
+            <div class="rrow"><span class="nm">Room 6 · 1 night</span><span class="bd">board ₱1,800</span><span class="money" style="font-family:ui-monospace,Menlo,monospace;font-weight:800">₱1,800</span></div>
+          </div>
+        </div>
+        <p class="cap">Saved → the agency is on the booking, and only the rooms it has a price for are cheaper. The others stay on the board (Room 6 above).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Two small things to settle</h2>
+    <form data-lavish-question="edit" onsubmit="return queueOne(this,'edit','Agency profile form')">
+      <p class="cap" style="margin:0"><b>1 · Does “Change” on an existing agency open this same profile?</b></p>
+      <label class="opt"><input type="radio" name="edit" value="A — yes: Change opens the same profile, so prices and details are corrected in one place"><span><b>A — yes, the same profile opens</b> <span class="pill p-gold">my pick</span><span>One editor for agencies, whether new or existing. Guests &amp; Partners keeps working too.</span></span></label>
+      <label class="opt"><input type="radio" name="edit" value="B — no: Change only picks another agency; details and prices live in Guests & Partners"><span><b>B — no, Change just re-picks</b><span>The booking form never edits a profile; Guests &amp; Partners owns that.</span></span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+
+    <form data-lavish-question="board" onsubmit="return queueOne(this,'board','Agency profile form')" style="margin-top:14px">
+      <p class="cap" style="margin:0"><b>2 · In that price list, should the board price stay visible?</b></p>
+      <label class="opt"><input type="radio" name="board" value="A — keep the board price beside each box as a grey hint"><span><b>A — keep the grey board price</b> <span class="pill p-gold">my pick</span><span>You can see at a glance whether the agency pays less, and by how much.</span></span></label>
+      <label class="opt"><input type="radio" name="board" value="B — show only the agency's box, no board price"><span><b>B — only the agency's box</b><span>Cleaner, but no sense of the discount.</span></span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Build the whole thing like this?</h2>
+    <form data-lavish-question="go" onsubmit="return queueOne(this,'go','Agency profile form')">
+      <label class="opt"><input type="radio" name="go" value="Yes — build it: ⋯ on the guest card, the bill-to line above the name, pick or create, and a new agency opens its profile with per-room prices"><span><b>Yes — build it</b><span>Everything on this page and the last one.</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="Almost — one thing (written below)"><span><b>Almost — one thing</b><span>Say which part.</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="Something else — I'll describe it"><span><b>Something else</b><span>Plain words; I'll draw it.</span></span></label>
+      <textarea name="go" placeholder="Optional"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = (new FormData(form).get(key) || '').toString().trim()
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

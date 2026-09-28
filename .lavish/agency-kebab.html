@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The two different actions — pick, or create</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:5px 0 0}
+  .pill{border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;white-space:nowrap}
+  .p-gold{background:#332B18;color:#E6C989}
+  .p-mut{background:#2A2A2A;color:#C9C4BB}
+  .p-bad{background:#2A1615;color:#F87171}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-top:6px;cursor:pointer;font-size:13px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:7px 13px;font-weight:800;font-size:12px;margin-top:9px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:9px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:7px;min-height:44px}
+  .app{background:#F1EDE5;border:1px solid #DED7C9;border-radius:12px;padding:9px;color:#1C1C1C;font-size:11px}
+  .wcard{background:#fff;border:1px solid #E4DED2;border-radius:10px;padding:8px 10px;position:relative}
+  .hrow{display:flex;align-items:center;gap:6px}
+  .lab{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A8377}
+  .lab.g{color:#8A6A22}
+  .kebab{width:20px;height:20px;border:1px solid #E0DACD;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;color:#6E6A62;letter-spacing:1px;font-size:11px}
+  .menuwrap{position:relative;margin-left:auto}
+  .menu{position:absolute;right:0;top:24px;min-width:172px;border:1px solid #E0DACD;border-radius:8px;background:#fff;box-shadow:0 8px 18px rgba(28,28,28,.16);overflow:hidden;z-index:20}
+  .menu button{display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:7px 10px;font-size:11.5px;font-weight:700;color:#1C1C1C;background:#fff;border:0;cursor:pointer}
+  .inp{border:1px solid #E0DACD;border-radius:7px;padding:5px 8px;font-size:11px;color:#9A948A;background:#fff}
+  .inp.set{color:#1C1C1C;font-weight:700}
+  .mini{font-size:9.5px;color:#8A8377;margin:4px 0 0}
+  .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px}
+  .bill{display:flex;align-items:center;gap:6px;background:#FBF4E4;border:1px dashed #E0C98F;border-radius:8px;padding:6px 8px;margin-bottom:7px}
+  .pick{border:1px solid #E0DACD;border-radius:8px;background:#fff;margin-top:6px;overflow:hidden}
+  .pick div{padding:6px 9px;font-size:11px;border-bottom:1px solid #EFEAE1;display:flex;gap:8px}
+  .pick div:last-child{border-bottom:0}
+  .pick div span:last-child{margin-left:auto;color:#8A8377;font-size:9.5px}
+  .pick div.on{background:#FBF4E4;font-weight:800}
+  .pick .create{background:#F6EFDF;color:#8A6A22;font-weight:800}
+  .pick .none{color:#8A8377}
+  .two{display:grid;grid-template-columns:1fr;gap:10px}
+  @media(min-width:880px){.two{grid-template-columns:1fr 1fr}}
+  .fnum{width:21px;height:21px;border-radius:99px;background:#332B18;color:#E6C989;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .fname{font-family:"Sora";font-weight:800;font-size:13px}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1040px] p-4 space-y-3">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill p-bad">my drawing was confusing</span>
+      <span class="pill p-mut">nothing built</span>
+    </div>
+    <h1 class="text-lg font-bold">Two different actions — and they are never on screen together</h1>
+    <p class="cap">Fair question, and my picture was wrong: I drew the “add” line while a matching agency was already listed, which made it look like a confirm step.</p>
+  </header>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Picking one that exists — ONE tap, nothing else</h2>
+    <div class="two" style="margin-top:8px">
+      <div class="app">
+        <div class="wcard">
+          <div class="hrow"><span class="lab g">Guest information</span><span class="menuwrap"><span class="kebab">⋯</span></span></div>
+          <div class="bill"><span style="font-size:10px;font-weight:800;color:#8A6A22">BILL TO</span><span class="inp set" style="flex:1">Prov</span></div>
+          <div class="pick">
+            <div class="on"><span>Provincial Governor's Office (PGO)</span><span>Tandag City</span></div>
+            <div><span>Provincial Assessor's Office</span><span>Tandag City</span></div>
+          </div>
+          <p class="mini">Tap the row → the agency is on the booking. Done. No button to press afterwards.</p>
+        </div>
+      </div>
+      <div>
+        <p class="cap" style="margin:0"><b>What you type searches the saved agencies.</b> What you see is what exists. Tapping one picks it — there is no “add” involved at all.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Creating one that does not exist — only when nothing matches</h2>
+    <div class="two" style="margin-top:8px">
+      <div class="app">
+        <div class="wcard">
+          <div class="hrow"><span class="lab g">Guest information</span><span class="menuwrap"><span class="kebab">⋯</span></span></div>
+          <div class="bill"><span style="font-size:10px;font-weight:800;color:#8A6A22">BILL TO</span><span class="inp set" style="flex:1">Provincial Assessor</span></div>
+          <div class="pick">
+            <div class="none"><span>No saved agency with that name.</span><span></span></div>
+            <div class="create"><span>+ Create “Provincial Assessor” as a new agency</span><span></span></div>
+          </div>
+          <p class="mini">One tap saves it to <b>Guests &amp; Partners</b> and puts it on this booking.</p>
+        </div>
+      </div>
+      <div>
+        <p class="cap" style="margin:0"><b>The create line is a different action:</b> it makes a new agency profile, so the next booking can simply pick it. It appears <b>only</b> when the name you typed matches nothing — so it can never be mistaken for a confirm button.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">And when a brand-new agency is created, its details…</h2>
+    <p class="cap">A new profile has no address, contact or TIN yet. Two ways to handle that:</p>
+    <div class="two" style="margin-top:8px">
+      <div class="app">
+        <div class="wcard">
+          <div class="lab g">New agency — Provincial Assessor</div>
+          <div class="row"><span class="inp" style="flex:1">Address</span><span class="inp" style="flex:1">Contact no.</span></div>
+          <div class="row"><span class="inp" style="flex:1">TIN</span><span class="inp" style="flex:1">Vehicle plate</span></div>
+          <p class="mini" style="color:#8A6A22;font-weight:800">the four boxes open right here, once</p>
+        </div>
+      </div>
+      <div class="app">
+        <div class="wcard">
+          <div class="lab g">New agency — Provincial Assessor</div>
+          <p class="mini">Created with just its name. The bill prints the COMPANY line; the address, contact and TIN are filled in later in <b>Guests &amp; Partners</b>.</p>
+        </div>
+      </div>
+    </div>
+    <form data-lavish-question="details" onsubmit="return queueOne(this,'details','Agency create')">
+      <label class="opt"><input type="radio" name="details" value="A — creating a new agency opens its four boxes right there, once, so the profile starts complete"><span><b>A — the four boxes open once, right there</b> <span class="pill p-gold">my pick</span><span>The desk has the paper in front of them; the profile is complete from day one.</span></span></label>
+      <label class="opt"><input type="radio" name="details" value="B — create it with just the name; the rest is filled in later in Guests & Partners"><span><b>B — name only, details later</b><span>Fastest at the counter; the agency's address stays blank until someone fills it.</span></span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Clearer now? Build it?</h2>
+    <form data-lavish-question="go" onsubmit="return queueOne(this,'go','Agency create')">
+      <label class="opt"><input type="radio" name="go" value="Yes — build it: ⋯ on the guest card (popup to its left), agency line above the name, pick one tap / create only when nothing matches"><span><b>Yes — build it</b><span>Exactly the frames above.</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="Almost — one thing to change (written below)"><span><b>Almost — one thing</b><span>Say which and I'll change only that.</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="Something else — I'll describe it"><span><b>Something else</b><span>Plain words and I'll draw it.</span></span></label>
+      <textarea name="go" placeholder="Optional — the wording of the create line, the “no saved agency” line, anything"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = (new FormData(form).get(key) || '').toString().trim()
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

@@ -10,7 +10,7 @@ import { ExtendStayModal } from './calendar/ExtendStayModal'
 import { TimelineGrid } from './calendar/TimelineGrid'
 import { TimelineDayInfo, buildTimelineDays, timelineHeader, sameMonth } from './calendar/timelineDays'
 import { LogOldBookingModal } from './calendar/LogOldBookingModal'
-import { CorporateBookingForm } from './corporate/CorporateBookingForm'
+import { BlockDatesPane } from './calendar/BlockDatesPane'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { CalendarLegend } from './calendar/CalendarLegend'
 import { roomDisplayName } from './calendar/bookingStyles'
@@ -36,8 +36,13 @@ export function CalendarTab() {
   const [selectedExtendBooking, setSelectedExtendBooking] = useState<Booking | null>(null)
   const [showLogOld, setShowLogOld] = useState(false)
   const [logOldSelections, setLogOldSelections] = useState<Record<string, UnitSel>>({})
-  const [showCorporate, setShowCorporate] = useState(false)
-  const [corporateSelections, setCorporateSelections] = useState<Record<string, UnitSel>>({})
+  /** The dates the block pane is holding — one day or a range, plus which units. */
+  const [blockTarget, setBlockTarget] = useState<{
+    units: { id: string; type: 'room' | 'venue' }[]
+    label: string
+    checkIn: string
+    checkOut: string
+  } | null>(null)
   const [extendCheckoutDate, setExtendCheckoutDate] = useState(''); const [extendError, setExtendError] = useState('')
 
   // ── Full wizard (editing + advanced) ──
@@ -51,7 +56,7 @@ export function CalendarTab() {
   // because only one panel is ever on screen.
   const [dueShortStayIds, setDueShortStayIds] = useState<string[]>([])
   const poppedDueRef = useRef<Set<string>>(new Set())
-  const deskBusy = showManualForm || showCorporate || showLogOld || !!selectedExtendBooking
+  const deskBusy = showManualForm || showLogOld || !!selectedExtendBooking || !!blockTarget
 
   // Latest-value refs keep the click handler stable so a date click never
   // re-renders the whole grid.
@@ -237,16 +242,59 @@ export function CalendarTab() {
     setShowManualForm(true)
   }
 
-  const confirmGroupCorporate = () => {
-    if (!groupSelection) return
-    const serialized: Record<string, UnitSel> = {}
-    Object.entries(groupSelection).forEach(([id, sel]) => {
-      serialized[id] = { checkIn: dateToString(sel.checkIn), checkOut: dateToString(sel.checkOut), type: sel.type }
-    })
-    setGroupSelection(null)
+  /**
+   * Block the dates that were picked (the owner's design, 2026-09).
+   *
+   * The same pick that feeds a booking feeds the block — one day or a range — so the pane
+   * only has to ask `why`. Blocking used to be a MODE of the booking form (a
+   * `Booking / Block dates` toggle in its header turned the whole form into a block-only
+   * form); the owner moved it here, beside every other thing the desk can do with the
+   * dates they just picked.
+   */
+  const openBlockPane = () => {
+    const picked = timelineSelectionRef.current
+    const units: { id: string; type: 'room' | 'venue' }[] = []
+    let checkIn = ''
+    let checkOut = ''
+    if (groupSelection && Object.keys(groupSelection).length > 0) {
+      Object.entries(groupSelection).forEach(([id, sel]) => {
+        units.push({ id, type: sel.type })
+        const from = dateToString(sel.checkIn)
+        const to = dateToString(sel.checkOut)
+        if (!checkIn || from < checkIn) checkIn = from
+        if (!checkOut || to > checkOut) checkOut = to
+      })
+    } else if (picked?.roomId || picked?.venueId) {
+      units.push({ id: (picked.roomId || picked.venueId) as string, type: picked.roomId ? 'room' : 'venue' })
+      checkIn = dateToString(picked.checkIn)
+      const next = new Date(picked.checkIn)
+      next.setDate(next.getDate() + 1)
+      checkOut = dateToString(next)
+    }
+    if (units.length === 0 || !checkIn) return
+    setBlockTarget({ units, label: blockLabel(units), checkIn, checkOut })
     setTimelineSelection(null)
-    setCorporateSelections(serialized)
-    setShowCorporate(true)
+    setGroupSelection(null)
+  }
+
+  /** One block per picked unit, so a whole floor can be blocked in one go. */
+  const createBlocks = async (notes: string) => {
+    if (!blockTarget) return
+    for (const u of blockTarget.units) {
+      await createManualBooking({
+        roomId: u.type === 'room' ? u.id : undefined,
+        venueId: u.type === 'venue' ? u.id : undefined,
+        guestName: 'Admin Date Block',
+        guestEmail: 'admin@daweez-booking.vercel.app',
+        guestPhone: 'None',
+        checkIn: blockTarget.checkIn,
+        checkOut: blockTarget.checkOut,
+        source: 'manual',
+        status: 'blocked',
+        notes,
+      })
+    }
+    setBlockTarget(null)
   }
 
 
@@ -269,6 +317,41 @@ export function CalendarTab() {
     if (!y || !m || !d) return
     setMonthAnchor(new Date(y, m - 1, d))
   }
+
+  /** Who the block is for, in the pane's own line: the room's name, or how many units. */
+  const blockLabel = (units: { id: string; type: 'room' | 'venue' }[]) => {
+    if (units.length !== 1) return units.length + ' units'
+    const u = units[0]
+    if (u.type === 'room') {
+      const room = rooms.find(r => r.id === u.id)
+      return room ? roomDisplayName(room) : 'Room'
+    }
+    return venues.find(v => v.id === u.id)?.name || 'Venue'
+  }
+
+  /** Log an old paper booking for the picked dates — the toolbar icon and the action
+   *  bar's own icon both come here, so there is one way to start it. */
+  const openLogOldBooking = () => {
+    const serialized: Record<string, UnitSel> = {}
+    const picked = timelineSelectionRef.current
+    const roomId = picked?.roomId
+    if (groupSelection) {
+      Object.entries(groupSelection).forEach(([id, sel]) => { serialized[id] = { checkIn: dateToString(sel.checkIn), checkOut: dateToString(sel.checkOut), type: sel.type } })
+    } else if (picked && roomId) {
+      const next = new Date(picked.checkIn); next.setDate(next.getDate() + 1)
+      serialized[roomId] = { checkIn: dateToString(picked.checkIn), checkOut: dateToString(next), type: 'room' }
+    }
+    setLogOldSelections(serialized)
+    setGroupSelection(null)
+    setTimelineSelection(null)
+    setShowLogOld(true)
+  }
+
+  const fmtBlockDate = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
   return (
     <div className="space-y-3 font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
       <CalendarToolbar
@@ -280,14 +363,7 @@ export function CalendarTab() {
         onJumpToDate={jumpToDay}
         onToday={() => setMonthAnchor(todayStart())}
         logOldDisabled={!groupSelection || Object.keys(groupSelection).length === 0}
-        onLogOldBooking={() => {
-          const serialized: Record<string, UnitSel> = {}
-          if (groupSelection) Object.entries(groupSelection).forEach(([id, sel]) => { serialized[id] = { checkIn: dateToString(sel.checkIn), checkOut: dateToString(sel.checkOut), type: sel.type } })
-          setLogOldSelections(serialized)
-          setGroupSelection(null)
-          setTimelineSelection(null)
-          setShowLogOld(true)
-        }}
+        onLogOldBooking={openLogOldBooking}
       />
       <div className="flex-grow min-h-0 flex flex-row gap-2 overflow-hidden">
         <CalendarLegend />
@@ -304,7 +380,8 @@ export function CalendarTab() {
           setExtendCheckoutDate={setExtendCheckoutDate}
           setExtendError={setExtendError}
           onNewBooking={confirmGroup}
-          onNewCorporate={confirmGroupCorporate}
+          onBlockDates={openBlockPane}
+          onLogOldBooking={openLogOldBooking}
           onNewShortStay={confirmShortStay}
           onClearSelection={() => { setTimelineSelection(null); setGroupSelection(null) }}
           dueShortStayIds={dueShortStayIds}
@@ -358,14 +435,16 @@ export function CalendarTab() {
         />
       )}
 
-      {showCorporate && (
-        <CorporateBookingForm
-          rooms={rooms}
-          venues={venues}
-          bookings={bookings}
-          initialSelections={corporateSelections}
-          createManualBooking={createManualBooking}
-          onClose={() => setShowCorporate(false)}
+      {/* Blocking the picked dates: a small pane of its own, never the booking form
+          (the owner's design, 2026-09 — the form's Block mode is gone). */}
+      {blockTarget && (
+        <BlockDatesPane
+          unitLabel={blockTarget.label}
+          checkIn={blockTarget.checkIn}
+          checkOut={blockTarget.checkOut}
+          fmt={fmtBlockDate}
+          onSubmit={createBlocks}
+          onClose={() => setBlockTarget(null)}
         />
       )}
 

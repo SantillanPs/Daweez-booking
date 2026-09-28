@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The agency block — let's shape it</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:5px 0 0}
+  .pill{border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;white-space:nowrap}
+  .p-gold{background:#332B18;color:#E6C989}
+  .p-bad{background:#2A1615;color:#F87171}
+  .p-mut{background:#2A2A2A;color:#C9C4BB}
+  .p-good{background:#12261F;color:#34D399}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-top:6px;cursor:pointer;font-size:13px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:7px 13px;font-weight:800;font-size:12px;margin-top:9px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:9px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:7px;min-height:44px}
+  /* app mock */
+  .app{background:#F1EDE5;border:1px solid #DED7C9;border-radius:12px;padding:9px;color:#1C1C1C;font-size:11px}
+  .wcard{background:#fff;border:1px solid #E4DED2;border-radius:10px;padding:8px 10px}
+  .wcard + .wcard{margin-top:7px}
+  .gold{border-color:#D0AB60}
+  .hrow{display:flex;align-items:center;gap:7px}
+  .ttl{font-family:"Sora";font-weight:800;font-size:12px}
+  .sub{font-size:9.5px;color:#8A8377}
+  .mark{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;padding:3px 7px;border-radius:7px}
+  .mark.on{background:#F6EFDF;color:#8A6A22}
+  .mark.off{color:#B4AEA4}
+  .lab{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A8377}
+  .lab.g{color:#8A6A22}
+  .inp{border:1px solid #E0DACD;border-radius:7px;padding:5px 8px;font-size:11px;color:#9A948A;background:#fff}
+  .inp.set{color:#1C1C1C;font-weight:700}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:5px}
+  .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px}
+  .lnk{font-size:10px;font-weight:800;color:#8A6A22;text-decoration:none;border-bottom:1px solid #C9A14F}
+  .mini{font-size:9.5px;color:#8A8377;margin:4px 0 0}
+  .two{display:grid;grid-template-columns:1fr;gap:10px}
+  @media(min-width:880px){.two{grid-template-columns:1fr 1fr}}
+  .qhead{display:flex;align-items:center;gap:8px;margin-top:12px}
+  .qn{width:21px;height:21px;border-radius:99px;background:#332B18;color:#E6C989;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .qname{font-family:"Sora";font-weight:800;font-size:13.5px}
+  .ait{font-size:11.5px;color:var(--sec);margin:3px 0 0}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1040px] p-4 space-y-3">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill p-mut">discussion — nothing built</span>
+      <span class="pill p-bad">built last night, uncommitted</span>
+    </div>
+    <h1 class="text-lg font-bold">The agency block — let's shape it</h1>
+    <p class="cap">It works, but it is a first pass: the block is tall, it shows four empty boxes before you have even chosen an agency, and the header mark turns into a gold pill. Four choices below, each drawn — tell me which side you want, and I'll build exactly that.</p>
+  </header>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">What it looks like right now (your screenshot)</h2>
+    <div class="app" style="margin-top:8px;max-width:560px">
+      <div class="wcard">
+        <div class="hrow">
+          <span class="ttl">New Reservation</span>
+          <span class="mark on" style="margin-left:auto">🏛 agency</span>
+        </div>
+        <p class="sub">An agency is paying</p>
+      </div>
+      <div class="wcard gold">
+        <div class="lab g">Agency · the bill is addressed here</div>
+        <div class="row"><span class="inp" style="flex:1">Choose an agency…</span></div>
+        <div class="g2"><span class="inp">City / province</span><span class="inp">Who to call</span><span class="inp">For a government agency</span><span class="inp">Optional</span></div>
+      </div>
+      <div class="wcard">
+        <div class="lab">Guest information</div>
+        <p class="mini">…pushed below the fold by the block above it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <div class="qhead"><span class="qn">1</span><span class="qname">What shows BEFORE an agency is picked?</span></div>
+    <p class="ait">Right now four empty boxes sit there for an agency nobody has chosen — against your own rule that nothing appears until it is needed.</p>
+    <div class="two" style="margin-top:8px">
+      <div class="app">
+        <div class="wcard gold">
+          <div class="lab g">Agency · the bill is addressed here</div>
+          <div class="row"><span class="inp" style="flex:1">Choose an agency…</span></div>
+          <p class="mini" style="color:#8A6A22;font-weight:800">──────── nothing else yet ────────</p>
+        </div>
+      </div>
+      <div class="app">
+        <div class="wcard gold">
+          <div class="lab g">Agency · the bill is addressed here</div>
+          <div class="row"><span class="inp" style="flex:1">Choose an agency…</span></div>
+          <div class="g2"><span class="inp">City / province</span><span class="inp">Who to call</span><span class="inp">For a government agency</span><span class="inp">Optional</span></div>
+        </div>
+      </div>
+    </div>
+    <form data-lavish-question="q1" onsubmit="return queueOne(this,'q1','Agency design')">
+      <label class="opt"><input type="radio" name="q1" value="A — only the picker until an agency is chosen; the fields appear after"><span><b>A — only the picker</b> <span class="pill p-gold">my pick</span><span>Four fewer empty boxes; the block is one line tall until it has something to say.</span></span></label>
+      <label class="opt"><input type="radio" name="q1" value="B — keep all four fields visible from the start"><span><b>B — keep all four fields</b><span>Ready for a brand-new agency you type in from scratch.</span></span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+
+    <div class="qhead"><span class="qn">2</span><span class="qname">Once an agency IS picked, how does it sit?</span></div>
+    <p class="ait">Today the four fields stay open, so the chosen agency takes as much room as an unchosen one.</p>
+    <div class="two" style="margin-top:8px">
+      <div class="app">
+        <div class="wcard gold">
+          <div class="lab g">Agency</div>
+          <div class="row">
+            <span class="inp set" style="flex:1">PROVINCIAL GOVERNOR'S OFFICE (PGO)</span>
+          </div>
+          <p class="mini">Tandag City, Surigao del Sur · 09124498698 · TIN 000-000-000</p>
+          <div class="row"><a class="lnk" href="#" onclick="return false">Change</a><a class="lnk" href="#" onclick="return false">Remove</a></div>
+        </div>
+      </div>
+      <div class="app">
+        <div class="wcard gold">
+          <div class="lab g">Agency · the bill is addressed here</div>
+          <div class="row"><span class="inp set" style="flex:1">PROVINCIAL GOVERNOR'S OFFICE (PGO)</span></div>
+          <div class="g2"><span class="inp set">Tandag City</span><span class="inp set">09124498698</span><span class="inp set">000-000-000</span><span class="inp">Optional</span></div>
+        </div>
+      </div>
+    </div>
+    <form data-lavish-question="q2" onsubmit="return queueOne(this,'q2','Agency design')">
+      <label class="opt"><input type="radio" name="q2" value="A — chosen agency shows as one compact line (name + address/contact/TIN in small text) with Change and Remove"><span><b>A — one compact line</b> <span class="pill p-gold">my pick</span><span>The block stays short, and the guest info stays high on the page.</span></span></label>
+      <label class="opt"><input type="radio" name="q2" value="B — keep the four fields open so they can be corrected on the spot"><span><b>B — keep the fields open</b><span>Everything about the agency is visible and editable right here.</span></span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+
+    <div class="qhead"><span class="qn">3</span><span class="qname">The agency's details — edited here, or in Guests &amp; Partners?</span></div>
+    <p class="ait">As built, typing in those boxes <b>writes back to the agency's profile</b> — so a correction made mid-booking silently changes every future bill for that agency. That may be exactly what you want, or it may be a trap.</p>
+    <form data-lavish-question="q3" onsubmit="return queueOne(this,'q3','Agency design')">
+      <label class="opt"><input type="radio" name="q3" value="A — the fields here are read-only: change an agency's details in Guests & Partners, where they live"><span><b>A — read-only here, edited in Guests &amp; Partners</b> <span class="pill p-gold">my pick</span><span>A booking can never quietly rewrite the agency. One place owns the details.</span></span></label>
+      <label class="opt"><input type="radio" name="q3" value="B — keep them editable here and saved back to the profile (as built)"><span><b>B — editable here, saved back</b><span>Quickest for a one-off correction at the desk; it changes the agency for everyone after.</span></span></label>
+      <label class="opt"><input type="radio" name="q3" value="C — editable here, but the change applies to THIS booking only"><span><b>C — editable here, this booking only</b><span>Needs a place to keep the agency's address/TIN on the booking itself (a database column).</span></span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+
+    <div class="qhead"><span class="qn">4</span><span class="qname">The header mark, when an agency is on</span></div>
+    <p class="ait">Right now it becomes a gold pill. Options, drawn:</p>
+    <div class="two" style="margin-top:8px">
+      <div class="app">
+        <div class="wcard"><div class="hrow"><span class="ttl">New Reservation</span><span class="mark on" style="margin-left:auto">🏛 agency</span></div></div>
+      </div>
+      <div class="app">
+        <div class="wcard"><div class="hrow"><span class="ttl">c/o Mr. Monching Morales</span><span class="mark on" style="margin-left:auto">🏛 PGO ✕</span></div></div>
+      </div>
+    </div>
+    <form data-lavish-question="q4" onsubmit="return queueOne(this,'q4','Agency design')">
+      <label class="opt"><input type="radio" name="q4" value="A — the mark shows the chosen agency (PGO ✕) so the state is readable at a glance"><span><b>A — show the agency there</b> <span class="pill p-gold">my pick</span><span>`PGO ✕` tells you which agency and lets you drop it in one tap.</span></span></label>
+      <label class="opt"><input type="radio" name="q4" value="B — keep the plain gold agency pill as it is now"><span><b>B — keep the pill</b><span>Simple, but it does not say which agency.</span></span></label>
+      <label class="opt"><input type="radio" name="q4" value="C — nothing in the header at all; the block itself is the only sign"><span><b>C — nothing in the header</b><span>Quietest: only the block on the page says an agency is paying.</span></span></label>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Anything else about it?</h2>
+    <form data-lavish-question="notes" onsubmit="return queueOne(this,'notes','Agency design')">
+      <p class="cap" style="margin:0">Say it in plain words — a layout you picture, something that looks wrong, or a rule I have missed.</p>
+      <textarea name="notes" placeholder="e.g. “the agency should come after the guest”, “the gold border is too loud”, …"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = (new FormData(form).get(key) || '').toString().trim()
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

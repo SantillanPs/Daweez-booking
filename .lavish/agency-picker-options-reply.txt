@@ -1,0 +1,7 @@
+Fixed the three layout issues you queued — they were the drawing's own fault, not the app's:
+
+- The **`8 saved · scroll for the rest`** line now rides **inside** the list box (which is exactly where it sits in the app), instead of below it where the floating box was covering it.
+- The "only the names that contain get" note moved inside the box too.
+- The mocked cards are taller, so nothing floats over the captions any more.
+
+The app is unchanged: the box lists the saved agencies only while the cursor is in it, five rows tall, scrollable, `＋ New agency` on the no-match line only, and the ⋯ menu holds just `Add agency?` / `Remove agency`.

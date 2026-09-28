@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agency booking — my recommendation</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2,h3{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:6px 0 0}
+  .pill{border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;white-space:nowrap}
+  .p-gold{background:#332B18;color:#E6C989}
+  .p-good{background:#12261F;color:#34D399}
+  .p-mut{background:#2A2A2A;color:#C9C4BB}
+  .p-bad{background:#2A1615;color:#F87171}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:7px;cursor:pointer;font-size:13.5px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12.5px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;margin-top:10px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:10px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:7px;min-height:48px}
+  .reasons{display:grid;grid-template-columns:1fr;gap:8px;margin-top:9px}
+  @media(min-width:860px){.reasons{grid-template-columns:1fr 1fr 1fr}}
+  .reason{background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13px}
+  .reason b{display:block;color:var(--gold);font-family:"Sora";font-size:12.5px;margin-bottom:4px}
+  .two{display:grid;grid-template-columns:1fr;gap:11px}
+  @media(min-width:860px){.two{grid-template-columns:1fr 1fr}}
+  /* app mock */
+  .app{background:#F1EDE5;border:1px solid #DED7C9;border-radius:12px;padding:9px;color:#1C1C1C}
+  .blk{background:#fff;border:1px solid #E4DED2;border-radius:10px;padding:8px 10px}
+  .blk + .blk{margin-top:7px}
+  .ah{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A8377}
+  .ah.g{color:#8A6A22}
+  .row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:6px}
+  .btn{border:1px solid #E0DACD;border-radius:7px;padding:5px 10px;font-size:11.5px;font-weight:700;color:#4A463F;background:#fff}
+  .btn.on{background:#D0AB60;border-color:#C9A14F;color:#141414}
+  .inp{border:1px solid #E0DACD;border-radius:7px;padding:5px 8px;font-size:11.5px;color:#9A948A;background:#fff}
+  .inp.set{color:#1C1C1C;font-weight:700}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+  .hl{outline:2px solid #D0AB60;outline-offset:1px}
+  .note{font-size:10.5px;color:#7C766C;margin:5px 0 0}
+  .roomline{display:flex;align-items:center;gap:6px;font-size:11.5px;margin-top:5px}
+  .rate{font-family:ui-monospace,Menlo,monospace;font-weight:800}
+  .strike{color:#9A948A;text-decoration:line-through;font-weight:600;font-family:ui-monospace,Menlo,monospace}
+  /* paper */
+  .paper{background:#E6E2DA;color:#1C1C1C;border-radius:8px;padding:11px;font-size:10.5px;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .paper h4{margin:0;font-family:"Sora",serif;font-size:12px;letter-spacing:.04em;color:#8A6A22;text-align:center;text-transform:uppercase}
+  .paper .title{text-align:center;font-weight:800;font-size:11px;letter-spacing:.05em;margin-top:7px;color:#8A6A22}
+  .paper .fields div{display:flex;gap:6px;margin-top:3px}
+  .paper .fields span:first-child{width:92px;font-weight:800;font-size:9px}
+  .paper .fields span:last-child{border-bottom:1px solid #9A948A;flex:1;font-size:9px}
+  .paper .dev{border-top:1px dashed #A9A29A;margin-top:6px;padding-top:5px;font-size:9.5px}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1040px] p-4 space-y-3">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill p-gold">my recommendation</span>
+      <span class="pill p-mut">nothing built</span>
+      <h1 class="text-lg font-bold">You are right — and that is the argument for the switch</h1>
+    </div>
+    <p class="cap">The employee of the agency is doing <b>exactly what a normal booking does</b>: picking rooms, dates, a guest. So the form should not be replaced or split — the only new question is <b>“who is this bill for?”</b>. One switch at the top answers it, and everything else stays where the desk already knows it.</p>
+  </header>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Why the switch, and not a second form</h2>
+    <div class="reasons">
+      <div class="reason"><b>Nothing is relearned</b>The desk books the rooms the same way, in the same order. Only one extra choice sits at the top, and it is already the thing the desk knows before touching anything: <i>is this guest paying, or an agency?</i></div>
+      <div class="reason"><b>Nothing appears until needed</b>A guest booking looks exactly like today — the agency fields do not exist on screen. Tap Agency and they appear, filled from the agency's profile, editable for a one-off.</div>
+      <div class="reason"><b>The bill can't be addressed wrong</b>The addressee is decided <b>before</b> the rooms and the money are read, not discovered at the bottom of the form. Today's Corporate form is the opposite — it starts by picking the agency and then books on its behalf, which is the “automatic booking” your note said no to.</div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">The form, both ways — nothing else moves</h2>
+    <div class="two" style="margin-top:9px">
+      <div>
+        <p class="cap" style="margin:0"><span class="pill p-mut">guest</span> the form as it is today</p>
+        <div class="app" style="margin-top:7px">
+          <div class="blk">
+            <div class="ah">Booking type</div>
+            <div class="row"><span class="btn on">Guest</span><span class="btn">Agency</span><span class="btn" style="margin-left:auto">Block dates</span></div>
+          </div>
+          <div class="blk">
+            <div class="ah">Guest</div>
+            <div class="row"><span class="inp" style="flex:1">Mr. Monching Morales</span></div>
+            <div class="g2"><span class="inp">09124498698</span><span class="inp">Contact no.</span></div>
+          </div>
+          <div class="blk">
+            <div class="ah">Rooms &amp; dates</div>
+            <div class="roomline"><span>Room 2 · Room 3 · Room 4</span><span class="rate" style="margin-left:auto">₱950</span></div>
+            <p class="note">Board prices.</p>
+          </div>
+          <div class="blk"><div class="ah">Breakfast · Add-ons · Discount</div><p class="note">Same sections, same order.</p></div>
+          <div class="blk"><div class="ah">Pays now · Receptionist · Confirm</div><p class="note">The one-row money line you approved.</p></div>
+        </div>
+      </div>
+      <div>
+        <p class="cap" style="margin:0"><span class="pill p-gold">agency</span> two blocks are added, and the price follows the agency</p>
+        <div class="app" style="margin-top:7px">
+          <div class="blk">
+            <div class="ah">Booking type</div>
+            <div class="row"><span class="btn">Guest</span><span class="btn on">Agency</span><span class="btn" style="margin-left:auto">Block dates</span></div>
+          </div>
+          <div class="blk hl">
+            <div class="ah g">Agency — the bill is addressed here</div>
+            <div class="row"><span class="inp set" style="flex:1">PROVINCIAL GOVERNOR'S OFFICE (PGO)</span></div>
+            <div class="g2"><span class="inp">Tandag City, Surigao del Sur</span><span class="inp">Contact no.</span><span class="inp">TIN</span><span class="inp">Vehicle plate</span></div>
+          </div>
+          <div class="blk">
+            <div class="ah">Guest — the person who walked in (unchanged)</div>
+            <div class="row"><span class="inp" style="flex:1">c/o Mr. Monching Morales</span></div>
+            <div class="g2"><span class="inp">09124498698</span><span class="inp">Contact no.</span></div>
+          </div>
+          <div class="blk">
+            <div class="ah">Rooms &amp; dates</div>
+            <div class="roomline"><span>Room 2</span><span class="strike" style="margin-left:auto">₱950</span><span class="rate">₱900</span></div>
+            <div class="roomline"><span>Room 3</span><span class="strike" style="margin-left:auto">₱950</span><span class="rate">₱900</span></div>
+            <p class="note">The agency's agreed price for each room, shown beside the board price. <b>The desk still picks the rooms — nothing is picked for them.</b></p>
+          </div>
+          <div class="blk"><div class="ah">Breakfast · Add-ons · Discount · Pays now</div><p class="note">Same sections, priced on the agency's rates.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">And the bill follows your paper</h2>
+    <div class="paper" style="margin-top:8px;max-width:560px">
+      <h4>Daweez Pension House</h4>
+      <p class="title">Guest Billing Statement</p>
+      <div class="fields" style="margin-top:5px">
+        <div><span>COMPANY</span><span>PROVINCIAL GOVERNOR'S OFFICE (PGO)</span></div>
+        <div><span>NAME OF GUEST</span><span>c/o Mr. Monching Morales (Ma'am Bembem)</span></div>
+        <div><span>ADDRESS</span><span>Tandag City, Surigao del Sur</span></div>
+        <div><span>CONTACT NO.</span><span>09124498698</span></div>
+      </div>
+      <div class="dev">
+        <b>WHY THIS SHAPE FITS THE PAPER:</b> the printed form already has a <b>COMPANY</b> line above <b>NAME OF GUEST</b> — the app only ever fills the second one. The switch is what lets it fill the first, and `c/o` is simply how the guest name prints when an agency is paying.<br><br>
+        <b>STILL MISSING FROM THE PAPER:</b> “Check” as a payment method, and a second bank account (Landbank · Jonathan E. Dango) beside the BPI one.
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">What I would do first, if you agree</h2>
+    <p class="cap">1 · the `Guest · Agency` switch and the agency block (nothing else changes). 2 · the agency's agreed price per room, shown beside the board price, never auto-picked. 3 · the bill's COMPANY line and the `c/o` guest name. Then, as separate small pieces: Check as a method, the second bank account, and the agency's own Bill No.</p>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Does this settle it?</h2>
+    <form data-lavish-question="go" onsubmit="return queueOne(this,'go','Agency booking')">
+      <label class="opt"><input type="radio" name="go" value="Yes — draw it properly as a build plan: Guest · Agency switch, agency block, agency prices, COMPANY + c/o on the bill"><span><b>Yes — this is the shape</b><span>I'll draw the build plan next (still nothing built until you say go on that).</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="Close, but the agency fields should sit somewhere else — I will say where"><span><b>Close, but move the agency block</b><span>Say where it belongs and I'll redraw just that.</span></span></label>
+      <label class="opt"><input type="radio" name="go" value="No — I picture it differently (written below)"><span><b>Not what I picture</b><span>Tell me in plain words and I'll draw exactly that.</span></span></label>
+      <textarea name="go" placeholder="Optional — anything to change"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = (new FormData(form).get(key) || '').toString().trim()
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

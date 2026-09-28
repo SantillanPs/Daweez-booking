@@ -1,15 +1,17 @@
 import { ChevronDown } from 'lucide-react'
 import { paymentKind, methodNeedsReference } from '../../utils/paymentMethod'
 
-// Cash, GCash and Bank transfer — "Other" was removed on the owner's instruction.
-const METHODS = ['Cash', 'GCash', 'Bank transfer']
+// Cash, GCash, Bank transfer and Check — "Other" was removed on the owner's instruction,
+// and Check was added with the agency bill, whose own paper names it (2026-09).
+const METHODS = ['Cash', 'GCash', 'Bank transfer', 'Check']
 
-/** The stored method, as the one of these three labels it means (or '' if none). */
+/** The stored method, as the one of these labels it means (or '' if none). */
 function chosenLabel(method: string): string {
   const kind = paymentKind(method)
   if (kind === 'cash') return 'Cash'
   if (kind === 'gcash') return 'GCash'
   if (kind === 'bank') return 'Bank transfer'
+  if (kind === 'check') return 'Check'
   return ''
 }
 

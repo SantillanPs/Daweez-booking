@@ -1,5 +1,5 @@
 import React from 'react'
-import { Plus } from 'lucide-react'
+import { Ban, FilePlus, Plus } from 'lucide-react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { getBookingStyle, getVenueBookingStyle, roomDisplayName } from './bookingStyles'
@@ -29,10 +29,15 @@ interface TimelineGridProps {
   /**
    * The booking actions live HERE, not in the toolbar (the owner's design): they
    * appear pinned to the cell that was picked, once dates are chosen. One day offers
-   * a short stay; a range offers a normal or corporate booking.
+   * the short-stay hours, a block and an old-booking log; a range offers a normal
+   * booking, the same block and the same log. There is no Corporate button any more
+   * (the owner, 2026-09): the agency is a quiet mark inside the booking form itself.
    */
   onNewBooking: () => void
-  onNewCorporate: () => void
+  /** Blocks the picked dates — opens the small pane that asks only why. */
+  onBlockDates: () => void
+  /** Logs an old paper booking for the picked dates. */
+  onLogOldBooking: () => void
   /** A single picked day: the hours the desk tapped on the bar (3, 6 or 12). */
   onNewShortStay: (hours: number) => void
   /** Clears whatever is picked — a single day AND a finished range. */
@@ -55,7 +60,8 @@ export const TimelineGrid = React.memo(
     setExtendCheckoutDate,
     setExtendError,
     onNewBooking,
-    onNewCorporate,
+    onBlockDates,
+    onLogOldBooking,
     onNewShortStay,
     onClearSelection,
     dueShortStayIds
@@ -233,17 +239,16 @@ export const TimelineGrid = React.memo(
                         className="shrink-0 inline-flex items-center gap-1 bg-gold-400 hover:bg-gold-600 text-ink-900 text-[11.5px] font-bold px-3 py-1.5 rounded-full transition-colors cursor-pointer">
                         <Plus className="w-3 h-3" /> New booking
                       </button>
-                      <button type="button" onClick={onNewCorporate}
-                        className="shrink-0 text-[11.5px] font-bold text-gold-700 hover:bg-gold-100 border border-soft px-3 py-1.5 rounded-full transition-colors cursor-pointer">
-                        Corporate
-                      </button>
                     </>
                   ) : (
                     /* ONE DAY: the short-stay hours straightaway (the owner's ask) —
                        the old single `Short stay` button just opened the form, which
                        then asked the same question again. 22 hours is left out on
                        purpose: it IS the room's own price, so it is an ordinary
-                       overnight stay and the desk gets it by picking a date range. */
+                       overnight stay and the desk gets it by picking a date range.
+                       The buttons carry the HOURS ONLY (the owner's ruling, 2026-09):
+                       the price of the hours is on the room and in the tooltip, so the
+                       bar stays short. */
                     barRoom ? (
                       SHORT_STAY_HOURS.map(h => {
                         const price = h === 3 ? barRoom.hour3_price : h === 6 ? barRoom.hour6_price : barRoom.hour12_price
@@ -251,10 +256,10 @@ export const TimelineGrid = React.memo(
                         return (
                           <button key={h} type="button" disabled={!sellable} onClick={() => onNewShortStay(h)}
                             title={sellable
-                              ? 'A ' + h + '-hour stay takes ' + roomDisplayName(barRoom) + ' for this whole day'
-                              : 'This room is not sold for ' + h + ' hours — set it in Settings → Room Rates'}
+                              ? 'A ' + h + '-hour stay — ₱' + Number(price).toLocaleString() + ' — takes ' + roomDisplayName(barRoom) + ' for this whole day'
+                              : 'This room is not sold for ' + h + ' hours — set it in Settings → Rooms & prices'}
                             className="shrink-0 inline-flex items-center gap-1 text-[11.5px] font-bold text-gold-700 hover:bg-gold-100 border border-soft hover:border-gold-400 px-3 py-1.5 rounded-full transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-soft">
-                            {h}h{sellable ? ' · ₱' + Number(price).toLocaleString() : ' · —'}
+                            {sellable ? h + 'h' : h + 'h · —'}
                           </button>
                         )
                       })
@@ -263,6 +268,27 @@ export const TimelineGrid = React.memo(
                       <span className="shrink-0 text-[10.5px] text-muted">Tap the check-out day for a normal stay</span>
                     )
                   )}
+
+                  {/* Block the dates that are picked — ONE icon, the same on a single day
+                      and on a range (the owner's ruling, 2026-09: the words were noise).
+                      It opens a small pane that only asks why; the room and dates come
+                      from the pick. Blocking is no longer a mode of the booking form. */}
+                  <button type="button" onClick={onBlockDates}
+                    title="Block these dates — cleaning, maintenance or owner use"
+                    aria-label="Block these dates"
+                    className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full border border-gold-400 text-gold-700 hover:bg-gold-100 transition-colors cursor-pointer">
+                    <Ban className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Log old booking sits here too (the owner's ask, 2026-09): it is
+                      offered by the same pick that fills its dates in, beside the other
+                      things the desk can do with those dates. */}
+                  <button type="button" onClick={onLogOldBooking}
+                    title="Log an old paper booking for these dates"
+                    aria-label="Log old booking"
+                    className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full border border-soft text-muted hover:text-main hover:border-gold-400 transition-colors cursor-pointer">
+                    <FilePlus className="w-3.5 h-3.5" />
+                  </button>
 
                   {/* Clears whatever was picked — a single day AND a finished range,
                       which is why it goes through the caller: the first version only

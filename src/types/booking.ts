@@ -201,6 +201,15 @@ export interface PaymentAccounts {
   bankName: string
   bankAccountName: string
   bankAccountNumber: string
+  /**
+   * A **second** bank account (the owner's ruling, 2026-09, from the hotel's real PGO
+   * bill, which lists two): the agency statement prints both banks and the GCash number,
+   * because a government office pays by whichever one its own paperwork names. Empty
+   * fields simply drop the second account off the page.
+   */
+  bank2Name: string
+  bank2AccountName: string
+  bank2AccountNumber: string
 }
 
 // Editable rate settings (items staff can change: late/early check-in-out,

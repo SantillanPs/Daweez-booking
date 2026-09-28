@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal } from '../types/booking'
 import { useDashboardData } from './DashboardContext'
@@ -16,7 +16,8 @@ import { breakfastSellable } from '../utils/breakfast'
 import { focusBookingAfterCreate } from '../utils/bookingFocus'
 import { computeBookingEstimate } from './walk-in/bookingEstimate'
 import { submitBookingForm } from './walk-in/bookingSubmit'
-import { PartnerBookingFields } from './walk-in/PartnerBookingFields'
+import { AgencyFields } from './walk-in/AgencyFields'
+import { AgencyProfileForm } from './walk-in/AgencyProfileForm'
 import { BookingCreatedPanel } from './walk-in/BookingCreatedPanel'
 import { BookingWizardHeader } from './walk-in/BookingWizardHeader'
 
@@ -84,8 +85,19 @@ export function WalkInBookingForm({
   initialBookingType,
   initialStayHours
 }: WalkInBookingFormProps) {
-  // ── Core form state ──
-  const [bookingType, setBookingType] = useState<'individual' | 'partner'>(initialBookingType || 'individual')
+  /**
+   * Is an agency paying for this stay? (the owner's design, 2026-09)
+   *
+   * The quiet `agency` mark in the header row is the only switch, and it does ONE thing:
+   * it adds the agency block to this same single-page form. There is no separate corporate
+   * form any more, and no room is ever picked for the desk — the agency only changes what
+   * the bill is addressed to and what the rooms cost.
+   */
+  const [agencyOn, setAgencyOn] = useState((initialBookingType || 'individual') === 'partner')
+  /** True while the bill-to picker is open (the ⋯ can open it, as can the line's Change). */
+  const [agencyPicking, setAgencyPicking] = useState(false)
+  /** The agency profile being created or corrected — one editor for both (the owner's ruling). */
+  const [agencyProfile, setAgencyProfile] = useState<{ deal: PartnerDeal | null; draftName: string } | null>(null)
 
   // ── Corporate / Partner presets state ──
   const { partnerDeals } = useDashboardData()
@@ -94,6 +106,10 @@ export function WalkInBookingForm({
   const [formVehiclePlate, setFormVehiclePlate] = useState('')
   const [formTIN, setFormTIN] = useState('')
   const [formAddress, setFormAddress] = useState('')
+
+  /** An agency booking IS a normal booking (the owner's rule): all `partner` means here is
+   *  that the trip is contract-backed, which is what confirms it and what the bill uses. */
+  const bookingType: 'individual' | 'partner' = agencyOn ? 'partner' : 'individual'
 
   const handleSelectPartnerDeal = (deal: PartnerDeal | null) => {
     if (deal) {
@@ -104,67 +120,25 @@ export function WalkInBookingForm({
       setFormVehiclePlate(deal.vehicle_plate || '')
       setFormGuestEmail(deal.email || '')
       setFormGuestPhone(deal.contact_no || '')
-
-      // Auto-select all rooms/venues that have contracted rates in this partner deal
-      const fallbackCheckIn = Object.values(initialSelections)[0]?.checkIn || ''
-      const fallbackCheckOut = Object.values(initialSelections)[0]?.checkOut || ''
-      const initial: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }> = {}
-      if (deal.contracted_rates) {
-        Object.entries(deal.contracted_rates).forEach(([id, rate]) => {
-          if (rate > 0) {
-            const isRoom = rooms.some(r => r.id === id)
-            const isVenue = venues.some(v => v.id === id)
-            if (isRoom) {
-              initial[id] = { checkIn: formCheckIn || fallbackCheckIn, checkOut: formCheckOut || fallbackCheckOut, type: 'room' }
-            } else if (isVenue) {
-              initial[id] = { checkIn: formCheckIn || fallbackCheckIn, checkOut: formCheckOut || fallbackCheckOut, type: 'venue' }
-            }
-          }
-        })
-      }
-      setUnitSelections(initial)
+      // NOTE: no rooms are selected here (the owner's ruling, 2026-09). The corporate
+      // path used to tick every room the agency had a rate for, which is exactly the
+      // "automatic booking" his note rejected — an agency changes the PRICE, the desk
+      // still picks the rooms. The agency's rates are applied to whatever is picked.
     } else {
       setFormPartnerDealId('')
       setFormCompanyName('')
       setFormTIN('')
       setFormAddress('')
       setFormVehiclePlate('')
-      setFormGuestEmail('')
-      setFormGuestPhone('')
-      setUnitSelections({})
     }
   }
 
-  // ── Searchable Partner Selector state ──
-  const [partnerSearchQuery, setPartnerSearchQuery] = useState('')
-  const [isPartnerDropdownOpen, setIsPartnerDropdownOpen] = useState(false)
-  const partnerDropdownRef = useRef<HTMLDivElement>(null)
-
-  const filteredDeals = useMemo(() => {
-    const q = partnerSearchQuery.toLowerCase().trim()
-    if (!q) return partnerDeals
-    return partnerDeals.filter(d => 
-      d.name.toLowerCase().includes(q) || 
-      d.type.toLowerCase().includes(q)
-    )
-  }, [partnerSearchQuery, partnerDeals])
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (partnerDropdownRef.current && !partnerDropdownRef.current.contains(event.target as Node)) {
-        setIsPartnerDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // Local check-in / check-out dates for quick partner form
-  const [formCheckIn, setFormCheckIn] = useState(() => {
+  // Local check-in / check-out dates, used by the AGENCY path's own date guard.
+  const [formCheckIn] = useState(() => {
     const vals = Object.values(initialSelections)
     return vals.length > 0 ? vals[0].checkIn : ''
   })
-  const [formCheckOut, setFormCheckOut] = useState(() => {
+  const [formCheckOut] = useState(() => {
     const vals = Object.values(initialSelections)
     return vals.length > 0 ? vals[0].checkOut : ''
   })
@@ -172,27 +146,6 @@ export function WalkInBookingForm({
   // Staggered Date Selection Map per selected Room/Venue
   const [unitSelections, setUnitSelections] = useState<Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>>(initialSelections)
 
-  const handlePartnerDateChange = (field: 'checkIn' | 'checkOut', value: string) => {
-    if (field === 'checkIn') {
-      setFormCheckIn(value)
-      setUnitSelections(prev => {
-        const next = { ...prev }
-        Object.keys(next).forEach(k => {
-          next[k] = { ...next[k], checkIn: value }
-        })
-        return next
-      })
-    } else {
-      setFormCheckOut(value)
-      setUnitSelections(prev => {
-        const next = { ...prev }
-        Object.keys(next).forEach(k => {
-          next[k] = { ...next[k], checkOut: value }
-        })
-        return next
-      })
-    }
-  }
 
   const [formGuestName, setFormGuestName] = useState('')
   const [formGuestEmail, setFormGuestEmail] = useState('')
@@ -274,9 +227,9 @@ export function WalkInBookingForm({
       setFormSource(b.source)
       setFormStatus(b.status === 'pending' ? 'confirmed' : b.status) // Upgrade pending to confirmed in edit mode usually
       
-      if (b.partner_deal_id) {
-        setBookingType('partner')
-        setFormPartnerDealId(b.partner_deal_id)
+      if (b.partner_deal_id || b.company_name) {
+        setAgencyOn(true)
+        setFormPartnerDealId(b.partner_deal_id || '')
         setFormCompanyName(b.company_name || '')
         setFormVehiclePlate(b.vehicle_plate || '')
       }
@@ -374,16 +327,15 @@ export function WalkInBookingForm({
     checkOut: bookingType === 'partner' ? (!formCheckOut ? 'Check-out date is required.' : (formCheckOut <= formCheckIn ? 'Check-out must be after check-in.' : '')) : '',
     units: Object.keys(unitSelections).length === 0 ? 'Select at least one room or venue.' : '',
     dates: Object.keys(unitSelections).length === 0 ? '' : (isValidDates ? '' : 'Please select valid check-in and check-out dates for all units.'),
-    guestName: (formStatus === 'confirmed' && bookingType === 'individual' && !formGuestName.trim()) ? 'Guest name is required.' : '',
+    // The guest's name is required on EVERY booking, agency or not: it is the name that
+    // stays on the stay, and an agency booking prints it as `c/o <name>`.
+    guestName: (formStatus === 'confirmed' && !formGuestName.trim()) ? 'Guest name is required.' : '',
     // There is deliberately NO payment-method rule any more (card k132): the
     // guest chooses how they pay, and that choice is recorded when the money is
     // actually received. Staff are not made to guess it at booking time.
   }
   const showErr = (k: keyof typeof fieldErrors) => (touched[k] || trySave) ? fieldErrors[k] : ''
-  const isInvalid = (k: keyof typeof fieldErrors) => Boolean(showErr(k))
   const markTouched = (k: keyof typeof fieldErrors) => () => setTouched(t => ({ ...t, [k]: true }))
-  const dateField = 'input input-bordered w-full'
-  const dateFieldErr = 'input input-bordered input-error w-full'
 
   // ── Pricing calculations (estimate for totals; real nightly rate goes through calculatePricing) ──
   const { estBreakfast, estRentals, estAddons, estTotal, estDue } = useMemo(
@@ -393,7 +345,6 @@ export function WalkInBookingForm({
       formEventTable, formEventTent, formChairs,
       shortStayHours,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues, formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, shortStayHours]
   )
 
@@ -420,6 +371,24 @@ export function WalkInBookingForm({
   )
 
   const hasAddons = estBreakfast > 0 || estRentals > 0 || estAddons > 0
+
+  /** What the agency block shows, gathered from the fields it fills in. */
+  const agency = {
+    dealId: formPartnerDealId,
+    name: formCompanyName,
+    address: formAddress,
+    contact: formGuestPhone,
+    tin: formTIN,
+    plate: formVehiclePlate,
+  }
+
+  /** An agency booking cannot be confirmed until the bill has an addressee. */
+  const agencyMissing = agencyOn && formStatus === 'confirmed' && !formCompanyName.trim()
+
+  /** Create a new agency, or correct the one that is on the booking — same profile form. */
+  const openAgencyProfile = (deal: PartnerDeal | null, draftName: string) => {
+    setAgencyProfile({ deal: deal ?? (formPartnerDealId ? partnerDeals.find(d => d.id === formPartnerDealId) ?? null : null), draftName })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setFormError('')
@@ -501,35 +470,7 @@ export function WalkInBookingForm({
                   </div>
                 )}
 
-                {bookingType === 'partner' ? (
-                  <PartnerBookingFields
-                    partnerDropdownRef={partnerDropdownRef}
-                    isPartnerDropdownOpen={isPartnerDropdownOpen}
-                    setIsPartnerDropdownOpen={setIsPartnerDropdownOpen}
-                    partnerSearchQuery={partnerSearchQuery}
-                    setPartnerSearchQuery={setPartnerSearchQuery}
-                    filteredDeals={filteredDeals}
-                    onSelectDeal={handleSelectPartnerDeal}
-                    setFormGuestName={setFormGuestName}
-                    formCompanyName={formCompanyName}
-                    formCheckIn={formCheckIn}
-                    formCheckOut={formCheckOut}
-                    handlePartnerDateChange={handlePartnerDateChange}
-                    markTouched={markTouched}
-                    isInvalid={isInvalid}
-                    showErr={showErr}
-                    dateField={dateField}
-                    dateFieldErr={dateFieldErr}
-                    unitSelections={unitSelections}
-                    rooms={rooms}
-                    venues={venues}
-                    partnerDeals={partnerDeals}
-                    formPartnerDealId={formPartnerDealId}
-                    isSubmitting={isSubmitting}
-                    onClose={onClose}
-                  />
-                ) : (
-                  <div className="space-y-2.5">
+                <div className="space-y-2.5">
 
                     {showErr('units') && <p className="text-[10px] text-error mt-1">{showErr('units')}</p>}
 
@@ -585,6 +526,29 @@ export function WalkInBookingForm({
                           onSelectPartnerDeal={handleSelectPartnerDeal}
                           guestNameError={showErr('guestName')}
                           onGuestNameBlur={markTouched('guestName')}
+                          agencyOn={agencyOn}
+                          agencyKey={formPartnerDealId || formCompanyName}
+                          agencyPicking={agencyPicking}
+                          onAddAgency={() => { setAgencyOn(true); setAgencyPicking(true) }}
+                          onRemoveAgency={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false) }}
+                          agencySlot={agencyOn ? (
+                            <AgencyFields
+                              value={agency}
+                              picking={agencyPicking}
+                              setPicking={setAgencyPicking}
+                              onChange={v => {
+                                setFormPartnerDealId(v.dealId)
+                                setFormCompanyName(v.name)
+                                setFormAddress(v.address)
+                                setFormTIN(v.tin)
+                                setFormVehiclePlate(v.plate)
+                                if (v.contact) setFormGuestPhone(v.contact)
+                                setAgencyPicking(false)
+                              }}
+                              onOpenProfile={openAgencyProfile}
+                              onRemove={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false) }}
+                            />
+                          ) : null}
                         />
 
                         {/* Breakfast is a ROOM's choice, not a guest's (card k140): one line of
@@ -689,18 +653,43 @@ export function WalkInBookingForm({
                           </div>
                           <div className="flex justify-end items-center gap-2">
                             <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
-                            <button type="submit" disabled={isSubmitting} className="btn btn-primary">
+                            <button type="submit" disabled={isSubmitting || agencyMissing} className="btn btn-primary">
                               {isSubmitting ? 'Booking...' : 'Confirm Booking'}
                             </button>
                           </div>
                         </div>
+                        {/* The agency is step one of the agency path (the owner's ruling):
+                            Confirm stays asleep until the bill has an addressee, and it says
+                            so right under the button rather than in a popup. */}
+                        {agencyMissing && (
+                          <p className="text-[11px] text-danger-600 font-semibold text-right">
+                            Choose the agency above — the bill is addressed to them.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
             </div>
           </div>
         </form>
+
+        {/* The agency's own profile — details AND its per-room prices (the owner's ruling,
+            2026-09). It opens when a new agency is created from the bill-to picker, and
+            again from Change, so one editor owns an agency whether it is new or old. */}
+        {agencyProfile && (
+          <AgencyProfileForm
+            deal={agencyProfile.deal}
+            draftName={agencyProfile.draftName}
+            rooms={rooms}
+            onClose={() => { setAgencyProfile(null); setAgencyPicking(true) }}
+            onSaved={saved => {
+              handleSelectPartnerDeal(saved)
+              setAgencyOn(true)
+              setAgencyPicking(false)
+              setAgencyProfile(null)
+            }}
+          />
+        )}
       </div>
     </div>
   )

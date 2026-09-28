@@ -1,8 +1,8 @@
 import { methodNeedsReference } from '../../utils/paymentMethod'
 
 const fmtPeso = (n: number) => '₱' + n.toLocaleString()
-// Cash, GCash, Bank transfer — "Other" was removed (card k132 follow-up).
-const METHODS = ['Cash', 'GCash', 'Bank transfer']
+// Cash, GCash, Bank transfer and Check (card k132 follow-up + the agency bill, 2026-09).
+const METHODS = ['Cash', 'GCash', 'Bank transfer', 'Check']
 
 interface ReceivePaymentStepProps {
   /** What the staff must take from the guest. Fixed: it is the rest of the bill. */

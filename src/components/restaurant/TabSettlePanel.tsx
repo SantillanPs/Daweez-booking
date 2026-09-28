@@ -7,7 +7,7 @@ import { methodNeedsReference } from '../../utils/paymentMethod'
 import { showToast } from '../../utils/toast'
 
 const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
-const METHODS = ['Cash', 'GCash', 'Bank transfer']
+const METHODS = ['Cash', 'GCash', 'Bank transfer', 'Check']
 
 interface TabSettlePanelProps {
   tab: Tab

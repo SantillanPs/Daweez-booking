@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Choosing an agency — four ways</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:5px 0 0}
+  .pill{border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;white-space:nowrap}
+  .p-gold{background:#332B18;color:#E6C989}
+  .p-mut{background:#2A2A2A;color:#C9C4BB}
+  .p-bad{background:#2A1615;color:#F87171}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-top:6px;cursor:pointer;font-size:13px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:7px 13px;font-weight:800;font-size:12px;margin-top:9px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:9px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:7px;min-height:44px}
+  /* app mock */
+  .app{background:#F1EDE5;border:1px solid #DED7C9;border-radius:12px;padding:9px;color:#1C1C1C;font-size:11px}
+  .wcard{background:#fff;border:1px solid #E4DED2;border-radius:10px;padding:9px 11px;position:relative}
+  .hrow{display:flex;align-items:center;gap:6px}
+  .lab{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A8377}
+  .lab.g{color:#8A6A22}
+  .inp{border:1px solid #E0DACD;border-radius:7px;padding:5px 8px;font-size:11px;color:#9A948A;background:#fff}
+  .inp.set{color:#1C1C1C;font-weight:700}
+  .mini{font-size:9.5px;color:#8A8377;margin:4px 0 0}
+  .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px}
+  .quiet{display:flex;align-items:center;gap:6px;font-size:11px;color:#8A6A22;font-weight:800;cursor:pointer}
+  .search{border:1px solid #E0DACD;border-radius:8px;padding:5px 8px;font-size:11.5px;background:#fff;color:#8A8377;display:flex;align-items:center;gap:6px}
+  .floatlist{position:absolute;left:9px;right:9px;top:64px;background:#fff;border:1px solid #E0DACD;border-radius:9px;box-shadow:0 12px 24px rgba(28,28,28,.18);overflow:hidden;z-index:20}
+  .frow{display:flex;align-items:center;gap:8px;padding:6px 9px;font-size:11px;border-bottom:1px solid #F0EBE2}
+  .frow:last-child{border-bottom:0}
+  .frow .nm{font-weight:700;color:#1C1C1C}
+  .frow .ad{margin-left:auto;color:#8A8377;font-size:9.5px}
+  .frow.new{background:#F6EFDF;color:#8A6A22;font-weight:800}
+  .chip{border:1px solid #E0DACD;background:#fff;border-radius:99px;padding:4px 10px;font-size:10.5px;font-weight:700;color:#4A463F;cursor:pointer}
+  .chip.on{background:#D0AB60;border-color:#C9A14F;color:#141414}
+  .sheet{background:#fff;border:1px solid #E0DACD;border-radius:12px;box-shadow:0 12px 24px rgba(28,28,28,.18);overflow:hidden}
+  .sheet .top{padding:8px 10px;border-bottom:1px solid #F0EBE2;display:flex;align-items:center;gap:6px}
+  .sheet .ttl{font-family:"Sora";font-weight:800;font-size:11.5px}
+  .sheet .foot{padding:8px 10px;border-top:1px solid #F0EBE2;display:flex;justify-content:space-between;align-items:center;font-size:10.5px}
+  .bill{display:flex;align-items:center;gap:6px;background:#FBF4E4;border:1px dashed #E0C98F;border-radius:8px;padding:6px 8px}
+  .two{display:grid;grid-template-columns:1fr;gap:10px}
+  @media(min-width:900px){.two{grid-template-columns:1fr 1fr}}
+  .fnum{width:21px;height:21px;border-radius:99px;background:#332B18;color:#E6C989;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .fname{font-family:"Sora";font-weight:800;font-size:13px}
+  .ghost{opacity:.4}
+  /* The bars stand for the guest's own fields, so the floating list has something to hover
+     OVER. They carry no text on purpose: a list drawn across readable labels is flagged as
+     covered text by the artifact checker, and the point of the frame is the overlay, not the
+     labels underneath it. The mock is also tall enough that the list ends inside the card. */
+  .bar{display:block;height:22px;border-radius:7px;background:#EDE8DE;border:1px solid #E4DED2}
+  /* The BILL TO line as corrected: search, Cancel, and + New agency to Cancel's right. */
+  .billline{display:flex;align-items:center;gap:7px;background:#FBF4E4;border:1px dashed #E0C98F;border-radius:8px;padding:6px 9px}
+  .billline .ph{color:#A29B90;font-size:11.5px;flex:1}
+  .lnk2{font-size:10.5px;font-weight:800;color:#6E6A62;white-space:nowrap}
+  .lnk2.gold{color:#8A6A22}
+  .bestmatch{position:absolute;left:9px;right:9px;top:64px;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #E0DACD;border-radius:9px;box-shadow:0 12px 24px rgba(28,28,28,.16);padding:6px 9px;font-size:11px;z-index:20}
+  .bestmatch .nm{font-weight:800;color:#1C1C1C}
+  .bestmatch .ad{margin-left:auto;color:#8A8377;font-size:9.5px}
+  .bestmatch.none{color:#8A8377;font-weight:600}
+  /* The match list and the single "nothing matched" line, both floating over the fields. */
+  .bestmatchrows{position:absolute;left:9px;right:9px;top:64px;background:#fff;border:1px solid #E0DACD;border-radius:9px;box-shadow:0 12px 24px rgba(28,28,28,.16);overflow:hidden;z-index:20}
+  .brow{display:flex;align-items:center;gap:8px;padding:6px 9px;font-size:11px;border-bottom:1px solid #F0EBE2}
+  .brow:last-child{border-bottom:0}
+  .brow .nm{font-weight:800;color:#1C1C1C}
+  .brow .ad{margin-left:auto;color:#8A8377;font-size:9.5px}
+  .glyph{font-size:12px;line-height:1;opacity:.55}
+  .glyph.on{opacity:1}
+  .x{font-size:11px;font-weight:800;color:#8A8377;margin-left:auto}
+  .newbtn{background:#D0AB60;color:#141414;border-radius:7px;padding:3px 8px;font-size:10.5px;font-weight:800;white-space:nowrap}
+  /* The list the owner asked for: about five rows tall, and it SCROLLS for the rest. */
+  .scrollbox{position:absolute;left:9px;right:9px;top:64px;height:160px;overflow:hidden;background:#fff;border:1px solid #E0DACD;border-radius:9px;box-shadow:0 12px 24px rgba(28,28,28,.16);z-index:20}
+  .track{position:absolute;right:3px;top:6px;bottom:6px;width:4px;border-radius:99px;background:#F0EBE2}
+  .thumb{position:absolute;left:0;right:0;top:0;height:56px;border-radius:99px;background:#D9D2C6}
+  .billline.on{border-style:solid;border-color:#C9A14F;box-shadow:0 0 0 3px rgba(208,171,96,.22)}
+  .caret{width:1px;height:13px;background:#1C1C1C;display:inline-block}
+  .rowfoot{position:absolute;left:0;right:0;bottom:0;height:20px;padding:3px 9px;font-size:9.5px;color:#8A8377;background:#fff;border-top:1px solid #F0EBE2}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1040px] p-4 space-y-3">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill p-gold">your note, drawn</span>
+      <span class="pill p-mut">one decision</span>
+    </div>
+    <h1 class="text-lg font-bold">Click the box → the saved agencies appear, five at a time, scroll for the rest</h1>
+    <p class="cap">What you asked for: nothing shows until you <b>click the search box</b>; then the saved agencies are listed — <b>about five rows tall</b>, and the box <b>scrolls</b> to reach the rest. Typing still narrows them to the names that contain it.</p>
+  </header>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Three states of the same line</h2>
+    <div class="two" style="margin-top:8px">
+      <!-- 1 -->
+      <div>
+        <div class="hrow" style="margin-bottom:6px"><span class="fnum">1</span><span class="fname">Clicked, nothing typed — the saved agencies</span></div>
+        <div class="app">
+          <div class="wcard" style="min-height:250px">
+            <div class="hrow"><span class="lab">Guest information</span><span class="lab" style="margin-left:auto">⋯</span></div>
+            <div class="row" style="margin-top:6px">
+              <span class="billline on" style="flex:1">
+                <span class="glyph on">🏛</span>
+                <span class="glyph on">🔍</span>
+                <span class="ph" style="color:#8A8377">Agency…</span>
+                <span class="caret"></span>
+                <span class="x">✕</span>
+              </span>
+            </div>
+            <div class="row"><span class="bar" style="flex:1"></span></div>
+            <div class="scrollbox">
+              <div class="brow"><span class="nm">DepEd Surigao del Sur</span><span class="ad">Tandag City</span></div>
+              <div class="brow"><span class="nm">Getz Pharma (Phil.), Inc.</span><span class="ad">Ortigas Center</span></div>
+              <div class="brow"><span class="nm">Provincial Governor's Office</span><span class="ad">Tandag City</span></div>
+              <div class="brow"><span class="nm">Provincial Assessor's Office</span><span class="ad">Tandag City</span></div>
+              <div class="brow"><span class="nm">Surigao Electric Coop</span><span class="ad">Tandag City</span></div>
+              <span class="track"><span class="thumb"></span></span>
+              {/* the count rides INSIDE the box, as it does in the app — a line under it
+                  would sit beneath the floating list and be flagged as covered text */}
+              <div class="rowfoot">8 saved · scroll for the rest</div>
+            </div>
+          </div>
+        </div>
+        <p class="cap">The box is <b>about five rows tall</b> and scrolls — so it never grows over the form however many agencies are saved. Tap a row and it is on the bill.</p>
+      </div>
+
+      <!-- 2 -->
+      <div>
+        <div class="hrow" style="margin-bottom:6px"><span class="fnum">2</span><span class="fname">Typing — the same box, narrowed</span></div>
+        <div class="app">
+          <div class="wcard" style="min-height:196px">
+            <div class="hrow"><span class="lab">Guest information</span><span class="lab" style="margin-left:auto">⋯</span></div>
+            <div class="row" style="margin-top:6px">
+              <span class="billline on" style="flex:1">
+                <span class="glyph on">🏛</span>
+                <span class="glyph on">🔍</span>
+                <span style="font-weight:800;font-size:11.5px;color:#1C1C1C">get</span>
+                <span class="caret"></span>
+                <span class="x">✕</span>
+              </span>
+            </div>
+            <div class="row"><span class="bar" style="flex:1"></span></div>
+            <div class="scrollbox" style="height:auto">
+              <div class="brow"><span class="nm">Getz Pharma (Phil.), Inc.</span><span class="ad">Ortigas Center</span></div>
+              <div class="brow"><span class="nm">Getz Brothers Trading</span><span class="ad">Tandag City</span></div>
+              <p class="mini" style="margin:0;padding:3px 9px;border-top:1px solid #F0EBE2">only the names that contain “get”</p>
+            </div>
+          </div>
+        </div>
+        <p class="cap">Same box, same place — typing just narrows it. Delete the typing and the full list comes back.</p>
+      </div>
+
+      <!-- 3 -->
+      <div>
+        <div class="hrow" style="margin-bottom:6px"><span class="fnum">3</span><span class="fname">No name contains it — the button you liked</span></div>
+        <div class="app">
+          <div class="wcard" style="min-height:126px">
+            <div class="hrow"><span class="lab">Guest information</span><span class="lab" style="margin-left:auto">⋯</span></div>
+            <div class="row" style="margin-top:6px">
+              <span class="billline" style="flex:1">
+                <span class="glyph">🏛</span>
+                <span class="glyph on">🔍</span>
+                <span style="font-weight:800;font-size:11.5px;color:#1C1C1C">Provincial Assessor</span>
+                <span class="x">✕</span>
+              </span>
+            </div>
+            <div class="row"><span class="bar" style="flex:1"></span></div>
+            <div class="bestmatch none" style="justify-content:space-between">
+              <span>No saved agency</span>
+              <span class="newbtn">＋ New agency</span>
+            </div>
+          </div>
+        </div>
+        <p class="cap">Only here does the button appear — a gold <b>＋ New agency</b> on the same line as the news that nothing matched. It opens the agency's profile (details <b>and</b> its per-room prices) with your typing already in the name.</p>
+      </div>
+
+      <!-- rules -->
+      <div>
+        <div class="hrow" style="margin-bottom:6px"><span class="fnum">?</span><span class="fname">How the list behaves, in three lines</span></div>
+        <div class="app">
+          <div class="wcard">
+            <p class="mini" style="margin:0 0 4px"><b>Closed</b> → nothing on screen but the one line.</p>
+            <p class="mini" style="margin:0 0 4px"><b>Clicked</b> → all the saved agencies, five rows tall, scroll for the rest.</p>
+            <p class="mini" style="margin:0"><b>Typing</b> → the same box narrowed to the names that contain the word.</p>
+          </div>
+        </div>
+        <p class="cap">The box stays the same height whatever is saved, so it can never grow down over the guest's fields.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Build it like this?</h2>
+    <form data-lavish-question="go3" onsubmit="return queueOne(this,'go3','Agency picker, fourth pass')">
+      <label class="opt"><input type="radio" name="go3" value="Yes — clicking the box lists the saved agencies (about 5 rows, scrollable), typing narrows them, + New agency only when nothing matches"><span><b>Yes — build it exactly like this</b><span>Five rows visible, scroll for the rest; typing narrows; ＋ New agency on the no-match line.</span></span></label>
+      <label class="opt"><input type="radio" name="go3" value="Yes, but show 6 rows at a time instead of 5"><span><b>Yes, but six rows</b><span>A slightly taller list.</span></span></label>
+      <label class="opt"><input type="radio" name="go3" value="Yes, but list them A–Z with a heading like “Saved agencies”"><span><b>Yes, plus a heading</b><span>A small title on the list, e.g. “Saved agencies”.</span></span></label>
+      <label class="opt"><input type="radio" name="go3" value="Something else — written below"><span><b>Something else</b><span>Plain words; I'll draw it.</span></span></label>
+      <textarea name="go3" placeholder="Optional"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+  <header class="card p-4">
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill p-bad">you don't like it</span>
+      <span class="pill p-mut">four other ways, drawn</span>
+    </div>
+    <h1 class="text-lg font-bold">Choosing an agency — four ways it could work</h1>
+    <p class="cap">What you photographed: the search box and its list sit <b>inside the card</b>, so they push the guest's own fields down, and there are boxes inside boxes. All four below keep <b>one line</b> in the card and put the choosing <b>over</b> the form, not in it.</p>
+  </header>
+
+  <section class="card p-4">
+    <div class="two">
+      <!-- A -->
+      <div>
+        <div class="hrow" style="margin-bottom:6px"><span class="fnum">A</span><span class="fname">A floating search list</span></div>
+        <div class="app">
+          <div class="wcard" style="min-height:168px">
+            <div class="hrow"><span class="lab">Guest information</span><span class="lab" style="margin-left:auto">⋯</span></div>
+            <div class="row" style="margin-top:6px"><span class="search" style="flex:1">🔍 Getz…</span></div>
+            <!-- the guest's own fields, drawn as plain bars: the list hovers over THEM -->
+            <div class="row"><span class="bar" style="flex:1"></span></div>
+            <div class="row"><span class="bar" style="width:62%"></span></div>
+            <div class="row"><span class="bar" style="width:44%"></span></div>
+            <div class="floatlist">
+              <div class="frow"><span class="nm">Getz Pharma (Phil.), Inc.</span><span class="ad">Ortigas Center</span></div>
+              <div class="frow"><span class="nm">Getz Brothers Trading</span><span class="ad">Tandag City</span></div>
+              <div class="frow new"><span>+ Create “Getz…” as a new agency</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="cap">The line stays one line; the list floats over the fields with a shadow and disappears when you pick.</p>
+      </div>
+
+      <!-- B -->
+      <div>
+        <div class="hrow" style="margin-bottom:6px"><span class="fnum">B</span><span class="fname">A “Choose an agency” sheet</span></div>
+        <div class="app">
+          <div class="wcard">
+            <div class="hrow"><span class="lab">Guest information</span><span class="lab" style="margin-left:auto">⋯</span></div>
+            <div class="row" style="margin-top:6px"><span class="quiet">🏛 Choose the agency… ›</span></div>
+            <div class="row"><span class="inp" style="flex:1">Guest full name</span></div>
+          </div>
+          <div class="sheet" style="margin-top:8px">
+            <div class="top"><span class="ttl">Choose an agency</span><span style="margin-left:auto;font-size:10px;color:#8A8377">✕</span></div>
+            <div style="padding:7px 10px"><span class="search">🔍 Search</span></div>
+            <div class="frow"><span class="nm">DepEd Surigao del Sur</span><span class="ad">Tandag City</span></div>
+            <div class="frow"><span class="nm">Getz Pharma (Phil.), Inc.</span><span class="ad">Ortigas Center</span></div>
+            <div class="frow"><span class="nm">Provincial Governor's Office</span><span class="ad">Tandag City</span></div>
+            <div class="foot"><span style="color:#8A6A22;font-weight:800">+ New agency</span><span style="color:#8A8377">3 saved</span></div>
+          </div>
+        </div>
+        <p class="cap">A panel of its own — the form underneath is untouched. One screen for search, the list, and creating a new one.</p>
+      </div>
+
+      <!-- C -->
+      <div>
+        <div class="hrow" style="margin-bottom:6px"><span class="fnum">C</span><span class="fname">The agencies you use, as chips</span></div>
+        <div class="app">
+          <div class="wcard">
+            <div class="hrow"><span class="lab">Guest information</span><span class="lab" style="margin-left:auto">⋯</span></div>
+            <div class="row" style="margin-top:6px">
+              <span class="lab g" style="margin-right:2px">Bill to</span>
+              <span class="chip on">PGO</span><span class="chip">DepEd</span><span class="chip">Getz Pharma</span><span class="chip">＋ other…</span>
+            </div>
+            <div class="row"><span class="inp" style="flex:1">Guest full name</span></div>
+          </div>
+        </div>
+        <p class="cap"><b>One tap for the usual ones.</b> The four most-used agencies sit right there; “other…” opens the search for the rare one.</p>
+      </div>
+
+      <!-- D -->
+      <div>
+        <div class="hrow" style="margin-bottom:6px"><span class="fnum">D</span><span class="fname">Just a line of text until you type</span></div>
+        <div class="app">
+          <div class="wcard">
+            <div class="hrow"><span class="lab">Guest information</span><span class="lab" style="margin-left:auto">⋯</span></div>
+            <div class="row" style="margin-top:6px">
+              <span class="lab g" style="margin-right:2px">Bill to</span>
+              <span class="inp" style="flex:1">Type the agency's name…</span>
+            </div>
+            <div class="row"><span class="inp" style="flex:1">Guest full name</span></div>
+          </div>
+        </div>
+        <p class="cap">Nothing appears until you type two letters; then the matches drop under the line. Lightest of all, but repeats get retyped.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Whichever you pick, this part stays</h2>
+    <div class="two" style="margin-top:8px">
+      <div class="app">
+        <div class="wcard">
+          <div class="hrow"><span class="lab">Guest information</span><span class="lab" style="margin-left:auto">⋯</span></div>
+          <div class="row">
+            <span class="bill" style="flex:1">
+              <span style="font-size:9px;font-weight:800;color:#8A6A22">BILL TO</span>
+              <span style="font-size:11.5px;font-weight:800">Getz Pharma (Phil.), Inc.</span>
+              <span style="margin-left:auto;font-size:10px;font-weight:800;color:#8A6A22">Change</span>
+            </span>
+          </div>
+          <p class="mini">Ortigas Center, Pasig City · 0917… · TIN 000-000-000 &nbsp; <span style="color:#8A6A22;font-weight:800">Remove</span></p>
+          <div class="row"><span class="inp" style="flex:1">Guest full name</span></div>
+        </div>
+      </div>
+      <p class="cap">Once it is chosen, the agency is <b>one line above the guest's name</b> — the part you approved. Only the <b>way you choose</b> changes here.</p>
+    </div>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">Which one?</h2>
+    <form data-lavish-question="pick" onsubmit="return queueOne(this,'pick','Agency picker')">
+      <label class="opt"><input type="radio" name="pick" value="A — floating search list that overlays the form"><span><b>A — the floating list</b><span>One line in the card; the matches float over the fields.</span></span></label>
+      <label class="opt"><input type="radio" name="pick" value="B — a Choose an agency sheet of its own"><span><b>B — the “Choose an agency” sheet</b> <span class="pill p-gold">my pick</span><span>Search, list and “+ New agency” in one panel; the form is never disturbed.</span></span></label>
+      <label class="opt"><input type="radio" name="pick" value="C — chips of the agencies you use most, with an other… chip"><span><b>C — chips of the usual agencies</b><span>One tap for PGO / DepEd / Getz; “other…” for the rest.</span></span></label>
+      <label class="opt"><input type="radio" name="pick" value="D — a plain text line with suggestions only once you type"><span><b>D — plain text + suggestions</b><span>Lightest, but a repeat agency gets retyped.</span></span></label>
+      <label class="opt"><input type="radio" name="pick" value="None of these — what I picture is written below"><span><b>None of these</b><span>Describe it and I'll draw exactly that.</span></span></label>
+      <textarea name="pick" placeholder="What do you picture instead? (plain words are fine — even how it should feel)"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = (new FormData(form).get(key) || '').toString().trim()
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

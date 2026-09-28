@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>What is stored and still open</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--page:#141414;--card:#1F1F1F;--raised:#262626;--line:#3A3A3A;--body:#EDEAE4;--sec:#A8A29A;--mut:#7D7871;--gold:#D0AB60}
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--page);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;margin:0;font-size:15px}
+  h1,h2{font-family:"Sora",system-ui,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .cap{font-size:12.5px;color:var(--sec);margin:6px 0 0}
+  .pill{border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;white-space:nowrap}
+  .p-high{background:#2A1615;color:#F87171}
+  .p-med{background:#332B18;color:#E6C989}
+  .p-low{background:#2A2A2A;color:#C9C4BB}
+  .p-new{background:#12261F;color:#34D399}
+  .p-bug{background:#2A1615;color:#F87171}
+  .p-fb{background:#1B2433;color:#93C5FD}
+  .q{background:var(--card);border:1px solid #6F5420;border-radius:12px;padding:15px}
+  .opt{display:flex;gap:10px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:7px;cursor:pointer;font-size:13.5px}
+  .opt:hover{border-color:var(--gold)}
+  .opt input{margin:3px 0 0;accent-color:#D0AB60;flex-shrink:0}
+  .opt b{display:block;font-weight:700}
+  .opt span{display:block;color:var(--sec);font-size:12.5px;margin-top:2px}
+  .q-btn{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;margin-top:10px;cursor:pointer;font-family:inherit}
+  .q-status{font-size:11.5px;color:var(--mut);margin-left:10px}
+  .q-status.on{color:#34D399}
+  textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:9px;color:var(--body);font-family:inherit;font-size:13px;padding:9px 11px;margin-top:7px;min-height:48px}
+  ul.tasks{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:1fr;gap:5px}
+  @media(min-width:820px){ul.tasks{grid-template-columns:1fr 1fr}}
+  ul.tasks li{display:flex;gap:8px;align-items:baseline;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px}
+  ul.tasks .id{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--mut);flex-shrink:0}
+  .flag{background:var(--raised);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:8px;padding:9px 11px;font-size:13px;margin-top:7px}
+  .flag b{color:var(--gold)}
+  .agency{border-left-color:#93C5FD}
+  .agency b{color:#93C5FD}
+  .old{border-left-color:#F87171}
+  .old b{color:#F87171}
+  .muted{color:var(--mut)}
+</style>
+</head>
+<body>
+<main class="mx-auto max-w-[1040px] p-4 space-y-3">
+
+  <header class="card p-4">
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill p-med">18 on the board</span>
+      <span class="pill p-new">1 in Review</span>
+      <span class="pill p-low">12 closed by you</span>
+      <h1 class="text-lg font-bold">What is stored and still open</h1>
+    </div>
+    <p class="cap">Everything that is written down somewhere and not done: <b>18 cards on the board</b>, <b>5 agency / corporate items</b> — one of them your own older note — plus the things waiting on a ruling from you and two docs that no longer tell the truth.</p>
+  </header>
+
+  <!-- AGENCY -->
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Agency &amp; corporate — 5 open</h2>
+    <p class="cap">Nothing for this sits on the board. Four are in <span class="muted">TODO.md</span> (the old roadmap), and the fifth is <b>your own note from before</b>, still waiting for the sit-down.</p>
+
+    <div class="flag agency">
+      <b>The agencies talk — your older note (D10, unanswered).</b> Your words: <i>agencies change prices, they never book for the guest.</i> Today the corporate flow assumes the desk books <b>on the company's behalf</b>: it takes the company's contract rate and treats the stay as the company's. What you described is a different thing — an agency walking in with a guest and a price they negotiate, where the guest is still the guest of the hotel. The desk has no way to enter that today. <b>This is the one that needs you, not code.</b>
+    </div>
+    <div class="flag agency">
+      <b>Corporate button: stay or go? (D8)</b> The calendar has two buttons and two forms — <span class="muted">New booking</span> and <span class="muted">Corporate</span>. Your note said join them. Undecided.
+    </div>
+    <div class="flag agency">
+      <b>Company fields: always on, or behind a switch? (D9)</b> Name, TIN, contract rate, company contact — always visible makes an ordinary walk-in scroll past fields that do not apply.
+    </div>
+    <div class="flag agency">
+      <b>Corporate billing paperwork — 4 items in TODO.md §4.</b> Company info (name, address, TIN) · PO / Letter-of-Intent tracking · tax-exempt handling (government agencies, diplomats) · BIR-style Official Receipt format.
+    </div>
+    <p class="cap"><b>Already built for agencies:</b> the corporate form and its panel, partner / agency profiles in Guests &amp; Partners, contract rate override on a booking, company name and plate number, and default breakfast + invoice style on the deal profile.</p>
+  </section>
+
+  <!-- BOARD -->
+  <section class="card p-4">
+    <h2 class="text-base font-bold">The board — 18 in Todo, 1 in Review</h2>
+    <ul class="tasks">
+      <li><span class="pill p-bug">bug</span><span class="id">k120</span><span>Receipt prints the receipt, not the booking behind it</span></li>
+      <li><span class="pill p-bug">bug</span><span class="id">k124</span><span>"Prepared by" on the bill and the receipt</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k74</span><span>Staff names and PINs — who did it</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k71</span><span>Inventory: food, drinks, hotel supplies</span></li>
+      <li><span class="pill p-fb">feedback</span><span class="id">k93</span><span>Bookings with no check-out date</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k148</span><span>Vacation House: ₱2,000 + ₱2,000 safety deposit</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k72</span><span>Housekeeping room board + cleaning notes</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k73</span><span>Money and performance view for the hotel</span></li>
+      <li><span class="pill p-fb">feedback</span><span class="id">k91</span><span>Block dates from the toolbar, reason on the calendar</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k105</span><span>Screen to edit the restaurant menu and prices</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k109</span><span>Cooking choices on a dish</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k150</span><span>Photo of the payment, reference read from it</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k152</span><span>Tables as pills — several per tab</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k75</span><span>Group the tabs into four parts</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k144</span><span>Guest bill on A5</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k146</span><span>Email the bill and receipt from your Gmail</span></li>
+      <li><span class="pill p-new">feature</span><span class="id">k107</span><span>Photos of the dishes</span></li>
+      <li><span class="pill p-low">parked</span><span class="id">k156</span><span>Airbnb / Booking.com / Agoda</span></li>
+    </ul>
+    <p class="cap"><b>In Review:</b> k70 · Restaurant &amp; Bar system — built and waiting for you to try it and close it. (k130, the deposit row, you already closed.)</p>
+  </section>
+
+  <!-- WAITING ON YOU -->
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Waiting on a ruling from you — nothing is built until you say</h2>
+    <div class="flag"><b>The 18 questions list</b> (safety deposit, corporate joining the booking form, the method on the first payment, money owed at check-out, breakfast on long stays, the agency price, …). Written for you, never answered — the longest-standing thing in the drawer.</div>
+    <div class="flag"><b>Guest tab page</b> — the Restaurant-side questions, unanswered since the day it was drawn.</div>
+    <div class="flag"><b>Short-stay block: name first or time first?</b> One small wording question, open for weeks.</div>
+    <div class="flag"><b>Flags from today:</b> the guest portal still prices breakfast the old way (₱150 × guests × days) while saving the room's own breakfast — and <b>your room prices are still only in this browser</b>, not the database: Room 6's ₱600 breakfast and the short-stay prices for Rooms 2, 3, 4, 7 and 8.</div>
+  </section>
+
+  <!-- STALE DOCS -->
+  <section class="card p-4">
+    <h2 class="text-base font-bold">Docs that no longer tell the truth</h2>
+    <div class="flag old"><b>NOTES.md and TODO.md</b> both describe the <b>2-step wizard</b> booking form, which you had removed (one page, no steps), a <b>promo toggle</b> that no longer exists, and ₱150 × person breakfast. TODO.md's first four sections are mostly built. They are the only place the corporate-billing items are written down, which is why they have survived.</div>
+  </section>
+
+  <section class="q">
+    <h2 class="text-base font-bold">What do you want to open first?</h2>
+    <form data-lavish-question="next" onsubmit="return queueOne(this,'next','Stored work')">
+      <label class="opt"><input type="radio" name="next" value="The agencies talk — sit down on how an agency prices a guest's stay (D10)"><span><b>The agencies talk</b><span>Your older note. I would bring a drawing of the two ways it could work, nothing built.</span></span></label>
+      <label class="opt"><input type="radio" name="next" value="The 18 questions — walk them one at a time"><span><b>The 18 questions</b><span>One at a time, each with its consequence shown, starting wherever you like.</span></span></label>
+      <label class="opt"><input type="radio" name="next" value="A board card — say which one"><span><b>A card off the board</b><span>Say the number and I bring the drawing first, as always.</span></span></label>
+      <label class="opt"><input type="radio" name="next" value="Fix the two flags from today (portal breakfast price / prices not in the database)"><span><b>Today's two flags first</b><span>The room prices not reaching the database is the one that bites every screen.</span></span></label>
+      <label class="opt"><input type="radio" name="next" value="Something else (written below)"><span><b>Something else</b><span>Write it and I'll take that.</span></span></label>
+      <textarea name="next" placeholder="Optional"></textarea>
+      <button type="submit" class="q-btn">Queue this answer</button><span class="q-status"></span>
+    </form>
+  </section>
+
+</main>
+
+<script>
+  function queueOne(form, key, page) {
+    const value = new FormData(form).get(key)
+    if (!value) { return false }
+    window.lavish.queuePrompt(page + ' — ' + key + ': ' + value, {
+      tag: 'choice', text: key + ': ' + value, element: form, data: { question: key, answer: value }
+    })
+    const status = form.querySelector('.q-status')
+    if (status) { status.textContent = 'Queued ✓ — press Send to agent'; status.classList.add('on') }
+    return false
+  }
+</script>
+</body>
+</html>

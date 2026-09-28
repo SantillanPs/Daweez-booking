@@ -104,9 +104,18 @@ export function OtherCharges({ rates, onRate, pay, onPay }: OtherChargesProps) {
           </div>
           <div className="space-y-3">
             <p className="text-[10px] font-bold text-muted tracking-widest uppercase">Bank transfer</p>
-            <PayLine label="Bank" value={pay.bankName} onChange={v => onPay({ bankName: v })} placeholder="BPI" />
+            <PayLine label="Bank" value={pay.bankName} onChange={v => onPay({ bankName: v })} placeholder="Bank of the Philippine Islands (BPI)" />
             <PayLine label="Account name" value={pay.bankAccountName} onChange={v => onPay({ bankAccountName: v })} placeholder="Daweez Pension House" />
             <PayLine label="Account number" value={pay.bankAccountNumber} onChange={v => onPay({ bankAccountNumber: v })} placeholder="5636 0000 00" />
+          </div>
+          {/* A SECOND bank account (the owner, 2026-09): his own PGO bill lists two, and a
+              government office pays into whichever one its paperwork names. Both print on
+              the agency statement; leave these empty and only the first is used. */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold text-muted tracking-widest uppercase">Second bank account <span className="text-muted/70 normal-case tracking-normal">(agency bills)</span></p>
+            <PayLine label="Bank" value={pay.bank2Name} onChange={v => onPay({ bank2Name: v })} placeholder="Land Bank of the Philippines (LB)" />
+            <PayLine label="Account name" value={pay.bank2AccountName} onChange={v => onPay({ bank2AccountName: v })} placeholder="Jonathan E. Dango" />
+            <PayLine label="Account number" value={pay.bank2AccountNumber} onChange={v => onPay({ bank2AccountNumber: v })} placeholder="0795 0000 00" />
           </div>
         </div>
       </div>

@@ -75,7 +75,7 @@ export function RecordPaymentForm({
             className={'w-full mt-1 bg-card border text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 ' +
               (methodMissing ? 'border-danger-400 focus:border-danger-500' : 'border-soft')}>
             <option value="" disabled>Choose…</option>
-            <option>Cash</option><option>GCash</option><option>Bank transfer</option>
+            <option>Cash</option><option>GCash</option><option>Bank transfer</option><option>Check</option>
           </select>
         </label>
       </div>
