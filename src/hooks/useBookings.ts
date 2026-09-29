@@ -109,7 +109,7 @@ export function useBookings() {
       // charges and records the same figure the desk charges.
       const pricing = syncEngine.calculatePricing({
         roomId, venueId, checkIn, checkOut, guestEmail,
-        breakfastOrders, equipmentRentals, eventAddons, bookingsList: bookings,
+        equipmentRentals, eventAddons, bookingsList: bookings,
         rooms, venues, rates: getRateConfig(),
       })
 
@@ -241,8 +241,8 @@ export function useBookings() {
 
       const pricing = syncEngine.calculatePricing({
         roomId, venueId, checkIn, checkOut, guestEmail,
-        breakfastOrders, equipmentRentals, eventAddons,
-        bookingsList: bookings, rateMultiplier, companions,
+        equipmentRentals, eventAddons,
+        bookingsList: bookings, rateMultiplier,
         contractRateOverride, venueExcessHours,
         rooms, venues,
         usePromo,
@@ -255,7 +255,6 @@ export function useBookings() {
         // it as well.
         breakfastIncluded,
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks,
-        breakfastDays,
         // A short stay must be priced for its hours, or the booking is stored owing a
         // whole night (see `utils/AGENTS.md`).
         shortStayHours: stayHours,
@@ -362,10 +361,35 @@ export function useBookings() {
   // 9. Mutation: Update Booking
   const updateBookingMutation = useMutation<void, Error, Booking, MutationContext>({
     mutationFn: async (updatedBooking: Booking) => {
-      if (updatedBooking.room_id && !syncEngine.isRoomAvailable(updatedBooking.room_id, updatedBooking.check_in, updatedBooking.check_out, bookings, updatedBooking.id)) {
+      // **The collision check belongs to a MOVE, not to a write** (the owner's bug report,
+      // 2026-09-29: *"Overlap collision — room already reserved"* on every paid booking,
+      // while a Reservation saved fine).
+      //
+      // Recording the money updates the booking without touching its room or its dates, so
+      // there is no overlap it could possibly create — and running the check anyway made the
+      // booking collide with ITSELF. A booking created moments earlier is still in the list
+      // this closure holds as the form's `__optimistic__` placeholder, whose id is not the id
+      // being saved, so `skipBookingId` never matched it and its own room and dates came back
+      // as a clash. A Reservation was unaffected because it takes no money and never reaches
+      // this mutation at all.
+      //
+      // So the check now runs **only when the unit or the dates actually changed**, and never
+      // when the row cannot be found in the list we are holding (a list that does not contain
+      // the row proves nothing either way — that stale list is the other half of the same
+      // bug). **The database still enforces the rule on every write**: `update_booking` raises
+      // ROOM_UNAVAILABLE for a real overlap and `utils/db.ts` reports it, so nothing is left
+      // unguarded — the client check is the early warning, the RPC is the gate.
+      const before = bookings.find(b => b.id === updatedBooking.id)
+      const moved = !!before && (
+        before.room_id !== updatedBooking.room_id ||
+        before.venue_id !== updatedBooking.venue_id ||
+        before.check_in !== updatedBooking.check_in ||
+        before.check_out !== updatedBooking.check_out
+      )
+      if (moved && updatedBooking.room_id && !syncEngine.isRoomAvailable(updatedBooking.room_id, updatedBooking.check_in, updatedBooking.check_out, bookings, updatedBooking.id)) {
         throw new Error('Overlap collision — room already reserved.')
       }
-      if (updatedBooking.venue_id && !syncEngine.isVenueRangeAvailable(updatedBooking.venue_id, updatedBooking.check_in, updatedBooking.check_out, bookings, updatedBooking.id)) {
+      if (moved && updatedBooking.venue_id && !syncEngine.isVenueRangeAvailable(updatedBooking.venue_id, updatedBooking.check_in, updatedBooking.check_out, bookings, updatedBooking.id)) {
         throw new Error('Overlap collision — venue already reserved.')
       }
       await syncEngine.updateBooking(updatedBooking)

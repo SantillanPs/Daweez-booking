@@ -1,112 +1,11 @@
-import {
-  Booking, BookingSource, Room, Venue, PartnerDeal, Companion,
-  EquipmentRental, BreakfastOrder, AppliedDiscount,
-} from '../../types/booking'
+import { Booking, PaymentRecord } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
-import { DiscountType } from '../calendar/DiscountPricingControls'
+import { recordBookingPayment } from './bookingPayment'
+import { BookingSubmitParams, BookingSubmitResult } from './bookingSubmitTypes'
 
-// The shape of a manual booking write (mirrors the createManualBooking prop).
-export interface ManualBookingInput {
-  id?: string
-  invoiceNumber?: string
-  roomId?: string
-  venueId?: string
-  guestName: string
-  guestEmail: string
-  guestPhone: string
-  guestGender?: string
-  guestNationality?: string
-  guestAddress?: string
-  birthdate?: string
-  preparedBy?: string
-  appliedDiscount?: AppliedDiscount
-  venueDayBlocks?: number
-  notes?: string
-  checkIn: string
-  checkOut: string
-  source: BookingSource
-  status: 'pending' | 'confirmed' | 'blocked'
-  equipmentRentals?: EquipmentRental
-  agreedDeposit?: number
-  companions?: Companion[]
-  partnerDealId?: string
-  companyName?: string
-  vehiclePlate?: string
-  breakfastOrders?: BreakfastOrder[]
-  breakfastIncluded?: boolean
-  contractRateOverride?: number
-  paymentMethod?: string
-  paymentReference?: string
-  paymentPlan?: 'deposit' | 'full' | 'custom' | 'reservation'
-  venueExcessHours?: number
-  paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
-  downpaymentPaid?: number
-  balanceDue?: number
-  securityDeposit?: number
-  /** Short stay (printed rate board): the hours the room was taken for — 3/6/12/22. */
-  stayHours?: number
-}
-
-export interface BookingSubmitParams {
-  unitSelections: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
-  formRoomIds: Set<string>
-  formVenueIds: Set<string>
-  rooms: Room[]
-  venues: Venue[]
-  activeBookings: Booking[]
-  partnerDeals: PartnerDeal[]
-  formPartnerDealId: string
-  bookingType: 'individual' | 'partner'
-  formStatus: 'confirmed' | 'blocked'
-  bookingStatus: 'pending' | 'confirmed' | 'blocked'
-  formAgreedDeposit?: number
-  formGuestName: string
-  formGuestEmail: string
-  formGuestPhone: string
-  formGuestGender: string
-  formGuestNationality: string
-  formGuestAddress: string
-  formBirthdate: string
-  formPreparedBy: string
-  formCompanyName: string
-  formVehiclePlate: string
-  formInvoiceNumber: string
-  formSource: BookingSource
-  formBreakfastRoomIds: string[]
-  formCompanions: Companion[]
-  formExtraFoam: number
-  formExtraPillow: number
-  formExtraBlanket: number
-  formExtraTowel: number
-  formChairs: number
-  formEventTable: number
-  formEventTent: number
-  formVenueExcessHours: number
-  formBlockNotes: string
-  discountType: DiscountType
-  discountValue: number
-  venueDayBlocks: number
-  editingBookings?: Booking[]
-  formPaymentMethod: string
-  formPaymentReference: string
-  formPaymentPlan: 'deposit' | 'full' | 'custom' | 'reservation'
-  /**
-   * Short stay: the hours the room is being sold for (3/6/12/22). Set only by the
-   * booking form's Short stay switch; undefined means an ordinary overnight stay.
-   */
-  stay_hours?: number
-  /** Derived from the money on the booking — never typed in by staff. */
-  derivedPaymentStatus: 'unpaid' | 'downpayment' | 'paid'
-  formDownpaymentPaid: number
-  formBalanceDue: number | null
-  formSecurityDeposit: number | null
-  createManualBooking: (params: ManualBookingInput) => Promise<Booking>
-  cancelBooking: (id: string) => Promise<void>
-}
-
-export type BookingSubmitResult =
-  | { ok: true; bookings: Booking[]; payAmount: string }
-  | { ok: false; error: string }
+// The param and result shapes live in `bookingSubmitTypes`, and the payment logic in
+// `bookingPayment` — both split out to keep this file inside the 300-line limit.
+export type { BookingSubmitParams, BookingSubmitResult } from './bookingSubmitTypes'
 
 // Collision-check every selected unit, then create/update one booking per room
 // and per venue, cancelling any edit-mode bookings the user removed.
@@ -273,10 +172,43 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
       }
     }
 
+    // 5. **Take the money** (the owner's ruling, 2026-09-29). The form records the payment
+    //    as well as creating the booking, because that is what the desk really does: the
+    //    guest is asked deposit or full pay and how they will pay, the desk enters both, and
+    //    the form waits for the GCash reference before it will finish.
+    //
+    //    Skipped in three cases, each deliberate:
+    //      · **a blocked date** — nothing is being sold, so nothing is paid;
+    //      · **a Reservation** (`receivedAmount` is 0) — a hold agrees to nothing, and it
+    //        still finishes on the plan alone and prints the billing statement;
+    //      · **edit mode** — correcting an existing booking must never take money again.
+    //        Money on a saved booking is added from its quick view, which is what prints
+    //        that payment's receipt.
+    //
+    //    A failed write throws, and the catch below cancels every booking just created — so
+    //    the form can never finish on a booking whose payment did not land.
+    const takesMoney = p.receivedAmount > 0 && p.bookingStatus !== 'blocked' && !p.editingBookings
+    let finalBookings = createdBookings
+    let receipt: PaymentRecord | undefined
+
+    if (takesMoney) {
+      const recorded = await recordBookingPayment({
+        bookings: createdBookings,
+        received: p.receivedAmount,
+        method: p.formPaymentMethod,
+        reference: p.formPaymentReference,
+        plan: p.formPaymentPlan,
+        updateBooking: p.updateBooking,
+      })
+      finalBookings = recorded.bookings
+      receipt = recorded.receipt
+    }
+
     return {
       ok: true,
-      bookings: createdBookings,
-      payAmount: String(createdBookings.reduce((a, b) => a + (b.balance_due || 0), 0)),
+      bookings: finalBookings,
+      payAmount: String(finalBookings.reduce((a, b) => a + (b.balance_due || 0), 0)),
+      receipt,
     }
   } catch (err: unknown) {
     // Rollback successfully created bookings on failure

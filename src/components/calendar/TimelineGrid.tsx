@@ -280,9 +280,10 @@ export const TimelineGrid = React.memo(
                     <Ban className="w-3.5 h-3.5" />
                   </button>
 
-                  {/* Log old booking sits here too (the owner's ask, 2026-09): it is
-                      offered by the same pick that fills its dates in, beside the other
-                      things the desk can do with those dates. */}
+                  {/* Log old booking — **now its only entrance** (the owner, 2026-09-29:
+                      the toolbar's copy was removed as a duplicate). It is offered by the
+                      same pick that fills its dates in, beside the other things the desk
+                      can do with those dates. */}
                   <button type="button" onClick={onLogOldBooking}
                     title="Log an old paper booking for these dates"
                     aria-label="Log old booking"

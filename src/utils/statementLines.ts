@@ -66,12 +66,10 @@ export function bookingPricing(b: Booking, o: {
     checkIn: b.check_in,
     checkOut: b.check_out,
     guestEmail: b.guest_email,
-    breakfastOrders: b.breakfast_orders == null ? [] : b.breakfast_orders,
     // What the booking holds: this room has breakfast (card k140).
     breakfastIncluded: b.breakfast_included === true,
     equipmentRentals: b.equipment_rentals,
     eventAddons: b.event_addons,
-    companions: b.companions,
     bookingsList: o.bookingsList,
     contractRateOverride: b.contract_rate_override,
     appliedDiscount: b.applied_discount,
@@ -80,7 +78,6 @@ export function bookingPricing(b: Booking, o: {
     earlyCheckInHours: chargeableEarlyHours(b),
     lateCheckOutHours: b.late_check_out_hours,
     venueDayBlocks: b.venue_day_blocks,
-    breakfastDays: b.breakfast_days,
     breakfastRecords: b.breakfast_records,
     rooms: o.rooms,
     venues: o.venues,
@@ -198,20 +195,13 @@ export function bookingLines(b: Booking, o: {
         amount: Math.round((r.price || 0) * (r.quantity || 0)),
       })
     })
-  } else if (!isRoom && pricing.breakfastTotal > 0) {
-    const rates = getRateConfig()
-    const guestNights = rates.breakfastPrice > 0 ? pricing.breakfastTotal / rates.breakfastPrice : 0
-    items.push({
-      key: b.id + '-breakfast',
-      band: 'breakfast',
-      description: 'Breakfast (₱' + rates.breakfastPrice + '/guest/night)',
-      qty: String(Math.round(guestNights)),
-      unit: 'PERSON',
-      price: rates.breakfastPrice,
-      discount: 0,
-      amount: pricing.breakfastTotal,
-    })
   }
+  // **There is no per-head breakfast line any more** (the owner's ruling, 2026-09-29). This
+  // branch printed `Breakfast (₱150/guest/night)` and worked the head-count back out of the
+  // total — the last trace of the retired ₱150-per-person rule, and the only reason the
+  // engine still needed a per-head figure at all. Breakfast now reaches the paper exactly two
+  // ways: a room's `breakfast_price` folded in as ONE `Breakfast:` row, or a legacy
+  // `breakfast_record` above carrying the price it was served at.
 
   // Extra linen / amenities for rooms (per night) and event rental equipment.
   const er = b.equipment_rentals

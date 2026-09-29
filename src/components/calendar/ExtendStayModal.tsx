@@ -422,8 +422,6 @@ export function ExtendStayModal({
         checkIn: booking.check_in,
         checkOut: extendCheckoutDate,
         guestEmail: booking.guest_email,
-        breakfastOrders: booking.breakfast_orders,
-        companions: booking.companions,
         bookingsList: bookings,
         rooms,
         venues

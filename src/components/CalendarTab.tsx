@@ -195,7 +195,6 @@ export function CalendarTab() {
         checkIn: selectedExtendBooking.check_in,
         checkOut: extendCheckoutDate,
         guestEmail: selectedExtendBooking.guest_email,
-        breakfastOrders: selectedExtendBooking.breakfast_orders,
         bookingsList: bookings,
         contractRateOverride: selectedExtendBooking.contract_rate_override,
         usePromo: (selectedExtendBooking as { promo_applied?: boolean }).promo_applied === true,
@@ -362,8 +361,6 @@ export function CalendarTab() {
         onNextMonth={() => stepMonth(1)}
         onJumpToDate={jumpToDay}
         onToday={() => setMonthAnchor(todayStart())}
-        logOldDisabled={!groupSelection || Object.keys(groupSelection).length === 0}
-        onLogOldBooking={openLogOldBooking}
       />
       <div className="flex-grow min-h-0 flex flex-row gap-2 overflow-hidden">
         <CalendarLegend />
@@ -416,6 +413,7 @@ export function CalendarTab() {
           bookings={bookings}
           createManualBooking={createManualBooking}
           cancelBooking={cancelBooking}
+          updateBooking={updateBooking}
           initialSelections={editingBooking
             ? { [editingBooking.room_id || editingBooking.venue_id || '']: { checkIn: editingBooking.check_in, checkOut: editingBooking.check_out, type: editingBooking.room_id ? 'room' : 'venue' } }
             : formSelections}

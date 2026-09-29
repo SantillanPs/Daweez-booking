@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daweez · killing the promo price, and the ₱300</title>
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raised:#262626; --line:#3A3A3A;
+    --body:#EDEAE4; --dim:#A8A29A; --muted:#7D7871;
+    --gold:#D0AB60; --gold-fill:#332B18; --gold-ink:#E6C989;
+    --good-fill:#12261F; --good-ink:#34D399; --bad-fill:#2A1615; --bad-ink:#F87171;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--body);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:34px 26px 70px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1020px;margin:0 auto}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+  h1{font-size:28px;line-height:1.2;margin:8px 0 24px;letter-spacing:-.02em}
+  h2{font-size:18px;margin:0 0 8px;letter-spacing:-.01em}
+  p{margin:0 0 12px;color:var(--dim)}
+  p b,li b{color:var(--body)}
+  section{border-top:1px solid var(--line);padding:26px 0 8px}
+  section:first-of-type{border-top:0;padding-top:0}
+  code{background:var(--raised);border:1px solid var(--line);border-radius:5px;padding:1px 6px;
+    font-size:12.5px;color:var(--gold-ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .big{font-size:15px}
+  pre{background:var(--raised);border:1px solid var(--line);border-left:3px solid var(--bad-ink);
+    border-radius:9px;padding:12px 15px;overflow-x:auto;font-size:12.5px;color:var(--body);margin:12px 0}
+  pre .c{color:var(--muted)}
+  .math{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);
+    border:1px solid var(--line);border-radius:11px;padding:14px 18px;margin:14px 0;font-family:ui-monospace,Menlo,monospace}
+  .math span{font-size:15px;font-weight:700}
+  .math .op{color:var(--muted);font-weight:400}
+  .math .res{color:var(--bad-ink)}
+  table{width:100%;border-collapse:collapse;margin:12px 0 4px;font-size:13.5px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  td.n{font-family:ui-monospace,Menlo,monospace;text-align:right;white-space:nowrap}
+  .yes{color:var(--bad-ink);font-weight:700}
+  .no{color:var(--good-ink);font-weight:700}
+  .opt{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0}
+  .opt h3{margin:0 0 6px;font-size:15.5px}
+  .tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+    padding:2px 9px;border-radius:99px;margin-right:8px;vertical-align:1px}
+  .tag.a{background:var(--good-fill);color:var(--good-ink)}
+  .tag.b{background:var(--raised);color:var(--dim)}
+  ul{margin:8px 0 0;padding-left:18px;color:var(--dim);font-size:13.5px}
+  li{margin-bottom:5px}
+  .ask{margin-top:34px;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);
+    border-radius:12px;padding:20px 22px}
+  .ask h3{margin:0 0 8px;font-size:17px}
+  .q{color:var(--gold-ink);font-weight:700}
+  .note{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Daweez · money</div>
+  <h1>The ₱300, and killing the promo price</h1>
+
+  <!-- ── the 300 ─────────────────────────────────────── -->
+  <section>
+    <h2>First: the ₱300 is found, and it is a bug</h2>
+    <p>Room 4 has <b>no breakfast price</b>. The pricing engine has a leftover fallback from the retired
+      per-person breakfast rule, and it fires for exactly that case — a room nobody has priced yet:</p>
+    <pre><span class="c">// utils/pricing.ts, line 196</span>
+} else if (roomId) {                       <span class="c">// ← the room has NO breakfast price</span>
+  const optedOut = breakfastOrders != null &amp;&amp; breakfastOrders.length === 0
+  if (!optedOut) {                         <span class="c">// ← undefined → not opted out</span>
+    const isBreakfastOn = breakfastEnabled !== undefined ? breakfastEnabled : true   <span class="c">// ← true</span>
+    breakfastTotal = rates.breakfastPrice * guestCount * dayCount
+  }
+}</pre>
+    <div class="math">
+      <span>₱150</span><span class="op">×</span><span>1 guest</span><span class="op">×</span>
+      <span>2 nights</span><span class="op">=</span><span class="res">₱300</span>
+    </div>
+    <table>
+      <tr><th></th><th style="text-align:right">stay</th><th style="text-align:right">engine charged</th></tr>
+      <tr><td>The booking form quoted</td><td class="n">₱1,900</td><td class="n">—</td></tr>
+      <tr><td>The engine stored</td><td class="n">₱1,900</td><td class="n">+ ₱300 breakfast</td></tr>
+      <tr><td><b>Result</b></td><td class="n">—</td><td class="n"><b>₱2,200 owed</b></td></tr>
+    </table>
+    <p style="margin-top:12px">So the guest paid ₱1,900 against a ₱2,200 balance and the receipt says
+      <b>₱300 remaining</b> — while the form said <b>“paid in full”</b>. <b>The form is right. The engine is
+      wrong.</b> A room with no breakfast price must charge <b>no breakfast</b> — which is exactly what
+      Settings already tells staff it does.</p>
+  </section>
+
+  <!-- ── the promo ───────────────────────────────────── -->
+  <section>
+    <h2>Second: the promo price, gone permanently</h2>
+    <p>Your instruction names the deeper fault. The app carries <b>two price columns</b> and treats the promo
+      one as the real price — but the data has drifted, so the two disagree almost everywhere:</p>
+    <table>
+      <tr><th>Room</th><th style="text-align:right">base_price</th><th style="text-align:right">promo_price</th><th>agree?</th></tr>
+      <tr><td>Room 1</td><td class="n">1,400</td><td class="n">1,050</td><td class="yes">no</td></tr>
+      <tr><td>Room 2</td><td class="n">950</td><td class="n">950</td><td class="no">yes</td></tr>
+      <tr><td>Room 3</td><td class="n">1,250</td><td class="n">950</td><td class="yes">no</td></tr>
+      <tr><td>Room 4</td><td class="n">1,250</td><td class="n">950</td><td class="yes">no</td></tr>
+      <tr><td>Room 5</td><td class="n">1,600</td><td class="n">1,200</td><td class="yes">no</td></tr>
+      <tr><td>Room 6</td><td class="n">2,350</td><td class="n">1,800</td><td class="yes">no</td></tr>
+      <tr><td>Room 7 – 10</td><td class="n">…</td><td class="n">…</td><td class="yes">no</td></tr>
+    </table>
+    <p class="note">9 of 10 rooms disagree. <b>Two columns for one price is two chances to quote the wrong
+      figure</b> — and every screen that reads one instead of the other is a place the guest is told a
+      different number.</p>
+
+    <h2 style="margin-top:24px">What “gone permanently” changes</h2>
+    <ul>
+      <li><b>Data, once:</b> the promo figure becomes the real price — <code>base_price = promo_price</code> for
+        every room and venue that has one. The two columns agree forever after.</li>
+      <li><b>The engine:</b> <code>calculatePricing</code> loses its <code>usePromo</code> branch and reads
+        <b>one</b> price. No more “charge the regular figure” path to get wrong.</li>
+      <li><b>Bookings:</b> <code>promo_applied</code> stops being written and read. The column stays as history,
+        ignored.</li>
+      <li><b>Every caller</b> that today passes <code>usePromo: booking.promo_applied === true</code> — the quick
+        view, the statement, the balance, analytics, the extend-stay panel — stops passing it.</li>
+      <li><b>Settings</b> writes one figure, so a new price can never leave a stale second one behind.</li>
+    </ul>
+  </section>
+
+  <!-- ── the consequence ─────────────────────────────── -->
+  <section>
+    <h2>One consequence you have to decide</h2>
+    <p><b>Log old booking</b> has a tick-box, <i>“Use the price on the board today”</i>. Unticking it prices a
+      past paper booking at the <b>old regular figure</b> — the <code>base_price</code> — so an old log is
+      recorded at the price the guest actually paid back then. <b>If base_price becomes equal to the promo
+      price, that tick-box has nothing left to switch to.</b></p>
+
+    <div class="opt">
+      <h3><span class="tag a">A</span>Collapse both — one price, everywhere</h3>
+      <p style="margin:0"><b>base_price</b> is set equal to the promo price. The old-log tick-box is
+        <b>removed</b>: every backfilled booking is priced at <b>today's</b> price.</p>
+      <ul>
+        <li>Simplest, and it is literally what you said.</li>
+        <li>You lose the ability to log a past stay at the <b>old</b> figure.</li>
+      </ul>
+    </div>
+
+    <div class="opt">
+      <h3><span class="tag b">B</span>One price the app charges — keep base as the old figure</h3>
+      <p style="margin:0">Everything the app <b>charges</b> uses one price. <b>base_price</b> survives as a
+        dormant “old board price” that <b>only</b> the old-log tick-box reads.</p>
+      <ul>
+        <li>You keep backfilling old stays at the old figure.</li>
+        <li>One column still exists that is not the price — the thing that caused this drift.</li>
+      </ul>
+    </div>
+
+    <div class="ask" style="margin-top:24px">
+      <h3>Decisions</h3>
+      <p class="q">1. A or B for the old-log tick-box?</p>
+      <p class="q" style="margin-top:14px">2. Shall I fix the ₱300 breakfast bug now, on its own?</p>
+      <p class="note" style="margin:8px 0 0">The breakfast fix is a bug, not a design choice — one guard in
+        <code>pricing.ts</code> so a room with no breakfast price charges no breakfast. I can do it straight
+        away and leave the promo work until you have ruled.</p>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

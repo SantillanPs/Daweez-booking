@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal } from '../types/booking'
+import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal, PaymentRecord } from '../types/booking'
 import { useDashboardData } from './DashboardContext'
 import {
   AlertCircle, UserCheck
@@ -10,7 +10,8 @@ import {
 import { DiscountPricingControls, DiscountType } from './calendar/DiscountPricingControls'
 import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
-import { BookingDepositFields, PayPlan } from './walk-in/BookingDepositFields'
+import { BookingDepositFields, PayPlan, PayMethod } from './walk-in/BookingDepositFields'
+import { methodNeedsReference, paymentKind, paymentMethodChoice } from '../utils/paymentMethod'
 import { BreakfastRoomChips } from './walk-in/BreakfastRoomChips'
 import { breakfastSellable } from '../utils/breakfast'
 import { focusBookingAfterCreate } from '../utils/bookingFocus'
@@ -65,6 +66,12 @@ interface WalkInBookingFormProps {
     notes?: string
   }) => Promise<Booking>
   cancelBooking: (bookingId: string) => Promise<void>
+  /**
+   * Used to write the payment the form has just taken (2026-09-29). The booking is created
+   * first and the money is applied to it, so each unit's balance is worked out by the
+   * pricing engine before the payment is split across them.
+   */
+  updateBooking: (booking: Booking) => Promise<void>
   initialSelections: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
   editingBookings?: Booking[]
   onClose: () => void
@@ -79,6 +86,7 @@ export function WalkInBookingForm({
   bookings,
   createManualBooking,
   cancelBooking,
+  updateBooking,
   initialSelections,
   editingBookings,
   onClose,
@@ -164,6 +172,8 @@ export function WalkInBookingForm({
   // quietly charged the regular ones, so a booking made during a promo sale came
   // out at the wrong price unless staff noticed this switch.
   const [createdBookingList, setCreatedBookingList] = useState<Booking[]>([])
+  /** The receipt for money taken **in this form** — null for a Reservation, which pays nothing. */
+  const [createdReceipt, setCreatedReceipt] = useState<PaymentRecord | null>(null)
 
 
   // ── Add-ons state ──
@@ -177,7 +187,10 @@ export function WalkInBookingForm({
   const [formVenueExcessHours, setFormVenueExcessHours] = useState(0)
 
   // ── Payment Details ──
-  const [formPaymentMethod, setFormPaymentMethod] = useState('')
+  // How the guest pays, asked here since 2026-09-29 because the form now takes the money
+  // too. `''` is a real state — nothing is preselected, so a GCash guest can never be
+  // handed a Cash receipt by a default the desk never chose.
+  const [formPaymentMethod, setFormPaymentMethod] = useState<PayMethod>('')
   // What the guest pays now (the owner's ruling, 2026-09): Deposit is the standard,
   // Full pay and Custom are the two other things a guest ever asks for.
   const [formPaymentPlan, setFormPaymentPlan] = useState<PayPlan>('deposit')
@@ -246,7 +259,7 @@ export function WalkInBookingForm({
         setFormEventTent(b.equipment_rentals.tentCount || 0)
       }
 
-      setFormPaymentMethod(b.payment_method || '')
+      setFormPaymentMethod(paymentMethodChoice(b.payment_method || undefined))
       setFormPaymentReference(b.payment_reference || '')
       setFormPaymentPlan(
         b.payment_plan === 'full' ? 'full'
@@ -368,6 +381,51 @@ export function WalkInBookingForm({
         ? 0
         : Math.max(0, Math.round(estTotal / 2))
 
+  /**
+   * **The payment gate** (the owner's ruling, 2026-09-29). The form now takes the money, so
+   * it cannot finish without knowing how the guest paid — and for GCash or a bank transfer,
+   * not without the reference the guest is reading out. Confirm stays asleep and says why
+   * underneath, in exactly the shape the agency gate already uses, rather than failing on
+   * the press. A **Reservation** pays nothing, so it is asked nothing.
+   */
+  const paysSomething = shortStayHours ? true : formPaymentPlan !== 'reservation'
+  const paymentPrompt = !paysSomething || agreedDeposit <= 0 ? ''
+    : !formPaymentMethod ? 'Choose how the guest paid.'
+      : methodNeedsReference(formPaymentMethod) && !formPaymentReference.trim()
+        ? (paymentKind(formPaymentMethod) === 'gcash'
+            ? 'Enter the GCash reference number before confirming.'
+            : 'Enter the bank transfer reference number before confirming.')
+        : ''
+
+  /**
+   * The money card's props in one place: it is rendered twice (a short stay shows the
+   * `Paid by` row alone), and the two call sites must never drift apart.
+   */
+  const depositFieldProps = {
+    estTotal,
+    plan: formPaymentPlan,
+    setPlan: setFormPaymentPlan,
+    agreedDeposit,
+    setAgreedDeposit: (v: number) => { setDepositTouched(true); setFormAgreedDeposit(v) },
+    method: formPaymentMethod,
+    setMethod: (m: PayMethod) => {
+      setFormPaymentMethod(m)
+      // A reference belongs to the method that asked for it: switching from GCash to Cash
+      // must not leave the GCash number behind on a booking that was paid in cash.
+      if (!methodNeedsReference(m)) setFormPaymentReference('')
+    },
+    reference: formPaymentReference,
+    setReference: setFormPaymentReference,
+    formInvoiceNumber,
+    setFormInvoiceNumber,
+    formDownpaymentPaid,
+    setFormDownpaymentPaid,
+    formBalanceDue,
+    setFormBalanceDue,
+    formSecurityDeposit,
+    setFormSecurityDeposit,
+  }
+
   const staffNames = useMemo(
     () => Array.from(new Set((bookings || []).map(b => (b.prepared_by || '').trim()).filter(Boolean))).sort(),
     [bookings]
@@ -412,6 +470,28 @@ export function WalkInBookingForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setFormError('')
     if (Object.values(fieldErrors).some(v => v)) { setTrySave(true); return }
+
+    // ── The money gate (the owner's ruling, 2026-09-29) ──────────────────────────────
+    // The form now TAKES the payment, because that is what really happens: the guest is
+    // asked deposit or full pay **and how they will pay** in the same breath, and the desk
+    // writes both down. So every plan except **Reservation** must name a way to pay, and
+    // GCash / bank must carry the reference the guest is reading out — the form will not
+    // finish without it. A Reservation pays nothing and is exempt by definition.
+    const paidNow = shortStayHours ? estTotal : agreedDeposit
+    const isReservation = !shortStayHours && formPaymentPlan === 'reservation'
+    if (!isReservation && paidNow > 0) {
+      if (!formPaymentMethod) {
+        setFormError('Choose how the guest paid.')
+        return
+      }
+      if (methodNeedsReference(formPaymentMethod) && !formPaymentReference.trim()) {
+        setFormError(paymentKind(formPaymentMethod) === 'gcash'
+          ? 'Enter the GCash reference number before confirming.'
+          : 'Enter the bank transfer reference number before confirming.')
+        return
+      }
+    }
+
     setIsSubmitting(true)
     // A brand-new walk-in booking is NOT confirmed yet — it stays in the
     // "Unpaid"/pending state until the first payment is recorded. Corporate
@@ -445,9 +525,19 @@ export function WalkInBookingForm({
       // A short stay is paid in full at the counter, so its plan is the whole amount.
       formPaymentPlan: shortStayHours ? 'full' : formPaymentPlan,
       stay_hours: shortStayHours ?? undefined,
+      // **What the guest hands over in this form.** A short stay is paid in full, a
+      // Reservation hands over nothing, and everything else is the agreed figure — the same
+      // number the `Pays now` row is showing, so the form can never take a different amount
+      // from the one the desk read out.
+      receivedAmount: shortStayHours ? estTotal : isReservation ? 0 : paidNow,
+      updateBooking,
     })
     if (!result.ok) { setFormError(result.error); setIsSubmitting(false); return }
     setCreatedBookingList(result.bookings)
+    // **The money was taken in this form** (2026-09-29), so what the guest is handed is the
+    // receipt, not the bill. A Reservation pays nothing and returns no receipt, so it still
+    // gets the billing statement — exactly as it always has.
+    setCreatedReceipt(result.receipt ?? null)
     setIsSubmitting(false)
   }
 
@@ -458,8 +548,9 @@ export function WalkInBookingForm({
         rooms={rooms}
         venues={venues}
         bookings={bookings}
-        /* The statement is handed over first; closing it opens the booking that
-           was just made in the quick view (card k134). */
+        receipt={createdReceipt}
+        /* Closing the paper opens the booking that was just made in the quick view
+           (card k134). */
         onClose={() => { focusBookingAfterCreate(createdBookingList[0]?.id); onClose() }}
       />,
       document.body
@@ -608,83 +699,84 @@ export function WalkInBookingForm({
                           </>
                         )}
 
-                        {/* The money row, side by side, each block exactly ONE line tall (the
-                            owner's design, 2026-09): the discount and the guest's payment plan
-                            are the same kind of choose-one control, so they sit as a pair and
-                            neither card is stretched into a band of empty white. */}
-                        {!shortStayHours && (
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 items-start">
-                            <DiscountPricingControls
-                              isDayBlock={hasDayBlock}
-                              discountType={discountType}
-                              setDiscountType={setDiscountType}
-                              discountValue={discountValue}
-                              setDiscountValue={setDiscountValue}
-                              venueDayBlocks={venueDayBlocks}
-                              setVenueDayBlocks={setVenueDayBlocks}
-                            />
-                            <BookingDepositFields
-                              estTotal={estTotal}
-                              plan={formPaymentPlan}
-                              setPlan={setFormPaymentPlan}
-                              agreedDeposit={agreedDeposit}
-                              setAgreedDeposit={v => { setDepositTouched(true); setFormAgreedDeposit(v) }}
-                              isEditMode={!!editingBookings}
-                              formInvoiceNumber={formInvoiceNumber}
-                              setFormInvoiceNumber={setFormInvoiceNumber}
-                              formDownpaymentPaid={formDownpaymentPaid}
-                              setFormDownpaymentPaid={setFormDownpaymentPaid}
-                              formBalanceDue={formBalanceDue}
-                              setFormBalanceDue={setFormBalanceDue}
-                              formSecurityDeposit={formSecurityDeposit}
-                              setFormSecurityDeposit={setFormSecurityDeposit}
-                            />
+                        {/* ── The money block (the owner's 2026-09-29 layout fix) ──────────
+                            Two columns that end together. The Discount card is one row and the
+                            money card is three, so sitting them side by side left a band of empty
+                            surface under the Discount card — *"the gap between the two is
+                            ridiculous."* Receptionist moves up into that space, and Cancel /
+                            Confirm Booking take its old place directly under the money card, which
+                            is where the eye already is when the button is pressed. */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 items-start">
+                          {/* Left: what the stay is priced at, and who took it. */}
+                          <div className="space-y-2.5">
+                            {!shortStayHours && (
+                              <DiscountPricingControls
+                                isDayBlock={hasDayBlock}
+                                discountType={discountType}
+                                setDiscountType={setDiscountType}
+                                discountValue={discountValue}
+                                setDiscountValue={setDiscountValue}
+                                venueDayBlocks={venueDayBlocks}
+                                setVenueDayBlocks={setVenueDayBlocks}
+                              />
+                            )}
+                            <div className="bg-base-100 border border-base-300 rounded-xl px-3 py-2 flex items-center gap-2">
+                              <span className="flex items-center gap-1.5 shrink-0 w-[104px]" title="Who took this booking — it prints on the bill and the receipt.">
+                                <span className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><UserCheck className="w-2.5 h-2.5" /></span>
+                                <span className="text-[10px] font-bold text-base-content/70 whitespace-nowrap">Receptionist</span>
+                              </span>
+                              {/* The names used before suggest themselves (card k136), so
+                                  the same person is never written two different ways. */}
+                              <input list="staff-names" value={formPreparedBy} aria-label="Receptionist on duty"
+                                onChange={e => setFormPreparedBy(e.target.value.toUpperCase())}
+                                placeholder="Staff name" className="input input-bordered input-sm flex-1 min-w-0" />
+                              <datalist id="staff-names">
+                                {staffNames.map(name => <option key={name} value={name} />)}
+                              </datalist>
+                            </div>
                           </div>
-                        )}
 
-                        {shortStayHours ? (
-                          <div className="bg-gold-100 border border-gold-400 rounded-lg px-3.5 py-2">
-                            <p className="text-[13px] font-bold text-ink-900">
-                              {shortStayHours}-hour stay · ₱{estTotal.toLocaleString()} — paid in full at the counter
-                            </p>
-                            <p className="text-[11px] text-ink-600 mt-0.5">
-                              No deposit and no statement: the guest pays the whole amount now, and the receipt is printed from the booking. The room stays taken for the rest of the day while it is cleaned.
-                            </p>
-                          </div>
-                        ) : null}
+                          {/* Right: what the guest pays, then the buttons under it. */}
+                          <div className="space-y-2.5">
+                            {shortStayHours ? (
+                              <>
+                                <div className="bg-gold-100 border border-gold-400 rounded-lg px-3.5 py-2">
+                                  <p className="text-[13px] font-bold text-ink-900">
+                                    {shortStayHours}-hour stay · ₱{estTotal.toLocaleString()} — paid in full at the counter
+                                  </p>
+                                  <p className="text-[11px] text-ink-600 mt-0.5">
+                                    No deposit and no statement: the guest pays the whole amount now, and the receipt is printed from the booking. The room stays taken for the rest of the day while it is cleaned.
+                                  </p>
+                                </div>
+                                <BookingDepositFields shortStay {...depositFieldProps} isEditMode={false} />
+                              </>
+                            ) : (
+                              <BookingDepositFields {...depositFieldProps} isEditMode={!!editingBookings} />
+                            )}
 
-                        {/* Receptionist and the form's buttons share one row: the half beside a
-                            short field is exactly where a blank band used to sit. */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 items-center">
-                          <div className="bg-base-100 border border-base-300 rounded-xl px-3 py-2 flex items-center gap-2">
-                            <span className="flex items-center gap-1.5 shrink-0" title="Who took this booking — it prints on the bill and the receipt.">
-                              <span className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><UserCheck className="w-2.5 h-2.5" /></span>
-                              <span className="text-[10px] font-bold text-base-content/70 whitespace-nowrap">Receptionist</span>
-                            </span>
-                            {/* The names used before suggest themselves (card k136), so
-                                the same person is never written two different ways. */}
-                            <input list="staff-names" value={formPreparedBy} aria-label="Receptionist on duty"
-                              onChange={e => setFormPreparedBy(e.target.value.toUpperCase())}
-                              placeholder="Staff name" className="input input-bordered input-sm flex-1 min-w-0" />
-                            <datalist id="staff-names">
-                              {staffNames.map(name => <option key={name} value={name} />)}
-                            </datalist>
-                          </div>
-                          <div className="flex justify-end items-center gap-2">
-                            <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
-                            <button type="submit" disabled={isSubmitting || agencyMissing} className="btn btn-primary">
-                              {isSubmitting ? 'Booking...' : 'Confirm Booking'}
-                            </button>
+                            <div>
+                              <div className="flex justify-end items-center gap-2">
+                                <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
+                                <button type="submit" disabled={isSubmitting || agencyMissing || !!paymentPrompt} className="btn btn-primary">
+                                  {isSubmitting ? 'Booking...' : 'Confirm Booking'}
+                                </button>
+                              </div>
+                              {/* The agency is step one of the agency path (the owner's ruling):
+                                  Confirm stays asleep until the bill has an addressee, and it says
+                                  so right under the button rather than in a popup. */}
+                              {agencyMissing && (
+                                <p className="text-[11px] text-danger-600 font-semibold text-right mt-1">
+                                  Choose the agency above — the bill is addressed to them.
+                                </p>
+                              )}
+                              {/* …and Confirm stays asleep for the money too (2026-09-29), saying
+                                  which half is missing rather than failing on the press. */}
+                              {paymentPrompt && !agencyMissing && (
+                                <p className="text-[11px] text-danger-600 font-semibold text-right mt-1">{paymentPrompt}</p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        {/* The agency is step one of the agency path (the owner's ruling):
-                            Confirm stays asleep until the bill has an addressee, and it says
-                            so right under the button rather than in a popup. */}
-                        {agencyMissing && (
-                          <p className="text-[11px] text-danger-600 font-semibold text-right">
-                            Choose the agency above — the bill is addressed to them.
-                          </p>
-                        )}
                       </div>
                     )}
                   </div>

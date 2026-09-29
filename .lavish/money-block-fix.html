@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daweez · the money block — what "this" means</title>
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raised:#262626; --line:#3A3A3A;
+    --body:#EDEAE4; --dim:#A8A29A; --muted:#7D7871;
+    --gold:#D0AB60; --gold-fill:#332B18; --gold-ink:#E6C989;
+    --bad-fill:#2A1615; --bad-ink:#F87171;
+    --good-fill:#12261F; --good-ink:#34D399;
+    /* the staff app, dimmed so it still reads as the app's light surface */
+    --app:#E6E2DA; --app-card:#F3F0EA; --app-line:#CFC9BE; --app-ink:#3A3A3A; --app-dim:#7A746B;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--body);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:36px 28px 64px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+  h1{font-size:29px;line-height:1.2;margin:8px 0 6px;letter-spacing:-.02em}
+  .lede{color:var(--dim);margin:0 0 34px;max-width:64ch}
+  h2{font-size:17px;margin:0 0 4px;letter-spacing:-.01em}
+  .num{display:inline-flex;width:22px;height:22px;border-radius:6px;background:var(--gold-fill);
+    color:var(--gold-ink);font-size:12px;font-weight:800;align-items:center;justify-content:center;
+    margin-right:9px;vertical-align:2px}
+  section{border-top:1px solid var(--line);padding:26px 0 4px}
+  section:first-of-type{border-top:0}
+  p{margin:0 0 12px;color:var(--dim)}
+  p.tight{margin-bottom:6px}
+  .fix{color:var(--good-ink);font-weight:700}
+  .quote{color:var(--gold-ink);font-style:italic}
+  code{background:var(--raised);border:1px solid var(--line);border-radius:5px;padding:1px 6px;
+    font-size:13px;color:var(--gold-ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+  /* ── the app mock ─────────────────────────────────────────── */
+  .app{background:var(--app);border:1px solid var(--app-line);border-radius:14px;padding:14px;
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+  .app-card{background:var(--app-card);border:1px solid var(--app-line);border-radius:11px;
+    padding:8px 11px;color:var(--app-ink)}
+  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:26px}
+  .lbl{font-size:10px;font-weight:800;color:var(--app-ink);opacity:.72;white-space:nowrap}
+  .lblcol{display:flex;align-items:center;gap:6px;width:80px;flex:none}
+  .ico{width:16px;height:16px;border-radius:50%;background:#E3DCCB;flex:none}
+  .seg{display:flex;border:1px solid var(--app-line);border-radius:9px;overflow:hidden;background:#fff}
+  .seg span{font-size:12px;padding:4px 10px;border-right:1px solid var(--app-line);white-space:nowrap}
+  .seg span:last-child{border-right:0}
+  .seg .on{background:var(--gold);color:#141414;font-weight:700}
+  .seg .ghost{color:var(--app-dim)}
+  .fig{margin-left:auto;font-weight:800;font-size:15px;font-family:ui-monospace,Menlo,monospace}
+  .fig i{font-style:normal;font-weight:600;font-size:10px;color:var(--app-dim);margin-left:5px}
+  .hint{font-size:10.5px;color:var(--app-dim);line-height:1.45;margin-top:9px}
+  .foot{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:10px;grid-column:2}
+  .btn-ghost{font-size:14px;font-weight:600;color:var(--app-ink)}
+  .btn-dead{font-size:14px;font-weight:700;background:#C9C4BB;color:#6E6960;border-radius:9px;padding:7px 15px}
+  .err{color:#C0392B;font-size:11px;font-weight:700;text-align:right;margin-top:5px;grid-column:2}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .cap{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+  .cap.bad{color:var(--bad-ink)}
+  .cap.good{color:var(--good-ink)}
+  .mark{border:2px dashed var(--bad-ink);border-radius:10px;padding:1px 6px;display:inline-block}
+  .mark.good{border-color:var(--good-ink);border-style:solid;border-width:1px}
+
+  .pill{display:inline-block;font-size:11px;font-weight:800;padding:2px 9px;border-radius:99px;margin-right:6px}
+  .pill.bad{background:var(--bad-fill);color:var(--bad-ink)}
+  .pill.good{background:var(--good-fill);color:var(--good-ink)}
+  .ask{margin-top:34px;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);
+    border-radius:12px;padding:20px 22px}
+  .ask h3{margin:0 0 8px;font-size:16px}
+  .ask ul{margin:6px 0 0;padding-left:18px;color:var(--dim)}
+  .ask li{margin-bottom:5px}
+  .q{color:var(--gold-ink);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Daweez · booking form</div>
+  <h1>The money block — what I think “this” means</h1>
+  <p class="lede">Your screenshot has three things wrong in it. All three are mine, and all three are the
+    things you have told me off for before. Here they are, and here is what I would change.</p>
+
+  <!-- ── 1 ─────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="num">1</span>A sentence I spent a row on</h2>
+    <p class="tight">The grey line inside the card:</p>
+    <p><span class="mark"><code>Choose how the guest paid — the money is recorded when this form is confirmed.</code></span></p>
+    <p>That is two lines of grey text holding the card open. Your rule: <span class="quote">“he will not spend a
+      row on a sentence.”</span> <span class="fix">→ Delete it.</span></p>
+  </section>
+
+  <!-- ── 2 ─────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="num">2</span>The same thing said twice</h2>
+    <p class="tight">That grey line and the red line under Confirm are the same sentence:</p>
+    <div class="grid2" style="margin-top:10px">
+      <div>
+        <p class="cap bad">inside the card</p>
+        <div style="background:var(--raised);border:1px solid var(--bad-ink);border-radius:9px;padding:10px;font-size:11.5px;color:var(--dim)">
+          “Choose how the guest paid — the money is recorded when this form is confirmed.”
+        </div>
+      </div>
+      <div>
+        <p class="cap bad">under the button</p>
+        <div style="background:var(--raised);border:1px solid var(--bad-ink);border-radius:9px;padding:10px;font-size:12px;color:var(--bad-ink);font-weight:700">
+          “Choose how the guest paid.”
+        </div>
+      </div>
+    </div>
+    <p style="margin-top:14px">One of them has to go, and it is the one inside the card — because you chose
+      where this belongs: <span class="quote">“Confirm stays asleep … and it says so right under the button
+      rather than in a popup.”</span> <span class="fix">→ Keep the one under the button.</span></p>
+  </section>
+
+  <!-- ── 3 ─────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="num">3</span>The two rows don’t line up</h2>
+    <p class="tight">Look at where the choices start:</p>
+    <p><span class="pill bad">now</span><code>Paid by ▸ Cash</code> starts 22&nbsp;px to the <b>left</b> of
+      <code>Pays now ▸ Deposit</code> — because the gold wallet icon on the top row pushes it across.</p>
+    <p><span class="pill good">fix</span>Both labels sit in the same 80&nbsp;px column, so
+      <b>Cash lands exactly under Deposit</b>.</p>
+  </section>
+
+  <!-- ── before / after ────────────────────────────────── -->
+  <section>
+    <h2>Side by side</h2>
+    <p class="tight">The app’s own surface, so you can hold it against your screenshot.</p>
+
+    <p class="cap bad" style="margin:18px 0 9px">Today — 3 rows, said twice, rows skewed</p>
+    <div class="app">
+      <div class="app-card">
+        <div class="row">
+          <span class="lblcol"><span class="ico"></span><span class="lbl">Discount</span></span>
+          <span class="seg"><span class="on">None</span><span>20%</span><span>10%</span><span>Custom price</span></span>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="row">
+          <span class="lblcol"><span class="ico"></span><span class="lbl">Pays now</span></span>
+          <span class="seg"><span class="on">Deposit</span><span>Full pay</span><span>Custom</span><span>Reservation</span></span>
+          <span class="fig">₱1,200<i>of ₱2,400</i></span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <span class="mark" style="padding:0"><span class="lbl">Paid by</span></span>
+          <span class="seg"><span class="ghost">Cash</span><span class="ghost">GCash</span><span class="ghost">Bank transfer</span><span class="ghost">Check</span></span>
+        </div>
+        <div class="hint mark" style="border-width:2px;border-style:dashed;display:block;padding:5px 7px">
+          Choose how the guest paid — the money is recorded when this form is confirmed.
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="row">
+          <span class="lblcol"><span class="ico"></span><span class="lbl">Receptionist</span></span>
+          <span style="flex:1;border:1px solid var(--app-line);border-radius:9px;background:#fff;padding:5px 10px;font-size:13px;color:var(--app-dim)">Staff name</span>
+        </div>
+      </div>
+      <div>
+        <div class="foot"><span class="btn-ghost">Cancel</span><span class="btn-dead">Confirm Booking</span></div>
+        <div class="err">Choose how the guest paid.</div>
+      </div>
+    </div>
+
+    <p class="cap good" style="margin:26px 0 9px">After the three fixes — 2 rows, one message, controls stacked</p>
+    <div class="app">
+      <div class="app-card">
+        <div class="row">
+          <span class="lblcol"><span class="ico"></span><span class="lbl">Discount</span></span>
+          <span class="seg"><span class="on">None</span><span>20%</span><span>10%</span><span>Custom price</span></span>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="row">
+          <span class="lblcol"><span class="ico"></span><span class="lbl">Pays now</span></span>
+          <span class="seg"><span class="on">Deposit</span><span>Full pay</span><span>Custom</span><span>Reservation</span></span>
+          <span class="fig">₱1,200<i>of ₱2,400</i></span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <span class="lblcol mark good"><span style="width:16px;height:16px;flex:none"></span><span class="lbl">Paid by</span></span>
+          <span class="seg"><span class="ghost">Cash</span><span class="ghost">GCash</span><span class="ghost">Bank transfer</span><span class="ghost">Check</span></span>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="row">
+          <span class="lblcol"><span class="ico"></span><span class="lbl">Receptionist</span></span>
+          <span style="flex:1;border:1px solid var(--app-line);border-radius:9px;background:#fff;padding:5px 10px;font-size:13px;color:var(--app-dim)">Staff name</span>
+        </div>
+      </div>
+      <div>
+        <div class="foot"><span class="btn-ghost">Cancel</span><span class="btn-dead">Confirm Booking</span></div>
+        <div class="err">Choose how the guest paid.</div>
+      </div>
+    </div>
+    <p style="margin-top:12px;font-size:13px">Two rows instead of three, one message instead of two, and
+      <b>Cash sits under Deposit</b>. The money card is ~24&nbsp;px shorter.</p>
+  </section>
+
+  <!-- ── the other candidate ───────────────────────────── -->
+  <section>
+    <h2>Or did you mean the empty white in the <em>Discount</em> card?</h2>
+    <p class="tight">In your screenshot the left card looks like a tall box with one line in it. I went
+      looking, and the code already says those two cards size to their own content — the grid is
+      <code>items-start</code>, so the discount card should be ~42&nbsp;px, not ~75&nbsp;px.</p>
+    <p>So either it is the money card next to it holding the row open — which fix&nbsp;1 cures — or
+      something is stretching that card that I have not found. <b>I could not settle it from a
+      screenshot, so I am asking instead of guessing.</b></p>
+  </section>
+
+  <!-- ── ask ───────────────────────────────────────────── -->
+  <div class="ask">
+    <h3>One decision</h3>
+    <p class="q">Build the three fixes above?</p>
+    <ul>
+      <li><b>Yes</b> — I delete the grey sentence, keep the one line under Confirm, and put both money
+        rows in the same 80&nbsp;px column.</li>
+      <li><b>No, it was something else</b> — write what you pictured in the box and I will draw that
+        instead. The empty white on the left is my best other guess.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

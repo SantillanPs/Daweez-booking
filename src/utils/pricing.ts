@@ -1,4 +1,4 @@
-import { Booking, BreakfastOrder, EquipmentRental, EventAddons, BookingSource, Companion, Room, Venue, AppliedDiscount, RateConfig, BreakfastRecord } from '../types/booking'
+import { Booking, EquipmentRental, EventAddons, BookingSource, Room, Venue, AppliedDiscount, RateConfig, BreakfastRecord } from '../types/booking'
 import { normalizeVenueId } from './helpers'
 import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 import { DEFAULT_RATE_CONFIG } from './rateConfig'
@@ -19,21 +19,17 @@ export function calculatePricing(params: {
   checkIn: string
   checkOut: string
   guestEmail: string
-  breakfastOrders?: BreakfastOrder[]
   breakfastRecords?: BreakfastRecord[]
   equipmentRentals?: EquipmentRental
   eventAddons?: EventAddons
   bookingsList?: Booking[]
   rateMultiplier?: number
-  companions?: Companion[]
   source?: BookingSource
   contractRateOverride?: number
   venueExcessHours?: number
   breakfastEnabled?: boolean
   /** What the saved booking holds: this room has breakfast (card k140). */
   breakfastIncluded?: boolean
-  breakfastGuestCount?: number
-  breakfastDays?: string[]
   rooms?: Room[]
   venues?: Venue[]
   usePromo?: boolean
@@ -49,7 +45,7 @@ export function calculatePricing(params: {
   venueDayBlocks?: number
   rates?: RateConfig
 }) {
-  const { roomId, venueId, checkIn, checkOut, breakfastOrders, breakfastIncluded, equipmentRentals, eventAddons, rateMultiplier, companions, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastGuestCount, breakfastDays, breakfastRecords, rooms: liveRooms, venues: liveVenues, usePromo, appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, rates: ratesOverride, shortStayHours } = params
+  const { roomId, venueId, checkIn, checkOut, breakfastIncluded, equipmentRentals, eventAddons, rateMultiplier, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastRecords, rooms: liveRooms, venues: liveVenues, usePromo, appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, rates: ratesOverride, shortStayHours } = params
   const rates = ratesOverride ?? DEFAULT_RATE_CONFIG
 
   let basePrice = 0
@@ -168,14 +164,15 @@ export function calculatePricing(params: {
 
   let breakfastTotal = 0
   const brkRecords = breakfastRecords || []
-  // Breakfast for a room is ONE charge for the whole stay (owner's rule, card
-  // k140): ₱150 × the number of beds in the room — not per person, and not per
-  // day. A room with 3 bunk beds is 6 beds, so ₱900; a room for 2 is ₱300 even
-  // with one guest in it.
+  // Breakfast for a room is **ONE charge for the whole stay, at the room's own
+  // `breakfast_price`** (owner's rule, card k140) — never per person and never per day.
+  // The desk types that figure per room in Settings, and **a room without one sells no
+  // breakfast at all** (the owner's ruling, 2026-09-29).
   //
-  // A room whose bed count has not been filled in yet keeps the older figures
-  // below (a recorded day-by-day breakfast, or the person × night estimate), so
-  // nothing changes for it until the desk writes the beds down in Settings.
+  // Two older rules are dead and must not come back: the bed-count idea (₱150 × the room's
+  // beds, so a 3-bunk room was ₱900) and the person × night estimate. Both were replaced by
+  // the desk's own figure. A booking that already carries `breakfast_records` keeps exactly
+  // what it was charged — those rows hold the price each breakfast was served at.
   const roomForBreakfast = roomId ? roomList.find(r => r.id === roomId) : undefined
   // The room's own breakfast price, typed by the desk in Settings.
   const roomBreakfastPrice = roomForBreakfast ? Number(roomForBreakfast.breakfast_price || 0) : 0
@@ -193,21 +190,23 @@ export function calculatePricing(params: {
       ? breakfastEnabled
       : breakfastIncluded === true
     if (wantsBreakfast) breakfastTotal = roomBreakfastPrice
-  } else if (roomId) {
-    const optedOut = breakfastOrders != null && breakfastOrders.length === 0
-    if (!optedOut) {
-      const isBreakfastOn = breakfastEnabled !== undefined ? breakfastEnabled : true
-      if (isBreakfastOn) {
-        const guestCount = breakfastGuestCount !== undefined ? breakfastGuestCount : (1 + (companions ? companions.length : 0))
-        const dayCount = breakfastDays && breakfastDays.length > 0 ? breakfastDays.length : nights
-        breakfastTotal = rates.breakfastPrice * guestCount * dayCount
-      }
-    }
-  } else if (breakfastOrders && breakfastOrders.length > 0) {
-    breakfastOrders.forEach(order => {
-      breakfastTotal += rates.breakfastPrice * order.quantity
-    })
   }
+  // **A room with no breakfast price sells NO breakfast** (the owner's ruling, 2026-09-29:
+  // *"if a room has no breakfast price, then breakfast should be unavailable. remove every
+  // trace of 150 per head for breakfast calculations since the staff decides what the
+  // breakfast price is"*).
+  //
+  // Two fallbacks used to live here and **both invented a charge** out of the retired
+  // ₱150-per-head default: one billed `rates.breakfastPrice × guests × nights` to any room
+  // the desk had not priced yet, and one billed `rates.breakfastPrice × quantity` for a
+  // legacy breakfast order — a `BreakfastOrder` carries no price of its own to bill. The
+  // first is what charged Room 4 ₱300 for two nights it was never offered: the booking form
+  // quoted ₱1,900, the engine stored ₱2,200, and the guest was handed a receipt reading
+  // **₱300 remaining** on a stay they had paid in full.
+  //
+  // **The only breakfast prices are the ones the staff typed**: the room's own
+  // `breakfast_price` above, and the price stored on each legacy `breakfast_record` when it
+  // was served. Nothing is derived from a default any more.
 
   let rentalsTotal = 0
   if (equipmentRentals) {

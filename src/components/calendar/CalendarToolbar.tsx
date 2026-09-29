@@ -1,5 +1,5 @@
 import React from 'react'
-import { Calendar, ChevronLeft, ChevronRight, FilePlus } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface CalendarToolbarProps {
   monthHeader: string
@@ -13,13 +13,16 @@ interface CalendarToolbarProps {
   /** Jump the window to the day the desk picked (option A, card k154). */
   onJumpToDate: (value: string) => void
   onToday: () => void
-  onLogOldBooking: () => void
-  logOldDisabled: boolean
 }
 
-// Calendar top bar: window title and day navigation. The booking actions live in the
-// grid's own action bar (see TimelineGrid) — they appear once dates are picked.
-export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onPrevMonth, onNextMonth, onJumpToDate, onToday, onLogOldBooking, logOldDisabled }: CalendarToolbarProps) {
+// Calendar top bar: window title and day navigation. **Every action lives in the grid's own
+// action bar** (see TimelineGrid) — they appear once dates are picked, so the rule teaches
+// itself: pick the dates first. This bar used to keep one button of its own, `Log old
+// booking`, on the argument that it is back-office rather than a stay. The owner had it
+// removed (2026-09-29: *"can you remove the log old booking on the top right of the
+// calendar? since there's already a button for that when I click on dates"*) — the action
+// bar already carries it, so the toolbar is now nothing but the window and its days.
+export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onPrevMonth, onNextMonth, onJumpToDate, onToday }: CalendarToolbarProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-card px-3 py-2 rounded-xl border border-soft flex-shrink-0 shadow-soft">
       <h2 className="font-display font-bold text-lg text-main tracking-tight flex items-center gap-2">
@@ -57,14 +60,6 @@ export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onP
           </button>
         </div>
 
-        {/* The booking actions are NOT here any more (the owner's design): they appear
-            in the action bar under this toolbar, lined up over the day that was picked
-            (see TimelineGrid), so nothing has to be greyed out and the rule reads
-            itself — pick the dates first. Log old booking stays: it is a back-office
-            job rather than a stay, and it needs a range that the grid does not give it. */}
-        <button onClick={onLogOldBooking} disabled={logOldDisabled} title={logOldDisabled ? 'Pick a date range on the calendar first' : 'Log old booking'} aria-label="Log old booking" className="flex items-center justify-center w-9 h-9 rounded-lg bg-card border border-soft text-muted hover:text-main hover:bg-page disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer">
-          <FilePlus className="w-4 h-4 text-gold-600" />
-        </button>
       </div>
     </div>
   )

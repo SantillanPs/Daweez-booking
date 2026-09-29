@@ -7,7 +7,12 @@ import { readAppSetting, writeAppSetting } from './appSettings'
 export const DEFAULT_RATE_CONFIG: RateConfig = {
   lateEarlyRatePesos: 100, // rooms: ₱100/hour for early check-in / late checkout
   lateEarlyCapHours: 3,    // after 3 early/late hours the charge becomes 1 night
-  breakfastPrice: 150,     // ₱150/person/night (fallback for legacy planned-ahead breakfast)
+  // There is deliberately NO breakfast price here. Breakfast is priced by the ROOM's own
+  // `breakfast_price`, typed by the desk (card k140) — there is **no per-head default**. The
+  // retired ₱150-per-person-per-night figure billed rooms the desk had never priced, which is
+  // how Room 4 was charged ₱300 for two nights the guest was never offered (the owner's
+  // ruling, 2026-09-29: *"if a room has no breakfast price, then breakfast should be
+  // unavailable … remove every trace of 150 per head"*).
   breakfastMenu: [
     { name: 'Hotsilog', price: 150 },
     { name: 'Bangsilog', price: 150 },

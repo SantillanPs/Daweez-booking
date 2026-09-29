@@ -51,23 +51,27 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
   const showRef = (kind === 'gcash' || kind === 'bank') && !!record.reference
 
   return (
-    <div className={'flex flex-col items-center ' + (embedded ? '' : 'w-full')}>
-      {!embedded && (
-        <div className="w-full max-w-md mb-3 flex items-center justify-between gap-3 rounded-xl bg-slate-800 px-4 py-2.5 text-white print:hidden">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="bg-white text-slate-800 text-[11px] font-bold px-2 py-0.5 rounded uppercase shrink-0">Payment receipt</span>
-            <span className="text-xs font-mono text-white/70 truncate">{receiptNo}</span>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
-              <Printer className="w-3.5 h-3.5" /> Print
-            </button>
-            <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer" aria-label="Close">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+    <div className="flex flex-col items-center w-full">
+      {/* **The control bar is ALWAYS drawn, embedded or not** — the same rule `StatementShell`
+          follows. It used to be hidden while `embedded`, and the booking form hands the
+          receipt over embedded, so the receipt that appears after a paid booking arrived with
+          **no way to print it and no way to close it** (the owner, 2026-09-29: *"what happened
+          to the header? I can't choose to close or print it"*). Whoever shows the paper does
+          not also supply the chrome — the document owns it. */}
+      <div className="w-full max-w-md mb-3 flex items-center justify-between gap-3 rounded-xl bg-slate-800 px-4 py-2.5 text-white print:hidden">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="bg-white text-slate-800 text-[11px] font-bold px-2 py-0.5 rounded uppercase shrink-0">Payment receipt</span>
+          <span className="text-xs font-mono text-white/70 truncate">{receiptNo}</span>
         </div>
-      )}
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
+            <Printer className="w-3.5 h-3.5" /> Print
+          </button>
+          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer" aria-label="Close">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
 
       {/* The 58 mm slip. Printed width comes from the @page box the modal sets,
           so in print it simply fills that page instead of a fixed 58 mm. */}

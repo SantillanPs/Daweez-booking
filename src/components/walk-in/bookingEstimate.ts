@@ -36,8 +36,8 @@ export interface BookingEstimate {
   estDue: number
 }
 
-// Client-side estimate for the wizard totals. Breakfast is counted per person
-// (main guest + each companion ticked for B'fast), rooms only.
+// Client-side estimate for the wizard totals. Breakfast is the ROOM's own price — one
+// charge for the stay, never per person — and a room with no price sells none.
 export function computeBookingEstimate(p: BookingEstimateParams): BookingEstimate {
   let regularTotal = 0
   let discountedTotal = 0

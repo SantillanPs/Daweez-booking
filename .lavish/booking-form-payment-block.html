@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="luxury">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The booking form, with the money taken in it</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --page:#141414;--card:#1F1F1F;--raise:#262626;--line:#3A3A3A;
+    --text:#EDEAE4;--sec:#A8A29A;--muted:#7D7871;--gold:#D0AB60;
+    --gold-bg:#332B18;--gold-fg:#E6C989;
+    --good-bg:#12261F;--good-fg:#34D399;
+    --bad-bg:#2A1615;--bad-fg:#F87171;
+    --neu-bg:#2A2A2A;--neu-fg:#C9C4BB;
+    /* the app's light form surface, so the mock reads as the real screen */
+    --app:#F8F5EF;--appcard:#FFFFFF;--appline:#DED7CA;--appink:#1C1C1C;--appmut:#6B655C;--appgold:#6F5420;--appgoldbg:#F0E4CC;
+  }
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:36px 22px 92px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(24px,3.3vw,33px);line-height:1.15;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15.5px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec);overflow-wrap:anywhere}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:16.5px;color:var(--text);max-width:70ch}
+  .wrap>*+*{margin-top:20px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:var(--neu-fg)}
+  .flowrow{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:13px}
+  .note b{color:var(--sec);font-weight:500}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#171717;border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--gold-fg)}
+
+  /* the mock, light — it is the app's own screen */
+  .mock{background:var(--app);color:var(--appink);border-radius:12px;padding:14px 16px;max-width:560px;min-width:0;
+        font-family:'DM Sans',system-ui,sans-serif;font-size:12px}
+  .mocklabel{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin:0 0 6px}
+  .block{background:var(--appcard);border:1px solid var(--appline);border-radius:10px;padding:8px 10px}
+  .row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .row+.row{margin-top:6px}
+  .lbl{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--appmut);white-space:nowrap;flex:none}
+  .dot{width:13px;height:13px;border-radius:50%;background:var(--appgoldbg);color:var(--appgold);display:inline-flex;align-items:center;justify-content:center;font-size:8px;flex:none}
+  .seg{display:inline-flex;border:1px solid var(--appline);border-radius:7px;overflow:hidden;background:var(--appcard)}
+  .seg i{font-style:normal;font-size:10.5px;padding:3px 9px;border-right:1px solid var(--appline);color:var(--appmut)}
+  .seg i:last-child{border-right:0}
+  .seg i.on{background:var(--appgoldbg);color:var(--appgold);font-weight:700}
+  .fig{margin-left:auto;display:flex;align-items:baseline;gap:5px;flex:none}
+  .fig b{font-family:'JetBrains Mono',monospace;font-size:14px}
+  .fig em{font-style:normal;font-size:10px;font-weight:600;color:var(--appmut)}
+  .box{border:1px solid var(--appline);border-radius:6px;padding:3px 7px;font-size:10.5px;color:var(--appmut);
+       font-family:'JetBrains Mono',monospace;min-width:150px}
+  .box.empty{color:#9A948B}
+  .box.err{border-color:#B3261E}
+  .req{font-size:10px;font-weight:700;color:var(--appmut);flex:none}
+  .flag{font-size:10px;font-weight:700;color:#B3261E}
+  .warn{margin-top:5px;font-size:10.5px;color:#B3261E;font-weight:600}
+  .btn{font-family:'Sora',sans-serif;font-size:11.5px;font-weight:700;border-radius:8px;padding:6px 14px;border:0;flex:none}
+  .btn.on{background:#6F5420;color:#fff}
+  .btn.off{background:#DDD6C8;color:#8A8378}
+  .foot{display:flex;align-items:center;gap:10px;margin-top:9px;padding-top:9px;border-top:1px solid var(--appline)}
+  .foot .why{font-size:10.5px;color:var(--appmut);min-width:0}
+
+  .states{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;margin-top:14px}
+  .state{min-width:0}
+  .state h3{margin-bottom:2px}
+  .state .d{font-size:13px;color:var(--muted);margin:0 0 8px}
+
+  /* endings */
+  .ends{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+  @media (max-width:820px){.ends{grid-template-columns:minmax(0,1fr)}}
+  .paper{background:#E6E2DA;color:#1C1C1C;border-radius:8px;padding:14px 16px;font-size:11.5px;max-width:420px}
+  .paper .t{font-family:'Sora',sans-serif;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px}
+  .paper .l{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #C6BFB2;padding:2px 0;font-size:11px;color:#514C45}
+  .paper .l b{color:#1C1C1C}
+  .paper .big{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;border-top:2px solid #857E73;padding-top:6px}
+
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:17px 19px;min-width:0}
+  .choice{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .choice:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .choice input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .choice .l{font-weight:600;font-size:14px;display:block}
+  .choice .h{font-size:13px;color:var(--muted);display:block}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · the booking form · drawn, nothing built</div>
+    <h1>The money is taken <span style="color:var(--good-fg)">inside the form</span> — and Confirm waits for it.</h1>
+    <p class="lede">Your ruling is built into these mocks: <b>every plan except Reservation must have its payment recorded before Confirm finishes</b> — plan, method, and for GCash and Bank the reference. Reservation pays nothing, so it finishes on the plan alone and still shows the billing statement.</p>
+    <div class="flowrow">
+      <span class="badge b-good">k132 superseded by staff practice</span>
+      <span class="badge b-gold">one extra line, only when needed</span>
+      <span class="badge b-neu">Reservation unchanged</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>The block, in its three states</h2></div>
+    <p class="sub">Shown on the app's own light surface. This is the whole of the change — everything else in the form stays exactly as it is.</p>
+
+    <div class="states">
+      <!-- state 1 -->
+      <div class="state">
+        <h3>Deposit by cash — the usual case</h3>
+        <p class="d">Two lines. No reference, because cash has none. Confirm is live.</p>
+        <div class="mock">
+          <div class="block">
+            <div class="row">
+              <span class="lbl"><span class="dot">₱</span> Pays now</span>
+              <span class="seg"><i class="on">Deposit</i><i>Full pay</i><i>Custom</i><i>Reservation</i></span>
+              <span class="fig"><b>₱475</b><em>of ₱950</em></span>
+            </div>
+            <div class="row">
+              <span class="lbl">Paid by</span>
+              <span class="seg"><i class="on">Cash</i><i>GCash</i><i>Bank transfer</i><i>Check</i></span>
+            </div>
+          </div>
+          <div class="foot"><button class="btn on">Confirm Booking</button><span class="why">Records the ₱475 and the method, then prints the receipt.</span></div>
+        </div>
+      </div>
+
+      <!-- state 2 -->
+      <div class="state">
+        <h3>Full pay by GCash — the case that made the form wait</h3>
+        <p class="d">The reference box appears because the method needs one. <b>Confirm is dead until it is filled</b> — that is your step 5.</p>
+        <div class="mock">
+          <div class="block">
+            <div class="row">
+              <span class="lbl"><span class="dot">₱</span> Pays now</span>
+              <span class="seg"><i>Deposit</i><i class="on">Full pay</i><i>Custom</i><i>Reservation</i></span>
+              <span class="fig"><b>₱950</b><em>paid in full</em></span>
+            </div>
+            <div class="row">
+              <span class="lbl">Paid by</span>
+              <span class="seg"><i>Cash</i><i class="on">GCash</i><i>Bank transfer</i><i>Check</i></span>
+              <span class="req" style="margin-left:auto">Ref no. *</span>
+              <span class="box empty">waiting for the guest…</span>
+            </div>
+            <p class="warn">Enter the GCash reference number before confirming.</p>
+          </div>
+          <div class="foot"><button class="btn off">Confirm Booking</button><span class="why">Stays asleep until the reference is typed — the desk is still on the phone.</span></div>
+        </div>
+      </div>
+
+      <!-- state 3 -->
+      <div class="state">
+        <h3>Reservation — unchanged</h3>
+        <p class="d">Nothing paid, so <b>no method row at all</b>. One line, exactly as today, and Confirm is live.</p>
+        <div class="mock">
+          <div class="block">
+            <div class="row">
+              <span class="lbl"><span class="dot">₱</span> Pays now</span>
+              <span class="seg"><i>Deposit</i><i>Full pay</i><i>Custom</i><i class="on">Reservation</i></span>
+              <span class="fig"><em style="font-size:10.5px">nothing now · pays at check-in</em></span>
+            </div>
+          </div>
+          <div class="foot"><button class="btn on">Confirm Booking</button><span class="why">Nothing to receive, so nothing is asked. Prints the billing statement, as it does today.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="note" style="margin-top:16px"><b>Cash and Check stay at two lines</b> — they need no reference, so the second row is just the method. <b>Bank transfer behaves exactly like GCash.</b> Nothing is preselected on the method row: it starts empty and reads <code>Choose…</code>, so a GCash guest can never be printed a Cash receipt — the same rule the quick view already holds to.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>What the guest walks away with</h2></div>
+    <div class="ends">
+      <div>
+        <span class="badge b-good">paid — Deposit, Full pay or Custom</span>
+        <div class="paper" style="margin-top:10px">
+          <p class="t">Payment Receipt</p>
+          <div class="l"><span>Receipt No.</span><b>PR-202609-014</b></div>
+          <div class="l"><span>Guest</span><b>SEBASTIAN</b></div>
+          <div class="l"><span>Room No.</span><b>3</b></div>
+          <div class="l"><span>Paid by</span><b>GCash · 0123 456 789012</b></div>
+          <div class="big"><span style="font-size:10px;font-weight:700;color:#6B655C">AMOUNT RECEIVED</span><b style="font-family:'Sora',sans-serif;font-size:19px">₱950</b></div>
+        </div>
+        <p class="note" style="margin-top:12px">This is what replaces the statement after a paid booking. The <b>billing statement is still one click away</b> in the booking's quick view, for a guest who asks for the itemised bill.</p>
+      </div>
+      <div>
+        <span class="badge b-neu">Reservation — nothing paid</span>
+        <div class="paper" style="margin-top:10px">
+          <p class="t">Guest Billing Statement</p>
+          <div class="l"><span>Bill / Invoice No.</span><b>GRF-2026-09-0013</b></div>
+          <div class="l"><span>Name</span><b>SEBASTIAN</b></div>
+          <div class="l"><span>Room No.</span><b>3</b></div>
+          <div class="l"><span>Payment Plan</span><b>Reservation</b></div>
+          <div class="big"><span style="font-size:10px;font-weight:700;color:#6B655C">AMOUNT DUE</span><b style="font-family:'Sora',sans-serif;font-size:19px">₱950</b></div>
+        </div>
+        <p class="note" style="margin-top:12px">Unchanged from today, exactly as you ruled: a hold pays nothing, so there is no receipt to print — the guest gets the statement and settles when they arrive.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>The quick view is not touched</h2></div>
+    <p class="note">Its receive-money block <b>stays exactly as it is</b> — that is the "just in case" you asked for. It is still how money is taken for a booking that was saved without it (an old booking, a reservation that turns into a payment, or a guest who changes their mind at the desk). Nothing about that panel changes in this work.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">04</span><h2>Three things I'll treat as settled unless you say otherwise</h2></div>
+    <p class="sub">All three follow from what you've already told me — I'd rather say them out loud than ask three more questions.</p>
+    <p class="note" style="margin-top:12px">
+      <b>1 · The amount recorded is the agreed figure.</b> Deposit records half, Full pay records the whole stay, and <b>Custom is how the desk types anything else</b> — so there is no second amount box to fill in and the block keeps its size.<br><br>
+      <b>2 · A group booking records the money once.</b> Several rooms under one invoice, one payment on the invoice — the receipt then covers them as a set, the way the statement already does.<br><br>
+      <b>3 · Nothing already saved is touched.</b> This changes what a <i>new</i> booking does. Existing bookings keep the money they hold, and the quick view remains the way to add to them.
+    </p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">05</span><h2>Your call</h2></div>
+    <form class="q" data-lavish-question="buildform" onsubmit="event.preventDefault(); const c = new FormData(event.currentTarget).get('buildform'); if (c) window.lavish.queuePrompt('Build the booking-form payment: ' + c, { tag: 'choice', text: 'Build: ' + c, element: event.currentTarget, data: { question: 'buildform', answer: c } });">
+      <h3>Build the block as drawn?</h3>
+
+      <label class="choice"><input type="radio" name="buildform" value="Yes — build it exactly as drawn: a Paid by row under Pays now, a reference box for GCash/Bank that Confirm waits for, Reservation with no method row, and the receipt after a paid booking">
+        <span><span class="l">Yes — build it as drawn <span class="badge b-gold" style="margin-left:6px">recommended</span></span>
+        <span class="h">Two lines when money is taken, one line for a Reservation, Confirm asleep until a GCash/Bank reference is entered, receipt after payment and statement after a hold.</span></span></label>
+
+      <label class="choice"><input type="radio" name="buildform" value="Nearly — but I want the method row somewhere else in the form, not under Pays now; I will say where">
+        <span><span class="l">Nearly — move the method row</span>
+        <span class="h">Tell me where the <code>Paid by</code> row belongs and I'll redraw the block before building.</span></span></label>
+
+      <label class="choice"><input type="radio" name="buildform" value="Nearly — I disagree with one of the three 'settled' items in section 04; I will say which">
+        <span><span class="l">Nearly — one of those three is wrong</span>
+        <span class="h">Say which (the amount, the group booking, or what happens to saved bookings) and I'll adjust before building.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+  </section>
+
+</div>
+</body>
+</html>

@@ -99,7 +99,8 @@ export function PublicReservePortal() {
       checkOut,
       guestEmail,
       source: 'website',
-      // The guest's own breakfast answer (₱150 × the room's beds, once). Rooms only.
+      // The guest's own breakfast answer, priced at the ROOM's own `breakfast_price` (card
+      // k140) — one charge for the stay, never per head. A room with no price sells none.
       breakfastEnabled: selectedUnitType === 'room' ? breakfastOn : false,
       rooms,
       venues,

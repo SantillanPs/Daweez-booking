@@ -1,19 +1,13 @@
 import { ChevronDown } from 'lucide-react'
-import { paymentKind, methodNeedsReference } from '../../utils/paymentMethod'
+import { paymentKind, methodNeedsReference, PAYMENT_METHODS, paymentMethodChoice } from '../../utils/paymentMethod'
 
-// Cash, GCash, Bank transfer and Check — "Other" was removed on the owner's instruction,
-// and Check was added with the agency bill, whose own paper names it (2026-09).
-const METHODS = ['Cash', 'GCash', 'Bank transfer', 'Check']
+// The one list of ways to pay lives in `utils/paymentMethod` — the booking form's own
+// `Paid by` row reads the same array, so the till and the form can never offer different
+// choices (the owner's ruling, 2026-09-29).
+const METHODS = PAYMENT_METHODS
 
 /** The stored method, as the one of these labels it means (or '' if none). */
-function chosenLabel(method: string): string {
-  const kind = paymentKind(method)
-  if (kind === 'cash') return 'Cash'
-  if (kind === 'gcash') return 'GCash'
-  if (kind === 'bank') return 'Bank transfer'
-  if (kind === 'check') return 'Check'
-  return ''
-}
+const chosenLabel = (method: string): string => paymentMethodChoice(method)
 
 interface GuestMethodPickerProps {
   /** The booking's own `payment_method` — what the guest told the desk. */

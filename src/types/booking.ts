@@ -226,7 +226,8 @@ export interface PaymentAccounts {
 export interface RateConfig {
   lateEarlyRatePesos: number // ₱100/hour default; vacation house uses its own hourly rate
   lateEarlyCapHours: number  // after this many early/late hours the charge becomes 1 night (3)
-  breakfastPrice: number     // ₱150/person/night (fallback for legacy planned-ahead breakfast)
+  // Breakfast is priced per ROOM (`rooms.breakfast_price`, card k140). There is deliberately
+  // no per-head figure here — see the note in `utils/rateConfig.ts`.
   breakfastMenu: BreakfastMenuOption[] // editable menu; each item has its own price
   venueHourlyRate: number    // ₱500/hour (vacation house late/early + venue excess hours)
   venueDayBlockHours: number // 6 hours per day block for Gazebo & Garden

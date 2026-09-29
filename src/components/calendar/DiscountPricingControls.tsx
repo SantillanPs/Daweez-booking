@@ -42,8 +42,11 @@ export function DiscountPricingControls({
 
   return (
     <div className="bg-base-100 border border-base-300 rounded-xl px-3 py-2 space-y-2">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="flex items-center gap-1.5 shrink-0"
+      {/* The label sits in the same 104px column as every other row in the money block,
+          so `None` starts on the line `Deposit` and `Cash` start on (the owner's
+          2026-09-29 layout fix). */}
+      <div className="flex items-center gap-2">
+        <span className="flex items-center gap-1.5 shrink-0 w-[104px]"
           title="% off the room charge, or a custom peso discount.">
           <span className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <Percent className="w-2.5 h-2.5" />
@@ -51,13 +54,16 @@ export function DiscountPricingControls({
           <span className="text-[10px] font-bold text-base-content/70 whitespace-nowrap">Discount</span>
         </span>
         <SegmentedControl options={options} value={value} onChange={pick} label="Staff discount" />
-        {discountType === 'flat' && (
-          <span className="ml-auto">
-            <NumInput value={discountValue} onChange={setDiscountValue} placeholder="Amount"
-              className="w-[92px] bg-card border border-base-300 text-main px-2 py-1 rounded-lg text-sm font-mono focus:outline-none focus:border-brand-primary text-right" />
-          </span>
-        )}
       </div>
+      {/* A custom price is a figure the desk types, so it takes the row below — the same
+          place the guest's own typed figure takes in the money card beside it. */}
+      {discountType === 'flat' && (
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 w-[104px] text-[10px] font-bold text-base-content/70 whitespace-nowrap pl-5.5">Amount off</span>
+          <NumInput value={discountValue} onChange={setDiscountValue} placeholder="Amount"
+            className="input input-bordered input-sm flex-1 min-w-0 text-right font-mono" />
+        </div>
+      )}
 
       {isDayBlock && (
         <div className="flex items-center justify-between gap-2 bg-base-200/60 border border-base-300 rounded-lg px-2.5 py-1.5">
