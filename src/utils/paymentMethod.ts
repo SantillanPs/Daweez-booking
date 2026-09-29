@@ -41,3 +41,19 @@ export function methodNeedsReference(method?: string): boolean {
   const kind = paymentKind(method)
   return kind === 'gcash' || kind === 'bank'
 }
+
+// The bank's name as it fits on paper (card k144). A statement's tick list only needs the
+// name a guest recognises; the **full** name still prints in Account Details underneath,
+// which is where anyone actually reads it to make the transfer. The rule exists because
+// `Bank of the Philippine Islands (BPI) Transfer` wrapped across **four lines** in the tick
+// list and cost the page 66px — enough to push the Pension Policies off the sheet. A name
+// that already fits (`Land Bank`) is left completely alone.
+export function shortBankName(name?: string): string {
+  const raw = (name || '').trim()
+  if (!raw) return 'Bank'
+  const acronym = (raw.match(/\(([^)]+)\)/) || [])[1]
+  const plain = raw.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim()
+  if (plain && plain.length <= 14) return plain
+  if (acronym && acronym.trim()) return acronym.trim()
+  return plain.split(' ')[0] || 'Bank'
+}

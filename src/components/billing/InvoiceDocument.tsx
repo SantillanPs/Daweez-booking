@@ -3,7 +3,7 @@ import { Booking, Room, Venue } from '../../types/booking'
 import { Statement } from '../../utils/statement'
 import { getRateConfig } from '../../utils/rateConfig'
 import { getPaymentAccounts } from '../../utils/paymentAccounts'
-import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
+import { paymentKind, paymentMethodLabel, shortBankName } from '../../utils/paymentMethod'
 import { paymentPlanLabel } from '../../utils/bookingMoney'
 import { HOTEL_POLICY } from '../../utils/hotelPolicy'
 import { shortStayLine, stayHoursOf } from '../../utils/shortStay'
@@ -64,46 +64,46 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
     <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}>
       <BrandHeader invoiceNumber={statement.invoiceNumber} dateIssued={statement.dateIssued} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 py-3">
-        <div className="space-y-2">
-          <Line label="Guest's Name" value={b.guest_name} />
-          <Line label="Address" value={b.guest_address} />
-          <Line label="Email Address" value={b.guest_email && b.guest_email !== 'admin@daweez-booking.vercel.app' ? b.guest_email : ''} />
-          <Line label="Nationality" value={b.guest_nationality} />
-        </div>
-        <div className="space-y-2">
-          <Line label="Birth Date" value={b.birthdate} />
-          <Line label="Sex" value={b.guest_gender} />
-          <Line label="Contact No." value={b.guest_phone} />
-          <Line label="Plate No." value={b.vehicle_plate} />
-        </div>
-      </div>
+      {/* Guest and Stay are ONE two-column grid (card k144, the owner's ruling,
+          2026-09-29). Every block on this page used to be `grid-cols-1 sm:grid-cols-2`,
+          and **A5 is 559px wide while `sm` starts at 640px** — so on paper the breakpoint
+          never fired and EVERY block collapsed to a single column. That is why the bill ran
+          to 1.4 pages and the bottom was cut. Paired, the same fields take half the height,
+          and the guest's two or three lines no longer leave the right half of the sheet
+          empty: a field the booking does not hold returns null and the row simply closes
+          up, so the stay's fields move left into that space on their own.
 
-      {/* Stay. A SHORT STAY is hours, not nights (the owner's S3 ruling): the stored
-          check-out is the next day because the room is taken for the whole day, so
-          printing it would name a check-out the guest never had. **No rule above it** —
-          the owner took the long line between the guest's name and Room No. out
-          (2026-09): the two blocks read as one form, the way the paper does. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 py-2">
+          A SHORT STAY is hours, not nights (the owner's S3 ruling): the stored check-out is
+          the next day because the room is taken for the whole day, so printing it would name
+          a check-out the guest never had. **No rule above this block** — the owner took the
+          long line between the guest's name and Room No. out (2026-09), so the two read as
+          one form, the way the paper does. */}
+      <div className="grid grid-cols-2 gap-x-8 gap-y-0.5">
+        <Line label="Name" value={b.guest_name} />
         <Line label="Room No." value={roomNo} />
-        <Line label="Room Type" value={roomType} />
-        <Line label="Check In Date &amp; Time" value={fmtStayTime(b.check_in, b.actual_check_in)} />
+        <Line label="Address" value={b.guest_address} />
+        <Line label="Type" value={roomType} />
+        <Line label="Email" value={b.guest_email && b.guest_email !== 'admin@daweez-booking.vercel.app' ? b.guest_email : ''} />
+        <Line label="Check In" value={fmtStayTime(b.check_in, b.actual_check_in)} />
+        <Line label="Nationality" value={b.guest_nationality} />
         {stayHours > 0 ? (
           <Line label="Short Stay" value={shortStayLine(b.actual_check_in, stayHours)} />
         ) : (
-          <>
-            <Line label="Check Out Date &amp; Time" value={fmtStayTime(b.check_out, b.actual_check_out)} />
-            <Line label="Standard Check-in / Out" value={fmtTime(rates.standardCheckInTime) + ' / ' + fmtTime(rates.standardCheckOutTime)} />
-          </>
+          <Line label="Check Out" value={fmtStayTime(b.check_out, b.actual_check_out)} />
         )}
-        {/* How many people the stay is for belongs with the stay, not inside the guest's
-            contact details — the owner moved it here (2026-09), under the standard times. */}
-        <Line label="No. of Guests" value={'Total ' + guestCount} />
+        <Line label="Birth Date" value={b.birthdate} />
+        {stayHours === 0 && (
+          <Line label="Standard" value={fmtTime(rates.standardCheckInTime) + ' / ' + fmtTime(rates.standardCheckOutTime)} />
+        )}
+        <Line label="Sex" value={b.guest_gender} />
+        <Line label="Guests" value={'Total ' + guestCount} />
+        <Line label="Contact" value={b.guest_phone} />
+        <Line label="Plate No." value={b.vehicle_plate} />
       </div>
 
       {/* Companions — only when there are companions to list. */}
       {hasCompanions && (
-        <div className="py-3 border-t border-soft">
+        <div className="pt-2 border-t border-soft">
           <p className="text-[12px] font-bold uppercase tracking-wider text-main mb-1.5">Companion</p>
           <table className="w-full border-collapse">
             <thead>
@@ -126,8 +126,10 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
 
       <StatementChargesTable items={statement.lineItems} />
 
-      {/* Payment + totals */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 py-3 border-t-2 border-ink-700">
+      {/* Payment + totals, side by side: the tick boxes used to stack down a full-width
+          column while the totals sat under them (card k144). The method list is itself two
+          columns of ticks, so the block costs half the height it did. */}
+      <div className="grid grid-cols-2 gap-6 pt-2 border-t-2 border-ink-700">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider text-main mb-1.5">Payment Method</p>
           {/* The method is the guest's own choice, so a statement printed before any money
@@ -138,10 +140,10 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
               <span className="font-semibold">{methodLabel}</span>
             </div>
           ) : (
-            <ul className="space-y-1 text-[12.5px]">
+            <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px]">
               <li className="flex items-center gap-1.5"><span className="inline-flex w-4 h-4 border border-ink-300" /><span className="font-semibold">Cash</span></li>
               <li className="flex items-center gap-1.5"><span className="inline-flex w-4 h-4 border border-ink-300" /><span className="font-semibold">GCash</span></li>
-              <li className="flex items-center gap-1.5"><span className="inline-flex w-4 h-4 border border-ink-300" /><span className="font-semibold">{payAcct.bankName ? payAcct.bankName + ' Transfer' : 'Bank Transfer'}</span></li>
+              <li className="flex items-start gap-1.5"><span className="inline-flex w-4 h-4 border border-ink-300 shrink-0" /><span className="font-semibold">{shortBankName(payAcct.bankName) + ' Transfer'}</span></li>
               <li className="flex items-center gap-1.5"><span className="inline-flex w-4 h-4 border border-ink-300" /><span className="font-semibold">Check</span></li>
             </ul>
           )}
@@ -156,25 +158,25 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           {/* Account details only for the method actually chosen. Nothing to transfer to
               when the guest pays in cash or by check. */}
           {isGcash && (
-            <div className="mt-3 pt-2 border-t border-dashed border-ink-300 space-y-0.5 text-[11px] text-ink-600">
+            <div className="mt-2 pt-1.5 border-t border-dashed border-ink-300 space-y-0.5 text-[11px] text-ink-600">
               <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-1">Account Details</p>
               <p>GCash Name: <strong className="text-main">{payAcct.gcashName}</strong></p>
               <p>GCash No: <strong className="font-mono text-main">{payAcct.gcashNumber}</strong></p>
             </div>
           )}
           {isBank && (
-            <div className="mt-3 pt-2 border-t border-dashed border-ink-300 space-y-0.5 text-[11px] text-ink-600">
+            <div className="mt-2 pt-1.5 border-t border-dashed border-ink-300 space-y-0.5 text-[11px] text-ink-600">
               <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-1">Account Details</p>
               <p>{payAcct.bankName} Name: <strong className="text-main">{payAcct.bankAccountName}</strong></p>
               <p>{payAcct.bankName} Account No: <strong className="font-mono text-main">{payAcct.bankAccountNumber}</strong></p>
             </div>
           )}
           {!methodLabel && (
-            <div className="mt-3 pt-2 border-t border-dashed border-ink-300 space-y-1 text-[11px] text-ink-600">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-main">Where to pay</p>
-              <p>Cash — at the front desk.</p>
-              <p>GCash — <strong className="text-main">{payAcct.gcashName}</strong> · <strong className="font-mono text-main">{payAcct.gcashNumber}</strong></p>
-              <p>{payAcct.bankName || 'Bank'} — <strong className="text-main">{payAcct.bankAccountName}</strong> · <strong className="font-mono text-main">{payAcct.bankAccountNumber}</strong></p>
+            <div className="mt-2 pt-1.5 border-t border-dashed border-ink-300 text-[11px] text-ink-600">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-0.5">Where to pay</p>
+              {/* One line, not three (card k144): the fallback only shows while no method has
+                  been chosen, and three bulleted lines cost 44px of a sheet that had none. */}
+              <p>Cash at the front desk · GCash <strong className="text-main">{payAcct.gcashName}</strong> {payAcct.gcashNumber} · {shortBankName(payAcct.bankName)} <strong className="text-main">{payAcct.bankAccountName}</strong> {payAcct.bankAccountNumber}</p>
             </div>
           )}
         </div>
@@ -206,12 +208,12 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
 
       {/* Pension Policies — the hotel's own wording, VERBATIM (the owner's ruling):
           the guest must read the same text on the bill as on the form they signed. */}
-      <div className="mt-5 border-t border-dashed border-ink-300 pt-3 space-y-1 text-[9.5px] text-ink-600 leading-snug">
+      <div className="pt-2 border-t border-dashed border-ink-300 space-y-1 text-[9.5px] text-ink-600 leading-snug">
         <p className="text-[10px] font-bold uppercase tracking-wider text-main">Pension Policies</p>
         <p>{HOTEL_POLICY}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-6 mt-5 pt-4 border-t border-dashed border-ink-300">
+      <div className="grid grid-cols-2 gap-6 pt-3 border-t border-dashed border-ink-300">
         <div className="flex items-end gap-3">
           <span className="text-[11px] font-bold uppercase tracking-wider text-main whitespace-nowrap">Prepared by:</span>
           <span className="flex-1 text-[12px] font-semibold text-main border-b border-ink-300 min-h-[24px] pb-0.5">{(b.prepared_by || '').trim()}</span>
@@ -221,7 +223,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           <div className="flex-1 border-b border-ink-300 h-6" />
         </div>
       </div>
-      <p className="mt-2 text-[9.5px] text-ink-500 italic">By signing this form, I understand and agree to the Pension Policies.</p>
+      <p className="text-[9.5px] text-ink-500 italic">By signing this form, I understand and agree to the Pension Policies.</p>
     </StatementShell>
   )
 }

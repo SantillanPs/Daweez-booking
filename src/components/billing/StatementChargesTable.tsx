@@ -46,7 +46,12 @@ export function StatementChargesTable({ items }: { items: StatementLineItem[] })
     // No rule above the table: the owner took the long separating lines out of the
     // statement (2026-09) so the page reads as one form; the table's own border says
     // where the charges start.
-    <div className="py-3 overflow-x-auto">
+    // **And no vertical padding of its own** (card k144): this used to carry `py-3`,
+    // which stacked with the field block's `py-3` above it and the payment block's `py-3`
+    // below — 24px of air at a boundary that needs 8, which is why the table read as
+    // floating. The blocks either side are `py-2` now and own the space, so the spacing
+    // lives in ONE place instead of three meeting in the middle.
+    <div className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-paper-100 text-center text-[9.5px] uppercase tracking-wider text-ink-800">

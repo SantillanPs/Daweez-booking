@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="luxury">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The complete padding audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --page:#141414;--card:#1F1F1F;--raise:#262626;--line:#3A3A3A;
+    --text:#EDEAE4;--sec:#A8A29A;--muted:#7D7871;--gold:#D0AB60;
+    --gold-bg:#332B18;--gold-fg:#E6C989;
+    --good-bg:#12261F;--good-fg:#34D399;
+    --bad-bg:#2A1615;--bad-fg:#F87171;
+    --neu-bg:#2A2A2A;--neu-fg:#C9C4BB;
+  }
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:36px 22px 92px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(24px,3.3vw,33px);line-height:1.15;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec);overflow-wrap:anywhere}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:16.5px;color:var(--text);max-width:68ch}
+  .wrap>*+*{margin-top:20px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:var(--neu-fg)}
+  .flowrow{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:13px}
+  .note b{color:var(--sec);font-weight:500}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#171717;border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--gold-fg)}
+
+  table.audit{width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px}
+  table.audit th,table.audit td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:middle}
+  table.audit th{background:var(--raise);font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+  table.audit td.px{font-family:'JetBrains Mono',monospace;font-size:12.5px;text-align:right;white-space:nowrap;color:var(--bad-fg)}
+  table.audit td.px.ok{color:var(--sec)}
+  table.audit td.px.fine{color:var(--good-fg)}
+  table.audit td.bar{width:150px;padding:7px 9px}
+  table.audit .b{height:12px;border-radius:3px;background:var(--bad-fg);display:block}
+  table.audit tr.miss{background:var(--bad-bg)}
+  table.audit tr.miss td{border-color:#5A2A28}
+  table.audit tr.miss .b{background:var(--bad-fg)}
+  table.audit tr.okrow .b{background:var(--neu-fg);opacity:.5}
+  table.audit tr.okrow td.px{color:var(--sec)}
+  table.audit .tag{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+  table.audit .tag.t-miss{color:var(--bad-fg)}
+  table.audit .tag.t-done{color:var(--gold-fg)}
+  table.audit .tag.t-fine{color:var(--muted)}
+
+  .sums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}
+  @media (max-width:760px){.sums{grid-template-columns:minmax(0,1fr)}}
+  .sumcard{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+  .sumcard .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+  .sumcard .v{font-family:'Sora',sans-serif;font-size:26px;font-weight:700;margin-top:4px}
+  .sumcard .d{font-size:12.5px;color:var(--muted)}
+  .sumcard.good{border-color:#1E5442}
+  .sumcard.good .v{color:var(--good-fg)}
+  .sumcard.bad{border-color:#5A2A28}
+  .sumcard.bad .v{color:var(--bad-fg)}
+
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:17px 19px;min-width:0}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .opt:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .opt input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .opt .l{font-weight:600;font-size:14px;display:block}
+  .opt .h{font-size:13px;color:var(--muted);display:block}
+  .opt .h b{color:var(--sec);font-weight:500}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · card k144 · revision 5 · full audit · nothing built yet</div>
+    <h1>I checked the whole sheet. <span style="color:var(--bad-fg)">Two more</span> — and one of them was stacking.</h1>
+    <p class="lede">Revision 4 listed seven gaps. Auditing every padding in the printed chain found <b>two more in the ordinary bill</b> and <b>three in the agency bill</b>. The important one: the <b>charges table carries its own <code>py-3</code></b>, so it stacks with the field block's <code>py-3</code> above it and the payment block's <code>py-3</code> below — <b>three paddings in a row where one would do</b>. That is why the table looks like it is floating.</p>
+    <div class="flowrow">
+      <span class="badge b-bad">2 missed in the guest bill</span>
+      <span class="badge b-bad">3 missed in the agency bill</span>
+      <span class="badge b-gold">still no type size, field or word changes</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>The whole printed chain, top to bottom</h2></div>
+    <p class="sub">Every vertical padding the statement uses, in the order it appears. Red rows are the ones revision 4 missed.</p>
+
+    <table class="audit">
+      <tr>
+        <th>Where</th><th>What it is</th><th>Now</th><th>Space</th><th></th>
+      </tr>
+
+      <tr>
+        <td>Paper, top edge</td><td><code>print:py-6</code> on the page body</td><td class="px">24px</td>
+        <td class="bar"><i class="b" style="width:52%"></i></td><td class="tag t-done">in rev 4</td>
+      </tr>
+      <tr>
+        <td>Under the letterhead</td><td><code>pb-4</code></td><td class="px">16px</td>
+        <td class="bar"><i class="b" style="width:35%"></i></td><td class="tag t-done">in rev 4</td>
+      </tr>
+      <tr>
+        <td><b>The bold rule</b></td><td><code>my-2</code> top <b>+</b> bottom</td><td class="px">16px</td>
+        <td class="bar"><i class="b" style="width:35%"></i></td><td class="tag t-done">in rev 4</td>
+      </tr>
+      <tr>
+        <td>Field block, above and below</td><td><code>py-3</code></td><td class="px">24px</td>
+        <td class="bar"><i class="b" style="width:52%"></i></td><td class="tag t-done">in rev 4</td>
+      </tr>
+      <tr>
+        <td>Between field rows</td><td><code>gap-y-1</code> + <code>pb-0.5</code>, ×4 rows</td><td class="px">24px</td>
+        <td class="bar"><i class="b" style="width:52%"></i></td><td class="tag t-done">in rev 4</td>
+      </tr>
+
+      <tr class="miss">
+        <td><b>Charges table, above and below</b></td><td><code>py-3</code> — <b>its own, on top of the two blocks beside it</b></td><td class="px">24px</td>
+        <td class="bar"><i class="b" style="width:52%"></i></td><td class="tag t-miss">missed</td>
+      </tr>
+
+      <tr>
+        <td>Inside the table</td><td><code>py-1</code> per row (4 rows)</td><td class="px">8px</td>
+        <td class="bar"><i class="b" style="width:17%"></i></td><td class="tag t-fine">fine as is</td>
+      </tr>
+      <tr>
+        <td>Payment block, above and below</td><td><code>py-3</code></td><td class="px">24px</td>
+        <td class="bar"><i class="b" style="width:52%"></i></td><td class="tag t-done">in rev 4</td>
+      </tr>
+      <tr class="miss">
+        <td>Account Details</td><td><code>mt-3 pt-2</code> above a two-line block</td><td class="px">20px</td>
+        <td class="bar"><i class="b" style="width:43%"></i></td><td class="tag t-miss">missed</td>
+      </tr>
+      <tr class="okrow">
+        <td>Payment plan line</td><td><code>mt-2</code></td><td class="px">8px</td>
+        <td class="bar"><i class="b" style="width:17%"></i></td><td class="tag t-fine">leave it</td>
+      </tr>
+      <tr>
+        <td>Policies rule</td><td><code>mt-5</code> + <code>pt-3</code></td><td class="px">32px</td>
+        <td class="bar"><i class="b" style="width:70%"></i></td><td class="tag t-done">in rev 4</td>
+      </tr>
+      <tr>
+        <td>Signatures</td><td><code>mt-5</code> + <code>pt-4</code></td><td class="px">36px</td>
+        <td class="bar"><i class="b" style="width:78%"></i></td><td class="tag t-done">in rev 4</td>
+      </tr>
+      <tr class="okrow">
+        <td>Signing note</td><td><code>mt-2</code></td><td class="px">8px</td>
+        <td class="bar"><i class="b" style="width:17%"></i></td><td class="tag t-fine">leave it</td>
+      </tr>
+      <tr>
+        <td>Paper, bottom edge</td><td><code>print:py-6</code></td><td class="px">24px</td>
+        <td class="bar"><i class="b" style="width:52%"></i></td><td class="tag t-done">in rev 4</td>
+      </tr>
+    </table>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>The agency bill — same fault, three gaps</h2></div>
+    <p class="sub">It shares the letterhead and the charges table, so it inherits everything above. These three are its own.</p>
+
+    <table class="audit">
+      <tr><th>Where</th><th>What it is</th><th>Now</th><th>Space</th><th></th></tr>
+      <tr class="miss">
+        <td><b>Above “Prepared by”</b></td><td><code>mt-6</code> + <code>pt-4</code> — <b>the biggest single gap in either bill</b></td><td class="px">40px</td>
+        <td class="bar"><i class="b" style="width:88%"></i></td><td class="tag t-miss">missed</td>
+      </tr>
+      <tr class="miss">
+        <td>Its two field columns</td><td><code>space-y-2</code> per line (the guest bill uses <code>gap-y-1</code>)</td><td class="px">8px/line</td>
+        <td class="bar"><i class="b" style="width:35%"></i></td><td class="tag t-miss">missed</td>
+      </tr>
+      <tr class="miss">
+        <td>Above the thank-you line</td><td><code>mt-4</code></td><td class="px">16px</td>
+        <td class="bar"><i class="b" style="width:35%"></i></td><td class="tag t-miss">missed</td>
+      </tr>
+    </table>
+    <p class="note" style="margin-top:14px"><b>The agency bill has no Pension Policies and no signature block</b>, so it already fitted comfortably — these three are untidiness rather than a problem. Worth doing in the same sweep since the file is open, and it makes the two bills share one spacing scale instead of two.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>The revised total</h2></div>
+    <div class="sums">
+      <div class="sumcard"><div class="k">Revision 4</div><div class="v">94px</div><div class="d">The seven gaps I had listed</div></div>
+      <div class="sumcard bad"><div class="k">Found by this audit</div><div class="v">+22px</div><div class="d">Charges table 8 · Account Details 6 · agency 8</div></div>
+      <div class="sumcard good"><div class="k">Full sweep</div><div class="v">≈116px</div><div class="d">On top of the ~110px from the wrapping fix</div></div>
+    </div>
+    <p class="note" style="margin-top:16px"><b>The stacking is the real find.</b> Between the last field row and the first table row there are <b>two</b> <code>py-3</code> paddings meeting — 24px of air for a boundary that needs 8. The same happens again below the table. Set the blocks to <code>py-2</code> and give the table <b>no vertical padding of its own</b>, and the page loses ~30px while looking <i>more</i> deliberate, because the spacing is then owned by one thing instead of three.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">04</span><h2>Your call</h2></div>
+    <form class="q" data-lavish-question="sweep" onsubmit="event.preventDefault(); const c = new FormData(event.currentTarget).get('sweep'); if (c) window.lavish.queuePrompt('A5 statement padding sweep: ' + c, { tag: 'choice', text: 'Sweep: ' + c, element: event.currentTarget, data: { question: 'sweep', answer: c } });">
+      <h3>Do the whole sweep, or only the guest bill?</h3>
+
+      <label class="opt"><input type="radio" name="sweep" value="Yes — sweep both bills: all ten gaps in the guest bill plus the three in the agency bill, and remove the charges table's own vertical padding so the three py-3s stop stacking">
+        <span><span class="l">Sweep both bills <span class="badge b-gold" style="margin-left:6px">recommended</span></span>
+        <span class="h"><b>≈116px</b> recovered, one spacing scale across both bills, and the charges table stops floating. Every change is padding on a container.</span></span></label>
+
+      <label class="opt"><input type="radio" name="sweep" value="Guest bill only — apply the ten gaps in the guest statement, leave the agency bill's own three spacings alone for now">
+        <span><span class="l">Guest bill only</span>
+        <span class="h">The bill you actually handed me gets the fix. The agency bill keeps its own looser spacing, so the two papers still differ.</span></span></label>
+
+      <label class="opt"><input type="radio" name="sweep" value="Show me the swept guest bill at true A5 first, before I decide on the agency bill">
+        <span><span class="l">Draw the swept sheet first</span>
+        <span class="h">I put the guest bill at true A5 with all ten gaps applied so you can judge the density before anything is built — the agency bill decision can wait.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+  </section>
+
+</div>
+</body>
+</html>

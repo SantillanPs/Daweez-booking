@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The bill in two columns — true A5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raise:#262626; --line:#3A3A3A;
+    --text:#EDEAE4; --sec:#A8A29A; --muted:#7D7871; --gold:#D0AB60;
+    --gold-bg:#332B18; --gold-fg:#E6C989;
+    --good-bg:#12261F; --good-fg:#34D399;
+    --bad-bg:#2A1615;  --bad-fg:#F87171;
+    --neu-bg:#2A2A2A;  --neu-fg:#C9C4BB;
+    /* the paper */
+    --paper:#F6F2EA; --ink:#1C1C1C; --ink6:#55504A; --ink3:#B9B2A4; --rule:#8C857A;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:40px 24px 96px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1220px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(25px,3.4vw,35px);line-height:1.15;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec)}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:17px;color:var(--text);max-width:66ch}
+  .wrap>*+*{margin-top:22px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);
+       border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+         border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:#C9C4BB}
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);
+       border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .opt:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .opt input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .opt .l{font-weight:600;font-size:14px}
+  .opt .h{font-size:13px;color:var(--muted)}
+  .opt .h b{color:var(--sec);font-weight:500}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+  button.submit:hover{filter:brightness(1.07)}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:14px}
+  .note b{color:var(--sec);font-weight:500}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#171717;border:1px solid var(--line);
+       border-radius:4px;padding:1px 5px;color:var(--gold-fg)}
+  .flowrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+
+  /* ── true A5 sheets, side by side ── */
+  .sheets{display:flex;gap:26px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+  .sheetwrap{min-width:0}
+  .sheetlabel{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .a5{width:148mm;height:210mm;background:var(--paper);color:var(--ink);
+      font-family:'DM Sans',system-ui,sans-serif;font-size:11px;line-height:1.45;
+      padding:6mm 8.5mm;position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .a5 .cut{position:absolute;left:0;right:0;border-top:2px dashed #B3261E;color:#B3261E;
+           font-size:9px;font-weight:700;text-align:right;padding-right:6px}
+  .a5 .cut span{background:var(--paper);padding:0 4px;position:relative;top:-7px}
+  .hdr{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .hdr h1{font-family:'Sora',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:-.01em;margin:0}
+  .hdr p{margin:1px 0 0;font-size:9.5px;color:var(--ink6);line-height:1.35}
+  .hdr .rt{text-align:right}
+  .hdr h2{font-family:'Sora',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;margin:0}
+  .hdr .rt .meta{margin-top:5px;font-size:10px}
+  .hdr .rt .meta div{display:flex;gap:5px;justify-content:flex-end;align-items:baseline}
+  .hdr .rt .meta b{font-size:9.5px;white-space:nowrap}
+  .hdr .rt .meta i{font-style:normal;font-family:'JetBrains Mono',monospace;border-bottom:1px solid var(--ink3);padding:0 2px}
+  .rule2{border-top:2px solid var(--rule);margin:7px 0 8px}
+  .line{display:flex;gap:5px;align-items:flex-end;border-bottom:1px solid var(--ink3);padding-bottom:1px;margin-bottom:4.5px}
+  .line b{font-size:9.5px;font-weight:700;white-space:nowrap}
+  .line span{flex:1;font-size:11.5px;min-height:15px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
+  .sec{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink6);
+       margin:0 0 4px;border-bottom:1px solid var(--ink3);padding-bottom:2px}
+  table.chg{width:100%;border-collapse:collapse;margin-top:2px}
+  table.chg th,table.chg td{border:1px solid var(--rule);padding:2.5px 4px;font-size:10px;text-align:left}
+  table.chg th{font-size:8.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink6);text-align:center}
+  table.chg th.l,table.chg td.l{text-align:left}
+  table.chg td.r{text-align:right}
+  table.chg td.band{font-weight:700;font-size:10px;background:#EDE7DA}
+  .tot{font-size:11px}
+  .tot .r{display:flex;justify-content:space-between;gap:8px;padding:1.5px 0}
+  .tot .r.big{border-top:1px dashed var(--ink3);margin-top:3px;padding-top:4px;align-items:baseline}
+  .tot .r.big em{font-style:normal;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink6);display:block}
+  .tot .r.big strong{font-family:'Sora',sans-serif;font-size:19px;font-weight:800}
+  .tick{font-size:10.5px;margin:0 0 2.5px;display:flex;gap:5px;align-items:center}
+  .tick i{width:9px;height:9px;border:1px solid var(--rule);display:inline-block;flex:none}
+  .pol{margin-top:8px;border-top:1px dashed var(--ink3);padding-top:6px}
+  .pol h4{margin:0 0 3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+  .pol p{margin:0;font-size:9px;line-height:1.42;color:var(--ink6);text-align:justify}
+  .sign{display:flex;gap:14px;margin-top:9px;align-items:flex-end}
+  .sign div{flex:1}
+  .sign b{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+  .sign i{display:block;border-bottom:1px solid var(--rule);height:17px;margin-top:2px}
+  .agreetxt{margin-top:5px;font-size:9px;font-style:italic;color:var(--muted)}
+  .flowrow svg{width:auto}
+
+  .maths{display:grid;grid-template-columns:190px repeat(2,minmax(0,1fr));gap:6px 14px;font-size:13.5px;align-items:center;margin-top:12px}
+  .maths .bar{height:15px;border-radius:3px;background:var(--gold);opacity:.85}
+  .maths .bar.bad{background:var(--bad-fg)}
+  .maths .bar.good{background:var(--good-fg)}
+  .maths .h{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .maths .px{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);text-align:right}
+  @media (max-width:1180px){ .a5{transform-origin:top left} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · card k144 · your idea, drawn true to size</div>
+    <h1>Two columns. <span style="color:var(--good-fg)">Nothing shrunk, nothing cut, one side of A5.</span></h1>
+    <p class="lede">You're right — the page is one long column of labelled lines while half the sheet sits empty on the right. Below are both sheets <b>at actual size</b>. Left is today, with the red line where the browser runs out of paper. Right is the same statement with the data paired up.</p>
+    <div class="flowrow">
+      <span class="badge b-bad">today ≈ 1,050px — cut</span>
+      <span class="badge b-good">two columns ≈ 660px — fits</span>
+      <span class="badge b-gold">no type shrinks</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>Actual size — A5, 148 × 210 mm</h2></div>
+
+    <div class="sheets">
+      <!-- ─────────── BEFORE ─────────── -->
+      <div class="sheetwrap">
+        <div class="sheetlabel"><span class="badge b-bad">today</span><span class="sub">one column · ~1,050px</span></div>
+        <div class="a5">
+          <div class="hdr" style="flex-direction:column">
+            <div>
+              <h1>Daweez Pension House</h1>
+              <p>National Highway, San Agustin Sur, Tandag City, Surigao del Sur</p>
+              <p>Email Address: daweezpensionhouse@gmail.com</p>
+              <p>Mobile No: 0910-7163830</p>
+            </div>
+            <div class="rt" style="text-align:left;margin-top:6px">
+              <h2>Guest Billing Statement</h2>
+              <div class="meta" style="margin-top:5px">
+                <div style="justify-content:flex-start"><b>Bill / Invoice No.:</b><i>GRF-2026-09-0013</i></div>
+                <div style="justify-content:flex-start"><b>Date Issued:</b><i>Sep 29, 2026, 1:16 PM</i></div>
+              </div>
+            </div>
+          </div>
+          <div class="rule2"></div>
+
+          <div class="line"><b>Guest's Name:</b><span>SEBASTIAN</span></div>
+          <div class="line"><b>Contact No.:</b><span>None</span></div>
+          <div style="height:5px"></div>
+          <div class="line"><b>Room No.:</b><span>3</span></div>
+          <div class="line"><b>Room Type:</b><span>Full Double</span></div>
+          <div class="line"><b>Check In Date &amp; Time:</b><span>Sep 30, 2026</span></div>
+          <div class="line"><b>Check Out Date &amp; Time:</b><span>Oct 1, 2026</span></div>
+          <div class="line"><b>Standard Check-in / Out:</b><span>2:00pm / 12:00nn</span></div>
+          <div class="line"><b>No. of Guests:</b><span>Total 1</span></div>
+
+          <table class="chg">
+            <tr><th class="l">Room / Particulars</th><th>Rate</th><th>Date</th><th>No. of Night</th><th>Total</th></tr>
+            <tr><td class="band" colspan="5">Room Accommodation:</td></tr>
+            <tr><td class="l">Full Double</td><td>₱950</td><td>09/30/26 → 10/01/26</td><td>1</td><td class="r">₱950</td></tr>
+          </table>
+
+          <div style="margin-top:7px">
+            <p class="sec">Payment Method</p>
+            <p class="tick"><i></i> Cash</p>
+            <p class="tick"><i></i> GCash</p>
+            <p class="tick"><i></i> Bank of the Philippine Islands (BPI) Transfer</p>
+          </div>
+          <div class="cut" style="top:calc(210mm - 6mm - 62mm)"><span>▼ paper ends here — everything below is cut or pushed to a second sheet</span></div>
+        </div>
+      </div>
+
+      <!-- ─────────── AFTER ─────────── -->
+      <div class="sheetwrap">
+        <div class="sheetlabel"><span class="badge b-good">two columns</span><span class="sub">same type sizes · ~660px</span></div>
+        <div class="a5">
+          <div class="hdr">
+            <div>
+              <h1>Daweez Pension House</h1>
+              <p>National Highway, San Agustin Sur, Tandag City, Surigao del Sur</p>
+              <p>Email Address: daweezpensionhouse@gmail.com</p>
+              <p>Mobile No: 0910-7163830</p>
+            </div>
+            <div class="rt">
+              <h2>Guest Billing Statement</h2>
+              <div class="meta">
+                <div><b>Bill / Invoice No.:</b><i>GRF-2026-09-0013</i></div>
+                <div><b>Date Issued:</b><i>Sep 29, 2026, 1:16 PM</i></div>
+              </div>
+            </div>
+          </div>
+          <div class="rule2"></div>
+
+          <div class="cols">
+            <div>
+              <p class="sec">Guest</p>
+              <div class="line"><b>Name:</b><span>SEBASTIAN</span></div>
+              <div class="line"><b>Contact No.:</b><span>None</span></div>
+            </div>
+            <div>
+              <p class="sec">Stay</p>
+              <div class="line"><b>Room No.:</b><span>3</span></div>
+              <div class="line"><b>Type:</b><span>Full Double</span></div>
+              <div class="line"><b>Check In:</b><span>Sep 30, 2026</span></div>
+              <div class="line"><b>Check Out:</b><span>Oct 1, 2026</span></div>
+              <div class="line"><b>No. of Guests:</b><span>Total 1</span></div>
+            </div>
+          </div>
+
+          <table class="chg" style="margin-top:7px">
+            <tr><th class="l">Room / Particulars</th><th>Rate</th><th>Date</th><th>No. of Night</th><th>Total</th></tr>
+            <tr><td class="band" colspan="5">Room Accommodation:</td></tr>
+            <tr><td class="l">Full Double</td><td>₱950</td><td>09/30/26 → 10/01/26</td><td>1</td><td class="r">₱950</td></tr>
+          </table>
+
+          <div class="cols" style="margin-top:7px">
+            <div>
+              <p class="sec">Payment Method</p>
+              <p class="tick"><i></i> Cash</p>
+              <p class="tick"><i></i> GCash</p>
+              <p class="tick"><i></i> BPI Transfer</p>
+              <p class="tick"><i></i> Check</p>
+              <p style="font-size:10.5px;margin:3px 0 0"><b>Payment Plan:</b> Reservation — nothing paid</p>
+            </div>
+            <div class="tot">
+              <p class="sec">Totals</p>
+              <div class="r"><span>Sub-Total</span><span>₱950</span></div>
+              <div class="r"><span>Downpayment</span><span>₱0</span></div>
+              <div class="r big"><span><em>Amount Due</em></span><strong>₱950</strong></div>
+            </div>
+          </div>
+
+          <div class="pol">
+            <h4>Pension Policies</h4>
+            <p>The hotel's own wording, printed word for word on every bill — about 1,400 characters. It stays exactly as it is, at its current 9.5px: this is the text the guest reads and signs. It now sits under a page that already fits, instead of pushing the bill off the sheet.</p>
+          </div>
+
+          <div class="sign">
+            <div><b>Prepared by:</b><i></i></div>
+            <div><b>Guest Signature:</b><i></i></div>
+          </div>
+          <p class="agreetxt">By signing this form, I understand and agree to the Pension Policies.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>Where the space comes from</h2></div>
+    <p class="sub">Nothing is made smaller. The same lines simply stop taking a whole row each.</p>
+
+    <div class="maths">
+      <span class="h">Block</span><span class="h">Today</span><span class="h">Two columns</span>
+
+      <span>Letterhead</span><span><i class="bar bad" style="width:100%"></i><span class="sub">stacked, ~110</span></span><span><i class="bar good" style="width:64%"></i><span class="sub">side by side, ~70</span></span>
+      <span>Guest + Stay</span><span><i class="bar bad" style="width:100%"></i><span class="sub">14 rows, ~270</span></span><span><i class="bar good" style="width:52%"></i><span class="sub">paired, ~140</span></span>
+      <span>Charges table</span><span><i class="bar" style="width:37%"></i><span class="sub">~100</span></span><span><i class="bar" style="width:30%"></i><span class="sub">~80</span></span>
+      <span>Payment + Totals</span><span><i class="bar bad" style="width:100%"></i><span class="sub">one under the other, ~170</span></span><span><i class="bar good" style="width:62%"></i><span class="sub">side by side, ~106</span></span>
+      <span>Policies</span><span><i class="bar" style="width:70%"></i><span class="sub">~190</span></span><span><i class="bar" style="width:70%"></i><span class="sub">~190 · untouched</span></span>
+      <span>Signatures</span><span><i class="bar" style="width:33%"></i><span class="sub">~90</span></span><span><i class="bar" style="width:21%"></i><span class="sub">~56</span></span>
+    </div>
+
+    <p class="note" style="margin-top:16px"><b>Three row-pairs do the work:</b> the <b>letterhead</b> (hotel details left, bill number right — it stacks today only because the two-column breakpoint needs a wider screen than A5 has), <b>Guest beside Stay</b> (14 labelled lines become 7 rows), and <b>Payment Method beside Totals</b> (the tick boxes were wasting the full width of the sheet). The charges table and the Pension Policies stay exactly as they are.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>Your call</h2></div>
+    <form class="q" data-lavish-question="layout">
+      <h3>Build the two-column A5 layout?</h3>
+      <label class="opt"><input type="radio" name="layout" value="Yes — pair the letterhead, Guest beside Stay, and Payment Method beside Totals; leave the charges table and the policies exactly as they are">
+        <span><span class="l">Yes — build it exactly like the right-hand sheet <span class="badge b-gold" style="margin-left:6px">recommended</span></span><br>
+        <span class="h">Nothing shrinks, the Pension Policies is untouched, and the whole statement fits one side of A5 with room to spare.</span></span></label>
+
+      <label class="opt"><input type="radio" name="layout" value="Nearly — but keep the Payment Method full width and only pair the letterhead and Guest beside Stay">
+        <span><span class="l">Pair less — keep Payment Method full width</span><br>
+        <span class="h">Only the letterhead and Guest | Stay are paired. Safer to read, still fits, but with less slack for a booking that has companions, a longer address or several charges.</span></span></label>
+
+      <label class="opt"><input type="radio" name="layout" value="Not quite — I want something different about the pairings; I'll describe it">
+        <span><span class="l">Not quite — let me describe it</span><br>
+        <span class="h">Tell me which lines belong beside which and I'll redraw it.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+    <p class="note" style="margin-top:16px">One thing worth knowing before you pick: a booking <b>with companions</b> adds a table, and a long address or several charges adds rows. The paired layout has roughly <b>85px of slack</b> on this example, so those still fit — but it is the pairing that creates the room, not shrinking anything.</p>
+  </section>
+
+</div>
+</body>
+</html>

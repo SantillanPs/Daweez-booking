@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="luxury">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The wrapping is eating the page</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --page:#141414; --card:#1F1F1F; --raise:#262626; --line:#3A3A3A;
+    --text:#EDEAE4; --sec:#A8A29A; --muted:#7D7871; --gold:#D0AB60;
+    --gold-bg:#332B18; --gold-fg:#E6C989;
+    --good-bg:#12261F; --good-fg:#34D399;
+    --bad-bg:#2A1615;  --bad-fg:#F87171;
+    --neu-bg:#2A2A2A;  --neu-fg:#C9C4BB;
+    /* the paper — dimmed off-white, never pure white */
+    --paper:#E6E2DA; --ink:#1C1C1C; --ink6:#514C45; --ink3:#ADA69A; --rule:#857E73;
+  }
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:36px 22px 92px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1220px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(24px,3.3vw,34px);line-height:1.15;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec);overflow-wrap:anywhere}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:16.5px;color:var(--text);max-width:68ch}
+  .wrap>*+*{margin-top:20px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);
+       border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+         border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:var(--neu-fg)}
+  .flowrow{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+  .card{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:15px 17px;min-width:0}
+  .waste{display:grid;grid-template-columns:34px minmax(0,1fr) 74px;gap:7px 12px;font-size:14px;align-items:baseline;margin-top:12px}
+  .waste .n{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted)}
+  .waste .px{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--bad-fg);text-align:right}
+  .waste .px.ok{color:var(--good-fg)}
+  .waste b{color:var(--text);font-weight:600}
+  .tot{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);margin-top:12px;
+       padding-top:10px;font-family:'Sora',sans-serif;font-weight:600;font-size:15px}
+  .tot .v{font-family:'JetBrains Mono',monospace;color:var(--bad-fg)}
+  .tot .v.ok{color:var(--good-fg)}
+
+  /* ── the two A5 sheets, true size ── */
+  .sheets{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+  .sheetlabel{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .a5{width:148mm;height:210mm;background:var(--paper);color:var(--ink);
+      font-family:'DM Sans',system-ui,sans-serif;font-size:11px;line-height:1.45;
+      padding:5mm 6.5mm;position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .a5 .over{position:absolute;left:0;right:0;bottom:0;border-top:2px dashed var(--bad-fg);
+            color:var(--bad-fg);font-size:9px;font-weight:700;text-align:right;padding-right:6px}
+  .a5 .over span{background:var(--paper);padding:0 4px;position:relative;top:-7px}
+  .wr{outline:2px solid rgba(179,38,30,.55);outline-offset:1px;background:rgba(179,38,30,.07);border-radius:2px}
+  .hdr{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .hdr h1{font-family:'Sora',sans-serif;font-size:12.5px;font-weight:800;text-transform:uppercase;margin:0;letter-spacing:-.01em;line-height:1.2}
+  .hdr p{margin:1px 0 0;font-size:9px;color:var(--ink6);line-height:1.32}
+  .hdr .rt{text-align:right;flex:none}
+  .hdr h2{font-family:'Sora',sans-serif;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin:0;white-space:nowrap}
+  .hdr .meta{margin-top:4px;font-size:9.5px}
+  .hdr .meta div{display:flex;gap:4px;justify-content:flex-end;align-items:baseline;white-space:nowrap}
+  .hdr .meta b{font-size:9px}
+  .hdr .meta i{font-style:normal;font-family:'JetBrains Mono',monospace;border-bottom:1px solid var(--ink3);padding:0 2px}
+  .rule2{border-top:2px solid var(--rule);margin:6px 0 6px}
+  .line{display:flex;gap:4px;align-items:flex-end;border-bottom:1px solid var(--ink3);padding-bottom:1px;margin-bottom:4px;min-width:0}
+  .line b{font-size:9px;font-weight:700;white-space:nowrap}
+  .line span{flex:1;font-size:10.5px;min-height:14px;min-width:0}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px}
+  .sec{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--ink6);
+       margin:0 0 3px;border-bottom:1px solid var(--ink3);padding-bottom:1.5px}
+  table.chg{width:100%;border-collapse:collapse;margin-top:2px}
+  table.chg th,table.chg td{border:1px solid var(--rule);padding:2px 4px;font-size:9.5px;text-align:left}
+  table.chg th{font-size:8px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink6);text-align:center}
+  table.chg td.r{text-align:right}
+  table.chg td.band{font-weight:700;background:#DCD6CA}
+  .ticks{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px}
+  .tick{font-size:9.5px;margin:0;display:flex;gap:4px;align-items:flex-start}
+  .tick i{width:8px;height:8px;border:1px solid var(--rule);display:inline-block;flex:none;margin-top:2px}
+  .tot2 .r{display:flex;justify-content:space-between;gap:6px;padding:1px 0;font-size:10.5px}
+  .tot2 .r.big{border-top:1px dashed var(--ink3);margin-top:2px;padding-top:3px;align-items:baseline}
+  .tot2 .r.big em{font-style:normal;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink6);display:block}
+  .tot2 .r.big strong{font-family:'Sora',sans-serif;font-size:17px;font-weight:800}
+  .pol{margin-top:6px;border-top:1px dashed var(--ink3);padding-top:5px}
+  .pol h4{margin:0 0 2px;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em}
+  .pol p{margin:0;font-size:9px;line-height:1.38;color:var(--ink6);text-align:justify}
+  .sign{display:flex;gap:12px;margin-top:7px}
+  .sign div{flex:1;min-width:0}
+  .sign b{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+  .sign i{display:block;border-bottom:1px solid var(--rule);height:15px;margin-top:2px}
+  .agree{margin-top:4px;font-size:8.5px;font-style:italic;color:var(--muted)}
+  .gap{margin-top:6px}
+  .w2{font-size:9px;color:var(--ink6);margin:3px 0 0}
+
+  /* word table */
+  .words{width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px}
+  .words th,.words td{border:1px solid var(--line);padding:7px 10px;text-align:left}
+  .words th{background:var(--raise);font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+  .words code{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--bad-fg)}
+  .words code.ok{color:var(--good-fg)}
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:17px 19px;min-width:0}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);
+       border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .opt:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .opt input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .opt .l{font-weight:600;font-size:14px;display:block}
+  .opt .h{font-size:13px;color:var(--muted);display:block}
+  .opt .h b{color:var(--sec);font-weight:500}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+  button.submit:hover{filter:brightness(1.07)}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:13px}
+  .note b{color:var(--sec);font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · card k144 · revision 3 · nothing built yet</div>
+    <h1>The layout is right — <span style="color:var(--bad-fg)">the words are too long</span>, so values wrap and the page runs over.</h1>
+    <p class="lede">Nothing is structurally wrong now. But <b>eight lines are being thrown away by text wrapping</b> — a long label leaves too little room for its value in a half-width column, so the value drops to a second line. That is <b>~180px</b> of the page, and it is why the Pension Policies still runs off the bottom.</p>
+    <div class="flowrow">
+      <span class="badge b-bad">8 wrapped lines · ~180px</span>
+      <span class="badge b-neu">page is ~110px too tall</span>
+      <span class="badge b-gold">no type shrinks</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>Where the page goes — every wasted line</h2></div>
+    <p class="sub">Read off your own print. Each of these is a value that should sit on one line but drops to a second.</p>
+
+    <div class="waste">
+      <span class="n">01</span><span><b>“DAWEEZ PENSION HOUSE”</b> breaks after “PENSION” — the bill-number block on the right is taking too much room</span><span class="px">−22</span>
+      <span class="n">02</span><span><b>Check In</b> — “Sep 30, 2026” then “2:00pm /” alone on line 2</span><span class="px">−22</span>
+      <span class="n">03</span><span><b>Standard Check-in / Out</b> — “2:00pm /” then “12:00nn”</span><span class="px">−22</span>
+      <span class="n">04</span><span><b>Bank of the Philippine Islands (BPI) Transfer</b> — wraps across <b>four</b> lines in the tick list</span><span class="px">−66</span>
+      <span class="n">05</span><span><b>Payment Plan: Reservation — nothing paid</b> — wraps to two lines inside the narrow left column</span><span class="px">−22</span>
+      <span class="n">06</span><span><b>Account Details</b> — the full bank name wraps the account line to two</span><span class="px">−22</span>
+      <span class="n">07</span><span><b>Where to pay</b> — three long lines while no method is chosen</span><span class="px">−44</span>
+    </div>
+
+    <div class="tot"><span>Thrown away by wrapping</span><span class="v">−220px</span></div>
+    <div class="tot"><span>Page is too tall by about</span><span class="v">~110px</span></div>
+    <div class="tot"><span>Slack once the wrapping is gone</span><span class="v ok">+110px</span></div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>Actual size — A5</h2></div>
+    <p class="sub">Left is your print, with the wrapped lines boxed in red. Right is the same bill with shorter words on the paper. Same type sizes on both.</p>
+
+    <div class="sheets">
+      <!-- ══════════ CURRENT ══════════ -->
+      <div class="sheetwrap">
+        <div class="sheetlabel"><span class="badge b-bad">your print</span><span class="sub">8 lines wrapped</span></div>
+        <div class="a5">
+          <div class="hdr">
+            <div><h1 class="wr">Daweez Pension House</h1>
+              <p>National Highway, San Agustin Sur, Tandag City, Surigao del Sur</p>
+              <p>Email Address: daweezpensionhouse@gmail.com</p>
+              <p>Mobile No: 0910-7163830</p></div>
+            <div class="rt"><h2>Guest Billing Statement</h2>
+              <div class="meta">
+                <div><b>Bill / Invoice No.:</b><i>GRF-2026-09-0013</i></div>
+                <div><b>Date Issued:</b><i>Sep 29, 2026, 1:16 PM</i></div>
+              </div></div>
+          </div>
+          <div class="rule2"></div>
+          <div class="g2">
+            <div class="line"><b>Guest's Name:</b><span>SEBASTIAN</span></div>
+            <div class="line"><b>Room No.:</b><span>3</span></div>
+            <div class="line"><b>Room Type:</b><span>Full Double</span></div>
+            <div class="line wr"><b>Check In Date &amp; Time:</b><span>Sep 30, 2026 · 2:00pm</span></div>
+            <div class="line wr"><b>Check Out Date &amp; Time:</b><span>Oct 1, 2026</span></div>
+            <div class="line wr"><b>Standard Check-in / Out:</b><span>2:00pm / 12:00nn</span></div>
+            <div class="line"><b>No. of Guests:</b><span>Total 1</span></div>
+            <div class="line"><b>Contact No.:</b><span>None</span></div>
+          </div>
+          <table class="chg gap">
+            <tr><th style="text-align:left">Room / Particulars</th><th>Rate</th><th>Date</th><th>No. of Night</th><th>Total</th></tr>
+            <tr><td class="band" colspan="5">Room Accommodation:</td></tr>
+            <tr><td>Full Double</td><td>₱950</td><td>09/30/26 → 10/01/26</td><td>1</td><td class="r">₱950</td></tr>
+          </table>
+          <div class="g2 gap" style="grid-template-columns:1.35fr 1fr;gap:0 14px">
+            <div>
+              <p class="sec">Payment Method</p>
+              <div class="ticks">
+                <p class="tick"><i></i> Cash</p>
+                <p class="tick"><i></i> GCash</p>
+                <p class="tick wr"><i></i> Bank of the Philippine Islands (BPI) Transfer</p>
+                <p class="tick"><i></i> Check</p>
+              </div>
+              <p class="w2 wr"><b>Payment Plan:</b> Reservation — nothing paid</p>
+            </div>
+            <div class="tot2">
+              <p class="sec">Totals</p>
+              <div class="r"><span>Sub-Total</span><span>₱950</span></div>
+              <div class="r big"><span><em>Amount Due</em></span><strong>₱950</strong></div>
+            </div>
+          </div>
+          <div class="gap">
+            <p class="sec">Where to pay</p>
+            <p class="w2 wr" style="margin:0">Cash — at the front desk.<br>GCash — <b>Narlina D.</b> · 0910-7934988<br>Bank of the Philippine Islands (BPI) — <b>DAWEEZ PENSION HOUSE</b> · 5636-0544-12</p>
+          </div>
+          <div class="pol">
+            <h4>Pension Policies</h4>
+            <p>Early Check-in &amp; Late Check-Out will be charged ₱100.00/hour (exceeding to 3 hours late check out will be charge for 1 night rate). All rooms are non-smoking room. If smoking is noticed by Pension staff, guest(s) will be charge ₱1,000.00 (Tandag City Ordinance No. 005-2016 &amp; 009-2017 with maximum penalty ₱5,000.00). Key cards must be left at the Reception (with the pension receptionist) when leaving the Pension. Lost key card will be charged ₱500.00. The guest will be held responsible for any loss or damage to the room key card issued by the house…</p>
+          </div>
+          <div class="over"><span>▲ the paper ends here — the policies run off the bottom</span></div>
+        </div>
+      </div>
+
+      <!-- ══════════ TIGHTENED ══════════ -->
+      <div class="sheetwrap">
+        <div class="sheetlabel"><span class="badge b-good">tightened</span><span class="sub">nothing wraps · fits with slack</span></div>
+        <div class="a5">
+          <div class="hdr">
+            <div><h1>Daweez Pension House</h1>
+              <p>National Highway, San Agustin Sur, Tandag City, Surigao del Sur</p>
+              <p>Email Address: daweezpensionhouse@gmail.com</p>
+              <p>Mobile No: 0910-7163830</p></div>
+            <div class="rt"><h2>Guest Billing Statement</h2>
+              <div class="meta">
+                <div><b>Bill / Invoice No.:</b><i>GRF-2026-09-0013</i></div>
+                <div><b>Date Issued:</b><i>Sep 29, 2026, 1:16 PM</i></div>
+              </div></div>
+          </div>
+          <div class="rule2"></div>
+          <div class="g2">
+            <div class="line"><b>Name:</b><span>SEBASTIAN</span></div>
+            <div class="line"><b>Room No.:</b><span>3</span></div>
+            <div class="line"><b>Type:</b><span>Full Double</span></div>
+            <div class="line"><b>Check In:</b><span>Sep 30, 2026 · 2:00pm</span></div>
+            <div class="line"><b>Check Out:</b><span>Oct 1, 2026 · 12:00nn</span></div>
+            <div class="line"><b>Standard:</b><span>2:00pm / 12:00nn</span></div>
+            <div class="line"><b>Guests:</b><span>Total 1</span></div>
+            <div class="line"><b>Contact:</b><span>None</span></div>
+          </div>
+          <table class="chg gap">
+            <tr><th style="text-align:left">Room / Particulars</th><th>Rate</th><th>Date</th><th>No. of Night</th><th>Total</th></tr>
+            <tr><td class="band" colspan="5">Room Accommodation:</td></tr>
+            <tr><td>Full Double</td><td>₱950</td><td>09/30/26 → 10/01/26</td><td>1</td><td class="r">₱950</td></tr>
+          </table>
+          <div class="g2 gap" style="grid-template-columns:1.35fr 1fr;gap:0 14px">
+            <div>
+              <p class="sec">Payment Method</p>
+              <div class="ticks">
+                <p class="tick"><i></i> Cash</p>
+                <p class="tick"><i></i> GCash</p>
+                <p class="tick"><i></i> BPI Transfer</p>
+                <p class="tick"><i></i> Check</p>
+              </div>
+            </div>
+            <div class="tot2">
+              <p class="sec">Totals</p>
+              <div class="r"><span>Sub-Total</span><span>₱950</span></div>
+              <div class="r big"><span><em>Amount Due</em></span><strong>₱950</strong></div>
+            </div>
+          </div>
+          <p class="w2" style="margin-top:4px"><b>Payment Plan:</b> Reservation — nothing paid</p>
+          <div class="gap">
+            <p class="sec">Where to pay</p>
+            <p class="w2" style="margin:0">Cash at the front desk · GCash <b>Narlina D.</b> 0910-7934988 · BPI <b>DAWEEZ PENSION HOUSE</b> 5636-0544-12</p>
+          </div>
+          <div class="pol">
+            <h4>Pension Policies</h4>
+            <p>Early Check-in &amp; Late Check-Out will be charged ₱100.00/hour (exceeding to 3 hours late check out will be charge for 1 night rate). All rooms are non-smoking room. If smoking is noticed by Pension staff, guest(s) will be charge ₱1,000.00 (Tandag City Ordinance No. 005-2016 &amp; 009-2017 with maximum penalty ₱5,000.00). Key cards must be left at the Reception (with the pension receptionist) when leaving the Pension. Lost key card will be charged ₱500.00. The guest will be held responsible for any loss or damage to the room key card issued by the house…</p>
+          </div>
+          <div class="sign">
+            <div><b>Prepared by:</b><i>ANON</i></div>
+            <div><b>Guest Signature:</b><i></i></div>
+          </div>
+          <p class="agree">By signing this form, I understand and agree to the Pension Policies.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>The exact word changes</h2></div>
+    <p class="sub">Only labels and one bank name. No figure, no field, and no Pension Policy word changes. The full bank name still prints in Account Details.</p>
+    <table class="words">
+      <tr><th>Prints today</th><th>On the paper</th><th>Why</th></tr>
+      <tr><td><code>Guest's Name</code></td><td><code class="ok">Name</code></td><td>It is the only name on the page.</td></tr>
+      <tr><td><code>Check In Date &amp; Time</code></td><td><code class="ok">Check In</code></td><td>Frees 90px, so the date and time stay on one line.</td></tr>
+      <tr><td><code>Check Out Date &amp; Time</code></td><td><code class="ok">Check Out</code></td><td>Same, and they read as a pair.</td></tr>
+      <tr><td><code>Standard Check-in / Out</code></td><td><code class="ok">Standard</code></td><td>The value already reads “2:00pm / 12:00nn”.</td></tr>
+      <tr><td><code>No. of Guests</code></td><td><code class="ok">Guests</code></td><td>Shorter, same meaning.</td></tr>
+      <tr><td><code>Contact No.</code></td><td><code class="ok">Contact</code></td><td>Shorter, same meaning.</td></tr>
+      <tr><td><code>Email Address</code></td><td><code class="ok">Email</code></td><td>Shorter, same meaning.</td></tr>
+      <tr><td><code>Room Type</code></td><td><code class="ok">Type</code></td><td>It sits under Room No.</td></tr>
+      <tr><td><code>Bank of the Philippine Islands (BPI) Transfer</code></td><td><code class="ok">BPI Transfer</code></td><td>The one that costs four lines. Full name stays in Account Details.</td></tr>
+      <tr><td><code>Cash — at the front desk.</code> (3 lines)</td><td><code class="ok">one line</code></td><td>The fallback only shows while no method is chosen.</td></tr>
+    </table>
+    <p class="note" style="margin-top:14px"><b>Not touched:</b> the Pension Policies (verbatim, exactly as printed now), the letterhead's address and contact lines, the charges table, every figure, and the hotel's full bank name wherever a guest needs to read it to transfer.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">04</span><h2>Your call</h2></div>
+    <form class="q" data-lavish-question="tighten" onsubmit="event.preventDefault(); const c = new FormData(event.currentTarget).get('tighten'); if (c) window.lavish.queuePrompt('A5 statement tightening: ' + c, { tag: 'choice', text: 'Tighten: ' + c, element: event.currentTarget, data: { question: 'tighten', answer: c } });">
+      <h3>Shorten the labels on the paper so nothing wraps?</h3>
+
+      <label class="opt"><input type="radio" name="tighten" value="Yes — shorten the labels and the BPI name exactly as listed, so no value wraps and the bill fits one A5 side">
+        <span><span class="l">Yes — shorten them <span class="badge b-gold" style="margin-left:6px">recommended</span></span>
+        <span class="h">All ten changes. Nothing wraps, the page gains ~110px of slack, and the Pension Policies stops running off the bottom.</span></span></label>
+
+      <label class="opt"><input type="radio" name="tighten" value="Yes to the short labels, but keep the full bank name 'Bank of the Philippine Islands (BPI) Transfer' in the tick list">
+        <span><span class="l">Shorten the labels, keep the full bank name</span>
+        <span class="h">Keeps the tick list explicit for the guest. Costs about 44px, so it still fits — but with less room to spare.</span></span></label>
+
+      <label class="opt"><input type="radio" name="tighten" value="Not quite — I want different wording; I will say which labels to use">
+        <span><span class="l">Let me choose the wording</span>
+        <span class="h">Tell me the words you want on each line and I'll redraw before building anything.</span></span></label>
+
+      <label class="opt"><input type="radio" name="tighten" value="Leave the wording alone — instead put the Pension Policies on the back or drop it from the guest copy">
+        <span><span class="l">Keep the wording, move the policies instead</span>
+        <span class="h">The policies are the biggest block on the page (~190px). Moving them frees more than the wrapping fix does — but the guest no longer signs against them on the same sheet.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+  </section>
+
+</div>
+</body>
+</html>

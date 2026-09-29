@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The bill on A5 — why it overflows</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raise:#262626; --line:#3A3A3A;
+    --text:#EDEAE4; --sec:#A8A29A; --muted:#7D7871; --gold:#D0AB60;
+    --gold-bg:#332B18; --gold-fg:#E6C989;
+    --good-bg:#12261F; --good-fg:#34D399;
+    --bad-bg:#2A1615;  --bad-fg:#F87171;
+    --neu-bg:#2A2A2A;  --neu-fg:#C9C4BB;
+    --app-card:#F6F2EA; --app-line:#D9D2C4; --app-ink:#1C1C1C; --app-muted:#6B655C; --app-gold:#6F5420;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:40px 24px 96px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1060px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(25px,3.5vw,36px);line-height:1.15;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec)}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:17px;color:var(--text);max-width:66ch}
+  .wrap>*+*{margin-top:22px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);
+       border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+         border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:#C9C4BB}
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+  @media (max-width:840px){.grid2{grid-template-columns:minmax(0,1fr)}}
+  .card{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-width:0}
+  .card.a{border-color:#6F5420}
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);
+       border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .opt:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .opt input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .opt .l{font-weight:600;font-size:14px}
+  .opt .h{font-size:13px;color:var(--muted)}
+  .opt .h b{color:var(--sec);font-weight:500}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+  button.submit:hover{filter:brightness(1.07)}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:14px}
+  .note b{color:var(--sec);font-weight:500}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#171717;border:1px solid var(--line);
+       border-radius:4px;padding:1px 5px;color:var(--gold-fg)}
+  .flowrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .crux{background:var(--bad-bg);border:1px solid #5A2A28;border-radius:12px;padding:16px 18px;min-width:0}
+  .crux .t{color:var(--bad-fg);font-weight:700;font-family:'Sora',sans-serif;font-size:14px}
+  svg{width:100%;height:auto;display:block;overflow:visible}
+  /* the measured stack */
+  .stack{display:grid;grid-template-columns:150px minmax(0,1fr) 54px;gap:8px 12px;align-items:center;font-size:13px}
+  .stack .bar{height:16px;border-radius:3px;background:var(--gold);opacity:.85}
+  .stack .bar.big{background:var(--bad-fg)}
+  .stack .bar.small{background:var(--neu-fg);opacity:.6}
+  .stack .px{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);text-align:right}
+  .sheetbar{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · card k144 · nothing built</div>
+    <h1>The bill is <span style="color:var(--bad-fg)">1.4 pages</span> tall on A5 — so the bottom gets cut.</h1>
+    <p class="lede">A5 is already the declared paper size. The page box is not the problem: the statement's own layout is built for a bigger sheet, so the last third has nowhere to go. Here is the measured stack.</p>
+    <div class="flowrow">
+      <span class="badge b-gold">A5 page size: already set</span>
+      <span class="badge b-bad">content ≈ 1,050px</span>
+      <span class="badge b-neu">one A5 side holds ≈ 745px</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>What has to fit, measured</h2></div>
+    <p class="sub">Every block in the order it prints, at the sizes it prints today.</p>
+
+    <div class="stack">
+      <span>Letterhead + Bill No.</span><span><i class="bar" style="width:11%"></i></span><span class="px">~110</span>
+      <span>Guest block</span><span><i class="bar" style="width:14%"></i></span><span class="px">~140</span>
+      <span>Stay block</span><span><i class="bar" style="width:13%"></i></span><span class="px">~130</span>
+      <span>Room charges table</span><span><i class="bar" style="width:10%"></i></span><span class="px">~100</span>
+      <span>Payment method</span><span><i class="bar" style="width:8%"></i></span><span class="px">~80</span>
+      <span>Totals + Amount Due</span><span><i class="bar" style="width:9%"></i></span><span class="px">~90</span>
+      <span><b style="color:var(--bad-fg)">Pension Policies</b> (verbatim)</span><span><i class="bar big" style="width:19%"></i></span><span class="px" style="color:var(--bad-fg)">~190</span>
+      <span>Prepared by + Signature</span><span><i class="bar" style="width:9%"></i></span><span class="px">~90</span>
+      <span>Signing note</span><span><i class="bar small" style="width:4%"></i></span><span class="px">~20</span>
+    </div>
+
+    <div class="sheetbar">
+      <div class="stack">
+        <span><b>Content total</b></span><span><i class="bar big" style="width:100%"></i></span><span class="px" style="color:var(--bad-fg)">~1,050</span>
+        <span><b>One A5 side, after margins</b></span><span><i class="bar small" style="width:71%"></i></span><span class="px">~745</span>
+      </div>
+    </div>
+
+    <div class="crux" style="margin-top:16px">
+      <div class="t">The Pension Policies is the single biggest block on the page — and you ruled it must print word for word, on every bill</div>
+      <p style="margin:8px 0 0;color:var(--sec);font-size:14px">It is <b>~1,400 characters</b> — about <b>14 lines</b> at the size it prints now. It alone is a quarter of the page. Shrinking the type is therefore not a small tweak: it is the only thing that can buy that much space, and it is exactly the text the guest is meant to be able to read before signing.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>Three honest ways out</h2></div>
+    <p class="sub">All three stop the cut-off. They differ in what the guest has to read and what the desk has to feed the printer.</p>
+
+    <div class="grid2">
+      <div class="card a">
+        <span class="badge b-gold">A · my pick</span>
+        <h3 style="margin-top:8px">One A5 sheet, printed on both sides</h3>
+        <svg viewBox="0 0 300 150" role="img" aria-label="Front of the A5 sheet holds the bill; the back holds the policies and the signature">
+          <rect x="10" y="10" width="120" height="130" rx="6" fill="#F6F2EA" stroke="#D9D2C4"/>
+          <text x="70" y="30" fill="#1C1C1C" font-family="Sora,sans-serif" font-size="9" font-weight="700" text-anchor="middle">FRONT</text>
+          <rect x="22" y="42" width="96" height="8" rx="2" fill="#C9C0AD"/>
+          <rect x="22" y="56" width="96" height="8" rx="2" fill="#C9C0AD"/>
+          <rect x="22" y="70" width="96" height="8" rx="2" fill="#C9C0AD"/>
+          <rect x="22" y="88" width="96" height="26" rx="2" fill="#E3DAC6"/>
+          <text x="70" y="105" fill="#6F5420" font-family="DM Sans,sans-serif" font-size="8" font-weight="700" text-anchor="middle">the bill, to Amount Due</text>
+          <rect x="170" y="10" width="120" height="130" rx="6" fill="#F6F2EA" stroke="#D9D2C4"/>
+          <text x="230" y="30" fill="#1C1C1C" font-family="Sora,sans-serif" font-size="9" font-weight="700" text-anchor="middle">BACK</text>
+          <rect x="182" y="42" width="96" height="6" rx="2" fill="#C9C0AD"/>
+          <rect x="182" y="54" width="96" height="6" rx="2" fill="#C9C0AD"/>
+          <rect x="182" y="66" width="96" height="6" rx="2" fill="#C9C0AD"/>
+          <rect x="182" y="78" width="72" height="6" rx="2" fill="#C9C0AD"/>
+          <text x="230" y="104" fill="#6F5420" font-family="DM Sans,sans-serif" font-size="8" font-weight="700" text-anchor="middle">Pension Policies,</text>
+          <text x="230" y="115" fill="#6F5420" font-family="DM Sans,sans-serif" font-size="8" font-weight="700" text-anchor="middle">signature line</text>
+        </svg>
+        <p class="sub" style="margin:10px 0 0"><b style="color:var(--sec)">Nothing shrinks and nothing is cut.</b> Front: letterhead through the totals. Back: Prepared by, Guest Signature and the policies — at the size they print today.</p>
+        <p class="sub" style="margin:8px 0 0">Cost: the printer must print both sides. A one-sided printer hands the guest two half-sheets instead of one.</p>
+      </div>
+
+      <div class="card">
+        <span class="badge b-neu">B</span>
+        <h3 style="margin-top:8px">Everything on one A5 side, shrunk</h3>
+        <svg viewBox="0 0 300 150" role="img" aria-label="All of the statement shrunk onto a single A5 side">
+          <rect x="80" y="10" width="120" height="130" rx="6" fill="#F6F2EA" stroke="#D9D2C4"/>
+          <rect x="92" y="22" width="96" height="4" rx="1" fill="#C9C0AD"/>
+          <rect x="92" y="30" width="96" height="4" rx="1" fill="#C9C0AD"/>
+          <rect x="92" y="38" width="96" height="4" rx="1" fill="#C9C0AD"/>
+          <rect x="92" y="46" width="96" height="4" rx="1" fill="#C9C0AD"/>
+          <rect x="92" y="56" width="96" height="18" rx="2" fill="#E3DAC6"/>
+          <rect x="92" y="80" width="96" height="4" rx="1" fill="#C9C0AD"/>
+          <rect x="92" y="88" width="96" height="4" rx="1" fill="#C9C0AD"/>
+          <rect x="92" y="96" width="96" height="3" rx="1" fill="#E7BDB8"/>
+          <rect x="92" y="102" width="96" height="3" rx="1" fill="#E7BDB8"/>
+          <rect x="92" y="108" width="96" height="3" rx="1" fill="#E7BDB8"/>
+          <text x="140" y="128" fill="#B3261E" font-family="DM Sans,sans-serif" font-size="7.5" font-weight="700" text-anchor="middle">policies fall to ~7px</text>
+        </svg>
+        <p class="sub" style="margin:10px 0 0">Everything drops about <b style="color:var(--sec)">30%</b> — the 9.5px policies land near <b style="color:var(--bad-fg)">7px</b>, and the Amount Due figure from 22px to ~15px.</p>
+        <p class="sub" style="margin:8px 0 0">Cost: the guest signs a policy they can barely read, and every line of the bill gets tighter. It fits — that is all it does.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <span class="badge b-neu">C</span>
+      <h3 style="margin-top:8px">Two A5 sheets, one side each</h3>
+      <p class="sub" style="margin:8px 0 0">Same split as A, but arranged for a printer that cannot print both sides: sheet 1 is the bill, sheet 2 is the policies and the signature. Nothing shrinks either — it just uses two pieces of paper.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>One thing that is not in question</h2></div>
+    <p class="sub">Whichever you pick, the split will be put in <b>deliberately</b> rather than wherever the browser happens to run out of room — which is what you are seeing now, a block sliced in half.</p>
+    <p class="note"><b>The agency bill is not affected.</b> It prints no Pension Policies and no signature, so it already fits one A5 side on its own.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">04</span><h2>Your call</h2></div>
+    <form class="q" data-lavish-question="a5">
+      <h3>How should the Guest Billing Statement fit A5?</h3>
+      <label class="opt"><input type="radio" name="a5" value="A — one A5 sheet printed both sides: bill on the front, pension policies and signature on the back">
+        <span><span class="l">A — one sheet, both sides <span class="badge b-gold" style="margin-left:6px">recommended</span></span><br>
+        <span class="h">Nothing shrinks, nothing is cut, and the guest still gets <b>one piece of paper</b>. The desk just has to print double-sided.</span></span></label>
+
+      <label class="opt"><input type="radio" name="a5" value="B — everything on one A5 side, shrunk about 30%">
+        <span><span class="l">B — everything on one side, shrunk</span><br>
+        <span class="h">Fits one side whatever the printer does. The policies print at about <b>7px</b>, which is smaller than most people read comfortably — and that is the text they sign.</span></span></label>
+
+      <label class="opt"><input type="radio" name="a5" value="C — two A5 sheets, one side each: bill first, policies and signature second">
+        <span><span class="l">C — two sheets, front only</span><br>
+        <span class="h">Nothing shrinks. Two pieces of paper instead of one, so no double-sided printing needed.</span></span></label>
+
+      <label class="opt"><input type="radio" name="a5" value="Show me the A5 layout with real figures before I pick">
+        <span><span class="l">Draw it first with a real booking</span><br>
+        <span class="h">I lay the whole statement out on a true-to-size A5 with an actual stay on it, so you can judge the page rather than the options.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+    <p class="note" style="margin-top:16px"><b>Or tell me what you picture</b> — including whether the Pension Policies really belongs on the guest's copy at all, now that it is the thing forcing the page open.</p>
+  </section>
+
+</div>
+</body>
+</html>

@@ -39,15 +39,18 @@ export function AgencyInvoiceDocument({ primaryBooking, statement, onClose, onPr
       <BrandHeader invoiceNumber={statement.invoiceNumber} showDate={false} />
 
       {/* COMPANY above NAME OF GUEST, the guest as `c/o …` — the paper's own order, with
-          the paper's own fields: address, email, contact no. and the vehicle plate. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 py-3">
-        <div className="space-y-2">
+          the paper's own fields: address, email, contact no. and the vehicle plate.
+          Two columns with **no `sm:` breakpoint** (card k144): A5 is 559px wide and `sm`
+          starts at 640px, so the `sm:grid-cols-2` this used to carry never fired on paper
+          and the agency bill stacked too. */}
+      <div className="grid grid-cols-2 gap-x-8 gap-y-0.5">
+        <div className="space-y-1">
           <Line label="Company" value={statement.companyName} />
           <Line label="Name of Guest" value={'c/o ' + (b.guest_name || '')} />
           <Line label="Address" value={statement.companyAddress || b.guest_address} />
           <Line label="Email Address" value={b.guest_email && b.guest_email !== 'admin@daweez-booking.vercel.app' ? b.guest_email : ''} />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1">
           <Line label="Contact No." value={statement.companyContact || b.guest_phone} />
           <Line label="Vehicle Plate #" value={b.vehicle_plate} />
         </div>
@@ -56,7 +59,7 @@ export function AgencyInvoiceDocument({ primaryBooking, statement, onClose, onPr
       <StatementChargesTable items={statement.lineItems} />
 
       {/* TOTAL — the whole stay, and nothing about deposits or what is left. */}
-      <div className="flex justify-end py-2 border-t-2 border-ink-700">
+      <div className="flex justify-end pt-2 border-t-2 border-ink-700">
         <div className="flex items-baseline gap-6">
           <span className="font-bold uppercase tracking-wider text-main">Total</span>
           <span className="font-display text-[20px] font-extrabold text-ink-900">{money(statement.subTotal)}</span>
@@ -73,13 +76,15 @@ export function AgencyInvoiceDocument({ primaryBooking, statement, onClose, onPr
       </div>
 
       {/* Prepared by — the SAME field the normal bill prints (the owner's note): whoever
-          made the booking. No policies, no signature line on this copy. */}
-      <div className="mt-6 pt-4 border-t border-dashed border-ink-300 flex items-end gap-3">
+          made the booking. No policies, no signature line on this copy.
+          `mt-6 pt-4` was **40px** — the biggest single gap in either bill (card k144);
+          the two bills now share one spacing scale instead of two. */}
+      <div className="pt-3 border-t border-dashed border-ink-300 flex items-end gap-3">
         <span className="text-[11px] font-bold uppercase tracking-wider text-main whitespace-nowrap">Prepared by</span>
         <span className="flex-1 text-[12px] font-semibold text-main border-b border-ink-300 min-h-[24px] pb-0.5">{(b.prepared_by || '').trim()}</span>
       </div>
 
-      <p className="mt-4 text-center text-[10px] font-bold tracking-wider text-brand-text uppercase">Thank you for choosing Daweez Pension House</p>
+      <p className="text-center text-[10px] font-bold tracking-wider text-brand-text uppercase">Thank you for choosing Daweez Pension House</p>
     </StatementShell>
   )
 }

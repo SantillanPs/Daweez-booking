@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The bill, filled — true A5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raise:#262626; --line:#3A3A3A;
+    --text:#EDEAE4; --sec:#A8A29A; --muted:#7D7871; --gold:#D0AB60;
+    --gold-bg:#332B18; --gold-fg:#E6C989;
+    --good-bg:#12261F; --good-fg:#34D399;
+    --bad-bg:#2A1615;  --bad-fg:#F87171;
+    --neu-bg:#2A2A2A;  --neu-fg:#C9C4BB;
+    --paper:#F6F2EA; --ink:#1C1C1C; --ink6:#55504A; --ink3:#B9B2A4; --rule:#8C857A;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:40px 24px 96px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1220px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(25px,3.4vw,35px);line-height:1.15;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec)}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:17px;color:var(--text);max-width:66ch}
+  .wrap>*+*{margin-top:22px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);
+       border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+         border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:#C9C4BB}
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);
+       border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .opt:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .opt input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .opt .l{font-weight:600;font-size:14px}
+  .opt .h{font-size:13px;color:var(--muted)}
+  .opt .h b{color:var(--sec);font-weight:500}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+  button.submit:hover{filter:brightness(1.07)}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:14px}
+  .note b{color:var(--sec);font-weight:500}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#171717;border:1px solid var(--line);
+       border-radius:4px;padding:1px 5px;color:var(--gold-fg)}
+  .flowrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .fix{background:var(--gold-bg);border:1px solid #6F5420;border-radius:12px;padding:16px 18px;min-width:0}
+
+  .sheets{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+  .sheetlabel{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .a5{width:148mm;height:210mm;background:var(--paper);color:var(--ink);
+      font-family:'DM Sans',system-ui,sans-serif;font-size:11px;line-height:1.45;
+      padding:5mm 6mm;position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .hdr{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .hdr h1{font-family:'Sora',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;margin:0;letter-spacing:-.01em}
+  .hdr p{margin:1px 0 0;font-size:9px;color:var(--ink6);line-height:1.35}
+  .hdr .rt{text-align:right}
+  .hdr h2{font-family:'Sora',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.13em;margin:0}
+  .hdr .meta{margin-top:4px;font-size:9.5px}
+  .hdr .meta div{display:flex;gap:4px;justify-content:flex-end;align-items:baseline}
+  .hdr .meta b{font-size:9px;white-space:nowrap}
+  .hdr .meta i{font-style:normal;font-family:'JetBrains Mono',monospace;border-bottom:1px solid var(--ink3);padding:0 2px}
+  .rule2{border-top:2px solid var(--rule);margin:6px 0 7px}
+  .line{display:flex;gap:4px;align-items:flex-end;border-bottom:1px solid var(--ink3);padding-bottom:1px;margin-bottom:4px;min-width:0}
+  .line b{font-size:8.5px;font-weight:700;white-space:nowrap}
+  .line span{flex:1;font-size:10.5px;min-height:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sec{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--ink6);
+       margin:0 0 3px;border-bottom:1px solid var(--ink3);padding-bottom:1.5px}
+  .g3{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+  table.chg{width:100%;border-collapse:collapse;margin-top:2px}
+  table.chg th,table.chg td{border:1px solid var(--rule);padding:2px 4px;font-size:9.5px;text-align:left}
+  table.chg th{font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink6);text-align:center}
+  table.chg td.r{text-align:right}
+  table.chg td.band{font-weight:700;font-size:9.5px;background:#EDE7DA}
+  .ticks{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px}
+  .tick{font-size:9.5px;margin:0;display:flex;gap:4px;align-items:center;white-space:nowrap}
+  .tick i{width:8px;height:8px;border:1px solid var(--rule);display:inline-block;flex:none}
+  .tick.on i{background:var(--ink)}
+  .tot .r{display:flex;justify-content:space-between;gap:6px;padding:1px 0;font-size:10.5px}
+  .tot .r.big{border-top:1px dashed var(--ink3);margin-top:2px;padding-top:3px;align-items:baseline}
+  .tot .r.big em{font-style:normal;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink6);display:block}
+  .tot .r.big strong{font-family:'Sora',sans-serif;font-size:18px;font-weight:800}
+  .pol{margin-top:7px;border-top:1px dashed var(--ink3);padding-top:5px}
+  .pol h4{margin:0 0 2px;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em}
+  .pol p{margin:0;font-size:9px;line-height:1.4;color:var(--ink6);text-align:justify}
+  .sign{display:flex;gap:12px;margin-top:8px;align-items:flex-end}
+  .sign div{flex:1}
+  .sign b{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+  .sign i{display:block;border-bottom:1px solid var(--rule);height:16px;margin-top:2px}
+  .agreetxt{margin-top:4px;font-size:8.5px;font-style:italic;color:var(--muted)}
+  .gap{margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · card k144 · corrections taken</div>
+    <h1>Filled properly: <span style="color:var(--good-fg)">two columns of fields, two columns of ticks, no empty cell</span>.</h1>
+    <p class="lede">All three of your notes are in. Both sheets below are <b>actual A5 size</b> — the left one is your booking, the right one is the same page with a full booking on it, to prove the room is real and not just this example.</p>
+    <div class="flowrow">
+      <span class="badge b-good">~580px — fits with slack</span>
+      <span class="badge b-gold">no type shrinks</span>
+      <span class="badge b-neu">policies untouched</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>Your three notes, answered</h2></div>
+
+    <div class="fix">
+      <p style="margin:0;font-size:14px;color:var(--text)"><b>1 · “lots of extra space here — why aren't you using it for the other info in the stay section?”</b></p>
+      <p style="margin:6px 0 0;font-size:13.5px;color:var(--sec)">Correct. Guest and Stay are now <b>one grid of two columns</b>, with the fields paired down the page — name beside room, contact beside room type — so the guest's short fields sit next to the stay's and neither side is left empty. Fourteen labelled rows became <b>four</b>.</p>
+    </div>
+
+    <div class="fix" style="margin-top:10px">
+      <p style="margin:0;font-size:14px;color:var(--text)"><b>2 · “add more columns, not just one here”</b></p>
+      <p style="margin:6px 0 0;font-size:13.5px;color:var(--sec)">The payment methods are now <b>two columns of ticks</b> — Cash and GCash on one row, BPI and Check on the next — instead of four stacked lines, with <b>Payment Plan</b> under them and <b>Totals</b> beside the whole block.</p>
+    </div>
+
+    <div class="fix" style="margin-top:10px">
+      <p style="margin:0;font-size:14px;color:var(--text)"><b>3 · “downpayment has 0 so it's basically worthless to show”</b></p>
+      <p style="margin:6px 0 0;font-size:13.5px;color:var(--sec)">Agreed — and the app <b>already works that way</b>: a zero-value Downpayment row is hidden. <b>My mock was wrong to print it.</b> It is gone from both sheets below: only rows with a figure appear.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>Actual size — A5, 148 × 210 mm</h2></div>
+
+    <div class="sheets">
+      <!-- ══════════ your booking ══════════ -->
+      <div class="sheetwrap">
+        <div class="sheetlabel"><span class="badge b-gold">your booking</span><span class="sub">6 fields filled</span></div>
+        <div class="a5">
+          <div class="hdr">
+            <div>
+              <h1>Daweez Pension House</h1>
+              <p>National Highway, San Agustin Sur, Tandag City, Surigao del Sur</p>
+              <p>Email Address: daweezpensionhouse@gmail.com</p>
+              <p>Mobile No: 0910-7163830</p>
+            </div>
+            <div class="rt">
+              <h2>Guest Billing Statement</h2>
+              <div class="meta">
+                <div><b>Bill / Invoice No.:</b><i>GRF-2026-09-0013</i></div>
+                <div><b>Date Issued:</b><i>Sep 29, 2026, 1:16 PM</i></div>
+              </div>
+            </div>
+          </div>
+          <div class="rule2"></div>
+
+          <div class="g3">
+            <div class="line"><b>Guest's Name:</b><span>SEBASTIAN</span></div>
+            <div class="line"><b>Room No.:</b><span>3</span></div>
+
+            <div class="line"><b>Contact No.:</b><span>None</span></div>
+            <div class="line"><b>Room Type:</b><span>Full Double</span></div>
+
+            <div class="line"><b>Nationality:</b><span>—</span></div>
+            <div class="line"><b>Check In:</b><span>Sep 30, 2026 · 2:00pm</span></div>
+
+            <div class="line"><b>No. of Guests:</b><span>Total 1</span></div>
+            <div class="line"><b>Check Out:</b><span>Oct 1, 2026 · 12:00nn</span></div>
+
+            <div class="line"><b>Standard:</b><span>2:00pm / 12:00nn</span></div>
+            <div></div>
+          </div>
+
+          <table class="chg gap">
+            <tr><th style="text-align:left">Room / Particulars</th><th>Rate</th><th>Date</th><th>No. of Night</th><th>Total</th></tr>
+            <tr><td class="band" colspan="5">Room Accommodation:</td></tr>
+            <tr><td>Full Double</td><td>₱950</td><td>09/30/26 → 10/01/26</td><td>1</td><td class="r">₱950</td></tr>
+          </table>
+
+          <div class="g2 gap" style="grid-template-columns:1.5fr 1fr;gap:0 16px">
+            <div>
+              <p class="sec">Payment Method</p>
+              <div class="ticks">
+                <p class="tick"><i></i> Cash</p>
+                <p class="tick"><i></i> GCash</p>
+                <p class="tick"><i></i> BPI Transfer</p>
+                <p class="tick"><i></i> Check</p>
+              </div>
+              <p style="font-size:9.5px;margin:4px 0 0"><b>Payment Plan:</b> Reservation — nothing paid</p>
+            </div>
+            <div class="tot">
+              <p class="sec">Totals</p>
+              <div class="r"><span>Sub-Total</span><span>₱950</span></div>
+              <div class="r big"><span><em>Amount Due</em></span><strong>₱950</strong></div>
+            </div>
+          </div>
+
+          <div class="pol">
+            <h4>Pension Policies</h4>
+            <p>The hotel's own wording, printed word for word on every bill — about 1,400 characters, untouched at its current 9.5px. This is the text the guest reads and signs, and it now sits under a page that already fits.</p>
+          </div>
+
+          <div class="sign">
+            <div><b>Prepared by:</b><i></i></div>
+            <div><b>Guest Signature:</b><i></i></div>
+          </div>
+          <p class="agreetxt">By signing this form, I understand and agree to the Pension Policies.</p>
+        </div>
+      </div>
+
+      <!-- ══════════ a full booking ══════════ -->
+      <div class="sheetwrap">
+        <div class="sheetlabel"><span class="badge b-neu">a full booking</span><span class="sub">every block used</span></div>
+        <div class="a5">
+          <div class="hdr">
+            <div>
+              <h1>Daweez Pension House</h1>
+              <p>National Highway, San Agustin Sur, Tandag City, Surigao del Sur</p>
+              <p>Email Address: daweezpensionhouse@gmail.com</p>
+              <p>Mobile No: 0910-7163830</p>
+            </div>
+            <div class="rt">
+              <h2>Guest Billing Statement</h2>
+              <div class="meta">
+                <div><b>Bill / Invoice No.:</b><i>GRF-2026-09-0014</i></div>
+                <div><b>Date Issued:</b><i>Sep 29, 2026, 4:02 PM</i></div>
+              </div>
+            </div>
+          </div>
+          <div class="rule2"></div>
+
+          <p class="sec">Bill To</p>
+          <p style="font-size:10px;margin:0 0 4px"><b>Getz Pharma (Phil.), Inc.</b> — c/o MARIA CLARA SANTOS</p>
+
+          <div class="g3">
+            <div class="line"><b>Guest's Name:</b><span>MARIA CLARA SANTOS</span></div>
+            <div class="line"><b>Room No.:</b><span>1, 2</span></div>
+
+            <div class="line"><b>Contact No.:</b><span>0918-987-6543</span></div>
+            <div class="line"><b>Room Type:</b><span>Full Double Deluxe</span></div>
+
+            <div class="line"><b>Nationality:</b><span>Filipino</span></div>
+            <div class="line"><b>Check In:</b><span>Oct 3, 2026 · 11:20am</span></div>
+
+            <div class="line"><b>Address:</b><span>Ortigas Center, Pasig City</span></div>
+            <div class="line"><b>Check Out:</b><span>Oct 6, 2026 · 12:00nn</span></div>
+
+            <div class="line"><b>Email:</b><span>m.santos@getz.com</span></div>
+            <div class="line"><b>No. of Guests:</b><span>Total 3</span></div>
+
+            <div class="line"><b>Plate No.:</b><span>ABC 1234</span></div>
+            <div class="line"><b>Standard:</b><span>2:00pm / 12:00nn</span></div>
+          </div>
+
+          <p class="sec gap">Companion</p>
+          <table class="chg">
+            <tr><th style="text-align:left">Name</th><th>Nationality</th></tr>
+            <tr><td>JUAN DELA CRUZ</td><td>Filipino</td></tr>
+            <tr><td>ANA REYES</td><td>Filipino</td></tr>
+          </table>
+
+          <table class="chg gap">
+            <tr><th style="text-align:left">Room / Particulars</th><th>Rate</th><th>Date</th><th>No. of Night</th><th>Total</th></tr>
+            <tr><td class="band" colspan="5">Room Accommodation:</td></tr>
+            <tr><td>Full Double Deluxe ×2</td><td>₱1,200</td><td>10/03/26 → 10/06/26</td><td>3</td><td class="r">₱7,200</td></tr>
+            <tr><td class="band" colspan="5">Breakfast:</td></tr>
+            <tr><td>Room 1 · Breakfast</td><td>₱300</td><td>—</td><td>1</td><td class="r">₱300</td></tr>
+            <tr><td class="band" colspan="5">Restaurant &amp; bar:</td></tr>
+            <tr><td>Lunch · 03 Oct</td><td>₱640</td><td>—</td><td>—</td><td class="r">₱640</td></tr>
+            <tr><td class="band" colspan="5">Discount:</td></tr>
+            <tr><td>Staff discount · 10%</td><td>—</td><td>—</td><td>—</td><td class="r">−₱814</td></tr>
+          </table>
+
+          <div class="g2 gap" style="grid-template-columns:1.5fr 1fr;gap:0 16px">
+            <div>
+              <p class="sec">Payment Method</p>
+              <div class="ticks">
+                <p class="tick"><i></i> Cash</p>
+                <p class="tick on"><i></i> GCash</p>
+                <p class="tick"><i></i> BPI Transfer</p>
+                <p class="tick"><i></i> Check</p>
+              </div>
+              <p style="font-size:9.5px;margin:4px 0 0"><b>Payment Plan:</b> Deposit (50%) · Ref 0123 456 789012</p>
+            </div>
+            <div class="tot">
+              <p class="sec">Totals</p>
+              <div class="r"><span>Sub-Total</span><span>₱7,326</span></div>
+              <div class="r"><span>Downpayment</span><span>₱3,663</span></div>
+              <div class="r big"><span><em>Amount Due</em></span><strong>₱3,663</strong></div>
+            </div>
+          </div>
+
+          <div class="pol">
+            <h4>Pension Policies</h4>
+            <p>The hotel's own wording, printed word for word on every bill — about 1,400 characters, untouched at its current 9.5px. This is the text the guest reads and signs, and it now sits under a page that already fits.</p>
+          </div>
+
+          <div class="sign">
+            <div><b>Prepared by:</b><i>HELEN</i></div>
+            <div><b>Guest Signature:</b><i></i></div>
+          </div>
+          <p class="agreetxt">By signing this form, I understand and agree to the Pension Policies.</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="note" style="margin-top:16px"><b>The right-hand sheet is the worst case, not the best:</b> an agency booking, two rooms, three guests, a companion table, all four charge bands, a staff discount, a GCash reference and a deposit already paid. It still lands with room under the signature line — so the pairing is doing real work, not just fitting a thin example.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>What the page costs now, block by block</h2></div>
+    <div class="g3" style="grid-template-columns:190px 1fr 84px;gap:5px 14px;font-size:13.5px;margin-top:10px">
+      <span>Letterhead (paired)</span><span class="sub">hotel left · bill no. right</span><span class="sub" style="text-align:right">~70</span>
+      <span><b>Guest + Stay</b></span><span class="sub">two columns, paired so neither side is empty</span><span class="sub" style="text-align:right">~100</span>
+      <span>Companion table</span><span class="sub">only when there are companions</span><span class="sub" style="text-align:right">~45</span>
+      <span>Charges table</span><span class="sub">unchanged</span><span class="sub" style="text-align:right">~80</span>
+      <span><b>Payment + Totals</b></span><span class="sub">two columns of ticks · totals beside</span><span class="sub" style="text-align:right">~70</span>
+      <span>Pension Policies</span><span class="sub">untouched, exactly as it prints today</span><span class="sub" style="text-align:right">~190</span>
+      <span>Signatures</span><span class="sub">side by side</span><span class="sub" style="text-align:right">~56</span>
+      <span><b>Total</b></span><span class="sub">against ~745 available on one A5 side</span><span class="sub" style="text-align:right;color:var(--good-fg)"><b>~596</b></span>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">04</span><h2>Your call</h2></div>
+    <form class="q" data-lavish-question="go">
+      <h3>Build this layout?</h3>
+      <label class="opt"><input type="radio" name="go" value="Yes — build the three-column Guest + Stay grid, two-column payment ticks, totals beside, and hide zero-value rows">
+        <span><span class="l">Yes — build it <span class="badge b-gold" style="margin-left:6px">recommended</span></span><br>
+        <span class="h">The whole statement on <b>one side of A5</b> with nothing shrunk, the Pension Policies untouched, and a full agency booking still fitting.</span></span></label>
+
+      <label class="opt"><input type="radio" name="go" value="Nearly — but I want a different arrangement of the field columns; I'll say which fields sit where">
+        <span><span class="l">Nearly — let me say which fields sit where</span><br>
+        <span class="h">Tell me the arrangement and I'll redraw the grid before building anything.</span></span></label>
+
+      <label class="opt"><input type="radio" name="go" value="Show me this same layout with the Pension Policies left out, to see how much room that frees">
+        <span><span class="l">Also show me it with the policies left off</span><br>
+        <span class="h">Same page without the Pension Policies block, so you can see the slack it would free — useful if you ever decide the policies belong on a notice at Reception instead of on the bill.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+  </section>
+
+</div>
+</body>
+</html>
