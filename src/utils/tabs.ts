@@ -4,26 +4,13 @@ import { Tab, TabLine } from '../types/tab'
 import { PaymentRecord } from '../types/booking'
 import { nextTabReceiptNumber } from './receiptNumber'
 
-// Guest tabs (board card k69). Supabase is primary; the browser store is the
-// offline fallback, the same way bookings, inventory and cleaning work.
-const TABS_KEY = 'l_etoile_tabs_db'
-const LINES_KEY = 'l_etoile_tab_lines_db'
+// Guest tabs (board card k69). The database is the only home: the browser stores
+// that used to mirror tabs and their lines (`l_etoile_tabs_db`,
+// `l_etoile_tab_lines_db`) are gone (2026-09-28). A refused write — an order, a
+// removed line, a settlement — now throws, so the till says so instead of
+// showing food on a tab the database never received.
 
-function readLocal<T>(key: string): T[] {
-  const raw = localStorage.getItem(key)
-  if (!raw) return []
-  try { return JSON.parse(raw) as T[] } catch { return [] }
-}
-
-function writeLocal<T>(key: string, rows: T[]): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(rows))
-  } catch (err) {
-    // The browser store is only an offline cache, and it can be full or blocked.
-    // A failure here must never break a save that already reached the database.
-    console.error('Could not write the tab cache:', err)
-  }
-}
+const NO_DB = 'No database is connected, so this was not saved.'
 
 // Money is kept to whole centavos so a long tab never drifts.
 function money(value: number): number {
@@ -33,16 +20,17 @@ function money(value: number): number {
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
 export async function getTabs(): Promise<Tab[]> {
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.from('tabs').select('*').order('created_at', { ascending: false })
-      if (error) throw error
-      if (data) return data as Tab[]
-    } catch (err) {
-      console.error('getTabs fell back to the browser store:', err)
-    }
+  if (!isSupabaseConfigured) return []
+
+  try {
+    const { data, error } = await supabase.from('tabs').select('*').order('created_at', { ascending: false })
+    if (error) throw error
+    if (data) return data as Tab[]
+  } catch (err) {
+    console.error('Supabase getTabs Error:', err)
   }
-  return readLocal<Tab>(TABS_KEY)
+
+  return []
 }
 
 /** The guest's own tab for a booking. A booking has at most one open tab. */
@@ -107,46 +95,35 @@ export async function openTab(input: {
     opened_by: input.openedBy?.trim() || undefined,
     created_at: now,
   }
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.from('tabs').insert(tab).select().single()
-      if (error) throw error
-      if (data) return data as Tab
-    } catch (err) {
-      console.error('openTab fell back to the browser store:', err)
-    }
-  }
-  writeLocal(TABS_KEY, [tab, ...readLocal<Tab>(TABS_KEY)])
-  return tab
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+
+  const { data, error } = await supabase.from('tabs').insert(tab).select().single()
+  if (error) throw error
+  return data as Tab
 }
 
 export async function closeTab(tabId: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+
   const closed_at = new Date().toISOString()
-  if (isSupabaseConfigured) {
-    try {
-      const { error } = await supabase.from('tabs').update({ status: 'closed', closed_at }).eq('id', tabId)
-      if (error) throw error
-      return
-    } catch (err) {
-      console.error('closeTab fell back to the browser store:', err)
-    }
-  }
-  writeLocal(TABS_KEY, readLocal<Tab>(TABS_KEY).map(t => t.id === tabId ? { ...t, status: 'closed', closed_at } : t))
+  const { error } = await supabase.from('tabs').update({ status: 'closed', closed_at }).eq('id', tabId)
+  if (error) throw error
 }
 
 // ── Lines ────────────────────────────────────────────────────────────────────
 
 export async function getTabLines(tabId: string): Promise<TabLine[]> {
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.from('tab_lines').select('*').eq('tab_id', tabId).order('created_at', { ascending: true })
-      if (error) throw error
-      if (data) return data as TabLine[]
-    } catch (err) {
-      console.error('getTabLines fell back to the browser store:', err)
-    }
+  if (!isSupabaseConfigured) return []
+
+  try {
+    const { data, error } = await supabase.from('tab_lines').select('*').eq('tab_id', tabId).order('created_at', { ascending: true })
+    if (error) throw error
+    if (data) return data as TabLine[]
+  } catch (err) {
+    console.error('Supabase getTabLines Error:', err)
   }
-  return readLocal<TabLine>(LINES_KEY).filter(l => l.tab_id === tabId)
+
+  return []
 }
 
 /**
@@ -157,30 +134,25 @@ export async function getTabLines(tabId: string): Promise<TabLine[]> {
  * be one query per table on every filter change.
  */
 export async function getAllTabLines(): Promise<TabLine[]> {
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.from('tab_lines').select('*').order('created_at', { ascending: true })
-      if (error) throw error
-      if (data) return data as TabLine[]
-    } catch (err) {
-      console.error('getAllTabLines fell back to the browser store:', err)
-    }
+  if (!isSupabaseConfigured) return []
+
+  try {
+    const { data, error } = await supabase.from('tab_lines').select('*').order('created_at', { ascending: true })
+    if (error) throw error
+    if (data) return data as TabLine[]
+  } catch (err) {
+    console.error('Supabase getAllTabLines Error:', err)
   }
-  return readLocal<TabLine>(LINES_KEY)
+
+  return []
 }
 
 async function insertLine(line: TabLine): Promise<TabLine> {
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.from('tab_lines').insert(line).select().single()
-      if (error) throw error
-      if (data) return data as TabLine
-    } catch (err) {
-      console.error('addTabLine fell back to the browser store:', err)
-    }
-  }
-  writeLocal(LINES_KEY, [...readLocal<TabLine>(LINES_KEY), line])
-  return line
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+
+  const { data, error } = await supabase.from('tab_lines').insert(line).select().single()
+  if (error) throw error
+  return data as TabLine
 }
 
 /** Adds a charge. `amount` is worked out here so every caller agrees on it. */
@@ -213,16 +185,10 @@ export async function addTabLine(input: {
  * The caller recomputes the bill afterwards.
  */
 export async function deleteTabLine(lineId: string): Promise<void> {
-  if (isSupabaseConfigured) {
-    try {
-      const { error } = await supabase.from('tab_lines').delete().eq('id', lineId)
-      if (error) throw error
-      return
-    } catch (err) {
-      console.error('deleteTabLine fell back to the browser store:', err)
-    }
-  }
-  writeLocal(LINES_KEY, readLocal<TabLine>(LINES_KEY).filter(l => l.id !== lineId))
+  if (!isSupabaseConfigured) throw new Error('No database is connected, so this line was not removed.')
+
+  const { error } = await supabase.from('tab_lines').delete().eq('id', lineId)
+  if (error) throw error
 }
 
 // ── Money ────────────────────────────────────────────────────────────────────
@@ -263,20 +229,14 @@ export async function settleTab(input: {
   const records = [...(input.tab.payment_records || []), record]
   const closed_at = new Date().toISOString()
 
-  if (isSupabaseConfigured) {
-    try {
-      const { error } = await supabase
-        .from('tabs')
-        .update({ payment_records: records, status: 'closed', closed_at })
-        .eq('id', input.tab.id)
-      if (error) throw error
-      return record
-    } catch (err) {
-      console.error('settleTab fell back to the browser store:', err)
-    }
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so this tab was not settled.')
   }
-  writeLocal(TABS_KEY, readLocal<Tab>(TABS_KEY).map(t =>
-    t.id === input.tab.id ? { ...t, payment_records: records, status: 'closed', closed_at } : t,
-  ))
+
+  const { error } = await supabase
+    .from('tabs')
+    .update({ payment_records: records, status: 'closed', closed_at })
+    .eq('id', input.tab.id)
+  if (error) throw error
   return record
 }

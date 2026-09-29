@@ -1,4 +1,5 @@
 import { PaymentAccounts } from '../types/booking'
+import { readAppSetting, writeAppSetting } from './appSettings'
 
 // Where the guest sends a downpayment. Defaults match the official Daweez
 // Pension House form; staff/admin can edit these in Settings → Other charges.
@@ -14,19 +15,32 @@ export const DEFAULT_PAYMENT_ACCOUNTS: PaymentAccounts = {
   bank2AccountNumber: '0795-0035-25',
 }
 
-const KEY = 'l_etoile_payment_accounts_db'
+const KEY = 'payment_accounts'
 
-export function getPaymentAccounts(): PaymentAccounts {
-  try {
-    const raw = localStorage.getItem(KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<PaymentAccounts>
-      return { ...DEFAULT_PAYMENT_ACCOUNTS, ...parsed }
-    }
-  } catch { /* invalid stored value → defaults */ }
-  return { ...DEFAULT_PAYMENT_ACCOUNTS }
+// Held in memory for this session. The database is the home; this cache exists
+// because the printed statements, the guest portal and the chatbot read these
+// synchronously. `hydratePaymentAccounts()` fills it before anything renders.
+let cache: PaymentAccounts | null = null
+
+/**
+ * Reads where guests pay out of the database into memory.
+ *
+ * Needed before anything renders: the guest portal and the printed bill both
+ * quote these figures, and telling a guest to send money to a stale account is
+ * worse than refusing to show the page.
+ */
+export async function hydratePaymentAccounts(): Promise<void> {
+  const stored = await readAppSetting<Partial<PaymentAccounts>>(KEY)
+  cache = stored ? { ...DEFAULT_PAYMENT_ACCOUNTS, ...stored } : { ...DEFAULT_PAYMENT_ACCOUNTS }
 }
 
-export function savePaymentAccounts(accounts: PaymentAccounts): void {
-  localStorage.setItem(KEY, JSON.stringify(accounts))
+export function getPaymentAccounts(): PaymentAccounts {
+  return cache ? { ...cache } : { ...DEFAULT_PAYMENT_ACCOUNTS }
+}
+
+/** Saves where guests pay to the database. Throws when it refuses. */
+export async function savePaymentAccounts(accounts: PaymentAccounts): Promise<void> {
+  const clean = { ...accounts }
+  await writeAppSetting(KEY, clean)
+  cache = clean
 }

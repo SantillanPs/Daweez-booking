@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>No browser storage — what it touches</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raise:#262626; --line:#3A3A3A;
+    --text:#EDEAE4; --sec:#A8A29A; --muted:#7D7871; --gold:#D0AB60;
+    --gold-bg:#332B18; --gold-fg:#E6C989;
+    --good-bg:#12261F; --good-fg:#34D399;
+    --bad-bg:#2A1615;  --bad-fg:#F87171;
+    --neu-bg:#2A2A2A;  --neu-fg:#C9C4BB;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:40px 24px 96px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1060px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(26px,3.6vw,40px);line-height:1.14;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec)}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:17px;color:var(--text);max-width:64ch}
+  .wrap>*+*{margin-top:22px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);
+       border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+         border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:var(--neu-fg)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  tr:last-child td{border-bottom:0}
+  td.n{font-family:'JetBrains Mono',monospace;font-size:12.5px}
+  .ok{color:var(--good-fg)} .no{color:var(--bad-fg)} .mid{color:var(--gold-fg)}
+  .groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+  @media (max-width:820px){.groups{grid-template-columns:minmax(0,1fr)}}
+  .g{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:15px 17px;min-width:0}
+  .g.a{border-color:#5A4A22} .g.b{border-color:#4A4A4A} .g.c{border-color:#5A2A28}
+  .g .big{font-family:'Sora',sans-serif;font-size:30px;font-weight:700;line-height:1;margin:6px 0 2px}
+  .g.a .big{color:var(--gold)} .g.b .big{color:var(--neu-fg)} .g.c .big{color:var(--bad-fg)}
+  .g ul{margin:10px 0 0;padding-left:16px;font-size:13.5px;color:var(--sec)}
+  .g li{margin:3px 0}
+  .steps{display:grid;gap:12px}
+  .step{display:flex;gap:14px;align-items:flex-start;background:var(--raise);border:1px solid var(--line);
+        border-radius:12px;padding:14px 16px;min-width:0}
+  .step .k{font-family:'JetBrains Mono',monospace;font-size:12px;color:#141414;background:var(--gold);
+           width:24px;height:24px;border-radius:6px;display:grid;place-items:center;flex:none;font-weight:700}
+  .step .t{font-weight:600;font-size:14.5px}
+  .step .d{font-size:13.5px;color:var(--sec)}
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);
+       border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .opt:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .opt input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .opt .l{font-weight:600;font-size:14px}
+  .opt .h{font-size:13px;color:var(--muted)}
+  .opt .h b{color:var(--sec);font-weight:500}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+  button.submit:hover{filter:brightness(1.07)}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:14px}
+  .note b{color:var(--sec);font-weight:500}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#171717;border:1px solid var(--line);
+       border-radius:4px;padding:1px 5px;color:var(--gold-fg)}
+  .flowrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .done{background:var(--good-bg);border:1px solid #1E4A38;border-radius:12px;padding:14px 17px;min-width:0}
+  .done .t{color:var(--good-fg);font-weight:700;font-family:'Sora',sans-serif;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · part 2 of your ruling · nothing built</div>
+    <h1>“No browser storage <span style="color:var(--gold)">everywhere</span>” — here is everything that touches.</h1>
+    <p class="lede">Room prices are already done and in the database. This is the rest of the app. Three groups, and only one of them needs a decision from you.</p>
+    <div class="flowrow">
+      <span class="badge b-good">part 1 built: room prices</span>
+      <span class="badge b-bad">5 more stores that can lie the same way</span>
+      <span class="badge b-gold">1 question left</span>
+    </div>
+  </header>
+
+  <section class="done">
+    <div class="t">Already built and verified — the room prices</div>
+    <p style="margin:8px 0 0;color:var(--sec);font-size:14px">Both write functions repaired in the database and tested: <code>room-3</code> is now accepted, the hour prices and the board price both land. The browser copy of a room price is gone, and a rejected save now throws instead of pretending. Migration <code>20260928142725</code>. <b style="color:var(--sec)">Type-check and lint both pass.</b></p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>Everything that uses the browser today</h2></div>
+    <p class="sub">Sorted by what has to happen to it — not by file.</p>
+
+    <div class="groups">
+      <div class="g a">
+        <span class="badge b-gold">group A</span>
+        <div class="big">8</div>
+        <div class="sub">stores the database already owns</div>
+        <ul>
+          <li>Bookings</li>
+          <li>Channel feed links</li>
+          <li>Guests &amp; partners</li>
+          <li>Expenses &amp; their groups</li>
+          <li>Inventory</li>
+          <li>Cleaning checklist</li>
+          <li>Restaurant menu</li>
+          <li>Restaurant tabs &amp; lines</li>
+        </ul>
+        <p class="sub" style="margin:10px 0 0">The browser copy is only a spare. Delete it, and make a failed save say so.</p>
+      </div>
+
+      <div class="g b">
+        <span class="badge b-neu">group B</span>
+        <div class="big">2</div>
+        <div class="sub">have no database home at all</div>
+        <ul>
+          <li><b style="color:var(--sec)">Shared rates</b> — venue hourly, early/late charge, the breakfast menu, extras &amp; rentals, deposit, standard times</li>
+          <li><b style="color:var(--sec)">Where guests pay</b> — GCash number and <b>both</b> bank accounts, the ones printed on the bill</li>
+        </ul>
+        <p class="sub" style="margin:10px 0 0">These live <b>only</b> in one browser. Open the app on another PC and they are the factory defaults. Removing the browser copy means building a home for them first.</p>
+      </div>
+
+      <div class="g c">
+        <span class="badge b-bad">group C</span>
+        <div class="big">1</div>
+        <div class="sub">is not hotel data</div>
+        <ul>
+          <li><b style="color:var(--sec)">The login itself</b> — the passcode gate remembers you signed in, so you are not asked again on every screen and refresh</li>
+        </ul>
+        <p class="sub" style="margin:10px 0 0">This is the one that needs your ruling — see the question at the bottom.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>The room-price bug is not the only one</h2></div>
+    <p class="sub">Five more stores fail the same way — two of them even worse. This is what “no browser storage” really buys you.</p>
+
+    <table>
+      <thead>
+        <tr><th>Store</th><th>What happens when the database refuses the save</th><th>Staff see</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Inventory</b><br><span class="sub">and <b>cleaning checklist</b></span></td>
+          <td class="no">The refusal is <b>never even looked at</b>. The code writes the browser copy first and never reads the answer back — the database library reports a refusal in the result rather than throwing, so nothing catches it.</td>
+          <td><span class="badge b-bad">silence</span></td>
+        </tr>
+        <tr>
+          <td><b>Tabs &amp; lines</b>, <b>expenses</b>, <b>partners</b>, <b>menu</b></td>
+          <td class="mid">Noticed, written to the browser console, then saved to the browser anyway. This is exactly the room-price pattern.</td>
+          <td><span class="badge b-bad">“saved”</span></td>
+        </tr>
+        <tr>
+          <td><b>Bookings</b> and <b>feed links</b></td>
+          <td class="mid">Same fallback, on purpose — this is the one that lets the desk keep taking a booking with no internet.</td>
+          <td><span class="badge b-neu">offline save</span></td>
+        </tr>
+        <tr>
+          <td><b>Room prices</b></td>
+          <td class="ok">Throws. Settings reports it.</td>
+          <td><span class="badge b-good">fixed</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="note" style="margin-top:16px"><b>An inventory or cleaning save can be silently lost today, and the screen still shows the new number.</b> Nobody has reported it because nothing ever says it happened. Removing the browser copies fixes this class of bug everywhere, not just for prices.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>What I would build, in this order</h2></div>
+    <div class="steps" style="margin-top:14px">
+      <div class="step">
+        <div class="k">1</div>
+        <div>
+          <div class="t">Group A — delete the browser copies, make every failed save speak</div>
+          <div class="d">One store at a time, each with its own check: a save that does not reach the database shows a red message where the button was, and the screen stops pretending. Biggest single win: inventory and cleaning start telling the truth.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="k">2</div>
+        <div>
+          <div class="t">Group B — give the shared rates and the payment accounts a home in the database</div>
+          <div class="d">Two small tables (or one settings table) plus their writers, then the browser copies go. This is what makes Settings mean the same thing on every PC — today the GCash number and both bank accounts on the bill are only in one browser.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="k">3</div>
+        <div>
+          <div class="t">The honest consequence, kept visible</div>
+          <div class="d">With no browser store, the desk needs the internet for every save. If it drops, the app refuses and says so — it no longer quietly parks the change. Nothing is ever shown as saved that is not.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">04</span><h2>Your one question</h2></div>
+    <p class="sub">Everything above I can build without asking again. This one I will not pick for you.</p>
+
+    <form class="q" data-lavish-question="login">
+      <h3>The login is also in the browser. What should happen to it?</h3>
+      <p class="sub" style="margin-bottom:0">“No browser storage” taken literally means the app forgets you signed in — the passcode would be asked again on every refresh and every new tab.</p>
+
+      <label class="opt"><input type="radio" name="login" value="Keep the login in the browser — no browser storage applies to the hotel's data only">
+        <span><span class="l">Keep the login where it is <span class="badge b-gold" style="margin-left:6px">recommended</span></span><br>
+        <span class="h">The rule then reads <b>“no hotel data in the browser”</b> — every price, booking, tab, expense and setting comes from the database, and only the fact that you are signed in stays on the machine. The desk signs in once, as now.</span></span></label>
+
+      <label class="opt"><input type="radio" name="login" value="Nothing stored at all — the passcode is asked again after every refresh and every new tab">
+        <span><span class="l">Nothing stored at all</span><br>
+        <span class="h">Literal “no browser storage”. Every refresh, every new tab and every closed window asks for the passcode again. <b>Staff will type it many times a day</b> — say the word and I will build it, but I want you to have seen that cost first.</span></span></label>
+
+      <label class="opt"><input type="radio" name="login" value="Real staff accounts — each person gets their own login (Supabase Auth)">
+        <span><span class="l">Real staff accounts instead</span><br>
+        <span class="h">Replaces the shared passcode with a proper signed-in user per staff member — which is also the groundwork for <b>k74 “Who did it — staff names and PINs”</b> on the board. Bigger job, and it would come as its own piece of work rather than inside this one.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+
+    <p class="note" style="margin-top:16px"><b>Or answer in your own words</b> with an annotation anywhere on this page.</p>
+  </section>
+
+</div>
+</body>
+</html>

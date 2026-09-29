@@ -3,7 +3,7 @@ import { Wallet } from 'lucide-react'
 import { NumInput } from '../NumInput'
 import { SegmentedControl, SegmentOption } from '../SegmentedControl'
 
-export type PayPlan = 'deposit' | 'full' | 'custom'
+export type PayPlan = 'deposit' | 'full' | 'custom' | 'reservation'
 
 interface BookingDepositFieldsProps {
   /** What the stay comes to — half of it is the deposit, all of it is Full pay. */
@@ -64,11 +64,15 @@ export function BookingDepositFields({
   setFormSecurityDeposit,
 }: BookingDepositFieldsProps) {
   const half = Math.max(0, Math.round(estTotal / 2))
-  const now = plan === 'full' ? Math.round(estTotal) : plan === 'deposit' ? half : Math.round(agreedDeposit)
+  const now = plan === 'full' ? Math.round(estTotal) : plan === 'deposit' ? half : plan === 'reservation' ? 0 : Math.round(agreedDeposit)
   const options: SegmentOption<PayPlan>[] = [
     { key: 'deposit', label: 'Deposit', hint: `Half the stay — ${peso(half)}. The rest is collected at check-out.` },
     { key: 'full', label: 'Full pay', hint: `The whole stay — ${peso(estTotal)}. Nothing left at check-out.` },
     { key: 'custom', label: 'Custom', hint: 'Any figure the guest hands over now. The rest stays owed with the stay.' },
+    // The owner's ruling, 2026-09-28: a room held for somebody the staff personally know
+    // and trust. Nothing is paid and nothing is agreed, so no figure is shown anywhere —
+    // the stay reads **Reserved**, not Unpaid, until the guest arrives.
+    { key: 'reservation', label: 'Reservation', hint: 'A hold for a guest the staff know — nothing paid now. They settle when they arrive to check in.' },
   ]
 
   return (
@@ -87,6 +91,10 @@ export function BookingDepositFields({
           <span className="ml-auto shrink-0">
             <NumInput value={agreedDeposit} onChange={setAgreedDeposit} aria-label="Amount the guest pays now"
               className="w-[72px] bg-card border border-base-300 text-main px-2 py-1 rounded-lg text-sm font-mono focus:outline-none focus:border-brand-primary text-right" />
+          </span>
+        ) : plan === 'reservation' ? (
+          <span className="ml-auto shrink-0 text-[10px] font-semibold text-base-content/60 whitespace-nowrap">
+            nothing now · pays at check-in
           </span>
         ) : (
           <span className="ml-auto flex items-baseline gap-1.5 shrink-0">

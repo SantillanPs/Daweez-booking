@@ -3,115 +3,12 @@ import { supabase, isSupabaseConfigured } from './supabaseClient'
 import { randomUUID, isValidUUID } from './helpers'
 import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 
-// Local Storage Database Keys
-const BOOKINGS_KEY = 'l_etoile_bookings_db'
-const FEEDS_KEY = 'l_etoile_feeds_db'
-export const PARTNERS_KEY = 'l_etoile_partners_db'
-const ROOMS_KEY = 'l_etoile_rooms_db'
-
-// Initialization
-function initDB() {
-  if (isSupabaseConfigured) return // Suppressed seed if using Supabase
-
-  if (!localStorage.getItem(BOOKINGS_KEY)) {
-    const today = new Date()
-    const tomorrow = new Date(today)
-    tomorrow.setDate(today.getDate() + 1)
-    const inTwoDays = new Date(today)
-    inTwoDays.setDate(today.getDate() + 2)
-    const inThreeDays = new Date(today)
-    inThreeDays.setDate(today.getDate() + 3)
-    const inFiveDays = new Date(today)
-    inFiveDays.setDate(today.getDate() + 5)
-
-    const initialBookings: Booking[] = [
-      {
-        id: 'mock-1',
-        room_id: 'room-1',
-        guest_name: 'Juan Dela Cruz',
-        guest_email: 'juan.delacruz@gmail.com',
-        guest_phone: '0917-123-4567',
-        check_in: tomorrow.toISOString().split('T')[0],
-        check_out: inThreeDays.toISOString().split('T')[0],
-        source: 'airbnb',
-        status: 'confirmed',
-        downpayment_paid: 1050,
-        balance_due: 1550,
-        security_deposit: 500,
-        created_at: new Date().toISOString(),
-        expires_at: null
-      },
-      {
-        id: 'mock-2',
-        room_id: 'room-5',
-        guest_name: 'Guinevere Santos',
-        guest_email: 'guinevere@gmail.com',
-        guest_phone: '0918-987-6543',
-        check_in: inThreeDays.toISOString().split('T')[0],
-        check_out: inFiveDays.toISOString().split('T')[0],
-        source: 'booking_com',
-        status: 'confirmed',
-        downpayment_paid: 1200,
-        balance_due: 1700,
-        security_deposit: 500,
-        created_at: new Date().toISOString(),
-        expires_at: null
-      },
-      {
-        id: 'mock-venue-1',
-        venue_id: 'venue-gazebo',
-        guest_name: 'Maria Clara',
-        guest_email: 'maria@rizal.ph',
-        guest_phone: '0919-876-5432',
-        check_in: tomorrow.toISOString().split('T')[0],
-        check_out: inTwoDays.toISOString().split('T')[0],
-        source: 'website',
-        status: 'confirmed',
-        downpayment_paid: 2500,
-        balance_due: 3000,
-        security_deposit: 500,
-        event_addons: {
-          fullBandAndLights: true,
-          stage: false,
-          ledWall: false
-        },
-        equipment_rentals: {
-          bigTableCount: 2,
-          smallTableCount: 0,
-          chairCount: 10,
-          mineralWaterCount: 1
-        },
-        created_at: new Date().toISOString(),
-        expires_at: null
-      }
-    ]
-    localStorage.setItem(BOOKINGS_KEY, JSON.stringify(initialBookings))
-  }
-
-  if (!localStorage.getItem(FEEDS_KEY)) {
-    const initialFeeds: SyncFeed[] = DEFAULT_ROOMS.flatMap(room => [
-      {
-        id: `feed-ab-${room.id}`,
-        room_id: room.id,
-        channel: 'airbnb',
-        url: `https://www.airbnb.com/calendar/ical/${room.room_number}.ics`,
-        last_synced: new Date().toISOString()
-      },
-      {
-        id: `feed-bc-${room.id}`,
-        room_id: room.id,
-        channel: 'booking_com',
-        url: `https://ical.booking.com/v1/export?t=${room.room_number}`,
-        last_synced: new Date().toISOString()
-      }
-    ])
-    localStorage.setItem(FEEDS_KEY, JSON.stringify(initialFeeds))
-  }
-
-  if (!localStorage.getItem(PARTNERS_KEY)) {
-    localStorage.setItem(PARTNERS_KEY, JSON.stringify([]))
-  }
-}
+// The browser stores that used to sit here (`l_etoile_bookings_db`,
+// `l_etoile_feeds_db`, plus `initDB`'s first-run seed) are gone: the database is
+// the only home for a booking or a channel link. A save that cannot reach it now
+// throws instead of parking the row in the browser — the fallback is how the
+// hotel's room prices were typed, shown on every screen and never written
+// (found 2026-09-28).
 
 export async function getRooms(): Promise<Room[]> {
   if (isSupabaseConfigured) {
@@ -133,60 +30,43 @@ export async function getRooms(): Promise<Room[]> {
           description: r.description || undefined,
           image_url: r.image_url || undefined
         })) as Room[]
-        return applyRoomRateOverrides(rooms)
+        return rooms
       }
     } catch (err) {
       console.error('Supabase getRooms Error, falling back to defaults:', err)
     }
   }
-  return applyRoomRateOverrides(DEFAULT_ROOMS)
+  return DEFAULT_ROOMS
 }
 
-// Local override store for room rates (Regular + Promo). Written only when a
-// rate edit cannot reach the database (offline / RPC unavailable) so the staff
-// dashboard keeps saving without a live backend. `getRooms` overlays these so
-// edits stay visible. Keys are room ids; values are the edited price fields.
-function applyRoomRateOverrides(rooms: Room[]): Room[] {
-  try {
-    const data = localStorage.getItem(ROOMS_KEY)
-    if (!data) return rooms
-    const overrides: Record<string, Partial<Room>> = JSON.parse(data)
-    return rooms.map(r => overrides[r.id] ? { ...r, ...overrides[r.id] } : r)
-  } catch {
-    return rooms
-  }
-}
-
+/**
+ * Saves a room's one price (card k128). The app sends the same figure for the
+ * Regular and Promo columns, so the rate card, the booking form and the printed
+ * bill can never quote two different prices for one room.
+ *
+ * RLS grants anon only SELECT on `rooms`, so the write goes through the
+ * SECURITY DEFINER `update_room_rate` RPC (the same pattern as the booking
+ * writes). There is deliberately **no browser fallback here**: a rejected save
+ * used to be swallowed and remembered in localStorage, which is exactly how
+ * this failed — the desk typed the rates, every screen showed them, and the
+ * database kept its original seed prices (found 2026-09-28). A failure now
+ * throws, so the Settings save bar reports it and nothing pretends to be saved.
+ */
 export async function updateRoomRate(roomId: string, basePrice: number, promoPrice?: number | null): Promise<Room | null> {
   const base = Math.max(0, Math.round(basePrice))
   const promo = promoPrice != null && promoPrice > 0 ? Math.round(promoPrice) : null
 
-  if (isSupabaseConfigured) {
-    try {
-      // RLS grants anon only SELECT on `rooms`, so rate edits go through this
-      // SECURITY DEFINER RPC (same pattern as the booking write paths).
-      const { data, error } = await supabase.rpc('update_room_rate', {
-        p_room_id: roomId,
-        p_base_price: base,
-        p_promo_price: promo ?? 0,
-      })
-      if (error) throw error
-      return (data as unknown as Room) ?? null
-    } catch (err) {
-      console.error('Supabase updateRoomRate Error, falling back to LocalStorage:', err)
-    }
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so this room price was not saved.')
   }
 
-  // Offline / no live database: persist the rate override in the browser store.
-  const data = localStorage.getItem(ROOMS_KEY)
-  const overrides: Record<string, Partial<Room>> = data ? JSON.parse(data) : {}
-  overrides[roomId] = { base_price: base, promo_price: promo }
-  localStorage.setItem(ROOMS_KEY, JSON.stringify(overrides))
-
-  const existing = applyRoomRateOverrides(DEFAULT_ROOMS).find(r => r.id === roomId)
-  return existing
-    ? { ...existing, base_price: base, promo_price: promo }
-    : { id: roomId, room_number: -1, name: '', base_price: base, promo_price: promo, capacity: 0, description: '', image_url: '' }
+  const { data, error } = await supabase.rpc('update_room_rate', {
+    p_room_id: roomId,
+    p_base_price: base,
+    p_promo_price: promo ?? 0,
+  })
+  if (error) throw error
+  return (data as unknown as Room) ?? null
 }
 
 /**
@@ -194,28 +74,18 @@ export async function updateRoomRate(roomId: string, basePrice: number, promoPri
  * stay, set by the desk. A room with no price sells no breakfast.
  *
  * Same shape as `updateRoomRate` next to it: RLS gives the app SELECT only on
- * `rooms`, so the write goes through a small SECURITY DEFINER function, and a
- * failed write is remembered in the browser store so the desk can keep working
- * offline. The bed count is configuration, not money, so a silent fallback is
- * safe here — unlike a booking write.
+ * `rooms`, so the write goes through a small SECURITY DEFINER function. No
+ * browser copy — a failed save throws so the desk is told.
  */
 export async function updateRoomBreakfastPrice(roomId: string, price: number): Promise<void> {
   const amount = Math.max(0, Math.round(price))
 
-  if (isSupabaseConfigured) {
-    try {
-      const { error } = await supabase.rpc('set_room_breakfast_price', { p_room_id: roomId, p_price: amount })
-      if (error) throw error
-      return
-    } catch (err) {
-      console.error('Supabase updateRoomBreakfastPrice Error, falling back to LocalStorage:', err)
-    }
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so this breakfast price was not saved.')
   }
 
-  const data = localStorage.getItem(ROOMS_KEY)
-  const overrides: Record<string, Partial<Room>> = data ? JSON.parse(data) : {}
-  overrides[roomId] = { ...overrides[roomId], breakfast_price: amount }
-  localStorage.setItem(ROOMS_KEY, JSON.stringify(overrides))
+  const { error } = await supabase.rpc('set_room_breakfast_price', { p_room_id: roomId, p_price: amount })
+  if (error) throw error
 }
 
 /**
@@ -223,8 +93,10 @@ export async function updateRoomBreakfastPrice(roomId: string, price: number): P
  * hotel's printed rate board). Zero / blank means the room is NOT sold short,
  * which is the dash on that board; the 22-hour price stays the room's own price.
  *
- * Same shape as `updateRoomBreakfastPrice`: one small SECURITY DEFINER writer,
- * with a browser-store fallback so the desk can keep working offline.
+ * Same shape as `updateRoomBreakfastPrice`: one small SECURITY DEFINER writer.
+ * No browser copy — this is the save that silently went nowhere until
+ * 2026-09-28 (the function cast the text id `room-3` to uuid and was rejected),
+ * so it now throws and the desk sees it.
  */
 export async function updateRoomHourPrices(
   roomId: string,
@@ -236,22 +108,14 @@ export async function updateRoomHourPrices(
   const h6 = Math.max(0, Math.round(hour6 || 0))
   const h12 = Math.max(0, Math.round(hour12 || 0))
 
-  if (isSupabaseConfigured) {
-    try {
-      const { error } = await supabase.rpc('set_room_hour_prices', {
-        p_room_id: roomId, p_hour3: h3, p_hour6: h6, p_hour12: h12,
-      })
-      if (error) throw error
-      return
-    } catch (err) {
-      console.error('Supabase updateRoomHourPrices Error, falling back to LocalStorage:', err)
-    }
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so these short-stay prices were not saved.')
   }
 
-  const data = localStorage.getItem(ROOMS_KEY)
-  const overrides: Record<string, Partial<Room>> = data ? JSON.parse(data) : {}
-  overrides[roomId] = { ...overrides[roomId], hour3_price: h3 || null, hour6_price: h6 || null, hour12_price: h12 || null }
-  localStorage.setItem(ROOMS_KEY, JSON.stringify(overrides))
+  const { error } = await supabase.rpc('set_room_hour_prices', {
+    p_room_id: roomId, p_hour3: h3, p_hour6: h6, p_hour12: h12,
+  })
+  if (error) throw error
 }
 
 export async function getVenues(): Promise<Venue[]> {  if (isSupabaseConfigured) {
@@ -357,29 +221,13 @@ export async function getBookings(): Promise<Booking[]> {
         }))
       }
     } catch (err) {
-      console.error('Supabase getBookings Error, falling back to LocalStorage:', err)
+      console.error('Supabase getBookings Error:', err)
     }
   }
 
-  initDB()
-  const data = localStorage.getItem(BOOKINGS_KEY)
-  if (!data) return []
-
-  const bookings: Booking[] = JSON.parse(data)
-  const now = new Date()
-  const activeBookings = bookings.filter(b => {
-    if (b.status === 'pending' && b.expires_at) {
-      const expires = new Date(b.expires_at)
-      return expires > now
-    }
-    return true
-  })
-
-  if (activeBookings.length !== bookings.length) {
-    localStorage.setItem(BOOKINGS_KEY, JSON.stringify(activeBookings))
-  }
-
-  return activeBookings
+  // No browser copy any more. If the database could not be read, the screen
+  // shows no bookings rather than a stale store that was never the truth.
+  return []
 }
 
 // ── Shared Supabase record mapper (single source of truth for column shape) ──
@@ -483,11 +331,9 @@ async function writeStayHours(bookingId: string, hours?: number): Promise<void> 
   }
 }
 
-// Business-rule failures must surface to the UI — never silently fall back.
-function isBusinessRuleError(err: unknown): boolean {
-  const msg = (err as { message?: string })?.message || ''
-  return msg.includes('ROOM_UNAVAILABLE') || msg.includes('VENUE_UNAVAILABLE') || msg.includes('Check-in must be earlier')
-}
+// Business-rule failures (ROOM_UNAVAILABLE / VENUE_UNAVAILABLE / date order) and
+// every other write failure now surface to the caller alike: nothing is parked in
+// the browser, so a booking that could not be saved must say so.
 
 // Compute the next sequential invoice number for a check-in month.
 async function nextInvoiceNumber(checkInDate: string): Promise<string> {
@@ -515,28 +361,27 @@ async function nextInvoiceNumber(checkInDate: string): Promise<string> {
 }
 
 export async function saveBookings(bookings: Booking[]): Promise<void> {
-  if (isSupabaseConfigured) {
-    try {
-      // Per-row insert/update through the RPCs (whole-array upsert is no longer
-      // permitted for anon and would cause lost updates between tabs).
-      const existing = await getBookings()
-      for (const b of bookings) {
-        if (existing.some(x => x.id === b.id)) {
-          await updateBooking(b)
-        } else {
-          await insertBooking(b)
-        }
-      }
-      return
-    } catch (err) {
-      console.error('Supabase saveBookings Error, falling back to LocalStorage:', err)
-    }
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so these bookings were not saved.')
   }
 
-  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings))
+  // Per-row insert/update through the RPCs (whole-array upsert is no longer
+  // permitted for anon and would cause lost updates between tabs).
+  const existing = await getBookings()
+  for (const b of bookings) {
+    if (existing.some(x => x.id === b.id)) {
+      await updateBooking(b)
+    } else {
+      await insertBooking(b)
+    }
+  }
 }
 
 export async function insertBooking(booking: Booking): Promise<Booking> {
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so this booking was not saved.')
+  }
+
   // The DB id column is UUID-typed; legacy ids ('manual-abc') would silently
   // fail on Supabase, so normalize to a real UUID before writing.
   const dbId = isValidUUID(booking.id) ? booking.id! : randomUUID()
@@ -549,112 +394,64 @@ export async function insertBooking(booking: Booking): Promise<Booking> {
 
   const record = toBookingRecord(withId)
 
-  if (isSupabaseConfigured) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const { data, error } = await supabase.rpc('book_booking', { p_booking: record })
-        if (error) {
-          // Race on the sequential invoice number → bump and retry.
-          const isInvoiceConflict = withId.invoice_number &&
-            (error.code === '23505' || /duplicate key/i.test(String(error.message || '')))
-          if (isInvoiceConflict) {
-            withId.invoice_number = await nextInvoiceNumber(withId.check_in)
-            record.invoice_number = withId.invoice_number
-            continue
-          }
-          throw error
-        }
-        await writeAgreedDeposit(withId.id, withId.agreed_deposit)
-        await writeStayHours(withId.id, withId.stay_hours)
-        const saved = (data as unknown as Booking) ?? withId
-        // The booking RPC does not carry the agreed deposit or the short-stay hours
-        // (see the writers above), so put them back on the row the caller caches.
-        return { ...saved, agreed_deposit: withId.agreed_deposit, stay_hours: withId.stay_hours }
-      } catch (err) {
-        if (isBusinessRuleError(err)) throw err
-        console.error('Supabase insertBooking Error, falling back to LocalStorage:', err)
-        break
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data, error } = await supabase.rpc('book_booking', { p_booking: record })
+    if (error) {
+      // Race on the sequential invoice number → bump and retry.
+      const isInvoiceConflict = withId.invoice_number &&
+        (error.code === '23505' || /duplicate key/i.test(String(error.message || '')))
+      if (isInvoiceConflict) {
+        withId.invoice_number = await nextInvoiceNumber(withId.check_in)
+        record.invoice_number = withId.invoice_number
+        continue
       }
+      throw error
     }
+    await writeAgreedDeposit(withId.id, withId.agreed_deposit)
+    await writeStayHours(withId.id, withId.stay_hours)
+    const saved = (data as unknown as Booking) ?? withId
+    // The booking RPC does not carry the agreed deposit or the short-stay hours
+    // (see the writers above), so put them back on the row the caller caches.
+    return { ...saved, agreed_deposit: withId.agreed_deposit, stay_hours: withId.stay_hours }
   }
 
-  initDB()
-  const data = localStorage.getItem(BOOKINGS_KEY)
-  const existing: Booking[] = data ? JSON.parse(data) : []
-  const next = [...existing, withId]
-  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(next))
-  return withId
+  throw new Error('The booking could not be saved — its invoice number kept clashing. Please try again.')
 }
 
 export async function updateBooking(booking: Booking): Promise<Booking> {
-  // bookings.id is a TEXT column that may hold non-UUID ids (manual-…, imported-…).
-  // The update_booking RPC takes text ids, so call it for every id in online mode.
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.rpc('update_booking', { p_booking: toBookingRecord(booking) })
-      if (error) throw error
-      await writeAgreedDeposit(booking.id, booking.agreed_deposit)
-      await writeStayHours(booking.id, booking.stay_hours)
-      const saved = (data as unknown as Booking) ?? booking
-      return { ...saved, agreed_deposit: booking.agreed_deposit, stay_hours: booking.stay_hours }
-    } catch (err) {
-      if (isBusinessRuleError(err)) throw err
-      // Network/transient write failures fall back to the browser store so the
-      // app still saves offline (getBookings reads from the same store when the
-      // database is unreachable). The text-id RPC call above already happens for
-      // every id, so non-UUID (manual-/imported-) bookings still persist online.
-      console.error('Supabase updateBooking Error, falling back to LocalStorage:', err)
-    }
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so this booking was not saved.')
   }
 
-  // Offline / no live database (isSupabaseConfigured === false): persist to the
-  // browser store so the app still works without a backend.
-  initDB()
-  const data = localStorage.getItem(BOOKINGS_KEY)
-  const existing: Booking[] = data ? JSON.parse(data) : []
-  const updated = existing.map(b => b.id === booking.id ? booking : b)
-  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updated))
-  return booking
+  // bookings.id is a TEXT column that may hold non-UUID ids (manual-…, imported-…).
+  // The update_booking RPC takes text ids, so call it for every id in online mode.
+  const { data, error } = await supabase.rpc('update_booking', { p_booking: toBookingRecord(booking) })
+  if (error) throw error
+  await writeAgreedDeposit(booking.id, booking.agreed_deposit)
+  await writeStayHours(booking.id, booking.stay_hours)
+  const saved = (data as unknown as Booking) ?? booking
+  return { ...saved, agreed_deposit: booking.agreed_deposit, stay_hours: booking.stay_hours }
 }
 
 export async function deleteBooking(bookingId: string): Promise<void> {
-  // bookings.id is TEXT and may be a non-UUID id (manual-…, imported-…); delete_booking takes text.
-  if (isSupabaseConfigured) {
-    try {
-      const { error } = await supabase.rpc('delete_booking', { p_booking_id: bookingId })
-      if (error) throw error
-      return
-    } catch (err) {
-      if (isBusinessRuleError(err)) throw err
-      console.error('Supabase deleteBooking Error, falling back to LocalStorage:', err)
-    }
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so this booking was not deleted.')
   }
 
-  initDB()
-  const data = localStorage.getItem(BOOKINGS_KEY)
-  const existing: Booking[] = data ? JSON.parse(data) : []
-  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(existing.filter(b => b.id !== bookingId)))
+  // bookings.id is TEXT and may be a non-UUID id (manual-…, imported-…); delete_booking takes text.
+  const { error } = await supabase.rpc('delete_booking', { p_booking_id: bookingId })
+  if (error) throw error
 }
 
 export async function confirmBooking(bookingId: string): Promise<Booking> {
-  // bookings.id is TEXT and may be a non-UUID id (manual-…, imported-…); confirm_booking takes text.
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.rpc('confirm_booking', { p_booking_id: bookingId })
-      if (error) throw error
-      return data as unknown as Booking
-    } catch (err) {
-      if (isBusinessRuleError(err)) throw err
-      console.error('Supabase confirmBooking Error, falling back to LocalStorage:', err)
-    }
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so this booking was not confirmed.')
   }
 
-  initDB()
-  const data = localStorage.getItem(BOOKINGS_KEY)
-  const existing: Booking[] = data ? JSON.parse(data) : []
-  const updated = existing.map(b => b.id === bookingId ? { ...b, status: 'confirmed' as const, expires_at: null } : b)
-  localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updated))
-  return updated.find(b => b.id === bookingId)!
+  // bookings.id is TEXT and may be a non-UUID id (manual-…, imported-…); confirm_booking takes text.
+  const { data, error } = await supabase.rpc('confirm_booking', { p_booking_id: bookingId })
+  if (error) throw error
+  return data as unknown as Booking
 }
 
 export async function getFeeds(): Promise<SyncFeed[]> {
@@ -676,28 +473,21 @@ export async function getFeeds(): Promise<SyncFeed[]> {
     }
   }
 
-  initDB()
-  const data = localStorage.getItem(FEEDS_KEY)
-  return data ? JSON.parse(data) : []
+  return []
 }
 
 export async function saveFeeds(feeds: SyncFeed[]): Promise<void> {
-  if (isSupabaseConfigured) {
-    try {
-      const records = feeds.map(f => ({
-        id: f.id,
-        room_id: f.room_id,
-        channel: f.channel,
-        url: f.url,
-        last_synced: f.last_synced
-      }))
-      const { error } = await supabase.from('ical_feeds').upsert(records)
-      if (error) throw error
-      return
-    } catch (err) {
-      console.error('Supabase saveFeeds Error:', err)
-    }
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so these channel links were not saved.')
   }
 
-  localStorage.setItem(FEEDS_KEY, JSON.stringify(feeds))
+  const records = feeds.map(f => ({
+    id: f.id,
+    room_id: f.room_id,
+    channel: f.channel,
+    url: f.url,
+    last_synced: f.last_synced
+  }))
+  const { error } = await supabase.from('ical_feeds').upsert(records)
+  if (error) throw error
 }

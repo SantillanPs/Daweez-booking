@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The agency save — third time, and it is not alone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raise:#262626; --line:#3A3A3A;
+    --text:#EDEAE4; --sec:#A8A29A; --muted:#7D7871; --gold:#D0AB60;
+    --gold-bg:#332B18; --gold-fg:#E6C989;
+    --good-bg:#12261F; --good-fg:#34D399;
+    --bad-bg:#2A1615;  --bad-fg:#F87171;
+    --neu-bg:#2A2A2A;  --neu-fg:#C9C4BB;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:40px 24px 96px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1060px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(25px,3.5vw,38px);line-height:1.14;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec)}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:17px;color:var(--text);max-width:66ch}
+  .wrap>*+*{margin-top:22px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);
+       border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+         border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:var(--neu-fg)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  tr:last-child td{border-bottom:0}
+  tr.broke{background:#1E1413}
+  td.mono{font-family:'JetBrains Mono',monospace;font-size:12.5px}
+  .ok{color:var(--good-fg)} .no{color:var(--bad-fg)} .mid{color:var(--gold-fg)}
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+  @media (max-width:820px){.grid2{grid-template-columns:minmax(0,1fr)}}
+  .opt-card{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0}
+  .opt-card.a{border-color:#6F5420}
+  .opt-card h3{font-size:16px}
+  .opt-card ul{margin:10px 0 0;padding-left:18px;font-size:13.5px;color:var(--sec)}
+  .opt-card li{margin:4px 0}
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);
+       border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .opt:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .opt input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .opt .l{font-weight:600;font-size:14px}
+  .opt .h{font-size:13px;color:var(--muted)}
+  .opt .h b{color:var(--sec);font-weight:500}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+  button.submit:hover{filter:brightness(1.07)}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:14px}
+  .note b{color:var(--sec);font-weight:500}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#171717;border:1px solid var(--line);
+       border-radius:4px;padding:1px 5px;color:var(--gold-fg)}
+  .flowrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .warn{background:var(--bad-bg);border:1px solid #5A2A28;border-radius:12px;padding:16px 18px;min-width:0}
+  .warn .t{color:var(--bad-fg);font-weight:700;font-family:'Sora',sans-serif;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · you reported the agency save · nothing built</div>
+    <h1>It is real — and the agency is the <span style="color:var(--gold)">third</span> one, not the only one.</h1>
+    <p class="lede">I swept every table. Six places where the app invents a readable id (<code>partner-…</code>) while the database column only accepts a uuid. Every one of those saves fails.</p>
+    <div class="flowrow">
+      <span class="badge b-bad">6 broken writes</span>
+      <span class="badge b-gold">1 decision</span>
+      <span class="badge b-neu">plus: you are testing an old build</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>The sweep — what the app makes vs what the column accepts</h2></div>
+    <p class="sub">Same fault as the room prices, mirrored: there the app sent text to a text column through a uuid cast; here it sends text straight into a uuid column.</p>
+
+    <table>
+      <thead>
+        <tr><th>Where you press the button</th><th>id the app makes</th><th>Column</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr class="broke">
+          <td><b>Add / edit an agency</b><br><span class="sub">Guests &amp; Partners, and the booking form's ＋ New agency</span></td>
+          <td class="mono no">partner-1i6gasl4…</td>
+          <td class="mono">uuid</td>
+          <td><span class="badge b-bad">fails</span></td>
+        </tr>
+        <tr class="broke">
+          <td><b>Add an inventory item</b> · <b>the 18 default items</b></td>
+          <td class="mono no">inv-1759…</td>
+          <td class="mono">uuid</td>
+          <td><span class="badge b-bad">fails</span></td>
+        </tr>
+        <tr class="broke">
+          <td><b>Log a cleaning task</b></td>
+          <td class="mono no">clean-1759…</td>
+          <td class="mono">uuid</td>
+          <td><span class="badge b-bad">fails</span></td>
+        </tr>
+        <tr class="broke">
+          <td><b>Add an expense</b></td>
+          <td class="mono no">exp-3f8a…</td>
+          <td class="mono">uuid</td>
+          <td><span class="badge b-bad">fails</span></td>
+        </tr>
+        <tr class="broke">
+          <td><b>Add / rename an expense group</b></td>
+          <td class="mono no">cat-3f8a…</td>
+          <td class="mono">uuid</td>
+          <td><span class="badge b-bad">fails</span></td>
+        </tr>
+        <tr class="broke">
+          <td><b>Put an agency on a booking</b><br><span class="sub">the bill-to line — <code>bookings.partner_deal_id</code></span></td>
+          <td class="mono no">partner-…</td>
+          <td class="mono">uuid</td>
+          <td><span class="badge b-bad">fails too</span></td>
+        </tr>
+        <tr>
+          <td>Restaurant tab &amp; its lines</td>
+          <td class="mono ok">a real uuid</td>
+          <td class="mono">uuid</td>
+          <td><span class="badge b-good">fine</span></td>
+        </tr>
+        <tr>
+          <td>Rooms · bookings · venues · channel links · menu</td>
+          <td class="mono ok">room-3 · manual-… · slug</td>
+          <td class="mono ok">text</td>
+          <td><span class="badge b-good">fine</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="note" style="margin-top:16px"><b>Note the last broken row.</b> Fixing the agency table alone is not enough: a booking that picks an agency stores that agency's id in <code>bookings.partner_deal_id</code>, which is <b>also</b> a uuid column — so the bill-to line would still fail even with the agency saved. They have to be fixed together.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>The two ways to fix it</h2></div>
+    <p class="sub">This is the decision. Both remove every failure above; they differ in what the ids look like afterwards and how much moves.</p>
+
+    <div class="grid2">
+      <div class="opt-card a">
+        <span class="badge b-gold">option A · my pick</span>
+        <h3 style="margin-top:8px">The columns become text</h3>
+        <p class="sub" style="margin:8px 0 0">One migration changes those six columns from <code>uuid</code> to <code>text</code>. The app is not touched at all — every <code>partner-…</code> and <code>inv-…</code> id simply starts working.</p>
+        <ul>
+          <li><b>Matches the rest of the database.</b> Rooms, bookings, venues, channel links and the menu <i>already</i> store readable text ids — and the menu migration deliberately derives the same slug in SQL that the app derives. This makes the six leftovers agree.</li>
+          <li><b>Nothing is lost.</b> A uuid stored as text is the same value, just in a wider box. Existing rows are untouched.</li>
+          <li><b>Small and self-contained:</b> one migration, no app change, no risk of missing a spot.</li>
+          <li><b>Cost:</b> ids stay readable rather than being opaque — which is what the whole app already does, so it is the consistent choice, not a compromise.</li>
+        </ul>
+      </div>
+
+      <div class="opt-card">
+        <span class="badge b-neu">option B</span>
+        <h3 style="margin-top:8px">The app starts sending real uuids</h3>
+        <p class="sub" style="margin:8px 0 0">Leave the columns alone and change the six places that invent an id to make a real uuid instead.</p>
+        <ul>
+          <li><b>Six files to get right</b>, plus the seeded default inventory list, which already carries <code>inv-1</code>…<code>inv-18</code> — those would need regenerating, and anything already pointing at them would need following.</li>
+          <li><b>Ids become unreadable</b> (<code>9f3c1a…</code>), so a row in the database can no longer be recognised by eye — the opposite of how rooms, bookings and the menu work.</li>
+          <li><b>No migration needed</b> for the column types themselves.</li>
+          <li><b>Risk:</b> misses are silent. Any id-inventing spot I overlook fails exactly like the agency did — this whole bug is evidence that guessing the spots one at a time does not hold.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="warn">
+    <div class="t">Also — you are not testing the new build</div>
+    <p style="margin:8px 0 0;color:var(--sec);font-size:14px">The console line you photographed says <code>falling back to LocalStorage</code>. That sentence <b>no longer exists anywhere in the source</b> — I deleted that fallback in the work I just finished. So that window is running an <b>older bundle</b> (a previous build, or the deployed site).</p>
+    <p style="margin:8px 0 0;color:var(--sec);font-size:14px">Two things follow: the agency error is genuinely still in the current code (this page is about the <i>database</i> refusing it, which no rebuild can fix on its own), but <b>anything you test for the room prices in that window is testing the old app</b>. I could not build here — Vite is blocked by my sandbox — so the new code has only passed the type-check and the linter, not a real run.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>Your call</h2></div>
+    <form class="q" data-lavish-question="idfix">
+      <h3>How should the six id columns be fixed?</h3>
+      <label class="opt"><input type="radio" name="idfix" value="A — change the six id columns to text, leave the app alone">
+        <span><span class="l">A — the columns become text <span class="badge b-gold" style="margin-left:6px">recommended</span></span><br>
+        <span class="h">One migration. The app is untouched, every <code>partner-…</code> / <code>inv-…</code> / <code>clean-…</code> / <code>exp-…</code> / <code>cat-…</code> id starts working, and the database finally agrees with the way rooms, bookings and the menu already store ids.</span></span></label>
+
+      <label class="opt"><input type="radio" name="idfix" value="B — leave the columns as uuid and make the app generate real uuids">
+        <span><span class="l">B — the app sends real uuids</span><br>
+        <span class="h">Six files change, the seeded inventory list is regenerated, and ids stop being readable. No column migration.</span></span></label>
+
+      <label class="opt"><input type="radio" name="idfix" value="Show me the exact SQL for A first, then I decide">
+        <span><span class="l">Show me the SQL for A first</span><br>
+        <span class="h">I put the exact migration on screen for you to read before anything changes.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+    <p class="note" style="margin-top:16px"><b>Or answer in your own words</b> with an annotation anywhere on this page.</p>
+  </section>
+
+</div>
+</body>
+</html>

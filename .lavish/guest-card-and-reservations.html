@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guest card + Reservations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raise:#262626; --line:#3A3A3A;
+    --text:#EDEAE4; --sec:#A8A29A; --muted:#7D7871; --gold:#D0AB60;
+    --gold-bg:#332B18; --gold-fg:#E6C989;
+    --good-bg:#12261F; --good-fg:#34D399;
+    --bad-bg:#2A1615;  --bad-fg:#F87171;
+    --neu-bg:#2A2A2A;  --neu-fg:#C9C4BB;
+    /* the app's own light workspace, dimmed so it reads as paper, not glare */
+    --app-bg:#EFEBE3; --app-card:#F6F2EA; --app-line:#D9D2C4;
+    --app-ink:#1C1C1C; --app-muted:#6B655C; --app-gold:#6F5420; --app-goldfill:#D0AB60;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:40px 24px 96px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1060px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(25px,3.5vw,36px);line-height:1.15;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec)}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:17px;color:var(--text);max-width:64ch}
+  .wrap>*+*{margin-top:22px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);
+       border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+         border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:var(--neu-cb)}
+  .b-neu{background:var(--neu-bg);color:#C9C4BB}
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+  @media (max-width:840px){.grid2{grid-template-columns:minmax(0,1fr)}}
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0}
+  form.q+form.q{margin-top:12px}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);
+       border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .opt:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .opt input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .opt .l{font-weight:600;font-size:14px}
+  .opt .h{font-size:13px;color:var(--muted)}
+  .opt .h b{color:var(--sec);font-weight:500}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+  button.submit:hover{filter:brightness(1.07)}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:14px}
+  .note b{color:var(--sec);font-weight:500}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#171717;border:1px solid var(--line);
+       border-radius:4px;padding:1px 5px;color:var(--gold-fg)}
+  .flowrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .crux{background:var(--bad-bg);border:1px solid #5A2A28;border-radius:12px;padding:16px 18px;min-width:0}
+  .crux .t{color:var(--bad-fg);font-weight:700;font-family:'Sora',sans-serif;font-size:14px}
+  svg{width:100%;height:auto;display:block;overflow:visible}
+  .cap{font-size:12px;color:var(--muted);margin-top:8px}
+
+  /* ── light mock of the app's guest card (faithful, dimmed) ── */
+  .app{background:var(--app-bg);border:1px solid var(--app-line);border-radius:12px;padding:14px;color:var(--app-ink);min-width:0}
+  .app .hdr{display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--app-line)}
+  .app .hdr .ttl{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--app-ink)}
+  .app .dot{margin-left:auto;width:22px;height:22px;border-radius:6px;border:1px solid var(--app-line);
+            display:grid;place-items:center;color:var(--app-muted);font-weight:700;letter-spacing:1px;font-size:12px}
+  .app .row{display:grid;gap:10px;margin-top:10px}
+  .app .g2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .app label{display:block;font-size:12px;color:#5C564D;font-weight:500;margin-bottom:4px}
+  .app .inp{background:#fff;border:1px solid var(--app-line);border-radius:8px;padding:9px 11px;
+            font-size:13.5px;color:#9A948A;min-height:38px}
+  .app .inp.filled{color:var(--app-ink);font-weight:600}
+  .app .req{color:#B3261E}
+  .app .quiet{display:flex;align-items:center;gap:7px;margin-top:12px;padding-top:11px;
+              border-top:1px solid var(--app-line);font-size:12.5px;font-weight:700;color:var(--app-gold)}
+  .app .quiet .plus{width:16px;height:16px;border-radius:5px;background:var(--app-gold);color:#141414;
+                    display:grid;place-items:center;font-size:12px;line-height:1;font-weight:700}
+  .app .comp{margin-top:10px;padding:9px;border:1px dashed var(--app-line);border-radius:8px;
+             text-align:center;font-size:12px;font-style:italic;color:#8A847A}
+  .app .hidden-note{font-size:11px;color:#8A847A;font-style:italic;margin-top:6px}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 8px}
+  .pill.res{background:#E7DCC1;color:#5A4416}
+  .pill.unp{background:#F6D9D6;color:#8C1D18}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · two things, drawn · nothing built</div>
+    <h1>The guest card, and a new idea: <span style="color:var(--gold)">Reservations</span>.</h1>
+    <p class="lede">Two separate builds — I will do them one at a time. The card is drawn ready to go. The reservation idea has one conflict with how the app works today that you need to rule on.</p>
+  </header>
+
+  <!-- ═══════════════ PART 1 ═══════════════ -->
+  <section>
+    <div class="head"><span class="num">01</span><h2>The guest card — name and contact side by side, the rest out of the way</h2></div>
+    <p class="sub">Same card, same fields, nothing removed — only what is on screen by default changes.</p>
+
+    <div class="grid2">
+      <div>
+        <span class="badge b-neu">today</span>
+        <div class="app" style="margin-top:8px">
+          <div class="hdr"><span class="ttl">Guest Information</span><span class="dot">⋯</span></div>
+          <div class="row">
+            <div><label>Name <span class="req">*</span></label><div class="inp">Guest full name</div></div>
+          </div>
+          <div class="row g2">
+            <div><label>Contact No.</label><div class="inp">09xx-xxx-xxxx</div></div>
+            <div><label>Nationality</label><div class="inp">e.g. Filipino</div></div>
+          </div>
+          <div class="row g2">
+            <div><label>Address</label><div class="inp">Home address</div></div>
+            <div><label>Email (optional)</label><div class="inp">guest@domain.com</div></div>
+          </div>
+          <div class="row g2">
+            <div><label>Plate No. (optional)</label><div class="inp">Vehicle plate</div></div>
+            <div></div>
+          </div>
+          <div class="row g2">
+            <div><label>Birth Date (optional)</label><div class="inp">mm/dd/yyyy</div></div>
+            <div><label>Sex</label><div class="inp">Not stated</div></div>
+          </div>
+          <div class="quiet" style="justify-content:space-between">
+            <span style="color:var(--app-ink)">Companion Information</span>
+            <span>＋ Add Guest</span>
+          </div>
+          <div class="comp">No other guests added. Tap “Add Guest” to add.</div>
+        </div>
+        <p class="cap">8 boxes and 2 lines of companion furniture before the desk can move on.</p>
+      </div>
+
+      <div>
+        <span class="badge b-gold">what I would build</span>
+        <div class="app" style="margin-top:8px">
+          <div class="hdr"><span class="ttl">Guest Information</span><span class="dot">⋯</span></div>
+          <div class="row g2">
+            <div><label>Name <span class="req">*</span></label><div class="inp">Guest full name</div></div>
+            <div><label>Contact No.</label><div class="inp">09xx-xxx-xxxx</div></div>
+          </div>
+          <div class="quiet"><span class="plus">＋</span> More details</div>
+          <div class="hidden-note">Nationality · Address · Email · Plate No. · Birth Date · Sex</div>
+          <div class="quiet"><span class="plus">＋</span> Add a guest</div>
+        </div>
+        <p class="cap">Two boxes, then two quiet lines. The card is two rows tall until the desk asks for more.</p>
+      </div>
+    </div>
+
+    <p class="note" style="margin-top:16px"><b>Two rules that make this safe rather than lossy:</b><br>
+    <b>1 ·</b> <b>More details</b> opens by itself whenever the booking already holds any of those fields (correcting an old booking, or one typed from the paper form) — so nothing is ever hidden from you that has a value in it.<br>
+    <b>2 ·</b> <b>Add a guest</b> is the whole companion section while there are none. The moment one is added it opens and stays open, with the count on the line — the empty grey placeholder goes.</p>
+  </section>
+
+  <!-- ═══════════════ PART 2 ═══════════════ -->
+  <section>
+    <div class="head"><span class="num">02</span><h2>Reservations — what I understand you to mean</h2></div>
+    <p class="sub">A hold for somebody the staff personally know and trust. No payment, no plan, no system check on who they are — the desk decides, because they would not reserve for a stranger.</p>
+
+    <svg viewBox="0 0 1000 210" role="img" aria-label="An ordinary booking takes money now; a reservation takes none and pays at check-out">
+      <text x="20" y="24" fill="#A8A29A" font-family="Sora,sans-serif" font-size="12.5" font-weight="600">AN ORDINARY BOOKING</text>
+      <rect x="20" y="36" width="150" height="56" rx="10" fill="#262626" stroke="#3A3A3A"/>
+      <text x="95" y="60" fill="#EDEAE4" font-family="DM Sans,sans-serif" font-size="12.5" text-anchor="middle">desk books it</text>
+      <text x="95" y="78" fill="#A8A29A" font-family="DM Sans,sans-serif" font-size="11.5" text-anchor="middle">dates + room</text>
+
+      <line x1="170" y1="64" x2="204" y2="64" stroke="#7D7871" stroke-width="1.6" marker-end="url(#a)"/>
+      <rect x="206" y="36" width="176" height="56" rx="10" fill="#332B18" stroke="#6F5420"/>
+      <text x="294" y="60" fill="#E6C989" font-family="DM Sans,sans-serif" font-size="12.5" font-weight="600" text-anchor="middle">money now</text>
+      <text x="294" y="78" fill="#EDEAE4" font-family="DM Sans,sans-serif" font-size="11.5" text-anchor="middle">Deposit · Full pay · Custom</text>
+
+      <line x1="382" y1="64" x2="416" y2="64" stroke="#7D7871" stroke-width="1.6" marker-end="url(#a)"/>
+      <rect x="418" y="36" width="150" height="56" rx="10" fill="#262626" stroke="#3A3A3A"/>
+      <text x="493" y="60" fill="#EDEAE4" font-family="DM Sans,sans-serif" font-size="12.5" text-anchor="middle">check in</text>
+      <text x="493" y="78" fill="#A8A29A" font-family="DM Sans,sans-serif" font-size="11.5" text-anchor="middle">the money gate opens it</text>
+
+      <line x1="568" y1="64" x2="602" y2="64" stroke="#7D7871" stroke-width="1.6" marker-end="url(#a)"/>
+      <rect x="604" y="36" width="150" height="56" rx="10" fill="#262626" stroke="#3A3A3A"/>
+      <text x="679" y="60" fill="#EDEAE4" font-family="DM Sans,sans-serif" font-size="12.5" text-anchor="middle">check out</text>
+      <text x="679" y="78" fill="#A8A29A" font-family="DM Sans,sans-serif" font-size="11.5" text-anchor="middle">rest of the bill</text>
+
+      <line x1="20" y1="118" x2="980" y2="118" stroke="#3A3A3A" stroke-dasharray="5 5"/>
+
+      <text x="20" y="146" fill="#D0AB60" font-family="Sora,sans-serif" font-size="12.5" font-weight="600">A RESERVATION</text>
+      <rect x="20" y="158" width="150" height="42" rx="10" fill="#262626" stroke="#3A3A3A"/>
+      <text x="95" y="184" fill="#EDEAE4" font-family="DM Sans,sans-serif" font-size="12.5" text-anchor="middle">desk reserves it</text>
+
+      <line x1="170" y1="179" x2="204" y2="179" stroke="#7D7871" stroke-width="1.6" marker-end="url(#a)"/>
+      <rect x="206" y="158" width="176" height="42" rx="10" fill="#12261F" stroke="#1E4A38"/>
+      <text x="294" y="184" fill="#34D399" font-family="DM Sans,sans-serif" font-size="12.5" font-weight="600" text-anchor="middle">nothing is paid — no plan</text>
+
+      <line x1="382" y1="179" x2="416" y2="179" stroke="#7D7871" stroke-width="1.6" marker-end="url(#a)"/>
+      <rect x="418" y="158" width="150" height="42" rx="10" fill="#2A1615" stroke="#5A2A28"/>
+      <text x="493" y="184" fill="#F87171" font-family="DM Sans,sans-serif" font-size="12.5" text-anchor="middle">check in — BLOCKED today</text>
+
+      <line x1="568" y1="179" x2="602" y2="179" stroke="#7D7871" stroke-width="1.6" marker-end="url(#a)"/>
+      <rect x="604" y="158" width="220" height="42" rx="10" fill="#262626" stroke="#3A3A3A"/>
+      <text x="714" y="184" fill="#EDEAE4" font-family="DM Sans,sans-serif" font-size="12.5" text-anchor="middle">they pay when they leave</text>
+
+      <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="#7D7871"/></marker></defs>
+    </svg>
+
+    <div class="crux" style="margin-top:16px">
+      <div class="t">The one real conflict: a reserved guest cannot be checked in today</div>
+      <p style="margin:8px 0 0;color:var(--sec);font-size:14px">The app refuses check-in while money is owed — the Check in button is not even drawn — because that is where the balance is normally collected. A reservation is <b>unpaid by design</b>, so without opening that door the guest could never be checked in at all, and the feature would do nothing. <b>This is the question below.</b></p>
+    </div>
+  </section>
+
+  <!-- ═══════════════ QUESTIONS ═══════════════ -->
+  <section>
+    <div class="head"><span class="num">03</span><h2>Four answers and I can build it</h2></div>
+    <p class="sub">Each is one click. Answer as many as you like — I will build nothing until the card above is also approved.</p>
+
+    <form class="q" data-lavish-question="checkin">
+      <h3>1 · Can a reserved guest be checked in with nothing paid?</h3>
+      <label class="opt"><input type="radio" name="checkin" value="Yes — a reservation may check in unpaid; the money is collected at check-out as usual">
+        <span><span class="l">Yes — the door opens for a reservation <span class="badge b-gold" style="margin-left:6px">recommended</span></span><br>
+        <span class="h">A reserved stay checks in with nothing paid, exactly like today's paid stays do after a deposit. <b>Check-out still refuses to let them leave owing money</b>, so the bill is still collected — just at the end.</span></span></label>
+      <label class="opt"><input type="radio" name="checkin" value="Yes — but the app warns the desk at check-in that nothing has been paid">
+        <span><span class="l">Yes, but say it out loud at check-in</span><br>
+        <span class="h">Same as above, plus one amber line under the button — <b>“Reservation · nothing paid yet · ₱1,250 will be due at check-out”</b> — so a member of staff who did not take the reservation still knows.</span></span></label>
+      <label class="opt"><input type="radio" name="checkin" value="No — the desk must record at least something before check-in">
+        <span><span class="l">No — something must be recorded first</span><br>
+        <span class="h">Check-in stays behind the money gate. <b>I should say plainly: this makes the feature pointless</b> — a reservation would be an unpaid booking that can never be checked in without taking money, which is the ordinary flow again.</span></span></label>
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+
+    <form class="q" data-lavish-question="badge">
+      <h3>2 · What does a reservation say on screen?</h3>
+      <label class="opt"><input type="radio" name="badge" value="Reserved — and it stays out of Who owes until the guest has checked in">
+        <span><span class="l"><span class="pill res">Reserved</span> &nbsp;and out of “Who owes” until they arrive <span class="badge b-gold" style="margin-left:6px">recommended</span></span><br>
+        <span class="h">The calendar pill and the list read <b>Reserved</b> instead of the red <span class="pill unp">Unpaid</span>. “Who owes right now: N stays · ₱X” leaves reservations out while they are still just a promise — otherwise every trusted hold sits in the debt list and the headline stops meaning anything.</span></span></label>
+      <label class="opt"><input type="radio" name="badge" value="Keep it as Unpaid, exactly like any other booking that owes money">
+        <span><span class="l">Say <span class="pill unp">Unpaid</span> like everything else</span><br>
+        <span class="h">No new wording. A reservation looks exactly like an unpaid walk-in — and lands in “Who owes” with the rest.</span></span></label>
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+
+    <form class="q" data-lavish-question="hold">
+      <h3>3 · How long does a reservation hold the room?</h3>
+      <label class="opt"><input type="radio" name="hold" value="Forever — until the desk cancels it, like today's unpaid walk-in">
+        <span><span class="l">Until the desk cancels it <span class="badge b-gold" style="margin-left:6px">recommended</span></span><br>
+        <span class="h">Matches how an unpaid walk-in behaves today: it never expires on its own. Nothing new to watch, and a trusted hold is never quietly dropped.</span></span></label>
+      <label class="opt"><input type="radio" name="hold" value="Until a date the desk types — a hold-until date, shown on the calendar">
+        <span><span class="l">Until a date the desk types</span><br>
+        <span class="h">The reservation carries a <b>hold until</b> date. Past it the calendar shows it as expired so the desk can chase or release the room. One more field to fill, and one more thing that can be forgotten.</span></span></label>
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+
+    <form class="q" data-lavish-question="where">
+      <h3>4 · Where does the desk start one?</h3>
+      <label class="opt"><input type="radio" name="where" value="In the booking form's Pays now row, as a fourth option: Deposit | Full pay | Custom | Reservation">
+        <span><span class="l">A fourth option in the <b>Pays now</b> row <span class="badge b-gold" style="margin-left:6px">recommended</span></span><br>
+        <span class="h">The booking form already asks <b>What the guest pays now</b> — Deposit · Full pay · Custom. Add <b>Reservation</b> beside them: pick it and the figure disappears, because there is no figure. One form, one row, nothing new to learn.</span></span></label>
+      <label class="opt"><input type="radio" name="where" value="A separate Reserve button in the calendar's action bar, next to New booking">
+        <span><span class="l">Its own button on the calendar</span><br>
+        <span class="h">Alongside <b>New booking</b> in the action bar that appears once dates are picked. More obvious from the calendar — but it is a second way into the same form, and it puts a rare action in the busiest place.</span></span></label>
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+
+    <p class="note" style="margin-top:16px"><b>Or annotate anything above in your own words</b> — including the form card in part 1, which needs a yes of its own before I touch it.</p>
+  </section>
+
+</div>
+</body>
+</html>

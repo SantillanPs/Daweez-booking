@@ -1,6 +1,7 @@
 import React from 'react'
 import { Booking } from '../../types/booking'
 import { getPaymentDotClass, getPaymentLabel, SOURCE_LABELS } from './bookingStyles'
+import { isReservationAwaitingArrival } from '../../utils/bookingMoney'
 import { clockLabel, shortStayEnd } from '../../utils/shortStay'
 
 export interface TimelineCellProps {
@@ -150,17 +151,28 @@ export const TimelineCell = React.memo(
               <div className="text-[10px] text-muted font-mono">{booking.check_in} → {booking.check_out}</div>
               <div className="text-[10px] text-muted">
                 {booking.guest_phone}<br />
-                <span className={booking.status === 'confirmed' ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'}>
-                  {booking.status === 'confirmed' ? 'Confirmed' : booking.status === 'pending' ? 'On hold' : 'Blocked'}
-                </span>
-                {' · '}
-                <span className={
-                  !booking.payment_status || booking.payment_status === 'unpaid'
-                    ? 'text-danger-500 font-semibold'
-                    : booking.payment_status === 'downpayment' ? 'text-amber-600 font-semibold' : 'text-emerald-600 font-semibold'
-                }>
-                  {getPaymentLabel(booking)}
-                </span>
+                {/* A RESERVATION whose guest has not arrived says ONE word — **Reserved** —
+                    in a neutral charcoal, and its payment word is left off entirely: there
+                    is no money state to report and "On hold · Reserved" said the same thing
+                    twice while the red made a trusted guest read as a debt (the owner's
+                    ruling, 2026-09-28: the name and the type, nothing else). */}
+                {isReservationAwaitingArrival(booking) ? (
+                  <span className="text-ink-700 font-semibold">Reserved</span>
+                ) : (
+                  <>
+                    <span className={booking.status === 'confirmed' ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'}>
+                      {booking.status === 'confirmed' ? 'Confirmed' : booking.status === 'pending' ? 'On hold' : 'Blocked'}
+                    </span>
+                    {' · '}
+                    <span className={
+                      !booking.payment_status || booking.payment_status === 'unpaid'
+                        ? 'text-danger-500 font-semibold'
+                        : booking.payment_status === 'downpayment' ? 'text-amber-600 font-semibold' : 'text-emerald-600 font-semibold'
+                    }>
+                      {getPaymentLabel(booking)}
+                    </span>
+                  </>
+                )}
                 {' · '}{SOURCE_LABELS[booking.source] || booking.source}
                 {booking.event_addons?.payment_reference && (
                   <>
@@ -242,6 +254,9 @@ export const TimelineCell = React.memo(
       prevProps.booking?.id === nextProps.booking?.id &&
       prevProps.booking?.status === nextProps.booking?.status &&
       prevProps.booking?.payment_status === nextProps.booking?.payment_status &&
+      // `payment_plan` decides whether the pill says "Reserved" (and which colour its dot
+      // is), so it MUST be compared — the same trap as `actual_check_in` below.
+      prevProps.booking?.payment_plan === nextProps.booking?.payment_plan &&
       prevProps.booking?.actual_check_in === nextProps.booking?.actual_check_in &&
       prevProps.booking?.actual_check_out === nextProps.booking?.actual_check_out &&
       prevProps.booking?.check_in === nextProps.booking?.check_in &&

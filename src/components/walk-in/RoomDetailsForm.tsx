@@ -1,6 +1,8 @@
 import React from 'react'
 import { Companion, PartnerDeal } from '../../types/booking'
-import { User, Phone, Mail, Users, Trash2, Plus, CheckCircle2, Building2 } from 'lucide-react'
+import { User, Phone, Mail, Building2 } from 'lucide-react'
+import { CompanionFields } from './CompanionFields'
+import { BlockReasonFields } from './BlockReasonFields'
 
 interface RoomDetailsFormProps {
   formStatus: 'confirmed' | 'blocked'
@@ -83,20 +85,28 @@ export const RoomDetailsForm = React.memo(
   }: RoomDetailsFormProps) => {
     /** The ⋯ menu: the only way into the agency feature the owner asked for. */
     const [menuOpen, setMenuOpen] = React.useState(false)
+
+    /**
+     * "More details" — the owner's instruction (2026-09-28): the guest card opens as
+     * **Name and Contact No. side by side** and nothing else, with Nationality, Address,
+     * Email, Plate No., Birth Date and Sex behind one quiet line.
+     *
+     * The extra fields show themselves whenever ANY of them already holds a value, so
+     * correcting an old booking (or one typed off the paper form) can never hide a field
+     * that has something in it — the toggle only decides whether an EMPTY section is on
+     * screen.
+     */
+    const [showMore, setShowMore] = React.useState(false)
+    const hasMoreDetails = !!(
+      formGuestNationality || formGuestAddress || formGuestEmail ||
+      formVehiclePlate || formGuestBirthdate || formGuestGender
+    )
+    const showExtra = showMore || hasMoreDetails
     // Read the staff-editable rate so the form never quotes a price the bill
     // won't charge (the price used to be hardcoded at ₱150).
 
     if (formStatus === 'blocked') {
-      return (
-        <div className="bg-base-200 border border-base-300 rounded-lg px-2.5 py-2 space-y-1.5">
-          <p className="text-[10px] font-bold text-base-content flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Block — just blocks the calendar (no charge).
-          </p>
-          <label className="text-[10px] text-base-content/60 font-bold block">Block reason (maintenance / cleaning)</label>
-          <input value={formBlockNotes} onChange={e => setFormBlockNotes(e.target.value.toUpperCase())} placeholder="e.g. Room maintenance"
-            className="input input-sm input-bordered w-full" />
-        </div>
-      )
+      return <BlockReasonFields notes={formBlockNotes} setNotes={setFormBlockNotes} />
     }
 
     return (
@@ -138,8 +148,10 @@ export const RoomDetailsForm = React.memo(
         
         <div className="space-y-3">
 
-
-          {/* Primary Guest Name */}
+          {/* Name and Contact No. share the first row (the owner's design, 2026-09-28) —
+              the two things the desk always types. Everything else waits behind "More
+              details" below, and shows itself the moment it holds a value. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-base-content/70 font-medium block mb-1">Name <span className="text-error">*</span></label>
             <div className="relative">
@@ -156,20 +168,32 @@ export const RoomDetailsForm = React.memo(
             {guestNameError && <p className="text-xs text-error mt-1">{guestNameError}</p>}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-base-300">
-            <div>
-              <label className="text-xs text-base-content/70 font-medium block mb-1">Contact No.</label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
-                <input 
-                  type="text" 
-                  placeholder="09xx-xxx-xxxx" 
-                  value={formGuestPhone} 
-                  onChange={e => setFormGuestPhone(e.target.value)}
-                  className="input input-bordered w-full pl-9" 
-                />
-              </div>
+          <div>
+            <label className="text-xs text-base-content/70 font-medium block mb-1">Contact No.</label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+              <input
+                type="text"
+                placeholder="09xx-xxx-xxxx"
+                value={formGuestPhone}
+                onChange={e => setFormGuestPhone(e.target.value)}
+                className="input input-bordered w-full pl-9"
+              />
             </div>
+          </div>
+          </div>
+
+          <button type="button" onClick={() => setShowMore(o => !o)}
+            className="text-[11px] font-bold text-brand-text hover:underline cursor-pointer flex items-center gap-1">
+            {showExtra ? '− Fewer details' : '＋ More details'}
+          </button>
+          {!showExtra && (
+            <p className="text-[10px] text-muted -mt-1">Nationality · Address · Email · Plate No. · Birth Date · Sex</p>
+          )}
+
+          {showExtra && (
+          <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-base-300">
             <div>
               <label className="text-xs text-base-content/70 font-medium block mb-1">Nationality</label>
               <input 
@@ -234,68 +258,11 @@ export const RoomDetailsForm = React.memo(
               </select>
             </div>
           </div>
-          
-          {/* Companions */}
-          <div className="pt-2 border-t border-base-300 col-span-1 sm:col-span-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><Users className="w-3 h-3" /></span>
-                <span className="text-xs font-bold text-base-content">Companion Information</span>
-                {formCompanions.length > 0 && (
-                  <span className="badge badge-primary badge-sm ml-1">{formCompanions.length} Guest{formCompanions.length !== 1 ? 's' : ''}</span>
-                )}
-              </span>
-              <button
-                type="button"
-                onClick={() => setFormCompanions([...formCompanions, { name: '' }])}
-                className="btn btn-ghost btn-xs text-primary hover:text-primary/80 font-bold gap-1 normal-case"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Guest
-              </button>
-            </div>
 
-            <div className="space-y-2 pt-2">
-              {formCompanions.length === 0 && (
-                <p className="text-xs text-base-content/60 py-3 italic text-center bg-base-200/50 rounded border border-dashed border-base-300">
-                  No other guests added. Tap "Add Guest" to add.
-                </p>
-              )}
-              {formCompanions.map((comp, idx) => (
-                <div key={idx} className="flex items-center gap-2 bg-base-200/50 p-2 rounded border border-base-300/60">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Full name"
-                    value={comp.name}
-                    onChange={e => {
-                      const u = [...formCompanions]
-                      u[idx] = { ...u[idx], name: e.target.value.toUpperCase() }
-                      setFormCompanions(u)
-                    }}
-                    className="input input-bordered input-sm flex-1"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Nationality"
-                    value={comp.nationality}
-                    onChange={e => {
-                      const u = [...formCompanions]
-                      u[idx] = { ...u[idx], nationality: e.target.value.toUpperCase() }
-                      setFormCompanions(u)
-                    }}
-                    className="input input-bordered input-sm w-24"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setFormCompanions(formCompanions.filter((_, i) => i !== idx))}
-                    className="btn btn-ghost btn-xs text-base-content/60 hover:text-error p-1"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          </>
+          )}
+
+          <CompanionFields companions={formCompanions} setCompanions={setFormCompanions} />
 
         </div>
       </div>

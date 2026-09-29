@@ -27,8 +27,6 @@ export interface MenuCategory {
   items: MenuItem[]
 }
 
-const KEY = 'daweez_restaurant_menu'
-
 // [category, note, [[item, price, choices?], …]]
 type RawRow = [string, number, string?]
 const RAW: Array<[string, string, RawRow[]]> = [
@@ -97,8 +95,9 @@ export const DEFAULT_MENU: MenuCategory[] = RAW.map(([name, note, items]) => ({
   })),
 }))
 
-// The menu in use: the database when it answers, then this browser's cached copy,
-// then the list typed from the printed card.
+// The menu in use: the database when it answers, otherwise the list typed from
+// the printed card. The browser copy that used to sit between them is gone
+// (2026-09-28) — a menu edit that the database refused was showing as saved.
 export async function getMenu(): Promise<MenuCategory[]> {
   if (isSupabaseConfigured) {
     try {
@@ -127,48 +126,35 @@ export async function getMenu(): Promise<MenuCategory[]> {
         if (menu.length > 0) return menu
       }
     } catch (err) {
-      console.error('getMenu fell back to the browser store:', err)
+      console.error('Supabase getMenu Error:', err)
     }
   }
-  const raw = localStorage.getItem(KEY)
-  if (raw) {
-    try {
-      const saved = JSON.parse(raw) as MenuCategory[]
-      if (Array.isArray(saved) && saved.length > 0) return saved
-    } catch {
-      /* a broken cache falls through to the printed list */
-    }
-  }
+
   return DEFAULT_MENU
 }
 
 /** Writes the whole menu — prices included — for every device to read. */
 export async function saveMenu(menu: MenuCategory[]): Promise<void> {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(menu))
-  } catch (err) {
-    console.error('Could not cache the restaurant menu:', err)
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so the menu was not saved.')
   }
-  if (!isSupabaseConfigured) return
-  try {
-    const cats = menu.map((c, i) => ({ id: c.id, name: c.name, note: c.note ?? null, sort_order: i + 1 }))
-    const items = menu.flatMap(c =>
-      c.items.map((it, j) => ({
-        id: it.id,
-        category_id: c.id,
-        name: it.name,
-        price: it.price,
-        note: it.note ?? null,
-        sort_order: j + 1,
-      })),
-    )
-    const { error: catError } = await supabase.from('menu_categories').upsert(cats)
-    if (catError) throw catError
-    if (items.length > 0) {
-      const { error: itemError } = await supabase.from('menu_items').upsert(items)
-      if (itemError) throw itemError
-    }
-  } catch (err) {
-    console.error('Could not save the menu to the database:', err)
+
+  const cats = menu.map((c, i) => ({ id: c.id, name: c.name, note: c.note ?? null, sort_order: i + 1 }))
+  const items = menu.flatMap(c =>
+    c.items.map((it, j) => ({
+      id: it.id,
+      category_id: c.id,
+      name: it.name,
+      price: it.price,
+      note: it.note ?? null,
+      sort_order: j + 1,
+    })),
+  )
+
+  const { error: catError } = await supabase.from('menu_categories').upsert(cats)
+  if (catError) throw catError
+  if (items.length > 0) {
+    const { error: itemError } = await supabase.from('menu_items').upsert(items)
+    if (itemError) throw itemError
   }
 }

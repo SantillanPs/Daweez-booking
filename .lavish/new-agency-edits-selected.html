@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New agency opens as Edit agency</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raise:#262626; --line:#3A3A3A;
+    --text:#EDEAE4; --sec:#A8A29A; --muted:#7D7871; --gold:#D0AB60;
+    --gold-bg:#332B18; --gold-fg:#E6C989;
+    --good-bg:#12261F; --good-fg:#34D399;
+    --bad-bg:#2A1615;  --bad-fg:#F87171;
+    --neu-bg:#2A2A2A;  --neu-fg:#C9C4BB;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:40px 24px 96px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1020px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(25px,3.5vw,36px);line-height:1.15;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec)}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:17px;color:var(--text);max-width:64ch}
+  .wrap>*+*{margin-top:22px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);
+       border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+         border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:var(--neu-fg)}
+  pre{font-family:'JetBrains Mono',ui-monospace,Consolas,monospace;font-size:12.5px;line-height:1.65;margin:0;
+      background:#171717;border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+      overflow-x:auto;white-space:pre;color:var(--text)}
+  pre .hit{color:#F87171} pre .fix{color:#34D399} pre .dim{color:#7D7871}
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+  @media (max-width:820px){.grid2{grid-template-columns:minmax(0,1fr)}}
+  .card{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-width:0}
+  .card.bad{border-color:#5A2A28} .card.good{border-color:#1E4A38}
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);
+       border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .opt:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .opt input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .opt .l{font-weight:600;font-size:14px}
+  .opt .h{font-size:13px;color:var(--muted)}
+  .opt .h b{color:var(--sec);font-weight:500}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+  button.submit:hover{filter:brightness(1.07)}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:14px}
+  .note b{color:var(--sec);font-weight:500}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#171717;border:1px solid var(--line);
+       border-radius:4px;padding:1px 5px;color:var(--gold-fg)}
+  .flowrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .safe{background:var(--good-bg);border:1px solid #1E4A38;border-radius:12px;padding:16px 18px;min-width:0}
+  .safe .t{color:var(--good-fg);font-weight:700;font-family:'Sora',sans-serif;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · your report · nothing built</div>
+    <h1>“New agency” is quietly opening the <span style="color:var(--bad-fg)">selected</span> agency as <em>Edit</em>.</h1>
+    <p class="lede">One line: the code throws away the “this is a new one” signal it was handed, and puts the agency already on the booking in its place.</p>
+    <div class="flowrow">
+      <span class="badge b-bad">1 line</span>
+      <span class="badge b-good">your Getz Pharma record is intact</span>
+      <span class="badge b-gold">1 question</span>
+    </div>
+  </header>
+
+  <section class="safe">
+    <div class="t">Checked first — nothing was damaged</div>
+    <p style="margin:8px 0 0;color:var(--sec);font-size:14px">Your stored agency is whole: <b>Getz Pharma (Phil.), Inc.</b> — Ortigas Center, ₱1,200 / ₱1,500 / ₱2,200 / ₱2,200 on Rooms 1, 2, 5 and 6, and all <b>7 bookings</b> still point at it. Whatever you typed did not land on it. But it was one <b>Save agency</b> away from being overwritten, which is why this matters more than it looks.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>What the button sends vs what the code does with it</h2></div>
+    <p class="sub">The picker has exactly one caller, and it always says “a new one”.</p>
+
+    <div class="grid2">
+      <div class="card bad">
+        <span class="badge b-bad">the picker</span>
+        <h3 style="margin-top:8px">Presses <code>＋ New agency</code></h3>
+        <pre>AgencyFields.tsx:161
+
+onClick={() => onOpenProfile(<span class="hit">null</span>, typed)}
+<span class="dim">// "null" = I am creating a new agency</span></pre>
+      </div>
+      <div class="card bad">
+        <span class="badge b-bad">the form</span>
+        <h3 style="margin-top:8px">…throws the <code>null</code> away</h3>
+        <pre>WalkInBookingForm.tsx:390
+
+setAgencyProfile({
+  deal: deal <span class="hit">?? (</span>formPartnerDealId
+    ? partnerDeals.find(d =&gt; d.id === formPartnerDealId)
+    <span class="hit">?? null : null)</span>,
+  draftName })
+
+<span class="dim">// null ?? the-selected-agency → the selected agency</span></pre>
+      </div>
+    </div>
+
+    <p class="note" style="margin-top:16px"><b>So the profile opens as “Edit agency”, pre-filled with Getz Pharma's own details and room prices — and Save agency writes over it.</b> A brand-new agency is never created. The <code>??</code> fallback was meant for some other caller, but there is no other caller: <code>Change</code> reopens the picker instead, so the fallback only ever fires on the one path that must not have it.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>The fix is one line</h2></div>
+    <pre>WalkInBookingForm.tsx:389
+
+const openAgencyProfile = (deal: PartnerDeal | null, draftName: string) => {
+  <span class="hit">setAgencyProfile({ deal: deal ?? (formPartnerDealId ? partnerDeals.find(d =&gt; d.id === formPartnerDealId) ?? null : null), draftName })</span>
+  <span class="fix">setAgencyProfile({ deal, draftName })</span>
+}</pre>
+    <p class="note" style="margin-top:16px">Nothing else changes: <code>＋ New agency</code> then opens a genuinely blank profile headed <b>New agency</b>, and saving adds a new agency with its own new id instead of touching the selected one.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>One thing I found while checking — and will not decide for you</h2></div>
+    <p class="sub">The notes say one thing, the code does another. Yours is the ruling.</p>
+    <div class="grid2">
+      <div class="card">
+        <span class="badge b-neu">what the notes claim</span>
+        <p style="margin:10px 0 0;font-size:14px">“<b>Change</b> opens the same profile, so one editor owns an agency whether it is new or old.”</p>
+        <p class="sub" style="margin:8px 0 0">i.e. Change would open <b>Edit agency</b> for the agency already on the booking.</p>
+      </div>
+      <div class="card">
+        <span class="badge b-gold">what the code does</span>
+        <p style="margin:10px 0 0;font-size:14px"><b>Change</b> reopens the agency <b>picker</b> — the search box and the saved list — so you can name a <em>different</em> agency.</p>
+        <p class="sub" style="margin:8px 0 0">No profile is opened, so nothing can be overwritten by accident.</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:16px">I have <b>not</b> changed either behaviour — the one-line fix above is the whole build. I only need to know which of the two is what you actually want, so the code and the notes stop disagreeing.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">04</span><h2>Your call</h2></div>
+    <form class="q" data-lavish-question="go">
+      <h3>Shall I build the one-line fix?</h3>
+      <label class="opt"><input type="radio" name="go" value="Yes — fix it, and Change keeps reopening the picker (as the code does today)">
+        <span><span class="l">Yes — fix it, and leave <b>Change</b> as it is <span class="badge b-gold" style="margin-left:6px">recommended</span></span><br>
+        <span class="h">“New agency” opens a blank <b>New agency</b> profile and creates a new agency. <b>Change</b> keeps reopening the picker, as it does today, so it only ever swaps which agency is named — it can never overwrite one.</span></span></label>
+
+      <label class="opt"><input type="radio" name="go" value="Yes — fix it, and also make Change open the Edit agency profile">
+        <span><span class="l">Yes — and make <b>Change</b> open the profile too</span><br>
+        <span class="h">Matches what the notes say: Change opens <b>Edit agency</b> on the agency already named, so its details and room prices can be corrected from the booking form. The picker would then only be reachable while nothing is chosen.</span></span></label>
+
+      <label class="opt"><input type="radio" name="go" value="Show me the diff first, then I decide">
+        <span><span class="l">Show me the diff first</span><br>
+        <span class="h">I put the exact two-line change on screen before touching anything.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+    <p class="note" style="margin-top:16px"><b>Still open on the other page:</b> the four reads that still hand back built-in lists (rooms, venues, inventory, menu).</p>
+  </section>
+
+</div>
+</body>
+</html>

@@ -9,9 +9,32 @@ import {
 import { MainLayout } from './components/MainLayout'
 import { LoginRoute } from './components/LoginPortal'
 import { DashboardLayout } from './components/DashboardLayout'
+import { SettingsUnavailable } from './components/SettingsUnavailable'
+import { hydrateRateConfig } from './utils/rateConfig'
+import { hydratePaymentAccounts } from './utils/paymentAccounts'
+
+/**
+ * The shared rates and where-guests-pay are read once per page load, before any
+ * route renders.
+ *
+ * Everything that prices a stay or prints an account number reads them
+ * synchronously, so they must be in memory first — a screen that quietly used
+ * the factory defaults is the exact failure this replaced (2026-09-28). If the
+ * database cannot be reached the app stops with a plain message instead of
+ * showing figures nobody verified.
+ */
+let settingsReady: Promise<void> | null = null
+function loadSettings(): Promise<void> {
+  if (!settingsReady) {
+    settingsReady = Promise.all([hydrateRateConfig(), hydratePaymentAccounts()]).then(() => undefined)
+  }
+  return settingsReady
+}
 
 // 1. Create a Root Route
 const rootRoute = createRootRoute({
+  beforeLoad: () => loadSettings(),
+  errorComponent: ({ error }) => <SettingsUnavailable error={error as Error} />,
   component: () => (
     <MainLayout>
       <Outlet />

@@ -60,8 +60,8 @@ export function SettingsTab() {
     if (saving || changes === 0) return
     setSaving(true)
     try {
-      saveRateConfig(rates)
-      savePaymentAccounts(pay)
+      await saveRateConfig(rates)
+      await savePaymentAccounts(pay)
       for (const roomId of Object.keys(roomEdits)) {
         const room = rooms.find(r => r.id === roomId)
         if (!room) continue
@@ -75,7 +75,7 @@ export function SettingsTab() {
       setRoomEdits({})
       showToast('Saved. The booking form, the board and the printed bill use these.')
     } catch {
-      showToast('Could not save the room prices. Please try again.', 'error')
+      showToast('Could not save the settings. Check the internet connection and try again.', 'error')
     } finally {
       setSaving(false)
     }

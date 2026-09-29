@@ -248,7 +248,12 @@ export function WalkInBookingForm({
 
       setFormPaymentMethod(b.payment_method || '')
       setFormPaymentReference(b.payment_reference || '')
-      setFormPaymentPlan(b.payment_plan === 'full' ? 'full' : b.payment_plan === 'custom' ? 'custom' : 'deposit')
+      setFormPaymentPlan(
+        b.payment_plan === 'full' ? 'full'
+          : b.payment_plan === 'custom' ? 'custom'
+            : b.payment_plan === 'reservation' ? 'reservation'
+              : 'deposit',
+      )
       // The Custom figure the desk typed when the booking was made, put back in the box —
       // without this, editing any booking showed Custom as ₱0 and saving wrote that zero
       // over the agreed deposit.
@@ -349,15 +354,19 @@ export function WalkInBookingForm({
   )
 
   // The figure the desk asks for now, by plan (the owner's ruling): the half for a
-  // deposit, the whole stay for Full pay, and the typed figure for Custom. `depositTouched`
-  // still means "the desk has typed in the Custom box". DERIVED, not copied into state by
-  // an effect: an effect here re-rendered the whole form on every estimate change, and the
+  // deposit, the whole stay for Full pay, and the typed figure for Custom. A
+  // **Reservation** agrees to nothing, so its figure is 0 — deliberately, so no screen
+  // and no printed page can show money the guest never promised. `depositTouched` still
+  // means "the desk has typed in the Custom box". DERIVED, not copied into state by an
+  // effect: an effect here re-rendered the whole form on every estimate change, and the
   // figure is only ever read below.
   const agreedDeposit = formPaymentPlan === 'full'
     ? Math.max(0, Math.round(estTotal))
     : formPaymentPlan === 'custom'
       ? (depositTouched ? formAgreedDeposit : 0)
-      : Math.max(0, Math.round(estTotal / 2))
+      : formPaymentPlan === 'reservation'
+        ? 0
+        : Math.max(0, Math.round(estTotal / 2))
 
   const staffNames = useMemo(
     () => Array.from(new Set((bookings || []).map(b => (b.prepared_by || '').trim()).filter(Boolean))).sort(),
@@ -385,9 +394,19 @@ export function WalkInBookingForm({
   /** An agency booking cannot be confirmed until the bill has an addressee. */
   const agencyMissing = agencyOn && formStatus === 'confirmed' && !formCompanyName.trim()
 
-  /** Create a new agency, or correct the one that is on the booking — same profile form. */
+  /**
+   * Create a new agency, or correct the one that is on the booking — same profile form.
+   *
+   * The `deal` argument decides which: `null` means **create a new one**, and it is the
+   * only thing `＋ New agency` ever sends. This used to fall back to the agency already
+   * named on the booking when `null` arrived, so pressing `＋ New agency` opened that
+   * agency as **Edit agency** — pre-filled with its details and room prices, with Save
+   * agency writing over it, and no new agency ever created (the owner's report,
+   * 2026-09-28). The fallback was written for a caller that does not exist: **Change**
+   * reopens the picker on purpose (the owner's ruling), so it never asks for a profile.
+   */
   const openAgencyProfile = (deal: PartnerDeal | null, draftName: string) => {
-    setAgencyProfile({ deal: deal ?? (formPartnerDealId ? partnerDeals.find(d => d.id === formPartnerDealId) ?? null : null), draftName })
+    setAgencyProfile({ deal, draftName })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

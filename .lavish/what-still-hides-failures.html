@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What still hides a failure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raise:#262626; --line:#3A3A3A;
+    --text:#EDEAE4; --sec:#A8A29A; --muted:#7D7871; --gold:#D0AB60;
+    --gold-bg:#332B18; --gold-fg:#E6C989;
+    --good-bg:#12261F; --good-fg:#34D399;
+    --bad-bg:#2A1615;  --bad-fg:#F87171;
+    --neu-bg:#2A2A2A;  --neu-fg:#C9C4BB;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:40px 24px 96px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(25px,3.5vw,36px);line-height:1.15;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec)}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:17px;color:var(--text);max-width:64ch}
+  .wrap>*+*{margin-top:22px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);
+       border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+         border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:var(--neu-fg)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  tr:last-child td{border-bottom:0}
+  tr.invent{background:#1E1413}
+  td.mono{font-family:'JetBrains Mono',monospace;font-size:12.5px}
+  .ok{color:var(--good-fg)} .no{color:var(--bad-fg)} .mid{color:var(--gold-fg)}
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);
+       border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .opt:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .opt input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .opt .l{font-weight:600;font-size:14px}
+  .opt .h{font-size:13px;color:var(--muted)}
+  .opt .h b{color:var(--sec);font-weight:500}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+  button.submit:hover{filter:brightness(1.07)}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:14px}
+  .note b{color:var(--sec);font-weight:500}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#171717;border:1px solid var(--line);
+       border-radius:4px;padding:1px 5px;color:var(--gold-fg)}
+  .flowrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .done{background:var(--good-bg);border:1px solid #1E4A38;border-radius:12px;padding:16px 18px;min-width:0}
+  .done .t{color:var(--good-fg);font-weight:700;font-family:'Sora',sans-serif;font-size:14px}
+  svg{width:100%;height:auto;display:block;overflow:visible}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · your rule: I must know what is working</div>
+    <h1>The storage fallback is <span style="color:var(--good-fg)">gone</span>. Four reads still cover a failure up.</h1>
+    <p class="lede">You said you will not know what is working. On the left of the line below, nothing is hidden any more. On the right, four places still quietly hand back numbers the database never gave them.</p>
+  </header>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>Where it stands right now</h2></div>
+
+    <svg viewBox="0 0 940 250" role="img" aria-label="Saving now tells the truth; four reads still substitute built-in values">
+      <line x1="470" y1="10" x2="470" y2="240" stroke="#3A3A3A" stroke-width="1.5" stroke-dasharray="6 5"/>
+      <text x="228" y="26" fill="#34D399" font-family="Sora,sans-serif" font-size="13" font-weight="600" text-anchor="middle">SAVING — nothing hidden</text>
+      <text x="706" y="26" fill="#F87171" font-family="Sora,sans-serif" font-size="13" font-weight="600" text-anchor="middle">READING — still covered up</text>
+
+      <rect x="20" y="44" width="416" height="180" rx="12" fill="#12261F" stroke="#1E4A38"/>
+      <text x="42" y="72" fill="#EDEAE4" font-family="DM Sans,sans-serif" font-size="13.5">Every save goes to the database and back:</text>
+      <text x="42" y="100" fill="#A8A29A" font-family="DM Sans,sans-serif" font-size="13">bookings · agencies · expenses · inventory · cleaning</text>
+      <text x="42" y="122" fill="#A8A29A" font-family="DM Sans,sans-serif" font-size="13">menu · tabs · room prices · shared rates · where guests pay</text>
+      <text x="42" y="156" fill="#34D399" font-family="DM Sans,sans-serif" font-size="13.5" font-weight="600">If the database refuses it, the save now throws —</text>
+      <text x="42" y="178" fill="#34D399" font-family="DM Sans,sans-serif" font-size="13.5" font-weight="600">the screen says so and shows nothing as saved.</text>
+      <text x="42" y="206" fill="#7D7871" font-family="DM Sans,sans-serif" font-size="12">No browser store holds hotel data any more. Only the</text>
+      <text x="42" y="222" fill="#7D7871" font-family="DM Sans,sans-serif" font-size="12">login you ruled to keep.</text>
+
+      <rect x="496" y="44" width="424" height="180" rx="12" fill="#2A1615" stroke="#5A2A28"/>
+      <text x="518" y="72" fill="#EDEAE4" font-family="DM Sans,sans-serif" font-size="13.5">If the database cannot be <tspan font-weight="600">read</tspan>, the app still</text>
+      <text x="518" y="90" fill="#EDEAE4" font-family="DM Sans,sans-serif" font-size="13.5">fills the gap with a list typed into the code:</text>
+      <text x="518" y="120" fill="#F87171" font-family="JetBrains Mono,monospace" font-size="12.5">rooms        → the factory room list</text>
+      <text x="518" y="140" fill="#F87171" font-family="JetBrains Mono,monospace" font-size="12.5">venues       → the factory venue list</text>
+      <text x="518" y="160" fill="#F87171" font-family="JetBrains Mono,monospace" font-size="12.5">inventory    → the factory 18 items</text>
+      <text x="518" y="180" fill="#F87171" font-family="JetBrains Mono,monospace" font-size="12.5">menu         → the factory dish list</text>
+      <text x="518" y="208" fill="#7D7871" font-family="DM Sans,sans-serif" font-size="12">Nothing on screen says any of this happened.</text>
+    </svg>
+
+    <p class="note" style="margin-top:16px"><b>Rooms is the dangerous one.</b> With the database unreachable, the calendar and the booking form would list and price rooms that are not the hotel's — silently. That is the price bug again, on the read side.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>The rest already behaves</h2></div>
+    <table>
+      <thead><tr><th>Read</th><th>When the database cannot be reached</th><th></th></tr></thead>
+      <tbody>
+        <tr class="invent"><td><b>Rooms · venues · inventory · menu</b></td><td class="no">hands back a list typed into the code, as if it were real</td><td><span class="badge b-bad">hides it</span></td></tr>
+        <tr><td>Bookings · partners · expenses · tabs · tab lines · cleaning · channel links</td><td class="mid">returns an empty list — nothing invented, but still no word that it failed</td><td><span class="badge b-neu">silent</span></td></tr>
+        <tr><td>Saving anything (all of the above)</td><td class="ok">throws — the screen reports it</td><td><span class="badge b-good">fixed</span></td></tr>
+        <tr><td>The shared settings at start-up</td><td class="ok">the app stops on “Cannot reach the hotel's database”</td><td><span class="badge b-good">fixed</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>Your call</h2></div>
+    <form class="q" data-lavish-question="reads">
+      <h3>Should a failed read say so too — and what should the desk see?</h3>
+      <label class="opt"><input type="radio" name="reads" value="Yes — delete all four invented lists, and any read that fails shows the same “Cannot reach the hotel's database” message with a Retry button">
+        <span><span class="l">Yes — say it out loud <span class="badge b-gold" style="margin-left:6px">recommended</span></span><br>
+        <span class="h">The four factory lists go. When the database cannot be read, the screen says <b>“Cannot reach the hotel's database”</b> with a <b>Retry</b> button instead of showing rooms that are not yours. Nothing on screen is ever a number the database did not give.</span></span></label>
+
+      <label class="opt"><input type="radio" name="reads" value="Yes, but keep a thin red bar at the top instead of replacing the screen — the page stays, with a warning it could not be loaded">
+        <span><span class="l">Yes, but as a red bar, not a whole screen</span><br>
+        <span class="h">Same rule — no invented lists — but a failed read shows a thin red bar (<b>“Could not load the rooms — Retry”</b>) while the screen stays put. Softer on the eye at a busy desk; the page is briefly empty underneath.</span></span></label>
+
+      <label class="opt"><input type="radio" name="reads" value="Leave the reads as they are for now — fix the id columns first">
+        <span><span class="l">Later — do the agency/ids fix first</span><br>
+        <span class="h">The four reads stay as they are and we come back to them. The agency and the other five broken saves get fixed first.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+    <p class="note" style="margin-top:16px"><b>Still open from the last page:</b> the six id columns (agency, inventory, cleaning, expenses ×2, booking agency) — A: the columns become text, or B: the app sends real uuids. Both answers can be given on either page.</p>
+  </section>
+
+</div>
+</body>
+</html>

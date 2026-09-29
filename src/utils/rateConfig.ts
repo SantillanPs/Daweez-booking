@@ -1,4 +1,5 @@
 import { RateConfig, BreakfastMenuOption } from '../types/booking'
+import { readAppSetting, writeAppSetting } from './appSettings'
 
 // Editable system rate settings. Staff can change these in Settings so they no
 // longer have to touch code or the database directly for everyday rate changes
@@ -34,21 +35,35 @@ export const DEFAULT_RATE_CONFIG: RateConfig = {
   venueExtras: 0,         // flat extras added to Garden Area + Gazebo (report)
 }
 
-const RATES_KEY = 'l_etoile_rates_db'
+const RATES_KEY = 'rate_config'
 
-export function getRateConfig(): RateConfig {
-  try {
-    const raw = localStorage.getItem(RATES_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<RateConfig>
-      return { ...DEFAULT_RATE_CONFIG, ...parsed }
-    }
-  } catch { /* invalid stored value → defaults */ }
-  return { ...DEFAULT_RATE_CONFIG }
+// The loaded config, held in memory for this session. The database is the home;
+// this cache exists only because `getRateConfig()` is called synchronously from
+// the pricing engine, the statements and the reports, which cannot await.
+// `hydrateRateConfig()` fills it before the app renders anything.
+let cache: RateConfig | null = null
+
+/**
+ * Reads the shared rates out of the database into memory. Runs once, before any
+ * screen renders, so nothing is ever priced against the factory defaults by
+ * accident — that is exactly the class of bug this replaced. Throws when the
+ * database cannot be reached; the router turns that into a visible stop rather
+ * than a screen quietly using the wrong figures.
+ */
+export async function hydrateRateConfig(): Promise<void> {
+  const stored = await readAppSetting<Partial<RateConfig>>(RATES_KEY)
+  cache = stored ? { ...DEFAULT_RATE_CONFIG, ...stored } : { ...DEFAULT_RATE_CONFIG }
 }
 
-export function saveRateConfig(config: RateConfig): void {
-  localStorage.setItem(RATES_KEY, JSON.stringify(config))
+export function getRateConfig(): RateConfig {
+  return cache ? { ...cache } : { ...DEFAULT_RATE_CONFIG }
+}
+
+/** Saves the shared rates to the database. Throws when it refuses. */
+export async function saveRateConfig(config: RateConfig): Promise<void> {
+  const clean = { ...config }
+  await writeAppSetting(RATES_KEY, clean)
+  cache = clean
 }
 
 // The current staff-editable breakfast menu (empty entries are filtered out so

@@ -1,4 +1,5 @@
 import { Booking, Room } from '../../types/booking'
+import { isReservationAwaitingArrival } from '../../utils/bookingMoney'
 
 // Show the real room name (e.g. "Full Double Deluxe") instead of a bare
 // number, with "Room N" as the fallback when no name is set.
@@ -33,7 +34,10 @@ export const getVenueBookingStyle = (b: Booking): string => {
 }
 
 // Small payment dot shown on every booking block.
+// A **reservation whose guest has not arrived** gets a neutral charcoal dot, never the
+// red one: it is a promise, not a debt (the owner's ruling, 2026-09-28).
 export const getPaymentDotClass = (b: Booking): string => {
+  if (isReservationAwaitingArrival(b)) return 'bg-ink-400'
   const s = b.payment_status
   if (s === 'paid') return 'bg-emerald-500'
   if (s === 'downpayment') return 'bg-amber-400'
@@ -42,6 +46,7 @@ export const getPaymentDotClass = (b: Booking): string => {
 
 // Plain-language payment label (no accounting jargon).
 export const getPaymentLabel = (b: Booking): string => {
+  if (isReservationAwaitingArrival(b)) return 'Reserved'
   const s = b.payment_status
   if (s === 'paid') return 'Paid'
   if (s === 'downpayment') return 'Deposit paid'

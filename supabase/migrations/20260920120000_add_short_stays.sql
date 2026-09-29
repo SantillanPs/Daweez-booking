@@ -10,8 +10,8 @@
 -- `set_room_breakfast_price` and `set_booking_agreed_deposit`: RLS gives the app
 -- SELECT only on `rooms`, and `book_booking`/`update_booking` are the drifted
 -- jsonb functions that must not be re-created casually (see supabase/AGENTS.md).
--- Both writers are safe to lose: a failed write only means the desk retypes a
--- price, or a booking loses its "this was a short stay" label.
+-- The app keeps no browser copy of a room price, so a failed write is reported
+-- to the desk rather than silently remembered offline.
 
 -- ── the three short-stay prices, per room ────────────────────────────────────
 ALTER TABLE public.rooms
@@ -26,33 +26,27 @@ COMMENT ON COLUMN public.rooms.hour6_price IS
 COMMENT ON COLUMN public.rooms.hour12_price IS
     'Price for a 12-hour short stay, in pesos. NULL means this room is not sold short.';
 
+-- `rooms.id` is TEXT and holds legacy ids like `room-3`, NOT a uuid. An earlier
+-- version of this function cast the id to uuid, which rejected every save with
+-- `invalid input syntax for type uuid: "room-3"`; the app then fell back to the
+-- browser store, so the typed prices never reached the database. Compare the
+-- column directly, as `set_room_breakfast_price` does. Repaired in
+-- `20260928142725_fix_room_price_writers_text_ids.sql`.
 CREATE OR REPLACE FUNCTION public.set_room_hour_prices(
     p_room_id text,
     p_hour3   numeric,
     p_hour6   numeric,
     p_hour12  numeric
 ) RETURNS void
-LANGUAGE plpgsql
+LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-    v_id uuid := NULLIF(p_room_id, '')::uuid;
-BEGIN
-    IF v_id IS NULL THEN
-        RAISE EXCEPTION 'ROOM_NOT_FOUND';
-    END IF;
-
     UPDATE public.rooms SET
         hour3_price  = NULLIF(p_hour3, 0),
         hour6_price  = NULLIF(p_hour6, 0),
         hour12_price = NULLIF(p_hour12, 0)
-    WHERE id = v_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'ROOM_NOT_FOUND';
-    END IF;
-END;
+     WHERE id = p_room_id;
 $$;
 
 REVOKE ALL ON FUNCTION public.set_room_hour_prices(text, numeric, numeric, numeric) FROM public;

@@ -7,6 +7,12 @@
 -- room's Regular (base_price) and Promo (promo_price) rates from the UI
 -- without granting direct table writes to anon, we route the write through a
 -- SECURITY DEFINER RPC — the same pattern used by the booking RPCs.
+--
+-- `rooms.id` is TEXT and holds legacy ids like `room-3`, NOT a uuid. This
+-- function originally cast the id to uuid — the same fault the booking RPCs
+-- had — which made every rate edit fail with `invalid input syntax for type
+-- uuid`. Compare the column directly. Repaired in
+-- `20260928142725_fix_room_price_writers_text_ids.sql`.
 -- ==========================================
 
 CREATE OR REPLACE FUNCTION public.update_room_rate(
@@ -20,17 +26,12 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_id uuid := NULLIF(p_room_id, '')::uuid;
   v_row jsonb;
 BEGIN
-  IF v_id IS NULL THEN
-    RAISE EXCEPTION 'ROOM_NOT_FOUND';
-  END IF;
-
   UPDATE public.rooms SET
     base_price = COALESCE(NULLIF(p_base_price, 0), base_price),
     promo_price = NULLIF(p_promo_price, 0)
-  WHERE id = v_id
+  WHERE id = p_room_id
   RETURNING to_jsonb(rooms.*) INTO v_row;
 
   IF v_row IS NULL THEN

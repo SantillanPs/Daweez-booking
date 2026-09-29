@@ -138,10 +138,19 @@ export interface Booking {
   downpayment_paid: number // 50% downpayment
   payment_method?: string
   payment_reference?: string
-  // What the guest agreed to pay when they booked: a 50% deposit or the full
-  // amount. Shown as "expecting" in the booking quick view; the booking's
-  // payment STATUS itself follows the money actually recorded.
-  payment_plan?: 'deposit' | 'full' | 'custom'
+  /**
+   * What the guest agreed to pay when they booked — or that they agreed to nothing.
+   *
+   * `'deposit'` (the standard, half the stay) · `'full'` · `'custom'` (a typed figure),
+   * and **`'reservation'`** — the owner's ruling, 2026-09-28: a room held for somebody
+   * the staff personally know and trust, with **nothing paid and nothing agreed**. The
+   * desk decides who qualifies; the app never checks. A reservation is settled **when
+   * the guest arrives to check in**, through the same money gate as any other stay.
+   *
+   * No database change is needed: `bookings.payment_plan` is plain text with no CHECK
+   * constraint, exactly so a new value costs no migration.
+   */
+  payment_plan?: 'deposit' | 'full' | 'custom' | 'reservation'
   /**
    * What the desk and the guest agreed the guest would pay now, in pesos
    * (card k130). Half the stay by default, but the desk may type any figure —

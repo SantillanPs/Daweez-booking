@@ -1,6 +1,6 @@
 import { Booking } from '../types/booking'
 
-export type PaymentTone = 'paid' | 'partial' | 'owes'
+export type PaymentTone = 'paid' | 'partial' | 'owes' | 'reserved'
 
 export interface PaymentView {
   tone: PaymentTone
@@ -9,14 +9,45 @@ export interface PaymentView {
 }
 
 // Colors for the payment badge: money owed is the first thing staff scan for.
+// `reserved` is deliberately NEUTRAL — a reservation is a promise, not a debt, and a
+// red badge would put a trusted guest's name in the chase list (the owner, 2026-09-28).
 export const PAYMENT_BADGE_CLASSES: Record<PaymentTone, string> = {
   paid: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
   partial: 'bg-amber-100 text-amber-800 border border-amber-200',
   owes: 'bg-rose-100 text-rose-700 border border-rose-200',
+  reserved: 'bg-ink-100 text-ink-800 border border-ink-200',
+}
+
+/**
+ * A **reservation** (the owner's ruling, 2026-09-28): a room held for somebody the staff
+ * personally know and trust, with nothing paid and nothing agreed. The desk decides who
+ * qualifies — there is no check in the app, because staff would not reserve for a
+ * stranger. It blocks the room exactly like any other booking and holds until the desk
+ * cancels it; the money is taken when the guest arrives to check in.
+ */
+export function isReservation(booking: Booking): boolean {
+  return booking.payment_plan === 'reservation' && booking.status !== 'blocked'
+}
+
+/**
+ * A reservation whose guest has not arrived yet.
+ *
+ * This is the one distinction the whole feature turns on: **before arrival a reservation
+ * is a promise, not a debt.** It stays out of "Who owes right now" and never wears a red
+ * badge. The moment the guest checks in it becomes an ordinary owing stay — the money is
+ * due at the door, and the usual check-in gate collects it.
+ */
+export function isReservationAwaitingArrival(booking: Booking): boolean {
+  return isReservation(booking) && !booking.actual_check_in
 }
 
 // Plain-language payment status, built so non-accounting staff can read it instantly.
 export function getPaymentView(booking: Booking): PaymentView {
+  // Nothing is owed by a guest who has not arrived against a reservation, and **no
+  // money is shown at all** — the owner's ruling ("A"): the name and the word Reserved.
+  if (isReservationAwaitingArrival(booking)) {
+    return { tone: 'reserved', label: 'Reserved', amount: 0 }
+  }
   const due = booking.balance_due || 0
   if (booking.payment_status === 'paid') {
     return { tone: 'paid', label: 'Paid', amount: 0 }
@@ -31,9 +62,11 @@ export function getPaymentView(booking: Booking): PaymentView {
   return { tone: 'owes', label: 'Not paid', amount: 0 }
 }
 
-// True when a booking still has money left to collect (blocks don't owe).
+// True when a booking still has money left to collect (blocks don't owe, and a
+// reservation whose guest has not arrived is a promise rather than a debt).
 export function isOwed(booking: Booking): boolean {
   if (booking.status === 'blocked') return false
+  if (isReservationAwaitingArrival(booking)) return false
   return booking.payment_status !== 'paid'
 }
 
@@ -90,6 +123,7 @@ export function paymentStatusWord(booking: Booking): string {
   const tone = getPaymentView(booking).tone
   if (tone === 'paid') return 'Paid'
   if (tone === 'partial') return 'Partial'
+  if (tone === 'reserved') return 'Reserved'
   return 'Owes'
 }
 
@@ -97,10 +131,13 @@ export function paymentStatusWord(booking: Booking): string {
 // Plain label for the agreed payment plan, or '' when nothing was agreed.
 // `custom` names the figure on the paper instead — `Custom · ₱1,000 now` — because a
 // custom amount means nothing without the number beside it (the statement composes it).
+// `reservation` is the one plan with no figure at all: the guest agreed to pay nothing
+// now, so the printed page must say so rather than leave the line blank.
 export function paymentPlanLabel(plan?: Booking['payment_plan']): string {
   if (plan === 'full') return 'Full payment'
   if (plan === 'deposit') return 'Deposit (50%)'
   if (plan === 'custom') return 'Custom'
+  if (plan === 'reservation') return 'Reservation — nothing paid'
   return ''
 }
 

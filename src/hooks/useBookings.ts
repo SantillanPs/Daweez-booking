@@ -210,7 +210,7 @@ export function useBookings() {
     breakfastOrders?: BreakfastOrder[]; equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons; rateMultiplier?: number; usePromo?: boolean; companions?: Companion[]
     partnerDealId?: string; companyName?: string; vehiclePlate?: string
-    paymentMethod?: string; paymentReference?: string; paymentPlan?: 'deposit' | 'full' | 'custom'; venueExcessHours?: number
+    paymentMethod?: string; paymentReference?: string; paymentPlan?: 'deposit' | 'full' | 'custom' | 'reservation'; venueExcessHours?: number
     paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
     downpaymentPaid?: number; balanceDue?: number; securityDeposit?: number
     breakfastIncluded?: boolean; contractRateOverride?: number
