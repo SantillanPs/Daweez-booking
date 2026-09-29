@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="luxury">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fixing "Where to pay"</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --page:#141414;--card:#1F1F1F;--raise:#262626;--line:#3A3A3A;
+    --text:#EDEAE4;--sec:#A8A29A;--muted:#7D7871;--gold:#D0AB60;
+    --gold-bg:#332B18;--gold-fg:#E6C989;
+    --good-bg:#12261F;--good-fg:#34D399;
+    --bad-bg:#2A1615;--bad-fg:#F87171;
+    --neu-bg:#2A2A2A;--neu-fg:#C9C4BB;
+    --paper:#E6E2DA;--ink:#1C1C1C;--ink6:#514C45;--ink3:#ADA69A;--rule:#857E73;
+  }
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:36px 22px 92px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(24px,3.3vw,33px);line-height:1.15;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:15.5px;margin:0 0 4px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec);overflow-wrap:anywhere}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:16.5px;color:var(--text);max-width:68ch}
+  .wrap>*+*{margin-top:20px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:var(--neu-fg)}
+  .flowrow{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:13px}
+  .note b{color:var(--sec);font-weight:500}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#171717;border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--gold-fg)}
+
+  .opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:14px}
+  @media (max-width:980px){.opts{grid-template-columns:minmax(0,1fr)}}
+  .opt{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:14px 15px;min-width:0;display:flex;flex-direction:column}
+  .opt.pick{border-color:#6F5420}
+  .opt h3{margin-top:8px}
+  .opt .why{font-size:13px;color:var(--muted);margin:0}
+  .opt .why b{color:var(--sec);font-weight:500}
+
+  /* the paper strip, true A5 content width (495px) */
+  .paper{background:var(--paper);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;
+         font-size:11px;line-height:1.45;padding:10px 12px;border-radius:6px;margin-top:10px;
+         width:100%;max-width:495px;min-width:0}
+  .sec{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink6);
+       margin:0 0 3px;border-bottom:1px solid var(--ink3);padding-bottom:1.5px}
+  .ticks{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
+  .tick{font-size:9.5px;margin:0;display:flex;gap:4px;align-items:flex-start}
+  .tick i{width:8px;height:8px;border:1px solid var(--rule);display:inline-block;flex:none;margin-top:2px}
+  .wrun{font-size:9px;color:var(--ink6);margin:3px 0 0}
+  .wrun b{color:var(--ink)}
+  .wrow{display:grid;grid-template-columns:74px minmax(0,1fr);gap:2px 8px;margin-top:3px}
+  .wrow dt{font-size:9px;font-weight:700;color:var(--ink);margin:0}
+  .wrow dd{font-size:9px;color:var(--ink6);margin:0;min-width:0}
+  .wrow dd b{color:var(--ink)}
+  .split{display:grid;grid-template-columns:1.35fr 1fr;gap:0 14px}
+  .tot2 .r{display:flex;justify-content:space-between;gap:6px;font-size:10.5px}
+  .tot2 .r.big{border-top:1px dashed var(--ink3);margin-top:2px;padding-top:3px;align-items:baseline}
+  .tot2 .r.big em{font-style:normal;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink6);display:block}
+  .tot2 .r.big strong{font-family:'Sora',sans-serif;font-size:17px;font-weight:800}
+  .plan{font-size:9px;color:var(--ink6);margin:3px 0 0}
+  .plan b{color:var(--ink)}
+
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:17px 19px;min-width:0}
+  .choice{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .choice:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .choice input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .choice .l{font-weight:600;font-size:14px;display:block}
+  .choice .h{font-size:13px;color:var(--muted);display:block}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · card k144 · "where to pay" · nothing built yet</div>
+    <h1>Three ways to pay, <span style="color:var(--bad-fg)">strung together with dots</span>.</h1>
+    <p class="lede">You're right — the guest can't tell where one route ends and the next begins, and <b>BPI DAWEEZ PENSION HOUSE</b> splits across two lines so the bank and the account read as one long name. I collapsed this to a single line on your earlier note; the shape was wrong, not the length. Three fixes below, each shown on the real 495px paper width.</p>
+  </header>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>Pick the shape</h2></div>
+    <p class="sub">All three keep every detail — bank, account name, account number. Only the arrangement changes.</p>
+
+    <div class="opts">
+      <!-- A -->
+      <div class="opt pick">
+        <span class="badge b-gold">A · my pick</span>
+        <h3>One row per way to pay</h3>
+        <div class="paper">
+          <p class="sec">Where to pay</p>
+          <dl class="wrow">
+            <dt>Cash</dt><dd>at the front desk</dd>
+            <dt>GCash</dt><dd><b>Narlina D.</b> · 0910-7934988</dd>
+            <dt>BPI</dt><dd><b>DAWEEZ PENSION HOUSE</b> · 5636-0544-12</dd>
+          </dl>
+        </div>
+        <p class="why" style="margin-top:10px"><b>Nothing can be misread.</b> The way to pay is its own bold word in a column, so the eye stops at each one. Three tight rows — shorter than the current mess, which wraps to three lines anyway.</p>
+        <p class="why" style="margin-top:8px">Uses the short bank name <code>BPI</code>, the same one the tick list uses.</p>
+      </div>
+
+      <!-- B -->
+      <div class="opt">
+        <span class="badge b-neu">B</span>
+        <h3>Move it into the empty right column</h3>
+        <div class="paper">
+          <div class="split">
+            <div>
+              <p class="sec">Payment Method</p>
+              <div class="ticks">
+                <p class="tick"><i></i> Cash</p><p class="tick"><i></i> GCash</p>
+                <p class="tick"><i></i> BPI Transfer</p><p class="tick"><i></i> Check</p>
+              </div>
+              <p class="plan"><b>Payment Plan:</b> Reservation</p>
+            </div>
+            <div class="tot2">
+              <p class="sec">Totals</p>
+              <div class="r"><span>Sub-Total</span><span>₱950</span></div>
+              <div class="r big"><span><em>Amount Due</em></span><strong>₱950</strong></div>
+              <dl class="wrow" style="margin-top:6px;grid-template-columns:52px minmax(0,1fr)">
+                <dt>Cash</dt><dd>at the desk</dd>
+                <dt>GCash</dt><dd><b>Narlina D.</b> 0910-7934988</dd>
+                <dt>BPI</dt><dd><b>DAWEEZ</b> 5636-0544-12</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+        <p class="why" style="margin-top:10px"><b>Uses the space that is already empty</b> under the totals. But the column is narrower, so the account name has to shorten to <code>DAWEEZ</code> — and the block now reads as part of the money, not as instructions.</p>
+      </div>
+
+      <!-- C -->
+      <div class="opt">
+        <span class="badge b-neu">C</span>
+        <h3>Say less: cash, or ask at the desk</h3>
+        <div class="paper">
+          <p class="sec">Where to pay</p>
+          <p class="wrun"><b>Cash</b> at the front desk · <b>GCash</b> Narlina D. 0910-7934988<br><b>BPI</b> DAWEEZ PENSION HOUSE 5636-0544-12</p>
+        </div>
+        <p class="why" style="margin-top:10px">Keeps it to two lines, with the route names <b>bold</b> so the eye can find them. Still a run-on sentence, just a better-marked one.</p>
+        <p class="why" style="margin-top:8px">Cheapest change — one line of code — but the least clear of the three.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>One thing worth knowing</h2></div>
+    <p class="note"><b>This block only prints while no method has been chosen.</b> Once the desk records how the guest paid, the page shows just that one method and its <b>Account Details</b> instead — the full bank name, unshortened, because that is the copy a guest reads while making the transfer. So whatever we pick here is the <b>fallback</b>, seen on a booking nobody has paid yet.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>Your call</h2></div>
+    <form class="q" data-lavish-question="wheretopay" onsubmit="event.preventDefault(); const c = new FormData(event.currentTarget).get('wheretopay'); if (c) window.lavish.queuePrompt('Where to pay layout: ' + c, { tag: 'choice', text: 'Where to pay: ' + c, element: event.currentTarget, data: { question: 'wheretopay', answer: c } });">
+      <h3>Which shape for “Where to pay”?</h3>
+
+      <label class="choice"><input type="radio" name="wheretopay" value="A — one row per way to pay: a bold label column (Cash / GCash / BPI) with its detail beside it">
+        <span><span class="l">A — one row per way to pay <span class="badge b-gold" style="margin-left:6px">recommended</span></span>
+        <span class="h">Bold label, detail beside it, three tight rows. Nothing can be misread and it is shorter than what prints now.</span></span></label>
+
+      <label class="choice"><input type="radio" name="wheretopay" value="B — move the three routes into the empty right-hand column under the totals">
+        <span><span class="l">B — move it into the empty right column</span>
+        <span class="h">Uses space that is doing nothing today, but the narrower column forces the account name to shorten.</span></span></label>
+
+      <label class="choice"><input type="radio" name="wheretopay" value="C — keep one sentence but bold the route names so each is findable">
+        <span><span class="l">C — keep the sentence, bold the route names</span>
+        <span class="h">Smallest change, still a run-on. Least clear of the three.</span></span></label>
+
+      <label class="choice"><input type="radio" name="wheretopay" value="None of these — I will describe how I want it laid out">
+        <span><span class="l">None — let me describe it</span>
+        <span class="h">Tell me how you picture it and I'll redraw before building.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+  </section>
+
+</div>
+</body>
+</html>

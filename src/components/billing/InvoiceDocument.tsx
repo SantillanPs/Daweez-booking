@@ -6,10 +6,9 @@ import { getPaymentAccounts } from '../../utils/paymentAccounts'
 import { paymentKind, paymentMethodLabel, shortBankName } from '../../utils/paymentMethod'
 import { paymentPlanLabel } from '../../utils/bookingMoney'
 import { HOTEL_POLICY } from '../../utils/hotelPolicy'
-import { shortStayLine, stayHoursOf } from '../../utils/shortStay'
-import { fmtTime, fmtStayTime } from './stayLines'
 import { StatementChargesTable } from './StatementChargesTable'
-import { StatementShell, BrandHeader, Line } from './StatementShell'
+import { StatementGuestStay } from './StatementGuestStay'
+import { StatementShell, BrandHeader } from './StatementShell'
 
 interface InvoiceDocumentProps {
   primaryBooking: Booking
@@ -32,15 +31,11 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
   const rates = getRateConfig()
   const payAcct = getPaymentAccounts()
   const b = primaryBooking
-  const isRoom = !!b.room_id
-  const room = rooms.find(r => r.id === b.room_id)
-  const venue = venues.find(v => v.id === b.venue_id)
-  const roomType = isRoom ? (room?.name || '') : (venue?.name || '')
-  const roomNo = isRoom ? String(room?.room_number ?? '') : ''
 
-  const guestCount = 1 + (b.companions ? b.companions.length : 0)
+  // Everything about the guest's and the stay's own fields — which fields, in what order,
+  // under which heading — lives in `StatementGuestStay`. This file no longer needs the
+  // room lookup, the stay hours or the email guard that only those sections used.
   const hasCompanions = !!(b.companions && b.companions.length > 0)
-  const stayHours = stayHoursOf(b)
 
   const method = (statement.paymentMethod || '').trim()
   const kind = paymentKind(method)
@@ -78,28 +73,9 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           a check-out the guest never had. **No rule above this block** — the owner took the
           long line between the guest's name and Room No. out (2026-09), so the two read as
           one form, the way the paper does. */}
-      <div className="grid grid-cols-2 gap-x-8 gap-y-0.5">
-        <Line label="Name" value={b.guest_name} />
-        <Line label="Room No." value={roomNo} />
-        <Line label="Address" value={b.guest_address} />
-        <Line label="Type" value={roomType} />
-        <Line label="Email" value={b.guest_email && b.guest_email !== 'admin@daweez-booking.vercel.app' ? b.guest_email : ''} />
-        <Line label="Check In" value={fmtStayTime(b.check_in, b.actual_check_in)} />
-        <Line label="Nationality" value={b.guest_nationality} />
-        {stayHours > 0 ? (
-          <Line label="Short Stay" value={shortStayLine(b.actual_check_in, stayHours)} />
-        ) : (
-          <Line label="Check Out" value={fmtStayTime(b.check_out, b.actual_check_out)} />
-        )}
-        <Line label="Birth Date" value={b.birthdate} />
-        {stayHours === 0 && (
-          <Line label="Standard" value={fmtTime(rates.standardCheckInTime) + ' / ' + fmtTime(rates.standardCheckOutTime)} />
-        )}
-        <Line label="Sex" value={b.guest_gender} />
-        <Line label="Guests" value={'Total ' + guestCount} />
-        <Line label="Contact" value={b.guest_phone} />
-        <Line label="Plate No." value={b.vehicle_plate} />
-      </div>
+      {/* The guest's and the stay's fields — two labelled sections, GUEST then STAY.
+          Everything about their arrangement lives in `StatementGuestStay`. */}
+      <StatementGuestStay booking={b} rooms={rooms} venues={venues} rates={rates} />
 
       {/* Companions — only when there are companions to list. */}
       {hasCompanions && (
@@ -171,14 +147,6 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
               <p>{payAcct.bankName} Account No: <strong className="font-mono text-main">{payAcct.bankAccountNumber}</strong></p>
             </div>
           )}
-          {!methodLabel && (
-            <div className="mt-2 pt-1.5 border-t border-dashed border-ink-300 text-[11px] text-ink-600">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-0.5">Where to pay</p>
-              {/* One line, not three (card k144): the fallback only shows while no method has
-                  been chosen, and three bulleted lines cost 44px of a sheet that had none. */}
-              <p>Cash at the front desk · GCash <strong className="text-main">{payAcct.gcashName}</strong> {payAcct.gcashNumber} · {shortBankName(payAcct.bankName)} <strong className="text-main">{payAcct.bankAccountName}</strong> {payAcct.bankAccountNumber}</p>
-            </div>
-          )}
         </div>
         <div className="space-y-1.5 text-[13px]">
           <div className="flex justify-between"><span className="text-ink-600">Sub-Total</span><span className="font-mono">{money(statement.subTotal)}</span></div>
@@ -205,6 +173,41 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           </div>
         </div>
       </div>
+
+      {/* Where to pay — the fallback for a booking nobody has paid yet: once a method is
+          recorded the page shows that one method and its Account Details instead (above),
+          where the bank name stays FULL because that is the copy someone reads while
+          making the transfer.
+
+          **Full sheet width, ONE ROW PER WAY TO PAY** (card k144, the owner's rulings,
+          2026-09-29). Three things were wrong before, each fixed here:
+          1. It lived in the payment block's LEFT column (~198px), so it sat under the
+             totals with room going spare beside it.
+          2. That column was too narrow, so `DAWEEZ PENSION HOUSE · 5636-0544-12` broke
+             after the first hyphen — **a bank account number that wraps is how a guest
+             mistypes it**, so the number now carries `whitespace-nowrap`.
+          3. Its label column was 64px when the longest label needs ~33px, leaving a band
+             of dead space in the middle of every row; it is `w-14` (56px) now.
+          The dashed rule that used to sit above it is gone too — it landed a few lines
+          under another dashed rule, and the uppercase heading already separates the block.
+          Being a direct child of `StatementShell`, it takes part in the page's single
+          8px `space-y-2` rhythm like every other block. */}
+      {!methodLabel && (
+        <div className="text-ink-600">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-main mb-0.5">Where to pay</p>
+          <div className="space-y-0.5 text-[10px]">
+            <p className="flex gap-2"><span className="w-14 shrink-0 font-bold text-main">Cash</span><span>at the front desk</span></p>
+            <p className="flex gap-2">
+              <span className="w-14 shrink-0 font-bold text-main">GCash</span>
+              <span><strong className="text-main">{payAcct.gcashName}</strong> · <span className="whitespace-nowrap">{payAcct.gcashNumber}</span></span>
+            </p>
+            <p className="flex gap-2">
+              <span className="w-14 shrink-0 font-bold text-main">{shortBankName(payAcct.bankName)}</span>
+              <span><strong className="text-main">{payAcct.bankAccountName}</strong> · <span className="whitespace-nowrap">{payAcct.bankAccountNumber}</span></span>
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Pension Policies — the hotel's own wording, VERBATIM (the owner's ruling):
           the guest must read the same text on the bill as on the form they signed. */}

@@ -131,13 +131,16 @@ export function paymentStatusWord(booking: Booking): string {
 // Plain label for the agreed payment plan, or '' when nothing was agreed.
 // `custom` names the figure on the paper instead — `Custom · ₱1,000 now` — because a
 // custom amount means nothing without the number beside it (the statement composes it).
-// `reservation` is the one plan with no figure at all: the guest agreed to pay nothing
-// now, so the printed page must say so rather than leave the line blank.
+// `reservation` is just **`Reservation`** (the owner, 2026-09-29: *"remove the text after
+// the payment plan type … the additional text after the text is redundant"*) — the word
+// already says the guest agreed to pay nothing now, so `— nothing paid` only repeated it.
+// Every plan label is now the PLAN'S NAME ALONE; the statement adds a figure where one
+// exists, and nothing else is appended.
 export function paymentPlanLabel(plan?: Booking['payment_plan']): string {
   if (plan === 'full') return 'Full payment'
   if (plan === 'deposit') return 'Deposit (50%)'
   if (plan === 'custom') return 'Custom'
-  if (plan === 'reservation') return 'Reservation — nothing paid'
+  if (plan === 'reservation') return 'Reservation'
   return ''
 }
 

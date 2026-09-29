@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="luxury">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Organising the bill's information</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --page:#141414;--card:#1F1F1F;--raise:#262626;--line:#3A3A3A;
+    --text:#EDEAE4;--sec:#A8A29A;--muted:#7D7871;--gold:#D0AB60;
+    --gold-bg:#332B18;--gold-fg:#E6C989;
+    --good-bg:#12261F;--good-fg:#34D399;
+    --bad-bg:#2A1615;--bad-fg:#F87171;
+    --neu-bg:#2A2A2A;--neu-fg:#C9C4BB;
+    --paper:#E6E2DA;--ink:#1C1C1C;--ink6:#514C45;--ink3:#ADA69A;--rule:#857E73;
+  }
+  html,body{margin:0;padding:0;background:var(--page);color:var(--text)}
+  body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.55;
+       padding:36px 22px 92px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1060px;margin:0 auto;min-width:0}
+  h1,h2,h3,.kicker{font-family:'Sora','DM Sans',system-ui,sans-serif;letter-spacing:-.01em}
+  h1{font-size:clamp(24px,3.3vw,33px);line-height:1.15;margin:14px 0 12px;font-weight:700}
+  h2{font-size:19px;margin:0 0 4px;font-weight:600}
+  h3{font-size:16px;margin:0 0 4px;font-weight:600}
+  p{margin:0 0 10px;color:var(--sec);overflow-wrap:anywhere}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .lede{font-size:16.5px;color:var(--text);max-width:68ch}
+  .wrap>*+*{margin-top:20px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;min-width:0}
+  section.plain{background:none;border:0;padding:0}
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);border:1px solid var(--line);border-radius:5px;padding:1px 7px;flex:none}
+  .sub{font-size:13.5px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:5px;padding:3px 8px;white-space:nowrap}
+  .b-gold{background:var(--gold-bg);color:var(--gold-fg)}
+  .b-good{background:var(--good-bg);color:var(--good-fg)}
+  .b-bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .b-neu{background:var(--neu-bg);color:var(--neu-fg)}
+  .note{font-size:13.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:13px}
+  .note b{color:var(--sec);font-weight:500}
+
+  .opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:14px}
+  @media (max-width:1000px){.opts{grid-template-columns:minmax(0,1fr)}}
+  .opt{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:14px 15px;min-width:0}
+  .opt.pick{border-color:#6F5420}
+  .opt h3{margin-top:8px}
+  .opt .why{font-size:13px;color:var(--muted);margin:0}
+  .opt .why b{color:var(--sec);font-weight:500}
+  .dense{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin:11px 0 4px}
+
+  .paper{background:var(--paper);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;
+         font-size:11px;line-height:1.45;padding:9px 11px;border-radius:6px;width:100%;max-width:495px;min-width:0}
+  .line{display:flex;gap:4px;align-items:flex-end;border-bottom:1px solid var(--ink3);padding-bottom:1px;margin-bottom:3px;min-width:0}
+  .line b{font-size:9px;font-weight:700;white-space:nowrap}
+  .line span{flex:1;font-size:10px;min-height:13px;min-width:0}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:1px 14px}
+  .band{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink);
+        background:#D8D2C4;border-radius:3px;padding:2px 6px;margin:0 0 4px;display:block}
+  .band.plain{background:none;padding-left:0;border-bottom:1px solid var(--ink3);border-radius:0}
+  .stack>*+*{margin-top:6px}
+  .old{background:#DCD6CA;color:var(--ink6);font-family:'DM Sans',sans-serif;font-size:11px;
+       padding:9px 11px;border-radius:6px;width:100%;max-width:495px;margin-top:10px}
+  .old .line b,.old .line span{color:#6E675D}
+
+  form.q{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:17px 19px;min-width:0}
+  .choice{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);border-radius:10px;margin-top:9px;cursor:pointer;min-width:0}
+  .choice:hover{border-color:#4E4E4E;background:#2B2B2B}
+  .choice input{margin-top:3px;accent-color:var(--gold);flex:none}
+  .choice .l{font-weight:600;font-size:14px;display:block}
+  .choice .h{font-size:13px;color:var(--muted);display:block}
+  button.submit{margin-top:14px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+        background:var(--gold);color:#141414;border:0;border-radius:9px;padding:11px 20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plain">
+    <div class="kicker">Daweez · card k144 · organising the information · nothing built yet</div>
+    <h1>It's not badly ordered — <span style="color:var(--bad-fg)">it's unlabelled</span>.</h1>
+    <p class="lede">Right now eight lines sit in two columns with nothing saying which belong together: the guest's name is beside a room number, a guest's contact number is beneath a check-out date, and there is no heading anywhere. A reader has to work out for themselves which line is about <b>who</b> is staying and which is about <b>the stay</b>. Below: the same fields <b>grouped under headings</b>, three ways.</p>
+  </header>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>What prints today</h2></div>
+    <p class="sub">No headings. Guest and stay fields interleaved.</p>
+    <div class="old">
+      <div class="g2">
+        <div class="line"><b>Name:</b><span>SEBASTIAN</span></div>
+        <div class="line"><b>Room No.:</b><span>3</span></div>
+        <div class="line"><b>Type:</b><span>Full Double</span></div>
+        <div class="line"><b>Check In:</b><span>Sep 30, 2026</span></div>
+        <div class="line"><b>Check Out:</b><span>Oct 1, 2026</span></div>
+        <div class="line"><b>Standard:</b><span>2:00pm / 12:00nn</span></div>
+        <div class="line"><b>Guests:</b><span>Total 1</span></div>
+        <div class="line"><b>Contact:</b><span>None</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>Three ways to organise it</h2></div>
+    <p class="sub">Left mock is your booking. Right mock is a full booking, to show it still reads when every field is filled.</p>
+
+    <div class="opts">
+      <!-- A -->
+      <div class="opt pick">
+        <span class="badge b-gold">A · my pick</span>
+        <h3>Two labelled sections, stacked</h3>
+        <p class="why">A <b>GUEST</b> band, then a <b>STAY</b> band, each with its fields in two columns.</p>
+
+        <p class="dense">Your booking</p>
+        <div class="paper stack">
+          <div>
+            <span class="band">Guest</span>
+            <div class="g2">
+              <div class="line"><b>Name:</b><span>SEBASTIAN</span></div>
+              <div class="line"><b>Contact:</b><span>None</span></div>
+            </div>
+          </div>
+          <div>
+            <span class="band">Stay</span>
+            <div class="g2">
+              <div class="line"><b>Room No.:</b><span>3</span></div>
+              <div class="line"><b>Type:</b><span>Full Double</span></div>
+              <div class="line"><b>Check In:</b><span>Sep 30, 2026</span></div>
+              <div class="line"><b>Check Out:</b><span>Oct 1, 2026</span></div>
+              <div class="line"><b>Standard:</b><span>2:00pm / 12:00nn</span></div>
+              <div class="line"><b>Guests:</b><span>Total 1</span></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="dense">A full booking</p>
+        <div class="paper stack">
+          <div>
+            <span class="band">Guest</span>
+            <div class="g2">
+              <div class="line"><b>Name:</b><span>MARIA CLARA SANTOS</span></div>
+              <div class="line"><b>Contact:</b><span>0918-987-6543</span></div>
+              <div class="line"><b>Address:</b><span>Ortigas Center, Pasig</span></div>
+              <div class="line"><b>Nationality:</b><span>Filipino</span></div>
+              <div class="line"><b>Email:</b><span>m.santos@getz.com</span></div>
+              <div class="line"><b>Birth Date:</b><span>1990-05-14</span></div>
+              <div class="line"><b>Plate No.:</b><span>ABC 1234</span></div>
+              <div class="line"><b>Sex:</b><span>Female</span></div>
+            </div>
+          </div>
+          <div>
+            <span class="band">Stay</span>
+            <div class="g2">
+              <div class="line"><b>Room No.:</b><span>1, 2</span></div>
+              <div class="line"><b>Type:</b><span>Full Double Deluxe</span></div>
+              <div class="line"><b>Check In:</b><span>Oct 3, 2026</span></div>
+              <div class="line"><b>Check Out:</b><span>Oct 6, 2026</span></div>
+              <div class="line"><b>Standard:</b><span>2:00pm / 12:00nn</span></div>
+              <div class="line"><b>Guests:</b><span>Total 3</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="why" style="margin-top:9px"><b>Shortest of the three and the clearest.</b> Each section closes up inside its own two columns, so nothing is left half empty — and it costs fewer rows than today because both columns of a section fill before the next section starts.</p>
+      </div>
+
+      <!-- B -->
+      <div class="opt">
+        <span class="badge b-neu">B</span>
+        <h3>Two sections, side by side</h3>
+        <p class="why">A <b>GUEST</b> column on the left, a <b>STAY</b> column on the right, each under its own heading.</p>
+
+        <p class="dense">Your booking</p>
+        <div class="paper">
+          <div class="g2">
+            <div>
+              <span class="band">Guest</span>
+              <div class="line"><b>Name:</b><span>SEBASTIAN</span></div>
+              <div class="line"><b>Contact:</b><span>None</span></div>
+            </div>
+            <div>
+              <span class="band">Stay</span>
+              <div class="line"><b>Room No.:</b><span>3</span></div>
+              <div class="line"><b>Type:</b><span>Full Double</span></div>
+              <div class="line"><b>Check In:</b><span>Sep 30, 2026</span></div>
+              <div class="line"><b>Check Out:</b><span>Oct 1, 2026</span></div>
+              <div class="line"><b>Standard:</b><span>2:00pm / 12:00nn</span></div>
+              <div class="line"><b>Guests:</b><span>Total 1</span></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="dense">A full booking</p>
+        <div class="paper">
+          <div class="g2">
+            <div>
+              <span class="band">Guest</span>
+              <div class="line"><b>Name:</b><span>MARIA CLARA SANTOS</span></div>
+              <div class="line"><b>Address:</b><span>Ortigas Center, Pasig</span></div>
+              <div class="line"><b>Email:</b><span>m.santos@getz.com</span></div>
+              <div class="line"><b>Nationality:</b><span>Filipino</span></div>
+              <div class="line"><b>Birth Date:</b><span>1990-05-14</span></div>
+              <div class="line"><b>Sex:</b><span>Female</span></div>
+              <div class="line"><b>Contact:</b><span>0918-987-6543</span></div>
+              <div class="line"><b>Plate No.:</b><span>ABC 1234</span></div>
+            </div>
+            <div>
+              <span class="band">Stay</span>
+              <div class="line"><b>Room No.:</b><span>1, 2</span></div>
+              <div class="line"><b>Type:</b><span>Full Double Deluxe</span></div>
+              <div class="line"><b>Check In:</b><span>Oct 3, 2026</span></div>
+              <div class="line"><b>Check Out:</b><span>Oct 6, 2026</span></div>
+              <div class="line"><b>Standard:</b><span>2:00pm / 12:00nn</span></div>
+              <div class="line"><b>Guests:</b><span>Total 3</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="why" style="margin-top:9px">The same grouping, read left-to-right instead of top-to-bottom. <b>Leaves white space under Guest</b> on a booking like yours, and stands two rows taller than A.</p>
+      </div>
+
+      <!-- C -->
+      <div class="opt">
+        <span class="badge b-neu">C</span>
+        <h3>Stay first, then the guest</h3>
+        <p class="why">The same two sections as A, but <b>STAY on top</b> — the facts the desk checks before anything else.</p>
+
+        <p class="dense">Your booking</p>
+        <div class="paper stack">
+          <div>
+            <span class="band">Stay</span>
+            <div class="g2">
+              <div class="line"><b>Room No.:</b><span>3</span></div>
+              <div class="line"><b>Type:</b><span>Full Double</span></div>
+              <div class="line"><b>Check In:</b><span>Sep 30, 2026</span></div>
+              <div class="line"><b>Check Out:</b><span>Oct 1, 2026</span></div>
+              <div class="line"><b>Standard:</b><span>2:00pm / 12:00nn</span></div>
+              <div class="line"><b>Guests:</b><span>Total 1</span></div>
+            </div>
+          </div>
+          <div>
+            <span class="band">Guest</span>
+            <div class="g2">
+              <div class="line"><b>Name:</b><span>SEBASTIAN</span></div>
+              <div class="line"><b>Contact:</b><span>None</span></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="dense">A full booking</p>
+        <div class="paper stack">
+          <div>
+            <span class="band">Stay</span>
+            <div class="g2">
+              <div class="line"><b>Room No.:</b><span>1, 2</span></div>
+              <div class="line"><b>Type:</b><span>Full Double Deluxe</span></div>
+              <div class="line"><b>Check In:</b><span>Oct 3, 2026</span></div>
+              <div class="line"><b>Check Out:</b><span>Oct 6, 2026</span></div>
+              <div class="line"><b>Standard:</b><span>2:00pm / 12:00nn</span></div>
+              <div class="line"><b>Guests:</b><span>Total 3</span></div>
+            </div>
+          </div>
+          <div>
+            <span class="band">Guest</span>
+            <div class="g2">
+              <div class="line"><b>Name:</b><span>MARIA CLARA SANTOS</span></div>
+              <div class="line"><b>Contact:</b><span>0918-987-6543</span></div>
+              <div class="line"><b>Address:</b><span>Ortigas Center, Pasig</span></div>
+              <div class="line"><b>Nationality:</b><span>Filipino</span></div>
+              <div class="line"><b>Email:</b><span>m.santos@getz.com</span></div>
+              <div class="line"><b>Birth Date:</b><span>1990-05-14</span></div>
+              <div class="line"><b>Plate No.:</b><span>ABC 1234</span></div>
+              <div class="line"><b>Sex:</b><span>Female</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="why" style="margin-top:9px">Same shape as A with the order flipped, so the room and the dates come first. On the printed form the <b>company over the guest's name</b> already puts the paying party first, which is an argument for A instead.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>Two details that come with it</h2></div>
+    <p class="note"><b>The heading style.</b> All three mocks use a light band behind the word. I could equally use a plain underlined word, or a thin rule across the sheet — tell me if you'd rather see that. And <b>the field order inside each section is fixed</b>: your sparse booking and the full booking put the same fields in the same place, so a bill always reads the same way.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">04</span><h2>Your call</h2></div>
+    <form class="q" data-lavish-question="organise" onsubmit="event.preventDefault(); const c = new FormData(event.currentTarget).get('organise'); if (c) window.lavish.queuePrompt('Organise the bill fields: ' + c, { tag: 'choice', text: 'Organise: ' + c, element: event.currentTarget, data: { question: 'organise', answer: c } });">
+      <h3>How should the information be grouped?</h3>
+
+      <label class="choice"><input type="radio" name="organise" value="A — a GUEST section then a STAY section, stacked, each with its fields in two columns">
+        <span><span class="l">A — GUEST then STAY, stacked <span class="badge b-gold" style="margin-left:6px">recommended</span></span>
+        <span class="h">Two labelled sections, shortest of the three, nothing left half empty.</span></span></label>
+
+      <label class="choice"><input type="radio" name="organise" value="B — a GUEST column and a STAY column side by side, each under its own heading">
+        <span><span class="l">B — GUEST and STAY side by side</span>
+        <span class="h">The same grouping read left-to-right. Leaves white space under Guest on a sparse booking.</span></span></label>
+
+      <label class="choice"><input type="radio" name="organise" value="C — STAY section first, then the GUEST section below it">
+        <span><span class="l">C — STAY first, then GUEST</span>
+        <span class="h">Same shape as A with the room and dates on top, so the desk sees the stay before the guest.</span></span></label>
+
+      <label class="choice"><input type="radio" name="organise" value="None of these — I want different groupings or headings; I will say which">
+        <span><span class="l">None — let me say how to group it</span>
+        <span class="h">Name the sections you want and which fields belong in each.</span></span></label>
+
+      <button class="submit" type="submit">Send this answer</button>
+    </form>
+  </section>
+
+</div>
+</body>
+</html>

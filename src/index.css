@@ -145,6 +145,22 @@
   .print-slip, .print-slip *,
   .print-page, .print-page * { visibility: visible !important; }
 
+  /* **Keep the statement's own colours on paper** (card k144, the owner's screenshot,
+     2026-09-29: *"the table colors aren't showing"*). A browser throws backgrounds away
+     when printing unless it is told not to — so the charges table's header and its band
+     rows, which are `bg-paper-100` / `bg-paper-200`, came off the printer WHITE while the
+     screen preview showed them beige. `print-color-adjust` is the standard property; the
+     `-webkit-` prefix is the one Chrome and Safari actually read.
+
+     **Deliberately NOT applied to `.print-slip`**: the 58 mm thermal roll is authored
+     black-on-white on purpose (its printer is 1-bit, so a grey fill only dithers into
+     fuzz), and forcing exact colours there would turn a light background into noise on
+     the paper. Only the A5 statement gets it. */
+  .print-page, .print-page * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   /* Everything except the document being printed leaves the page — including the
      portal wrapper it was rendered into, which is why the check is `:has()`. */
   body > * { display: none !important; }
