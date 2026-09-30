@@ -3,6 +3,7 @@ import { Copy, Check, ChevronDown } from 'lucide-react'
 import { SyncFeed } from '../../types/booking'
 import { Room } from '../../types/booking'
 import { getChannelSync, saveChannelSync, type ChannelSyncSettings } from '../../utils/channelSync'
+import { findFeedUrlClashes, feedUrlClashMessage } from '../../utils/feedUrls'
 import { showToast } from '../../utils/toast'
 
 interface ChannelFeedsProps {
@@ -42,6 +43,22 @@ export function ChannelFeeds({ rooms, feeds, onSave }: ChannelFeedsProps) {
   const setUrl = (feedId: string, url: string) => setEditing(prev => prev.map(f => f.id === feedId ? { ...f, url } : f))
   const [openRoomId, setOpenRoomId] = useState<string | null>(rooms.length > 0 ? rooms[0].id : null)
 
+  // **One address, one room.** Putting one iCal link on several rooms makes the sync fetch that calendar once
+  // per room and import every reservation in it once per room — nine feed rows on one URL is how a single
+  // Airbnb stay came to block nine rooms, nine times over. The screen refuses it here, and says which room has
+  // the link (the owner, 2026-09-30; the rule lives in `utils/feedUrls.ts`).
+  const roomLabel = (roomId: string) => 'Room ' + (rooms.find(r => r.id === roomId)?.room_number ?? '?')
+  const clashes = findFeedUrlClashes(editing)
+
+  const save = () => {
+    const clash = clashes[0]
+    if (clash) {
+      showToast(feedUrlClashMessage(clash, roomLabel), 'error')
+      return
+    }
+    void onSave(editing)
+  }
+
   // Write the switches, and put them back if the database refuses — a switch that looks
   // thrown while the sync keeps running would be the worst of both.
   const applySwitches = (next: ChannelSyncSettings) => {
@@ -74,8 +91,15 @@ export function ChannelFeeds({ rooms, feeds, onSave }: ChannelFeedsProps) {
           <Switch on={switches.enabled} onToggle={toggleMaster} label="Sync with Airbnb and Booking.com" />
         </div>
       </div>
-      <div className="px-5 py-3 border-b border-soft flex justify-end">
-        <button onClick={() => void onSave(editing)}
+      <div className="px-5 py-3 border-b border-soft flex flex-wrap items-center justify-between gap-3">
+        {/* Says the rule where it is broken, not only when Save is pressed. */}
+        {clashes.length > 0
+          ? <p className="text-xs text-danger-600 font-medium">
+              One address is on more than one room — {clashes.map(c => c.roomIds.map(roomLabel).join(' + ')).join(' · ')}.
+              Each room needs its own link.
+            </p>
+          : <span />}
+        <button onClick={save}
           className="bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm shrink-0">
           Save feed URLs
         </button>

@@ -488,13 +488,29 @@ export async function saveFeeds(feeds: SyncFeed[]): Promise<void> {
     throw new Error('No database is connected, so these channel links were not saved.')
   }
 
-  const records = feeds.map(f => ({
-    id: f.id,
-    room_id: f.room_id,
-    channel: f.channel,
-    url: f.url,
-    last_synced: f.last_synced
-  }))
-  const { error } = await supabase.from('ical_feeds').upsert(records)
-  if (error) throw error
+  // **A feed with no address is not stored** (2026-09-30). The Channels screen draws two empty boxes for every
+  // room, and saving them all wrote a row per room per channel — 20 rows for a hotel with 2 real links, 11 of
+  // them blank, which made the screen look connected to Booking.com when it was not. Clearing a box now
+  // **removes** its stored feed rather than keeping a blank one, so the two jobs (forget this link, never had
+  // one) end in the same place.
+  const filled = feeds.filter(f => (f.url || '').trim() !== '')
+  const cleared = feeds.filter(f => (f.url || '').trim() === '')
+
+  if (filled.length > 0) {
+    const { error } = await supabase.from('ical_feeds').upsert(filled.map(f => ({
+      id: f.id,
+      room_id: f.room_id,
+      channel: f.channel,
+      url: f.url.trim(),
+      last_synced: f.last_synced
+    })))
+    if (error) throw error
+  }
+
+  // The blank ones are either a link the desk just cleared or a placeholder that was never stored; deleting by
+  // id covers the first and is a harmless no-op for the second.
+  if (cleared.length > 0) {
+    const { error } = await supabase.from('ical_feeds').delete().in('id', cleared.map(f => f.id))
+    if (error) throw error
+  }
 }
