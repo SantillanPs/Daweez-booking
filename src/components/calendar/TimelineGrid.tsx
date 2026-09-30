@@ -208,7 +208,7 @@ export const TimelineGrid = React.memo(
     // ONE PRICE (card k128): there is only one figure per room, so the calendar
     // shows it plainly — no crossed-out second price standing beside it, which
     // only invited staff to read the old regular figure as the real one.
-    const displayPriceFor = (unit: Room | Venue) => getEffectiveNightlyPrice(unit.base_price, unit.promo_price, true)
+    const displayPriceFor = (unit: Room | Venue) => getEffectiveNightlyPrice(unit.base_price, unit.promo_price)
 
     return (
       <div className="space-y-2.5 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">

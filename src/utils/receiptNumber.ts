@@ -22,10 +22,17 @@ function prefixFor(booking: Booking): string {
   return PREFIX + '-' + monthKey(booking) + '-'
 }
 
-// The next free receipt number for this booking's month.
-export function nextReceiptNumber(booking: Booking): string {
+// The next free receipt number for this payment's month.
+//
+// **One number per PAYMENT, and it must not already be on any other booking.** This used to read only
+// the booking's OWN records, so two payments taken minutes apart on two fresh bookings both came out
+// `PR-202609-001` — the desk could quote a receipt number and land on the wrong payment, and the guest
+// was handed two different receipts carrying the same number (found on the owner's own bookings,
+// 2026-09-30). It now scans every booking it is handed, so the month's numbers stay unique.
+export function nextReceiptNumber(booking: Booking, otherBookings: Booking[] = []): string {
   const prefix = prefixFor(booking)
-  const used = (booking.payment_records || [])
+  const used = [booking, ...otherBookings]
+    .flatMap(b => b.payment_records || [])
     .map(r => r.receipt_number || '')
     .filter(n => n.startsWith(prefix))
     .map(n => Number(n.slice(prefix.length)))

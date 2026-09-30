@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daweez · a test environment — everything, or bookings only?</title>
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raised:#262626; --line:#3A3A3A;
+    --body:#EDEAE4; --dim:#A8A29A; --muted:#7D7871;
+    --gold:#D0AB60; --gold-fill:#332B18; --gold-ink:#E6C989;
+    --good-fill:#12261F; --good-ink:#34D399; --bad-fill:#2A1615; --bad-ink:#F87171;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--body);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:34px 26px 70px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1020px;margin:0 auto}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+  h1{font-size:27px;line-height:1.2;margin:8px 0 22px;letter-spacing:-.02em}
+  h2{font-size:18px;margin:0 0 10px;letter-spacing:-.01em}
+  p{margin:0 0 12px;color:var(--dim)}
+  p b,li b,td b{color:var(--body)}
+  section{border-top:1px solid var(--line);padding:24px 0 8px}
+  section:first-of-type{border-top:0;padding-top:0}
+  .answer{background:var(--gold-fill);border:1px solid var(--gold);border-radius:12px;padding:18px 20px;margin:0 0 8px}
+  .answer p{margin:0;color:var(--gold-ink);font-size:16px}
+  .answer b{color:#F2DCA8}
+  table{width:100%;border-collapse:collapse;margin:10px 0 4px;font-size:13.5px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;margin:2px 4px 2px 0}
+  .chip.shared{background:var(--raised);color:var(--dim)}
+  .chip.work{background:var(--bad-fill);color:var(--bad-ink)}
+  .opt{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0}
+  .opt h3{margin:0 0 6px;font-size:15.5px}
+  .tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+    padding:2px 9px;border-radius:99px;margin-right:8px;vertical-align:1px}
+  .tag.good{background:var(--good-fill);color:var(--good-ink)}
+  .tag.meh{background:var(--raised);color:var(--dim)}
+  ul{margin:8px 0 0;padding-left:18px;color:var(--dim);font-size:13.5px}
+  li{margin-bottom:5px}
+  .warn{border-left:3px solid var(--bad-ink);background:var(--bad-fill);border-radius:9px;padding:13px 16px;margin:14px 0}
+  .warn p{margin:0;color:#F3B4B0}
+  .warn b{color:#FFF}
+  .ask{margin-top:32px;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);
+    border-radius:12px;padding:20px 22px}
+  .ask h3{margin:0 0 8px;font-size:17px}
+  .q{color:var(--gold-ink);font-weight:700}
+  .note{font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Daweez · test mode</div>
+  <h1>“Is it better to have it for everything?”</h1>
+
+  <div class="answer">
+    <p><b>Yes — but only if it is a separate database.</b> “Everything” is <b>free</b> that way, and
+      <b>much worse</b> the other way.</p>
+  </div>
+  <p>With a separate database, isolation is not something you add table by table — it is what the thing
+    <i>is</i>. With one flag across your own tables, every table you add is another place to forget a filter.
+    So the answer to your question is really a choice between two shapes, and “everything” pushes you to the
+    first one.</p>
+
+  <!-- ── what "everything" is ─────────────────────────────── -->
+  <section>
+    <h2>What “everything” actually covers — 14 tables</h2>
+    <p>Your database splits cleanly in two, and that split is the good news:</p>
+    <table>
+      <tr><th>Shared — you WANT your real ones in test mode</th><th>Work — test data must never reach these</th></tr>
+      <tr>
+        <td>
+          <span class="chip shared">rooms</span><span class="chip shared">venues</span>
+          <span class="chip shared">menu items &amp; groups</span><span class="chip shared">shared settings</span>
+          <span class="chip shared">channel feeds</span>
+          <p class="note" style="margin-top:8px">Testing with your real rate card and real menu is the point —
+            a test on invented prices proves nothing.</p>
+        </td>
+        <td>
+          <span class="chip work">bookings</span><span class="chip work">tabs</span>
+          <span class="chip work">tab lines</span><span class="chip work">expenses</span>
+          <span class="chip work">expense groups</span><span class="chip work">cleaning</span>
+          <span class="chip work">inventory</span><span class="chip work">agencies</span>
+          <p class="note" style="margin-top:8px">Eight tables of <b>real work</b> — money, guests, housekeeping.</p>
+        </td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- ── the blocker ──────────────────────────────────────── -->
+  <section>
+    <h2>And one hard blocker a flag cannot solve</h2>
+    <p><b>Your bookings table has two exclusion constraints.</b> That is the database itself refusing to let two
+      stays sit on the same room on the same dates — it is what makes double-booking impossible even if the app
+      is wrong.</p>
+    <p>A test booking on Room 4 for a real date would <b>collide with a real booking</b> and be refused — and a
+      test stay would <b>block a real room</b>. To allow that, those constraints have to be rebuilt to include
+      the test flag, so test and real rows may overlap. Doable, but it is a change to the one thing protecting
+      your calendar from double-booking.</p>
+  </section>
+
+  <!-- ── options ──────────────────────────────────────────── -->
+  <section>
+    <h2>The two shapes</h2>
+
+    <div class="opt">
+      <h3><span class="tag good">A</span>A separate database you switch to</h3>
+      <p style="margin:0">The calendar’s toggle points the app at a <b>second database</b> with the same schema.
+        Your test bookings, tabs, expenses and cleaning tasks all live there.</p>
+      <ul>
+        <li><b>Everything is isolated at once</b> — nothing to filter, nothing to forget, no constraint to touch.</li>
+        <li>Your real rate card, menu and settings are copied in once, so tests use real prices.</li>
+        <li>The exclusion constraints keep working — <b>in the test database</b> — so double-booking is still tested properly.</li>
+        <li>Cost: a second database to create and keep in step when the schema changes. Supabase branches are built for exactly this (I did not create one — it can carry a cost, so that is your call), or a second free project works too.</li>
+      </ul>
+    </div>
+
+    <div class="opt">
+      <h3><span class="tag meh">B</span>One flag across your own tables</h3>
+      <p style="margin:0">A <code>test</code> flag on the eight work tables, every read filtered by the current
+        mode, and the two booking constraints rebuilt to allow test/real overlap.</p>
+      <ul>
+        <li>No second database to keep in step.</li>
+        <li><b>Eight tables, and every read and write of each one needs the filter.</b> Availability checks, the
+          earnings report, the bookings list, receipts, the calendar, the restaurant till, housekeeping — all of them.</li>
+        <li><b>One missed filter is a test expense in your real profit</b>, or a test stay shown to a staff member
+          as a real guest.</li>
+      </ul>
+    </div>
+
+    <div class="warn">
+      <p><b>The risk both shapes share, and the thing to design around:</b> being left switched on. If a staff
+        member takes a real booking while test mode is on, it lands in the test database and is lost. So whatever
+        we pick, test mode needs a <b>loud banner across the screen</b>, a way to see at a glance that it is on,
+        and it should <b>switch itself off</b> on reload — never survive in the background overnight.</p>
+    </div>
+  </section>
+
+  <div class="ask">
+    <h3>One decision</h3>
+    <p class="q">A or B?</p>
+    <p style="margin-bottom:8px">My recommendation: <b>A</b>. You asked for “everything”, and A is the only shape
+      where everything is covered <i>without</i> adding a filter to every table — and it is the only one that
+      leaves your double-booking protection untouched.</p>
+    <p class="note" style="margin:0">Before I draw the actual toggle and the banner: if you pick A, tell me whether
+      you want me to try a <b>Supabase branch</b> (may cost — I will not create one without your word) or you would
+      rather make a <b>second free project</b> yourself. If you pick B, say which features you actually test most —
+      if it is really only bookings, B gets much smaller.</p>
+  </div>
+
+</div>
+</body>
+</html>

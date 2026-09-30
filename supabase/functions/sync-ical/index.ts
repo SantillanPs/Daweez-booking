@@ -61,6 +61,23 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    // 0. THE SWITCHES (the owner's ruling, 2026-09-30: *"can we have a toggle to turn enable and disable
+    //    ical connections?"*). `channel_sync` in `app_settings` holds the master on/off and the rooms taken
+    //    off, and it is read HERE, on the server, because this function is what actually fetches: a
+    //    client-side check alone could be skipped by an old tab left open on another machine, which is
+    //    exactly how nine feeds ended up downloading the same Airbnb calendar nine times.
+    //    A missing row, or anything that is not an explicit `false`, means ON — a half-written setting must
+    //    never leave the hotel silently un-synced.
+    const { data: setting } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'channel_sync')
+      .maybeSingle()
+
+    const masterOn = setting?.value?.enabled !== false
+    const offRooms = (setting?.value?.rooms ?? {}) as Record<string, boolean>
+    let skippedRooms = 0
+
     // 1. Fetch all configured room iCal feeds
     const { data: feeds, error: feedsError } = await supabase
       .from('ical_feeds')
@@ -72,8 +89,16 @@ serve(async (req) => {
     let totalSkipped = 0
 
     // 2. Loop and scrape feeds (non-destructive, idempotent, collision-aware)
-    for (const feed of feeds) {
+    for (const feed of masterOn ? (feeds || []) : []) {
       if (!feed.url) continue // Skip feeds that have no URL configured
+
+      // A room the desk switched off is left completely alone: not fetched, and — because the
+      // reconciliation below also DELETES sync rows the feed no longer lists — not tidied either. Off means
+      // off, and the desk's existing rows stay exactly as they are until they switch it back on.
+      if (offRooms[feed.room_id] === false) {
+        skippedRooms++
+        continue
+      }
 
       try {
         const response = await fetch(feed.url)
@@ -162,14 +187,22 @@ serve(async (req) => {
       }
     }
 
-    // 5. Clean up expired website bookings
+    // 5. Clean up expired website bookings — deliberately NOT behind the master switch: expiring an unpaid
+    //    website hold is the app's own job, and it has nothing to do with the channels. Switching iCal off
+    //    must not leave abandoned holds blocking rooms forever.
     await supabase
       .from('bookings')
       .delete()
       .eq('status', 'pending')
       .lt('expires_at', new Date().toISOString())
 
-    return new Response(JSON.stringify({ success: true, syncedCount: totalSynced, skippedCount: totalSkipped }), {
+    return new Response(JSON.stringify({
+      success: true,
+      syncedCount: totalSynced,
+      skippedCount: totalSkipped,
+      channelsOn: masterOn,
+      skippedRooms
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (err: unknown) {

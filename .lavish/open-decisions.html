@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daweez · three decisions waiting</title>
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raised:#262626; --line:#3A3A3A;
+    --body:#EDEAE4; --dim:#A8A29A; --muted:#7D7871;
+    --gold:#D0AB60; --gold-fill:#332B18; --gold-ink:#E6C989;
+    --good-fill:#12261F; --good-ink:#34D399;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--body);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:34px 26px 70px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:840px;margin:0 auto}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+  h1{font-size:28px;line-height:1.2;margin:8px 0 10px;letter-spacing:-.02em}
+  .lede{color:var(--dim);margin:0 0 30px}
+  .lede b{color:var(--body)}
+
+  .dec{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:20px 22px;margin-bottom:16px}
+  .dec h2{font-size:17px;margin:0 0 4px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+  .n{display:inline-flex;width:24px;height:24px;border-radius:7px;background:var(--gold-fill);color:var(--gold-ink);
+    font-size:12.5px;font-weight:800;align-items:center;justify-content:center;flex:none}
+  .why{color:var(--muted);font-size:13px;margin:0 0 14px}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:720px){.opts{grid-template-columns:1fr}}
+  .opt{border:1px solid var(--line);border-radius:10px;padding:13px 15px;background:var(--raised)}
+  .opt.rec{border-color:var(--gold)}
+  .opt h3{margin:0 0 5px;font-size:14px;display:flex;align-items:center;gap:8px}
+  .letter{display:inline-flex;width:19px;height:19px;border-radius:5px;background:var(--page);border:1px solid var(--line);
+    color:var(--gold-ink);font-size:11px;font-weight:800;align-items:center;justify-content:center;flex:none}
+  .opt p{margin:0;font-size:13px;color:var(--dim)}
+  .opt p b{color:var(--body)}
+  .mine{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-ink);
+    margin:9px 0 0;display:block}
+  .link{display:inline-block;margin-top:14px;font-size:13px;font-weight:700;color:var(--gold-ink);
+    text-decoration:none;border-bottom:1px solid var(--gold-fill)}
+  .sub{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
+  .sub b{color:var(--body)}
+  .done{border-left:3px solid var(--good-fill)}
+  .done h2{font-size:15px}
+  footer{margin-top:26px;color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Daweez · open decisions</div>
+  <h1>Three decisions waiting on you</h1>
+  <p class="lede">Nothing below is half-built — each one is a drawing sitting on disk, waiting for a ruling.
+    <b>Pick a letter for each, or write what you actually want and I will redraw.</b></p>
+
+  <!-- 1 ─────────────────────────────────────────────── -->
+  <div class="dec">
+    <h2><span class="n">1</span>The Daily Report</h2>
+    <p class="why">The zero-lines and redundancies are already applied — today’s real sheet is short, and a busy
+      day under the same five rules still fills out.</p>
+    <div class="opts">
+      <div class="opt rec">
+        <h3><span class="letter">A</span>Money taken today</h3>
+        <p>Every payment recorded today. Reconciles <b>exactly against the cash box</b> — every peso is a receipt
+          someone holds.</p>
+        <span class="mine">What I drew</span>
+      </div>
+      <div class="opt">
+        <h3><span class="letter">B</span>Income earned today</h3>
+        <p>Money spread across the nights of a stay, food on the day it was ordered. Matches <b>Analytics</b>, but
+          cannot be counted against the drawer.</p>
+      </div>
+    </div>
+    <p class="sub"><b>And one more:</b> is the hotel’s day <b>midnight to midnight</b> — or does it end at a
+      <b>cut-off hour</b>? SEB’s ₱1,900 happened at <b>2:45 AM</b>. Midnight puts it on the 30th; a 6 AM cut-off
+      puts it on the 29th, so the night shift’s takings never split across two days. <b>I will not guess this
+      one.</b></p>
+    <a class="link" href="daily-report.html">open the Daily Report drawing →</a>
+  </div>
+
+  <!-- 2 ─────────────────────────────────────────────── -->
+  <div class="dec">
+    <h2><span class="n">2</span>The promo price, gone permanently</h2>
+    <p class="why">9 of your 10 rooms have <code>base_price</code> and <code>promo_price</code> disagreeing —
+      two columns for one price, and two chances to quote the wrong figure.</p>
+    <div class="opts">
+      <div class="opt">
+        <h3><span class="letter">A</span>Collapse both</h3>
+        <p>One price everywhere. The old-log tick-box <b>“Use the price on the board today” goes</b> — every
+          backfilled stay priced at today’s figure.</p>
+      </div>
+      <div class="opt">
+        <h3><span class="letter">B</span>Keep base dormant</h3>
+        <p>One price the app charges; <code>base_price</code> survives <b>only</b> so that tick-box can price an
+          old paper log at the old figure.</p>
+      </div>
+    </div>
+    <a class="link" href="promo-and-the-300.html">open the promo drawing →</a>
+  </div>
+
+  <!-- 3 ─────────────────────────────────────────────── -->
+  <div class="dec">
+    <h2><span class="n">3</span>Test mode</h2>
+    <p class="why">You asked whether it should cover <i>everything</i> — and that is the argument for A, not B.</p>
+    <div class="opts">
+      <div class="opt rec">
+        <h3><span class="letter">A</span>A separate database</h3>
+        <p>Everything isolated at once — bookings, tabs, expenses, cleaning. Nothing to filter, and your
+          double-booking protection is left untouched. A second database to keep in step.</p>
+        <span class="mine">My recommendation</span>
+      </div>
+      <div class="opt">
+        <h3><span class="letter">B</span>One flag, your tables</h3>
+        <p>No second database — but <b>8 tables × every read</b>, and one missed filter is a test expense in your
+          real profit.</p>
+      </div>
+    </div>
+    <p class="sub">If A: do you want me to try a <b>Supabase branch</b> (it can carry a cost — I will not create
+      one without your word), or would you rather make a <b>second free project</b> yourself?</p>
+    <a class="link" href="test-mode-shape.html">open the test-mode drawing →</a>
+  </div>
+
+  <div class="dec done">
+    <h2>Already fixed and verified</h2>
+    <p class="why" style="margin:0">The receipt’s <b>Print / Close</b> bar · the <b>₱150-per-head breakfast</b>
+      rule, removed entirely · <b><code>update_booking</code></b> in the database, which is why paid bookings save
+      again. All green: <code>tsc</code> 0, <code>lint</code> 0 errors.</p>
+  </div>
+
+  <footer>Each drawing also has its own window — the links above open the page itself.</footer>
+
+</div>
+</body>
+</html>

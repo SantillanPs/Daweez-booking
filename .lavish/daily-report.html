@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daweez · Daily Report — zeros out, redundancies out</title>
+<style>
+  :root{
+    --page:#141414; --card:#1F1F1F; --raised:#262626; --line:#3A3A3A;
+    --body:#EDEAE4; --dim:#A8A29A; --muted:#7D7871;
+    --gold:#D0AB60; --gold-fill:#332B18; --gold-ink:#E6C989;
+    --good-fill:#12261F; --good-ink:#34D399; --bad-fill:#2A1615; --bad-ink:#F87171;
+    --paper:#E6E2DA; --ink:#1C1C1C;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--body);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:34px 26px 70px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1040px;margin:0 auto}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+  h1{font-size:26px;line-height:1.2;margin:8px 0 18px;letter-spacing:-.02em}
+  h2{font-size:17px;margin:0 0 10px;letter-spacing:-.01em}
+  p{margin:0 0 12px;color:var(--dim)}
+  p b,li b{color:var(--body)}
+  section{border-top:1px solid var(--line);padding:22px 0 8px}
+  section:first-of-type{border-top:0;padding-top:0}
+  .said{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);
+    border-radius:10px;padding:14px 17px;margin:0 0 20px}
+  .said p{margin:0;color:var(--gold-ink);font-style:italic;font-size:14px}
+
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+  @media (max-width:880px){.pair{grid-template-columns:1fr}}
+  .cap{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin:0 0 8px}
+  .cap.now{color:var(--muted)}
+  .cap.busy{color:var(--good-ink)}
+
+  .paper{background:var(--paper);color:var(--ink);border-radius:8px;padding:18px 20px;
+    font:12px/1.5 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+  .paper h3{font-size:14px;margin:0;text-align:center;letter-spacing:.06em;text-transform:uppercase;font-weight:800}
+  .paper .sub{text-align:center;font-size:10px;margin:2px 0 0}
+  .paper hr{border:0;border-top:1.5px solid var(--ink);margin:9px 0}
+  .paper hr.thin{border-top:1px solid #B9B3A7;margin:7px 0}
+  .row{display:flex;justify-content:space-between;gap:10px}
+  .row.ind{padding-left:12px;color:#4A463F}
+  .row.big{font-weight:800;font-size:13.5px}
+  .lbl{font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#5C574E;margin:9px 0 3px}
+  .money{font-family:ui-monospace,Menlo,monospace}
+  .foot{font-size:9.5px;color:#5C574E;margin-top:11px}
+  .inline{font-size:10.5px;color:#4A463F;margin-top:4px}
+
+  .rules{counter-reset:r;list-style:none;padding:0;margin:6px 0 0}
+  .rules li{counter-increment:r;position:relative;padding-left:30px;margin-bottom:9px;color:var(--dim);font-size:13.5px}
+  .rules li::before{content:counter(r);position:absolute;left:0;top:1px;width:19px;height:19px;border-radius:5px;
+    background:var(--gold-fill);color:var(--gold-ink);font-size:11px;font-weight:800;
+    display:flex;align-items:center;justify-content:center}
+  .rules b{color:var(--body)}
+  .gone{color:var(--bad-ink);text-decoration:line-through}
+  .ask{margin-top:28px;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);
+    border-radius:12px;padding:20px 22px}
+  .ask h3{margin:0 0 8px;font-size:17px}
+  .q{color:var(--gold-ink);font-weight:700}
+  .note{font-size:12.5px;color:var(--muted)}
+  code{background:var(--raised);border:1px solid var(--line);border-radius:5px;padding:1px 6px;
+    font-size:12.5px;color:var(--gold-ink);font-family:ui-monospace,Menlo,monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Daweez · daily report · revision</div>
+  <h1>Zeros out, redundancies out</h1>
+
+  <div class="said">
+    <p>“if some information earned 0 income, don’t include it in the print, also, remove some redundancies”</p>
+  </div>
+
+  <section>
+    <h2>Your rule, written down</h2>
+    <ol class="rules">
+      <li><b>A line prints only if it carries money.</b> No <span class="gone">Restaurant &amp; bar ₱0</span>,
+        no <span class="gone">GCash ₱0</span>, no <span class="gone">Bank transfer ₱0</span>.</li>
+      <li><b>A heading prints only if something sits under it.</b> No income means no
+        <span class="gone">MONEY TAKEN TODAY</span>; no expenses means no expense block at all.</li>
+      <li><b>No total that just repeats the only line above it.</b> One room payment of ₱1,900 does not also
+        need a <span class="gone">TOTAL IN ₱1,900</span>.</li>
+      <li><b>The method list prints only when money came in more than one way.</b> All-cash means the method
+        adds nothing — the line already says Cash.</li>
+      <li><b>NET only when there is something to net.</b> With no expenses, <span class="gone">NET ₱1,900</span>
+        is the same figure a third time.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>The same sheet, two days</h2>
+    <p>Left is your real 30 September — one payment, so the paper is short. Right is a busy day, to show the
+      rules still produce a full sheet when there is something to say. <b>Both follow the same five rules.</b></p>
+
+    <div class="pair">
+      <div>
+        <p class="cap now">30 September 2026 — today, real figures</p>
+        <div class="paper">
+          <h3>Daweez Pension House</h3>
+          <p class="sub">San Agustin Sur, Tandag City · Surigao del Sur</p>
+          <hr>
+          <h3 style="font-size:12.5px">Daily Report</h3>
+          <p class="sub">30 September 2026</p>
+          <hr class="thin">
+
+          <div class="lbl">Money taken today</div>
+          <div class="row"><span>Room payments · Cash</span><span class="money">₱1,900</span></div>
+          <div class="inline">PR-202609-001 · SEB · Room 4</div>
+          <hr class="thin">
+
+          <div class="lbl">Also today</div>
+          <div class="row"><span>Check-ins</span><span class="money">1</span></div>
+
+          <div class="foot">Prepared by ______________</div>
+        </div>
+        <p class="note" style="margin-top:10px">Seven of the fourteen things on my first draft were
+          <b>zero or repeated</b>. This is what is left.</p>
+      </div>
+
+      <div>
+        <p class="cap busy">A busy day — same rules</p>
+        <div class="paper">
+          <h3>Daweez Pension House</h3>
+          <p class="sub">San Agustin Sur, Tandag City · Surigao del Sur</p>
+          <hr>
+          <h3 style="font-size:12.5px">Daily Report</h3>
+          <p class="sub">18 October 2026 · Prepared by: MATET</p>
+          <hr class="thin">
+
+          <div class="lbl">Money taken today</div>
+          <div class="row"><span>Room payments</span><span class="money">₱6,400</span></div>
+          <div class="row"><span>Restaurant &amp; bar</span><span class="money">₱620</span></div>
+          <div class="row"><span>Deposits for later stays</span><span class="money">₱1,900</span></div>
+          <div class="row big" style="margin-top:4px"><span>Total in</span><span class="money">₱8,920</span></div>
+          <div class="row ind"><span>Cash</span><span class="money">₱5,420</span></div>
+          <div class="row ind"><span>GCash</span><span class="money">₱3,500</span></div>
+
+          <div class="lbl">Expenses paid today</div>
+          <div class="row"><span>Salary</span><span class="money">₱4,000</span></div>
+          <div class="row"><span>Gasoline</span><span class="money">₱900</span></div>
+          <div class="row big" style="margin-top:4px"><span>Total out</span><span class="money">₱4,900</span></div>
+
+          <hr class="thin">
+          <div class="row big"><span>NET TODAY</span><span class="money">₱4,020</span></div>
+          <hr class="thin">
+
+          <div class="lbl">Also today</div>
+          <div class="row"><span>Check-ins · Check-outs</span><span class="money">3 · 2</span></div>
+          <div class="row"><span>Rooms occupied</span><span class="money">5 of 10</span></div>
+
+          <div class="foot">Prepared by ______________ &nbsp; Checked by ______________</div>
+        </div>
+        <p class="note" style="margin-top:10px">No zeros anywhere — every line here is real money.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Two things only you can answer</h2>
+
+    <p><b>1. Which money?</b> Still open from the last drawing — <b>A</b> money taken today (reconciles against
+      the cash box) or <b>B</b> income earned today (matches Analytics). The paper above is drawn as <b>A</b>.</p>
+
+    <p style="margin-top:16px"><b>2. Whose day is 2:45 AM?</b> You marked this one. SEB’s ₱1,900 happened at
+      <code>2:45 AM on the 30th</code>, your time. So:</p>
+    <div class="ask" style="margin-top:10px;padding:16px 18px">
+      <p style="margin:0 0 8px"><b>Midnight to midnight</b> → it is on the <b>30th’s</b> report (as drawn above).</p>
+      <p style="margin:0"><b>A cut-off hour</b> → pick the hour the hotel’s day ends. At <b>6 AM</b>, everything
+        the night shift takes until 6 AM belongs to the day that <i>started</i> — so SEB’s ₱1,900 goes on the
+        <b>29th</b> instead, and the night shift’s takings never split across two days.</p>
+    </div>
+    <p class="note" style="margin-top:10px">I will not guess this one: it changes which day every late-night
+      payment lands on, and it is the kind of choice that silently makes a report wrong.</p>
+  </section>
+
+  <div class="ask">
+    <h3>What I need</h3>
+    <p class="q">A or B?</p>
+    <p class="q" style="margin-top:8px">Midnight-to-midnight, or a cut-off hour — and which hour?</p>
+    <p class="note" style="margin:10px 0 0">And if the five rules above read right to you, say so and I will
+      build it. Nothing is built yet.</p>
+  </div>
+
+</div>
+</body>
+</html>

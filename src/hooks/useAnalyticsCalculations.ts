@@ -5,6 +5,7 @@ import { Expense } from '../types/expense'
 import { calculatePricing } from '../utils/syncEngine'
 import { getRateConfig } from '../utils/rateConfig'
 import { foodMoneyIn } from '../utils/tabRevenue'
+import { dateToString } from '../utils/helpers'
 
 // Helper: check if a date is within start and end strings (YYYY-MM-DD)
 function isDateBetween(dStr: string, startStr: string, endStr: string): boolean {
@@ -50,42 +51,51 @@ export function useAnalyticsCalculations({
   includePending
 }: UseAnalyticsCalculationsProps) {
   // 1. Resolve date ranges based on chosen timeframe
+  //
+  // **`daily` is ONE DAY** (the owner, 2026-09-30: *"this is supposed to be daily. why is this doing weekly?"*).
+  // It used to reach back six days — `// Daily shows last 7 days ending today for trend view` — so the DAILY
+  // chip reported a week's money and its own range badge read `Sep 24 – Sep 30`. The chip IS the period; a day
+  // is a day. The trend chart simply gets one slot, which is what a day looks like.
+  //
+  // **Every range is built from LOCAL date parts** (`dateToString`), never `.toISOString().split('T')[0]`:
+  // a locally-built midnight converted to UTC lands on the **previous** day everywhere east of Greenwich, so
+  // `monthly` began on 31 August and every range was a day short for the first eight hours of a UTC+8 morning.
+  // This is the standing rule for booking dates (`utils/AGENTS.md`), and the Earnings Report reads the same clock.
   const dateRange = useMemo(() => {
     const today = new Date()
-    let startStr: string
-    let endStr: string
 
     if (timeframe === 'daily') {
-      // Daily shows last 7 days ending today for trend view
-      const start = new Date(today)
-      start.setDate(today.getDate() - 6)
-      startStr = start.toISOString().split('T')[0]
-      endStr = today.toISOString().split('T')[0]
-    } else if (timeframe === 'weekly') {
-      // Current week (Mon-Sun)
-      const day = today.getDay()
-      const diff = today.getDate() - day + (day === 0 ? -6 : 1) // adjust when day is sunday
-      const start = new Date(today.setDate(diff))
-      startStr = start.toISOString().split('T')[0]
-      const end = new Date(start)
-      end.setDate(start.getDate() + 6)
-      endStr = end.toISOString().split('T')[0]
-    } else if (timeframe === 'monthly') {
-      // Current calendar month
-      const start = new Date(today.getFullYear(), today.getMonth(), 1)
-      startStr = start.toISOString().split('T')[0]
-      const end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-      endStr = end.toISOString().split('T')[0]
-    } else if (timeframe === 'yearly') {
-      // Current calendar year
-      startStr = `${today.getFullYear()}-01-01`
-      endStr = `${today.getFullYear()}-12-31`
-    } else {
-      startStr = customStart
-      endStr = customEnd
+      const day = dateToString(today)
+      return { start: day, end: day }
     }
 
-    return { start: startStr, end: endStr }
+    if (timeframe === 'weekly') {
+      // Monday to Sunday, the week as the hotel lives it. `setDate` mutates, so it is applied to a copy — the
+      // old code moved `today` itself and then read it again for the end of the range.
+      const start = new Date(today)
+      const weekday = start.getDay()
+      start.setDate(start.getDate() - (weekday === 0 ? 6 : weekday - 1))
+      const end = new Date(start)
+      end.setDate(start.getDate() + 6)
+      return { start: dateToString(start), end: dateToString(end) }
+    }
+
+    if (timeframe === 'monthly') {
+      // The whole calendar month: the 1st to its last day.
+      return {
+        start: dateToString(new Date(today.getFullYear(), today.getMonth(), 1)),
+        end: dateToString(new Date(today.getFullYear(), today.getMonth() + 1, 0)),
+      }
+    }
+
+    if (timeframe === 'yearly') {
+      return {
+        start: dateToString(new Date(today.getFullYear(), 0, 1)),
+        end: dateToString(new Date(today.getFullYear(), 11, 31)),
+      }
+    }
+
+    return { start: customStart, end: customEnd }
   }, [timeframe, customStart, customEnd])
 
   // 2. Apportion bookings and aggregate revenues
@@ -219,7 +229,6 @@ export function useAnalyticsCalculations({
         bookingsList: bookings,
         breakfastIncluded: b.breakfast_included === true,
         contractRateOverride: b.contract_rate_override,
-        usePromo: (b as Booking & { promo_applied?: boolean }).promo_applied === true,
         // A short stay earns its hours price, not a night's.
         shortStayHours: b.stay_hours,
         rooms,

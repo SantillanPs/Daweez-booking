@@ -13,10 +13,6 @@ interface LogOldBookingInput {
   referenceNumber?: string; registeredOn?: string
   paymentMethod?: string; downpaymentPaid?: number; balanceDue?: number
   paymentStatus?: 'unpaid' | 'downpayment' | 'paid'; paymentRecords?: Booking['payment_records']
-  /** The price choice above — today's board price, or the older regular figure —
-   *  passed through so the row RECORDS which one it was logged at. Without it
-   *  every later read would silently re-price the log at the other figure. */
-  usePromo?: boolean
   preparedBy?: string
 }
 
@@ -46,11 +42,6 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
     return s
   })
   const [payMode, setPayMode] = useState('Cash')
-  // Which price this paper log was written at. ON (the default) is the price on
-  // the board today; untick it only for an old log that was written at the older
-  // regular figure — the card k128 rule is one price, so "promo" is not a thing
-  // staff are asked about any more.
-  const [usePromo, setUsePromo] = useState(true)
   const [deposit, setDeposit] = useState('')
   const [fullyPaid, setFullyPaid] = useState(false)
   const [payDate, setPayDate] = useState(() => dateToString(new Date()))
@@ -69,9 +60,12 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
   const depositNum = parseFloat(deposit) || 0
   const unitEntries = Object.entries(unitSelections)
   const unitNights = (sel: OldBookingUnitSel) => sel.checkIn && sel.checkOut ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000)) : 0
+  // ONE PRICE: there is no longer a "board today" versus "the older regular figure" to choose between —
+  // `promo_price` IS the price and `base_price` duplicates it, so this reads the one figure. The tick-box
+  // that used to sit here went with the second price (the owner's ruling, 2026-09-29, option A).
   const unitTotal = (id: string, sel: OldBookingUnitSel) => {
     const unit = sel.type === 'room' ? rooms.find(r => r.id === id) : venues.find(v => v.id === id)
-    return unit ? Math.round(getEffectiveNightlyPrice(unit.base_price, unit.promo_price, usePromo) * unitNights(sel)) : 0
+    return unit ? Math.round(getEffectiveNightlyPrice(unit.base_price, unit.promo_price) * unitNights(sel)) : 0
   }
   const unitTotals = unitEntries.map(([id, sel]) => unitTotal(id, sel))
   const totalNum = unitTotals.reduce((a, b) => a + b, 0)
@@ -121,14 +115,20 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
         unitTotals.forEach(() => allocs.push(0))
       }
       const paidAt = payDate ? new Date(payDate + 'T12:00:00').toISOString() : new Date().toISOString()
+      // ONE receipt, written onto EVERY room the paper log paid for (the owner's ruling, 2026-09-30 — the
+      // same rule `bookingPayment.recordBookingPayment` follows). It used to land on the first booking only,
+      // which left every other room holding money with nothing to show for it. One object, so the copies share
+      // an id and the daily report adds the payment up **once** rather than once per room. It carries no
+      // `receipt_number` on purpose: a paper log was paid months ago, and `receiptNumberFor` derives a stable
+      // one for payments recorded before numbering existed.
+      const rec = paid > 0
+        ? [{ id: 'rcpt-' + Date.now(), amount: paid, method: payMode, paid_at: paidAt }]
+        : undefined
       for (let i = 0; i < n; i++) {
         const [id, sel] = unitEntries[i]
         const down = allocs[i]
         const bal = Math.max(0, unitTotals[i] - down)
         const status: Booking['payment_status'] = bal <= 0 ? 'paid' : 'downpayment'
-        const recs = (i === 0 && paid > 0)
-          ? [{ id: 'rcpt-' + Date.now(), amount: paid, method: payMode, paid_at: paidAt }]
-          : undefined
         await createManualBooking({
           roomId: sel.type === 'room' ? id : undefined,
           venueId: sel.type === 'venue' ? id : undefined,
@@ -145,8 +145,7 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
           downpaymentPaid: down,
           balanceDue: bal,
           paymentStatus: status,
-          paymentRecords: recs,
-          usePromo,
+          paymentRecords: rec,
           preparedBy: preparedBy.trim() || undefined,
         })
       }
@@ -246,8 +245,6 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
               setPayDate={setPayDate}
               deposit={deposit}
               setDeposit={setDeposit}
-              usePromo={usePromo}
-              setUsePromo={setUsePromo}
               fullyPaid={fullyPaid}
               setFullyPaid={setFullyPaid}
               totalLabel={totalLabel}

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Calendar, BarChart2, Table, ToggleRight, ToggleLeft } from 'lucide-react'
+import { Calendar, BarChart2, Table, ToggleRight, ToggleLeft, Printer } from 'lucide-react'
 
 type Timeframe = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
 
@@ -14,6 +14,8 @@ interface AnalyticsFiltersProps {
   setViewMode: React.Dispatch<React.SetStateAction<'visuals' | 'spreadsheet'>>
   includePending: boolean
   setIncludePending: React.Dispatch<React.SetStateAction<boolean>>
+  /** Opens the day's sheet for printing — an action here, not a page of its own (the owner's ruling). */
+  onPrintDailyReport: () => void
 }
 
 export const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
@@ -26,7 +28,8 @@ export const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
   viewMode,
   setViewMode,
   includePending,
-  setIncludePending
+  setIncludePending,
+  onPrintDailyReport
 }) => {
   return (
     <div className="bg-card border border-soft rounded-xl p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
@@ -72,6 +75,16 @@ export const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
 
       {/* Right Side: View Mode Toggle & Status Toggle */}
       <div className="flex flex-wrap items-center gap-4 xl:justify-end">
+        {/* Print the day's sheet. It sits here, beside the view control, because it is the same kind of thing:
+            a way of looking at the money — on paper. It is deliberately NOT a third view. */}
+        <button
+          onClick={onPrintDailyReport}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest cursor-pointer transition-all bg-card border-2 border-soft hover:border-brand-primary/30 hover:bg-page text-muted shadow-sm"
+        >
+          <Printer className="w-4 h-4 text-brand-text" />
+          Print daily report
+        </button>
+
         {/* View Mode Toggle */}
         <button
           onClick={() => setViewMode(prev => prev === 'spreadsheet' ? 'visuals' : 'spreadsheet')}

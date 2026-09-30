@@ -208,7 +208,7 @@ export function useBookings() {
     guestPhone: string; checkIn: string; checkOut: string
     source: BookingSource; status: 'confirmed' | 'blocked' | 'pending'
     breakfastOrders?: BreakfastOrder[]; equipmentRentals?: EquipmentRental
-    eventAddons?: EventAddons; rateMultiplier?: number; usePromo?: boolean; companions?: Companion[]
+    eventAddons?: EventAddons; rateMultiplier?: number; companions?: Companion[]
     partnerDealId?: string; companyName?: string; vehiclePlate?: string
     paymentMethod?: string; paymentReference?: string; paymentPlan?: 'deposit' | 'full' | 'custom' | 'reservation'; venueExcessHours?: number
     paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
@@ -225,7 +225,7 @@ export function useBookings() {
     mutationFn: async (params) => {
       const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, guestGender, guestNationality, guestAddress, birthdate, checkIn, checkOut,
         source, status, breakfastOrders, equipmentRentals, eventAddons,
-        rateMultiplier, usePromo, companions,
+        rateMultiplier, companions,
         partnerDealId, companyName, vehiclePlate, breakfastIncluded, contractRateOverride,
         paymentMethod, paymentReference, paymentPlan, venueExcessHours = 0,
         paymentStatus, downpaymentPaid, balanceDue, securityDeposit,
@@ -245,7 +245,6 @@ export function useBookings() {
         bookingsList: bookings, rateMultiplier,
         contractRateOverride, venueExcessHours,
         rooms, venues,
-        usePromo,
         // Breakfast is the ROOM's own charge, once for the stay (card k140), and the
         // booking stores that flag — so the price it is SAVED with has to carry it too.
         // Leaving it out priced every new booking as the room alone: GRF-2026-09-0014
@@ -274,14 +273,11 @@ export function useBookings() {
         birthdate: birthdate || undefined,
         check_in: checkIn, check_out: checkOut,
         source, status,
-        // ONE PRICE (card k128): the walk-in form no longer has a price switch,
-        // so what it charges IS the single (promo) figure — and that has to be
-        // RECORDED. Leaving this undefined made every later reader (quick view,
-        // printed bill, analytics) fall back to the old regular figure and show a
-        // phantom balance on a booking the guest had already paid in full.
-        // Callers that still choose explicitly (Log old booking's Regular/Promo
-        // toggle) pass their own value and are left alone.
-        promo_applied: usePromo ?? true,
+        // ONE PRICE, and since 2026-09-29 there is no second figure to choose. The
+        // column is kept and written `true`, because every booking IS priced at the single
+        // figure — `promo_applied` no longer decides anything, it only records that fact for
+        // a row saved before the collapse.
+        promo_applied: true,
         payment_status: paymentStatus !== undefined ? paymentStatus : (status === 'blocked' ? undefined : 'unpaid'),
         downpayment_paid: downpaymentPaid !== undefined ? downpaymentPaid : 0,
         payment_method: paymentMethod,

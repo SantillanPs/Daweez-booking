@@ -194,6 +194,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
     if (takesMoney) {
       const recorded = await recordBookingPayment({
         bookings: createdBookings,
+        // So the receipt number is not already on another payment this month.
+        allBookings: p.activeBookings,
         received: p.receivedAmount,
         method: p.formPaymentMethod,
         reference: p.formPaymentReference,

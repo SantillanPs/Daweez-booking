@@ -54,7 +54,6 @@ export interface DashboardDataContextValue {
     registeredOn?: string
     agreedDeposit?: number
     stayHours?: number
-    usePromo?: boolean
     guestGender?: string
     guestNationality?: string
     guestAddress?: string

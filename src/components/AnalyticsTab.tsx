@@ -8,6 +8,7 @@ import { TabLine } from '../types/tab'
 import { AnalyticsFilters } from './analytics/AnalyticsFilters'
 import { AnalyticsSpreadsheetView } from './analytics/AnalyticsSpreadsheetView'
 import { AnalyticsVisualsView } from './analytics/AnalyticsVisualsView'
+import { DailyReportModal } from './analytics/DailyReportModal'
 
 type Timeframe = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
 
@@ -22,9 +23,10 @@ export function AnalyticsTab() {
     staleTime: 60 * 1000,
   })
 
-  // 1. Timeframe Filter state
-  const [viewMode, setViewMode] = useState<'spreadsheet' | 'visuals'>('visuals')
-  const [timeframe, setTimeframe] = useState<Timeframe>('monthly')
+  // 1. Timeframe Filter state. **Daily is the default** (the owner, 2026-09-30): the desk opens this screen to
+  // see today, so a month of history was the wrong thing to land on every time.
+  const [viewMode, setViewMode] = useState<'spreadsheet' | 'visuals'>('spreadsheet')
+  const [timeframe, setTimeframe] = useState<Timeframe>('daily')
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date()
     d.setDate(1) // Start of month
@@ -36,6 +38,9 @@ export function AnalyticsTab() {
 
   // 2. Booking Status Filter state
   const [includePending, setIncludePending] = useState<boolean>(false)
+
+  // 3. The day's sheet, printed from here — an action, not a page (the owner's ruling, 2026-09-30).
+  const [printingDay, setPrintingDay] = useState(false)
 
   // Use extracted hook for all heavy lifting calculations
   const { calculations, donutSegments } = useAnalyticsCalculations({
@@ -74,6 +79,7 @@ export function AnalyticsTab() {
         setViewMode={setViewMode}
         includePending={includePending}
         setIncludePending={setIncludePending}
+        onPrintDailyReport={() => setPrintingDay(true)}
       />
 
       {/* Render selected view mode */}
@@ -88,6 +94,8 @@ export function AnalyticsTab() {
       {viewMode === 'spreadsheet' && (
         <AnalyticsSpreadsheetView calculations={calculations} />
       )}
+
+      {printingDay && <DailyReportModal onClose={() => setPrintingDay(false)} />}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { Printer, X } from 'lucide-react'
 import { Booking, PaymentRecord, Room, Venue } from '../../types/booking'
 import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
 import { receiptNumberFor, paymentBreakdown } from '../../utils/receiptNumber'
+import { formatRoomNumbers } from '../../utils/roomNumbers'
 import { Block, Row, Rule } from './receiptPrimitives'
 import { fmtDateTime, fmtDay, money } from './receiptText'
 
@@ -14,6 +15,15 @@ interface PaymentReceiptDocumentProps {
   onClose: () => void
   onPrint: () => void
   embedded?: boolean
+  /**
+   * Every booking this payment covered, when it covered more than one.
+   *
+   * **A multi-room payment is one amount written onto every room it paid for**, so the slip must describe the
+   * SET — the rooms and their combined balance. Given only the one booking it printed `Room No: Room 2` beside
+   * a ₱4,200 payment that had covered four rooms, with a Previous Balance of ₱950 (the owner's receipt,
+   * 2026-09-30). Omit it for a single-room payment and the slip is exactly what it always was.
+   */
+  covered?: Booking[]
 }
 
 // A filled-in payment receipt, sized for the hotel's 58 mm thermal roll: ONE
@@ -22,17 +32,39 @@ interface PaymentReceiptDocumentProps {
 //
 // The screen preview is the same 58 mm slip rather than a wide page, so what
 // staff see is what comes out of the printer.
-export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose, onPrint, embedded = false }: PaymentReceiptDocumentProps) {
+export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose, onPrint, embedded = false, covered }: PaymentReceiptDocumentProps) {
   const isRoom = !!booking.room_id
   const room = rooms.find(r => r.id === booking.room_id)
   const venue = venues.find(v => v.id === booking.venue_id)
-  const unitLabel = isRoom ? 'Room ' + (room?.room_number ?? '') : (venue?.name || '')
+
+  // **The rooms this payment covered — this one included** (the owner's ruling, 2026-09-30).
+  //
+  // A multi-room payment is stored on every room it paid for, so the slip has to describe the SET. Without
+  // it the receipt printed `Room No: Room 2` beside a **₱4,200** payment that had covered four rooms, with a
+  // Previous Balance of **₱950** — one room's figure next to the whole payment, which reads as nonsense (the
+  // owner's own receipt, 2026-09-30: *"this is what the receipt says when I book more than 1 room"*).
+  const set = covered && covered.length > 1 ? covered : [booking]
+  const multi = set.length > 1
+
+  const roomNumbers = set.map(b => rooms.find(r => r.id === b.room_id)?.room_number)
+    .filter((n): n is number => typeof n === 'number')
+  const venueNames = set.filter(b => b.venue_id)
+    .map(b => venues.find(v => v.id === b.venue_id)?.name || '')
+    .filter(Boolean)
+  const unitLabel = multi
+    ? (roomNumbers.length === set.length
+        ? formatRoomNumbers(roomNumbers)
+        : [...roomNumbers.map(n => 'Room ' + n), ...venueNames].join(', '))
+    : isRoom ? 'Room ' + (room?.room_number ?? '') : (venue?.name || '')
 
   const receiptNo = receiptNumberFor(booking, record)
   // The deposit captured at booking lives in downpayment_paid, not in the
   // payment records, so back it out to reconstruct each receipt's balances.
-  const { paidBefore } = paymentBreakdown(booking, record)
-  const totalCharge = (Number(booking.downpayment_paid) || 0) + (Number(booking.balance_due) || 0)
+  // Summed over the SET: the money this receipt answers for is the money that stood against every room it
+  // covered, never one room's share of it.
+  const totalCharge = set.reduce((sum, b) =>
+    sum + (Number(b.downpayment_paid) || 0) + (Number(b.balance_due) || 0), 0)
+  const paidBefore = set.reduce((sum, b) => sum + paymentBreakdown(b, record).paidBefore, 0)
   const amountPaid = Number(record.amount) || 0
   const remainingAfter = Math.max(0, totalCharge - (paidBefore + amountPaid))
   const previousBalance = Math.max(0, totalCharge - paidBefore)
@@ -99,7 +131,7 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
             under it are — who the money came from. */}
         <p className="text-[8px] font-bold uppercase tracking-wider">Received From</p>
         <Block label="Guest" value={booking.guest_name} />
-        <Block label="Room No" value={unitLabel} />
+        <Block label={multi ? 'Rooms' : 'Room No'} value={unitLabel} />
         {/* A short stay says WHICH day and HOW LONG under the room, so the slip the
             guest keeps proves what was bought — "Room Accommodation" alone could be
             3 hours or a night. Ordinary stays print nothing here. */}

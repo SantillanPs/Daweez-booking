@@ -7,8 +7,6 @@ interface OldBookingPaymentProps {
   setPayDate: (v: string) => void
   deposit: string
   setDeposit: (v: string) => void
-  usePromo: boolean
-  setUsePromo: (v: boolean) => void
   fullyPaid: boolean
   setFullyPaid: (v: boolean) => void
   totalLabel: string
@@ -19,7 +17,7 @@ interface OldBookingPaymentProps {
 
 // "What was paid" box for the Log-old-booking form. A single "Amount paid"
 // input, or mark the booking fully paid and the amount equals the total.
-export function OldBookingPayment({ payMode, setPayMode, payDate, setPayDate, deposit, setDeposit, usePromo, setUsePromo, fullyPaid, setFullyPaid, totalLabel, totalNum, balance, cleanNum }: OldBookingPaymentProps) {
+export function OldBookingPayment({ payMode, setPayMode, payDate, setPayDate, deposit, setDeposit, fullyPaid, setFullyPaid, totalLabel, totalNum, balance, cleanNum }: OldBookingPaymentProps) {
   const baseField = 'w-full bg-page border text-main px-3 py-2 rounded-lg text-sm focus:outline-none'
   const field = baseField + ' border-soft focus:border-gold-500'
   const label = 'text-[10px] text-muted font-bold block mb-1'
@@ -48,10 +46,6 @@ export function OldBookingPayment({ payMode, setPayMode, payDate, setPayDate, de
         <label className={label}>Amount paid
           <input type="text" inputMode="decimal" value={fullyPaid ? String(totalNum) : deposit} onChange={e => { setDeposit(cleanNum(e.target.value)); setFullyPaid(false) }} placeholder="0" className={moneyField} />
         </label>
-      </div>
-      <div className="flex items-center gap-2 pt-1 select-none">
-        <input type="checkbox" id="use-promo" checked={usePromo} onChange={e => setUsePromo(e.target.checked)} className="rounded text-gold-600 accent-gold-600 w-3.5 h-3.5 cursor-pointer" />
-        <label htmlFor="use-promo" className="text-[10px] font-bold text-muted cursor-pointer">Use the price on the board today</label>
       </div>
       <div className="flex items-center justify-between text-[12px] pt-1 border-t border-paper-200">
         <span className={balance <= 0 ? 'text-emerald-600' : 'text-danger-600'}>{balance <= 0 ? 'Fully paid' : 'Total Due'}</span>

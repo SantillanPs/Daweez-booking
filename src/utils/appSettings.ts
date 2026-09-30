@@ -8,6 +8,7 @@ import { supabase, isSupabaseConfigured } from './supabaseClient'
  *   rate_config      — the shared rates (venue hourly, early/late charge, the
  *                      breakfast menu, extras & rentals, deposit, standard times)
  *   payment_accounts — where the guest sends the downpayment (GCash + both banks)
+ *   channel_sync     — the iCal switches: the master on/off and the rooms taken off
  *
  * These used to live ONLY in one browser's localStorage, so a second PC showed
  * the factory defaults and the account a guest was told to pay into could differ
@@ -18,7 +19,7 @@ import { supabase, isSupabaseConfigured } from './supabaseClient'
  * app SELECT only, the same shape `rooms` uses.
  */
 
-export type AppSettingKey = 'rate_config' | 'payment_accounts'
+export type AppSettingKey = 'rate_config' | 'payment_accounts' | 'channel_sync'
 
 /** Reads one setting. Returns null when it has never been saved. */
 export async function readAppSetting<T>(key: AppSettingKey): Promise<T | null> {

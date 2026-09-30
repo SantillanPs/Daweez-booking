@@ -12,7 +12,7 @@ interface CorporateParams {
   guestName: string; guestEmail: string; guestPhone: string
   checkIn: string; checkOut: string
   source: 'manual'; status: 'confirmed'
-  usePromo?: boolean; partnerDealId?: string
+  partnerDealId?: string
   companyName?: string; vehiclePlate?: string
   contractRateOverride?: number
   paymentMethod?: string; paymentReference?: string

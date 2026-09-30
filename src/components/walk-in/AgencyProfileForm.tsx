@@ -110,7 +110,7 @@ export function AgencyProfileForm({ deal, draftName, rooms, onSaved, onClose }: 
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 mt-2">
               {rooms.map(room => {
-                const board = getEffectiveNightlyPrice(room.base_price, room.promo_price, true)
+                const board = getEffectiveNightlyPrice(room.base_price, room.promo_price)
                 return (
                   <label key={room.id} className="flex items-center gap-2">
                     <span className="flex-1 text-[11.5px] font-semibold text-main truncate">

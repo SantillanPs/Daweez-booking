@@ -32,7 +32,6 @@ export function calculatePricing(params: {
   breakfastIncluded?: boolean
   rooms?: Room[]
   venues?: Venue[]
-  usePromo?: boolean
   /**
    * Short stay: the hours the room was taken for — 3, 6, 12 or 22. The price comes
    * from the room's own short-stay figure (the 22-hour one IS the room's price), and
@@ -45,7 +44,7 @@ export function calculatePricing(params: {
   venueDayBlocks?: number
   rates?: RateConfig
 }) {
-  const { roomId, venueId, checkIn, checkOut, breakfastIncluded, equipmentRentals, eventAddons, rateMultiplier, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastRecords, rooms: liveRooms, venues: liveVenues, usePromo, appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, rates: ratesOverride, shortStayHours } = params
+  const { roomId, venueId, checkIn, checkOut, breakfastIncluded, equipmentRentals, eventAddons, rateMultiplier, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastRecords, rooms: liveRooms, venues: liveVenues, appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, rates: ratesOverride, shortStayHours } = params
   const rates = ratesOverride ?? DEFAULT_RATE_CONFIG
 
   let basePrice = 0
@@ -63,7 +62,7 @@ export function calculatePricing(params: {
 
   if (contractRateOverride !== undefined && contractRateOverride !== null) {
     undiscountedBasePrice = contractRateOverride
-    if (usePromo === undefined && rateMultiplier !== undefined && rateMultiplier !== 1) {
+    if (rateMultiplier !== undefined && rateMultiplier !== 1) {
       basePrice = Math.round(contractRateOverride * rateMultiplier)
       discountPercent = Math.round((1 - rateMultiplier) * 100)
     } else {
@@ -76,20 +75,16 @@ export function calculatePricing(params: {
     const room = roomList.find(r => r.id === roomId)
     const regular = room ? room.base_price : 0
     const promo = room ? (room.promo_price ?? null) : null
-    // ONE PRICE (owner's decision, card k128): the promo figure IS the price
-    // whenever the room has one — there is no sale mode to switch on any more,
-    // and no crossed-out second price. `base_price` survives only as the
-    // fallback for a unit with no promo figure.
-    //
-    // `usePromo === false` still means "charge the regular figure", which is how
-    // a booking made before this rule keeps the price it was actually made at
-    // (the statement, analytics and balance all pass the booking's own
-    // `promo_applied`, never `undefined`).
+    // ONE PRICE, and since 2026-09-29 there is **no switch to pick between two** (the owner:
+    // *"the use promo should be gone permanently. because the promo price should be the new
+    // original price."*). `promo_price` IS the price and `base_price` duplicates it — the data was
+    // collapsed by `20260929200000_one_price_promo_becomes_base.sql` — so `usePromo` is gone from
+    // this function entirely and no caller can ask for "the regular figure" any more. A booking
+    // that was sold at an older figure keeps it through its own `contract_rate_override`, which
+    // the branch above honours before any of this.
     const singlePrice = promo != null && promo > 0 ? promo : regular
     undiscountedBasePrice = regular
-    if (usePromo !== undefined) {
-      basePrice = usePromo ? singlePrice : regular
-    } else if (rateMultiplier !== undefined && rateMultiplier !== 1) {
+    if (rateMultiplier !== undefined && rateMultiplier !== 1) {
       basePrice = Math.round(regular * rateMultiplier)
       discountPercent = Math.round((1 - rateMultiplier) * 100)
     } else {
@@ -126,9 +121,7 @@ export function calculatePricing(params: {
       const promo = venue ? (venue.promo_price ?? null) : null
       const singlePrice = promo != null && promo > 0 ? promo : regular
       undiscountedBasePrice = regular
-      if (usePromo !== undefined) {
-        basePrice = usePromo ? singlePrice : regular
-      } else if (rateMultiplier !== undefined && rateMultiplier !== 1) {
+      if (rateMultiplier !== undefined && rateMultiplier !== 1) {
         basePrice = Math.round(regular * rateMultiplier)
         discountPercent = Math.round((1 - rateMultiplier) * 100)
       } else {
@@ -144,8 +137,6 @@ export function calculatePricing(params: {
   const discountAmount = Math.max(0, undiscountedSubtotal - subtotal)
   if (undiscountedBasePrice > 0 && basePrice !== undiscountedBasePrice) {
     discountPercent = Math.round(((undiscountedBasePrice - basePrice) / undiscountedBasePrice) * 100)
-  } else if (usePromo !== undefined) {
-    discountPercent = basePrice !== undiscountedBasePrice ? Math.round(((undiscountedBasePrice - basePrice) / Math.max(1, undiscountedBasePrice)) * 100) : 0
   }
 
   let appliedDiscountAmount = 0

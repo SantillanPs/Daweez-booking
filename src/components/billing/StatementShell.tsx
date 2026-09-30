@@ -51,8 +51,8 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
   )
 }
 
-/** The hotel's own letterhead, identical on both bills. */
-export function BrandHeader({ invoiceNumber, dateIssued, showDate = true }: { invoiceNumber: string; dateIssued?: string; showDate?: boolean }) {
+/** The hotel's own letterhead, identical on every piece of paper the office prints. */
+export function BrandHeader({ invoiceNumber, dateIssued, showDate = true, heading = 'Guest Billing Statement', dateLabel = 'Date Issued' }: { invoiceNumber?: string; dateIssued?: string; showDate?: boolean; heading?: string; dateLabel?: string }) {
   return (
     <>
       {/* The letterhead is **always** two columns, never `sm:flex-row` (card k144, the
@@ -77,15 +77,17 @@ export function BrandHeader({ invoiceNumber, dateIssued, showDate = true }: { in
           <p className="text-[11px] text-ink-600">Mobile No: 0910-7163830</p>
         </div>
         <div className="text-right shrink-0">
-          <h2 className="font-display font-bold text-[12px] text-ink-800 uppercase tracking-wider whitespace-nowrap">Guest Billing Statement</h2>
+          <h2 className="font-display font-bold text-[12px] text-ink-800 uppercase tracking-wider whitespace-nowrap">{heading}</h2>
           <div className="mt-2 text-[12px] text-ink-700 space-y-1">
-            <div className="flex items-center gap-2 justify-end">
-              <span className="text-[11px] font-bold whitespace-nowrap">Bill / Invoice No.:</span>
-              <span className="font-mono border-b border-ink-300">{invoiceNumber}</span>
-            </div>
+            {invoiceNumber && (
+              <div className="flex items-center gap-2 justify-end">
+                <span className="text-[11px] font-bold whitespace-nowrap">Bill / Invoice No.:</span>
+                <span className="font-mono border-b border-ink-300">{invoiceNumber}</span>
+              </div>
+            )}
             {showDate && dateIssued && (
               <div className="flex items-center gap-2 justify-end">
-                <span className="text-[11px] font-bold whitespace-nowrap">Date Issued:</span>
+                <span className="text-[11px] font-bold whitespace-nowrap">{dateLabel}:</span>
                 <span className="font-mono border-b border-ink-300">{dateIssued}</span>
               </div>
             )}

@@ -36,7 +36,6 @@ interface WalkInBookingFormProps {
     checkOut: string
     source: BookingSource
     status: 'pending' | 'confirmed' | 'blocked'
-    usePromo?: boolean
     breakfastOrders?: BreakfastOrder[]
     equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons

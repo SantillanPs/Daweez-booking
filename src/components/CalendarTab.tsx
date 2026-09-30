@@ -197,7 +197,6 @@ export function CalendarTab() {
         guestEmail: selectedExtendBooking.guest_email,
         bookingsList: bookings,
         contractRateOverride: selectedExtendBooking.contract_rate_override,
-        usePromo: (selectedExtendBooking as { promo_applied?: boolean }).promo_applied === true,
         rooms, venues
       })
       const current = await syncEngine.getBookings()

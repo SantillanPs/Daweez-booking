@@ -44,8 +44,13 @@ export function allocatePayment(owed: number[], received: number): number[] {
 }
 
 export interface RecordBookingPaymentParams {
-  /** The bookings just created, in order. The receipt lands on the first. */
+  /** The bookings just created, in order. The first carries the receipt handed over. */
   bookings: Booking[]
+  /**
+   * Every booking the app already knows about, so the payment's receipt number cannot already be on
+   * another one. Without it two payments taken minutes apart both come out `…-001`.
+   */
+  allBookings?: Booking[]
   /** What the guest actually handed over — 0 means nothing to record. */
   received: number
   /** `''` should never reach here: the form refuses to confirm without one. */
@@ -56,15 +61,23 @@ export interface RecordBookingPaymentParams {
 }
 
 /**
- * Write the payment onto the booking set and return the updated rows plus the one receipt.
+ * Write the payment onto the booking set and return the updated rows plus the receipt to hand over.
  *
- * **The receipt goes on the FIRST booking** — the one carrying the invoice — so a group
- * booking is one piece of paper for the set, the way the billing statement already is.
- * Every booking in the set gets its own share, its own balance and its own derived status,
- * because the money IS the status (the standing rule: it is never typed in).
+ * **The receipt is written onto EVERY room the payment covered** (the owner's ruling, 2026-09-30, after
+ * he named the real problem: *"if there are more than one rooms booked at the same time, the staff would
+ * need to find the room that holds the payment receipt"*). It used to land on the first booking only, so
+ * a guest in Room 7 asking for their receipt sent the desk opening room after room until they found it —
+ * and every other room held money with no receipt at all.
  *
- * Recording the money is also what **confirms** a walk-in, which is the rule the quick view
- * has always used — it now simply happens at the moment the booking is made.
+ * So the same receipt — **one number, one amount, one payment** — is stored on all of them, and each
+ * booking carries **its own share** in `downpayment_paid`, because that is what settles its own bill. The
+ * share and the payment are different numbers on purpose: a reprint from Room 7 must show the ₱9,200 the
+ * guest actually handed over, never Room 7's ₱1,100 slice of it.
+ *
+ * Stored on every room, **printed once** — the guest still gets one piece of paper.
+ *
+ * Recording the money is also what **confirms** a walk-in, which is the rule the quick view has always
+ * used — it now simply happens at the moment the booking is made.
  */
 export async function recordBookingPayment(
   p: RecordBookingPaymentParams
@@ -75,6 +88,8 @@ export async function recordBookingPayment(
   const owed = p.bookings.map(b => Math.max(0, Number(b.balance_due || 0)))
   const shares = allocatePayment(owed, received)
   const paidAt = new Date().toISOString()
+  // **One number for the whole payment**, decided once — not once per booking.
+  const receiptNumber = nextReceiptNumber(p.bookings[0], p.allBookings || [])
 
   let receipt: PaymentRecord | undefined
   const updated: Booking[] = []
@@ -84,22 +99,22 @@ export async function recordBookingPayment(
     const down = shares[i]
     const balance = Math.max(0, owed[i] - down)
 
-    const record: PaymentRecord | undefined = i === 0
-      ? {
-          id: 'rcpt-' + Date.now(),
-          amount: received,
-          method: p.method,
-          reference: p.reference.trim() || undefined,
-          paid_at: paidAt,
-          prepared_by: b.prepared_by,
-          receipt_number: nextReceiptNumber(b),
-        }
-      : undefined
-    if (record) receipt = record
+    // The SAME receipt on every room — its own id, so two rooms never share a record, but one number
+    // and one amount, because the desk took the money once.
+    const record: PaymentRecord = {
+      id: 'rcpt-' + Date.now() + '-' + i,
+      amount: received,
+      method: p.method,
+      reference: p.reference.trim() || undefined,
+      paid_at: paidAt,
+      prepared_by: b.prepared_by,
+      receipt_number: receiptNumber,
+    }
+    if (i === 0) receipt = record
 
     const row: Booking = {
       ...b,
-      payment_records: record ? [...(b.payment_records || []), record] : (b.payment_records || []),
+      payment_records: [...(b.payment_records || []), record],
       downpayment_paid: down,
       balance_due: balance,
       payment_status: balance <= 0 ? 'paid' : 'downpayment',

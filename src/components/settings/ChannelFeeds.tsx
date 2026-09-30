@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { Copy, Check, ChevronDown } from 'lucide-react'
 import { SyncFeed } from '../../types/booking'
 import { Room } from '../../types/booking'
+import { getChannelSync, saveChannelSync, type ChannelSyncSettings } from '../../utils/channelSync'
+import { showToast } from '../../utils/toast'
 
 interface ChannelFeedsProps {
   rooms: Room[]
@@ -10,15 +12,19 @@ interface ChannelFeedsProps {
 }
 
 /**
- * The iCal feed links (OTA channels), unchanged in what it does: an export link per
- * room, plus the Airbnb and Booking.com import boxes. It keeps its OWN save button,
- * because it is a different job from the rates and has nothing to do with the money
- * save bar at the foot of the page.
+ * The iCal channel connections: a switch for the whole connection, a switch per room, and the import/export
+ * links behind each room's row.
+ *
+ * **The switches save the moment they are thrown** (the owner's design, 2026-09-30) — an on/off is a decision
+ * the desk wants to see take effect, not something to batch behind the URLs' own Save button, which is a
+ * different job. A refused save puts the switch back where it was and says so, so the screen never shows an
+ * off connection that is still running.
  */
 export function ChannelFeeds({ rooms, feeds, onSave }: ChannelFeedsProps) {
   const [editing, setEditing] = useState<SyncFeed[]>(() => fullList(rooms, feeds))
   const [copied, setCopied] = useState<string | null>(null)
   const [prevFeeds, setPrevFeeds] = useState<SyncFeed[]>(feeds)
+  const [switches, setSwitches] = useState<ChannelSyncSettings>(() => getChannelSync())
 
   // The stored feeds arrive asynchronously; rebuild the rows when they do, so a room
   // added later still gets its two boxes.
@@ -36,13 +42,39 @@ export function ChannelFeeds({ rooms, feeds, onSave }: ChannelFeedsProps) {
   const setUrl = (feedId: string, url: string) => setEditing(prev => prev.map(f => f.id === feedId ? { ...f, url } : f))
   const [openRoomId, setOpenRoomId] = useState<string | null>(rooms.length > 0 ? rooms[0].id : null)
 
+  // Write the switches, and put them back if the database refuses — a switch that looks
+  // thrown while the sync keeps running would be the worst of both.
+  const applySwitches = (next: ChannelSyncSettings) => {
+    const before = switches
+    setSwitches(next)
+    saveChannelSync(next).catch(err => {
+      setSwitches(before)
+      showToast(err instanceof Error ? err.message : 'Could not save the iCal switch.', 'error')
+    })
+  }
+  const toggleMaster = () => applySwitches({ ...switches, enabled: !switches.enabled })
+  const toggleRoom = (roomId: string) => {
+    const rooms2 = { ...switches.rooms }
+    if (rooms2[roomId] === false) delete rooms2[roomId]
+    else rooms2[roomId] = false
+    applySwitches({ ...switches, rooms: rooms2 })
+  }
+
   return (
     <div className="bg-card border border-soft rounded-xl overflow-hidden font-sans shadow-sm">
       <div className="px-5 py-4 border-b border-soft flex justify-between items-center gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-main">iCal feed subscriptions</h3>
-          <p className="text-xs text-muted mt-1">The import and export calendar links for your rooms.</p>
+          <h3 className="text-sm font-semibold text-main">iCal connections</h3>
+          <p className="text-xs text-muted mt-1">Airbnb &amp; Booking.com</p>
         </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className={'text-xs font-bold ' + (switches.enabled ? 'text-brand-text' : 'text-muted')}>
+            {switches.enabled ? 'On' : 'Off'}
+          </span>
+          <Switch on={switches.enabled} onToggle={toggleMaster} label="Sync with Airbnb and Booking.com" />
+        </div>
+      </div>
+      <div className="px-5 py-3 border-b border-soft flex justify-end">
         <button onClick={() => void onSave(editing)}
           className="bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm shrink-0">
           Save feed URLs
@@ -54,16 +86,28 @@ export function ChannelFeeds({ rooms, feeds, onSave }: ChannelFeedsProps) {
           const air = rf.find(f => f.channel === 'airbnb')
           const bk = rf.find(f => f.channel === 'booking_com')
           const isOpen = openRoomId === room.id
+          const on = switches.enabled && switches.rooms[room.id] !== false
           const exportUrl = 'https://daweez-booking.vercel.app/api/ical/room/' + room.room_number + '.ics'
           return (
             <div key={room.id} className="border-b border-soft last:border-0">
-              <button onClick={() => setOpenRoomId(isOpen ? null : room.id)} className="w-full flex items-center justify-between px-5 py-3 hover:bg-page transition-colors cursor-pointer">
-                <span className="flex items-center gap-3">
+              {/* The switch sits OUTSIDE the expander: a button inside a button is invalid, and
+                  throwing a room's switch must never also open its boxes. */}
+              <div className="w-full flex items-center justify-between px-5 py-3 hover:bg-page transition-colors">
+                <button onClick={() => setOpenRoomId(isOpen ? null : room.id)}
+                  className="flex-1 flex items-center gap-3 text-left cursor-pointer min-w-0">
                   <span className="text-sm font-semibold text-main">Room {room.room_number}</span>
-                  <span className="text-xs text-muted">{room.name}</span>
+                  <span className="text-xs text-muted truncate">{room.name}</span>
+                </button>
+                <span className="flex items-center gap-2.5 shrink-0 pl-3">
+                  <span className={'text-[11px] font-bold ' + (on ? 'text-brand-text' : 'text-muted')}>{on ? 'Synced' : 'Off'}</span>
+                  <Switch on={on} disabled={!switches.enabled} onToggle={() => toggleRoom(room.id)}
+                    label={`Sync Room ${room.room_number}`} />
+                  <button onClick={() => setOpenRoomId(isOpen ? null : room.id)} aria-label="Show the links"
+                    className="cursor-pointer p-0.5">
+                    <ChevronDown className={'w-4 h-4 text-muted transition-transform ' + (isOpen ? 'rotate-180' : '')} />
+                  </button>
                 </span>
-                <ChevronDown className={'w-4 h-4 text-muted transition-transform ' + (isOpen ? 'rotate-180' : '')} />
-              </button>
+              </div>
               {isOpen && (
                 <div className="px-5 pb-4 pt-1 space-y-2.5">
                   <FeedRow label="Export URL" tone="text-brand-text" value={exportUrl} readOnly
@@ -79,6 +123,21 @@ export function ChannelFeeds({ rooms, feeds, onSave }: ChannelFeedsProps) {
         })}
       </div>
     </div>
+  )
+}
+
+/** The one switch shape, used for both the connection and a room. */
+function Switch({ on, onToggle, label, disabled = false }: {
+  on: boolean; onToggle: () => void; label: string; disabled?: boolean
+}) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled}
+      onClick={onToggle}
+      className={'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ' +
+        (disabled ? 'opacity-40 cursor-not-allowed ' : 'cursor-pointer ') + (on ? 'bg-brand-primary' : 'bg-ink-300')}>
+      <span className={'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ' +
+        (on ? 'translate-x-4' : 'translate-x-0.5')} />
+    </button>
   )
 }
 

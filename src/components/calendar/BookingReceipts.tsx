@@ -1,6 +1,7 @@
 import { PaymentRecord } from '../../types/booking'
 import { Printer, Trash2 } from 'lucide-react'
 import { RecordPaymentForm } from './RecordPaymentForm'
+import { formatRoomNumbers } from '../../utils/roomNumbers'
 
 const fmtPeso = (n: number) => '₱' + n.toLocaleString()
 
@@ -21,13 +22,22 @@ interface BookingReceiptsProps {
   onRemove?: (r: PaymentRecord) => void
   referenceRequired?: boolean
   referenceError?: string
+  /**
+   * Which rooms each receipt covers, by receipt number.
+   *
+   * **A payment is written onto every room it paid for** (the owner's ruling, 2026-09-30) so the desk can
+   * always find it — which means Room 7's list can show a ₱9,200 receipt that is not Room 7's money. The
+   * covering rooms are what identify it, so they are printed under the amount whenever there is more than
+   * one. Without them the receipt reads as this room's own payment.
+   */
+  coveredRooms?: Record<string, number[]>
 }
 
 // Every payment the guest has made, each with its own receipt to reprint.
 export function BookingReceipts({
   records, showAdd, open, setOpen, amount, setAmount,
   method, setMethod, reference, setReference, onAdd, onPrint, onRemove,
-  referenceRequired = false, referenceError = '',
+  referenceRequired = false, referenceError = '', coveredRooms,
 }: BookingReceiptsProps) {
   return (
     <div className="space-y-2.5">
@@ -58,25 +68,37 @@ export function BookingReceipts({
 
       {records.length > 0 ? (
         <ul className="space-y-1.5">
-          {records.map(r => (
-            <li key={r.id} className="flex items-center justify-between gap-2 bg-card border border-soft rounded-md px-2.5 py-1.5 text-[12px]">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="font-semibold text-emerald-600 shrink-0">+{fmtPeso(r.amount)}</span>
-                <span className="text-muted shrink-0">{r.method}</span>
-                <span className="text-muted text-[10px] truncate">{r.paid_at ? new Date(r.paid_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</span>
-              </div>
-              <div className="flex items-center gap-0.5 shrink-0">
-                <button type="button" onClick={() => onPrint(r)} className="text-gold-600 hover:text-gold-700 p-1 cursor-pointer" aria-label="Print receipt" title="Print receipt">
-                  <Printer className="w-3.5 h-3.5" />
-                </button>
-                {onRemove && (
-                  <button type="button" onClick={() => onRemove(r)} className="text-muted hover:text-danger-600 p-1 cursor-pointer" aria-label="Remove payment" title="Remove this payment">
-                    <Trash2 className="w-3.5 h-3.5" />
+          {records.map(r => {
+            const covers = r.receipt_number ? coveredRooms?.[r.receipt_number] : undefined
+            return (
+            <li key={r.id} className="bg-card border border-soft rounded-md px-2.5 py-1.5 text-[12px]">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-semibold text-emerald-600 shrink-0">+{fmtPeso(r.amount)}</span>
+                  <span className="text-muted shrink-0">{r.method}</span>
+                  <span className="text-muted text-[10px] truncate">{r.paid_at ? new Date(r.paid_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</span>
+                </div>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button type="button" onClick={() => onPrint(r)} className="text-gold-600 hover:text-gold-700 p-1 cursor-pointer" aria-label="Print receipt" title="Print receipt">
+                    <Printer className="w-3.5 h-3.5" />
                   </button>
-                )}
+                  {onRemove && (
+                    <button type="button" onClick={() => onRemove(r)} className="text-muted hover:text-danger-600 p-1 cursor-pointer" aria-label="Remove payment" title="Remove this payment">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
+              {/* A receipt that covered other rooms says so, and names them — that is what makes it findable
+                  from here instead of sending staff hunting through the other bookings. */}
+              {covers && covers.length > 1 && (
+                <p className="text-[10px] text-muted mt-0.5">
+                  {formatRoomNumbers(covers)} together{r.receipt_number ? ' · ' + r.receipt_number : ''}
+                </p>
+              )}
             </li>
-          ))}
+            )
+          })}
         </ul>
       ) : (
         <p className="text-[11px] text-muted">No payments yet — a receipt is created each time the guest pays.</p>

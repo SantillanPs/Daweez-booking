@@ -10,11 +10,13 @@ interface PrintPaymentReceiptModalProps {
   venues: Venue[]
   onClose: () => void
   embedded?: boolean
+  /** Every booking this payment covered, when it covered more than one — see `PaymentReceiptDocument`. */
+  covered?: Booking[]
 }
 
 // Controller for the printable payment receipt: hands the booking + the one
 // payment record to the presentational <PaymentReceiptDocument />.
-export function PrintPaymentReceiptModal({ booking, record, rooms, venues, onClose, embedded = false }: PrintPaymentReceiptModalProps) {
+export function PrintPaymentReceiptModal({ booking, record, rooms, venues, onClose, embedded = false, covered }: PrintPaymentReceiptModalProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -49,6 +51,7 @@ export function PrintPaymentReceiptModal({ booking, record, rooms, venues, onClo
       onClose={onClose}
       onPrint={handlePrint}
       embedded={embedded}
+      covered={covered}
     />
   )
 

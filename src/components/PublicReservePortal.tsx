@@ -193,7 +193,8 @@ export function PublicReservePortal() {
         reference: paymentRef,
         paid_at: now.toISOString(),
         prepared_by: 'Online booking (guest portal)',
-        receipt_number: nextReceiptNumber(newBooking),
+        // Handed the bookings list so an online payment cannot take a number the desk already used.
+        receipt_number: nextReceiptNumber(newBooking, bookings),
       }
       if (onlinePayment.amount > 0) {
         newBooking.payment_records = [onlinePayment]
@@ -307,7 +308,7 @@ export function PublicReservePortal() {
                         const isAvailable = roomAvailability[room.id]
                         // ONE PRICE (card k128): the guest is shown the figure the
                         // desk charges — never the retired regular price beside it.
-                        const displayPrice = getEffectiveNightlyPrice(room.base_price, room.promo_price, true)
+                        const displayPrice = getEffectiveNightlyPrice(room.base_price, room.promo_price)
                         return (
                             <div key={room.id} className={`bg-card border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-all group ${isAvailable ? 'hover:border-brand-primary border-soft/80' : 'opacity-70 grayscale-[20%] border-soft'}`}>
                               <div className="h-44 overflow-hidden relative">
@@ -375,7 +376,7 @@ export function PublicReservePortal() {
                       {venues.map(venue => {
                         const isAvailable = venueAvailability[venue.id]
                         // ONE PRICE (card k128), same rule as the rooms above.
-                        const venueDisplayPrice = getEffectiveNightlyPrice(venue.base_price, venue.promo_price, true)
+                        const venueDisplayPrice = getEffectiveNightlyPrice(venue.base_price, venue.promo_price)
                         return (
                           <div key={venue.id} className={`bg-card border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-all group ${isAvailable ? 'hover:border-brand-primary border-soft/80' : 'opacity-70 grayscale-[20%] border-soft'}`}>
                             <div className="h-44 overflow-hidden relative">

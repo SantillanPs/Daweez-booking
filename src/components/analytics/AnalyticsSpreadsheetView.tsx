@@ -228,16 +228,21 @@ export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> =
                 -<AnimatedNumber prefix="₱" value={calculations.totalExpenses} />
               </td>
             </tr>
-            <tr className="bg-slate-900 text-white shadow-xl relative overflow-hidden">
-              <td className="py-6 px-6 font-black tracking-widest text-[15px] uppercase relative z-10" colSpan={5}>
+            <tr className="bg-slate-900 text-white shadow-xl">
+              <td className="py-6 px-6 font-black tracking-widest text-[15px] uppercase" colSpan={5}>
                 Your Profit <span className="font-medium text-slate-400 text-xs ml-2 tracking-normal">(Money In - Money Out)</span>
               </td>
-              <td className="py-6 px-6 text-right relative z-10"></td>
-              <td className="py-6 px-6 text-right font-mono font-black text-3xl text-emerald-400 relative z-10">
-                <AnimatedNumber prefix="₱" value={calculations.netProfit} />
+              <td className="py-6 px-6 text-right"></td>
+              <td className="py-6 px-6 text-right font-mono font-black text-3xl text-emerald-400 relative overflow-hidden">
+                {/* The glow behind the figure lives INSIDE the cell. It used to be a `<div>` child of this
+                    `<tr>`, which is invalid HTML — a table row may only hold cells — and React reported it as
+                    *"In HTML, `<div>` cannot be a child of `<tr>`"* (the owner's console, 2026-09-30). The
+                    figure is positioned too, so it still paints above the glow. */}
+                <div className="absolute inset-0 bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none"></div>
+                <span className="relative">
+                  <AnimatedNumber prefix="₱" value={calculations.netProfit} />
+                </span>
               </td>
-              {/* Decorative background element for the profit row */}
-              <div className="absolute top-0 right-0 bottom-0 w-1/2 bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none"></div>
             </tr>
           </tfoot>
         </table>

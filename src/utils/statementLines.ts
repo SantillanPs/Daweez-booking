@@ -59,7 +59,6 @@ export function bookingPricing(b: Booking, o: {
   venues: Venue[]
   bookingsList: Booking[]
 }) {
-  const usePromo = (b as Booking & { promo_applied?: boolean }).promo_applied === true
   return syncEngine.calculatePricing({
     roomId: b.room_id,
     venueId: b.venue_id,
@@ -81,7 +80,6 @@ export function bookingPricing(b: Booking, o: {
     breakfastRecords: b.breakfast_records,
     rooms: o.rooms,
     venues: o.venues,
-    usePromo,
     // The hours the room was sold for: without them the printed bill charges the whole
     // night for a 3-hour stay (the screen said ₱550, the paper printed ₱850).
     shortStayHours: b.stay_hours,

@@ -119,6 +119,28 @@ export function ExtendStayModal({
 
   const room = booking.room_id ? rooms.find(r => r.id === booking.room_id) : undefined
   const venue = booking.venue_id ? venues.find(v => v.id === booking.venue_id) : undefined
+
+  // Which rooms — and which bookings — each receipt covers, by receipt number.
+  //
+  // A payment is stored on **every** room it paid for (the owner's ruling, 2026-09-30) so the desk never has
+  // to hunt for it — which means this room's receipt list can show a payment that is not this room's money.
+  // Naming the rooms it covers is what tells the staff that, and reprinting the receipt needs the whole set,
+  // or the slip describes one room while holding every room's payment.
+  const coveredRooms: Record<string, number[]> = {}
+  const coveredBookings: Record<string, Booking[]> = {}
+  bookings.forEach(b => {
+    ;(b.payment_records || []).forEach(rec => {
+      const key = rec.receipt_number
+      if (!key) return
+      const set = coveredBookings[key] || (coveredBookings[key] = [])
+      if (!set.some(x => x.id === b.id)) set.push(b)
+      const r = b.room_id ? rooms.find(x => x.id === b.room_id) : undefined
+      if (!r) return
+      const list = coveredRooms[key] || (coveredRooms[key] = [])
+      if (!list.includes(r.room_number)) list.push(r.room_number)
+    })
+  })
+
   const unitName = booking.room_id ? roomDisplayName(room) : (venue?.name || 'Event Venue')
   const unitSub = booking.room_id && room?.name ? 'Room ' + room.room_number : ''
   const nights = booking.check_in && booking.check_out
@@ -348,8 +370,9 @@ export function ExtendStayModal({
       paid_at: new Date().toISOString(),
       prepared_by: localBooking.prepared_by,
       // Stored, not derived: the receipt keeps this number even if another
-      // payment is later removed.
-      receipt_number: nextReceiptNumber(localBooking),
+      // payment is later removed. Handed the whole list so it cannot take a number another booking
+      // already used this month — the payment's own records alone always start a fresh booking at 001.
+      receipt_number: nextReceiptNumber(localBooking, bookings),
     }
     const records = [...(localBooking.payment_records || []), rec]
     const status = remaining <= 0 ? 'paid' as const : localBooking.payment_status === 'paid' ? 'paid' as const : 'downpayment' as const
@@ -609,6 +632,7 @@ export function ExtendStayModal({
             >
               <BookingReceipts
                 records={receiptRecords}
+                coveredRooms={coveredRooms}
                 showAdd={due > 0}
                 open={addReceiptOpen}
                 setOpen={o => {
@@ -727,6 +751,9 @@ export function ExtendStayModal({
           record={receiptFor}
           rooms={rooms}
           venues={venues}
+          /* Every room this payment covered, so a receipt found from Room 7 names Rooms 4–10 and its
+             figures are the money that was actually taken (2026-09-30). */
+          covered={coveredBookings[receiptFor.receipt_number || '']}
           /* The receipt for a payment just taken is the end of the errand: closing
              it closes the whole quick view, so the desk is back at the calendar
              instead of holding a booking they have finished with. */

@@ -10,8 +10,10 @@ import { MainLayout } from './components/MainLayout'
 import { LoginRoute } from './components/LoginPortal'
 import { DashboardLayout } from './components/DashboardLayout'
 import { SettingsUnavailable } from './components/SettingsUnavailable'
+import { NotFound } from './components/NotFound'
 import { hydrateRateConfig } from './utils/rateConfig'
 import { hydratePaymentAccounts } from './utils/paymentAccounts'
+import { hydrateChannelSync } from './utils/channelSync'
 
 /**
  * The shared rates and where-guests-pay are read once per page load, before any
@@ -26,7 +28,7 @@ import { hydratePaymentAccounts } from './utils/paymentAccounts'
 let settingsReady: Promise<void> | null = null
 function loadSettings(): Promise<void> {
   if (!settingsReady) {
-    settingsReady = Promise.all([hydrateRateConfig(), hydratePaymentAccounts()]).then(() => undefined)
+    settingsReady = Promise.all([hydrateRateConfig(), hydratePaymentAccounts(), hydrateChannelSync()]).then(() => undefined)
   }
   return settingsReady
 }
@@ -35,6 +37,11 @@ function loadSettings(): Promise<void> {
 const rootRoute = createRootRoute({
   beforeLoad: () => loadSettings(),
   errorComponent: ({ error }) => <SettingsUnavailable error={error as Error} />,
+  // A URL the app does not know must say so in the app's own words. Without this, TanStack Router prints a bare
+  // `<p>Not Found</p>` and logs a warning that no `notFoundComponent` is configured — which is what the owner
+  // saw in the console after `/daily-report` was removed (2026-09-30). The route went, but his browser was still
+  // sitting on it, so the app owed him a page rather than a stray word.
+  notFoundComponent: () => <NotFound />,
   component: () => (
     <MainLayout>
       <Outlet />
@@ -90,6 +97,22 @@ const guestsRoute = createRoute({
   component: lazyRouteComponent(() => import('./components/DirectoryTab'), 'DirectoryTab')
 })
 
+/**
+ * **`/daily-report` is a redirect, not a screen** (the owner's ruling, 2026-09-30: the Daily Report is
+ * *"a 'print a daily report' type of feature. not a page"*).
+ *
+ * It was a tab here for a day. Rather than let the address die — his own browser was still sitting on it, and a
+ * bookmark or a back-button would land on "not found" — the old URL forwards to Analytics, where the **Print
+ * daily report** button now lives. A moved page keeps its address working.
+ */
+const dailyReportRoute = createRoute({
+  getParentRoute: () => dashboardRoute,
+  path: '/daily-report',
+  beforeLoad: () => {
+    throw redirect({ to: '/analytics' })
+  }
+})
+
 const settingsRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/settings',
@@ -139,7 +162,8 @@ const routeTree = rootRoute.addChildren([
     settingsRoute,
     expensesRoute,
     housekeepingRoute,
-    restaurantRoute
+    restaurantRoute,
+    dailyReportRoute
   ])
 ])
 

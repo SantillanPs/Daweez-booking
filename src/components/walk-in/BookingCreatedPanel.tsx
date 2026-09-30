@@ -36,6 +36,9 @@ export function BookingCreatedPanel({ createdBookingList, rooms, venues, booking
             record={receipt}
             rooms={rooms}
             venues={venues}
+            /* The whole set, so the receipt names **every room the money paid for** rather than the one
+               carrying the invoice (the owner's ruling, 2026-09-30). */
+            covered={createdBookingList}
             onClose={onClose}
             embedded
           />

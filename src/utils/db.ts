@@ -60,10 +60,17 @@ export async function updateRoomRate(roomId: string, basePrice: number, promoPri
     throw new Error('No database is connected, so this room price was not saved.')
   }
 
+  // **ONE PRICE — both columns get the same figure** (the owner's ruling, 2026-09-29: *"the promo price
+  // should be the new original price"*). The desk types one number, so both columns are written with it.
+  // Writing only `promo_price` is what let `base_price` keep an older figure and the two drift apart on 9
+  // of the 10 rooms. The pricing engine no longer reads `base_price` as a second price at all, but no
+  // future reader should ever be able to find two different numbers here again.
+  const price = promo != null && promo > 0 ? promo : base
+
   const { data, error } = await supabase.rpc('update_room_rate', {
     p_room_id: roomId,
-    p_base_price: base,
-    p_promo_price: promo ?? 0,
+    p_base_price: price,
+    p_promo_price: price,
   })
   if (error) throw error
   return (data as unknown as Room) ?? null
