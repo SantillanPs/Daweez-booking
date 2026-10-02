@@ -162,6 +162,8 @@ export async function addTabLine(input: {
   qty?: number
   unitPrice: number
   createdBy?: string
+  /** The menu item behind the line, so a sale can take its stock (k71). Blank for a written line. */
+  menuItemId?: string
 }): Promise<TabLine> {
   const qty = input.qty && input.qty > 0 ? input.qty : 1
   return insertLine({
@@ -172,6 +174,7 @@ export async function addTabLine(input: {
     unit_price: money(input.unitPrice),
     amount: money(qty * input.unitPrice),
     kind: 'charge',
+    menu_item_id: input.menuItemId || null,
     created_by: input.createdBy?.trim() || undefined,
     created_at: new Date().toISOString(),
   })

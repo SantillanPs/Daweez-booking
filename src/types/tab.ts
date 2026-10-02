@@ -18,6 +18,15 @@ export interface TabLine {
   /** Signed: positive for a charge, negative for a correction. */
   amount: number
   kind: TabLineKind
+  /**
+   * The menu item this line came from, when it came off the menu card.
+   *
+   * **This is what lets a sale take stock off the shelf** (the owner's ruling, 2026-09-30, from the code trace):
+   * the line used to keep only the dish's name and price, so nothing could point back at the dish — and a dish
+   * is what points at the ingredients. Blank for a written line the menu does not carry, which correctly
+   * deducts nothing.
+   */
+  menu_item_id?: string | null
   /** Set on a correction: the line it is fixing. */
   corrects_line_id?: string
   /** Set on a correction: why it was needed. */

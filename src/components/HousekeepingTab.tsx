@@ -1,21 +1,25 @@
 import React, { useEffect, useState } from 'react'
-import { Boxes, ClipboardCheck, Plus, Trash2 } from 'lucide-react'
-import { NumInput } from './NumInput'
+import { Boxes, ClipboardCheck, Trash2, UtensilsCrossed } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
-import { getInventory, saveInventory, InventoryItem } from '../utils/inventory'
 import { getCleaningTasks, saveCleaningTasks, CleaningTask, CLEANING_ITEMS } from '../utils/cleaning'
+import { useStockRoom } from './housekeeping/useStockRoom'
+import { StockRoom } from './housekeeping/StockRoom'
+import { DishStockEditor } from './housekeeping/DishStockEditor'
 
-type Tab = 'inventory' | 'cleaning'
+type Tab = 'stock' | 'dishes' | 'cleaning'
 
+/**
+ * Housekeeping: **the stock room**, the dishes that take stock, and the cleaning checklist.
+ *
+ * The stock room replaced the old flat inventory list (k71, the owner's ruling: *"go"*). The items are the same
+ * rows as before — one shelf for the kitchen and the hotel — but they now carry a unit, a price, a par level,
+ * and the movements that explain every number on the screen.
+ */
 export function HousekeepingTab() {
   const { rooms } = useDashboardData()
-  const [tab, setTab] = useState<Tab>('inventory')
-  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [tab, setTab] = useState<Tab>('stock')
   const [cleaning, setCleaning] = useState<CleaningTask[]>([])
-
-  const [newItemName, setNewItemName] = useState('')
-  const [newItemQty, setNewItemQty] = useState(0)
-  const [newItemCategory, setNewItemCategory] = useState('room')
+  const stock = useStockRoom()
 
   // Cleaning form
   const [taskItem, setTaskItem] = useState(CLEANING_ITEMS[0])
@@ -25,30 +29,8 @@ export function HousekeepingTab() {
   const [taskCheckedBy, setTaskCheckedBy] = useState('')
 
   useEffect(() => {
-    getInventory().then(setInventory).catch(() => {})
     getCleaningTasks().then(setCleaning).catch(() => {})
   }, [])
-
-  const addItem = async () => {
-    if (!newItemName.trim()) return
-    const item: InventoryItem = { id: 'inv-' + Date.now(), name: newItemName.trim(), category: newItemCategory, quantity: newItemQty, created_at: new Date().toISOString() }
-    const next = [...inventory, item]
-    setInventory(next)
-    await saveInventory(next)
-    setNewItemName(''); setNewItemQty(0)
-  }
-
-  const updateQty = async (id: string, qty: number) => {
-    const next = inventory.map(i => i.id === id ? { ...i, quantity: Math.max(0, qty) } : i)
-    setInventory(next)
-    await saveInventory(next)
-  }
-
-  const removeItem = async (id: string) => {
-    const next = inventory.filter(i => i.id !== id)
-    setInventory(next)
-    await saveInventory(next)
-  }
 
   const addTask = async () => {
     const task: CleaningTask = { id: 'clean-' + Date.now(), room_id: taskRoom || undefined, item: taskItem, date: taskDate || undefined, cleaned_by: taskCleanedBy.trim() || undefined, checked_by: taskCheckedBy.trim() || undefined, status: taskCleanedBy.trim() ? 'done' : 'pending', created_at: new Date().toISOString() }
@@ -70,54 +52,39 @@ export function HousekeepingTab() {
     await saveCleaningTasks(next)
   }
 
+  const navClass = (isOn: boolean) => 'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' +
+    (isOn ? 'bg-brand-primary text-ink-900 shadow-sm' : 'text-muted hover:bg-softbg')
+
   return (
     <div className="flex flex-col md:flex-row gap-6 h-full">
       <div className="w-full md:w-56 shrink-0">
         <nav className="flex md:flex-col gap-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
-          <button onClick={() => setTab('inventory')} className={'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' + (tab === 'inventory' ? 'bg-brand-primary text-ink-900 shadow-sm' : 'text-muted hover:bg-softbg')}>
-            <Boxes className="w-4 h-4" /> Hotel Inventory
+          <button onClick={() => setTab('stock')} className={navClass(tab === 'stock')}>
+            <Boxes className="w-4 h-4" /> Stock room
           </button>
-          <button onClick={() => setTab('cleaning')} className={'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' + (tab === 'cleaning' ? 'bg-brand-primary text-ink-900 shadow-sm' : 'text-muted hover:bg-softbg')}>
+          <button onClick={() => setTab('dishes')} className={navClass(tab === 'dishes')}>
+            <UtensilsCrossed className="w-4 h-4" /> What a dish uses
+          </button>
+          <button onClick={() => setTab('cleaning')} className={navClass(tab === 'cleaning')}>
             <ClipboardCheck className="w-4 h-4" /> Cleaning Checklist
           </button>
         </nav>
       </div>
 
       <div className="flex-1 min-w-0">
-        {tab === 'inventory' && (
-          <div className="bg-card border border-soft rounded-lg overflow-hidden font-sans shadow-sm">
-            <div className="px-5 py-4 border-b border-soft">
-              <h3 className="text-sm font-semibold text-main">Hotel Inventory</h3>
-              <p className="text-xs text-muted mt-1">Track what is in house — pillows, blankets, soap, and more.</p>
-            </div>
-            <div className="p-4 border-b border-soft flex flex-wrap items-end gap-2">
-              <input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="New item name"
-                className="flex-1 min-w-[160px] bg-page border border-soft text-main px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500" />
-              <select value={newItemCategory} onChange={e => setNewItemCategory(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500">
-                <option value="room">Room</option><option value="bathroom">Bathroom</option><option value="common">Common</option>
-              </select>
-              <NumInput value={newItemQty} onChange={setNewItemQty} placeholder="Qty" allowDecimal={false}
-                className="w-20 bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500" />
-              <button onClick={addItem} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-semibold transition-colors cursor-pointer"><Plus className="w-4 h-4" /> Add</button>
-            </div>
-            <div className="divide-y divide-soft">
-              {inventory.length === 0 && <div className="px-5 py-6 text-sm text-muted">No inventory items yet.</div>}
-              {inventory.map(i => (
-                <div key={i.id} className="flex items-center justify-between px-5 py-2.5">
-                  <div>
-                    <p className="text-sm font-semibold text-main">{i.name}</p>
-                    <p className="text-[10px] text-muted uppercase">{i.category}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => updateQty(i.id, i.quantity - 1)} className="w-6 h-6 rounded bg-page border border-soft text-muted flex items-center justify-center text-sm font-bold hover:bg-softbg cursor-pointer">-</button>
-                    <span className="font-mono w-8 text-center text-sm font-semibold text-main">{i.quantity}</span>
-                    <button onClick={() => updateQty(i.id, i.quantity + 1)} className="w-6 h-6 rounded bg-page border border-soft text-muted flex items-center justify-center text-sm font-bold hover:bg-softbg cursor-pointer">+</button>
-                    <button onClick={() => removeItem(i.id)} className="text-muted/40 hover:text-rose-500 p-1 cursor-pointer" aria-label="Remove"><Trash2 className="w-4 h-4" /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        {tab === 'stock' && (
+          <StockRoom
+            items={stock.items}
+            movements={stock.movements}
+            loading={stock.loading}
+            error={stock.error}
+            onReceive={stock.receive}
+            onSaveItem={stock.saveItem}
+          />
+        )}
+
+        {tab === 'dishes' && (
+          <DishStockEditor items={stock.items} dishStock={stock.dishStock} onSave={stock.saveRecipe} />
         )}
 
         {tab === 'cleaning' && (
@@ -137,7 +104,7 @@ export function HousekeepingTab() {
               <input type="date" value={taskDate} onChange={e => setTaskDate(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500" />
               <input value={taskCleanedBy} onChange={e => setTaskCleanedBy(e.target.value)} placeholder="Cleaned by" className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 w-32" />
               <input value={taskCheckedBy} onChange={e => setTaskCheckedBy(e.target.value)} placeholder="Checked by" className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 w-32" />
-              <button onClick={addTask} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-semibold transition-colors cursor-pointer"><Plus className="w-4 h-4" /> Add</button>
+              <button onClick={addTask} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-semibold transition-colors cursor-pointer">Add</button>
             </div>
             <div className="divide-y divide-soft">
               {cleaning.length === 0 && <div className="px-5 py-6 text-sm text-muted">No cleaning entries yet.</div>}

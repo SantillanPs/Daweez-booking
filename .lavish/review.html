@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Daweez · the channel feeds, fixed</title>
+<title>Daweez · the stock room is built</title>
 <style>
   :root{
     --page:#141414; --card:#1F1F1F; --line:#3A3A3A;
@@ -13,105 +13,51 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--page);color:var(--body);
-    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    padding:32px 26px 70px;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:940px;margin:0 auto}
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:36px 26px 60px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:720px;margin:0 auto}
   .eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
-  h1{font-size:27px;line-height:1.25;margin:10px 0 10px;letter-spacing:-.02em}
-  h2{font-size:17px;line-height:1.3;margin:0 0 10px}
-  p{margin:0 0 12px;color:var(--dim)}
-  b{color:var(--body)}
-  code{background:#262626;border:1px solid var(--line);border-radius:5px;padding:1px 6px;
-    font-size:12.5px;color:var(--gold-ink);font-family:ui-monospace,Menlo,monospace}
-  .lede{color:var(--dim);max-width:80ch;margin-bottom:26px}
-  section{border-top:1px solid var(--line);padding:24px 0 14px}
-  section:first-of-type{border-top:0;padding-top:0}
-  table{width:100%;border-collapse:collapse;font-size:13.5px}
-  th{text-align:left;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
-    font-weight:800;padding:0 12px 8px 0;border-bottom:1px solid var(--line)}
+  h1{font-size:27px;line-height:1.25;margin:8px 0 20px;letter-spacing:-.02em}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 18px}
   td{padding:7px 12px 7px 0;border-bottom:1px solid #2B2B2B;color:var(--dim);vertical-align:top}
-  td.k{width:200px;color:var(--body);font-weight:700}
-  td.was{color:var(--bad)}
-  td.now{color:var(--good);font-weight:700}
-  ul{margin:0 0 12px;padding-left:22px;color:var(--dim)}
-  li{margin-bottom:8px}
-  .qa{display:flex;gap:14px;align-items:baseline;margin-bottom:14px}
-  .qa .n{color:var(--gold-ink);font-weight:800;min-width:18px}
-  .qa div{flex:1;color:var(--dim)}
-  .qa div b{color:var(--body)}
-  .ask{border-left:3px solid var(--gold);background:var(--gold-fill);border-radius:8px;padding:16px 18px;margin-top:16px}
-  .ask p{margin:0 0 8px;color:var(--gold-ink)}
-  .ask p:last-child{margin:0}
-  .ask b{color:#fff}
+  td.k{width:150px;color:var(--body);font-weight:700}
+  code{background:#262626;border:1px solid var(--line);border-radius:5px;padding:1px 5px;
+    font-size:12.5px;color:var(--gold-ink);font-family:ui-monospace,Menlo,monospace}
+  .ok{border-left:3px solid var(--good);background:var(--card);border-radius:8px;padding:13px 17px;margin:0 0 16px}
+  .ok p{margin:0 0 6px;font-size:14.5px}
+  .ok p:last-child{margin:0}
+  .ok b{color:var(--good)}
+  .next{font-size:14px;color:var(--muted);margin:0 0 18px}
+  .next b{color:var(--dim)}
+  .go{border-left:3px solid var(--gold);background:var(--gold-fill);border-radius:8px;padding:15px 18px}
+  .go p{margin:0;color:var(--gold-ink);font-size:15.5px}
+  .go b{color:#fff}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <div class="eyebrow">Daweez · built</div>
-  <h1>The channel table is one row now</h1>
-  <p class="lede">You said do what I think is good, so I picked the answer that is safe whichever way the
-    Airbnb question turns out — and fixed the rule, not just the rows.</p>
+  <div class="eyebrow">Daweez · k71 part 1</div>
+  <h1>The stock room is built.</h1>
 
-  <section>
-    <h2>The table, before and after</h2>
-    <table>
-      <tr><th>What</th><th>Before</th><th>After</th></tr>
-      <tr><td class="k">Feed rows</td><td class="was">20</td><td class="now">1</td></tr>
-      <tr><td class="k">Rows with no address</td><td class="was">11</td><td class="now">0</td></tr>
-      <tr><td class="k">Rows carrying one Airbnb address</td><td class="was">9</td><td class="now">1 (on Room 1)</td></tr>
-      <tr><td class="k">Times the same calendar is downloaded</td><td class="was">9 per sync</td><td class="now">1</td></tr>
-      <tr><td class="k">Rooms one Airbnb reservation blocks</td><td class="was">9</td><td class="now">1</td></tr>
-      <tr><td class="k">Bookings to clean up</td><td colspan="2">none — there were no imported stays left in the table</td></tr>
-    </table>
-  </section>
+  <table>
+    <tr><td class="k">Stock room</td><td>Items with a unit, a price, a par level, and what the shelf is worth. <b>Receive</b> on each row. In the Housekeeping tab.</td></tr>
+    <tr><td class="k">What a dish uses</td><td>Open a dish, add its stock lines. A drink is one line, a cooked dish four or five. The screen counts the dishes that still need them.</td></tr>
+    <tr><td class="k">Automatic</td><td>Tap a dish at the till → the shelf goes down by itself. Take the line off → every gram goes back.</td></tr>
+    <tr><td class="k">The log</td><td>Every movement: what, how many, in or out, why, who. One sale writes several lines.</td></tr>
+    <tr><td class="k">The column</td><td>The sold line now keeps the dish's <code>id</code> — the one thing that made all of this possible.</td></tr>
+  </table>
 
-  <section>
-    <h2>The three things I built</h2>
-    <div class="qa"><span class="n">A</span><div><b>One address cannot live on two rooms.</b> The Channels screen
-      now says so <b>twice</b> — a line above the Save button naming the rooms, and a refusal on Save that says the
-      same words. It names <i>the rooms, never the URL</i>, because 60 characters of link tells the desk nothing.
-      <br><span style="color:var(--muted);font-size:12.5px">Rule in <code>utils/feedUrls.ts</code>.</span></div></div>
-    <div class="qa"><span class="n">B</span><div><b>The blank rows cannot come back.</b> They were written by the
-      screen itself: every room draws two empty boxes, and saving stored them. Saving now stores only links that
-      have an address — and clearing a box <b>removes</b> its feed, so "forget this link" and "never had one" end
-      in the same place.
-      <br><span style="color:var(--muted);font-size:12.5px">In <code>db.saveFeeds</code>.</span></div></div>
-    <div class="qa"><span class="n">C</span><div><b>The nine became one.</b> The surviving Airbnb calendar hangs
-      off <b>Room 1</b>, because a calendar shared by the whole house is the house's, not a room's — so an imported
-      stay now lands on <b>one</b> room the desk can move, instead of blocking all ten.
-      <br><span style="color:var(--muted);font-size:12.5px">Migration <code>20260930170000_one_feed_per_address</code>.</span></div></div>
-  </section>
+  <div class="ok">
+    <p><b>Checked:</b> <code>tsc</code> 0 · <code>lint</code> 0 errors (277 warnings, the baseline) · and the two database functions proved on a real item — a delivery of 5 raised the count, the reversal took it back to 0, nothing left behind.</p>
+    <p><b>Refresh and open Housekeeping.</b> Three parts now: Stock room · What a dish uses · Cleaning Checklist.</p>
+  </div>
 
-  <section>
-    <h2>Why this answer, whichever the listing is</h2>
-    <ul>
-      <li><b>If it is the whole house</b> — one feed is exactly right, and a reservation now takes one room
-        instead of the building.</li>
-      <li><b>If each room really has its own listing</b> — the nine copies were all the <i>same</i> address, so at
-        most one could have been right; nothing was lost by removing eight. Paste each room's own link into
-        Settings → Channels and the new guard will confirm every one is different.</li>
-      <li><b>Either way</b>, the download is 1× instead of 9×, and Analytics and Expenses stop waiting ~7 seconds
-        on that run.</li>
-    </ul>
-    <p>No booking, no money and no setting was touched — only the channel table and the rule that guards it.</p>
-  </section>
+  <p class="next"><b>Not yet:</b> suppliers · the low-stock alert list · the physical count screen. Those are parts 3, 4 and 5.</p>
 
-  <section>
-    <h2>Checks</h2>
-    <table>
-      <tr><th>Checked</th><th>Result</th></tr>
-      <tr><td class="k">tsc · lint</td><td class="now">0 · 0 errors (277 warnings, the baseline)</td></tr>
-      <tr><td class="k">Feed rows in the database</td><td class="now">1 — Room 1, one URL</td></tr>
-      <tr><td class="k">Imported stays left behind</td><td class="now">0</td></tr>
-    </table>
-    <div class="ask">
-      <p><b>Refresh the app</b> and open Settings → Channels: you should see one link under Room 1 and nothing
-        under the others.</p>
-      <p>If the hotel <i>does</i> have a separate Airbnb listing per room, tell me and paste them in — the screen
-        will check each one as you go.</p>
-    </div>
-  </section>
+  <div class="go">
+    <p><b>One thing needs you:</b> type a few dishes' stock lines (start with the drinks — one line each), then sell one at the till and watch the log.</p>
+  </div>
 
 </div>
 </body>
