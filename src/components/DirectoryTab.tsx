@@ -121,7 +121,7 @@ export function DirectoryTab() {
       {/* Page Header */}
       <div className="flex justify-between items-center gap-4 border-b border-soft pb-3">
         <div>
-          <h2 className="text-base font-bold text-main tracking-tight">Corporate Partners</h2>
+          <h2 className="text-base font-bold text-main tracking-tight">Agencies</h2>
           <p className="text-xs text-muted mt-0.5">Manage your partners, payment rules, and custom prices.</p>
         </div>
       </div>

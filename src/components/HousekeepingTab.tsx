@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Boxes, ClipboardCheck, Trash2, UtensilsCrossed } from 'lucide-react'
+import { useParams } from '@tanstack/react-router'
+import { Trash2 } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { getCleaningTasks, saveCleaningTasks, CleaningTask, CLEANING_ITEMS } from '../utils/cleaning'
 import { useStockRoom } from './housekeeping/useStockRoom'
@@ -14,10 +15,15 @@ type Tab = 'stock' | 'dishes' | 'cleaning'
  * The stock room replaced the old flat inventory list (k71, the owner's ruling: *"go"*). The items are the same
  * rows as before — one shelf for the kitchen and the hotel — but they now carry a unit, a price, a par level,
  * and the movements that explain every number on the screen.
+ *
+ * This is the **Stock** tab (the owner's ruling, 2026-10-04). Which of the three screens shows comes from the
+ * address — the sub-tabs are drawn by `DashboardLayout` with every other tab's, so this screen has no buttons
+ * of its own for it. An address it does not know shows the stock room.
  */
 export function HousekeepingTab() {
   const { rooms } = useDashboardData()
-  const [tab, setTab] = useState<Tab>('stock')
+  const { view } = useParams({ strict: false })
+  const tab: Tab = view === 'dishes' || view === 'cleaning' ? view : 'stock'
   const [cleaning, setCleaning] = useState<CleaningTask[]>([])
   const stock = useStockRoom()
 
@@ -52,90 +58,71 @@ export function HousekeepingTab() {
     await saveCleaningTasks(next)
   }
 
-  const navClass = (isOn: boolean) => 'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ' +
-    (isOn ? 'bg-brand-primary text-ink-900 shadow-sm' : 'text-muted hover:bg-softbg')
-
   return (
-    <div className="flex flex-col md:flex-row gap-6 h-full">
-      <div className="w-full md:w-56 shrink-0">
-        <nav className="flex md:flex-col gap-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
-          <button onClick={() => setTab('stock')} className={navClass(tab === 'stock')}>
-            <Boxes className="w-4 h-4" /> Stock room
-          </button>
-          <button onClick={() => setTab('dishes')} className={navClass(tab === 'dishes')}>
-            <UtensilsCrossed className="w-4 h-4" /> What a dish uses
-          </button>
-          <button onClick={() => setTab('cleaning')} className={navClass(tab === 'cleaning')}>
-            <ClipboardCheck className="w-4 h-4" /> Cleaning Checklist
-          </button>
-        </nav>
-      </div>
+    <div className="min-w-0">
+      {tab === 'stock' && (
+        <StockRoom
+          items={stock.items}
+          movements={stock.movements}
+          loading={stock.loading}
+          error={stock.error}
+          onReceive={stock.receive}
+          onSaveItem={stock.saveItem}
+        />
+      )}
 
-      <div className="flex-1 min-w-0">
-        {tab === 'stock' && (
-          <StockRoom
-            items={stock.items}
-            movements={stock.movements}
-            loading={stock.loading}
-            error={stock.error}
-            onReceive={stock.receive}
-            onSaveItem={stock.saveItem}
-          />
-        )}
+      {tab === 'dishes' && (
+        <DishStockEditor items={stock.items} dishStock={stock.dishStock} onSave={stock.saveRecipe} />
+      )}
 
-        {tab === 'dishes' && (
-          <DishStockEditor items={stock.items} dishStock={stock.dishStock} onSave={stock.saveRecipe} />
-        )}
-
-        {tab === 'cleaning' && (
-          <div className="bg-card border border-soft rounded-lg overflow-hidden font-sans shadow-sm">
-            <div className="px-5 py-4 border-b border-soft">
-              <h3 className="text-sm font-semibold text-main">Cleaning Checklist</h3>
-              <p className="text-xs text-muted mt-1">Log what was cleaned, who cleaned it, and who checked it.</p>
-            </div>
-            <div className="p-4 border-b border-soft flex flex-wrap items-end gap-2">
-              <select value={taskItem} onChange={e => setTaskItem(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 min-w-[140px]">
-                {CLEANING_ITEMS.map(it => <option key={it} value={it}>{it}</option>)}
-              </select>
-              <select value={taskRoom} onChange={e => setTaskRoom(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500">
-                <option value="">Room…</option>
-                {rooms.map(r => <option key={r.id} value={r.id}>Room {r.room_number}</option>)}
-              </select>
-              <input type="date" value={taskDate} onChange={e => setTaskDate(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500" />
-              <input value={taskCleanedBy} onChange={e => setTaskCleanedBy(e.target.value)} placeholder="Cleaned by" className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 w-32" />
-              <input value={taskCheckedBy} onChange={e => setTaskCheckedBy(e.target.value)} placeholder="Checked by" className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 w-32" />
-              <button onClick={addTask} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-semibold transition-colors cursor-pointer">Add</button>
-            </div>
-            <div className="divide-y divide-soft">
-              {cleaning.length === 0 && <div className="px-5 py-6 text-sm text-muted">No cleaning entries yet.</div>}
-              {cleaning.map(t => {
-                const room = rooms.find(r => r.id === t.room_id)
-                return (
-                  <div key={t.id} className="px-5 py-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-main">{t.item}</p>
-                        <p className="text-[10px] text-muted">{room ? 'Room ' + room.room_number : 'General'} · {t.cleaned_by || 'not cleaned'} · checked by {t.checked_by || '—'}</p>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => updateTask(t.id, { cleaned_by: 'unassigned', status: 'pending' })} className="text-[10px] px-2 py-1 rounded border border-soft text-muted hover:bg-softbg cursor-pointer">Reset</button>
-                        <button onClick={() => removeTask(t.id)} className="text-muted/40 hover:text-rose-500 p-1 cursor-pointer" aria-label="Remove"><Trash2 className="w-4 h-4" /></button>
-                      </div>
+      {tab === 'cleaning' && (
+        <div className="bg-card border border-soft rounded-lg overflow-hidden font-sans shadow-sm">
+          <div className="px-5 py-4 border-b border-soft">
+            <h3 className="text-sm font-semibold text-main">Cleaning Checklist</h3>
+            <p className="text-xs text-muted mt-1">Log what was cleaned, who cleaned it, and who checked it.</p>
+          </div>
+          <div className="p-4 border-b border-soft flex flex-wrap items-end gap-2">
+            <select value={taskItem} onChange={e => setTaskItem(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 min-w-[140px]">
+              {CLEANING_ITEMS.map(it => <option key={it} value={it}>{it}</option>)}
+            </select>
+            <select value={taskRoom} onChange={e => setTaskRoom(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500">
+              <option value="">Room…</option>
+              {rooms.map(r => <option key={r.id} value={r.id}>Room {r.room_number}</option>)}
+            </select>
+            <input type="date" value={taskDate} onChange={e => setTaskDate(e.target.value)} className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500" />
+            <input value={taskCleanedBy} onChange={e => setTaskCleanedBy(e.target.value)} placeholder="Cleaned by" className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 w-32" />
+            <input value={taskCheckedBy} onChange={e => setTaskCheckedBy(e.target.value)} placeholder="Checked by" className="bg-page border border-soft text-main px-2.5 py-2 rounded-lg text-sm focus:outline-none focus:border-gold-500 w-32" />
+            <button onClick={addTask} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-semibold transition-colors cursor-pointer">Add</button>
+          </div>
+          <div className="divide-y divide-soft">
+            {cleaning.length === 0 && <div className="px-5 py-6 text-sm text-muted">No cleaning entries yet.</div>}
+            {cleaning.map(t => {
+              const room = rooms.find(r => r.id === t.room_id)
+              return (
+                <div key={t.id} className="px-5 py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-main">{t.item}</p>
+                      <p className="text-[10px] text-muted">{room ? 'Room ' + room.room_number : 'General'} · {t.cleaned_by || 'not cleaned'} · checked by {t.checked_by || '—'}</p>
                     </div>
-                    <div className="flex gap-1.5 mt-2">
-                      <input value={t.cleaned_by || ''} onChange={e => updateTask(t.id, { cleaned_by: e.target.value, status: e.target.value ? 'done' : t.status })} placeholder="Cleaned by"
-                        className="flex-1 bg-page border border-soft text-main px-2 py-1 rounded text-xs focus:outline-none focus:border-gold-500" />
-                      <input value={t.checked_by || ''} onChange={e => updateTask(t.id, { checked_by: e.target.value, status: e.target.value ? 'checked' : t.status })} placeholder="Checked by"
-                        className="flex-1 bg-page border border-soft text-main px-2 py-1 rounded text-xs focus:outline-none focus:border-gold-500" />
-                      <span className={'text-[10px] font-bold uppercase px-2 py-1 rounded ' + (t.status === 'checked' ? 'bg-emerald-100 text-emerald-700' : t.status === 'done' ? 'bg-gold-100 text-gold-700' : 'bg-amber-100 text-amber-700')}>{t.status}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => updateTask(t.id, { cleaned_by: 'unassigned', status: 'pending' })} className="text-[10px] px-2 py-1 rounded border border-soft text-muted hover:bg-softbg cursor-pointer">Reset</button>
+                      <button onClick={() => removeTask(t.id)} className="text-muted/40 hover:text-rose-500 p-1 cursor-pointer" aria-label="Remove"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
-                )
-              })}
-            </div>
+                  <div className="flex gap-1.5 mt-2">
+                    <input value={t.cleaned_by || ''} onChange={e => updateTask(t.id, { cleaned_by: e.target.value, status: e.target.value ? 'done' : t.status })} placeholder="Cleaned by"
+                      className="flex-1 bg-page border border-soft text-main px-2 py-1 rounded text-xs focus:outline-none focus:border-gold-500" />
+                    <input value={t.checked_by || ''} onChange={e => updateTask(t.id, { checked_by: e.target.value, status: e.target.value ? 'checked' : t.status })} placeholder="Checked by"
+                      className="flex-1 bg-page border border-soft text-main px-2 py-1 rounded text-xs focus:outline-none focus:border-gold-500" />
+                    <span className={'text-[10px] font-bold uppercase px-2 py-1 rounded ' + (t.status === 'checked' ? 'bg-emerald-100 text-emerald-700' : t.status === 'done' ? 'bg-gold-100 text-gold-700' : 'bg-amber-100 text-amber-700')}>{t.status}</span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

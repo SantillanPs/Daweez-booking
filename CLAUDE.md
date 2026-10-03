@@ -64,7 +64,8 @@ There is **no test suite**. Verify changes by running the app against the develo
 
 - **Calendar** (`CalendarTab`) is the landing screen and the only way to start a booking: pick dates on the grid, then the action bar offers New booking / short stay / block / log old booking. `WalkInBookingForm` is the single-page booking form (it takes the payment); `calendar/ExtendStayModal` is the booking "quick view" (payments, check-in/out, extend, cancel).
 - **Restaurant** (`RestaurantTab`): tabs and tab lines live in their own tables, never on the booking. A room guest's food joins the room bill; a walk-in diner settles at the counter. A menu tap writes a tab line and deducts the dish's recipe from stock (`utils/stock.ts`, `apply_stock_movement`).
-- **Stock room** lives under the Housekeeping tab.
+- **Stock** (`HousekeepingTab`, still at `/housekeeping`): Stock room · What a dish uses (`/housekeeping/dishes`) · Cleaning checklist (`/housekeeping/cleaning`).
+- **The top bar is four tabs — Front desk, Restaurant, Stock, Money — plus a Settings gear.** The list is `TABS` in `DashboardLayout.tsx`; a tab opens on its first screen and the rest are sub-tabs. A new screen goes inside a tab, never a fifth tab, and never in the bottom bar.
 - `/reserve` (`PublicReservePortal`) is a public page outside the passcode gate.
 
 ## Project docs

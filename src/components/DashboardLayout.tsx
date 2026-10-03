@@ -3,21 +3,55 @@ import { Link, Outlet, useNavigate, useLocation } from '@tanstack/react-router'
 import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
 import {
-  Sparkles, RefreshCw, LogOut, BarChart3, TrendingUp,
-  Calendar, Settings, Building, BookOpen, Boxes, Utensils
+  Sparkles, RefreshCw, LogOut, Settings, ConciergeBell, Utensils, Boxes, PhilippinePeso
 } from 'lucide-react'
 import { ToastHost } from './Toast'
 import { ConfirmHost } from './ConfirmDialog'
 
+/**
+ * **Four tabs, and the screens inside each** (the owner's ruling, 2026-10-04 — it replaced the six-tab idea on
+ * card k75).
+ *
+ * There used to be eight tabs in one row, one per screen. A tab is now a part of the hotel, and it opens on the
+ * screen staff use most: the FIRST in its list. The other screens are sub-tabs under the top bar, one tap away.
+ * A new screen goes inside its part — it never becomes a fifth tab, and it never goes in the bottom bar, which
+ * holds these four and nothing else.
+ *
+ * The addresses did not move (`/guests` is still Agencies, `/expenses` Today's money, `/analytics` the Earnings
+ * report, `/housekeeping` the stock room), so an old bookmark lands where it always did.
+ *
+ * A part with one screen shows no sub-tabs: Restaurant gets its row when the Menu screen is built.
+ */
 const TABS = [
-  { id: 'calendar',  label: 'Calendar',  Icon: Calendar, to: '/calendar' },
-  { id: 'bookings',  label: 'Bookings',  Icon: BookOpen, to: '/bookings' },
-  { id: 'guests',    label: 'Corporate Partners', Icon: Building, to: '/guests' },
-  { id: 'analytics', label: 'Analytics', Icon: BarChart3, to: '/analytics' },
-  { id: 'expenses',  label: 'Expenses',  Icon: TrendingUp, to: '/expenses' },
-  { id: 'housekeeping', label: 'Housekeeping', Icon: Boxes, to: '/housekeeping' },
-  { id: 'restaurant', label: 'Restaurant', Icon: Utensils, to: '/restaurant' },
-  { id: 'settings',  label: 'Settings',  Icon: Settings, to: '/settings' },
+  {
+    label: 'Front desk', Icon: ConciergeBell,
+    screens: [
+      { label: 'Calendar', to: '/calendar' },
+      { label: 'Bookings', to: '/bookings' },
+      { label: 'Agencies', to: '/guests' },
+    ],
+  },
+  {
+    label: 'Restaurant', Icon: Utensils,
+    screens: [
+      { label: 'Orders', to: '/restaurant' },
+    ],
+  },
+  {
+    label: 'Stock', Icon: Boxes,
+    screens: [
+      { label: 'Stock room', to: '/housekeeping' },
+      { label: 'What a dish uses', to: '/housekeeping/dishes' },
+      { label: 'Cleaning checklist', to: '/housekeeping/cleaning' },
+    ],
+  },
+  {
+    label: 'Money', Icon: PhilippinePeso,
+    screens: [
+      { label: "Today's money", to: '/expenses' },
+      { label: 'Earnings report', to: '/analytics' },
+    ],
+  },
 ]
 
 export function DashboardLayout() {
@@ -36,7 +70,14 @@ export function DashboardLayout() {
   // The promo ON/OFF switch is retired (card k128): there is ONE price now, so
   // there is nothing left to switch. A room's price is simply its price.
 
-  const isCalendarTab = location.pathname === '/calendar' || location.pathname === '/'
+  // Where the desk is now. The tab is found by the start of the address, so `/housekeeping/dishes` still lights
+  // up Stock; the screen is the exact match, or the tab's first screen when the address names none.
+  const here = location.pathname.replace(/\/+$/, '') || '/'
+  const currentTab = TABS.find(tab => tab.screens.some(s => here === s.to || here.startsWith(s.to + '/')))
+  const currentScreen = currentTab?.screens.find(s => s.to === here) ?? currentTab?.screens[0]
+  const subTabs = currentTab && currentTab.screens.length > 1 ? currentTab.screens : null
+  const isCalendarTab = here === '/calendar' || here === '/'
+  const isSettings = here === '/settings'
 
   const handleLogout = () => {
     localStorage.removeItem('daweez_pms_auth')
@@ -75,7 +116,7 @@ export function DashboardLayout() {
       createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense,
       onLogout: handleLogout
     }}>
-      <div className={isCalendarTab ? "h-screen bg-background flex flex-col overflow-hidden pb-[56px] md:pb-0" : "min-h-screen bg-background pb-20 md:pb-6"}>
+      <div className={isCalendarTab ? "h-screen bg-background flex flex-col overflow-hidden pb-[calc(57px+env(safe-area-inset-bottom,0px))] lg:pb-0" : "min-h-screen bg-background pb-20 lg:pb-6"}>
         <header className={`sticky top-0 z-40 bg-card border-b border-soft ${isCalendarTab ? 'flex-shrink-0' : ''}`}>
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-[56px] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 shrink-0">
@@ -88,41 +129,72 @@ export function DashboardLayout() {
               </div>
             </div>
 
-            <div className="hidden md:flex items-center gap-1 p-1 bg-page/70 border border-soft rounded-xl">
-              {TABS.map(t => (
-                <Link key={t.id} to={t.to}
-                  className="px-3.5 py-1.5 text-sm font-medium rounded-lg text-muted hover:text-brand-text hover:bg-card transition-colors"
-                  activeProps={{ className: '!bg-gold-400 !text-ink-900 shadow-sm' }}>
-                  {t.label}
-                </Link>
-              ))}
-            </div>
+            <nav aria-label="Main" className="hidden lg:flex items-center gap-1 p-1 bg-page/70 border border-soft rounded-xl">
+              {TABS.map(tab => {
+                const isOn = tab === currentTab
+                return (
+                  <Link key={tab.label} to={tab.screens[0].to} activeOptions={{ exact: true }}
+                    aria-current={isOn ? (currentScreen === tab.screens[0] ? 'page' : 'true') : undefined}
+                    className={'flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors ' +
+                      (isOn ? 'bg-gold-400 text-ink-900 shadow-sm' : 'text-muted hover:text-brand-text hover:bg-card')}>
+                    <tab.Icon className="w-4 h-4" aria-hidden="true" />
+                    {tab.label}
+                  </Link>
+                )
+              })}
+            </nav>
 
+            {/* Settings is the gear, and Logout sits past a divider: neither is one of the four tabs. Below the
+                desktop width these are finger-sized (44px). */}
             <div className="flex items-center gap-1.5">
-
               <button
                 onClick={handleTriggerSync}
                 disabled={isSyncing}
-                className={`hidden sm:flex items-center gap-1.5 text-xs font-semibold border rounded-xl px-3 py-1.5 transition-all cursor-pointer ${isSyncing ? 'bg-brand-primary/10 text-brand-text border-brand-primary/20' : 'bg-card border-soft text-main hover:bg-softbg'}`}>
+                className={`hidden sm:flex items-center gap-1.5 h-11 lg:h-8 text-xs font-semibold border rounded-xl px-3 transition-all cursor-pointer ${isSyncing ? 'bg-brand-primary/10 text-brand-text border-brand-primary/20' : 'bg-card border-soft text-main hover:bg-softbg'}`}>
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                 {isSyncing ? 'Syncing' : 'Sync'}
               </button>
-              <button onClick={handleLogout} className="flex items-center gap-1.5 text-xs font-semibold text-muted border border-soft bg-card hover:bg-danger-50 hover:text-danger-600 hover:border-danger-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer">
-                <LogOut className="w-3.5 h-3.5" />
+              <Link to="/settings" activeOptions={{ exact: true }} aria-label="Settings" title="Settings"
+                className={'flex items-center justify-center w-11 h-11 lg:w-8 lg:h-8 border rounded-xl transition-colors ' +
+                  (isSettings ? 'bg-gold-400 border-gold-400 text-ink-900' : 'bg-card border-soft text-muted hover:text-main hover:bg-softbg')}>
+                <Settings className="w-4 h-4" aria-hidden="true" />
+              </Link>
+              <span className="w-px h-5 bg-soft mx-1" aria-hidden="true" />
+              <button onClick={handleLogout} aria-label="Logout" className="flex items-center justify-center gap-1.5 w-11 sm:w-auto h-11 lg:h-8 text-xs font-semibold text-muted border border-soft bg-card hover:bg-danger-50 hover:text-danger-600 hover:border-danger-200 sm:px-3 rounded-xl transition-colors cursor-pointer">
+                <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
                 <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </div>
-        </header>
 
-        {syncSuccessMsg && (
-          <div className="fixed top-[64px] right-4 z-50 animate-in fade-in slide-in-from-top-1">
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-card border border-soft text-sm font-medium rounded-xl shadow-soft">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              {syncSuccessMsg}
+          {subTabs && (
+            <nav aria-label={currentTab?.label} className="border-t border-soft">
+              <div className="max-w-[1600px] mx-auto px-4 sm:px-6 flex gap-4 sm:gap-6 overflow-x-auto no-scrollbar">
+                {subTabs.map(s => {
+                  const isOn = s === currentScreen
+                  return (
+                    <Link key={s.to} to={s.to} activeOptions={{ exact: true }}
+                      aria-current={isOn ? 'page' : undefined}
+                      className={'flex items-center h-11 lg:h-10 border-b-2 text-[13px] sm:text-sm font-medium whitespace-nowrap transition-colors ' +
+                        (isOn ? 'border-gold-600 text-main' : 'border-transparent text-muted hover:text-main')}>
+                      {s.label}
+                    </Link>
+                  )
+                })}
+              </div>
+            </nav>
+          )}
+
+          {/* Hangs under the header, however tall it is — with or without the sub-tabs. */}
+          {syncSuccessMsg && (
+            <div className="absolute top-full right-4 mt-2 animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-card border border-soft text-sm font-medium rounded-xl shadow-soft">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                {syncSuccessMsg}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </header>
 
         {/* Every "saved" / "could not save" message in the staff app lands here. */}
         <ToastHost />
@@ -137,16 +209,18 @@ export function DashboardLayout() {
           <Outlet />
         </div>
 
-        <nav className="fixed bottom-0 inset-x-0 z-40 bg-card border-t border-soft md:hidden safe-bottom">
-          <div className="flex">
-            {TABS.map(t => {
-              const Icon = t.Icon
+        {/* Tablet and phone: the four tabs, and only the four. A tab's other screens are the sub-tabs at the top. */}
+        <nav aria-label="Main" className="fixed bottom-0 inset-x-0 z-40 bg-card border-t border-soft lg:hidden safe-bottom">
+          <div className="flex h-14">
+            {TABS.map(tab => {
+              const isOn = tab === currentTab
               return (
-                <Link key={t.id} to={t.to}
-                  className="flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted"
-                  activeProps={{ className: '!text-brand-text' }}>
-                  <Icon className="w-5 h-5" />
-                  <span>{t.label}</span>
+                <Link key={tab.label} to={tab.screens[0].to} activeOptions={{ exact: true }}
+                  aria-current={isOn ? (currentScreen === tab.screens[0] ? 'page' : 'true') : undefined}
+                  className={'flex-1 flex flex-col items-center justify-center gap-0.5 border-t-2 -mt-px text-xs transition-colors ' +
+                    (isOn ? 'border-gold-600 font-semibold text-brand-text' : 'border-transparent font-medium text-muted')}>
+                  <tab.Icon className="w-5 h-5" aria-hidden="true" />
+                  <span>{tab.label}</span>
                 </Link>
               )
             })}

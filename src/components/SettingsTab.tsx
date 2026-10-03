@@ -135,7 +135,7 @@ export function SettingsTab() {
           typed, and it says how many changes are waiting. Kept in the LIGHT shell like
           the rest of the staff app — no dark bar floating over a light page. */}
       {changes > 0 && (
-        <div className="fixed bottom-16 md:bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-card border border-gold-300 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg">
+        <div className="fixed bottom-16 lg:bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-card border border-gold-300 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg">
           <span className="text-[12px] font-semibold text-main">
             {changes} change{changes === 1 ? '' : 's'} not saved
           </span>

@@ -137,9 +137,17 @@ const bookingsRoute = createRoute({
   component: lazyRouteComponent(() => import('./components/BookingsListTab'), 'BookingsListTab')
 })
 
+/**
+ * **One route, three addresses:** `/housekeeping` is the stock room, `/housekeeping/dishes` is "What a dish
+ * uses", `/housekeeping/cleaning` is the cleaning checklist.
+ *
+ * These are the Stock tab's sub-tabs (the owner's ruling, 2026-10-04). They used to be buttons inside the
+ * screen with no address of their own. The optional `view` keeps them ONE route on purpose — the screen stays
+ * mounted, so going between them does not read the stock room from the database again.
+ */
 const housekeepingRoute = createRoute({
   getParentRoute: () => dashboardRoute,
-  path: '/housekeeping',
+  path: '/housekeeping/{-$view}',
   component: lazyRouteComponent(() => import('./components/HousekeepingTab'), 'HousekeepingTab')
 })
 

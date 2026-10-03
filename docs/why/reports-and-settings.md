@@ -35,6 +35,14 @@
 - An empty link box is not saved at all — empty rows used to make the screen look connected to Booking.com when it was not.
 - A calendar event that clashes with an existing booking is skipped, never forced in.
 
+## The tabs
+
+- **Four tabs — Front desk · Restaurant · Stock · Money — and a gear for Settings** (the owner, 2026-10-04). There were eight, one per screen; an earlier idea had six (card k75).
+- **Each tab opens on the screen staff use most:** Calendar, Orders, Stock room, Today's money. The other screens are small sub-tabs at the top, one tap away.
+- **On tablet and phone the bottom bar holds only the four tabs.** Sub-tabs never go inside it.
+- Old addresses keep working, and Logout stays apart from the tabs.
+- What moved where: Agencies was "Corporate Partners"; Today's money was "Expenses"; the Earnings report was "Analytics"; Stock was "Housekeeping".
+
 ## The staff app's look
 
 - Charcoal and gold, taken from the logo. **The working app stays light** — a dark top bar was tried and reverted. Dark is only for the login screen and the public booking page header.

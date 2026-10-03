@@ -9,7 +9,7 @@ These notes keep the **reasons** behind how Daweez works: what the staff do, and
 | [bills-and-paper.md](bills-and-paper.md) | The printed statement, the agency bill, the 58 mm receipt, the daily report sheet |
 | [restaurant.md](restaurant.md) | The till, guest tabs, walk-in diners, the menu |
 | [stock.md](stock.md) | The stock room and how a sale takes its ingredients |
-| [reports-and-settings.md](reports-and-settings.md) | The Earnings Report, Settings, Airbnb / Booking.com calendar links |
+| [reports-and-settings.md](reports-and-settings.md) | The Earnings Report, Settings, the tabs, Airbnb / Booking.com calendar links |
 | [database.md](database.md) | Why the database is shaped the way it is, and the traps that have bitten before |
 
 The hotel: **Daweez Pension House**, Tandag City. 10 rooms plus three venues (Vacation House, Gazebo, Garden Area). The staff are not technical, so every label is plain everyday English — "Total Money In", "Your Profit", never accounting words.
