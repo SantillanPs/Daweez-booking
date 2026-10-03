@@ -4,7 +4,7 @@ export { generateUUID, normalizeVenueId } from './helpers'
 export { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 export {
   getRooms, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, getVenues, getBookings, saveBookings,
-  insertBooking, updateBooking, deleteBooking, confirmBooking,
+  insertBooking, updateBooking, deleteBooking, cancelBooking, confirmBooking, setBookingGroup,
   getFeeds, saveFeeds
 } from './db'
 export { isRoomAvailable, isVenueAvailable, isVenueRangeAvailable } from './availability'

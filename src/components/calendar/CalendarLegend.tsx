@@ -26,6 +26,7 @@ export function CalendarLegend() {
           <DotSwatch className="bg-danger-500" label="owes" />
           <DotSwatch className="bg-amber-400" label="deposit only" />
           <DotSwatch className="bg-emerald-500" label="paid" />
+          <DotSwatch className="bg-indigo-500" label="agency bill" />
         </div>
       </div>
 

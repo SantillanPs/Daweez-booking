@@ -19,8 +19,10 @@ import { Line } from './StatementShell'
  * same reason `StatementChargesTable` was split out before it. The two sections are
  * self-contained: they need only the booking and the rate config.
  */
-export function StatementGuestStay({ booking, rooms, venues, rates }: {
+export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel = '' }: {
   booking: Booking
+  /** `7, 9` when the bill covers several rooms; the table below lists each room's type. */
+  roomsLabel?: string
   rooms: Room[]
   venues: Venue[]
   rates: RateConfig
@@ -29,8 +31,8 @@ export function StatementGuestStay({ booking, rooms, venues, rates }: {
   const isRoom = !!b.room_id
   const room = rooms.find(r => r.id === b.room_id)
   const venue = venues.find(v => v.id === b.venue_id)
-  const roomType = isRoom ? (room?.name || '') : (venue?.name || '')
-  const roomNo = isRoom ? String(room?.room_number ?? '') : ''
+  const roomType = roomsLabel ? '' : isRoom ? (room?.name || '') : (venue?.name || '')
+  const roomNo = roomsLabel || (isRoom ? String(room?.room_number ?? '') : '')
 
   const guestCount = 1 + (b.companions ? b.companions.length : 0)
   const stayHours = stayHoursOf(b)

@@ -1,6 +1,6 @@
 import { Booking } from '../types/booking'
 
-export type PaymentTone = 'paid' | 'partial' | 'owes' | 'reserved'
+export type PaymentTone = 'paid' | 'partial' | 'owes' | 'reserved' | 'billed'
 
 export interface PaymentView {
   tone: PaymentTone
@@ -16,6 +16,8 @@ export const PAYMENT_BADGE_CLASSES: Record<PaymentTone, string> = {
   partial: 'bg-amber-100 text-amber-800 border border-amber-200',
   owes: 'bg-rose-100 text-rose-700 border border-rose-200',
   reserved: 'bg-ink-100 text-ink-800 border border-ink-200',
+  // Money an agency will send later is expected, not chased — so it is not red either.
+  billed: 'bg-indigo-50 text-indigo-800 border border-indigo-200',
 }
 
 /**
@@ -41,6 +43,23 @@ export function isReservationAwaitingArrival(booking: Booking): boolean {
   return isReservation(booking) && !booking.actual_check_in
 }
 
+/**
+ * A stay that is **billed to an agency** — a government office, a company, a university,
+ * a travel agency (the owner, 2026-10-04). They pay by check or by bank, and the bank
+ * payment usually arrives about three months later because it is processed first. So the
+ * guest checks in and checks out with the bill still open: the money is owed by the
+ * agency, not by the person at the desk.
+ */
+export function isBilledToAgency(booking: Booking): boolean {
+  if (booking.status === 'blocked' || booking.status === 'cancelled') return false
+  return !!booking.partner_deal_id || !!(booking.company_name || '').trim()
+}
+
+/** An agency stay with money still to come from the agency. */
+export function isOwedByAgency(booking: Booking): boolean {
+  return isBilledToAgency(booking) && booking.payment_status !== 'paid' && Number(booking.balance_due || 0) > 0
+}
+
 // Plain-language payment status, built so non-accounting staff can read it instantly.
 export function getPaymentView(booking: Booking): PaymentView {
   // Nothing is owed by a guest who has not arrived against a reservation, and **no
@@ -49,6 +68,9 @@ export function getPaymentView(booking: Booking): PaymentView {
     return { tone: 'reserved', label: 'Reserved', amount: 0 }
   }
   const due = booking.balance_due || 0
+  if (isOwedByAgency(booking)) {
+    return { tone: 'billed', label: `Billed to agency · ₱${due.toLocaleString()}`, amount: due }
+  }
   if (booking.payment_status === 'paid') {
     return { tone: 'paid', label: 'Paid', amount: 0 }
   }
@@ -65,15 +87,17 @@ export function getPaymentView(booking: Booking): PaymentView {
 // True when a booking still has money left to collect (blocks don't owe, and a
 // reservation whose guest has not arrived is a promise rather than a debt).
 export function isOwed(booking: Booking): boolean {
-  if (booking.status === 'blocked') return false
+  if (booking.status === 'blocked' || booking.status === 'cancelled') return false
   if (isReservationAwaitingArrival(booking)) return false
+  // What an agency owes is its own list — it is not chased at the desk.
+  if (isBilledToAgency(booking)) return false
   return booking.payment_status !== 'paid'
 }
 
 // True when the guest still has an unpaid balance. Blocks never owe, and a
 // booking marked paid is settled even if a stale balance_due survived.
 export function hasOutstandingBalance(booking: Booking): boolean {
-  if (booking.status === 'blocked') return false
+  if (booking.status === 'blocked' || booking.status === 'cancelled') return false
   if (booking.payment_status === 'paid') return false
   return Number(booking.balance_due || 0) > 0
 }
@@ -124,6 +148,7 @@ export function paymentStatusWord(booking: Booking): string {
   if (tone === 'paid') return 'Paid'
   if (tone === 'partial') return 'Partial'
   if (tone === 'reserved') return 'Reserved'
+  if (tone === 'billed') return 'Billed'
   return 'Owes'
 }
 
@@ -141,6 +166,7 @@ export function paymentPlanLabel(plan?: Booking['payment_plan']): string {
   if (plan === 'deposit') return 'Deposit (50%)'
   if (plan === 'custom') return 'Custom'
   if (plan === 'reservation') return 'Reservation'
+  if (plan === 'agency') return 'Billed to agency'
   return ''
 }
 

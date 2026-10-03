@@ -3,61 +3,122 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Daweez · the stock room is built</title>
+<title>Daweez · step 1 · extend stay</title>
 <style>
   :root{
-    --page:#141414; --card:#1F1F1F; --line:#3A3A3A;
+    --page:#141414; --card:#1F1F1F; --raised:#262626; --line:#3A3A3A;
     --body:#EDEAE4; --dim:#A8A29A; --muted:#7D7871;
     --gold:#D0AB60; --gold-fill:#332B18; --gold-ink:#E6C989;
-    --bad:#F87171; --good:#34D399;
+    --bad:#F87171; --bad-fill:#2A1615; --good:#34D399; --good-fill:#12261F;
+    --paper:#E6E2DA; --ink:#1C1C1C;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--page);color:var(--body);
-    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    padding:36px 26px 60px;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:720px;margin:0 auto}
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:36px 16px 60px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto}
   .eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
-  h1{font-size:27px;line-height:1.25;margin:8px 0 20px;letter-spacing:-.02em}
-  table{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 18px}
-  td{padding:7px 12px 7px 0;border-bottom:1px solid #2B2B2B;color:var(--dim);vertical-align:top}
-  td.k{width:150px;color:var(--body);font-weight:700}
-  code{background:#262626;border:1px solid var(--line);border-radius:5px;padding:1px 5px;
-    font-size:12.5px;color:var(--gold-ink);font-family:ui-monospace,Menlo,monospace}
-  .ok{border-left:3px solid var(--good);background:var(--card);border-radius:8px;padding:13px 17px;margin:0 0 16px}
-  .ok p{margin:0 0 6px;font-size:14.5px}
-  .ok p:last-child{margin:0}
-  .ok b{color:var(--good)}
-  .next{font-size:14px;color:var(--muted);margin:0 0 18px}
-  .next b{color:var(--dim)}
-  .go{border-left:3px solid var(--gold);background:var(--gold-fill);border-radius:8px;padding:15px 18px}
-  .go p{margin:0;color:var(--gold-ink);font-size:15.5px}
-  .go b{color:#fff}
+  h1{font-size:27px;line-height:1.25;margin:8px 0 6px;letter-spacing:-.02em}
+  h2{font-size:18px;margin:34px 0 12px}
+  .sub{color:var(--dim);font-size:14.5px;margin:0 0 22px}
+  .sub a{color:var(--gold-ink)}
+
+  .pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+  .side{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+  .lab{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin:0 0 10px}
+  .lab.now{color:var(--bad)} .lab.fix{color:var(--good)}
+
+  /* the app's own Extend stay block, drawn light like the staff app */
+  .app{background:var(--paper);color:var(--ink);border-radius:9px;padding:12px;font-size:12px}
+  .app .ttl{font-weight:700;font-size:12.5px;margin:0 0 9px;display:flex;justify-content:space-between}
+  .app .ttl span{color:#6b665e;font-weight:500}
+  .dates{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px}
+  .dates label{display:block;font-size:10px;font-weight:700;color:#6b665e;margin-bottom:3px}
+  .dates div div{border:1px solid #cfc8ba;border-radius:7px;padding:6px 8px;font-family:ui-monospace,Consolas,monospace;background:#efebe3}
+  .dates div.new div{border-color:#D0AB60;background:#f5f1e8}
+  .box{background:#f1e6c9;border:1px solid #e0cd9a;border-radius:7px;padding:8px 10px}
+  .box p{display:flex;justify-content:space-between;margin:0;color:#6b665e}
+  .box p + p{border-top:1px solid #e0cd9a;margin-top:5px;padding-top:5px;font-weight:700}
+  .box b{font-family:ui-monospace,Consolas,monospace;color:var(--ink)}
+  .box b.red{color:#c0392b}
+  .btn{margin-top:9px;border:1px solid #cfc8ba;border-radius:7px;text-align:center;padding:7px;font-weight:700;background:#f5f1e8}
+
+  .sum{margin:10px 0 0;font-size:13.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .sum b{color:var(--body)} .sum .x{color:var(--bad);font-weight:700} .sum .v{color:var(--good);font-weight:700}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+  th,td{text-align:left;padding:9px 10px 9px 0;border-bottom:1px solid #2B2B2B}
+  th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  td{color:var(--dim)} td:first-child{color:var(--body)}
+  td.x{color:var(--bad);font-weight:700} td.v{color:var(--good);font-weight:700}
+  .tbl{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:4px 16px;overflow-x:auto}
+
+  .rule{background:var(--gold-fill);border-left:3px solid var(--gold);border-radius:8px;padding:13px 17px;color:var(--gold-ink);font-size:15px;margin:14px 0 0}
+  .rule b{color:#fff}
+
+  form.q{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:0 0 14px}
+  form.q h3{margin:0 0 10px;font-size:16px}
+  form.q label{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border:1px solid var(--line);border-radius:8px;margin:0 0 8px;cursor:pointer;font-size:14.5px}
+  form.q label small{display:block;color:var(--dim);font-size:13px}
+  form.q input[type=radio]{margin-top:4px;accent-color:var(--gold)}
+  form.q textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:8px;color:var(--body);padding:9px 11px;font:inherit;font-size:14px;min-height:54px;margin:2px 0 10px}
+  form.q button{background:var(--gold);color:#141414;border:0;border-radius:8px;padding:9px 16px;font-weight:800;font-size:14px;cursor:pointer}
+  form.q .done{color:var(--good);font-size:13px;margin-left:10px}
+  .foot{color:var(--muted);font-size:12.5px;margin-top:18px}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <div class="eyebrow">Daweez · k71 part 1</div>
-  <h1>The stock room is built.</h1>
+  <div class="eyebrow">Daweez · step 1 of 7 · money mistakes · item 1</div>
+  <h1>Extend stay is fixed — please check it.</h1>
+  <p class="sub">Built as you ruled: the fix as drawn, and a short stay that is extended becomes a normal stay. The full assessment is kept in <code>.lavish/assessment-2026-10-03.html</code>.</p>
 
-  <table>
-    <tr><td class="k">Stock room</td><td>Items with a unit, a price, a par level, and what the shelf is worth. <b>Receive</b> on each row. In the Housekeeping tab.</td></tr>
-    <tr><td class="k">What a dish uses</td><td>Open a dish, add its stock lines. A drink is one line, a cooked dish four or five. The screen counts the dishes that still need them.</td></tr>
-    <tr><td class="k">Automatic</td><td>Tap a dish at the till → the shelf goes down by itself. Take the line off → every gram goes back.</td></tr>
-    <tr><td class="k">The log</td><td>Every movement: what, how many, in or out, why, who. One sale writes several lines.</td></tr>
-    <tr><td class="k">The column</td><td>The sold line now keeps the dish's <code>id</code> — the one thing that made all of this possible.</td></tr>
-  </table>
-
-  <div class="ok">
-    <p><b>Checked:</b> <code>tsc</code> 0 · <code>lint</code> 0 errors (277 warnings, the baseline) · and the two database functions proved on a real item — a delivery of 5 raised the count, the reversal took it back to 0, nothing left behind.</p>
-    <p><b>Refresh and open Housekeeping.</b> Three parts now: Stock room · What a dish uses · Cleaning Checklist.</p>
+  <h2>Room 4 · ₱950 a night · 2 nights, fully paid ₱1,900 · guest adds 1 night</h2>
+  <div class="pair">
+    <div class="side">
+      <p class="lab now">Today</p>
+      <div class="app">
+        <p class="ttl">Extend stay <span>Check-out Oct 5</span></p>
+        <div class="dates"><div><label>Check-in</label><div>10/03/2026</div></div><div class="new"><label>New check-out *</label><div>10/06/2026</div></div></div>
+        <div class="box"><p><span>Extra nights</span><b>+1</b></p><p><span>New amount to pay</span><b class="red">₱1,425</b></p></div>
+        <div class="btn">Save extension</div>
+      </div>
+      <p class="sum">Half of the new ₱2,850. The <b>₱1,900 already paid is ignored</b>. <span class="x">₱475 too much.</span></p>
+    </div>
+    <div class="side">
+      <p class="lab fix">After the fix</p>
+      <div class="app">
+        <p class="ttl">Extend stay <span>Check-out Oct 5</span></p>
+        <div class="dates"><div><label>Check-in</label><div>10/03/2026</div></div><div class="new"><label>New check-out *</label><div>10/06/2026</div></div></div>
+        <div class="box"><p><span>Extra nights</span><b>+1</b></p><p><span>New amount to pay</span><b class="red">₱950</b></p></div>
+        <div class="btn">Save extension</div>
+      </div>
+      <p class="sum">₱2,850 new bill − ₱1,900 paid = <span class="v">₱950</span>. The badge turns <b>Partly paid</b> at once.</p>
+    </div>
   </div>
 
-  <p class="next"><b>Not yet:</b> suppliers · the low-stock alert list · the physical count screen. Those are parts 3, 4 and 5.</p>
+  <h2>More cases, same rule</h2>
+  <div class="tbl"><table>
+    <tr><th>Booking, then +1 night</th><th>Today</th><th>After</th></tr>
+    <tr><td>2 nights · deposit ₱950 paid</td><td class="x">₱1,425</td><td class="v">₱1,900</td></tr>
+    <tr><td>2 nights · 20% discount · paid ₱1,520</td><td class="x">₱1,425</td><td class="v">₱760</td></tr>
+    <tr><td>2 nights + breakfast ₱300 · paid ₱2,200</td><td class="x">₱1,425</td><td class="v">₱950</td></tr>
+    <tr><td>2 nights · paid ₱1,900 · ₱400 food on the tab</td><td class="x">₱1,825</td><td class="v">₱1,350</td></tr>
+  </table></div>
+  <div class="rule"><b>The rule:</b> new bill + food tab − money received. The same sum the quick view and check-out already use — extend stay stops having its own.</div>
+  <p class="foot">The screen does not change. Only the figure in the gold box and the figure saved on the booking.</p>
 
-  <div class="go">
-    <p><b>One thing needs you:</b> type a few dishes' stock lines (start with the drinks — one line each), then sell one at the till and watch the log.</p>
-  </div>
+  <h2>How to check it</h2>
+  <div class="tbl"><table>
+    <tr><th>Do this</th><th>You should see</th></tr>
+    <tr><td>Open a fully paid booking → Extend stay → pick one more night</td><td class="v">New amount to pay = one night's price</td></tr>
+    <tr><td>Save extension, then open the booking again</td><td class="v">Partly paid · the same figure</td></tr>
+    <tr><td>Extend a 3-hour booking by a day</td><td class="v">Nights × the night price − what was paid · the "3 hours" mark is gone</td></tr>
+  </table></div>
+  <div class="rule"><b>Checked by me:</b> type check 0 errors · lint 0 errors (277 warnings, the same as before). <b>Not checked by me:</b> I did not press the buttons in the app — it writes to the live hotel database, so that test is yours.</div>
+
+  <p class="foot">Next, once you say this one is right: walk-in receipt numbers at the restaurant.</p>
 
 </div>
 </body>

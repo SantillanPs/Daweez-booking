@@ -40,6 +40,22 @@ export async function getOpenTabForBooking(bookingId: string): Promise<Tab | nul
 }
 
 /**
+ * The booking's tab whatever its status: the open one while the guest is in the
+ * hotel, otherwise the newest closed one. A stay's tab is closed at check-out so
+ * the till stops carrying it, but the bill, the balance and a reprint must still
+ * find the food — so everything that READS a stay's food asks this, and only the
+ * till asks for open tabs.
+ */
+function tabOfBooking(tabs: Tab[], bookingId: string): Tab | null {
+  const own = tabs.filter(t => t.booking_id === bookingId)
+  return own.find(t => t.status === 'open') || own[0] || null
+}
+
+export async function getTabForBooking(bookingId: string): Promise<Tab | null> {
+  return tabOfBooking(await getTabs(), bookingId)
+}
+
+/**
  * Every open tab, a stay's and a diner's alike, in one read.
  *
  * The Restaurant screen lists everyone the desk may charge — the guests who are
@@ -64,8 +80,8 @@ export async function getOpenTabLinesByBooking(bookingIds: string[]): Promise<Re
   if (bookingIds.length === 0) return out
   const tabs = await getTabs()
   for (const id of bookingIds) {
-    const open = tabs.find(t => t.booking_id === id && t.status === 'open')
-    if (open) out[id] = await getTabLines(open.id)
+    const tab = tabOfBooking(tabs, id)
+    if (tab) out[id] = await getTabLines(tab.id)
   }
   return out
 }
@@ -81,8 +97,17 @@ export async function openTab(input: {
   openedBy?: string
 }): Promise<Tab> {
   if (input.bookingId) {
-    const existing = await getOpenTabForBooking(input.bookingId)
-    if (existing) return existing
+    // One tab per stay, always. A tab closed at check-out is opened again rather
+    // than joined by a second one, or the bill would read only the newer tab's food.
+    const existing = await getTabForBooking(input.bookingId)
+    if (existing?.status === 'open') return existing
+    if (existing) {
+      if (!isSupabaseConfigured) throw new Error(NO_DB)
+      const { data, error } = await supabase.from('tabs')
+        .update({ status: 'open', closed_at: null }).eq('id', existing.id).select().single()
+      if (error) throw error
+      return data as Tab
+    }
   }
   const now = new Date().toISOString()
   const tab: Tab = {
@@ -204,6 +229,38 @@ export function tabTotal(lines: TabLine[]): number {
 // ── Settling a tab (k69, part C) ─────────────────────────────────────────────
 
 /**
+ * A tab's total, read fresh and **thrown on failure** — for the one caller that
+ * writes the figure into a booking's balance. `getTabLines` answers `[]` when the
+ * read fails, and an empty answer there would take the guest's food off their bill.
+ */
+export async function readTabTotal(tabId: string): Promise<number> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+  const { data, error } = await supabase.from('tab_lines').select('amount').eq('tab_id', tabId)
+  if (error) throw error
+  return money((data || []).reduce((sum, l) => sum + Number(l.amount || 0), 0))
+}
+
+/**
+ * Every receipt number already handed out — on every tab AND every booking, because
+ * both print `PR-YYYYMM-NNN`. Settling used to look only at the tab being settled,
+ * and a fresh tab has no payments, so every walk-in came out as `…-001`. Read
+ * straight from the database and thrown on failure: a number guessed from an empty
+ * list is exactly the duplicate this exists to stop. `payment_records` is JSON
+ * `null` on most rows.
+ */
+async function usedReceiptNumbers(): Promise<string[]> {
+  const [tabs, bookings] = await Promise.all([
+    supabase.from('tabs').select('payment_records'),
+    supabase.from('bookings').select('payment_records'),
+  ])
+  if (tabs.error) throw tabs.error
+  if (bookings.error) throw bookings.error
+  return [...(tabs.data || []), ...(bookings.data || [])]
+    .flatMap(row => (row.payment_records as PaymentRecord[] | null) || [])
+    .map(r => r.receipt_number || '')
+}
+
+/**
  * Takes the money for a tab and closes it: one numbered receipt, and the tab
  * leaves the open list. A walk-in settles what they ran up, so the amount is the
  * tab's own total, never typed.
@@ -218,6 +275,9 @@ export async function settleTab(input: {
   reference?: string
   preparedBy?: string
 }): Promise<PaymentRecord> {
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so this tab was not settled.')
+  }
   const record: PaymentRecord = {
     id: randomUUID(),
     amount: money(input.amount),
@@ -225,16 +285,10 @@ export async function settleTab(input: {
     reference: input.reference?.trim() || undefined,
     paid_at: new Date().toISOString(),
     prepared_by: input.preparedBy?.trim() || undefined,
-    receipt_number: nextTabReceiptNumber(
-      (input.tab.payment_records || []).map(r => r.receipt_number || ''),
-    ),
+    receipt_number: nextTabReceiptNumber(await usedReceiptNumbers()),
   }
   const records = [...(input.tab.payment_records || []), record]
   const closed_at = new Date().toISOString()
-
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so this tab was not settled.')
-  }
 
   const { error } = await supabase
     .from('tabs')

@@ -65,6 +65,9 @@ interface WalkInBookingFormProps {
     notes?: string
   }) => Promise<Booking>
   cancelBooking: (bookingId: string) => Promise<void>
+  deleteBooking: (bookingId: string) => Promise<void>
+  /** Every booking, cancelled ones included — for receipt numbering only. */
+  allBookings: Booking[]
   /**
    * Used to write the payment the form has just taken (2026-09-29). The booking is created
    * first and the money is applied to it, so each unit's balance is worked out by the
@@ -85,6 +88,8 @@ export function WalkInBookingForm({
   bookings,
   createManualBooking,
   cancelBooking,
+  deleteBooking,
+  allBookings,
   updateBooking,
   initialSelections,
   editingBookings,
@@ -236,8 +241,16 @@ export function WalkInBookingForm({
       setFormGuestName(b.guest_name)
       setFormGuestEmail(b.guest_email)
       setFormGuestPhone(b.guest_phone)
+      // These three sit behind "＋ More details". Left unseeded they were saved back
+      // empty, so correcting any booking blanked the guest's sex, nationality and address.
+      setFormGuestGender(b.guest_gender || '')
+      setFormGuestNationality(b.guest_nationality || '')
+      setFormGuestAddress(b.guest_address || '')
+      // Same for breakfast: an unseeded list saved every room back as "no breakfast".
+      setFormBreakfastRoomIds(editingBookings.filter(eb => eb.room_id && eb.breakfast_included).map(eb => eb.room_id as string))
       setFormSource(b.source)
-      setFormStatus(b.status === 'pending' ? 'confirmed' : b.status) // Upgrade pending to confirmed in edit mode usually
+      // Upgrade pending to confirmed in edit mode usually. (A cancelled booking is never opened here.)
+      setFormStatus(b.status === 'blocked' ? 'blocked' : 'confirmed')
       
       if (b.partner_deal_id || b.company_name) {
         setAgencyOn(true)
@@ -263,6 +276,7 @@ export function WalkInBookingForm({
       setFormPaymentPlan(
         b.payment_plan === 'full' ? 'full'
           : b.payment_plan === 'custom' ? 'custom'
+          : b.payment_plan === 'agency' ? 'agency'
             : b.payment_plan === 'reservation' ? 'reservation'
               : 'deposit',
       )
@@ -277,7 +291,8 @@ export function WalkInBookingForm({
       setFormBirthdate(b.birthdate || '')
       setFormPreparedBy(b.prepared_by || '')
       setFormBlockNotes(b.notes || '')
-      if (b.applied_discount) { setDiscountType(b.applied_discount.type); setDiscountValue(b.applied_discount.value) }
+      // A zero discount is a removed one (see `bookingSubmit`), so it reads as None.
+      if (b.applied_discount && b.applied_discount.value > 0) { setDiscountType(b.applied_discount.type); setDiscountValue(b.applied_discount.value) }
       setVenueDayBlocks(b.venue_day_blocks || 1)
       // Sum financials across all bookings in the group
       let totalDown = 0
@@ -359,10 +374,11 @@ export function WalkInBookingForm({
     () => computeBookingEstimate({
       unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues,
       formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
-      formEventTable, formEventTent, formChairs,
+      formEventTable, formEventTent, formChairs, formVenueExcessHours,
+      discountType, discountValue, venueDayBlocks, bookingType,
       shortStayHours,
     }),
-    [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues, formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, shortStayHours]
+    [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues, formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formVenueExcessHours, discountType, discountValue, venueDayBlocks, bookingType, shortStayHours]
   )
 
   // The figure the desk asks for now, by plan (the owner's ruling): the half for a
@@ -376,7 +392,7 @@ export function WalkInBookingForm({
     ? Math.max(0, Math.round(estTotal))
     : formPaymentPlan === 'custom'
       ? (depositTouched ? formAgreedDeposit : 0)
-      : formPaymentPlan === 'reservation'
+      : formPaymentPlan === 'reservation' || formPaymentPlan === 'agency'
         ? 0
         : Math.max(0, Math.round(estTotal / 2))
 
@@ -387,8 +403,9 @@ export function WalkInBookingForm({
    * underneath, in exactly the shape the agency gate already uses, rather than failing on
    * the press. A **Reservation** pays nothing, so it is asked nothing.
    */
-  const paysSomething = shortStayHours ? true : formPaymentPlan !== 'reservation'
-  const paymentPrompt = !paysSomething || agreedDeposit <= 0 ? ''
+  const paysSomething = shortStayHours ? true : (formPaymentPlan !== 'reservation' && formPaymentPlan !== 'agency')
+  // Correcting a booking takes no money, so it never waits on a method.
+  const paymentPrompt = editingBookings || !paysSomething || agreedDeposit <= 0 ? ''
     : !formPaymentMethod ? 'Choose how the guest paid.'
       : methodNeedsReference(formPaymentMethod) && !formPaymentReference.trim()
         ? (paymentKind(formPaymentMethod) === 'gcash'
@@ -402,6 +419,7 @@ export function WalkInBookingForm({
    */
   const depositFieldProps = {
     estTotal,
+    agency: agencyOn,
     plan: formPaymentPlan,
     setPlan: setFormPaymentPlan,
     agreedDeposit,
@@ -477,8 +495,9 @@ export function WalkInBookingForm({
     // GCash / bank must carry the reference the guest is reading out — the form will not
     // finish without it. A Reservation pays nothing and is exempt by definition.
     const paidNow = shortStayHours ? estTotal : agreedDeposit
-    const isReservation = !shortStayHours && formPaymentPlan === 'reservation'
-    if (!isReservation && paidNow > 0) {
+    // A Reservation and a stay billed to its agency both take nothing at the desk.
+    const isReservation = !shortStayHours && (formPaymentPlan === 'reservation' || formPaymentPlan === 'agency')
+    if (!editingBookings && !isReservation && paidNow > 0) {
       if (!formPaymentMethod) {
         setFormError('Choose how the guest paid.')
         return
@@ -502,7 +521,7 @@ export function WalkInBookingForm({
         : bookingType === 'partner'
           ? 'confirmed'
           : (editingBookings && editingBookings.length > 0)
-            ? (editingBookings[0].status || 'confirmed')
+            ? (editingBookings[0].status === 'pending' ? 'pending' : 'confirmed')
             : 'pending'
     // Payment status is never chosen by hand: editing a booking keeps the status
     // that the money already recorded implies (nothing / part / all of it).
@@ -511,7 +530,7 @@ export function WalkInBookingForm({
     const result = await submitBookingForm({
       bookingStatus,
       unitSelections, formRoomIds, formVenueIds, rooms, venues,
-      activeBookings: activeBookingsContext,
+      activeBookings: activeBookingsContext, allBookings,
       partnerDeals, formPartnerDealId, bookingType, formStatus, formGuestName,
       formGuestEmail, formGuestPhone, formGuestGender, formGuestNationality, formGuestAddress,
       formBirthdate, formPreparedBy, formCompanyName, formVehiclePlate, formInvoiceNumber,
@@ -520,7 +539,7 @@ export function WalkInBookingForm({
       formChairs, formEventTable, formEventTent, formVenueExcessHours,
       formBlockNotes, discountType, discountValue, venueDayBlocks, editingBookings,
       formPaymentMethod, formPaymentReference, derivedPaymentStatus, formDownpaymentPaid,
-      formBalanceDue, formSecurityDeposit, formAgreedDeposit: shortStayHours ? estTotal : agreedDeposit, createManualBooking, cancelBooking,
+      formBalanceDue, formSecurityDeposit, formAgreedDeposit: shortStayHours ? estTotal : agreedDeposit, createManualBooking, cancelBooking, deleteBooking,
       // A short stay is paid in full at the counter, so its plan is the whole amount.
       formPaymentPlan: shortStayHours ? 'full' : formPaymentPlan,
       stay_hours: shortStayHours ?? undefined,
@@ -638,8 +657,8 @@ export function WalkInBookingForm({
                           agencyOn={agencyOn}
                           agencyKey={formPartnerDealId || formCompanyName}
                           agencyPicking={agencyPicking}
-                          onAddAgency={() => { setAgencyOn(true); setAgencyPicking(true) }}
-                          onRemoveAgency={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false) }}
+                          onAddAgency={() => { setAgencyOn(true); setAgencyPicking(true); if (!editingBookings) setFormPaymentPlan('agency') }}
+                          onRemoveAgency={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'deposit' : p) }}
                           agencySlot={agencyOn ? (
                             <AgencyFields
                               value={agency}
@@ -655,7 +674,7 @@ export function WalkInBookingForm({
                                 setAgencyPicking(false)
                               }}
                               onOpenProfile={openAgencyProfile}
-                              onRemove={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false) }}
+                              onRemove={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'deposit' : p) }}
                             />
                           ) : null}
                         />

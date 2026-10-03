@@ -4,7 +4,7 @@ import { NumInput } from '../NumInput'
 import { SegmentedControl, SegmentOption } from '../SegmentedControl'
 import { PAYMENT_METHODS, methodNeedsReference, paymentKind } from '../../utils/paymentMethod'
 
-export type PayPlan = 'deposit' | 'full' | 'custom' | 'reservation'
+export type PayPlan = 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'
 /** A way to pay, or `''` for "the desk has not picked yet" — a real, deliberate state. */
 export type PayMethod = (typeof PAYMENT_METHODS)[number] | ''
 
@@ -38,6 +38,8 @@ interface BookingDepositFieldsProps {
    * be confirmed at all.)
    */
   shortStay?: boolean
+  /** An agency is on the booking, so it can simply be billed to them. */
+  agency?: boolean
   /** Correcting an existing booking: its invoice number and its figures. */
   isEditMode: boolean
   formInvoiceNumber: string
@@ -104,6 +106,7 @@ export function BookingDepositFields({
   reference,
   setReference,
   shortStay = false,
+  agency = false,
   isEditMode,
   formInvoiceNumber,
   setFormInvoiceNumber,
@@ -115,19 +118,25 @@ export function BookingDepositFields({
   setFormSecurityDeposit,
 }: BookingDepositFieldsProps) {
   const half = Math.max(0, Math.round(estTotal / 2))
-  const now = plan === 'full' ? Math.round(estTotal) : plan === 'deposit' ? half : plan === 'reservation' ? 0 : Math.round(agreedDeposit)
+  const now = plan === 'full' ? Math.round(estTotal) : plan === 'deposit' ? half : plan === 'reservation' || plan === 'agency' ? 0 : Math.round(agreedDeposit)
   const options: SegmentOption<PayPlan>[] = [
+    // An agency pays by check or bank, often months later (the owner, 2026-10-04) — so
+    // the first choice on an agency booking takes nothing at the desk.
+    ...(agency ? [{ key: 'agency' as const, label: 'Bill agency', hint: `Nothing is taken now. ${peso(estTotal)} is billed to the agency, which pays by check or bank.` }] : []),
     { key: 'deposit', label: 'Deposit', hint: `Half the stay — ${peso(half)}. The rest is collected at check-out.` },
     { key: 'full', label: 'Full pay', hint: `The whole stay — ${peso(estTotal)}. Nothing left at check-out.` },
     { key: 'custom', label: 'Custom', hint: 'Any figure the guest hands over now. The rest stays owed with the stay.' },
     // The owner's ruling, 2026-09-28: a room held for somebody the staff personally know
     // and trust. Nothing is paid and nothing is agreed, so no figure is shown anywhere —
     // the stay reads **Reserved**, not Unpaid, until the guest arrives.
-    { key: 'reservation', label: 'Reservation', hint: 'A hold for a guest the staff know — nothing paid now. They settle when they arrive to check in.' },
+    // Left off an agency booking: "Bill agency" already takes nothing at the desk, and
+    // five choices do not fit on the row — the last one was cut off at "Re". It stays
+    // when the booking being corrected is itself a Reservation.
+    ...(agency && plan !== 'reservation' ? [] : [{ key: 'reservation' as const, label: 'Reservation', hint: 'A hold for a guest the staff know — nothing paid now. They settle when they arrive to check in.' }]),
   ]
 
   // A Reservation pays nothing, so there is no method to ask for.
-  const asksForMoney = shortStay || plan !== 'reservation'
+  const asksForMoney = shortStay || (plan !== 'reservation' && plan !== 'agency')
   const needsRef = methodNeedsReference(method || undefined)
   const methodOptions: SegmentOption<PayMethod>[] = PAYMENT_METHODS.map(m => ({ key: m as PayMethod, label: m }))
   const refLabel = paymentKind(method || undefined) === 'gcash' ? 'GCash ref no.' : 'Reference no.'
@@ -173,6 +182,8 @@ export function BookingDepositFields({
             <NumInput value={agreedDeposit} onChange={setAgreedDeposit} aria-label="Amount the guest pays now"
               className="input input-bordered input-sm flex-1 min-w-0 text-right font-mono" />
           </div>
+        ) : plan === 'agency' ? (
+          <p className="text-right text-[10px] font-semibold text-base-content/60">nothing now · {peso(estTotal)} billed to the agency</p>
         ) : plan === 'reservation' ? (
           <p className="text-right text-[10px] font-semibold text-base-content/60">nothing now · pays at check-in</p>
         ) : (

@@ -56,7 +56,7 @@ export interface RecordBookingPaymentParams {
   /** `''` should never reach here: the form refuses to confirm without one. */
   method: string
   reference: string
-  plan: 'deposit' | 'full' | 'custom' | 'reservation'
+  plan: 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'
   updateBooking: (booking: Booking) => Promise<void>
 }
 
@@ -109,6 +109,8 @@ export async function recordBookingPayment(
       paid_at: paidAt,
       prepared_by: b.prepared_by,
       receipt_number: receiptNumber,
+      // This room's slice of it — what removing the payment must take back off this room.
+      share: p.bookings.length > 1 ? down : undefined,
     }
     if (i === 0) receipt = record
 
@@ -130,4 +132,39 @@ export async function recordBookingPayment(
   }
 
   return { bookings: updated, receipt }
+}
+
+/**
+ * How much of a payment settled THIS booking's bill.
+ *
+ * A payment for several rooms sits on every one of them with its full amount, so the
+ * amount is not the room's own money. Newer payments carry their `share`; an older one
+ * is worked back from what the room has received, less its other payments.
+ */
+export function paymentShare(booking: Booking, rec: PaymentRecord, sharedWithOtherRooms: boolean): number {
+  if (typeof rec.share === 'number') return rec.share
+  if (!sharedWithOtherRooms) return Number(rec.amount || 0)
+  const others = (booking.payment_records || [])
+    .filter(r => r.id !== rec.id)
+    .reduce((a, r) => a + Number(r.share ?? r.amount ?? 0), 0)
+  return Math.max(0, Math.min(Number(rec.amount || 0), Number(booking.downpayment_paid || 0) - others))
+}
+
+/**
+ * The booking with one payment taken back off it: the receipt is withdrawn and only
+ * this room's share of it goes back onto what is owed. Summing the receipts' amounts
+ * instead counted another room's money as this room's, and could leave it reading Paid.
+ */
+export function withoutPayment(booking: Booking, rec: PaymentRecord, sharedWithOtherRooms: boolean): Booking {
+  const paid = Number(booking.downpayment_paid || 0)
+  const total = paid + Number(booking.balance_due || 0)
+  const newPaid = Math.max(0, paid - paymentShare(booking, rec, sharedWithOtherRooms))
+  const remaining = Math.max(0, total - newPaid)
+  return {
+    ...booking,
+    payment_records: (booking.payment_records || []).filter(r => r.id !== rec.id),
+    downpayment_paid: newPaid,
+    balance_due: remaining,
+    payment_status: remaining <= 0 ? 'paid' : newPaid > 0 ? 'downpayment' : 'unpaid',
+  }
 }

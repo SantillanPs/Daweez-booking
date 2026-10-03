@@ -28,7 +28,7 @@ export function StockItemForm({ item, onSave, onCancel }: {
     try {
       await onSave({
         id: item?.id, name: name.trim(), unit: unit.trim(), category: group,
-        price, par_level: par, quantity: item?.quantity || 0, active: item?.active !== false,
+        price, par_level: par, active: item?.active !== false,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That item was not saved.')

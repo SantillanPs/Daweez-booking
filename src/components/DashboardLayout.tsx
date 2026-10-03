@@ -24,8 +24,8 @@ export function DashboardLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const {
-    rooms, venues, bookings, feeds, partnerDeals, expenses, expenseCategories,
-    confirmBooking, cancelBooking, createManualBooking, updateBooking,
+    rooms, venues, bookings, allBookings, feeds, partnerDeals, expenses, expenseCategories,
+    confirmBooking, cancelBooking, deleteBooking, createManualBooking, updateBooking,
     triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, isLoading, isConfirmingBooking,
     createPartnerDeal, savePartnerDeals, deletePartnerDeal,
     createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense
@@ -68,9 +68,9 @@ export function DashboardLayout() {
 
   return (
     <DashboardDataContext.Provider value={{
-      rooms, venues, bookings, feeds, partnerDeals, expenses, expenseCategories, isLoading,
+      rooms, venues, bookings, allBookings, feeds, partnerDeals, expenses, expenseCategories, isLoading,
       isConfirming: isConfirmingBooking,
-      confirmBooking, cancelBooking, createManualBooking, updateBooking,
+      confirmBooking, cancelBooking, deleteBooking, createManualBooking, updateBooking,
       triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
       createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense,
       onLogout: handleLogout

@@ -17,9 +17,15 @@ import { DailyReportDocument } from '../billing/DailyReportDocument'
  * It owns only the day and the print; the figures are `utils/dailyReport.ts` and the paper is
  * `billing/DailyReportDocument.tsx`, both unchanged by the move.
  */
-export function DailyReportModal({ onClose }: { onClose: () => void }) {
-  const { bookings, rooms, expenses, expenseCategories } = useDashboardData()
-  const [date, setDate] = useState(localToday)
+export function DailyReportModal({ onClose, initialDate }: {
+  onClose: () => void
+  /** The day to open on — the money screen hands over the day it is showing. Today when absent. */
+  initialDate?: string
+}) {
+  // Every booking, cancelled ones too: money received on a booking that was later
+  // cancelled still arrived on its day, and a money sheet must not lose it.
+  const { allBookings: bookings, rooms, expenses, expenseCategories } = useDashboardData()
+  const [date, setDate] = useState(() => initialDate || localToday())
 
   // A report is a cold read of a whole day, so the tabs are fetched here rather than riding the booking cache:
   // a tab settled at the counter is money this sheet must show, and it belongs to no booking.

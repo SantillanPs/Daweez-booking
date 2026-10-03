@@ -22,7 +22,7 @@ import type { DailyReport } from '../../utils/dailyReport'
  *    the conclusion says the answer.
  *
  * **No signature lines** (his last word on it: *"remove this and start building"*), and **no captions** — a
- * label names its own line and stops (see the root `AGENTS.md` rule about the UI stating facts).
+ * label names its own line and stops (see `docs/why/bills-and-paper.md`: state facts, never explain them).
  *
  * It shares `StatementShell`, so the report has the same A5 page, the same margins and the same one 8px
  * spacing rhythm as the two bills rather than being a third spacing system.

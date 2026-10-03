@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Booking, Room, Venue } from '../types/booking'
 import { TabLine } from '../types/tab'
-import { getOpenTabForBooking, getTabLines, openTab, tabTotal } from '../utils/tabs'
+import { getTabForBooking, getTabLines, openTab, tabTotal } from '../utils/tabs'
 import { recomputeBalance } from '../utils/bookingBalance'
 import { showToast } from '../utils/toast'
 
@@ -33,8 +33,8 @@ export function useGuestTab({ booking, rooms, venues, setBooking, onUpdateBookin
   const [amount, setAmount] = useState(0)
 
   const readLines = async (): Promise<TabLine[]> => {
-    const open = await getOpenTabForBooking(booking.id)
-    return open ? await getTabLines(open.id) : []
+    const tab = await getTabForBooking(booking.id)
+    return tab ? await getTabLines(tab.id) : []
   }
 
   // Once per booking. The slide-over is keyed by booking id in CalendarTab, so a

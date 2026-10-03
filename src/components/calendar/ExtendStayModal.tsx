@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
-import * as syncEngine from '../../utils/syncEngine'
 import { computeCheckInOutHours } from '../../utils/checkInOut'
 import { getRateConfig } from '../../utils/rateConfig'
 import { X, Printer, Edit3 } from 'lucide-react'
@@ -9,17 +8,25 @@ import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
 import { SOURCE_LABELS, roomDisplayName } from './bookingStyles'
 import { statusAfterPayment } from '../../utils/bookingStatus'
-import { hasOutstandingBalance, amountToPayNow, getPaymentView, paymentStatusWord, PAYMENT_BADGE_CLASSES } from '../../utils/bookingMoney'
+import { hasOutstandingBalance, amountToPayNow, getPaymentView, paymentStatusWord, isBilledToAgency, PAYMENT_BADGE_CLASSES } from '../../utils/bookingMoney'
 import { paymentMethodLabel, methodNeedsReference } from '../../utils/paymentMethod'
 import { nextReceiptNumber } from '../../utils/receiptNumber'
+import { withoutPayment } from '../walk-in/bookingPayment'
 import { SlideOverSection } from './SlideOverSection'
 import { GuestTabPanel } from './GuestTabPanel'
-import { recomputeBalance, pendingEarlyCharge } from '../../utils/bookingBalance'
+import { recomputeBalance, pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
 import { useGuestTab } from '../../hooks/useGuestTab'
+import { closeTab, getOpenTabForBooking } from '../../utils/tabs'
 import { BookingMoneyPanel } from './BookingMoneyPanel'
 import { SettledPaidTag } from './SettledPaidTag'
 import { ShortStayClock } from './ShortStayClock'
 import { stayHoursOf } from '../../utils/shortStay'
+import { BreakfastPicker } from './BreakfastPicker'
+import { wantsBreakfastToday, breakfastOn, breakfastSummary } from '../../utils/breakfastChoice'
+import { dateToString } from '../../utils/helpers'
+import { blockReason, isOpenEnded } from '../../utils/openBlock'
+import { groupOf } from '../../utils/bookingGroup'
+import { formatRoomNumbers } from '../../utils/roomNumbers'
 import { BookingReceipts } from './BookingReceipts'
 import { GuestMethodPicker } from './GuestMethodPicker'
 import { ExtendStayForm } from './ExtendStayForm'
@@ -33,10 +40,12 @@ interface ExtendStayModalProps {
   rooms: Room[]
   venues: Venue[]
   bookings: Booking[]
+  /** Every booking, cancelled ones included — for receipt numbering only. */
+  allBookings?: Booking[]
   extendCheckoutDate: string
   extendError: string
   onClose: () => void
-  onExtendStaySubmit: (e: React.FormEvent) => void
+  onExtendStaySubmit: (e: React.FormEvent, tabTotal: number) => void
   setExtendCheckoutDate: (date: string) => void
   onCancelBooking?: (id: string) => void
   onUpdateBooking?: (booking: Booking) => Promise<void>
@@ -60,6 +69,7 @@ export function ExtendStayModal({
   rooms,
   venues,
   bookings,
+  allBookings,
   extendCheckoutDate,
   extendError,
   onClose,
@@ -71,6 +81,7 @@ export function ExtendStayModal({
   shortStayDue = false
 }: ExtendStayModalProps) {
   const [showPrintModal, setShowPrintModal] = useState(false)
+  const [breakfastOpen, setBreakfastOpen] = useState(false)
   const navigate = useNavigate()
   const [localBooking, setLocalBooking] = useState(booking)
   // Something the pressed action could not do, said on the page beside the
@@ -93,7 +104,12 @@ export function ExtendStayModal({
   // receipt for a guest who had paid by GCash. The desk picks what they were told.
   const [receiptMethod, setReceiptMethod] = useState(() => booking.payment_method || '')
   // A reference the guest already gave (the portal stores one) starts filled in.
-  const [receiptRef, setReceiptRef] = useState(() => booking.payment_reference || '')
+  // …but not one that already sits on a recorded payment: the next payment is a new
+  // transfer with a new number, and a pre-filled old one would be saved under it.
+  const [receiptRef, setReceiptRef] = useState(() => {
+    const known = booking.payment_reference || ''
+    return (booking.payment_records || []).some(r => r.reference && r.reference === known) ? '' : known
+  })
   const [tryPayment, setTryPayment] = useState(false)
   const [receiptFor, setReceiptFor] = useState<PaymentRecord | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
@@ -195,7 +211,7 @@ export function ExtendStayModal({
   const markTouched = (f: keyof typeof fieldErrors) => () => setTouched(t => ({ ...t, [f]: true }))
   const handleExtendSubmit = (e: React.FormEvent) => {
     if (Object.values(fieldErrors).some(v => v)) { e.preventDefault(); setTrySave(true); return }
-    onExtendStaySubmit(e)
+    onExtendStaySubmit(e, tabAmount)
   }
 
   // The guest's own payment method (card k132 follow-up). The choice is theirs —
@@ -228,26 +244,28 @@ export function ExtendStayModal({
   // Money can be corrected: removing a receipt that was logged by mistake puts
   // the balance and the automatic payment status back where they belong.
   const handleRemoveReceipt = async (rec: PaymentRecord) => {
+    // One payment for several rooms sits on every one of them (the owner's ruling), so
+    // withdrawing it has to take it off all of them — each room giving back only its
+    // own share — or the other rooms keep a receipt for money that was taken back.
+    const otherRooms = (rec.receipt_number ? coveredBookings[rec.receipt_number] || [] : [])
+      .filter(b => b.id !== localBooking.id)
     const ok = await askConfirm({
       title: 'Remove this ' + fmtPeso(rec.amount) + ' payment?',
-      message: 'The amount to pay goes back up and the receipt is withdrawn.',
+      message: otherRooms.length > 0
+        ? 'It paid for ' + (otherRooms.length + 1) + ' rooms. The receipt is withdrawn from all of them and each amount to pay goes back up.'
+        : 'The amount to pay goes back up and the receipt is withdrawn.',
       confirmLabel: 'Remove',
       tone: 'danger',
     })
     if (!ok) return
-    const records = (localBooking.payment_records || []).filter(r => r.id !== rec.id)
-    const newPaid = records.reduce((a, r) => a + (r.amount || 0), 0)
-    const remaining = Math.max(0, totalCharge - newPaid)
-    const updated: Booking = {
-      ...localBooking,
-      payment_records: records,
-      downpayment_paid: newPaid,
-      balance_due: remaining,
-      payment_status: remaining <= 0 ? 'paid' : newPaid > 0 ? 'downpayment' : 'unpaid',
-    }
+    const updated = withoutPayment(localBooking, rec, otherRooms.length > 0)
     setLocalBooking(updated)
     try {
       await onUpdateBooking?.(updated)
+      for (const other of otherRooms) {
+        const theirs = (other.payment_records || []).find(r => r.receipt_number === rec.receipt_number)
+        if (theirs) await onUpdateBooking?.(withoutPayment(other, theirs, true))
+      }
     } catch {
       showToast('Could not remove the payment. Please try again.', 'error')
     }
@@ -296,7 +314,7 @@ export function ExtendStayModal({
   const handleCheckIn = async () => {
     // Guard only: the Check in button is not rendered while money is owed, so
     // this is the backstop.
-    if (hasOutstandingBalance(localBooking)) return
+    if (hasOutstandingBalance(localBooking) && !billedToAgency) return
     await performCheckIn(localBooking)
   }
   const handleCheckOut = async () => {
@@ -304,7 +322,7 @@ export function ExtendStayModal({
     // check-in refuses to run while money is outstanding. This stays as the
     // backstop for a stay that grew afterwards (extra nights, per-day
     // breakfast), so a guest never leaves with an unpaid bill.
-    if (hasOutstandingBalance(localBooking)) {
+    if (hasOutstandingBalance(localBooking) && !billedToAgency) {
       const owed = fmtPeso(Number(localBooking.balance_due || 0))
       // Said on the page, next to the button that was pressed — and the card
       // opens its payment panel so the money can be taken right there.
@@ -323,13 +341,19 @@ export function ExtendStayModal({
       })
     const updated = withRecomputedBalance(localBooking, { actual_check_out: actualCheckOut, late_check_out_hours: lateHours })
     setLocalBooking(updated)
-    try { await onUpdateBooking?.(updated) } catch { showToast('Could not check out. Please try again.', 'error') }
+    try {
+      await onUpdateBooking?.(updated)
+      // The guest has left, so their tab leaves the till. The bill and any reprint
+      // still read it — they follow the booking's tab whatever its status.
+      const open = await getOpenTabForBooking(updated.id)
+      if (open) await closeTab(open.id)
+    } catch { showToast('Could not check out. Please try again.', 'error') }
     // The bill is recomputed at check-out, and this is where the money a stay grew by
     // actually lands — a late check-out's hours AND the early check-in hours recorded
     // on arrival (the owner's rule: early check-in goes on the bill at check-out, never
     // in the desk's face at the door). That money must be settled before the guest
     // leaves, and the notice names what grew rather than blaming it all on lateness.
-    if (hasOutstandingBalance(updated)) {
+    if (hasOutstandingBalance(updated) && !billedToAgency) {
       const owed = fmtPeso(Number(updated.balance_due || 0))
       const grew = []
       if (Number(updated.early_check_in_hours || 0) > 0) grew.push('early check-in')
@@ -372,7 +396,7 @@ export function ExtendStayModal({
       // Stored, not derived: the receipt keeps this number even if another
       // payment is later removed. Handed the whole list so it cannot take a number another booking
       // already used this month — the payment's own records alone always start a fresh booking at 001.
-      receipt_number: nextReceiptNumber(localBooking, bookings),
+      receipt_number: nextReceiptNumber(localBooking, allBookings || bookings),
     }
     const records = [...(localBooking.payment_records || []), rec]
     const status = remaining <= 0 ? 'paid' as const : localBooking.payment_status === 'paid' ? 'paid' as const : 'downpayment' as const
@@ -433,27 +457,53 @@ export function ExtendStayModal({
       ? <span className="shrink-0 text-[10px] font-bold uppercase text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-0.5">Unpaid</span>
       : <span className="shrink-0 text-[10px] font-bold uppercase text-muted bg-softbg border border-soft rounded-md px-2 py-0.5">Blocked</span>
 
-  const extraNights = extendCheckoutDate && extendCheckoutDate > booking.check_out
+  const isShortStay = stayHoursOf(localBooking) > 0
+  const becomesNights = isShortStay && extendCheckoutDate && extendCheckoutDate > booking.check_in
+    ? Math.max(1, Math.ceil((new Date(extendCheckoutDate).getTime() - new Date(booking.check_in).getTime()) / 86400000))
+    : 0
+  const extraNights = !isShortStay && localBooking.status !== 'blocked' && extendCheckoutDate && extendCheckoutDate > booking.check_out
     ? Math.max(0, Math.ceil((new Date(extendCheckoutDate).getTime() - new Date(booking.check_out).getTime()) / 86400000))
     : 0
   const newBalanceDue = (() => {
-    if (!extendCheckoutDate || extendCheckoutDate <= booking.check_out) return due
+    // A short stay is stored with check-out the next day, so "stay the night" keeps
+    // that same date — and still changes the price, from the hours to a night.
+    if (!extendCheckoutDate) return due
+    if (isShortStay ? extendCheckoutDate <= booking.check_in : extendCheckoutDate <= booking.check_out) return due
     try {
-      return syncEngine.calculatePricing({
-        roomId: booking.room_id,
-        venueId: booking.venue_id,
-        checkIn: booking.check_in,
-        checkOut: extendCheckoutDate,
-        guestEmail: booking.guest_email,
-        bookingsList: bookings,
-        rooms,
-        venues
-      }).balanceDue + tabAmount
+      return Number(extendStay(localBooking, extendCheckoutDate, { rooms, venues, tabTotal: tabAmount }).balance_due || 0)
     } catch {
       return due
     }
   })()
 
+  // The other rooms booked in the same sitting, named so the desk knows this is one of
+  // several — the bill and the edit form cover all of them.
+  const bookedTogether = groupOf(booking, bookings)
+  const togetherLabel = bookedTogether.length > 1
+    ? [
+        formatRoomNumbers(bookedTogether.map(b => rooms.find(r => r.id === b.room_id)?.room_number).filter((n): n is number => typeof n === 'number')),
+        ...bookedTogether.filter(b => b.venue_id).map(b => venues.find(v => v.id === b.venue_id)?.name || 'Venue'),
+      ].filter(Boolean).join(', ')
+    : ''
+  const isBlock = localBooking.status === 'blocked'
+  const openEnded = isOpenEnded(localBooking)
+  // "They have left": the block ends today, so the room can be sold from tonight. A block
+  // that has not started yet (or started today) is simply removed.
+  const endOpenBlock = async () => {
+    const today = dateToString(new Date())
+    if (today <= localBooking.check_in) { onCancelBooking?.(booking.id); onClose(); return }
+    try {
+      await onUpdateBooking?.({ ...localBooking, check_out: today })
+      onClose()
+    } catch {
+      showToast('Could not end the block. Please try again.', 'error')
+    }
+  }
+  const todayKey = dateToString(new Date())
+  const breakfastToday = breakfastOn(booking, todayKey)
+  // Billed to an agency: the agency pays later by check or bank, so the door is not
+  // held shut on the money (the owner, 2026-10-04).
+  const billedToAgency = isBilledToAgency(localBooking)
   const canCheckIn = localBooking.status !== 'blocked' && !localBooking.actual_check_in
   const canCheckOut = localBooking.status !== 'blocked' && !!localBooking.actual_check_in && !localBooking.actual_check_out
 
@@ -476,13 +526,15 @@ export function ExtendStayModal({
               {paymentChip}
             </div>
             <p className="text-[11px] text-muted mt-1 truncate">
-              {unitSub ? unitSub + ' · ' : ''}{stayHoursOf(booking) > 0
+              {unitSub ? unitSub + ' · ' : ''}{isBlock
+                ? (openEnded ? 'From ' + fmtShort(booking.check_in) + ' · until further notice' : fmtShort(booking.check_in) + ' → ' + fmtShort(booking.check_out))
+                : stayHoursOf(booking) > 0
                 ? fmtShort(booking.check_in) + ' · ' + stayHoursOf(booking) + '-hour stay'
                 : fmtShort(booking.check_in) + ' → ' + fmtShort(booking.check_out) + ' · ' + nights + (nights === 1 ? ' night' : ' nights')}
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0 pt-0.5">
-            {onEditBooking && (
+            {onEditBooking && !isBlock && (
               <button onClick={onEditBooking} className="text-muted hover:text-gold-700 transition-colors cursor-pointer" title="Edit booking">
                 <Edit3 className="w-4 h-4" />
               </button>
@@ -505,7 +557,7 @@ export function ExtendStayModal({
           {/* Who is staying — with the settled money and its action on the right */}
           <div className="pt-4 flex items-start justify-between gap-3">
             <div className="min-w-0">
-            <p className="font-display font-bold text-[19px] text-main leading-tight">{booking.guest_name}</p>
+            <p className="font-display font-bold text-[19px] text-main leading-tight">{isBlock ? blockReason(localBooking) : booking.guest_name}</p>
             {/* The store writes the literal "None" when no phone was taken, so
                 treat that (and a missing email) as nothing and skip the line
                 rather than printing a row that says nothing. */}
@@ -526,11 +578,12 @@ export function ExtendStayModal({
               </div>
             )}
             <p className="text-[11px] text-muted mt-2.5 flex flex-wrap gap-x-4 gap-y-0.5">
-              <span>Booked from <strong className="text-main">{SOURCE_LABELS[booking.source] || booking.source}</strong></span>
+              {!isBlock && <span>Booked from <strong className="text-main">{SOURCE_LABELS[booking.source] || booking.source}</strong></span>}
               {booking.reference_number && <span>Paper ref <strong className="text-main">{booking.reference_number}</strong></span>}
               {booking.registered_on && <span>Logged <strong className="text-main">{booking.registered_on}</strong></span>}
               {booking.vehicle_plate && <span>Plate <strong className="text-main uppercase">{booking.vehicle_plate}</strong></span>}
               {booking.company_name && <span>Company <strong className="text-main">{booking.company_name}</strong></span>}
+              {togetherLabel && <span>Booked together <strong className="text-main">{togetherLabel}</strong></span>}
             </p>
             </div>
             {totalCharge > 0 && due <= 0 && (
@@ -560,6 +613,33 @@ export function ExtendStayModal({
           {/* The short-stay clock: the time the room is free, and a red word once it
               has passed. Nothing renders for an ordinary stay. */}
           <div className="mt-2"><ShortStayClock booking={localBooking} due={shortStayDue} /></div>
+
+          {/* A block with no end date has one job left: being ended. */}
+          {openEnded && (
+            <button
+              type="button"
+              onClick={() => void endOpenBlock()}
+              className="mt-3 w-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm"
+            >
+              They have left
+            </button>
+          )}
+
+          {/* Breakfast is asked every morning (the owner, 2026-10-04): today's answer, or
+              that nobody has asked yet. The choices are read from the LIVE booking — they
+              are saved by their own writer, not through this panel's copy. */}
+          {wantsBreakfastToday(localBooking) && (
+            <button
+              type="button"
+              onClick={() => setBreakfastOpen(true)}
+              className="mt-2 w-full flex items-center justify-between gap-3 rounded-md border border-soft bg-page hover:border-gold-400 px-2.5 py-1.5 text-[11.5px] text-left transition-colors cursor-pointer"
+            >
+              <span className="font-bold text-main shrink-0">Breakfast today</span>
+              <span className={breakfastToday ? 'text-muted truncate' : 'font-semibold text-danger-600'}>
+                {breakfastToday ? breakfastSummary(breakfastToday) : 'not asked yet'}
+              </span>
+            </button>
+          )}
 
           {/* Recorded early check-in, not billed yet: one amber line saying what the
               guest will owe and when it lands, so the money never moves in silence and
@@ -601,6 +681,16 @@ export function ExtendStayModal({
                       full-width button. Check in / Check out are not here — a settled
                       booking carries them beside the guest's name. */}
                   <div className="space-y-2">
+                    {billedToAgency && (canCheckIn || canCheckOut) && (
+                      <button
+                        type="button"
+                        onClick={canCheckIn ? handleCheckIn : handleCheckOut}
+                        className={'w-full text-[13px] font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm ' +
+                          (canCheckIn ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-gold-400 hover:bg-gold-600 text-ink-900')}
+                      >
+                        {canCheckIn ? 'Check in' : 'Check out'}
+                      </button>
+                    )}
                     <GuestMethodPicker
                       method={receiptMethod}
                       reference={receiptRef}
@@ -612,9 +702,10 @@ export function ExtendStayModal({
                     <button
                       type="button"
                       onClick={() => handleAddReceipt(amountToPayNow(localBooking, tabAmount))}
-                      className="w-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm"
+                      className={'w-full text-[13px] font-bold py-2.5 rounded-lg transition-colors cursor-pointer ' +
+                        (billedToAgency ? 'bg-card hover:bg-gold-100 text-main border border-soft' : 'bg-gold-400 hover:bg-gold-600 text-ink-900 shadow-sm')}
                     >
-                      Record {fmtPeso(due)} received
+                      Record {fmtPeso(amountToPayNow(localBooking, tabAmount))} received
                     </button>
                   </div>
                 </div>
@@ -623,7 +714,7 @@ export function ExtendStayModal({
           )}
 
           <div className="mt-3">
-            <SlideOverSection
+            {!isBlock && (<SlideOverSection
               title="Payment receipts"
               summary={receiptRecords.length > 0
                 ? receiptRecords.length + ' payment' + (receiptRecords.length > 1 ? 's' : '') + ' · ' + fmtPeso(receiptTotal) + ' received'
@@ -654,7 +745,7 @@ export function ExtendStayModal({
                 onRemove={handleRemoveReceipt}
                 onPrint={r => { setReceiptFor(r); setShowReceipt(true) }}
               />
-            </SlideOverSection>
+            </SlideOverSection>)}
 
             {/* The guest tab only exists once the guest is IN the hotel: nobody
                 orders before check-in (the owner's rule), so the block is hidden
@@ -687,13 +778,17 @@ export function ExtendStayModal({
 
 
 
-            <SlideOverSection title="Extend stay" summary={'Check-out ' + fmtShort(booking.check_out)}>
+            <SlideOverSection
+              title={isBlock ? 'Change the dates' : isShortStay ? 'Stay longer' : 'Extend stay'}
+              summary={isBlock ? (openEnded ? 'No end date yet' : 'Ends ' + fmtShort(booking.check_out)) : isShortStay ? stayHoursOf(localBooking) + '-hour stay' : 'Check-out ' + fmtShort(booking.check_out)}
+            >
               <ExtendStayForm
-                booking={booking}
+                booking={localBooking}
                 extendCheckoutDate={extendCheckoutDate}
                 setExtendCheckoutDate={setExtendCheckoutDate}
                 extendError={extendError}
                 extraNights={extraNights}
+                becomesNights={becomesNights}
                 newBalanceDue={newBalanceDue}
                 showErr={showErr}
                 isInvalid={isInvalid}
@@ -705,21 +800,36 @@ export function ExtendStayModal({
 
           {/* Quiet utility actions — never competing with the next step */}
           <div className="border-t border-soft py-3 flex items-center justify-between gap-3">
-            <button
+            {!isBlock ? (<button
               type="button"
               onClick={() => setShowPrintModal(true)}
               className="text-[12px] font-semibold text-main hover:text-gold-700 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               Print billing statement
-            </button>
-            {onCancelBooking && (
+            </button>) : <span />}
+            {/* Not offered once the guest has checked out: cancelling a finished stay
+                would take its money out of the Earnings Report. */}
+            {onCancelBooking && !localBooking.actual_check_out && (
               <button
                 type="button"
                 onClick={async () => {
-                  const ok = await askConfirm({
+                  // A guest who is in the hotel is checked out, not cancelled — they
+                  // have used the room and may have food on their tab.
+                  if (!isBlock && localBooking.actual_check_in && !localBooking.actual_check_out) {
+                    setActionNotice('This guest is checked in. Check them out instead of cancelling.')
+                    return
+                  }
+                  const ok = await askConfirm(isBlock ? {
+                    title: 'Remove this block?',
+                    message: 'The dates open up for booking again.',
+                    confirmLabel: 'Remove block',
+                    tone: 'danger',
+                  } : {
                     title: 'Cancel ' + booking.guest_name + "'s booking?",
-                    message: 'The room is freed and this cannot be undone.',
+                    message: paidSoFar > 0
+                      ? 'The room is freed. The booking stays in the Bookings list as Cancelled, with the ' + fmtPeso(paidSoFar) + ' already received and its receipts.'
+                      : 'The room is freed. The booking stays in the Bookings list as Cancelled.',
                     confirmLabel: 'Cancel booking',
                     tone: 'danger',
                   })
@@ -729,13 +839,21 @@ export function ExtendStayModal({
                 }}
                 className="text-[12px] font-semibold text-danger-600 hover:text-danger-500 transition-colors cursor-pointer"
               >
-                Cancel booking
+                {isBlock ? 'Remove block' : 'Cancel booking'}
               </button>
             )}
           </div>
         </div>
       </div>
 
+      {breakfastOpen && (
+        <BreakfastPicker
+          booking={booking}
+          date={todayKey}
+          place={unitSub || unitName}
+          onClose={() => setBreakfastOpen(false)}
+        />
+      )}
       {showPrintModal && (
         <PrintInvoiceModal
           booking={localBooking}

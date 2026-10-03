@@ -53,6 +53,7 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     breakfast_included: !!b.breakfast_included,
     contract_rate_override: b.contract_rate_override ? Number(b.contract_rate_override) : undefined,
     breakfast_records: (b.breakfast_records as Booking['breakfast_records']) || undefined,
+    breakfast_choices: (b.breakfast_choices as Booking['breakfast_choices']) || undefined,
     reference_number: (b.reference_number as string) || undefined,
     registered_on: (b.registered_on as string) || undefined,
     // ── was missing, and each one was being wiped on the next save ──
@@ -61,6 +62,8 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     late_check_out_hours: b.late_check_out_hours != null ? Number(b.late_check_out_hours) : undefined,
     actual_check_in: (b.actual_check_in as string) || undefined,
     actual_check_out: (b.actual_check_out as string) || undefined,
+    cancelled_at: (b.cancelled_at as string) || undefined,
+    group_id: (b.group_id as string) || undefined,
     notes: (b.notes as string) || undefined,
     prepared_by: (b.prepared_by as string) || undefined,
     payment_records: (b.payment_records as Booking['payment_records']) || undefined,
@@ -69,6 +72,7 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     // Short stay (the hours the room was taken for). Missing here would wipe it on
     // the next save, exactly like the fields the comment above warns about.
     stay_hours: b.stay_hours != null ? Number(b.stay_hours) : undefined,
+    agreed_deposit: b.agreed_deposit != null ? Number(b.agreed_deposit) : undefined,
   }
 }
 

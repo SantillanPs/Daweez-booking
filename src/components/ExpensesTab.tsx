@@ -1,448 +1,178 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react'
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Printer, Wallet } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { generateUUID } from '../utils/syncEngine'
-import { TrendingDown, Plus, Trash2, Calendar, FileText, Tag, Wallet, X } from 'lucide-react'
+import { dateToString } from '../utils/helpers'
+import { getTabs } from '../utils/tabs'
+import { buildDailyReport } from '../utils/dailyReport'
+import { Expense, ExpenseCategory } from '../types/expense'
 import { showToast } from '../utils/toast'
 import { askConfirm } from '../utils/confirm'
+import { QuickExpense } from './expenses/QuickExpense'
+import { DayMoney } from './expenses/DayMoney'
+import { ExpenseHistory } from './expenses/ExpenseHistory'
+import { CategoryManager } from './expenses/CategoryManager'
+import { DailyReportModal } from './analytics/DailyReportModal'
 
+const prettyDay = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return iso
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
+// THE DAY'S MONEY, on one screen (the owner's ask, 2026-10-04).
+//
+// The staff log the day's expenses and print the daily report for the owner every day.
+// That used to be two tabs and a slow form: a category dropdown with a search box, a
+// date to pick and a notes box, then over to Analytics to print. Now the day is the
+// screen — type what was spent, see money in, money out and what is left, print.
+//
+// The figures are `buildDailyReport`, the same function the printed sheet uses, so the
+// screen and the paper cannot disagree.
 export function ExpensesTab() {
-  const { expenses, expenseCategories, createExpense, deleteExpense, createExpenseCategory, deleteExpenseCategory, isLoading } = useDashboardData()
-  
-  const [amount, setAmount] = useState('')
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0])
-  const [categoryId, setCategoryId] = useState('')
-  const [notes, setNotes] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false)
+  const {
+    allBookings, rooms, expenses, expenseCategories, isLoading,
+    createExpense, deleteExpense, createExpenseCategory, deleteExpenseCategory,
+  } = useDashboardData()
 
-  // Category management
-  const [newCategoryName, setNewCategoryName] = useState('')
+  // LOCAL today — `toISOString()` is UTC and showed yesterday until 8 AM in UTC+8, so
+  // an expense logged first thing in the morning landed on the wrong day's sheet.
+  const today = dateToString(new Date())
+  const [date, setDate] = useState(today)
+  const [printing, setPrinting] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [showCategories, setShowCategories] = useState(false)
 
-  // Custom Category Selector State
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  // A tab settled at the counter is money in with no booking behind it.
+  const { data: tabs = [] } = useQuery({ queryKey: ['tabs'], queryFn: getTabs })
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  const report = useMemo(
+    () => buildDailyReport({ date, bookings: allBookings, tabs, expenses, categories: expenseCategories, rooms }),
+    [date, allBookings, tabs, expenses, expenseCategories, rooms],
+  )
+  const dayExpenses = useMemo(
+    () => expenses.filter(e => e.expense_date === date).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')),
+    [expenses, date],
+  )
 
-  // Find currently selected category details
-  const selectedCategory = useMemo(() => {
-    return expenseCategories.find(c => c.id === categoryId)
-  }, [categoryId, expenseCategories])
-
-  // Filter categories based on search input
-  const filteredCategories = useMemo(() => {
-    return expenseCategories.filter(cat =>
-      cat.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [expenseCategories, searchQuery])
-
-  // Calculate the top 5 most frequently logged categories, fallback to first 5
-  const popularCategories = useMemo(() => {
-    if (expenseCategories.length === 0) return []
-    const counts: Record<string, number> = {}
-    expenses.forEach(exp => {
-      counts[exp.category_id] = (counts[exp.category_id] || 0) + 1
-    })
-    const sorted = [...expenseCategories].sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0))
-    return sorted.slice(0, 5)
-  }, [expenses, expenseCategories])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!amount || !categoryId || !expenseDate) return
-
-    setIsSubmitting(true)
+  const addExpense = async (input: { amount: number; categoryId: string; notes?: string }) => {
     try {
       await createExpense({
-        id: `exp-${generateUUID()}`,
-        amount: parseFloat(amount),
-        category_id: categoryId,
-        expense_date: expenseDate,
-        notes: notes.trim() || undefined
+        id: 'exp-' + generateUUID(),
+        amount: input.amount,
+        category_id: input.categoryId,
+        expense_date: date,
+        notes: input.notes,
       })
-      // Reset form
-      setAmount('')
-      setNotes('')
-    } catch {
-      showToast('Could not log the expense. Please try again.', 'error')
-    } finally {
-      setIsSubmitting(false)
+    } catch (err) {
+      showToast('Could not save that expense. Please try again.', 'error')
+      throw err
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const removeExpense = async (expense: Expense) => {
     const ok = await askConfirm({
-      title: 'Delete this expense?',
-      message: 'The Earnings Report changes to match.',
-      confirmLabel: 'Delete',
+      title: 'Remove this ₱' + expense.amount.toLocaleString() + ' expense?',
+      confirmLabel: 'Remove',
       tone: 'danger',
     })
     if (!ok) return
-    try {
-      await deleteExpense(id)
-    } catch {
-      showToast('Could not delete the expense.', 'error')
-    }
+    try { await deleteExpense(expense.id) } catch { showToast('Could not remove the expense.', 'error') }
   }
 
-  const handleAddCategory = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newCategoryName.trim()) return
-    try {
-      await createExpenseCategory({ id: `cat-${generateUUID()}`, name: newCategoryName.trim() })
-      setNewCategoryName('')
-    } catch {
-      showToast('Could not add the category.', 'error')
-    }
+  const addCategory = async (name: string) => {
+    try { await createExpenseCategory({ id: 'cat-' + generateUUID(), name }) }
+    catch { showToast('Could not add the category.', 'error') }
   }
 
-  const handleDeleteCategory = async (id: string) => {
-    const isUsed = expenses.some(exp => exp.category_id === id)
-    if (isUsed) {
-      showToast('This category is used by existing expenses, so it cannot be deleted.', 'error')
+  const removeCategory = async (category: ExpenseCategory) => {
+    if (expenses.some(e => e.category_id === category.id)) {
+      showToast('"' + category.name + '" has expenses logged under it, so it stays.', 'error')
       return
     }
-    const ok = await askConfirm({
-      title: 'Delete this category?',
-      confirmLabel: 'Delete',
-      tone: 'danger',
-    })
+    const ok = await askConfirm({ title: 'Remove "' + category.name + '"?', confirmLabel: 'Remove', tone: 'danger' })
     if (!ok) return
-    try { await deleteExpenseCategory(id) } catch { showToast('Could not delete the category.', 'error') }
+    try { await deleteExpenseCategory(category.id) } catch { showToast('Could not remove the category.', 'error') }
   }
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500"></div>
       </div>
     )
   }
 
+  const quiet = 'text-[12px] font-semibold text-muted hover:text-gold-700 transition-colors cursor-pointer'
+
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-full">
-      {/* Left Column: Title & Form */}
-      <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-6">
+    <div className="max-w-4xl mx-auto space-y-3 font-sans">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-main flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-brand-text" />
-            Hotel Expenses
+          <h2 className="font-display font-bold text-xl text-main flex items-center gap-2">
+            <Wallet className="w-5 h-5 text-gold-600" />
+            {date === today ? "Today's money" : 'Money on this day'}
           </h2>
-          <p className="text-sm text-muted mt-1">Log and track all operational outgoings and purchases.</p>
+          <p className="text-[13px] text-muted mt-0.5">{prettyDay(date)}</p>
         </div>
-
-        <div className="bg-card rounded-xl border border-soft shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-main mb-4 flex items-center gap-2">
-            <TrendingDown className="w-4 h-4 text-rose-500" />
-            Log New Expense
-          </h3>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-main mb-1">Amount (₱)</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <span className="text-muted text-sm font-medium">₱</span>
-                </div>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  required
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2 border border-soft rounded-lg text-sm focus:ring-2 focus:ring-[#B89251] focus:border-transparent"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-main mb-1">Category</label>
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center justify-between w-full pl-3 pr-3 py-2 border border-soft rounded-lg text-sm bg-card hover:bg-page transition-colors text-left focus:ring-2 focus:ring-[#B89251] focus:border-transparent cursor-pointer"
-                >
-                  <div className="flex items-center gap-2 text-main">
-                    <Tag className="w-4 h-4 text-brand-text shrink-0" />
-                    {selectedCategory ? (
-                      <span className="font-medium text-sm text-main">{selectedCategory.name}</span>
-                    ) : (
-                      <span className="text-muted opacity-60">Select a category</span>
-                    )}
-                  </div>
-                  <div className="text-muted shrink-0 ml-2">
-                    <svg className={`w-4 h-4 fill-current opacity-75 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20">
-                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                    </svg>
-                  </div>
-                </button>
-
-                {isDropdownOpen && (
-                  <div className="absolute z-50 left-0 right-0 mt-1 bg-card border border-soft rounded-lg shadow-lg overflow-hidden flex flex-col max-h-[220px]">
-                    <div className="p-2 border-b border-soft bg-page">
-                      <input
-                        type="text"
-                        placeholder="Search categories..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-xs border border-soft rounded bg-card focus:outline-none focus:ring-1 focus:ring-[#B89251] text-main"
-                        autoFocus
-                      />
-                    </div>
-                    <div className="overflow-y-auto flex-1 py-1">
-                      {filteredCategories.length === 0 ? (
-                        <div className="px-3 py-2 text-xs text-muted text-center italic">
-                          No categories found
-                        </div>
-                      ) : (
-                        filteredCategories.map((cat) => {
-                          const isSelected = cat.id === categoryId;
-                          return (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => {
-                                setCategoryId(cat.id);
-                                setIsDropdownOpen(false);
-                                setSearchQuery('');
-                              }}
-                              className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-page transition-colors cursor-pointer ${
-                                isSelected ? 'bg-softbg font-semibold text-[#B89251]' : 'text-main'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-brand-primary' : 'bg-[#B89251]/40'}`} />
-                                <span>{cat.name}</span>
-                              </div>
-                              {isSelected && (
-                                <svg className="w-3.5 h-3.5 text-brand-text" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Quick Select Chips */}
-              {expenseCategories.length > 0 && (
-                <div className="mt-2">
-                  <div className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-1">Quick Select:</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {popularCategories.map((cat) => {
-                      const isSelected = cat.id === categoryId;
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => setCategoryId(cat.id)}
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all border cursor-pointer ${
-                            isSelected
-                              ? 'bg-brand-primary text-ink-900 border-brand-primary shadow-sm scale-[1.02]'
-                              : 'bg-page hover:bg-softbg text-muted border-soft hover:text-main'
-                          }`}
-                        >
-                          {cat.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {expenseCategories.length === 0 && (
-                <p className="text-[10px] text-amber-600 mt-1">No categories yet. Add one in the ledger header below.</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-main mb-1">Date</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Calendar className="w-4 h-4 text-muted" />
-                </div>
-                <input
-                  type="date"
-                  required
-                  value={expenseDate}
-                  onChange={(e) => setExpenseDate(e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2 border border-soft rounded-lg text-sm focus:ring-2 focus:ring-[#B89251] focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-main mb-1">Notes (Optional)</label>
-              <div className="relative">
-                <div className="absolute top-2 left-0 pl-3 pointer-events-none">
-                  <FileText className="w-4 h-4 text-muted" />
-                </div>
-                <textarea
-                  rows={3}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="What was this for?"
-                  className="block w-full pl-9 pr-3 py-2 border border-soft rounded-lg text-sm focus:ring-2 focus:ring-[#B89251] focus:border-transparent resize-none"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting || expenseCategories.length === 0}
-              className="w-full flex items-center justify-center gap-2 bg-brand-primary hover:bg-gold-500 text-ink-900 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  Log Expense
-                </>
-              )}
+        <div className="flex items-center gap-2">
+          {date !== today && (
+            <button type="button" onClick={() => setDate(today)} className="text-[12px] font-bold text-gold-700 hover:bg-gold-100 px-2.5 py-2 rounded-lg transition-colors cursor-pointer">
+              Back to today
             </button>
-          </form>
-        </div>
-      </div>
-
-      {/* Right Column: List */}
-      <div className="flex-1 bg-card rounded-xl border border-soft shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-        <div className="px-5 py-3.5 border-b border-soft bg-page flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-3">
-            <h3 className="text-sm font-semibold text-main">Expense Ledger</h3>
-            <span className="text-xs font-medium text-muted bg-card px-2 py-1 rounded border border-soft">
-              {expenses.length} records
-            </span>
-            <button 
-              onClick={() => setIsCategoryManagerOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-900 bg-brand-primary hover:bg-gold-500 rounded-md shadow-sm transition-colors ml-2 cursor-pointer"
-            >
-              <Tag className="w-3.5 h-3.5" /> Manage Categories
-            </button>
-          </div>
-        </div>
-        
-        <div className="flex-1 overflow-auto bg-card">
-          {expenses.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-muted">
-              <Wallet className="w-12 h-12 mb-3 text-muted opacity-30" />
-              <p className="text-sm font-medium">No expenses logged yet</p>
-              <p className="text-xs mt-1">Expenses you log will appear here.</p>
-            </div>
-          ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="bg-page text-muted text-xs uppercase sticky top-0 border-b border-soft shadow-sm">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Date</th>
-                  <th className="px-4 py-3 font-medium">Category</th>
-                  <th className="px-4 py-3 font-medium">Notes</th>
-                  <th className="px-4 py-3 font-medium text-right">Amount</th>
-                  <th className="px-4 py-3 font-medium text-right w-16"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-soft">
-                {expenses.map((expense) => {
-                  const category = expenseCategories.find(c => c.id === expense.category_id)
-                  return (
-                    <tr key={expense.id} className="hover:bg-page transition-colors group">
-                      <td className="px-4 py-3 whitespace-nowrap text-muted">
-                        {new Date(expense.expense_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-softbg text-muted border border-soft">
-                          {category?.name || 'Unknown Category'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-muted truncate max-w-[200px]">
-                        {expense.notes || <span className="text-muted opacity-50 italic">No notes</span>}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-rose-600 whitespace-nowrap">
-                        -₱{expense.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleDelete(expense.id)}
-                          className="text-muted hover:text-rose-500 transition-colors p-1 rounded hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                          title="Delete Expense"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
           )}
+          <input
+            type="date"
+            value={date}
+            max={today}
+            onChange={e => { if (e.target.value) setDate(e.target.value) }}
+            aria-label="Day"
+            className="bg-card border border-soft text-main text-xs px-2 py-2 rounded-lg outline-none font-mono focus:border-gold-500 cursor-pointer"
+          />
+          <button
+            type="button"
+            onClick={() => setPrinting(true)}
+            className="inline-flex items-center gap-1.5 bg-ink-900 hover:bg-ink-700 text-white text-[13px] font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
+          >
+            <Printer className="w-4 h-4" /> Print daily report
+          </button>
         </div>
       </div>
-      
-      {/* Category Management Modal */}
-      {isCategoryManagerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-card w-full max-w-md rounded-xl border border-soft shadow-xl overflow-hidden flex flex-col">
-            <div className="px-5 py-4 border-b border-soft flex items-center justify-between bg-page">
-              <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-brand-text" />
-                <h3 className="text-sm font-semibold text-main">Manage Expense Categories</h3>
-              </div>
-              <button 
-                onClick={() => setIsCategoryManagerOpen(false)}
-                className="text-muted hover:text-main transition-colors cursor-pointer"
-                title="Close"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-5 overflow-y-auto max-h-[50vh]">
-              {expenseCategories.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {expenseCategories.map(cat => (
-                    <span key={cat.id} className="inline-flex items-center gap-1.5 bg-page border border-soft text-main text-xs font-medium px-3 py-1.5 rounded-full transition-colors hover:border-rose-300/60 hover:bg-rose-500/5">
-                      {cat.name}
-                      <button type="button" onClick={() => handleDeleteCategory(cat.id)} className="text-muted/40 hover:text-rose-500 transition-colors cursor-pointer" title="Remove"><Trash2 className="w-3 h-3" /></button>
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted text-center py-4">No categories yet. Add one below.</p>
-              )}
-            </div>
-            
-            <div className="p-5 border-t border-soft bg-page">
-              <form onSubmit={handleAddCategory} className="flex gap-2">
-                <input
-                  type="text"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="New category name..."
-                  className="flex-1 bg-card border border-soft text-main px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-brand-primary"
-                />
-                <button type="submit" disabled={!newCategoryName.trim()}
-                  className="bg-brand-primary hover:bg-gold-500 text-ink-900 text-sm font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shrink-0">
-                  <Plus className="w-4 h-4" /> Add
-                </button>
-              </form>
-            </div>
-          </div>
+
+      <QuickExpense key={date} categories={expenseCategories} expenses={expenses} onAdd={addExpense} />
+
+      <DayMoney report={report} dayExpenses={dayExpenses} categories={expenseCategories} onRemove={removeExpense} />
+
+      <div className="flex items-center justify-between gap-3 px-1">
+        {report.undatedCount > 0 ? (
+          <span className="text-[11px] text-muted">
+            {report.undatedCount} booking{report.undatedCount === 1 ? '' : 's'} holding ₱{report.undatedMoney.toLocaleString()} with no payment date
+          </span>
+        ) : <span />}
+        <div className="flex items-center gap-4">
+          <button type="button" onClick={() => setShowHistory(true)} className={quiet}>All expenses</button>
+          <button type="button" onClick={() => setShowCategories(true)} className={quiet}>Categories</button>
         </div>
+      </div>
+
+      {printing && <DailyReportModal initialDate={date} onClose={() => setPrinting(false)} />}
+      {showHistory && (
+        <ExpenseHistory
+          expenses={expenses}
+          categories={expenseCategories}
+          onRemove={removeExpense}
+          onOpenDay={day => { setDate(day); setShowHistory(false) }}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
+      {showCategories && (
+        <CategoryManager
+          categories={expenseCategories}
+          onAdd={addCategory}
+          onRemove={removeCategory}
+          onClose={() => setShowCategories(false)}
+        />
       )}
     </div>
   )

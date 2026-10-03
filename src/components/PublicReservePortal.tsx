@@ -198,6 +198,10 @@ export function PublicReservePortal() {
       }
       if (onlinePayment.amount > 0) {
         newBooking.payment_records = [onlinePayment]
+        // The 30-minute hold is for a reservation the guest abandoned. One that carries
+        // a payment is not abandoned, and the expiry would DELETE it — receipt and all —
+        // half an hour later unless the desk happened to touch it first.
+        newBooking.expires_at = null
       }
 
       // 3. Save via the shared layer and reflect it in the shared cache.

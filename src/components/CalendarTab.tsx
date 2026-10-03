@@ -3,6 +3,8 @@ import { useDashboardData } from './DashboardContext'
 import { Booking } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { dateToString } from '../utils/helpers'
+import { extendStay } from '../utils/bookingBalance'
+import { clearStayHours } from '../utils/db'
 import { WalkInBookingForm } from './WalkInBookingForm'
 import { shortStayEnd, stayHoursOf } from '../utils/shortStay'
 import { takeFocusedBooking } from '../utils/bookingFocus'
@@ -13,15 +15,19 @@ import { LogOldBookingModal } from './calendar/LogOldBookingModal'
 import { BlockDatesPane } from './calendar/BlockDatesPane'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { CalendarLegend } from './calendar/CalendarLegend'
+import { TodayStrip } from './calendar/TodayStrip'
+import { BreakfastPicker } from './calendar/BreakfastPicker'
 import { roomDisplayName } from './calendar/bookingStyles'
 import { showToast } from '../utils/toast'
+import { OPEN_END, isOpenEnded } from '../utils/openBlock'
+import { groupOf } from '../utils/bookingGroup'
 
 type Selection = { roomId?: string; venueId?: string; checkIn: Date }
 type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }>
 type UnitSel = { checkIn: string; checkOut: string; type: 'room' | 'venue' }
 
 export function CalendarTab() {
-  const { rooms, venues, bookings, createManualBooking, cancelBooking, updateBooking } = useDashboardData()
+  const { rooms, venues, bookings, allBookings, createManualBooking, cancelBooking, deleteBooking, updateBooking } = useDashboardData()
 
   // ── Month / timeline state ──
   // The anchor IS the day the 31-day window starts on (card k154 follow-up): Today
@@ -35,6 +41,8 @@ export function CalendarTab() {
   // ── Booking detail / extension modal ──
   const [selectedExtendBooking, setSelectedExtendBooking] = useState<Booking | null>(null)
   const [showLogOld, setShowLogOld] = useState(false)
+  /** The booking whose breakfast for today is being written down. */
+  const [breakfastForId, setBreakfastForId] = useState<string | null>(null)
   const [logOldSelections, setLogOldSelections] = useState<Record<string, UnitSel>>({})
   /** The dates the block pane is holding — one day or a range, plus which units. */
   const [blockTarget, setBlockTarget] = useState<{
@@ -46,6 +54,9 @@ export function CalendarTab() {
   const [extendCheckoutDate, setExtendCheckoutDate] = useState(''); const [extendError, setExtendError] = useState('')
 
   // ── Full wizard (editing + advanced) ──
+  // The rooms being corrected together, fixed when Edit is pressed: a list rebuilt on
+  // every render would re-seed the form and wipe what the desk has typed.
+  const [editingGroup, setEditingGroup] = useState<Booking[] | null>(null)
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null); const [showManualForm, setShowManualForm] = useState(false); const [formSelections, setFormSelections] = useState<Record<string, UnitSel>>({}); const [manualBookingType, setManualBookingType] = useState<'individual' | 'partner'>('individual'); const [formStayHours, setFormStayHours] = useState<number | null>(null)
 
   // ── The short-stay clock (the owner's ruling) ────────────────────────────────
@@ -68,6 +79,25 @@ export function CalendarTab() {
   React.useEffect(() => {
     timelineSelectionRef.current = timelineSelection; groupSelectionRef.current = groupSelection; bookingsRef.current = bookings; roomsRef.current = rooms; venuesRef.current = venues
   })
+
+  // A booking opened from the Bookings list lands here: the calendar moves to the
+  // booking's own dates when they are off screen, and its panel opens. Read once, off the
+  // effect body, the same way the Restaurant screen takes its hand-off.
+  React.useEffect(() => {
+    queueMicrotask(() => {
+      const id = takeFocusedBooking()
+      const wanted = id ? bookingsRef.current.find(b => b.id === id) : undefined
+      if (!wanted) return
+      const [y, m, d] = wanted.check_in.split('-').map(Number)
+      const start = new Date(y, m - 1, d)
+      const first = new Date(); first.setHours(0, 0, 0, 0)
+      const last = new Date(first); last.setDate(last.getDate() + 30)
+      if (start < first || start > last) setMonthAnchor(start)
+      setExtendError('')
+      setExtendCheckoutDate(isOpenEnded(wanted) ? '' : wanted.check_out)
+      setSelectedExtendBooking(wanted)
+    })
+  }, [])
 
   // The scan: which short stays are past their hours, and popping the panel for the
   // first one nobody has dealt with yet. A closed panel is never reopened — the desk
@@ -115,19 +145,27 @@ export function CalendarTab() {
     ? bookings.find(b => b.id === selectedExtendBooking.id) || selectedExtendBooking
     : null
 
+  const breakfastFor = breakfastForId ? bookings.find(b => b.id === breakfastForId) || null : null
+
   const toDateKey = (y: number, m: number, d: number) => y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0')
 
   // Index bookings by Room/Venue+Date — numeric UTC timestamps, no string parsing in loop.
   const bookingByRoomAndDate = useMemo(() => {
     const map: Record<string, Booking> = {}
     const oneDay = 86400000
+    // Only the days on screen are indexed. A block with no end date runs to a far-off
+    // year, and walking every day of it for every render would be thousands of entries
+    // nobody can see.
+    const dayUTC = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d) }
+    const windowStart = daysList.length ? dayUTC(daysList[0].isoStr) : 0
+    const windowEnd = daysList.length ? dayUTC(daysList[daysList.length - 1].isoStr) + oneDay : 0
     bookings.forEach(b => {
       const keyId = b.room_id || syncEngine.normalizeVenueId(b.venue_id)
       if (!keyId) return
       const [y1, m1, d1] = b.check_in.split('-').map(Number)
       const [y2, m2, d2] = b.check_out.split('-').map(Number)
-      let cur = Date.UTC(y1, m1 - 1, d1)
-      const end = Date.UTC(y2, m2 - 1, d2)
+      let cur = Math.max(Date.UTC(y1, m1 - 1, d1), windowStart)
+      const end = Math.min(Date.UTC(y2, m2 - 1, d2), windowEnd)
       while (cur < end) {
         const dt = new Date(cur)
         map[keyId + '_' + toDateKey(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate())] = b
@@ -135,7 +173,7 @@ export function CalendarTab() {
       }
     })
     return map
-  }, [bookings])
+  }, [bookings, daysList])
 
   const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date) => {
     const curTimeline = timelineSelectionRef.current
@@ -180,7 +218,7 @@ export function CalendarTab() {
     }
   }, [])
 
-  const handleExtendStaySubmit = async (e: React.FormEvent) => {
+  const handleExtendStaySubmit = async (e: React.FormEvent, tabTotal: number) => {
     e.preventDefault(); setExtendError('')
     if (!selectedExtendBooking || !extendCheckoutDate) return
     try {
@@ -189,19 +227,10 @@ export function CalendarTab() {
         ? syncEngine.isRoomAvailable(selectedExtendBooking.room_id!, selectedExtendBooking.check_in, extendCheckoutDate, bookings, selectedExtendBooking.id)
         : syncEngine.isVenueRangeAvailable(selectedExtendBooking.venue_id!, selectedExtendBooking.check_in, extendCheckoutDate, bookings, selectedExtendBooking.id)
       if (!availOk) { setExtendError('Overlap collision — already reserved.'); return }
-      const pricing = syncEngine.calculatePricing({
-        roomId: selectedExtendBooking.room_id,
-        venueId: selectedExtendBooking.venue_id,
-        checkIn: selectedExtendBooking.check_in,
-        checkOut: extendCheckoutDate,
-        guestEmail: selectedExtendBooking.guest_email,
-        bookingsList: bookings,
-        contractRateOverride: selectedExtendBooking.contract_rate_override,
-        rooms, venues
-      })
       const current = await syncEngine.getBookings()
       const target = current.find(b => b.id === selectedExtendBooking.id) || selectedExtendBooking
-      await updateBooking({ ...target, check_out: extendCheckoutDate, balance_due: pricing.balanceDue })
+      await updateBooking(extendStay(target, extendCheckoutDate, { rooms, venues, tabTotal }))
+      if (target.stay_hours) await clearStayHours(target.id)
       setSelectedExtendBooking(null)
     } catch (err) {
       setExtendError(err instanceof Error ? err.message : 'Unknown error during stay extension')
@@ -218,7 +247,7 @@ export function CalendarTab() {
     checkOut.setDate(checkOut.getDate() + 1)
     setTimelineSelection(null)
     setGroupSelection(null)
-    setEditingBooking(null)
+    setEditingBooking(null); setEditingGroup(null)
     setManualBookingType('individual')
     setFormStayHours(hours)
     setFormSelections({ [roomId]: { checkIn: dateToString(checkIn), checkOut: dateToString(checkOut), type: 'room' } })
@@ -235,7 +264,7 @@ export function CalendarTab() {
     setTimelineSelection(null)
     setFormStayHours(null)
     setFormSelections(serialized)
-    setEditingBooking(null)
+    setEditingBooking(null); setEditingGroup(null)
     setManualBookingType('individual')
     setShowManualForm(true)
   }
@@ -276,23 +305,38 @@ export function CalendarTab() {
   }
 
   /** One block per picked unit, so a whole floor can be blocked in one go. */
-  const createBlocks = async (notes: string) => {
+  const createBlocks = async (notes: string, openEnded: boolean) => {
     if (!blockTarget) return
-    for (const u of blockTarget.units) {
-      await createManualBooking({
-        roomId: u.type === 'room' ? u.id : undefined,
-        venueId: u.type === 'venue' ? u.id : undefined,
-        guestName: 'Admin Date Block',
-        guestEmail: 'admin@daweez-booking.vercel.app',
-        guestPhone: 'None',
-        checkIn: blockTarget.checkIn,
-        checkOut: blockTarget.checkOut,
-        source: 'manual',
-        status: 'blocked',
-        notes,
-      })
+    try {
+      for (const u of blockTarget.units) {
+        // No end date yet: the block runs on until it is ended — or, when the unit already
+        // has a booking further ahead, up to that booking, which the desk is told about.
+        let checkOut = blockTarget.checkOut
+        if (openEnded) {
+          const next = bookings
+            .filter(b => (u.type === 'room' ? b.room_id === u.id : syncEngine.normalizeVenueId(b.venue_id) === syncEngine.normalizeVenueId(u.id)))
+            .filter(b => b.check_in > blockTarget.checkIn)
+            .sort((a, b) => a.check_in.localeCompare(b.check_in))[0]
+          checkOut = next ? next.check_in : OPEN_END
+          if (next) showToast(blockLabel([u]) + ' is booked from ' + fmtBlockDate(next.check_in) + ', so the block runs until then.', 'info')
+        }
+        await createManualBooking({
+          roomId: u.type === 'room' ? u.id : undefined,
+          venueId: u.type === 'venue' ? u.id : undefined,
+          guestName: 'Admin Date Block',
+          guestEmail: 'admin@daweez-booking.vercel.app',
+          guestPhone: 'None',
+          checkIn: blockTarget.checkIn,
+          checkOut,
+          source: 'manual',
+          status: 'blocked',
+          notes,
+        })
+      }
+      setBlockTarget(null)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not block those dates. Please try again.', 'error')
     }
-    setBlockTarget(null)
   }
 
 
@@ -361,6 +405,13 @@ export function CalendarTab() {
         onJumpToDate={jumpToDay}
         onToday={() => setMonthAnchor(todayStart())}
       />
+      <TodayStrip
+        bookings={bookings}
+        rooms={rooms}
+        venues={venues}
+        onOpen={b => { setExtendError(''); setExtendCheckoutDate(b.check_out); setSelectedExtendBooking(b) }}
+        onBreakfast={b => setBreakfastForId(b.id)}
+      />
       <div className="flex-grow min-h-0 flex flex-row gap-2 overflow-hidden">
         <CalendarLegend />
         <TimelineGrid
@@ -392,6 +443,7 @@ export function CalendarTab() {
           rooms={rooms}
           venues={venues}
           bookings={bookings}
+          allBookings={allBookings}
           extendCheckoutDate={extendCheckoutDate}
           extendError={extendError}
           onClose={() => setSelectedExtendBooking(null)}
@@ -399,7 +451,7 @@ export function CalendarTab() {
           setExtendCheckoutDate={setExtendCheckoutDate}
           onCancelBooking={cancelBooking}
           onUpdateBooking={updateBooking}
-          onEditBooking={() => { setEditingBooking(liveExtendBooking); setFormStayHours(null); setShowManualForm(true); setSelectedExtendBooking(null) }}
+          onEditBooking={() => { setEditingBooking(liveExtendBooking); setEditingGroup(groupOf(liveExtendBooking, bookings)); setFormStayHours(liveExtendBooking.stay_hours || null); setShowManualForm(true); setSelectedExtendBooking(null) }}
           shortStayDue={dueShortStayIds.indexOf(liveExtendBooking.id) !== -1}
         />
       )}
@@ -412,17 +464,17 @@ export function CalendarTab() {
           bookings={bookings}
           createManualBooking={createManualBooking}
           cancelBooking={cancelBooking}
+          deleteBooking={deleteBooking}
+          allBookings={allBookings}
           updateBooking={updateBooking}
           initialSelections={editingBooking
             ? { [editingBooking.room_id || editingBooking.venue_id || '']: { checkIn: editingBooking.check_in, checkOut: editingBooking.check_out, type: editingBooking.room_id ? 'room' : 'venue' } }
             : formSelections}
-          editingBookings={editingBooking
-            ? (editingBooking.invoice_number ? bookings.filter(b => b.invoice_number === editingBooking.invoice_number) : [editingBooking])
-            : undefined}
+          editingBookings={editingBooking ? (editingGroup || undefined) : undefined}
           initialBookingType={manualBookingType}
           initialStayHours={formStayHours ?? undefined}
           onClose={() => {
-            setShowManualForm(false); setEditingBooking(null); setFormSelections({}); setFormStayHours(null)
+            setShowManualForm(false); setEditingBooking(null); setEditingGroup(null); setFormSelections({}); setFormStayHours(null)
             // Once the billing statement is closed, the booking just made opens
             // itself in the quick view (card k134).
             const created = takeFocusedBooking()
@@ -442,6 +494,16 @@ export function CalendarTab() {
           fmt={fmtBlockDate}
           onSubmit={createBlocks}
           onClose={() => setBlockTarget(null)}
+        />
+      )}
+
+      {breakfastFor && (
+        <BreakfastPicker
+          key={breakfastFor.id}
+          booking={breakfastFor}
+          date={todayKey}
+          place={'Room ' + (rooms.find(r => r.id === breakfastFor.room_id)?.room_number ?? '')}
+          onClose={() => setBreakfastForId(null)}
         />
       )}
 

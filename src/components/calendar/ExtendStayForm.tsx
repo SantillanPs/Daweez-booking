@@ -10,6 +10,8 @@ interface ExtendStayFormProps {
   setExtendCheckoutDate: (v: string) => void
   extendError: string
   extraNights: number
+  /** A short stay being turned into a normal one: the nights it will cover. 0 otherwise. */
+  becomesNights?: number
   newBalanceDue: number
   showErr: (f: 'extendCheckoutDate') => string
   isInvalid: (f: 'extendCheckoutDate') => boolean
@@ -21,7 +23,7 @@ interface ExtendStayFormProps {
 // rare action — it should not compete with the day-to-day ones.
 export function ExtendStayForm({
   booking, extendCheckoutDate, setExtendCheckoutDate, extendError,
-  extraNights, newBalanceDue, showErr, isInvalid, markTouched, onSubmit,
+  extraNights, becomesNights = 0, newBalanceDue, showErr, isInvalid, markTouched, onSubmit,
 }: ExtendStayFormProps) {
   const baseField = 'w-full bg-page border text-main px-2.5 py-2 rounded-lg text-xs font-mono outline-none'
   const field = baseField + ' border-gold-300 focus:bg-card focus:border-gold-500'
@@ -50,11 +52,13 @@ export function ExtendStayForm({
         </div>
       </div>
 
-      {extraNights > 0 && (
+      {(extraNights > 0 || becomesNights > 0) && (
         <div className="p-3 bg-gold-100 border border-gold-200 rounded-lg text-[12px] space-y-1">
           <div className="flex justify-between text-muted">
-            <span>Extra nights</span>
-            <span className="font-mono text-main font-semibold">+{extraNights}</span>
+            <span>{becomesNights > 0 ? 'Becomes a normal stay' : 'Extra nights'}</span>
+            <span className="font-mono text-main font-semibold">
+              {becomesNights > 0 ? becomesNights + (becomesNights === 1 ? ' night' : ' nights') : '+' + extraNights}
+            </span>
           </div>
           <div className="flex justify-between font-bold border-t border-gold-200/70 pt-1">
             <span className="text-muted">New amount to pay</span>
@@ -65,10 +69,10 @@ export function ExtendStayForm({
 
       <button
         type="submit"
-        disabled={extendCheckoutDate === booking.check_out}
+        disabled={extendCheckoutDate === booking.check_out && !booking.stay_hours}
         className="w-full bg-card hover:bg-gold-100 disabled:bg-softbg disabled:text-muted text-main border border-soft text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer"
       >
-        Save extension
+        {booking.stay_hours ? 'Change to a normal stay' : 'Save extension'}
       </button>
     </form>
   )

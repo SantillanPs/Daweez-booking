@@ -24,12 +24,17 @@ export function BlockDatesPane({ unitLabel, checkIn, checkOut, fmt, onSubmit, on
   checkOut: string
   /** How a stored date reads on screen — handed in so this pane holds no date logic. */
   fmt: (iso: string) => string
-  /** Writes the block. Resolves when it is saved; the caller closes the pane. */
-  onSubmit: (notes: string) => Promise<void>
+  /** Writes the block. Resolves when it is saved; the caller closes the pane.
+   *  `openEnded` = no end date yet (Owner use only). */
+  onSubmit: (notes: string, openEnded: boolean) => Promise<void>
   onClose: () => void
 }) {
   const [reason, setReason] = useState<string>('')
   const [note, setNote] = useState('')
+  // The owner's family use a room without knowing when they will leave, so an Owner
+  // use block may be made with no end date; "They have left" ends it later.
+  const [noEnd, setNoEnd] = useState(false)
+  const openEnded = reason === 'Owner use' && noEnd
   const [tried, setTried] = useState(false)
   const [busy, setBusy] = useState(false)
   const missing = !reason && tried
@@ -39,7 +44,7 @@ export function BlockDatesPane({ unitLabel, checkIn, checkOut, fmt, onSubmit, on
     if (!reason) { setTried(true); return }
     setBusy(true)
     try {
-      await onSubmit(note.trim() ? `${reason} — ${note.trim()}` : reason)
+      await onSubmit(note.trim() ? `${reason} — ${note.trim()}` : reason, openEnded)
     } finally {
       setBusy(false)
     }
@@ -61,7 +66,12 @@ export function BlockDatesPane({ unitLabel, checkIn, checkOut, fmt, onSubmit, on
         <div className="flex items-center gap-2 flex-wrap">
           <span className="px-2.5 py-1 rounded-lg border border-soft bg-page text-[11.5px] font-bold text-main">{unitLabel}</span>
           <span className="px-2.5 py-1 rounded-lg border border-soft bg-page text-[11.5px] font-bold text-main">{fmt(checkIn)}</span>
-          {checkOut !== checkIn && (
+          {openEnded ? (
+            <>
+              <span className="text-[11px] text-muted">→</span>
+              <span className="px-2.5 py-1 rounded-lg border border-gold-400 bg-gold-100 text-[11.5px] font-bold text-main">no end date yet</span>
+            </>
+          ) : checkOut !== checkIn && (
             <>
               <span className="text-[11px] text-muted">→</span>
               <span className="px-2.5 py-1 rounded-lg border border-soft bg-page text-[11.5px] font-bold text-main">{fmt(checkOut)}</span>
@@ -77,6 +87,12 @@ export function BlockDatesPane({ unitLabel, checkIn, checkOut, fmt, onSubmit, on
             ))}
           </div>
           {missing && <p className="text-[11px] text-danger-600 font-semibold mt-1.5">Pick a reason for the block.</p>}
+          {reason === 'Owner use' && (
+            <label className="mt-2.5 flex items-center gap-2 text-[12px] font-semibold text-main cursor-pointer">
+              <input type="checkbox" checked={noEnd} onChange={e => setNoEnd(e.target.checked)} className="checkbox checkbox-sm checkbox-primary" />
+              No end date yet
+            </label>
+          )}
         </div>
 
         <label className="block">

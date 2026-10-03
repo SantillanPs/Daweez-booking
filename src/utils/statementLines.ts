@@ -120,7 +120,9 @@ export function bookingLines(b: Booking, o: {
     key: b.id + '-stay',
     band: 'room',
     description: unitName(b, rooms, venues) + (isShortStay ? ' · ' + stayHours + ' hours' : '') + rateLabel,
-    qty: String(stayQty),
+    // A short stay is ONE charge, but the column must read the hours bought (`12 hrs`):
+    // the charge count printed `1 hrs` on every short stay, whatever its length.
+    qty: isShortStay ? String(stayHours) : String(stayQty),
     unit: isShortStay ? 'HOURS' : pricing.stayUnit,
     price: stayQty > 0 ? Math.round(pricing.subtotal / stayQty) : Math.round(pricing.subtotal),
     discount: 0,

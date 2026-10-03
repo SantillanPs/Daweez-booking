@@ -1,4 +1,6 @@
-import { Room, Venue, PartnerDeal, Companion } from '../../types/booking'
+import { Room, Venue, PartnerDeal, Companion, AppliedDiscount } from '../../types/booking'
+import { calculatePricing } from '../../utils/pricing'
+import { getRateConfig } from '../../utils/rateConfig'
 
 export interface BookingEstimateParams {
   unitSelections: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
@@ -17,6 +19,12 @@ export interface BookingEstimateParams {
   formEventTable: number
   formEventTent: number
   formChairs: number
+  formVenueExcessHours: number
+  /** The staff discount, exactly as the booking will store it. */
+  discountType: 'none' | AppliedDiscount['type']
+  discountValue: number
+  venueDayBlocks: number
+  bookingType: 'individual' | 'partner'
   /**
    * Short stay: the hours the room is being sold for (3/6/12/22). The price is the
    * room's own figure for those hours and is charged ONCE — never per night.
@@ -36,80 +44,71 @@ export interface BookingEstimate {
   estDue: number
 }
 
-// Client-side estimate for the wizard totals. Breakfast is the ROOM's own price — one
-// charge for the stay, never per person — and a room with no price sells none.
+// The form's totals, worked out by the SAME pricing rule the booking is saved with
+// (`calculatePricing`), one call per unit, handed exactly what `submitBookingForm`
+// hands `createManualBooking`. This used to be a second sum of its own, and it had
+// drifted: it left out the staff discount and ignored an agency's agreed rate on any
+// room with a board price — and this figure is what the form takes as money, so a
+// 20%-off stay paid in full was received at the undiscounted amount.
 export function computeBookingEstimate(p: BookingEstimateParams): BookingEstimate {
-  let regularTotal = 0
-  let discountedTotal = 0
-  let breakfast = 0
-  let rentals = 0
+  const deal = p.partnerDeals.find(d => d.id === p.formPartnerDealId)
+  const isPartner = p.bookingType === 'partner'
+  const rates = getRateConfig()
+  const appliedDiscount: AppliedDiscount | undefined =
+    p.discountType === 'none' ? undefined : { type: p.discountType, value: p.discountValue }
+
+  let breakfast = 0, rentals = 0, addons = 0, total = 0, regularTotal = 0, subtotal = 0
+  // Extras are entered once for the whole group, so they go on the FIRST room and the
+  // FIRST venue only — the rule `submitBookingForm` uses.
+  let isFirstRoom = true, isFirstVenue = true
 
   Object.entries(p.unitSelections).forEach(([id, sel]) => {
-    const deal = p.partnerDeals.find(d => d.id === p.formPartnerDealId)
-    const contractedRate = deal?.contracted_rates[id]
-    const n = sel.checkIn && sel.checkOut
-      ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000))
-      : 1
+    if (!sel.checkIn || !sel.checkOut) return
+    const isRoom = sel.type === 'room'
+    const first = isRoom ? isFirstRoom : isFirstVenue
+    if (isRoom) isFirstRoom = false; else isFirstVenue = false
+    const equipmentRentals = isPartner || !first ? undefined : isRoom
+      ? { bigTableCount: 0, smallTableCount: 0, chairCount: 0, mineralWaterCount: 0,
+          extraFoamCount: p.formExtraFoam, extraPillowCount: p.formExtraPillow,
+          extraBlanketCount: p.formExtraBlanket, extraTowelCount: p.formExtraTowel }
+      : { bigTableCount: 0, smallTableCount: 0, chairCount: p.formChairs, mineralWaterCount: 0,
+          tableCount: p.formEventTable, tentCount: p.formEventTent }
 
-    const room = sel.type === 'room' ? p.rooms.find(r => r.id === id) : undefined
-    const venue = sel.type === 'venue' ? p.venues.find(v => v.id === id) : undefined
-    const regular = contractedRate !== undefined && contractedRate !== null
-      ? contractedRate
-      : sel.type === 'room'
-        ? (room?.base_price ?? 0)
-        : (venue?.base_price ?? 0)
-    const promo = sel.type === 'room'
-      ? (room?.promo_price ?? null)
-      : (venue?.promo_price ?? null)
-    // ONE PRICE (card k128): the promo figure is the price whenever there is one.
-    const effectiveRate = promo != null && promo > 0 ? promo : regular
-
-    // SHORT STAY: ONE charge off the room's own board price for those hours — the
-    // 22-hour figure IS the room's price. No nights, and no breakfast or rentals:
-    // a three-hour guest does not buy either.
-    const shortStay = p.shortStayHours ?? null
-    const shortPrice = sel.type === 'room' && shortStay
-      ? (shortStay === 3 ? room?.hour3_price : shortStay === 6 ? room?.hour6_price : shortStay === 12 ? room?.hour12_price : effectiveRate)
-      : null
-    const quantity = shortStay ? 1 : n
-
-    if (shortStay) {
-      const price = shortPrice != null && shortPrice > 0 ? Number(shortPrice) : effectiveRate
-      regularTotal += price
-      discountedTotal += price
-    } else {
-      regularTotal += regular * quantity
-      discountedTotal += effectiveRate * quantity
-    }
-
-    const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
-    if (sel.type === 'room' && !shortStay) {
-      // Breakfast is the ROOM's choice, at the room's OWN breakfast price — one
-      // charge for the stay (card k140). A partner deal that includes breakfast
-      // does not charge it again.
-      const roomBreakfast = Number(room?.breakfast_price || 0)
-      const wantsBreakfast = isBreakfastIncluded || p.formBreakfastRoomIds.includes(id)
-      if (wantsBreakfast && roomBreakfast > 0) breakfast += roomBreakfast
-      rentals += (p.formExtraFoam * 200 + p.formExtraPillow * 50 + p.formExtraBlanket * 50 + p.formExtraTowel * 50) * n
-    }
+    const pricing = calculatePricing({
+      roomId: isRoom ? id : undefined,
+      venueId: isRoom ? undefined : id,
+      checkIn: sel.checkIn,
+      checkOut: sel.checkOut,
+      guestEmail: '',
+      equipmentRentals,
+      contractRateOverride: deal?.contracted_rates[id] || undefined,
+      venueExcessHours: isRoom ? undefined : p.formVenueExcessHours,
+      breakfastIncluded: isRoom && ((deal ? deal.breakfast_default === 'with' : false) || p.formBreakfastRoomIds.includes(id)),
+      appliedDiscount,
+      venueDayBlocks: p.venueDayBlocks,
+      shortStayHours: isRoom ? (p.shortStayHours ?? undefined) : undefined,
+      rooms: p.rooms,
+      venues: p.venues,
+      rates,
+    })
+    breakfast += pricing.breakfastTotal
+    rentals += pricing.rentalsTotal
+    addons += pricing.addonsTotal
+    total += pricing.grandTotal
+    subtotal += pricing.stayTotal
+    regularTotal += pricing.undiscountedSubtotal
   })
 
-  if (p.hasVenues) {
-    rentals += p.formEventTable * 150 + p.formEventTent * 500 + p.formChairs * 15
-  }
-
-  const subtotal = discountedTotal
-  const total = subtotal + breakfast + rentals
   const down = Math.round(total * 0.5)
   const due = p.formStatus === 'blocked' ? 0 : (total - down)
 
   return {
     estBreakfast: breakfast,
     estRentals: rentals,
-    estAddons: 0,
+    estAddons: addons,
     estSubtotal: subtotal,
     estRegularTotal: regularTotal,
-    estDiscountAmount: Math.max(0, regularTotal - discountedTotal),
+    estDiscountAmount: Math.max(0, regularTotal - subtotal),
     estTotal: total,
     estDown: down,
     estDue: due,

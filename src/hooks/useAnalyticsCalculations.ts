@@ -60,7 +60,7 @@ export function useAnalyticsCalculations({
   // **Every range is built from LOCAL date parts** (`dateToString`), never `.toISOString().split('T')[0]`:
   // a locally-built midnight converted to UTC lands on the **previous** day everywhere east of Greenwich, so
   // `monthly` began on 31 August and every range was a day short for the first eight hours of a UTC+8 morning.
-  // This is the standing rule for booking dates (`utils/AGENTS.md`), and the Earnings Report reads the same clock.
+  // This is the standing rule for booking dates (`docs/why/money.md`), and the Earnings Report reads the same clock.
   const dateRange = useMemo(() => {
     const today = new Date()
 

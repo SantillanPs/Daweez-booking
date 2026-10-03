@@ -3,6 +3,7 @@ import * as syncEngine from './syncEngine'
 import { getRateConfig } from './rateConfig'
 import { paymentStatusFromMoney } from './bookingMoney'
 import { chargeableEarlyHours } from './checkInOut'
+import { normalizeVenueId } from './helpers'
 
 // The balance rule for a stay with a food tab (board card k69):
 //
@@ -19,6 +20,22 @@ export function recomputeBalance(
   base: Booking,
   opts: { rooms: Room[]; venues: Venue[]; tabTotal?: number; includeEarlyHours?: boolean },
 ): Booking {
+  // **Never re-price a booking before its room's prices have arrived.** With an empty
+  // room list the pricing rule falls back to the built-in sample rooms, which carry no
+  // short-stay prices — so a booking panel that opened while the page was still loading
+  // (a short stay whose time is up opens by itself) re-priced a paid ₱650 six-hour stay
+  // as a ₱950 night and SAVED it as owing ₱300 (found 2026-10-04). Unknown unit: leave
+  // the booking exactly as it is stored.
+  // A date block is not a stay and owes nothing — pricing it would write a bill onto it.
+  if (base.status === 'blocked') return base
+
+  const unitKnown = base.room_id
+    ? opts.rooms.some(r => r.id === base.room_id)
+    : base.venue_id
+      ? opts.venues.some(v => v.id === normalizeVenueId(base.venue_id))
+      : true
+  if (!unitKnown) return base
+
   const pricing = syncEngine.calculatePricing({
     roomId: base.room_id,
     venueId: base.venue_id,
@@ -39,7 +56,7 @@ export function recomputeBalance(
     breakfastIncluded: base.breakfast_included === true,
     // SHORT STAY: the hours must reach the pricing rule or a 3-hour stay is re-priced
     // as a whole night (the room's normal price instead of its 3-hour figure). Every
-    // reader that re-prices a booking has to pass this — see `utils/AGENTS.md`.
+    // reader that re-prices a booking has to pass this — see `docs/why/money.md`.
     shortStayHours: base.stay_hours,
     rooms: opts.rooms,
     venues: opts.venues,
@@ -48,6 +65,27 @@ export function recomputeBalance(
   const paid = Number(base.downpayment_paid || 0)
   const remaining = Math.max(0, pricing.grandTotal + (opts.tabTotal || 0) - paid)
   return { ...base, balance_due: remaining, payment_status: paymentStatusFromMoney(paid, remaining) }
+}
+
+/**
+ * The booking as it stands once its check-out is moved to `newCheckOut` — the ONE
+ * place an extension is priced (the owner's ruling, 2026-10-03).
+ *
+ * Extend stay used to price itself: half of the re-priced stay, with the money already
+ * received, the discount, the breakfast and the extras all left out — a fully paid
+ * two-night stay at ₱950 extended by a night was saved owing ₱1,425 instead of ₱950.
+ * It is the same sum as everywhere else now: the new bill + the food tab − the money
+ * received.
+ *
+ * A short stay pushed past its day **becomes a normal stay, priced by nights** (his
+ * ruling on the same page), so the hours come off the booking here.
+ */
+export function extendStay(
+  base: Booking,
+  newCheckOut: string,
+  opts: { rooms: Room[]; venues: Venue[]; tabTotal?: number },
+): Booking {
+  return recomputeBalance({ ...base, check_out: newCheckOut, stay_hours: undefined }, opts)
 }
 
 /**

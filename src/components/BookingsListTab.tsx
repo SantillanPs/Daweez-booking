@@ -1,19 +1,24 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useDashboardData } from './DashboardContext'
-import { Search, CalendarDays, User, MapPin, Building, Printer, FileText } from 'lucide-react'
+import { Search, CalendarDays, User, MapPin, Building, Printer, FileText, ArrowUpRight } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { Booking } from '../types/booking'
 import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
 import { BookingDetailsModal } from './billing/BookingDetailsModal'
-import { getPaymentView, isOwed, PAYMENT_BADGE_CLASSES } from '../utils/bookingMoney'
+import { getPaymentView, isOwed, isOwedByAgency, PAYMENT_BADGE_CLASSES } from '../utils/bookingMoney'
+import { focusBookingAfterCreate } from '../utils/bookingFocus'
+import { blockReason, isOpenEnded } from '../utils/openBlock'
 import { dateToString } from '../utils/helpers'
 
-type MoneyFilter = 'all' | 'owes' | 'paid'
+type MoneyFilter = 'all' | 'owes' | 'agencies' | 'paid' | 'cancelled'
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
 export function BookingsListTab() {
-  const { bookings, rooms, venues } = useDashboardData()
+  // The list is the one screen that keeps cancelled bookings in view.
+  const { allBookings: bookings, rooms, venues } = useDashboardData()
+  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [moneyFilter, setMoneyFilter] = useState<MoneyFilter>('all')
@@ -45,7 +50,9 @@ export function BookingsListTab() {
     return bookings
       .filter(b => {
         if (moneyFilter === 'owes' && !isOwed(b)) return false
-        if (moneyFilter === 'paid' && (b.payment_status !== 'paid' || b.status === 'blocked')) return false
+        if (moneyFilter === 'agencies' && !isOwedByAgency(b)) return false
+        if (moneyFilter === 'paid' && (b.payment_status !== 'paid' || b.status === 'blocked' || b.status === 'cancelled')) return false
+        if (moneyFilter === 'cancelled' && b.status !== 'cancelled') return false
         if (q) {
           const guest = b.guest_name.toLowerCase()
           const inv = (b.invoice_number || '').toLowerCase()
@@ -74,6 +81,19 @@ export function BookingsListTab() {
     }
   }, [bookings])
 
+  // What the agencies still have to send — its own figure, because it is paid by check
+  // or bank long after the guest has gone, and is never chased at the desk.
+  const agencySummary = useMemo(() => {
+    const billed = bookings.filter(b => isOwedByAgency(b))
+    return { count: billed.length, total: billed.reduce((sum, b) => sum + (b.balance_due || 0), 0) }
+  }, [bookings])
+
+  /** Opens the booking's own panel on the calendar — where money is recorded. */
+  const openBooking = (b: Booking) => {
+    focusBookingAfterCreate(b.id)
+    void navigate({ to: '/calendar' })
+  }
+
   return (
     <div className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -100,7 +120,7 @@ export function BookingsListTab() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {(['all', 'owes', 'paid'] as MoneyFilter[]).map(f => (
+            {(['all', 'owes', 'agencies', 'paid', 'cancelled'] as MoneyFilter[]).map(f => (
               <button
                 key={f}
                 onClick={() => setMoneyFilter(f)}
@@ -110,7 +130,7 @@ export function BookingsListTab() {
                     : 'bg-page text-muted border border-soft hover:bg-brand-bg'
                 }`}
               >
-                {f === 'all' ? 'All stays' : f === 'owes' ? 'Who owes' : 'Paid'}
+                {f === 'all' ? 'All stays' : f === 'owes' ? 'Who owes' : f === 'agencies' ? 'Agencies owe' : f === 'paid' ? 'Paid' : 'Cancelled'}
               </button>
             ))}
           </div>
@@ -123,14 +143,24 @@ export function BookingsListTab() {
               ? 'Everyone has paid 🎉'
               : `Who owes right now: ${owesSummary.count} ${owesSummary.count === 1 ? 'stay' : 'stays'} · ₱${owesSummary.total.toLocaleString()}`}
           </span>
-          <span className="text-[10px] text-muted hidden sm:block">Upcoming stays first</span>
+          {agencySummary.count > 0 ? (
+            <span className="text-[12px] font-bold text-indigo-800">
+              Agencies owe: {agencySummary.count} {agencySummary.count === 1 ? 'stay' : 'stays'} · ₱{agencySummary.total.toLocaleString()}
+            </span>
+          ) : (
+            <span className="text-[10px] text-muted hidden sm:block">Upcoming stays first</span>
+          )}
         </div>
 
         {/* Booking list */}
         {visibleBookings.length === 0 ? (
           <div className="px-6 py-14 text-center">
             <p className="text-sm font-semibold text-main">
-              {moneyFilter === 'owes'
+              {moneyFilter === 'cancelled'
+                ? 'No cancelled bookings.'
+                : moneyFilter === 'agencies'
+                ? 'No agency owes anything.'
+                : moneyFilter === 'owes'
                 ? 'Nothing owed right now. 🎉'
                 : debouncedSearch
                   ? `No bookings found for “${debouncedSearch}”.`
@@ -150,20 +180,24 @@ export function BookingsListTab() {
               const pay = getPaymentView(b)
               const isVenue = !!b.venue_id
               return (
-                <div key={b.id} className="px-4 sm:px-6 py-4 flex flex-col gap-2.5 hover:bg-brand-bg/30 transition-colors">
+                <div key={b.id} className={'px-4 sm:px-6 py-4 flex flex-col gap-2.5 hover:bg-brand-bg/30 transition-colors' + (b.status === 'cancelled' ? ' opacity-70' : '')}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-9 h-9 rounded-full bg-brand-primary/10 flex items-center justify-center shrink-0">
                         <User className="w-4 h-4 text-brand-text" />
                       </div>
                       <div className="min-w-0">
-                        <div className="font-bold text-main truncate">{b.guest_name}</div>
+                        <div className="font-bold text-main truncate">{b.status === 'blocked' ? blockReason(b) : b.guest_name}</div>
                         {b.guest_phone !== 'None' && (
                           <div className="text-xs text-muted truncate">{b.guest_phone}</div>
                         )}
                       </div>
                     </div>
-                    {b.status !== 'blocked' && (
+                    {b.status === 'cancelled' ? (
+                      <span className="px-3 py-1.5 rounded-lg text-sm font-extrabold whitespace-nowrap bg-ink-100 text-ink-800 border border-ink-200">
+                        Cancelled{Number(b.downpayment_paid || 0) > 0 ? ' · ₱' + Number(b.downpayment_paid).toLocaleString() + ' received' : ''}
+                      </span>
+                    ) : b.status !== 'blocked' && (
                       <span className={`px-3 py-1.5 rounded-lg text-sm font-extrabold whitespace-nowrap ${PAYMENT_BADGE_CLASSES[pay.tone]}`}>
                         {pay.label}
                       </span>
@@ -174,7 +208,9 @@ export function BookingsListTab() {
                     <span className="text-main font-medium">
                       {b.stay_hours
                         ? <>{fmtDate(b.check_in)} <span className="text-brand-text">· {b.stay_hours} hours</span></>
-                        : <>{fmtDate(b.check_in)} <span className="text-muted mx-0.5">→</span> {fmtDate(b.check_out)}</>}
+                        : isOpenEnded(b)
+                          ? <>From {fmtDate(b.check_in)} <span className="text-brand-text">· until further notice</span></>
+                          : <>{fmtDate(b.check_in)} <span className="text-muted mx-0.5">→</span> {fmtDate(b.check_out)}</>}
                     </span>
                     <span className="flex items-center gap-1">
                       {isVenue
@@ -192,6 +228,9 @@ export function BookingsListTab() {
                         Unpaid
                       </span>
                     )}
+                    {b.status === 'cancelled' && b.cancelled_at && (
+                      <span className="text-[10px] font-semibold text-muted">cancelled {fmtDate(b.cancelled_at)}</span>
+                    )}
                     {b.status === 'blocked' && (
                       <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
                         Blocked
@@ -200,6 +239,14 @@ export function BookingsListTab() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
+                    {b.status !== 'cancelled' && (
+                      <button
+                        onClick={() => openBooking(b)}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-gold-400 bg-gold-100 text-ink-900 hover:bg-gold-400 transition-colors cursor-pointer"
+                      >
+                        <ArrowUpRight className="w-3.5 h-3.5" /> Open
+                      </button>
+                    )}
                     <button
                       onClick={() => setPrintBooking(b)}
                       className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-soft bg-card text-main hover:bg-page transition-colors cursor-pointer"

@@ -10,7 +10,8 @@ import { TabBill } from './restaurant/TabBill'
 import { TabSettlePanel } from './restaurant/TabSettlePanel'
 import { TabReceiptModal } from './restaurant/TabReceiptModal'
 import { useTabOrder } from './restaurant/useTabOrder'
-import { getOpenTabs, getTabLines, openTab, tabTotal } from '../utils/tabs'
+import { getOpenTabs, getTabLines, openTab, readTabTotal, tabTotal } from '../utils/tabs'
+import { recomputeBalance } from '../utils/bookingBalance'
 import { takeFocusedGuestTab } from '../utils/restaurantFocus'
 import { useDashboardData } from './DashboardContext'
 
@@ -37,7 +38,7 @@ interface Served {
 // A guest's food joins the bill they already have and is received at check-out; a
 // diner with no room settles at the counter, the only place a settle panel appears.
 export function RestaurantTab() {
-  const { bookings, rooms, venues } = useDashboardData()
+  const { bookings, rooms, venues, updateBooking } = useDashboardData()
 
   const [tabs, setTabs] = useState<Tab[]>([])
   const [lines, setLines] = useState<Record<string, TabLine[]>>({})
@@ -162,7 +163,24 @@ export function RestaurantTab() {
     const tab = await openTab({ bookingId: person.booking?.id, label: person.name })
     return tab.id
   }
-  const order = useTabOrder(resolveTabId, load)
+  // A room guest's food joins their bill the moment it is ordered: the booking's
+  // stored balance is put right here, so the bookings list and "Who owes" do not
+  // wait for somebody to open that booking.
+  const afterOrder = async () => {
+    const person = served.find(p => p.key === selectedKey)
+    await load()
+    if (!person?.booking) return
+    try {
+      const tabId = await resolveTabId()
+      const synced = recomputeBalance(person.booking, { rooms, venues, tabTotal: await readTabTotal(tabId) })
+      if (Math.abs(Number(synced.balance_due || 0) - Number(person.booking.balance_due || 0)) > 0.005) {
+        await updateBooking(synced)
+      }
+    } catch {
+      setError('The order is on the tab, but the balance of the room was not updated. Open the booking to put it right.')
+    }
+  }
+  const order = useTabOrder(resolveTabId, afterOrder)
 
   const openNew = async () => {
     if (!name.trim() && !table.trim()) { setError('Give the tab a name or a table.'); return }

@@ -75,7 +75,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           one form, the way the paper does. */}
       {/* The guest's and the stay's fields — two labelled sections, GUEST then STAY.
           Everything about their arrangement lives in `StatementGuestStay`. */}
-      <StatementGuestStay booking={b} rooms={rooms} venues={venues} rates={rates} />
+      <StatementGuestStay booking={b} rooms={rooms} venues={venues} rates={rates} roomsLabel={statement.roomsLabel} />
 
       {/* Companions — only when there are companions to list. */}
       {hasCompanions && (

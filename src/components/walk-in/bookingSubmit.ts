@@ -2,6 +2,8 @@ import { Booking, PaymentRecord } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
 import { recordBookingPayment } from './bookingPayment'
 import { BookingSubmitParams, BookingSubmitResult } from './bookingSubmitTypes'
+import { editedMoney } from './bookingEditMoney'
+import { generateUUID } from '../../utils/helpers'
 
 // The param and result shapes live in `bookingSubmitTypes`, and the payment logic in
 // `bookingPayment` — both split out to keep this file inside the 300-line limit.
@@ -30,6 +32,37 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
   if (p.bookingStatus !== 'blocked' && !cleanGuestName && p.bookingType === 'individual') {
     return { ok: false, error: 'Guest name is required.' }
   }
+
+  // Correcting a booking: the database keeps the old value of these two when it is sent
+  // nothing, so a removed discount or an emptied companion list has to be sent as an
+  // empty one — otherwise taking a discount off in the form silently did nothing.
+  const isEdit = !!p.editingBookings
+  const appliedDiscount = p.discountType === 'none'
+    ? (isEdit ? { type: 'flat' as const, value: 0 } : undefined)
+    : { type: p.discountType, value: p.discountValue }
+  const companions = p.bookingType === 'partner'
+    ? undefined
+    : (p.formCompanions.length > 0 ? p.formCompanions : (isEdit ? [] : undefined))
+
+  // The agreed figure is for the whole booking. Written onto every room of a several-room
+  // booking it made each room ask for the group's deposit (₱2,000 on a ₱1,800 room), so
+  // it is only stored when one unit is booked; otherwise each room works out its own half.
+  const agreedDeposit = Object.keys(p.unitSelections).length > 1 ? undefined : (p.formAgreedDeposit || undefined)
+
+  // SEVERAL ROOMS, ONE BOOKING: every room made here carries the same group mark, so the
+  // bill, the edit form and the booking panel treat them as one booking afterwards.
+  // Correcting an existing group keeps its mark; a room added to a one-room booking
+  // starts one.
+  const severalUnits = Object.keys(p.unitSelections).length > 1
+  const groupId = p.editingBookings?.find(eb => eb.group_id)?.group_id
+    || (severalUnits ? 'grp-' + generateUUID() : undefined)
+  // Each room has its OWN invoice number (the database requires them unique). The form
+  // shows one number box, so on a several-room correction every room keeps its own —
+  // sending the first room's number to all of them was refused as a duplicate.
+  const invoiceFor = (existing?: Booking) =>
+    existing
+      ? ((p.editingBookings?.length || 0) > 1 ? existing.invoice_number : (p.formInvoiceNumber || existing.invoice_number))
+      : undefined
 
   const createdBookings: Booking[] = []
   const processedBookingIds = new Set<string>()
@@ -60,7 +93,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
 
       const b = await p.createManualBooking({
         id: existingBooking?.id,
-        invoiceNumber: p.formInvoiceNumber || undefined,
+        invoiceNumber: invoiceFor(existingBooking),
+        groupId,
         roomId,
         guestName: cleanGuestName,
         guestEmail: p.formGuestEmail || (deal?.email || 'admin@daweez-booking.vercel.app'),
@@ -70,7 +104,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         guestAddress: p.formGuestAddress || undefined,
         birthdate: p.formBirthdate || undefined,
         preparedBy: p.formPreparedBy || undefined,
-        appliedDiscount: p.discountType === 'none' ? undefined : { type: p.discountType, value: p.discountValue },
+        appliedDiscount,
         venueDayBlocks: p.venueDayBlocks,
         notes: p.formBlockNotes.trim() || undefined,
         checkIn: sel.checkIn,
@@ -78,8 +112,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         source: p.bookingType === 'partner' ? 'manual' : p.formSource,
         status: p.bookingStatus,
         equipmentRentals: rentals,
-        agreedDeposit: p.formAgreedDeposit || undefined,
-        companions: p.bookingType === 'partner' ? undefined : (p.formCompanions.length > 0 ? p.formCompanions : undefined),
+        agreedDeposit,
+        companions,
         partnerDealId: p.formPartnerDealId || undefined,
         companyName: p.formCompanyName || undefined,
         vehiclePlate: p.formVehiclePlate || undefined,
@@ -87,14 +121,11 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         // tapped that room's chip, and the charge is ₱150 × the room's beds.
         breakfastOrders: undefined,
         breakfastIncluded: isBreakfastIncluded || p.formBreakfastRoomIds.includes(roomId),
-        contractRateOverride: contractedPrice || undefined,
+        contractRateOverride: contractedPrice || (existingBooking && !existingBooking.partner_deal_id ? existingBooking.contract_rate_override : undefined),
         paymentMethod: p.formPaymentMethod || undefined,
         paymentReference: p.formPaymentReference || undefined,
         paymentPlan: p.bookingStatus === 'blocked' ? undefined : p.formPaymentPlan,
-        paymentStatus: p.editingBookings ? p.derivedPaymentStatus : undefined,
-        downpaymentPaid: p.editingBookings ? p.formDownpaymentPaid : undefined,
-        balanceDue: p.editingBookings && p.formBalanceDue !== null ? p.formBalanceDue : undefined,
-        securityDeposit: p.editingBookings && p.formSecurityDeposit !== null ? p.formSecurityDeposit : undefined,
+        ...editedMoney(p, existingBooking),
         stayHours: p.stay_hours || undefined
       })
       createdBookings.push(b)
@@ -123,7 +154,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
 
       const b = await p.createManualBooking({
         id: existingBooking?.id,
-        invoiceNumber: p.formInvoiceNumber || undefined,
+        invoiceNumber: invoiceFor(existingBooking),
+        groupId,
         venueId,
         guestName: cleanGuestName,
         guestEmail: p.formGuestEmail || (deal?.email || 'admin@daweez-booking.vercel.app'),
@@ -133,7 +165,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         guestAddress: p.formGuestAddress || undefined,
         birthdate: p.formBirthdate || undefined,
         preparedBy: p.formPreparedBy || undefined,
-        appliedDiscount: p.discountType === 'none' ? undefined : { type: p.discountType, value: p.discountValue },
+        appliedDiscount,
         venueDayBlocks: p.venueDayBlocks,
         notes: p.formBlockNotes.trim() || undefined,
         checkIn: sel.checkIn,
@@ -141,20 +173,17 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         source: p.bookingType === 'partner' ? 'manual' : p.formSource,
         status: p.bookingStatus,
         equipmentRentals: rentals,
-        agreedDeposit: p.formAgreedDeposit || undefined,
-        companions: p.bookingType === 'partner' ? undefined : (p.formCompanions.length > 0 ? p.formCompanions : undefined),
+        agreedDeposit,
+        companions,
         partnerDealId: p.formPartnerDealId || undefined,
         companyName: p.formCompanyName || undefined,
         vehiclePlate: p.formVehiclePlate || undefined,
-        contractRateOverride: contractedPrice || undefined,
+        contractRateOverride: contractedPrice || (existingBooking && !existingBooking.partner_deal_id ? existingBooking.contract_rate_override : undefined),
         paymentMethod: p.formPaymentMethod || undefined,
         paymentReference: p.formPaymentReference || undefined,
         paymentPlan: p.bookingStatus === 'blocked' ? undefined : p.formPaymentPlan,
         venueExcessHours: p.formVenueExcessHours,
-        paymentStatus: p.editingBookings ? p.derivedPaymentStatus : undefined,
-        downpaymentPaid: p.editingBookings ? p.formDownpaymentPaid : undefined,
-        balanceDue: p.editingBookings && p.formBalanceDue !== null ? p.formBalanceDue : undefined,
-        securityDeposit: p.editingBookings && p.formSecurityDeposit !== null ? p.formSecurityDeposit : undefined
+        ...editedMoney(p, existingBooking)
       })
       createdBookings.push(b)
     }
@@ -164,7 +193,11 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
       for (const eb of p.editingBookings) {
         if (!processedBookingIds.has(eb.id)) {
           try {
-            await p.cancelBooking(eb.id)
+            // A room taken off the booking: kept as Cancelled when money was recorded
+            // on it (the receipt must survive), simply removed when it held none.
+            const heldMoney = Number(eb.downpayment_paid || 0) > 0 || (eb.payment_records || []).length > 0
+            if (heldMoney) await p.cancelBooking(eb.id)
+            else await p.deleteBooking(eb.id)
           } catch (err) {
             console.error('Failed to cancel removed booking:', eb.id, err)
           }
@@ -195,7 +228,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
       const recorded = await recordBookingPayment({
         bookings: createdBookings,
         // So the receipt number is not already on another payment this month.
-        allBookings: p.activeBookings,
+        allBookings: p.allBookings,
         received: p.receivedAmount,
         method: p.formPaymentMethod,
         reference: p.formPaymentReference,
@@ -216,7 +249,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
     // Rollback successfully created bookings on failure
     for (const b of createdBookings) {
       try {
-        await p.cancelBooking(b.id)
+        // Never a cancellation: these rows should not exist at all.
+        if (!p.editingBookings?.some(eb => eb.id === b.id)) await p.deleteBooking(b.id)
       } catch (rollbackErr) {
         console.error('Failed to rollback booking:', b.id, rollbackErr)
       }

@@ -47,6 +47,8 @@ export interface Statement {
   companyAddress: string
   companyContact: string
   companyTin: string
+  /** `7, 9` when the bill covers several rooms booked together; empty for one room. */
+  roomsLabel: string
 }
 
 export interface StatementInput {
@@ -113,6 +115,13 @@ export function buildStatement(o: StatementInput): Statement {
     if (b.payment_method) paymentMethod = b.payment_method
   })
 
+  // Several rooms on one bill: the stay details name all of them, not just the first.
+  const roomNumbers = relatedBookings
+    .map(b => rooms.find(r => r.id === b.room_id)?.room_number)
+    .filter((n): n is number => typeof n === 'number')
+    .sort((a, b) => a - b)
+  const roomsLabel = relatedBookings.length > 1 ? roomNumbers.join(', ') : ''
+
   const invoiceNumber = primaryBooking.invoice_number || (
     'GRF-' + primaryBooking.check_in.substring(0, 7).replace('-', '') + '-PREVIEW'
   )
@@ -134,5 +143,6 @@ export function buildStatement(o: StatementInput): Statement {
     companyAddress,
     companyContact,
     companyTin,
+    roomsLabel,
   }
 }

@@ -7,6 +7,7 @@ import { AgencyInvoiceDocument } from './AgencyInvoiceDocument'
 import { buildStatement } from '../../utils/statement'
 import { getOpenTabLinesByBooking } from '../../utils/tabs'
 import { useDashboardData } from '../DashboardContext'
+import { groupOf } from '../../utils/bookingGroup'
 
 interface PrintInvoiceModalProps {
   booking?: Booking
@@ -26,17 +27,16 @@ interface PrintInvoiceModalProps {
 // because the balance the screen shows already includes it — a bill printed
 // without it would disagree with what the guest actually owes.
 export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, bookingsList, onClose, embedded = false }: PrintInvoiceModalProps) {
-  const primaryBooking = booking || (bookingsToPrint && bookingsToPrint[0])
+  const asked = booking || (bookingsToPrint && bookingsToPrint[0])
   // The agency that is paying, if any: its address, contact and TIN print on the bill
   // straight from the profile, so no booking column is needed for them.
   const { partnerDeals } = useDashboardData()
 
-  const relatedBookings = primaryBooking
-    ? (bookingsToPrint ||
-      (primaryBooking.invoice_number
-        ? bookingsList.filter(b => b.invoice_number === primaryBooking.invoice_number)
-        : [primaryBooking]))
-    : []
+  // Every room of the booking, whichever room the bill was asked from — and the bill
+  // carries the FIRST room's number, so a reprint from Room 9 is the same paper as the
+  // one printed from Room 7.
+  const relatedBookings = asked ? (bookingsToPrint || groupOf(asked, bookingsList)) : []
+  const primaryBooking = relatedBookings[0] || asked
 
   // Null until the tab has been read, so a short bill is never shown even for a
   // moment — the page is held back rather than printed wrong.

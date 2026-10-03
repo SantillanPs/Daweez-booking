@@ -47,7 +47,8 @@ export type BookingSource =
   | 'google_maps' 
   | 'manual'
 
-export type BookingStatus = 'pending' | 'confirmed' | 'blocked'
+// `cancelled` keeps the row (and its payments and receipts) but frees the room.
+export type BookingStatus = 'pending' | 'confirmed' | 'blocked' | 'cancelled'
 
 export interface BreakfastOrder {
   option: 'Bangsilog' | 'Lumpiasilog' | 'Cornsilog' | 'Hotsilog'
@@ -70,6 +71,13 @@ export interface BreakfastRecord {
   item: string // menu item name (e.g. 'Bangsilog')
   quantity: number // how many guests ate
   price: number // price per person at the time it was recorded
+}
+
+// What a room chose for breakfast on one morning (asked daily, the owner 2026-10-04).
+// A record for the kitchen — NOT a charge: breakfast is one price for the stay.
+export interface BreakfastChoice {
+  date: string // YYYY-MM-DD the breakfast is for
+  items: { name: string; qty: number }[] // empty = asked, and the guest wanted nothing
 }
 
 export interface EquipmentRental {
@@ -111,6 +119,10 @@ export interface PaymentRecord {
   // Stored when the payment is recorded so the receipt keeps the same number
   // even if another payment is later removed (see utils/receiptNumber.ts).
   receipt_number?: string
+  // One payment for several rooms is stored on every room with the FULL `amount`;
+  // this is how much of it settled THIS room's bill. Absent = the whole amount
+  // (a single-room payment, or one recorded before this was kept).
+  share?: number
 }
 
 export interface Companion {
@@ -147,10 +159,14 @@ export interface Booking {
    * desk decides who qualifies; the app never checks. A reservation is settled **when
    * the guest arrives to check in**, through the same money gate as any other stay.
    *
+   * **`'agency'`** (2026-10-04): the stay is billed to the agency, government office or
+   * company on the booking, which pays by check or bank — often months later. Nothing is
+   * taken at the desk and the guest checks in and out with the bill still open.
+   *
    * No database change is needed: `bookings.payment_plan` is plain text with no CHECK
    * constraint, exactly so a new value costs no migration.
    */
-  payment_plan?: 'deposit' | 'full' | 'custom' | 'reservation'
+  payment_plan?: 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'
   /**
    * What the desk and the guest agreed the guest would pay now, in pesos
    * (card k130). Half the stay by default, but the desk may type any figure —
@@ -183,6 +199,9 @@ export interface Booking {
   breakfast_included?: boolean
   breakfast_days?: string[]
   breakfast_records?: BreakfastRecord[]
+  // Each morning's breakfast answer. Written only by its own small database function
+  // (`set_booking_breakfast_choices`) and never sent by `update_booking`.
+  breakfast_choices?: BreakfastChoice[]
   contract_rate_override?: number
   promo_applied?: boolean
   applied_discount?: AppliedDiscount
@@ -191,6 +210,11 @@ export interface Booking {
   // Actual arrival/departure times recorded by the check-in / check-out button.
   actual_check_in?: string // ISO date-time
   actual_check_out?: string // ISO date-time
+  // Ties the rooms of ONE booking together (see `utils/bookingGroup.ts`). Empty on a
+  // one-room booking. Written only by `set_booking_group`, never by `update_booking`.
+  group_id?: string
+  // When the booking was cancelled. Set by the database; never sent back by the app.
+  cancelled_at?: string // ISO date-time
   // Blocked-date notes (maintenance / cleaning reason).
   notes?: string
   prepared_by?: string

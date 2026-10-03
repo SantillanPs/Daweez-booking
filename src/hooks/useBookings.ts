@@ -4,7 +4,7 @@ import { Booking, Room, Venue, SyncFeed, BookingSource, BreakfastOrder, Equipmen
 import { getRateConfig } from '../utils/rateConfig'
 import { Expense, ExpenseCategory } from '../types/expense'
 import { useRealtimeBookings } from './useRealtimeBookings'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { supabase, isSupabaseConfigured } from '../utils/supabaseClient'
 
 type MutationContext = { previous: Booking[] | undefined }
@@ -27,13 +27,19 @@ export function useBookings() {
   })
 
   // 3. Fetch Bookings (initial load only — Realtime subscription keeps cache fresh)
-  const { data: bookings = [], isLoading: isLoadingBookings } = useQuery<Booking[]>({
+  const { data: allBookings = [], isLoading: isLoadingBookings } = useQuery<Booking[]>({
     queryKey: ['bookings'],
     queryFn: async () => {
       return await syncEngine.getBookings()
     },
     staleTime: Infinity, // Realtime handles freshness; don't re-fetch on focus/mount
   })
+
+  // `bookings` is what every screen works with: the stays that still hold a room. A
+  // cancelled booking is kept (its payments and receipts are real) but it has given its
+  // room back, so it is left out here and only `allBookings` carries it — for the
+  // Bookings list, the daily money sheet, and so a receipt number is never used twice.
+  const bookings = useMemo(() => allBookings.filter(b => b.status !== 'cancelled'), [allBookings])
 
   // 4. Fetch iCal Feeds
   const { data: feeds = [], isLoading: isLoadingFeeds } = useQuery<SyncFeed[]>({
@@ -156,7 +162,7 @@ export function useBookings() {
     onSuccess: (newBooking) => {
       // Replace optimistic entry with real booking, no network refetch needed
       queryClient.setQueryData<Booking[]>(['bookings'], old =>
-        old ? [...old.filter(b => !b.id.startsWith('__optimistic__')), newBooking] : [newBooking]
+        old ? [...old.filter(b => !b.id.startsWith('__optimistic__') && b.id !== newBooking.id), newBooking] : [newBooking]
       )
     }
   })
@@ -182,8 +188,35 @@ export function useBookings() {
     }
   })
 
-  // 7. Mutation: Delete/Cancel Booking
+  // 7. Mutation: Cancel Booking — the row stays, marked Cancelled, and the room is freed.
+  // A date block is not a booking, so cancelling one simply removes it.
   const cancelBookingMutation = useMutation<void, Error, string, MutationContext>({
+    mutationFn: async (bookingId: string) => {
+      const target = allBookings.find(b => b.id === bookingId)
+      if (target?.status === 'blocked') await syncEngine.deleteBooking(bookingId)
+      else await syncEngine.cancelBooking(bookingId)
+    },
+    onMutate: async (bookingId) => {
+      await queryClient.cancelQueries({ queryKey: ['bookings'] })
+      const previous = queryClient.getQueryData<Booking[]>(['bookings'])
+      queryClient.setQueryData<Booking[]>(['bookings'], old => old?.flatMap(b =>
+        b.id !== bookingId ? [b]
+          : b.status === 'blocked' ? []
+            : [{ ...b, status: 'cancelled' as const, cancelled_at: new Date().toISOString() }]
+      ))
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      queryClient.setQueryData(['bookings'], ctx?.previous)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    }
+  })
+
+  // 7b. Mutation: Delete Booking — for a row that should never have existed (a booking
+  // whose save was rolled back). Everything else is cancelled, never deleted.
+  const deleteBookingMutation = useMutation<void, Error, string, MutationContext>({
     mutationFn: async (bookingId: string) => {
       await syncEngine.deleteBooking(bookingId)
     },
@@ -210,7 +243,7 @@ export function useBookings() {
     breakfastOrders?: BreakfastOrder[]; equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons; rateMultiplier?: number; companions?: Companion[]
     partnerDealId?: string; companyName?: string; vehiclePlate?: string
-    paymentMethod?: string; paymentReference?: string; paymentPlan?: 'deposit' | 'full' | 'custom' | 'reservation'; venueExcessHours?: number
+    paymentMethod?: string; paymentReference?: string; paymentPlan?: 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'; venueExcessHours?: number
     paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
     downpaymentPaid?: number; balanceDue?: number; securityDeposit?: number
     breakfastIncluded?: boolean; contractRateOverride?: number
@@ -221,6 +254,8 @@ export function useBookings() {
     referenceNumber?: string; registeredOn?: string; paymentRecords?: PaymentRecord[]; agreedDeposit?: number
     /** Short stay (printed rate board): the hours the room was taken for. */
     stayHours?: number
+    /** Ties the rooms of one booking together — the same value on each of them. */
+    groupId?: string
   }, MutationContext>({
     mutationFn: async (params) => {
       const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, guestGender, guestNationality, guestAddress, birthdate, checkIn, checkOut,
@@ -230,12 +265,14 @@ export function useBookings() {
         paymentMethod, paymentReference, paymentPlan, venueExcessHours = 0,
         paymentStatus, downpaymentPaid, balanceDue, securityDeposit,
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, notes, preparedBy, breakfastDays,
-        referenceNumber, registeredOn, paymentRecords, agreedDeposit, stayHours } = params
+        referenceNumber, registeredOn, paymentRecords, agreedDeposit, stayHours, groupId } = params
 
       if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings, id)) {
         throw new Error('The room is already booked or blocked for these dates.')
       }
-      if (venueId && !syncEngine.isVenueRangeAvailable(venueId, checkIn, checkOut, bookings)) {
+      // `id` is the booking being corrected: without it a venue booking collided with
+      // itself and could never be saved again.
+      if (venueId && !syncEngine.isVenueRangeAvailable(venueId, checkIn, checkOut, bookings, id)) {
         throw new Error('This venue is already reserved for the selected date(s).')
       }
 
@@ -255,7 +292,7 @@ export function useBookings() {
         breakfastIncluded,
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks,
         // A short stay must be priced for its hours, or the booking is stored owing a
-        // whole night (see `utils/AGENTS.md`).
+        // whole night (see `docs/why/money.md`).
         shortStayHours: stayHours,
         rates: getRateConfig(),
       })
@@ -307,11 +344,38 @@ export function useBookings() {
         notes,
         prepared_by: preparedBy,
         agreed_deposit: agreedDeposit,
-        stay_hours: stayHours
+        stay_hours: stayHours,
+        group_id: groupId,
       }
 
       if (id) {
-        return await syncEngine.updateBooking(newBooking)
+        // Correcting a booking through the form: the form only knows the fields it
+        // shows. Everything else the booking has collected since it was made — its
+        // payments and receipts above all, the check-in and check-out times, the
+        // breakfasts served — is carried over from the saved booking. Sent blank,
+        // those were written over as empty: one correction to a guest's name wiped
+        // every receipt on the booking (found 2026-10-03).
+        const saved = allBookings.find(b => b.id === id)
+        // A room that joins (or already belongs to) a several-room booking carries its mark.
+        const group = groupId ?? saved?.group_id
+        if (group && group !== saved?.group_id) await syncEngine.setBookingGroup(id, group)
+        const updated = await syncEngine.updateBooking(saved ? {
+          ...newBooking,
+          payment_records: newBooking.payment_records ?? saved.payment_records,
+          breakfast_orders: newBooking.breakfast_orders ?? saved.breakfast_orders,
+          breakfast_days: newBooking.breakfast_days ?? saved.breakfast_days,
+          breakfast_records: saved.breakfast_records,
+          event_addons: newBooking.event_addons ?? saved.event_addons,
+          reference_number: newBooking.reference_number ?? saved.reference_number,
+          registered_on: newBooking.registered_on ?? saved.registered_on,
+          early_check_in_hours: newBooking.early_check_in_hours ?? saved.early_check_in_hours,
+          late_check_out_hours: newBooking.late_check_out_hours ?? saved.late_check_out_hours,
+          actual_check_in: saved.actual_check_in,
+          actual_check_out: saved.actual_check_out,
+          invoice_type: saved.invoice_type,
+          stay_hours: newBooking.stay_hours ?? saved.stay_hours,
+        } : newBooking)
+        return { ...updated, group_id: group }
       }
       return await syncEngine.insertBooking(newBooking)
     },
@@ -349,7 +413,7 @@ export function useBookings() {
     onSuccess: (newBooking) => {
       // Swap the optimistic placeholder with the real booking — still no refetch
       queryClient.setQueryData<Booking[]>(['bookings'], old =>
-        old ? [...old.filter(b => !b.id.startsWith('__optimistic__')), newBooking] : [newBooking]
+        old ? [...old.filter(b => !b.id.startsWith('__optimistic__') && b.id !== newBooking.id), newBooking] : [newBooking]
       )
     }
   })
@@ -545,6 +609,7 @@ export function useBookings() {
     rooms,
     venues,
     bookings,
+    allBookings,
     feeds,
     partnerDeals,
     expenseCategories,
@@ -559,6 +624,7 @@ export function useBookings() {
     isConfirmingBooking: confirmBookingMutation.isPending,
 
     cancelBooking: cancelBookingMutation.mutateAsync,
+    deleteBooking: deleteBookingMutation.mutateAsync,
     isCancellingBooking: cancelBookingMutation.isPending,
 
     createManualBooking: createManualBookingMutation.mutateAsync,

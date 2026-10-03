@@ -98,20 +98,28 @@ export async function getStockItems(): Promise<StockItem[]> {
   return (data || []).map(toItem)
 }
 
-/** Adds an item or corrects one. The name is the only field that must be there. */
+/**
+ * Adds an item or corrects one. The name is the only field that must be there.
+ *
+ * **Correcting an item never writes its count.** This used to upsert the whole row,
+ * `quantity` included, from the copy the screen was holding — so renaming an item or
+ * changing its price put the old count back and silently undid every sale and
+ * delivery made in between, with nothing in the log. The count moves only through
+ * `applyStockMovement`; a new item starts at 0.
+ */
 export async function saveStockItem(item: Partial<StockItem> & { name: string }): Promise<void> {
   if (!isSupabaseConfigured) throw new Error(NO_DB)
-  const row = {
-    id: item.id || randomUUID(),
+  const fields = {
     name: item.name.trim(),
     category: item.category || 'Other',
-    quantity: num(item.quantity),
     unit: (item.unit || '').trim(),
     price: item.price === undefined ? null : num(item.price),
     par_level: item.par_level === undefined ? null : num(item.par_level),
     active: item.active !== false,
   }
-  const { error } = await supabase.from('inventory_items').upsert(row)
+  const { error } = item.id
+    ? await supabase.from('inventory_items').update(fields).eq('id', item.id)
+    : await supabase.from('inventory_items').insert({ id: randomUUID(), quantity: 0, ...fields })
   if (error) throw error
 }
 

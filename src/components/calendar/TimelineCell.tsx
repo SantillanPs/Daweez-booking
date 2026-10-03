@@ -3,6 +3,7 @@ import { Booking } from '../../types/booking'
 import { getPaymentDotClass, getPaymentLabel, SOURCE_LABELS } from './bookingStyles'
 import { isReservationAwaitingArrival } from '../../utils/bookingMoney'
 import { clockLabel, shortStayEnd } from '../../utils/shortStay'
+import { blockReason, isOpenEnded } from '../../utils/openBlock'
 
 export interface TimelineCellProps {
   date: Date
@@ -62,6 +63,11 @@ export const TimelineCell = React.memo(
     }, [])
 
     if (booking) {
+      // A block shows WHY the dates are closed (card k91) — `Cleaning`, `Owner use` —
+      // not the placeholder name every block is stored under.
+      const isBlock = booking.status === 'blocked'
+      const openEnded = isOpenEnded(booking)
+      const pillName = isBlock ? blockReason(booking) + (openEnded ? ' · until further notice' : '') : booking.guest_name
       return (
         <td
           colSpan={span}
@@ -82,13 +88,12 @@ export const TimelineCell = React.memo(
           <div
             onClick={e => {
               e.stopPropagation()
-              if (booking.status !== 'blocked') {
-                setSelectedExtendBooking(booking)
-                setExtendCheckoutDate(booking.check_out)
-                setExtendError('')
-              }
+              // A block opens its panel too — that is where it is ended or removed.
+              setSelectedExtendBooking(booking)
+              setExtendCheckoutDate(openEnded ? '' : booking.check_out)
+              setExtendError('')
             }}
-            title={booking.guest_name}
+            title={pillName}
             className={'mx-0.5 px-1.5 rounded-md border cursor-pointer select-none transition-shadow hover:shadow-sm text-[10px] font-bold ' +
               (isShortStayDue ? 'bg-danger-100 border-danger-400 text-danger-600 ' : '') + getBookingStyle(booking) +
               (booking.stay_hours ? ' h-9 py-1 flex flex-col justify-center' : ' h-8 flex items-center justify-between gap-0.5')}
@@ -124,22 +129,24 @@ export const TimelineCell = React.memo(
               <>
                 <span className="min-w-0 truncate">
                   {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
-                  {booking.guest_name}
+                  {pillName}
                 </span>
-                <span className="flex items-center gap-1 shrink-0">
-                  {span > 1 ? <span className="text-[8.5px] opacity-70 font-mono">{span}n</span> : null}
-                  <span
-                    title={'Payment: ' + getPaymentLabel(booking) + ' — from the payments recorded on the booking'}
-                    aria-label={'Payment: ' + getPaymentLabel(booking)}
-                    className={'w-2 h-2 rounded-full ' + getPaymentDotClass(booking)}
-                  />
-                </span>
+                {!isBlock && (
+                  <span className="flex items-center gap-1 shrink-0">
+                    {span > 1 ? <span className="text-[8.5px] opacity-70 font-mono">{span}n</span> : null}
+                    <span
+                      title={'Payment: ' + getPaymentLabel(booking) + ' — from the payments recorded on the booking'}
+                      aria-label={'Payment: ' + getPaymentLabel(booking)}
+                      className={'w-2 h-2 rounded-full ' + getPaymentDotClass(booking)}
+                    />
+                  </span>
+                )}
               </>
             )}
           </div>
           {showTooltip && (
             <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-56 bg-card border border-soft p-3 shadow-softLg rounded-xl text-xs space-y-1.5 pointer-events-none text-left font-sans">
-              <div className="font-display font-bold text-main">{booking.guest_name}</div>
+              <div className="font-display font-bold text-main">{pillName}</div>
               {booking.stay_hours ? (
                 <div className="text-[10px] font-bold text-brand-text">
                   Short stay · {booking.stay_hours} hours
@@ -148,8 +155,8 @@ export const TimelineCell = React.memo(
                     : ' · clock starts at check-in'}
                 </div>
               ) : null}
-              <div className="text-[10px] text-muted font-mono">{booking.check_in} → {booking.check_out}</div>
-              <div className="text-[10px] text-muted">
+              <div className="text-[10px] text-muted font-mono">{openEnded ? 'from ' + booking.check_in : booking.check_in + ' → ' + booking.check_out}</div>
+              {!isBlock && (<div className="text-[10px] text-muted">
                 {booking.guest_phone}<br />
                 {/* A RESERVATION whose guest has not arrived says ONE word — **Reserved** —
                     in a neutral charcoal, and its payment word is left off entirely: there
@@ -180,7 +187,7 @@ export const TimelineCell = React.memo(
                     <span className="text-[9.5px] text-brand-text font-bold">Ref: {booking.event_addons.payment_reference}</span>
                   </>
                 )}
-              </div>
+              </div>)}
             </div>
           )}
         </td>
@@ -262,6 +269,8 @@ export const TimelineCell = React.memo(
       prevProps.booking?.check_in === nextProps.booking?.check_in &&
       prevProps.booking?.check_out === nextProps.booking?.check_out &&
       prevProps.booking?.guest_name === nextProps.booking?.guest_name &&
+      // A block's pill reads its reason.
+      prevProps.booking?.notes === nextProps.booking?.notes &&
       prevProps.booking?.stay_hours === nextProps.booking?.stay_hours &&
       prevProps.booking?.downpayment_paid === nextProps.booking?.downpayment_paid &&
       prevProps.booking?.balance_due === nextProps.booking?.balance_due &&

@@ -41,7 +41,7 @@ export interface ManualBookingInput {
   contractRateOverride?: number
   paymentMethod?: string
   paymentReference?: string
-  paymentPlan?: 'deposit' | 'full' | 'custom' | 'reservation'
+  paymentPlan?: 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'
   venueExcessHours?: number
   paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
   downpaymentPaid?: number
@@ -49,6 +49,8 @@ export interface ManualBookingInput {
   securityDeposit?: number
   /** Short stay (printed rate board): the hours the room was taken for — 3/6/12/22. */
   stayHours?: number
+  /** Ties the rooms of one booking together — the same value on each of them. */
+  groupId?: string
 }
 
 export interface BookingSubmitParams {
@@ -58,6 +60,8 @@ export interface BookingSubmitParams {
   rooms: Room[]
   venues: Venue[]
   activeBookings: Booking[]
+  /** Every booking, cancelled ones included — so a receipt number is never used twice. */
+  allBookings: Booking[]
   partnerDeals: PartnerDeal[]
   formPartnerDealId: string
   bookingType: 'individual' | 'partner'
@@ -93,7 +97,7 @@ export interface BookingSubmitParams {
   editingBookings?: Booking[]
   formPaymentMethod: string
   formPaymentReference: string
-  formPaymentPlan: 'deposit' | 'full' | 'custom' | 'reservation'
+  formPaymentPlan: 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'
   /**
    * Short stay: the hours the room is being sold for (3/6/12/22). Set only by the
    * booking form's Short stay switch; undefined means an ordinary overnight stay.
@@ -116,6 +120,8 @@ export interface BookingSubmitParams {
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>
   updateBooking: (booking: Booking) => Promise<void>
   cancelBooking: (id: string) => Promise<void>
+  /** Removes a row outright: a booking this form created and then had to roll back. */
+  deleteBooking: (id: string) => Promise<void>
 }
 
 export type BookingSubmitResult =

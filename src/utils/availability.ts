@@ -10,6 +10,8 @@ export function isRoomAvailable(roomId: string, checkInStr: string, checkOutStr:
   return !bookingsList.some(booking => {
     if (booking.room_id !== roomId) return false
     if (booking.id === skipBookingId) return false
+    // A cancelled booking has given its room back.
+    if (booking.status === 'cancelled') return false
 
     const bStart = new Date(booking.check_in)
     const bEnd = new Date(booking.check_out)
@@ -21,6 +23,7 @@ export function isVenueAvailable(venueId: string, eventDateStr: string, bookings
   return !bookingsList.some(booking => {
     if (booking.venue_id !== venueId) return false
     if (booking.id === skipBookingId) return false
+    if (booking.status === 'cancelled') return false
     return booking.check_in === eventDateStr
   })
 }
@@ -33,6 +36,7 @@ export function isVenueRangeAvailable(venueId: string, checkInStr: string, check
   return !bookingsList.some(booking => {
     if (normalizeVenueId(booking.venue_id) !== normalizeVenueId(venueId)) return false
     if (booking.id === skipBookingId) return false
+    if (booking.status === 'cancelled') return false
 
     const bStart = new Date(booking.check_in)
     const bEnd = new Date(booking.check_out)

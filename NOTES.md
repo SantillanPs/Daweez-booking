@@ -1,6 +1,6 @@
 # NOTES — Daweez Pension House PMS
 
-Reference notes and decision log. This is NOT the binding contract (that's AGENTS.md);
+Reference notes and decision log. The reasons behind each feature are in `docs/why/`;
 these are the durable things we've learned so nothing is forgotten and all work stays
 consistent with the real process.
 

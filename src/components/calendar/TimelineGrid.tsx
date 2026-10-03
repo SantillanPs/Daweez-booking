@@ -225,11 +225,18 @@ export const TimelineGrid = React.memo(
               const to = first ? first.checkOut : null
               const nights = from && to ? Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000)) : 0
               const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              // A finished range has no single picked cell, so its name comes from the range.
+              const rangeUnit = ranges.length === 1 ? ranges[0][0] : ''
+              const barName = selectionName || (ranges.length > 1
+                ? ranges.length + ' units'
+                : rangeUnit
+                  ? (rooms.find(r => r.id === rangeUnit) ? roomDisplayName(rooms.find(r => r.id === rangeUnit)) : venues.find(v => v.id === rangeUnit)?.name || '')
+                  : '')
               return (
                 <div style={{ '--bar-left': barPos.left + 'px', '--bar-top': barPos.top + 'px' } as React.CSSProperties}
                   className="absolute z-40 [left:var(--bar-left)] [top:var(--bar-top)] bg-card border border-gold-400 rounded-full pl-3 pr-1.5 py-1.5 shadow-softLg flex items-center gap-2 text-[11.5px] font-semibold text-main animate-in fade-in duration-150">
-                  <span className="truncate max-w-[150px]" title={selectionName}>
-                    <span className="font-display font-bold text-gold-700">{selectionName}</span>
+                  <span className="truncate max-w-[150px]" title={barName}>
+                    <span className="font-display font-bold text-gold-700">{barName}</span>
                     <span className="text-muted"> · {from ? fmt(from) : ''}{to && nights > 0 ? ' → ' + fmt(to) : ''}</span>
                   </span>
 

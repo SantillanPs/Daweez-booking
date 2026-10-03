@@ -1,5 +1,5 @@
 import { Booking, Room } from '../../types/booking'
-import { isReservationAwaitingArrival } from '../../utils/bookingMoney'
+import { isReservationAwaitingArrival, isOwedByAgency } from '../../utils/bookingMoney'
 
 // Show the real room name (e.g. "Full Double Deluxe") instead of a bare
 // number, with "Room N" as the fallback when no name is set.
@@ -15,7 +15,7 @@ export const roomOptionLabel = (room: Room): string =>
 // text so bookings are easy to tell apart without shouting.
 export const getBookingStyle = (b: Booking): string => {
   if (b.status === 'pending') return 'bg-amber-50 text-amber-800 border-amber-200 border-dashed'
-  if (b.status === 'blocked') return 'bg-paper-200/60 text-muted border-paper-300 line-through'
+  if (b.status === 'blocked') return 'bg-paper-200/60 text-muted border-paper-300'
   switch (b.source) {
     case 'airbnb':      return 'bg-emerald-50 text-emerald-800 border-emerald-200'
     case 'booking_com': return 'bg-sky-50 text-sky-800 border-sky-200'
@@ -29,7 +29,7 @@ export const getBookingStyle = (b: Booking): string => {
 // Event venues use a warm gold tint so they read as "celebration space".
 export const getVenueBookingStyle = (b: Booking): string => {
   if (b.status === 'pending') return 'bg-amber-50 text-amber-800 border-amber-200 border-dashed'
-  if (b.status === 'blocked') return 'bg-paper-200/60 text-muted border-paper-300 line-through'
+  if (b.status === 'blocked') return 'bg-paper-200/60 text-muted border-paper-300'
   return 'bg-gold-100 text-gold-700 border-gold-200'
 }
 
@@ -38,6 +38,7 @@ export const getVenueBookingStyle = (b: Booking): string => {
 // red one: it is a promise, not a debt (the owner's ruling, 2026-09-28).
 export const getPaymentDotClass = (b: Booking): string => {
   if (isReservationAwaitingArrival(b)) return 'bg-ink-400'
+  if (isOwedByAgency(b)) return 'bg-indigo-500'
   const s = b.payment_status
   if (s === 'paid') return 'bg-emerald-500'
   if (s === 'downpayment') return 'bg-amber-400'
@@ -47,6 +48,7 @@ export const getPaymentDotClass = (b: Booking): string => {
 // Plain-language payment label (no accounting jargon).
 export const getPaymentLabel = (b: Booking): string => {
   if (isReservationAwaitingArrival(b)) return 'Reserved'
+  if (isOwedByAgency(b)) return 'Billed to agency'
   const s = b.payment_status
   if (s === 'paid') return 'Paid'
   if (s === 'downpayment') return 'Deposit paid'

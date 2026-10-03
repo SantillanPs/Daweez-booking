@@ -209,6 +209,8 @@ export async function getBookings(): Promise<Booking[]> {
           late_check_out_hours: b.late_check_out_hours != null ? Number(b.late_check_out_hours) : undefined,
           actual_check_in: b.actual_check_in || undefined,
           actual_check_out: b.actual_check_out || undefined,
+          cancelled_at: b.cancelled_at || undefined,
+          group_id: b.group_id || undefined,
           notes: b.notes || undefined,
           prepared_by: b.prepared_by || undefined,
           reference_number: b.reference_number || undefined,
@@ -217,6 +219,7 @@ export async function getBookings(): Promise<Booking[]> {
           venue_day_blocks: b.venue_day_blocks != null ? Number(b.venue_day_blocks) : undefined,
           breakfast_days: (b as { breakfast_days?: string[] }).breakfast_days || undefined,
           breakfast_records: (b as { breakfast_records?: Booking['breakfast_records'] }).breakfast_records || undefined,
+          breakfast_choices: (b as { breakfast_choices?: Booking['breakfast_choices'] }).breakfast_choices || undefined,
           // SHORT STAY: this mapping used to stop at `breakfast_records`, so every short
           // stay arrived in the app WITHOUT its hours — the quick view read it as an
           // ordinary overnight booking (`Sep 24 → Sep 25 · 1 night`), priced it as a whole
@@ -224,7 +227,10 @@ export async function getBookings(): Promise<Booking[]> {
           // **partly paid**. The database still held `stay_hours` (that writer refuses a
           // blank), which is why the row and the screen disagreed. The realtime mapper
           // always carried this field; this read path must carry it too.
-          stay_hours: b.stay_hours != null ? Number(b.stay_hours) : undefined
+          stay_hours: b.stay_hours != null ? Number(b.stay_hours) : undefined,
+          // Saved by its own small writer and, until 2026-10-04, never read back — so a
+          // Custom deposit figure was forgotten the moment the page was reloaded.
+          agreed_deposit: b.agreed_deposit != null ? Number(b.agreed_deposit) : undefined,
         }))
       }
     } catch (err) {
@@ -299,7 +305,7 @@ function toBookingRecord(booking: Booking): Record<string, unknown> {
  * small SECURITY DEFINER writer.
  *
  * Why not the booking RPCs: `book_booking` / `update_booking` are the drifted
- * jsonb functions (see the note in supabase/AGENTS.md) — they copy a fixed list
+ * jsonb functions (see docs/why/database.md) — they copy a fixed list
  * of keys out of the payload by hand, so a new column means rebuilding them from
  * the live definition. One narrow writer keeps this change contained, and a
  * failure is never fatal: the rest of the booking is already saved and the column
@@ -315,6 +321,17 @@ async function writeAgreedDeposit(bookingId: string, amount?: number): Promise<v
   } catch (err) {
     console.error('Could not save the agreed deposit:', err)
   }
+}
+
+/**
+ * Marks a booking as one room of a several-room booking (or takes the mark off with an
+ * empty value). Its own small writer: the booking RPCs never touch `group_id`, so an
+ * ordinary save cannot blank it. Throws — a group that only half-landed would print a
+ * bill with rooms missing.
+ */
+export async function setBookingGroup(bookingId: string, groupId: string | undefined): Promise<void> {
+  const { error } = await supabase.rpc('set_booking_group', { p_booking_id: bookingId, p_group_id: groupId || '' })
+  if (error) throw error
 }
 
 /**
@@ -336,6 +353,18 @@ async function writeStayHours(bookingId: string, hours?: number): Promise<void> 
   } catch (err) {
     console.error('Could not save the short-stay hours:', err)
   }
+}
+
+/**
+ * Takes the SHORT STAY mark off a booking — a short stay extended past its day becomes
+ * a normal stay priced by nights (the owner's ruling, 2026-10-03). Deliberately its own
+ * call: `writeStayHours` refuses a blank so a stale copy of a booking can never wipe
+ * the hours by accident, and unlike that writer this one throws, because a booking left
+ * with its hours on is priced as hours for every night it now covers.
+ */
+export async function clearStayHours(bookingId: string): Promise<void> {
+  const { error } = await supabase.rpc('set_booking_stay_hours', { p_booking_id: bookingId, p_hours: 0 })
+  if (error) throw error
 }
 
 // Business-rule failures (ROOM_UNAVAILABLE / VENUE_UNAVAILABLE / date order) and
@@ -415,11 +444,21 @@ export async function insertBooking(booking: Booking): Promise<Booking> {
       throw error
     }
     await writeAgreedDeposit(withId.id, withId.agreed_deposit)
-    await writeStayHours(withId.id, withId.stay_hours)
+    if (withId.stay_hours) {
+      // The hours are what make it a short stay. Without them the row reads — and is
+      // priced — as a whole night, so a booking whose hours did not land is taken back
+      // rather than left in the calendar charging the wrong amount.
+      const { error: hoursError } = await supabase.rpc('set_booking_stay_hours', { p_booking_id: withId.id, p_hours: withId.stay_hours })
+      if (hoursError) {
+        try { await deleteBooking(withId.id) } catch { /* reported below either way */ }
+        throw new Error('The short-stay hours could not be saved, so the booking was not made. Please try again.')
+      }
+    }
+    if (withId.group_id) await setBookingGroup(withId.id, withId.group_id)
     const saved = (data as unknown as Booking) ?? withId
-    // The booking RPC does not carry the agreed deposit or the short-stay hours
-    // (see the writers above), so put them back on the row the caller caches.
-    return { ...saved, agreed_deposit: withId.agreed_deposit, stay_hours: withId.stay_hours }
+    // The booking RPC does not carry the agreed deposit, the short-stay hours or the
+    // group mark (see the writers above), so put them back on the row the caller caches.
+    return { ...saved, agreed_deposit: withId.agreed_deposit, stay_hours: withId.stay_hours, group_id: withId.group_id }
   }
 
   throw new Error('The booking could not be saved — its invoice number kept clashing. Please try again.')
@@ -447,6 +486,19 @@ export async function deleteBooking(bookingId: string): Promise<void> {
 
   // bookings.id is TEXT and may be a non-UUID id (manual-…, imported-…); delete_booking takes text.
   const { error } = await supabase.rpc('delete_booking', { p_booking_id: bookingId })
+  if (error) throw error
+}
+
+/**
+ * Cancels a booking: the row stays, marked Cancelled, with its payments and receipts,
+ * and the room is free again. Deleting it (`deleteBooking`) is only for a row that
+ * should never have existed — a date block, or a booking whose save was rolled back.
+ */
+export async function cancelBooking(bookingId: string): Promise<void> {
+  if (!isSupabaseConfigured) {
+    throw new Error('No database is connected, so this booking was not cancelled.')
+  }
+  const { error } = await supabase.rpc('cancel_booking', { p_booking_id: bookingId })
   if (error) throw error
 }
 

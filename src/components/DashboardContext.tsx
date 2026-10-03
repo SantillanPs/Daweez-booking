@@ -5,7 +5,10 @@ import { Expense, ExpenseCategory } from '../types/expense'
 export interface DashboardDataContextValue {
   rooms: Room[]
   venues: Venue[]
+  /** The stays that still hold a room — cancelled bookings are left out. */
   bookings: Booking[]
+  /** Every booking, cancelled ones included. */
+  allBookings: Booking[]
   feeds: SyncFeed[]
   partnerDeals: PartnerDeal[]
   expenses: Expense[]
@@ -13,7 +16,10 @@ export interface DashboardDataContextValue {
   isLoading: boolean
   isConfirming?: boolean
   confirmBooking: (id: string) => Promise<void>
+  /** Marks a booking Cancelled (a date block is simply removed). */
   cancelBooking: (id: string) => Promise<void>
+  /** Removes a row outright — only for a booking whose save was rolled back. */
+  deleteBooking: (id: string) => Promise<void>
   createManualBooking: (params: {
     roomId?: string
     venueId?: string
@@ -36,7 +42,7 @@ export interface DashboardDataContextValue {
     contractRateOverride?: number
     paymentMethod?: string
     paymentReference?: string
-    paymentPlan?: 'deposit' | 'full' | 'custom' | 'reservation'
+    paymentPlan?: 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'
     venueExcessHours?: number
     id?: string
     invoiceNumber?: string
@@ -54,6 +60,7 @@ export interface DashboardDataContextValue {
     registeredOn?: string
     agreedDeposit?: number
     stayHours?: number
+    groupId?: string
     guestGender?: string
     guestNationality?: string
     guestAddress?: string
