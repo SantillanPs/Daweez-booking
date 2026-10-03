@@ -22,7 +22,7 @@ export function ShortStayClock({ booking, due }: { booking: Booking; due: boolea
   if (!hours || !booking.actual_check_in || !end) return null
 
   return (
-    <div className={'rounded-lg border px-2.5 py-1.5 text-[11px] font-bold ' +
+    <div className={'rounded-lg border px-3 py-2 text-[12px] font-bold ' +
       (due
         ? 'bg-danger-100 border-danger-400 text-danger-600'
         : 'bg-gold-100 border-gold-300 text-gold-800')}>

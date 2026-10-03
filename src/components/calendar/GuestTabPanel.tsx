@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { Utensils } from 'lucide-react'
 import { TabLine } from '../../types/tab'
 import { MenuPicker } from '../restaurant/MenuPicker'
 import { OffMenuOrder } from '../restaurant/OffMenuOrder'
@@ -33,12 +32,11 @@ interface GuestTabPanelProps {
   /**
    * Where orders are taken (k69). The till lives in the Restaurant screen — the
    * owner did not want a menu board squeezed into the narrow booking slide-over —
-   * so a booking's tab passes `ordering={false}` and shows its lines, its total
-   * and a way over to the restaurant instead. Defaults to true.
+   * so a booking's tab passes `ordering={false}` and shows only its lines and its
+   * total. The way over to the restaurant is the booking panel's own "Take orders"
+   * button, beside the tab's heading. Defaults to true.
    */
   ordering?: boolean
-  /** Walks staff to the Restaurant screen with this guest's tab already open. */
-  onOpenTill?: () => void
 }
 
 // The guest's food and bar tab (board card k69).
@@ -49,7 +47,7 @@ interface GuestTabPanelProps {
 //
 // The bill itself is [TabBill] and the writing is [useTabOrder], both shared with
 // the Restaurant screen, so a stay's tab and a diner's cannot drift apart.
-export function GuestTabPanel({ resolveTabId, lines, tabTotal, onChanged, locked = false, slip, ordering = true, onOpenTill }: GuestTabPanelProps) {
+export function GuestTabPanel({ resolveTabId, lines, tabTotal, onChanged, locked = false, slip, ordering = true }: GuestTabPanelProps) {
   const [showSlip, setShowSlip] = useState(false)
   const order = useTabOrder(resolveTabId, onChanged)
 
@@ -79,19 +77,7 @@ export function GuestTabPanel({ resolveTabId, lines, tabTotal, onChanged, locked
         <p className="text-[12.5px] text-ink-600 bg-paper-50 border border-soft rounded-lg px-3 py-2.5">
           <b className="text-ink-900">Check the guest in first.</b> Orders are added once the guest is in the hotel, so the bill is only ever run up by someone who is actually here.
         </p>
-      ) : !ordering ? (
-        <div className="bg-paper-50 border border-soft rounded-lg px-3 py-2.5 space-y-2">
-          <p className="text-[12.5px] text-ink-600">
-            <b className="text-ink-900">Orders are taken in the Restaurant screen.</b> The till lives there, so a menu is never squeezed into this narrow panel.
-          </p>
-          {onOpenTill && (
-            <button type="button" onClick={onOpenTill}
-              className="inline-flex items-center gap-1.5 text-[12px] font-bold text-ink-900 bg-gold-400 hover:bg-gold-600 px-3 py-2 rounded-lg transition-colors cursor-pointer">
-              <Utensils className="w-3.5 h-3.5" /> Take orders for this guest
-            </button>
-          )}
-        </div>
-      ) : (
+      ) : !ordering ? null : (
         <div className="space-y-2.5">
           <MenuPicker onPick={item => void order.pickItem(item)} busy={order.busy} counts={pickedCounts} />
           <OffMenuOrder

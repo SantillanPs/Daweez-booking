@@ -58,6 +58,9 @@ The guest picks one of four: **Deposit** (half the stay — the standard, alread
 ## The quick view (the panel that opens on a booking)
 
 - **Only one next step is ever on screen**, and nothing appears until it is needed. A paid booking shows one line (`Fully paid ✓`) and its button; the money box appears only while something is owed.
+- **No stack of closed sections.** The owner, 2026-10-04: *"it looks so badly designed… it looks so lazy just stacking accordions."* The panel had become a money box over three closed sections that were there whether or not they held anything. Now a thing appears when the stay reaches it: receipts once there is one, the guest tab once the guest is checked in, and extending is a quiet action in the bottom row beside Print and Cancel.
+- **Money is taken in one place**, the money box. A part-payment is "A different amount" there; the second payment form that sat under Payment receipts is gone.
+- **The title is the room and the guest** (`Room 7 · Noel Bautista`) with one status word — the money word. It used to show two (`Confirmed` and `Reserved`).
 - The panel is **as wide as its contents**, never a fixed width, and one column.
 - Recording the first payment confirms the booking and prints the receipt.
 

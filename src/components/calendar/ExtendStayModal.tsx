@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom'
 import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
 import { computeCheckInOutHours } from '../../utils/checkInOut'
 import { getRateConfig } from '../../utils/rateConfig'
-import { X, Printer, Edit3 } from 'lucide-react'
+import { X, Printer, Edit3, ChevronDown, Utensils, CalendarPlus } from 'lucide-react'
+import { NumInput } from '../NumInput'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
 import { SOURCE_LABELS, roomDisplayName } from './bookingStyles'
@@ -12,7 +13,6 @@ import { hasOutstandingBalance, amountToPayNow, getPaymentView, paymentStatusWor
 import { paymentMethodLabel, methodNeedsReference } from '../../utils/paymentMethod'
 import { nextReceiptNumber } from '../../utils/receiptNumber'
 import { withoutPayment } from '../walk-in/bookingPayment'
-import { SlideOverSection } from './SlideOverSection'
 import { GuestTabPanel } from './GuestTabPanel'
 import { recomputeBalance, pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
 import { useGuestTab } from '../../hooks/useGuestTab'
@@ -61,9 +61,32 @@ const fmtPeso = (n: number) => '₱' + n.toLocaleString()
 // (`amountToPayNow`), so the figure displayed and the figure pre-filled into the
 // payment form can never drift apart.
 
-// Reservation details slide-over: who, what, how much, and the single next step.
-// Layout is a folio, not a stack of cards — one focal money card, everything else
-// separated by hairlines and collapsed until needed.
+// The two button weights the panel uses. One loud button for the next step, one quiet
+// one for everything else — there used to be three styles for actions of the same weight.
+const BTN_LOUD = 'min-h-11 px-4 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold transition-colors cursor-pointer shadow-sm'
+const BTN_QUIET = 'min-h-11 px-4 rounded-lg bg-card hover:bg-gold-100 text-main border border-soft text-[13px] font-bold transition-colors cursor-pointer'
+// The bottom row: plain words, finger-sized.
+const ROW_ACTION = 'min-h-11 inline-flex items-center gap-1.5 text-[13px] font-semibold transition-colors cursor-pointer'
+
+/**
+ * The booking's quick view: who, what, how much, and the single next step.
+ *
+ * **It shows what this stay needs now, not every feature a booking can have** (the
+ * owner's feedback, 2026-10-04: *"it looks so lazy just stacking accordions"*). It used
+ * to be a money box followed by closed sections — Payment receipts, Guest tab, Extend
+ * stay — that were on screen whether or not they held anything, and that put a second
+ * payment form and a second set of dates under the first. Now:
+ *
+ *   - **money is taken in one place**, the money box — a part-payment is "A different
+ *     amount" there, not a second form further down;
+ *   - **receipts appear once there is one**, as a plain list;
+ *   - **the guest tab appears once the guest is in the hotel**;
+ *   - **extending is a quiet action in the bottom row**, beside Print and Cancel, and
+ *     opens one date and one button.
+ *
+ * Nothing smaller than 12px, and nothing to press smaller than a fingertip (44px) — the
+ * desk uses a tablet as well as the PC.
+ */
 export function ExtendStayModal({
   booking,
   rooms,
@@ -94,11 +117,13 @@ export function ExtendStayModal({
   // `closeAfterPayment` closes this whole slide-over once the receipt for a
   // recorded payment is dismissed — the money is in, the job here is done.
   const [closeAfterPayment, setCloseAfterPayment] = useState(false)
-  const [addReceiptOpen, setAddReceiptOpen] = useState(false)
-  // Only used by the Payment receipts block for an in-stay charge or a
-  // part-payment, where the staff member types the amount from scratch. Every
-  // other payment takes its amount straight from the card's "Amount to pay".
-  const [receiptAmount, setReceiptAmount] = useState(() => amountToPayNow(booking))
+  // "A different amount": a part-payment, where the desk types the figure from
+  // scratch. Every other payment takes its amount straight from "Amount to pay".
+  const [otherAmountOpen, setOtherAmountOpen] = useState(false)
+  const [receiptAmount, setReceiptAmount] = useState(0)
+  // Opened from the bottom row; the guest tab's lines are opened from its own heading.
+  const [extendOpen, setExtendOpen] = useState(false)
+  const [tabOpen, setTabOpen] = useState(false)
   // Nothing is preselected: an empty method stays empty and the picker reads
   // "Choose…", because defaulting to 'Cash' here is what once printed a Cash
   // receipt for a guest who had paid by GCash. The desk picks what they were told.
@@ -126,12 +151,6 @@ export function ExtendStayModal({
     setBooking: setLocalBooking,
     onUpdateBooking,
   })
-
-  // The deposit is agreed on the STAY alone, so the food tab is taken out of it.
-  // The "record a payment" box in Payment receipts is filled from that figure when
-  // it is opened (see its `setOpen` below) rather than from an effect — the tab
-  // arrives a moment after the first render, and an effect writing state on every
-  // tab change was both a lint error and a re-render.
 
   const room = booking.room_id ? rooms.find(r => r.id === booking.room_id) : undefined
   const venue = booking.venue_id ? venues.find(v => v.id === booking.venue_id) : undefined
@@ -175,7 +194,10 @@ export function ExtendStayModal({
   // This is the one place the money received is itemised (amount, method, when),
   // so the money card above does not repeat it.
   const receiptRecords = localBooking.payment_records || []
-  const receiptTotal = receiptRecords.reduce((a, r) => a + (r.amount || 0), 0)
+  // What the record button will write down: the amount to pay, or the figure the desk
+  // typed. The deposit is agreed on the STAY alone, so the food tab is taken out of it.
+  const dueNow = amountToPayNow(localBooking, tabAmount)
+  const payNow = otherAmountOpen ? receiptAmount : dueNow
   // GCash and bank payments need the reference number; cash does not.
   // The guest's own payment method and reference are the money card's inputs now
   // (see `GuestMethodPicker`): how the guest pays is asked for once.
@@ -186,15 +208,7 @@ export function ExtendStayModal({
     ? 'Enter the ' + paymentMethodLabel(receiptMethod) + ' reference number.' : ''
   const paymentError = tryPayment && !receiptMethod.trim()
     ? 'Choose how the guest paid.' : referenceError
-  // The position in one line, said while the Payment accordion is shut — the same
-  // fact the header chip carries, in words, with the numbers.
-  const paymentSummary = (() => {
-    const paidNow = Number(localBooking.downpayment_paid || 0)
-    const owedNow = Number(localBooking.balance_due || 0)
-    if (owedNow <= 0) return 'Fully paid · ' + fmtPeso(paidNow) + ' received'
-    if (paidNow > 0) return 'Partly paid · ' + fmtPeso(paidNow) + ' of ' + fmtPeso(paidNow + owedNow) + ' received'
-    return 'Nothing received yet · ' + fmtPeso(owedNow) + ' owed'
-  })()
+  const amountError = tryPayment && otherAmountOpen && !(receiptAmount > 0) ? 'Enter the amount received.' : ''
   const hasEmail = booking.guest_email && booking.guest_email !== 'admin@daweez-booking.vercel.app'
   // "None" is the placeholder the bookings store writes when no phone was taken.
   const hasPhone = !!booking.guest_phone && booking.guest_phone.trim() !== 'None'
@@ -367,11 +381,9 @@ export function ExtendStayModal({
   }
 
   // Record a payment: creates a receipt (date + time) only when the guest pays.
-  const handleAddReceipt = async (amountOverride?: number, thenCheckIn = false) => {
-    // Only a real number counts as an override. A DOM event must never be read
-    // as one: `Number(event)` is NaN, which silently zeroed the amount the form
-    // was already showing and blocked the save.
-    const amount = Number(typeof amountOverride === 'number' ? amountOverride : receiptAmount) || 0
+  const handleAddReceipt = async (thenCheckIn = false) => {
+    // The amount to pay, or the figure the desk typed under "A different amount".
+    const amount = Number(otherAmountOpen ? receiptAmount : amountToPayNow(localBooking, tabAmount)) || 0
     setTryPayment(true)
     // Missing amount / reference are shown inline on the form itself, under the
     // box that needs filling — not as a popup that hides which box it means.
@@ -412,7 +424,7 @@ export function ExtendStayModal({
     }
     setLocalBooking(updated)
     setActionNotice('')
-    setReceiptAmount(0); setAddReceiptOpen(false); setTryPayment(false)
+    setReceiptAmount(0); setOtherAmountOpen(false); setTryPayment(false)
     try {
       await onUpdateBooking?.(updated)
       setReceiptFor(rec)
@@ -444,18 +456,19 @@ export function ExtendStayModal({
 
   // The same plain-language status the calendar's payment dot stands for, said
   // in words here so staff never have to decode a colour.
+  //
+  // **One word, not two.** The header used to carry a booking-status chip beside it
+  // (`Confirmed` / `Unpaid`), so a reservation read `CONFIRMED  RESERVED` and an unpaid
+  // walk-in `UNPAID  OWES` — two vocabularies for one fact. The money is the status
+  // (`docs/why/money.md`), so the money word is the one that stays.
   const payView = getPaymentView(localBooking)
-  const paymentChip = localBooking.status === 'blocked' ? null : (
-    <span className={'shrink-0 text-[10px] font-bold uppercase tracking-wider rounded-md px-2 py-0.5 ' + PAYMENT_BADGE_CLASSES[payView.tone]}>
-      {paymentStatusWord(localBooking)}
-    </span>
-  )
-
-  const statusBadge = localBooking.status === 'confirmed'
-    ? <span className="shrink-0 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-0.5">Confirmed</span>
-    : localBooking.status === 'pending'
-      ? <span className="shrink-0 text-[10px] font-bold uppercase text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-0.5">Unpaid</span>
-      : <span className="shrink-0 text-[10px] font-bold uppercase text-muted bg-softbg border border-soft rounded-md px-2 py-0.5">Blocked</span>
+  const statusChip = localBooking.status === 'blocked'
+    ? <span className="shrink-0 text-[12px] font-bold text-muted bg-softbg border border-soft rounded-md px-2 py-0.5">Blocked</span>
+    : (
+      <span className={'shrink-0 text-[12px] font-bold rounded-md px-2 py-0.5 ' + PAYMENT_BADGE_CLASSES[payView.tone]}>
+        {paymentStatusWord(localBooking)}
+      </span>
+    )
 
   const isShortStay = stayHoursOf(localBooking) > 0
   const becomesNights = isShortStay && extendCheckoutDate && extendCheckoutDate > booking.check_in
@@ -507,85 +520,96 @@ export function ExtendStayModal({
   const canCheckIn = localBooking.status !== 'blocked' && !localBooking.actual_check_in
   const canCheckOut = localBooking.status !== 'blocked' && !!localBooking.actual_check_in && !localBooking.actual_check_out
 
+  // The title names the place and the person: `Room 7 · Noel Bautista`. The unit still
+  // leads — it is what staff clicked — but as the number they say out loud, with the
+  // room's type under it. It used to be the type alone (`Bunk Bed 3`) above a second,
+  // larger title carrying the guest's name.
+  const place = booking.room_id ? (room ? 'Room ' + room.room_number : 'Room') : (venue?.name || 'Event Venue')
+  const who = isBlock ? blockReason(localBooking) : booking.guest_name
+  const roomType = booking.room_id && room?.name ? room.name : ''
+  const stayLine = isBlock
+    ? (openEnded ? 'From ' + fmtShort(booking.check_in) + ' · until further notice' : fmtShort(booking.check_in) + ' → ' + fmtShort(booking.check_out))
+    : stayHoursOf(booking) > 0
+      ? fmtShort(booking.check_in) + ' · ' + stayHoursOf(booking) + '-hour stay'
+      : fmtShort(booking.check_in) + ' → ' + fmtShort(booking.check_out) + ' · ' + nights + (nights === 1 ? ' night' : ' nights')
+  const extendLabel = isBlock ? 'Change the dates' : isShortStay ? 'Stay longer' : 'Extend stay'
+  // A stay that has ended has nothing left to extend; its dates are corrected with the pencil.
+  const canExtend = !localBooking.actual_check_out
+  // A block's dates are all it has, so they are simply on screen — no button to open
+  // them. The exception is a block with no end date yet, whose one job is "They have left".
+  const datesAlwaysShown = isBlock && !openEnded
+
   const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
       {/* The panel is as wide as its contents, not a fixed number (the owner: *"don't
           make the width fixed of the entire fucking quick review"*). A fixed max-width
-          meant every short row — `EXTEND STAY  Check-out Sep 22`, the guest row — ended
-          in dead space to the right. `w-fit` lets the widest row set the width and the
-          short rows fill it, and the cap only stops a long guest name or email from
-          stretching the panel across the screen. */}
+          meant every short row ended in dead space to the right. `w-fit` lets the widest
+          row set the width and the short rows fill it, and the cap only stops a long guest
+          name or email from stretching the panel across the screen. */}
       <div className="w-fit max-w-[min(92vw,34rem)] bg-card rounded-xl shadow-softLg overflow-hidden flex flex-col max-h-[88vh]">
 
-        {/* Header — the unit is what staff clicked, so it leads. */}
-        <div className="flex items-start justify-between gap-3 px-5 py-3.5 border-b border-soft shrink-0">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-display font-bold text-main truncate">{unitName}</h3>
-              {statusBadge}
-              {paymentChip}
+        <div className="flex items-start justify-between gap-2 pl-5 pr-1.5 py-1.5 border-b border-soft shrink-0">
+          {/* Nothing here is cut short: on a phone a long name wraps and the status word
+              drops under it, rather than the guest reading `Angela…`. */}
+          <div className="min-w-0 py-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h3 className="font-display font-bold text-[17px] leading-tight text-main break-words min-w-0">{place} · {who}</h3>
+              {statusChip}
             </div>
-            <p className="text-[11px] text-muted mt-1 truncate">
-              {unitSub ? unitSub + ' · ' : ''}{isBlock
-                ? (openEnded ? 'From ' + fmtShort(booking.check_in) + ' · until further notice' : fmtShort(booking.check_in) + ' → ' + fmtShort(booking.check_out))
-                : stayHoursOf(booking) > 0
-                ? fmtShort(booking.check_in) + ' · ' + stayHoursOf(booking) + '-hour stay'
-                : fmtShort(booking.check_in) + ' → ' + fmtShort(booking.check_out) + ' · ' + nights + (nights === 1 ? ' night' : ' nights')}
-            </p>
+            <p className="text-[12px] text-muted mt-1">{roomType ? roomType + ' · ' : ''}{stayLine}</p>
           </div>
-          <div className="flex items-center gap-3 shrink-0 pt-0.5">
+          <div className="flex items-center shrink-0">
             {onEditBooking && !isBlock && (
-              <button onClick={onEditBooking} className="text-muted hover:text-gold-700 transition-colors cursor-pointer" title="Edit booking">
+              <button type="button" onClick={onEditBooking} aria-label="Edit booking" title="Edit booking"
+                className="w-11 h-11 flex items-center justify-center rounded-lg text-muted hover:text-gold-700 hover:bg-softbg transition-colors cursor-pointer">
                 <Edit3 className="w-4 h-4" />
               </button>
             )}
-            <button onClick={onClose} className="text-muted hover:text-main transition-colors cursor-pointer" aria-label="Close">
+            <button type="button" onClick={onClose} aria-label="Close" title="Close"
+              className="w-11 h-11 flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
         <div className="px-5 overflow-y-auto flex-1">
-          {/* ONE COLUMN (the owner's correction): guest, then the money while it is
-              still owed, then the collapsed blocks. There is no side-by-side any
-              more — the money column made the panel wide and left the left column
-              half empty.
-
-              A SETTLED booking has no money block at all: `Fully paid ✓` and the next
-              step sit beside the guest's name, because a paid booking has nothing
-              left to explain. */}
-          {/* Who is staying — with the settled money and its action on the right */}
-          <div className="pt-4 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-            <p className="font-display font-bold text-[19px] text-main leading-tight">{isBlock ? blockReason(localBooking) : booking.guest_name}</p>
-            {/* The store writes the literal "None" when no phone was taken, so
-                treat that (and a missing email) as nothing and skip the line
-                rather than printing a row that says nothing. */}
-            {hasContact && (
-              <p className="text-[12px] text-muted mt-1 break-words">
-                {hasPhone && <span>{booking.guest_phone}</span>}
-                {hasPhone && hasEmail && <span className="text-muted"> · </span>}
-                {hasEmail && <span className="text-muted">{booking.guest_email}</span>}
-              </p>
-            )}
-            {booking.companions && booking.companions.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2.5">
-                {booking.companions.map((comp, idx) => (
-                  <span key={idx} className="text-[11px] bg-page border border-soft rounded-md px-2 py-0.5">
-                    {comp.name}{comp.nationality ? <span className="text-muted capitalize"> ({comp.nationality})</span> : null}
-                  </span>
-                ))}
+          {/* ONE COLUMN (the owner's correction), top to bottom in the order the desk
+              needs it: who, the money or `Fully paid ✓`, then only what this stay has
+              reached — its receipts, its tab — and the quiet actions last. */}
+          <div className="py-3.5 space-y-3 empty:hidden">
+            {!isBlock && (
+              <div className="text-[12px] text-muted space-y-1.5">
+                {/* The store writes the literal "None" when no phone was taken, so
+                    treat that (and a missing email) as nothing and skip the line
+                    rather than printing a row that says nothing. */}
+                {hasContact && (
+                  <p className="break-words">
+                    {hasPhone && <span>{booking.guest_phone}</span>}
+                    {hasPhone && hasEmail && <span> · </span>}
+                    {hasEmail && <span>{booking.guest_email}</span>}
+                  </p>
+                )}
+                {booking.companions && booking.companions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {booking.companions.map((comp, idx) => (
+                      <span key={idx} className="text-main bg-page border border-soft rounded-md px-2 py-0.5">
+                        {comp.name}{comp.nationality ? <span className="text-muted capitalize"> ({comp.nationality})</span> : null}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <p className="flex flex-wrap gap-x-4 gap-y-0.5">
+                  <span>Booked from <strong className="text-main">{SOURCE_LABELS[booking.source] || booking.source}</strong></span>
+                  {booking.reference_number && <span>Paper ref <strong className="text-main">{booking.reference_number}</strong></span>}
+                  {booking.registered_on && <span>Logged <strong className="text-main">{booking.registered_on}</strong></span>}
+                  {booking.vehicle_plate && <span>Plate <strong className="text-main uppercase">{booking.vehicle_plate}</strong></span>}
+                  {booking.company_name && <span>Company <strong className="text-main">{booking.company_name}</strong></span>}
+                  {togetherLabel && <span>Booked together <strong className="text-main">{togetherLabel}</strong></span>}
+                </p>
               </div>
             )}
-            <p className="text-[11px] text-muted mt-2.5 flex flex-wrap gap-x-4 gap-y-0.5">
-              {!isBlock && <span>Booked from <strong className="text-main">{SOURCE_LABELS[booking.source] || booking.source}</strong></span>}
-              {booking.reference_number && <span>Paper ref <strong className="text-main">{booking.reference_number}</strong></span>}
-              {booking.registered_on && <span>Logged <strong className="text-main">{booking.registered_on}</strong></span>}
-              {booking.vehicle_plate && <span>Plate <strong className="text-main uppercase">{booking.vehicle_plate}</strong></span>}
-              {booking.company_name && <span>Company <strong className="text-main">{booking.company_name}</strong></span>}
-              {togetherLabel && <span>Booked together <strong className="text-main">{togetherLabel}</strong></span>}
-            </p>
-            </div>
+
+            {/* SETTLED: no money block at all — one line and the next step. */}
             {totalCharge > 0 && due <= 0 && (
               <SettledPaidTag
                 paid={paidSoFar}
@@ -593,221 +617,231 @@ export function ExtendStayModal({
                   <button
                     type="button"
                     onClick={handleCheckIn}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11.5px] font-bold rounded-md px-2.5 py-1.5 transition-colors cursor-pointer shadow-sm"
+                    className="shrink-0 min-h-11 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-bold transition-colors cursor-pointer shadow-sm"
                   >
                     Check in
                   </button>
                 ) : canCheckOut ? (
-                  <button
-                    type="button"
-                    onClick={handleCheckOut}
-                    className="bg-gold-400 hover:bg-gold-600 text-ink-900 text-[11.5px] font-bold rounded-md px-2.5 py-1.5 transition-colors cursor-pointer shadow-sm"
-                  >
+                  <button type="button" onClick={handleCheckOut} className={BTN_LOUD + ' shrink-0'}>
                     Check out
                   </button>
                 ) : undefined}
               />
             )}
-          </div>
 
-          {/* The short-stay clock: the time the room is free, and a red word once it
-              has passed. Nothing renders for an ordinary stay. */}
-          <div className="mt-2"><ShortStayClock booking={localBooking} due={shortStayDue} /></div>
+            {/* The short-stay clock: the time the room is free, and a red word once it
+                has passed. Nothing renders for an ordinary stay. */}
+            <ShortStayClock booking={localBooking} due={shortStayDue} />
 
-          {/* A block with no end date has one job left: being ended. */}
-          {openEnded && (
-            <button
-              type="button"
-              onClick={() => void endOpenBlock()}
-              className="mt-3 w-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm"
-            >
-              They have left
-            </button>
-          )}
+            {/* A block with no end date has one job left: being ended. */}
+            {openEnded && (
+              <button type="button" onClick={() => void endOpenBlock()} className={BTN_LOUD + ' w-full'}>
+                They have left
+              </button>
+            )}
 
-          {/* Breakfast is asked every morning (the owner, 2026-10-04): today's answer, or
-              that nobody has asked yet. The choices are read from the LIVE booking — they
-              are saved by their own writer, not through this panel's copy. */}
-          {wantsBreakfastToday(localBooking) && (
-            <button
-              type="button"
-              onClick={() => setBreakfastOpen(true)}
-              className="mt-2 w-full flex items-center justify-between gap-3 rounded-md border border-soft bg-page hover:border-gold-400 px-2.5 py-1.5 text-[11.5px] text-left transition-colors cursor-pointer"
-            >
-              <span className="font-bold text-main shrink-0">Breakfast today</span>
-              <span className={breakfastToday ? 'text-muted truncate' : 'font-semibold text-danger-600'}>
-                {breakfastToday ? breakfastSummary(breakfastToday) : 'not asked yet'}
-              </span>
-            </button>
-          )}
+            {/* Breakfast is asked every morning (the owner, 2026-10-04): today's answer, or
+                that nobody has asked yet. The choices are read from the LIVE booking — they
+                are saved by their own writer, not through this panel's copy. */}
+            {wantsBreakfastToday(localBooking) && (
+              <button
+                type="button"
+                onClick={() => setBreakfastOpen(true)}
+                className="w-full min-h-11 flex items-center justify-between gap-3 rounded-lg border border-soft bg-page hover:border-gold-400 px-3 text-[13px] text-left transition-colors cursor-pointer"
+              >
+                <span className="font-bold text-main shrink-0">Breakfast today</span>
+                <span className={breakfastToday ? 'text-muted truncate' : 'font-semibold text-danger-600'}>
+                  {breakfastToday ? breakfastSummary(breakfastToday) : 'not asked yet'}
+                </span>
+              </button>
+            )}
 
-          {/* Recorded early check-in, not billed yet: one amber line saying what the
-              guest will owe and when it lands, so the money never moves in silence and
-              the desk can quote it — without the badge flipping to Partly paid and
-              without asking for it at the door (the owner's rule). */}
-          {pendingEarly > 0 && (
-            <p className="mt-2 rounded-md border border-gold-200 bg-gold-100/50 px-2.5 py-1.5 text-[11px] font-semibold text-brand-text leading-snug">
-              Early check-in {earlyHoursRecorded} hour{earlyHoursRecorded > 1 ? 's' : ''}
-              {earlyHoursRecorded > getRateConfig().lateEarlyCapHours ? ' (past the ' + getRateConfig().lateEarlyCapHours + '-hour cap)' : ''}
-              {' — '}{fmtPeso(pendingEarly)} goes on the bill at check-out.
-            </p>
-          )}
+            {/* Recorded early check-in, not billed yet: one amber line saying what the
+                guest will owe and when it lands, so the money never moves in silence and
+                the desk can quote it — without the badge flipping to Partly paid and
+                without asking for it at the door (the owner's rule). */}
+            {pendingEarly > 0 && (
+              <p className="rounded-lg border border-gold-200 bg-gold-100/50 px-3 py-2 text-[12px] font-semibold text-brand-text leading-snug">
+                Early check-in {earlyHoursRecorded} hour{earlyHoursRecorded > 1 ? 's' : ''}
+                {earlyHoursRecorded > getRateConfig().lateEarlyCapHours ? ' (past the ' + getRateConfig().lateEarlyCapHours + '-hour cap)' : ''}
+                {' — '}{fmtPeso(pendingEarly)} goes on the bill at check-out.
+              </p>
+            )}
 
-          {/* Why the action just pressed did not go through — on the page, beside
-              the action, where it can be read while acting. */}
-          {actionNotice && (
-            <p className="text-[11px] font-semibold text-danger-600 leading-snug mt-2">{actionNotice}</p>
-          )}
+            {/* Why the action just pressed did not go through — on the page, beside
+                the action, where it can be read while acting. */}
+            {actionNotice && (
+              <p className="text-[12px] font-semibold text-danger-600 leading-snug">{actionNotice}</p>
+            )}
 
-          {/* The money, while something is still owed: the compact panel (four rows
-              and the bar) with the receive step under it. A settled booking never
-              reaches here — its single line lives beside the guest's name. */}
-          {totalCharge > 0 && due > 0 && (
-            <div className="mt-3">
-              <SlideOverSection title="Payment" summary={paymentSummary} hideSummaryWhenOpen forceOpenOnDesktop>
-                <div className="space-y-2.5">
-                  <BookingMoneyPanel
-                    localBooking={localBooking}
-                    tabTotal={tabAmount}
-                  />
+            {/* THE MONEY, while something is still owed — and the ONE place it is taken.
+                The receive step's controls are on screen with it, no opener button in
+                front of them (the owner's correction: the money is taken by the desk
+                BEFORE anything is pressed, so the press is only the writing-down). One
+                thing per line, so nothing wraps on a narrow screen: the method, the
+                reference under it, then one full-width button. Check in / Check out are
+                not here — a settled booking carries them in its own strip above. */}
+            {totalCharge > 0 && due > 0 && (
+              <div className="space-y-2.5">
+                <BookingMoneyPanel localBooking={localBooking} tabTotal={tabAmount} />
 
-                  {/* While money is owed, the receive step is the block's one action.
-                      Its controls are on screen as soon as the block is open — no
-                      opener button in front of them (the owner's correction: the
-                      drawing he approved showed them together, and the money is taken
-                      by the desk BEFORE anything is pressed, so the press is only the
-                      writing-down). One thing per line, so nothing wraps on a narrow
-                      screen: the method list, the reference under it, then one
-                      full-width button. Check in / Check out are not here — a settled
-                      booking carries them beside the guest's name. */}
-                  <div className="space-y-2">
-                    {billedToAgency && (canCheckIn || canCheckOut) && (
-                      <button
-                        type="button"
-                        onClick={canCheckIn ? handleCheckIn : handleCheckOut}
-                        className={'w-full text-[13px] font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm ' +
-                          (canCheckIn ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-gold-400 hover:bg-gold-600 text-ink-900')}
-                      >
-                        {canCheckIn ? 'Check in' : 'Check out'}
-                      </button>
-                    )}
-                    <GuestMethodPicker
-                      method={receiptMethod}
-                      reference={receiptRef}
-                      error={paymentError}
-                      onPick={pickGuestMethod}
-                      onReference={setReceiptRef}
-                      onReferenceCommit={() => { if (receiptRef.trim()) void savePaymentMethod(receiptMethod, receiptRef) }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleAddReceipt(amountToPayNow(localBooking, tabAmount))}
-                      className={'w-full text-[13px] font-bold py-2.5 rounded-lg transition-colors cursor-pointer ' +
-                        (billedToAgency ? 'bg-card hover:bg-gold-100 text-main border border-soft' : 'bg-gold-400 hover:bg-gold-600 text-ink-900 shadow-sm')}
-                    >
-                      Record {fmtPeso(amountToPayNow(localBooking, tabAmount))} received
-                    </button>
-                  </div>
-                </div>
-              </SlideOverSection>
-            </div>
-          )}
+                {billedToAgency && (canCheckIn || canCheckOut) && (
+                  <button
+                    type="button"
+                    onClick={canCheckIn ? handleCheckIn : handleCheckOut}
+                    className={canCheckIn
+                      ? 'w-full min-h-11 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-bold transition-colors cursor-pointer shadow-sm'
+                      : BTN_LOUD + ' w-full'}
+                  >
+                    {canCheckIn ? 'Check in' : 'Check out'}
+                  </button>
+                )}
+                <GuestMethodPicker
+                  method={receiptMethod}
+                  reference={receiptRef}
+                  error={paymentError}
+                  onPick={pickGuestMethod}
+                  onReference={setReceiptRef}
+                  onReferenceCommit={() => { if (receiptRef.trim()) void savePaymentMethod(receiptMethod, receiptRef) }}
+                />
+                {/* A part-payment: the desk types what was actually handed over. This
+                    replaced the second payment form that used to sit under Payment
+                    receipts, a few lines below this button. */}
+                {otherAmountOpen && (
+                  <label className="block">
+                    <span className="block text-[12px] font-semibold text-muted">Amount received (₱)</span>
+                    <NumInput value={receiptAmount} onChange={setReceiptAmount} aria-label="Amount received"
+                      className={'mt-1 w-full h-11 bg-card border text-main px-3 rounded-lg text-[13px] focus:outline-none ' +
+                        (amountError ? 'border-danger-400 focus:border-danger-500' : 'border-soft focus:border-gold-500')} />
+                  </label>
+                )}
+                {amountError && <p className="text-[12px] font-semibold text-danger-600">{amountError}</p>}
+                <button
+                  type="button"
+                  onClick={() => handleAddReceipt()}
+                  className={(billedToAgency ? BTN_QUIET : BTN_LOUD) + ' w-full'}
+                >
+                  {payNow > 0 ? 'Record ' + fmtPeso(payNow) + ' received' : 'Record the payment'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOtherAmountOpen(o => !o); setReceiptAmount(0); setTryPayment(false) }}
+                  className="w-full min-h-11 -mt-1.5 text-[13px] font-semibold text-muted hover:text-main transition-colors cursor-pointer"
+                >
+                  {otherAmountOpen ? 'Back to ' + fmtPeso(dueNow) : 'A different amount'}
+                </button>
+              </div>
+            )}
 
-          <div className="mt-3">
-            {!isBlock && (<SlideOverSection
-              title="Payment receipts"
-              summary={receiptRecords.length > 0
-                ? receiptRecords.length + ' payment' + (receiptRecords.length > 1 ? 's' : '') + ' · ' + fmtPeso(receiptTotal) + ' received'
-                : 'None yet'}
-              defaultOpen={addReceiptOpen}
-            >
+            {!isBlock && receiptRecords.length > 0 && (
               <BookingReceipts
                 records={receiptRecords}
                 coveredRooms={coveredRooms}
-                showAdd={due > 0}
-                open={addReceiptOpen}
-                setOpen={o => {
-                  setAddReceiptOpen(o)
-                  // Opening the box fills it with what is actually due — the agreed
-                  // deposit while nothing is paid, the rest afterwards, with the
-                  // guest's food tab taken back out of it.
-                  if (o) setReceiptAmount(amountToPayNow(localBooking, tabAmount))
-                }}
-                amount={receiptAmount}
-                setAmount={setReceiptAmount}
-                method={receiptMethod}
-                setMethod={setReceiptMethod}
-                reference={receiptRef}
-                setReference={setReceiptRef}
-                referenceRequired={methodNeedsRef}
-                referenceError={referenceError}
-                onAdd={handleAddReceipt}
                 onRemove={handleRemoveReceipt}
                 onPrint={r => { setReceiptFor(r); setShowReceipt(true) }}
               />
-            </SlideOverSection>)}
-
-            {/* The guest tab only exists once the guest is IN the hotel: nobody
-                orders before check-in (the owner's rule), so the block is hidden
-                rather than shown locked. */}
-            {localBooking.actual_check_in && (
-              <SlideOverSection
-                title="Guest tab"
-                summary={tabLines.length > 0
-                  ? tabLines.length + ' line' + (tabLines.length > 1 ? 's' : '') + ' · ' + fmtPeso(tabAmount)
-                  : 'Nothing on the tab'}
-              >
-              <GuestTabPanel
-                resolveTabId={resolveTabId}
-                lines={tabLines}
-                tabTotal={tabAmount}
-                onChanged={reloadTab}
-                locked={false}
-                slip={{
-                  who: localBooking.guest_name || 'Guest',
-                  place: { label: booking.room_id ? 'Room' : 'Venue', value: unitSub || unitName },
-                  note: booking.room_id ? 'Settles with the room bill at check-out.' : 'Settles with the bill at check-out.',
-                }}
-                /* The till lives in the Restaurant screen (k69): this panel shows the
-                   food and offers the way over, instead of squeezing a menu in here. */
-                ordering={false}
-                onOpenTill={() => { focusGuestTab(booking.id); onClose(); void navigate({ to: '/restaurant' }) }}
-              />
-              </SlideOverSection>
             )}
 
+            {/* The guest tab only exists once the guest is IN the hotel: nobody
+                orders before check-in (the owner's rule), so it is absent rather than
+                shown locked. The till lives in the Restaurant screen (k69), so this
+                shows the food and offers the way over — and a guest who has left can
+                no longer be handed a new order. */}
+            {localBooking.actual_check_in && (
+              <section>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h4 className="text-[13px] font-bold text-main">Guest tab</h4>
+                    <p className="text-[12px] text-muted truncate">
+                      {tabLines.length > 0
+                        ? tabLines.length + ' line' + (tabLines.length > 1 ? 's' : '') + ' · ' + fmtPeso(tabAmount)
+                        : 'Nothing on the tab'}
+                    </p>
+                  </div>
+                  {!localBooking.actual_check_out && (
+                    <button
+                      type="button"
+                      onClick={() => { focusGuestTab(booking.id); onClose(); void navigate({ to: '/restaurant' }) }}
+                      className={BTN_QUIET + ' shrink-0 inline-flex items-center gap-1.5'}
+                    >
+                      <Utensils className="w-4 h-4" /> Take orders
+                    </button>
+                  )}
+                </div>
+                {tabLines.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTabOpen(o => !o)}
+                    aria-expanded={tabOpen}
+                    className={ROW_ACTION + ' text-muted hover:text-main'}
+                  >
+                    {tabOpen ? 'Hide the orders' : 'Show the orders'}
+                    <ChevronDown className={'w-4 h-4 transition-transform ' + (tabOpen ? 'rotate-180' : '')} />
+                  </button>
+                )}
+                {tabOpen && tabLines.length > 0 && (
+                  <GuestTabPanel
+                    resolveTabId={resolveTabId}
+                    lines={tabLines}
+                    tabTotal={tabAmount}
+                    onChanged={reloadTab}
+                    locked={false}
+                    slip={{
+                      who: localBooking.guest_name || 'Guest',
+                      place: { label: booking.room_id ? 'Room' : 'Venue', value: unitSub || unitName },
+                      note: booking.room_id ? 'Settles with the room bill at check-out.' : 'Settles with the bill at check-out.',
+                    }}
+                    ordering={false}
+                  />
+                )}
+              </section>
+            )}
 
-
-            <SlideOverSection
-              title={isBlock ? 'Change the dates' : isShortStay ? 'Stay longer' : 'Extend stay'}
-              summary={isBlock ? (openEnded ? 'No end date yet' : 'Ends ' + fmtShort(booking.check_out)) : isShortStay ? stayHoursOf(localBooking) + '-hour stay' : 'Check-out ' + fmtShort(booking.check_out)}
-            >
-              <ExtendStayForm
-                booking={localBooking}
-                extendCheckoutDate={extendCheckoutDate}
-                setExtendCheckoutDate={setExtendCheckoutDate}
-                extendError={extendError}
-                extraNights={extraNights}
-                becomesNights={becomesNights}
-                newBalanceDue={newBalanceDue}
-                showErr={showErr}
-                isInvalid={isInvalid}
-                markTouched={markTouched}
-                onSubmit={handleExtendSubmit}
-              />
-            </SlideOverSection>
+            {(extendOpen || datesAlwaysShown) && canExtend && (
+              <section>
+                <h4 className="text-[13px] font-bold text-main mb-1.5">{extendLabel}</h4>
+                <ExtendStayForm
+                  booking={localBooking}
+                  extendCheckoutDate={extendCheckoutDate}
+                  setExtendCheckoutDate={setExtendCheckoutDate}
+                  extendError={extendError}
+                  extraNights={extraNights}
+                  becomesNights={becomesNights}
+                  newBalanceDue={newBalanceDue}
+                  showErr={showErr}
+                  isInvalid={isInvalid}
+                  markTouched={markTouched}
+                  onSubmit={handleExtendSubmit}
+                />
+              </section>
+            )}
           </div>
 
-          {/* Quiet utility actions — never competing with the next step */}
-          <div className="border-t border-soft py-3 flex items-center justify-between gap-3">
-            {!isBlock ? (<button
-              type="button"
-              onClick={() => setShowPrintModal(true)}
-              className="text-[12px] font-semibold text-main hover:text-gold-700 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              Print billing statement
-            </button>) : <span />}
+          {/* Quiet actions — never competing with the next step. Extending lives here
+              (it used to be a section of its own): pressing it opens its one date just
+              above this row. */}
+          <div className="border-t border-soft py-1 flex flex-wrap items-center gap-x-5">
+            {canExtend && !datesAlwaysShown && (
+              <button
+                type="button"
+                onClick={() => setExtendOpen(o => !o)}
+                aria-expanded={extendOpen}
+                className={ROW_ACTION + ' text-main hover:text-gold-700'}
+              >
+                <CalendarPlus className="w-4 h-4" />
+                {extendLabel}
+              </button>
+            )}
+            {!isBlock && (
+              <button
+                type="button"
+                onClick={() => setShowPrintModal(true)}
+                className={ROW_ACTION + ' text-main hover:text-gold-700'}
+              >
+                <Printer className="w-4 h-4" />
+                Print billing statement
+              </button>
+            )}
             {/* Not offered once the guest has checked out: cancelling a finished stay
                 would take its money out of the Earnings Report. */}
             {onCancelBooking && !localBooking.actual_check_out && (
@@ -837,7 +871,7 @@ export function ExtendStayModal({
                   onCancelBooking(booking.id)
                   onClose()
                 }}
-                className="text-[12px] font-semibold text-danger-600 hover:text-danger-500 transition-colors cursor-pointer"
+                className={ROW_ACTION + ' ml-auto text-danger-600 hover:text-danger-500'}
               >
                 {isBlock ? 'Remove block' : 'Cancel booking'}
               </button>

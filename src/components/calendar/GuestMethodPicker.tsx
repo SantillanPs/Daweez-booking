@@ -53,17 +53,17 @@ export function GuestMethodPicker({
   return (
     <div className="space-y-2">
       <label className="block">
-        <span className="block text-[10px] font-bold uppercase tracking-wider text-muted">Guest pays by</span>
+        <span className="block text-[12px] font-semibold text-muted">Guest pays by</span>
         <span className="relative block mt-1">
           <select
             value={value}
             onChange={e => onPick(e.target.value)}
-            className="w-full appearance-none bg-card border border-soft rounded-md pl-2.5 pr-7 py-1.5 text-[12px] font-semibold text-main focus:outline-none focus:border-gold-500 cursor-pointer"
+            className="w-full h-11 appearance-none bg-card border border-soft rounded-lg pl-3 pr-9 text-[13px] font-semibold text-main focus:outline-none focus:border-gold-500 cursor-pointer"
           >
             <option value="" disabled>Choose…</option>
             {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
-          <ChevronDown className="w-3.5 h-3.5 text-muted absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <ChevronDown className="w-4 h-4 text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         </span>
       </label>
 
@@ -71,8 +71,8 @@ export function GuestMethodPicker({
           method. The label is short ("Ref no.") because the chosen method is
           already named above it — that is what keeps the row whole at 323px. */}
       {needsRef && (
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted shrink-0">
+        <label className="flex items-center gap-2">
+          <span className="text-[12px] font-semibold text-muted shrink-0">
             Ref no. <span className="text-danger-500">*</span>
           </span>
           <input
@@ -80,12 +80,12 @@ export function GuestMethodPicker({
             onChange={e => onReference(e.target.value)}
             onBlur={onReferenceCommit}
             placeholder={current === 'gcash' ? '1234 567 8901' : 'transfer ref no.'}
-            className={'flex-1 min-w-0 bg-card border text-main px-2 py-1 rounded-md text-[12.5px] focus:outline-none ' +
+            className={'flex-1 min-w-0 h-11 bg-card border text-main px-3 rounded-lg text-[13px] focus:outline-none ' +
               (error ? 'border-danger-400 focus:border-danger-500' : 'border-soft focus:border-gold-500')}
           />
-        </div>
+        </label>
       )}
-      {error && <p className="text-[10px] font-semibold text-danger-600">{error}</p>}
+      {error && <p className="text-[12px] font-semibold text-danger-600">{error}</p>}
     </div>
   )
 }

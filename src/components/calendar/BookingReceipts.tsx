@@ -1,27 +1,14 @@
 import { PaymentRecord } from '../../types/booking'
 import { Printer, Trash2 } from 'lucide-react'
-import { RecordPaymentForm } from './RecordPaymentForm'
 import { formatRoomNumbers } from '../../utils/roomNumbers'
 
 const fmtPeso = (n: number) => '₱' + n.toLocaleString()
 
 interface BookingReceiptsProps {
   records: PaymentRecord[]
-  showAdd: boolean
-  open: boolean
-  setOpen: (v: boolean) => void
-  amount: number
-  setAmount: (v: number) => void
-  method: string
-  setMethod: (v: string) => void
-  reference: string
-  setReference: (v: string) => void
-  onAdd: () => void
   onPrint: (r: PaymentRecord) => void
   /** Removing a receipt logged by mistake; the balance is recomputed after. */
   onRemove?: (r: PaymentRecord) => void
-  referenceRequired?: boolean
-  referenceError?: string
   /**
    * Which rooms each receipt covers, by receipt number.
    *
@@ -33,76 +20,53 @@ interface BookingReceiptsProps {
   coveredRooms?: Record<string, number[]>
 }
 
-// Every payment the guest has made, each with its own receipt to reprint.
-export function BookingReceipts({
-  records, showAdd, open, setOpen, amount, setAmount,
-  method, setMethod, reference, setReference, onAdd, onPrint, onRemove,
-  referenceRequired = false, referenceError = '', coveredRooms,
-}: BookingReceiptsProps) {
+/**
+ * Every payment the guest has made, each with its own receipt to reprint.
+ *
+ * **A plain list, shown only once there is a payment** (the owner's feedback, 2026-10-04:
+ * *"it looks so lazy just stacking accordions"*). It used to be a closed section that was
+ * on screen even when empty — `Payment receipts · None yet`, opening to a sentence saying
+ * there were none — and it carried a second "Record a payment" form a few lines under the
+ * money box's own button. Money is taken in one place now, the money box, so this only
+ * lists what has been taken.
+ */
+export function BookingReceipts({ records, onPrint, onRemove, coveredRooms }: BookingReceiptsProps) {
   return (
-    <div className="space-y-2.5">
-      {showAdd && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            className="text-[11px] font-bold text-gold-700 bg-gold-100 border border-gold-200 hover:bg-gold-100 rounded-md px-2.5 py-1 transition-colors cursor-pointer"
-          >
-            {open ? 'Cancel' : '+ Record a payment'}
-          </button>
-        </div>
-      )}
-
-      {showAdd && open && (
-        <RecordPaymentForm
-          title="Record this payment"
-          note="An in-stay charge or a part-payment."
-          amount={amount} setAmount={setAmount}
-          method={method} setMethod={setMethod}
-          reference={reference} setReference={setReference}
-          onSubmit={onAdd}
-          referenceRequired={referenceRequired}
-          referenceError={referenceError}
-        />
-      )}
-
-      {records.length > 0 ? (
-        <ul className="space-y-1.5">
-          {records.map(r => {
-            const covers = r.receipt_number ? coveredRooms?.[r.receipt_number] : undefined
-            return (
-            <li key={r.id} className="bg-card border border-soft rounded-md px-2.5 py-1.5 text-[12px]">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold text-emerald-600 shrink-0">+{fmtPeso(r.amount)}</span>
-                  <span className="text-muted shrink-0">{r.method}</span>
-                  <span className="text-muted text-[10px] truncate">{r.paid_at ? new Date(r.paid_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</span>
-                </div>
-                <div className="flex items-center gap-0.5 shrink-0">
-                  <button type="button" onClick={() => onPrint(r)} className="text-gold-600 hover:text-gold-700 p-1 cursor-pointer" aria-label="Print receipt" title="Print receipt">
-                    <Printer className="w-3.5 h-3.5" />
-                  </button>
-                  {onRemove && (
-                    <button type="button" onClick={() => onRemove(r)} className="text-muted hover:text-danger-600 p-1 cursor-pointer" aria-label="Remove payment" title="Remove this payment">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              {/* A receipt that covered other rooms says so, and names them — that is what makes it findable
-                  from here instead of sending staff hunting through the other bookings. */}
-              {covers && covers.length > 1 && (
-                <p className="text-[10px] text-muted mt-0.5">
-                  {formatRoomNumbers(covers)} together{r.receipt_number ? ' · ' + r.receipt_number : ''}
+    <section>
+      <h4 className="text-[13px] font-bold text-main">Payment receipts</h4>
+      <ul className="mt-1.5 border border-soft rounded-lg divide-y divide-soft">
+        {records.map(r => {
+          const covers = r.receipt_number ? coveredRooms?.[r.receipt_number] : undefined
+          return (
+            <li key={r.id} className="flex items-center justify-between gap-2 pl-3 pr-0.5 min-h-11">
+              <div className="min-w-0 py-1.5 text-[13px]">
+                <p className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="font-semibold text-emerald-600">+{fmtPeso(r.amount)}</span>
+                  <span className="text-main">{r.method}</span>
+                  <span className="text-muted text-[12px]">{r.paid_at ? new Date(r.paid_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</span>
                 </p>
-              )}
+                {/* A receipt that covered other rooms says so, and names them — that is what makes it findable
+                    from here instead of sending staff hunting through the other bookings. */}
+                {covers && covers.length > 1 && (
+                  <p className="text-[12px] text-muted">
+                    {formatRoomNumbers(covers)} together{r.receipt_number ? ' · ' + r.receipt_number : ''}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center shrink-0">
+                <button type="button" onClick={() => onPrint(r)} className="w-11 h-11 flex items-center justify-center text-gold-700 hover:text-gold-800 cursor-pointer" aria-label="Print receipt" title="Print receipt">
+                  <Printer className="w-4 h-4" />
+                </button>
+                {onRemove && (
+                  <button type="button" onClick={() => onRemove(r)} className="w-11 h-11 flex items-center justify-center text-muted hover:text-danger-600 cursor-pointer" aria-label="Remove payment" title="Remove this payment">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </li>
-            )
-          })}
-        </ul>
-      ) : (
-        <p className="text-[11px] text-muted">No payments yet — a receipt is created each time the guest pays.</p>
-      )}
-    </div>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
