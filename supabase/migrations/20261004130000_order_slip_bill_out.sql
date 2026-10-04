@@ -1,0 +1,14 @@
+-- Bill out (the owner's ruling, 2026-10-04).
+--
+-- The owner did not want a "Guest copy" button and a "Receive at the front desk"
+-- button on every order slip. A restaurant prints the bill when the guest has
+-- finished or asks for it, so the slip now has one step for that: Bill out.
+--
+--   * a walk-in diner's slip is marked billed and stays open until they pay at the
+--     counter;
+--   * a room guest's slip is billed AND closed: it leaves the Restaurant screen and
+--     waits on the booking as "Not paid" for the front desk. Their next order starts
+--     a new slip.
+--
+-- Safe to run again.
+ALTER TABLE public.tabs ADD COLUMN IF NOT EXISTS billed_at timestamptz;

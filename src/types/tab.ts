@@ -49,6 +49,11 @@ export interface Tab {
   id: string
   /** The slip's number, given when its first order lands. Shown as `OS-0001`. */
   os_number?: number | null
+  /**
+   * When the bill was printed (Bill out). A diner's slip stays open until they pay; a
+   * room guest's is closed at the same moment and waits at the front desk.
+   */
+  billed_at?: string | null
   /** When the slip was paid — at the counter for a diner, from the booking for a guest. */
   paid_at?: string | null
   /** The receipt that paid it. Taking that payment back makes the slip unpaid again. */

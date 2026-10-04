@@ -1,5 +1,5 @@
 import React from 'react'
-import { ChefHat, Minus, Plus, Printer, Trash2 } from 'lucide-react'
+import { ChefHat, Minus, Plus, ReceiptText, Trash2 } from 'lucide-react'
 import { TabLine } from '../../types/tab'
 import { newCount } from '../../utils/orderSlips'
 
@@ -16,17 +16,20 @@ interface TabBillProps {
   emptyText: string
   /** The kitchen's copy: what to cook, with what is new since the last print marked. */
   onPrintKitchen: () => void
-  /** The guest's copy, with prices. */
-  onPrintGuest: () => void
+  /** The guest has finished or asked for the bill: prints it, with prices. */
+  onBillOut: () => void
+  /** The bill has already been printed once, so the button reprints it. */
+  billed?: boolean
 }
 
 // What is on the order slip right now: one row per dish with its count, the total, and
-// the two papers it prints (the staff's feedback, 2026-10-04).
+// its two steps — the kitchen's copy, and Bill out once the guest has finished or asks
+// for the bill (the owner's ruling, 2026-10-04: no separate guest copy).
 //
 // The count is changed on the row itself — − and + — because the staff asked for `2 ×`
 // rather than a second row. A single serving shows a bin where the − would be: taking
 // the last one off removes the row, and that asks first.
-export function TabBill({ lines, total, busy = false, onQty, emptyText, onPrintKitchen, onPrintGuest }: TabBillProps) {
+export function TabBill({ lines, total, busy = false, onQty, emptyText, onPrintKitchen, onBillOut, billed = false }: TabBillProps) {
   if (lines.length === 0) {
     return <p className="text-[13px] text-muted">{emptyText}</p>
   }
@@ -81,9 +84,13 @@ export function TabBill({ lines, total, busy = false, onQty, emptyText, onPrintK
             (toSend > 0 ? 'bg-gold-400 hover:bg-gold-600 text-ink-900' : 'bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100')}>
           <ChefHat className="w-4 h-4" /> Kitchen copy{toSend > 0 ? ' · ' + toSend + ' new' : ''}
         </button>
-        <button type="button" onClick={onPrintGuest}
-          className="min-h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-[13px] font-bold bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100 transition-colors cursor-pointer">
-          <Printer className="w-4 h-4" /> Guest copy
+        {/* Bill out waits until the kitchen has every order: a room guest's slip goes to
+            the front desk on it, and an order still on screen would never be cooked. */}
+        <button type="button" onClick={onBillOut} disabled={toSend > 0}
+          title={toSend > 0 ? 'Send the new orders to the kitchen first' : undefined}
+          className={'min-h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-[13px] font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ' +
+            (toSend > 0 || billed ? 'bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100' : 'bg-gold-400 hover:bg-gold-600 text-ink-900')}>
+          <ReceiptText className="w-4 h-4" /> {billed ? 'Bill again' : 'Bill out'}
         </button>
       </div>
     </>

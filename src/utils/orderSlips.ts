@@ -96,6 +96,22 @@ export async function markSlipsPaid(tabIds: string[], receiptNumber?: string): P
   if (paid.error) throw paid.error
 }
 
+/**
+ * Bill out: the guest has finished or asked for the bill (the owner's ruling, 2026-10-04).
+ *
+ * A room guest's slip is closed at the same time, so it leaves the Restaurant screen and
+ * waits on the booking for the front desk; their next order starts a new slip. A diner's
+ * slip stays open, because they pay for it at the counter.
+ */
+export async function billOutSlip(tab: Pick<Tab, 'id' | 'booking_id' | 'billed_at'>): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+  const now = new Date().toISOString()
+  const patch: Partial<Tab> = { billed_at: tab.billed_at || now }
+  if (tab.booking_id) Object.assign(patch, { status: 'closed', closed_at: now })
+  const { error } = await supabase.from('tabs').update(patch).eq('id', tab.id)
+  if (error) throw error
+}
+
 /** A payment was taken back: the slips it paid are unpaid again. They stay closed. */
 export async function unpaySlipsOfReceipt(receiptNumber: string): Promise<void> {
   if (!receiptNumber || !isSupabaseConfigured) return

@@ -68,6 +68,7 @@ export function ServedStrip({ served, selectedKey, totals, busy, loading, onPick
               <span>{person.name}</span>
               {person.place && <span className={on ? 'text-ink-900/70' : 'text-muted'}>· {person.place}</span>}
               {total > 0 && <span className={on ? 'text-ink-900' : 'text-brand-text'}>{fmtPeso(total)}</span>}
+              {person.tab?.billed_at && <span className={on ? 'text-ink-900/70' : 'text-muted'}>· bill out</span>}
             </button>
           )
         })}

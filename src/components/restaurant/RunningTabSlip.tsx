@@ -15,6 +15,10 @@ interface RunningTabSlipProps {
   total: number
   /** What happens with this paper next — a stay pays at the front desk, a diner at the counter. */
   note: string
+  /** What the print button says. */
+  printLabel?: string
+  /** Print was pressed — Bill out records the slip as billed here. */
+  onPrinted?: () => void
   onClose: () => void
 }
 
@@ -24,9 +28,9 @@ interface RunningTabSlipProps {
 // mid-stay, not only at check-out. It is deliberately NOT headed like a receipt —
 // no amount has been received, so it must never be mistaken for one — and it
 // prints on the same 58 mm roll as everything else.
-export function RunningTabSlip({ number, who, place, lines, total, note, onClose }: RunningTabSlipProps) {
+export function RunningTabSlip({ number, who, place, lines, total, note, printLabel = 'Print for the guest', onPrinted, onClose }: RunningTabSlipProps) {
   return (
-    <SlipModal printLabel="Print for the guest" onClose={onClose}>
+    <SlipModal printLabel={printLabel} onPrinted={onPrinted} onClose={onClose}>
       <div className="text-center">
         <p className="text-[13px] font-bold tracking-wide">DAWEEZ PENSION HOUSE</p>
         <p className="text-[9px] font-semibold uppercase tracking-wider mt-0.5">Order Slip</p>

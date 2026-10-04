@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import { Utensils, X } from 'lucide-react'
 import { Tab, TabLine } from '../types/tab'
-import { Booking, PaymentRecord } from '../types/booking'
+import { PaymentRecord } from '../types/booking'
 import { guestPlace, inHouseGuests } from './restaurant/served'
 import { MenuPicker } from './restaurant/MenuPicker'
 import { OffMenuOrder } from './restaurant/OffMenuOrder'
@@ -14,12 +13,12 @@ import { TabReceiptModal } from './restaurant/TabReceiptModal'
 import { Served, ServedStrip } from './restaurant/ServedStrip'
 import { useTabOrder } from './restaurant/useTabOrder'
 import { closeTab, getOpenTabs, getTabLines, markLinesSent, openTab, tabTotal } from '../utils/tabs'
-import { OrderSlip, getSlipsByBooking, getSlipsForBooking, newCount, readBookingFoodTotal, settleSlipsOfPaidStay, slipNumber } from '../utils/orderSlips'
+import { OrderSlip, billOutSlip, getSlipsByBooking, getSlipsForBooking, newCount, readBookingFoodTotal, settleSlipsOfPaidStay, slipNumber } from '../utils/orderSlips'
 import { recomputeBalance } from '../utils/bookingBalance'
 import { takeFocusedGuestTab } from '../utils/restaurantFocus'
-import { focusBookingAfterCreate } from '../utils/bookingFocus'
 import { useRealtimeTabs } from '../hooks/useRealtimeTabs'
 import { useDashboardData } from './DashboardContext'
+import { showToast } from '../utils/toast'
 
 const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
@@ -31,13 +30,12 @@ const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 //   2. the order slip on the left — what that person has ordered, and its two papers;
 //   3. the menu card on the right — one scroll, every line tappable.
 //
-// **An order slip stays open until it is paid** (the staff's feedback, 2026-10-04). A
-// diner with no room pays here, at the counter. A room guest pays at the front desk,
-// from their booking — and once they have, the slip leaves this screen and their next
-// order starts a new one with its own number.
+// **Bill out** (the owner's ruling, 2026-10-04): when the guest has finished or asks for
+// the bill, the slip's bill is printed. A diner with no room then pays here, at the
+// counter. A room guest's slip is sent to the front desk at the same moment — it leaves
+// this screen, waits on their booking, and their next order starts a new slip.
 export function RestaurantTab() {
   const { bookings, rooms, venues, updateBooking } = useDashboardData()
-  const navigate = useNavigate()
 
   const [tabs, setTabs] = useState<Tab[]>([])
   const [lines, setLines] = useState<Record<string, TabLine[]>>({})
@@ -46,7 +44,7 @@ export function RestaurantTab() {
   const [earlier, setEarlier] = useState<OrderSlip[]>([])
   // The paper on screen. The lines are kept as they stood when it was opened: the
   // kitchen's copy marks them as given, and its NEW list must not empty while it shows.
-  const [paper, setPaper] = useState<{ kind: 'kitchen' | 'guest'; lines: TabLine[] } | null>(null)
+  const [paper, setPaper] = useState<{ kind: 'kitchen' | 'bill'; lines: TabLine[] } | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -206,9 +204,20 @@ export function RestaurantTab() {
     }
   }
 
-  const goToBooking = (booking: Booking) => {
-    focusBookingAfterCreate(booking.id)
-    void navigate({ to: '/calendar' })
+  /** The bill was printed: a diner's slip is now waiting to pay, a guest's goes to the front desk. */
+  const billOut = async (person: Served) => {
+    if (!person.tab) return
+    const tab = person.tab
+    try {
+      await billOutSlip(tab)
+      if (person.booking) {
+        showToast((slipNumber(tab) || 'The order slip') + ' sent to the front desk.', 'success')
+        setPaper(null)
+      }
+      await load()
+    } catch {
+      setError('The bill printed, but the order slip was not marked as billed. Please try again.')
+    }
   }
 
   const dinerTabs = tabs.filter(t => !t.booking_id)
@@ -274,21 +283,16 @@ export function RestaurantTab() {
                 busy={order.busy}
                 onQty={(line, delta) => void order.changeQty(line, delta)}
                 onPrintKitchen={() => setPaper({ kind: 'kitchen', lines: selectedLines })}
-                onPrintGuest={() => setPaper({ kind: 'guest', lines: selectedLines })}
+                onBillOut={() => setPaper({ kind: 'bill', lines: selectedLines })}
+                billed={!!selected.tab?.billed_at}
                 emptyText="Nothing ordered yet."
               />
               {order.removeError && <p className="text-[12px] font-semibold text-danger-600">{order.removeError}</p>}
               {error && <p className="text-[12px] font-semibold text-danger-600">{error}</p>}
 
-              {/* Where the money is taken. A room guest pays at the front desk, from the
-                  booking; a diner with no room pays here. */}
-              {selected.booking && selectedLines.length > 0 && (
-                <button type="button" onClick={() => goToBooking(selected.booking as Booking)}
-                  className="w-full min-h-12 inline-flex items-center justify-center px-3 rounded-lg border border-soft bg-card text-[13px] font-bold text-main hover:border-gold-400 hover:bg-gold-100 transition-colors cursor-pointer">
-                  Receive {fmtPeso(selectedTotal)} at the front desk
-                </button>
-              )}
-              {!selected.booking && selected.tab && selectedLines.length > 0 && (
+              {/* A diner pays here, once the bill is out. A room guest's slip goes to the
+                  front desk on Bill out, so nothing about money is asked here. */}
+              {!selected.booking && selected.tab?.billed_at && selectedLines.length > 0 && (
                 <TabSettlePanel
                   tab={selected.tab}
                   total={selectedTotal}
@@ -362,7 +366,7 @@ export function RestaurantTab() {
           onClose={() => setPaper(null)}
         />
       )}
-      {paper?.kind === 'guest' && selected && (
+      {paper?.kind === 'bill' && selected && (
         <RunningTabSlip
           number={number}
           who={selected.name}
@@ -370,6 +374,8 @@ export function RestaurantTab() {
           lines={paper.lines}
           total={tabTotal(paper.lines)}
           note={selected.booking ? 'To be paid at the front desk.' : 'Please pay at the counter.'}
+          printLabel={selected.booking ? 'Print · send to front desk' : 'Print the bill'}
+          onPrinted={() => void billOut(selected)}
           onClose={() => setPaper(null)}
         />
       )}

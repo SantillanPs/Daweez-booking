@@ -7,7 +7,8 @@ How the staff work without the system: **they write an order on a paper order sl
 - **It is called an order slip, not a tab**, because that is the paper the staff already use.
 - **Every order slip has a number (OS no.).** The app gives it, counting up and never restarting.
 - **The app prints the slip for the kitchen.** When more is ordered on the same slip later, the print marks what is new.
-- **A slip stays open until it is paid; the next order after that starts a new slip.** The staff's complaint: the restaurant went on showing a room's items after they had been paid.
+- **Bill out, not a guest copy.** The owner did not want a "Guest copy" button and a "Receive at the front desk" button on every slip (Sebastian, 2026-10-04): a restaurant prints the bill when the guest has finished or asks for it. Bill out prints the bill. A walk-in then pays at the counter; a room guest's slip goes to the front desk and waits on their booking. Bill out waits until the kitchen has every order.
+- **A slip stays open until it is paid (a room guest's until it is billed out); the next order after that starts a new slip.** The staff's complaint: the restaurant went on showing a room's items after they had been paid.
 - **The same dish twice is `2 ×` on one row**, not a second row.
 
 ## Who can be charged
@@ -44,7 +45,7 @@ Laid out in the order the counter works (the owner picked this from three drawin
 ## Paper
 
 - **The kitchen's copy** carries the slip's number, where the food goes, and each dish with its count. No prices.
-- **A guest can ask for their order slip mid-stay.** It prints on the 58 mm roll with the prices, stamped **NOT A RECEIPT**, because no money has been received.
+- **The bill** prints on the 58 mm roll with the prices, stamped **NOT A RECEIPT**, because no money has been received. A room guest's earlier slips can still be shown and printed from the booking panel.
 - A walk-in's paid order slip prints a numbered receipt.
 
 ## In the reports
