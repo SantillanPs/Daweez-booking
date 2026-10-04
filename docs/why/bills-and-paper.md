@@ -34,6 +34,10 @@
 - A short stay adds `Stay: Sep 25 · 3 hours`, because the slip has to prove what was bought.
 - Print and Close are always shown — the receipt once appeared with no way to print or close it.
 
+## Sending by email
+
+- **The staff want to email a payment receipt and a guest billing statement** (the staff, 2026-10-04). Until now both could only be printed.
+
 ## The Daily Report sheet
 
 Built to four rulings from the owner:

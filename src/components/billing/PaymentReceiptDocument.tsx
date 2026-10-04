@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useState } from 'react'
 import { Printer, X } from 'lucide-react'
 import { Booking, PaymentRecord, Room, Venue } from '../../types/booking'
 import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
@@ -6,6 +6,8 @@ import { receiptNumberFor, paymentBreakdown } from '../../utils/receiptNumber'
 import { formatRoomNumbers } from '../../utils/roomNumbers'
 import { Block, Row, Rule } from './receiptPrimitives'
 import { fmtDateTime, fmtDay, money } from './receiptText'
+import { guestEmailOf } from '../../utils/emailDocument'
+import { EmailBar, EmailButton } from './EmailBar'
 
 interface PaymentReceiptDocumentProps {
   booking: Booking
@@ -84,6 +86,10 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
   const methodLabel = paymentMethodLabel(rawMethod)
   const showRef = (kind === 'gcash' || kind === 'bank') && !!record.reference
 
+  // The slip itself — what is attached when the receipt is emailed.
+  const slip = useRef<HTMLDivElement>(null)
+  const [emailing, setEmailing] = useState(false)
+
   return (
     <div className="flex flex-col items-center w-full">
       {/* **The control bar is ALWAYS drawn, embedded or not** — the same rule `StatementShell`
@@ -98,6 +104,7 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
           <span className="text-xs font-mono text-white/70 truncate">{receiptNo}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <EmailButton tone="slate" onClick={() => setEmailing(open => !open)} />
           <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
             <Printer className="w-3.5 h-3.5" /> Print
           </button>
@@ -107,9 +114,15 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
         </div>
       </div>
 
+      {emailing && (
+        <EmailBar target={{ kind: 'receipt', number: receiptNo, guestName: booking.guest_name, bookingId: booking.id, to: guestEmailOf(booking) }}
+          paper={() => slip.current} size="slip" onClose={() => setEmailing(false)}
+          className="w-full max-w-md mb-3 rounded-xl border border-soft px-4 py-3" />
+      )}
+
       {/* The 58 mm slip. Printed width comes from the @page box the modal sets,
           so in print it simply fills that page instead of a fixed 58 mm. */}
-      <div className={((embedded ? 'my-0 ' : 'my-2 ') + 'print-slip w-[58mm] max-w-full bg-white text-black font-sans leading-snug px-2.5 py-3 ' +
+      <div ref={slip} className={((embedded ? 'my-0 ' : 'my-2 ') + 'print-slip w-[58mm] max-w-full bg-white text-black font-sans leading-snug px-2.5 py-3 ' +
         'print:w-auto print:max-w-none print:px-0 print:py-0 print:my-0 print:shadow-none print:rounded-none')}>
         <div className="text-center">
           <h1 className="font-display font-extrabold text-[13px] uppercase leading-tight">Daweez Pension House</h1>

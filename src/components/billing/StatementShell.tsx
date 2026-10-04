@@ -1,20 +1,28 @@
-import React from 'react'
+import React, { useRef, useState } from 'react'
 import { Printer, X } from 'lucide-react'
+import { EmailTarget } from '../../utils/emailDocument'
+import { EmailBar, EmailButton } from './EmailBar'
 
 /**
  * The frame both bills are printed in: the on-screen control bar (hidden when printing)
  * and the A4 page itself, so the **normal** statement and the **agency** statement are the
  * same piece of paper with different contents on it (the owner's design, 2026-09).
  */
-export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedded = false, children }: {
+export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedded = false, email, children }: {
   /** The little badge on the control bar — `Billing statement` on both. */
   label: string
   invoiceNumber: string
   onClose: () => void
   onPrint: () => void
   embedded?: boolean
+  /** Who this bill can be emailed to. The Email button is drawn only when it is given. */
+  email?: EmailTarget
   children: React.ReactNode
 }) {
+  // The sheet itself — what is attached when the bill is emailed.
+  const sheet = useRef<HTMLDivElement>(null)
+  const [emailing, setEmailing] = useState(false)
+
   return (
     <div className={'print-page bg-card w-full max-w-xl mx-auto rounded-xl shadow-2xl overflow-hidden flex flex-col print:my-0 print:shadow-none print:rounded-none print:w-full print:max-w-none ' + (embedded ? 'my-0 shadow-xl' : 'my-8')}>
       <div className="flex items-center justify-between px-5 py-3 bg-ink-900 text-white shrink-0 print:hidden">
@@ -23,6 +31,7 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
           <span className="text-xs font-mono text-white/70">{invoiceNumber}</span>
         </div>
         <div className="flex items-center gap-2">
+          {email && <EmailButton tone="ink" onClick={() => setEmailing(open => !open)} />}
           <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-ink-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
             <Printer className="w-3.5 h-3.5" />
             Print
@@ -32,6 +41,10 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
           </button>
         </div>
       </div>
+      {email && emailing && (
+        <EmailBar target={email} paper={() => sheet.current} size="a5" onClose={() => setEmailing(false)}
+          className="px-5 py-3 border-b border-soft shrink-0" />
+      )}
       {/* On paper the page box is zero-margin (set at print time in `PrintInvoiceModal`),
           so the sheet has no place for the browser's own header/footer; the paper's own
           margins live here.
@@ -44,7 +57,7 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
           direct children too and take part in the same rhythm. The blocks therefore carry
           **no vertical padding of their own**; if one ever needs its own, this rhythm is
           gone and the page starts drifting again. */}
-      <div className="p-6 md:p-10 overflow-y-auto print:px-8 print:py-4 print:overflow-visible flex-1 bg-card font-sans text-main leading-relaxed print:static space-y-2">
+      <div ref={sheet} className="p-6 md:p-10 overflow-y-auto print:px-8 print:py-4 print:overflow-visible flex-1 bg-card font-sans text-main leading-relaxed print:static space-y-2">
         {children}
       </div>
     </div>

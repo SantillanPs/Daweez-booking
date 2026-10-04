@@ -2,6 +2,7 @@ import React from 'react'
 import { Booking } from '../../types/booking'
 import { Statement } from '../../utils/statement'
 import { getPaymentAccounts } from '../../utils/paymentAccounts'
+import { guestEmailOf } from '../../utils/emailDocument'
 import { StatementChargesTable } from './StatementChargesTable'
 import { StatementShell, BrandHeader, Line } from './StatementShell'
 
@@ -33,7 +34,8 @@ export function AgencyInvoiceDocument({ primaryBooking, statement, onClose, onPr
   const b = primaryBooking
 
   return (
-    <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}>
+    <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}
+      email={{ kind: 'statement', number: statement.invoiceNumber, guestName: statement.companyName, bookingId: b.id, to: guestEmailOf(b) }}>
       {/* The paper's own head: the bill number, and no issue date — the office's copy
           carries `Bill No.` alone. */}
       <BrandHeader invoiceNumber={statement.invoiceNumber} showDate={false} />

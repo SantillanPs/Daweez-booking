@@ -20,6 +20,7 @@ import { takeFocusedGuestTab } from '../utils/restaurantFocus'
 import { focusBookingAfterCreate } from '../utils/bookingFocus'
 import { useRealtimeTabs } from '../hooks/useRealtimeTabs'
 import { useDashboardData } from './DashboardContext'
+import { showToast } from '../utils/toast'
 
 const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
@@ -122,13 +123,15 @@ export function RestaurantTab() {
     const diners: Served[] = tabs
       .filter(t => !t.booking_id)
       .map(t => ({ key: 'tab:' + t.id, name: t.label || 'Walk-in', place: t.table_label || '', tab: t, booking: null }))
+    // Room guests go in room order — the staff look for the room, not for who arrived first.
     const guests: Served[] = inHouseGuests(bookings).map(b => ({
       key: 'booking:' + b.id,
       name: b.guest_name || 'Guest',
       place: guestPlace(b, rooms, venues),
       tab: tabs.find(t => t.booking_id === b.id) || null,
       booking: b,
-    }))
+      room: rooms.find(r => r.id === b.room_id)?.room_number,
+    })).sort((a, b) => (a.room ?? 999) - (b.room ?? 999))
     return [...diners, ...guests]
   }, [tabs, bookings, rooms, venues])
 
@@ -213,7 +216,6 @@ export function RestaurantTab() {
 
   const dinerTabs = tabs.filter(t => !t.booking_id)
   const onTheTables = tabTotal(dinerTabs.flatMap(t => lines[t.id] || []))
-  const guestsInHouse = served.length - dinerTabs.length
   const totals = Object.fromEntries(served.map(p => [p.key, p.tab ? tabTotal(lines[p.tab.id] || []) : 0]))
   // How many of each dish are on the slip, so the menu card shows the count on its line.
   const pickedCounts = selectedLines.reduce<Record<string, number>>((acc, l) => {
@@ -225,17 +227,21 @@ export function RestaurantTab() {
     : (selected?.place ? { label: 'Table', value: selected.place } : undefined)
 
   return (
-    <div className="space-y-4 font-sans">
-      <div>
-        <h2 className="font-display font-bold text-xl text-main flex items-center gap-2">
+    <div className="space-y-5 font-sans">
+      {/* The heading, and the one figure the counter chases: what the diners at the
+          tables have not paid yet. It is only on screen while there is something to
+          collect. It used to be a sentence of three counts, two of them usually zero. */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h2 className="font-display font-bold text-xl tracking-tight text-main flex items-center gap-2">
           <Utensils className="w-5 h-5 text-gold-600" />
           Restaurant &amp; bar
         </h2>
-        <p className="text-[13px] text-muted mt-1">
-          Walk-in order slips open: <b className="text-main">{dinerTabs.length}</b> · <b className="text-main">{fmtPeso(onTheTables)}</b>
-          <span> · </span>
-          <b className="text-main">{guestsInHouse}</b> guest{guestsInHouse === 1 ? '' : 's'} in the hotel
-        </p>
+        {onTheTables > 0 && (
+          <p className="text-[14px] text-muted">
+            Diners still to pay{' '}
+            <b className="font-display text-[17px] font-bold tabular-nums text-main">{fmtPeso(onTheTables)}</b>
+          </p>
+        )}
       </div>
 
       <ServedStrip
@@ -248,22 +254,23 @@ export function RestaurantTab() {
         onOpenDiner={openDiner}
       />
 
-      {/* The order slip on the left, the menu card on the right. */}
-      <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="bg-card border border-soft rounded-lg p-4 space-y-3 self-start">
+      {/* The order slip on the left, the menu card on the right. On a PC the slip stays
+          put while the menu is scrolled. */}
+      <div className="grid gap-5 items-start lg:grid-cols-[380px_minmax(0,1fr)]">
+        <section className="bg-card border border-soft rounded-xl p-5 space-y-4 lg:sticky lg:top-[76px]">
           {selected ? (
             <>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-display text-[17px] font-bold text-main leading-tight">
+                  <h3 className="font-display text-[19px] font-bold tracking-tight text-main leading-tight">
                     {number ? 'Order slip ' + number : 'New order slip'}
-                  </p>
-                  <p className="text-[13px] text-muted mt-0.5">
+                  </h3>
+                  <p className="text-[14px] text-muted mt-1">
                     {selected.name}{selected.place ? ' · ' + selected.place : ''}
                   </p>
                 </div>
-                <button type="button" onClick={() => setSelectedKey(null)} aria-label="Close this order slip"
-                  className="w-10 h-10 -mr-2 -mt-2 inline-flex items-center justify-center text-muted hover:text-main transition-colors cursor-pointer shrink-0">
+                <button type="button" onClick={() => setSelectedKey(null)} aria-label="Close this order slip" title="Close"
+                  className="w-11 h-11 -mr-2.5 -mt-2.5 inline-flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer shrink-0">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -277,14 +284,14 @@ export function RestaurantTab() {
                 onPrintGuest={() => setPaper({ kind: 'guest', lines: selectedLines })}
                 emptyText="Nothing ordered yet."
               />
-              {order.removeError && <p className="text-[12px] font-semibold text-danger-600">{order.removeError}</p>}
-              {error && <p className="text-[12px] font-semibold text-danger-600">{error}</p>}
+              {order.removeError && <p role="alert" className="text-[13px] font-medium text-danger-600">{order.removeError}</p>}
+              {error && <p role="alert" className="text-[13px] font-medium text-danger-600">{error}</p>}
 
               {/* Where the money is taken. A room guest pays at the front desk, from the
                   booking; a diner with no room pays here. */}
               {selected.booking && selectedLines.length > 0 && (
                 <button type="button" onClick={() => goToBooking(selected.booking as Booking)}
-                  className="w-full min-h-12 inline-flex items-center justify-center px-3 rounded-lg border border-soft bg-card text-[13px] font-bold text-main hover:border-gold-400 hover:bg-gold-100 transition-colors cursor-pointer">
+                  className="w-full min-h-12 inline-flex items-center justify-center px-3 rounded-lg border border-soft bg-card text-[14px] font-bold text-main hover:border-gold-400 hover:bg-gold-100 transition-[background-color,border-color,transform] duration-200 active:scale-[0.98] cursor-pointer">
                   Receive {fmtPeso(selectedTotal)} at the front desk
                 </button>
               )}
@@ -302,20 +309,20 @@ export function RestaurantTab() {
               )}
               {!selected.booking && selected.tab && selectedLines.length === 0 && (
                 <button type="button" onClick={() => void dropEmptySlip(selected.tab as Tab)}
-                  className="min-h-11 text-[13px] font-semibold text-muted hover:text-danger-600 transition-colors cursor-pointer">
+                  className="min-h-11 text-[14px] font-semibold text-muted hover:text-danger-600 transition-colors cursor-pointer">
                   Remove this order slip
                 </button>
               )}
 
               {earlier.length > 0 && (
-                <div className="pt-3 border-t border-soft">
-                  <p className="text-[12px] font-semibold text-muted mb-1">Earlier order slips</p>
-                  <ul className="text-[13px]">
+                <div className="pt-4 border-t border-soft">
+                  <p className="text-[13px] font-medium text-muted mb-1">Earlier order slips</p>
+                  <ul className="text-[14px]">
                     {earlier.map(s => (
                       <li key={s.tab.id} className="flex items-baseline justify-between gap-3 py-1">
                         <span className="font-semibold text-main">{slipNumber(s.tab)}</span>
                         <span className="flex items-baseline gap-3">
-                          <span className="text-main">{fmtPeso(s.total)}</span>
+                          <span className="tabular-nums text-main">{fmtPeso(s.total)}</span>
                           <span className={'w-16 text-right font-semibold ' + (s.paid ? 'text-emerald-700' : 'text-danger-600')}>
                             {s.paid ? 'Paid' : 'Not paid'}
                           </span>
@@ -327,28 +334,35 @@ export function RestaurantTab() {
               )}
             </>
           ) : (
-            <p className="text-[13px] text-muted">Choose who is ordering.</p>
-          )}
-        </div>
-
-        <div className="space-y-2.5">
-          {selected ? (
             <>
-              <MenuPicker onPick={item => void order.pickItem(item)} busy={order.busy} counts={pickedCounts} />
-              <OffMenuOrder
-                open={order.showOther}
-                onOpen={() => order.setShowOther(true)}
-                busy={order.busy}
-                error={order.error}
-                onAdd={order.addWritten}
-              />
-              {!order.showOther && order.error && <p className="text-[12px] font-semibold text-danger-600">{order.error}</p>}
+              <h3 className="font-display text-[19px] font-bold tracking-tight text-main leading-tight">Order slip</h3>
+              <p className="text-[14px] text-muted">Choose who is ordering.</p>
             </>
-          ) : (
-            <div className="bg-card border border-soft rounded-lg px-4 py-10 text-center">
-              <p className="text-[13px] text-muted">The menu opens once somebody is chosen.</p>
-            </div>
           )}
+        </section>
+
+        {/* The menu is always on screen, so a price can be read out without choosing
+            anybody. It used to be an empty box saying it would open later. A dish tapped
+            with nobody chosen puts nothing anywhere and says who is missing. */}
+        <div className="space-y-2.5 min-w-0">
+          <MenuPicker
+            onPick={item => {
+              if (!selected) { showToast('Choose who is ordering first.', 'info'); return }
+              void order.pickItem(item)
+            }}
+            busy={order.busy}
+            counts={pickedCounts}
+          />
+          {selected && (
+            <OffMenuOrder
+              open={order.showOther}
+              onOpen={() => order.setShowOther(true)}
+              busy={order.busy}
+              error={order.error}
+              onAdd={order.addWritten}
+            />
+          )}
+          {selected && !order.showOther && order.error && <p role="alert" className="text-[13px] font-medium text-danger-600">{order.error}</p>}
         </div>
       </div>
 

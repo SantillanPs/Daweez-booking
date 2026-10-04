@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A staff system for **Daweez Pension House** (Tandag City, Philippines): 10 rooms and three venues (Vacation House, Gazebo, Garden Area). It replaces a paper booking process. Three parts, in priority order: **bookings** (closest to done), **restaurant and bar till**, **stock room**. The staff are not technical — every label is plain everyday English ("Total Money In", never accounting terms), the UI states facts without captions explaining them, and there are no browser `alert`/`confirm` pop-ups (use `showToast` and `askConfirm`).
 
-React 19 + TypeScript + Vite, TanStack Router/Query, Tailwind 3 + DaisyUI, Supabase (Postgres, Realtime, two edge functions). Deployed on Vercel.
+React 19 + TypeScript + Vite, TanStack Router/Query, Tailwind 3 + DaisyUI, Supabase (Postgres, Realtime, three edge functions). Deployed on Vercel.
 
 ## Commands
 
@@ -29,7 +29,7 @@ There is **no test suite**. Verify changes by running the app against the develo
 - `.env.local` points local work at **development**; the live values are kept there commented out. `.mcp.json` and `vercel.json` still name the **live** ref.
 - Apply every schema or function change to development first, test it, and save it as a file in `supabase/migrations/`. Treat live as read-only unless the owner says to promote something.
 - **The migration files have drifted from live.** Several were pasted in by hand and two stock functions exist only in the database. Always rebuild `book_booking` / `update_booking` from the definition the database holds (`pg_get_functiondef`), never from an older file. The development database was built from the live catalog, not from the files.
-- Development holds setup data only (rooms, venues, settings, menu, stock items). The edge functions are not deployed there, so `sync-ical` console errors on localhost are expected.
+- Development holds setup data only (rooms, venues, settings, menu, stock items). Of the edge functions only `send-email` is deployed there, so `sync-ical` console errors on localhost are expected.
 
 ## Architecture
 
@@ -79,4 +79,5 @@ There is **no test suite**. Verify changes by running the app against the develo
 - Tailwind only generates classes written as full literal strings; a class built by concatenation renders unstyled.
 - Number inputs are free-typing (`NumInput`), never the browser number spinner.
 - Printed documents: the guest statement is A5, the payment receipt is a 58 mm thermal slip (`.print-page` / `.print-slip` in `index.css`). Layouts that must hold on paper use fixed columns, not responsive breakpoints.
+- Both can be emailed: `utils/emailDocument.ts` draws the paper on screen into a PDF and the `send-email` edge function posts it from the hotel's Gmail. The function needs the secrets `GMAIL_USER` and `GMAIL_APP_PASSWORD` on the Supabase project and counts its daily limit in `email_log`.
 - Code comments in this repo explain the owner's ruling or the bug that led to the code; keep that style when a change has such a reason.

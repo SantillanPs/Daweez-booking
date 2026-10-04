@@ -5,6 +5,7 @@ import { Room } from '../../types/booking'
 import { getChannelSync, saveChannelSync, type ChannelSyncSettings } from '../../utils/channelSync'
 import { findFeedUrlClashes, feedUrlClashMessage } from '../../utils/feedUrls'
 import { showToast } from '../../utils/toast'
+import { GROUP_TITLE, ICON_BUTTON, LABEL, REVEAL } from '../walk-in/formStyles'
 
 interface ChannelFeedsProps {
   rooms: Room[]
@@ -78,33 +79,29 @@ export function ChannelFeeds({ rooms, feeds, onSave }: ChannelFeedsProps) {
   }
 
   return (
-    <div className="bg-card border border-soft rounded-xl overflow-hidden font-sans shadow-sm">
-      <div className="px-5 py-4 border-b border-soft flex justify-between items-center gap-3">
+    <div>
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-sm font-semibold text-main">iCal connections</h3>
-          <p className="text-xs text-muted mt-1">Airbnb &amp; Booking.com</p>
+          <h3 className={GROUP_TITLE}>iCal connections</h3>
+          <p className="mt-0.5 text-[13px] text-muted">Airbnb &amp; Booking.com</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <span className={'text-xs font-bold ' + (switches.enabled ? 'text-brand-text' : 'text-muted')}>
+          <span className={'text-[14px] font-semibold ' + (switches.enabled ? 'text-brand-text' : 'text-muted')}>
             {switches.enabled ? 'On' : 'Off'}
           </span>
           <Switch on={switches.enabled} onToggle={toggleMaster} label="Sync with Airbnb and Booking.com" />
         </div>
       </div>
-      <div className="px-5 py-3 border-b border-soft flex flex-wrap items-center justify-between gap-3">
-        {/* Says the rule where it is broken, not only when Save is pressed. */}
-        {clashes.length > 0
-          ? <p className="text-xs text-danger-600 font-medium">
-              One address is on more than one room — {clashes.map(c => c.roomIds.map(roomLabel).join(' + ')).join(' · ')}.
-              Each room needs its own link.
-            </p>
-          : <span />}
-        <button onClick={save}
-          className="bg-brand-primary hover:bg-gold-500 text-ink-900 text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-sm shrink-0">
-          Save feed URLs
-        </button>
-      </div>
-      <div>
+
+      {/* Says the rule where it is broken, not only when Save is pressed. */}
+      {clashes.length > 0 && (
+        <p role="alert" className="mt-3 text-[13px] font-medium text-danger-600">
+          One address is on more than one room — {clashes.map(c => c.roomIds.map(roomLabel).join(' + ')).join(' · ')}.
+          Each room needs its own link.
+        </p>
+      )}
+
+      <div className="mt-4 border-y border-soft divide-y divide-soft">
         {rooms.map(room => {
           const rf = editing.filter(f => f.room_id === room.id)
           const air = rf.find(f => f.channel === 'airbnb')
@@ -113,33 +110,40 @@ export function ChannelFeeds({ rooms, feeds, onSave }: ChannelFeedsProps) {
           const on = switches.enabled && switches.rooms[room.id] !== false
           const exportUrl = 'https://daweez-booking.vercel.app/api/ical/room/' + room.room_number + '.ics'
           return (
-            <div key={room.id} className="border-b border-soft last:border-0">
+            <div key={room.id}>
               {/* The switch sits OUTSIDE the expander: a button inside a button is invalid, and
                   throwing a room's switch must never also open its boxes. */}
-              <div className="w-full flex items-center justify-between px-5 py-3 hover:bg-page transition-colors">
-                <button onClick={() => setOpenRoomId(isOpen ? null : room.id)}
-                  className="flex-1 flex items-center gap-3 text-left cursor-pointer min-w-0">
-                  <span className="text-sm font-semibold text-main">Room {room.room_number}</span>
-                  <span className="text-xs text-muted truncate">{room.name}</span>
+              <div className="flex items-center justify-between gap-3">
+                <button onClick={() => setOpenRoomId(isOpen ? null : room.id)} aria-expanded={isOpen}
+                  className="flex-1 min-w-0 h-[52px] flex items-center text-left cursor-pointer">
+                  <span className="truncate">
+                    <span className="text-[15px] font-semibold text-main">Room {room.room_number}</span>
+                    <span className="ml-2 text-[13px] text-muted">{room.name}</span>
+                  </span>
                 </button>
-                <span className="flex items-center gap-2.5 shrink-0 pl-3">
-                  <span className={'text-[11px] font-bold ' + (on ? 'text-brand-text' : 'text-muted')}>{on ? 'Synced' : 'Off'}</span>
+                <span className="flex items-center gap-3 shrink-0">
+                  <span className={'text-[13px] font-semibold ' + (on ? 'text-brand-text' : 'text-muted')}>{on ? 'Synced' : 'Off'}</span>
                   <Switch on={on} disabled={!switches.enabled} onToggle={() => toggleRoom(room.id)}
                     label={`Sync Room ${room.room_number}`} />
-                  <button onClick={() => setOpenRoomId(isOpen ? null : room.id)} aria-label="Show the links"
-                    className="cursor-pointer p-0.5">
-                    <ChevronDown className={'w-4 h-4 text-muted transition-transform ' + (isOpen ? 'rotate-180' : '')} />
+                  <button onClick={() => setOpenRoomId(isOpen ? null : room.id)} aria-label="Show the links" className={ICON_BUTTON}>
+                    <ChevronDown className={'w-4 h-4 transition-transform duration-200 ' + (isOpen ? 'rotate-180' : '')} />
                   </button>
                 </span>
               </div>
               {isOpen && (
-                <div className="px-5 pb-4 pt-1 space-y-2.5">
-                  <FeedRow label="Export URL" tone="text-brand-text" value={exportUrl} readOnly
+                <div className={'pb-5 pt-1 space-y-3 ' + REVEAL}>
+                  <FeedRow label="Export URL" value={exportUrl} readOnly
                     copied={copied === 'export-' + room.id} onCopy={() => copy(exportUrl, 'export-' + room.id)} />
-                  {air && <FeedRow label="Airbnb" tone="text-emerald-600" value={air.url} placeholder="Paste the Airbnb iCal URL here…"
+                  {air && <FeedRow label="Airbnb" value={air.url} placeholder="Paste the Airbnb iCal URL here…"
                     copied={copied === 'air-' + room.id} onChange={v => setUrl(air.id, v)} onCopy={() => copy(air.url, 'air-' + room.id)} />}
-                  {bk && <FeedRow label="Booking.com" tone="text-blue-600" value={bk.url} placeholder="Paste the Booking.com iCal URL here…"
+                  {bk && <FeedRow label="Booking.com" value={bk.url} placeholder="Paste the Booking.com iCal URL here…"
                     copied={copied === 'bk-' + room.id} onChange={v => setUrl(bk.id, v)} onCopy={() => copy(bk.url, 'bk-' + room.id)} />}
+                  {/* Beside the boxes it saves, so it is met right after a link is pasted. It
+                      saves every room's links, as it always has. */}
+                  <button type="button" onClick={save}
+                    className="h-11 px-5 rounded-md bg-gold-400 hover:bg-gold-500 text-ink-900 text-[14px] font-semibold transition-colors duration-150 active:scale-[0.98] cursor-pointer">
+                    Save feed URLs
+                  </button>
                 </div>
               )}
             </div>
@@ -157,30 +161,32 @@ function Switch({ on, onToggle, label, disabled = false }: {
   return (
     <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled}
       onClick={onToggle}
-      className={'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ' +
-        (disabled ? 'opacity-40 cursor-not-allowed ' : 'cursor-pointer ') + (on ? 'bg-brand-primary' : 'bg-ink-300')}>
-      <span className={'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ' +
-        (on ? 'translate-x-4' : 'translate-x-0.5')} />
+      className={'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ' +
+        (disabled ? 'opacity-40 cursor-not-allowed ' : 'cursor-pointer ') + (on ? 'bg-gold-400' : 'bg-ink-300')}>
+      <span className={'inline-block h-5 w-5 rounded-full bg-white transition-transform duration-200 ' +
+        (on ? 'translate-x-[22px]' : 'translate-x-0.5')} />
     </button>
   )
 }
 
-function FeedRow({ label, tone, value, placeholder, readOnly, copied, onChange, onCopy }: {
-  label: string; tone: string; value: string; placeholder?: string; readOnly?: boolean
+/** One calendar link: its label above the box, and the copy button beside it. */
+function FeedRow({ label, value, placeholder, readOnly, copied, onChange, onCopy }: {
+  label: string; value: string; placeholder?: string; readOnly?: boolean
   copied: boolean; onChange?: (v: string) => void; onCopy: () => void
 }) {
   return (
-    <div className="grid grid-cols-[80px_1fr] md:grid-cols-[100px_1fr] gap-3 items-center">
-      <span className={'text-xs font-medium text-right ' + tone}>{label}</span>
-      <div className="relative flex items-center">
+    <label className="block">
+      <span className={LABEL + ' mb-1.5'}>{label}</span>
+      <span className="flex items-center gap-1">
         <input value={value} readOnly={readOnly} onChange={e => onChange?.(e.target.value)} placeholder={placeholder}
-          className={'py-1.5 pl-3 pr-9 rounded-lg font-mono text-[10px] w-full focus:outline-none ' +
-            (readOnly ? 'bg-page border border-soft text-muted select-all' : 'bg-card border border-soft text-main focus:border-brand-primary')} />
-        <button onClick={onCopy} className="absolute right-1.5 p-1 text-muted hover:text-brand-text transition-colors cursor-pointer" title="Copy URL">
-          {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+          className={readOnly
+            ? 'h-11 flex-1 min-w-0 rounded-md border border-soft bg-softbg px-3 text-[14px] text-muted outline-none select-all'
+            : 'h-11 flex-1 min-w-0 rounded-md border border-soft bg-card px-3 text-[14px] text-main placeholder:text-muted outline-none transition-colors duration-200 focus:border-gold-500 focus:ring-2 focus:ring-gold-400/30'} />
+        <button type="button" onClick={onCopy} className={ICON_BUTTON} title="Copy URL" aria-label={'Copy the ' + label + ' link'}>
+          {copied ? <Check className="w-4 h-4 text-brand-text" /> : <Copy className="w-4 h-4" />}
         </button>
-      </div>
-    </div>
+      </span>
+    </label>
   )
 }
 

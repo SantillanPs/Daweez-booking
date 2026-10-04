@@ -89,13 +89,13 @@ function MenuColumn({ categories, onPick, busy, counts }: {
                   title={item.note ? item.name + ' — ' + item.note : item.name}
                   // A finger, not a mouse: every dish is a 48px row whatever its
                   // text, because the staff hold the tablet in front of the guest.
-                  className={'flex w-full flex-col justify-center text-left min-h-[48px] px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-50 ' +
+                  className={'flex w-full flex-col justify-center text-left min-h-[48px] px-2.5 py-1.5 rounded-lg transition-[background-color,transform] duration-200 active:scale-[0.99] cursor-pointer disabled:opacity-50 ' +
                     (alreadyOn > 0 ? 'bg-gold-100' : 'hover:bg-paper-100')}
                 >
                   <span className="flex items-baseline gap-2">
                     <span className="text-[13.5px] font-bold text-main">{item.name}</span>
                     <span className="flex-1 border-b border-dotted border-paper-400 translate-y-[-4px]" />
-                    <span className="font-display text-[14px] font-bold text-main">{fmtPeso(item.price)}</span>
+                    <span className="font-display text-[14px] font-bold tabular-nums text-main">{fmtPeso(item.price)}</span>
                     {alreadyOn > 0 && (
                       <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-gold-400 text-ink-900 text-[10.5px] font-bold inline-flex items-center justify-center self-center">
                         {alreadyOn}
@@ -166,14 +166,14 @@ export function MenuPicker({ onPick, busy = false, counts = {} }: MenuPickerProp
     <div className="space-y-2">
       {/* The search sits ABOVE the card on purpose: the card itself stays a paper
           menu, and this is the till's own tool. */}
-      <div className="flex items-center gap-2 bg-card border border-soft focus-within:border-gold-500 rounded-lg px-3 min-h-[44px]">
+      <div className="flex items-center gap-2 bg-card border border-soft rounded-lg px-3 min-h-[44px] transition-[border-color,box-shadow] duration-200 focus-within:border-gold-500 focus-within:ring-2 focus-within:ring-gold-400/30">
         <Search className="w-4 h-4 text-muted shrink-0" />
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Find a dish"
           aria-label="Find a dish on the menu"
-          className="w-full bg-transparent text-[13px] text-main py-2 focus:outline-none"
+          className="w-full bg-transparent text-[15px] text-main py-2 focus:outline-none"
         />
         {query && (
           <button type="button" onClick={() => setQuery('')} aria-label="Clear the search"
@@ -188,12 +188,14 @@ export function MenuPicker({ onPick, busy = false, counts = {} }: MenuPickerProp
           <p className="font-display font-extrabold uppercase tracking-[0.16em] text-[13.5px] text-main">
             Daweez Restaurant &amp; Bar
           </p>
-          <p className="text-[9.5px] uppercase tracking-[0.1em] text-muted mt-0.5">
-            {query ? `${found.reduce((n, c) => n + c.items.length, 0)} dish(es) match “${query.trim()}”` : 'Tap a dish to put it on the bill'}
-          </p>
+          {query && (
+            <p className="text-[11px] uppercase tracking-[0.1em] text-muted mt-0.5">
+              {found.reduce((n, c) => n + c.items.length, 0)} dish(es) match “{query.trim()}”
+            </p>
+          )}
         </div>
 
-        <div className="max-h-[62vh] overflow-y-auto px-3 py-1.5">
+        <div className="max-h-[62dvh] lg:max-h-[calc(100dvh-19rem)] overflow-y-auto px-3 py-1.5">
           {found.length === 0 ? (
             <p className="px-4 py-10 text-center text-[13px] text-muted">
               Nothing on the menu matches “{query.trim()}”.

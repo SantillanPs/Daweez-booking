@@ -1,6 +1,8 @@
 import React from 'react'
 import { RateConfig, PaymentAccounts } from '../../types/booking'
-import { NumInput } from '../NumInput'
+import { Field } from '../walk-in/Field'
+import { FIELD } from '../walk-in/formStyles'
+import { Figure, FieldGrid, Section, TimeField } from './parts'
 
 interface OtherChargesProps {
   rates: RateConfig
@@ -9,48 +11,30 @@ interface OtherChargesProps {
   onPay: (patch: Partial<PaymentAccounts>) => void
 }
 
-function Num({ label, value, onChange, suffix }: { label: string; value: number; onChange: (v: number) => void; suffix?: string }) {
+/** One line of an account: its label above the box. */
+function PayLine({ label, value, onChange, placeholder, wide = false }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder: string; wide?: boolean
+}) {
   return (
-    <label className="flex items-center justify-between gap-2 bg-page border border-soft rounded-lg px-3 py-2">
-      <span className="text-[11px] text-muted font-medium">{label}</span>
-      <span className="flex items-center gap-1">
-        {suffix && <span className="text-[11px] text-muted font-bold">{suffix}</span>}
-        <NumInput value={value} onChange={onChange}
-          className="w-24 bg-card border border-soft text-main px-2 py-1 rounded-md text-sm font-mono focus:outline-none focus:border-brand-primary text-right" />
-      </span>
-    </label>
+    <Field label={label} className={wide ? 'sm:col-span-2' : ''}>
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={FIELD} />
+    </Field>
   )
 }
 
-function TimeBox({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+/**
+ * One place a guest can send money: its name, then its lines. A bank's lines each take
+ * the whole width — the account name is long, and it is printed from what is read here,
+ * so nothing may be cut off.
+ */
+function PayGroup({ name, note, children }: { name: string; note?: string; children: React.ReactNode }) {
   return (
-    <label className="flex items-center justify-between gap-2 bg-page border border-soft rounded-lg px-3 py-2">
-      <span className="text-[11px] text-muted font-medium">{label}</span>
-      <input type="time" value={value} onChange={e => onChange(e.target.value)}
-        className="w-24 bg-card border border-soft text-main px-2 py-1 rounded-md text-sm font-mono focus:outline-none focus:border-brand-primary text-right" />
-    </label>
-  )
-}
-
-function Card({ title, note, children }: { title: string; note: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-card border border-soft rounded-xl overflow-hidden font-sans shadow-sm">
-      <div className="px-5 py-3.5 border-b border-soft">
-        <h3 className="text-sm font-semibold text-main">{title}</h3>
-        <p className="text-xs text-muted mt-1">{note}</p>
-      </div>
-      <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-3">{children}</div>
+    <div className="py-4">
+      <p className="mb-2.5 text-[15px] font-semibold text-main">
+        {name}{note && <span className="font-normal text-muted"> {note}</span>}
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{children}</div>
     </div>
-  )
-}
-
-function PayLine({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder: string }) {
-  return (
-    <label className="block">
-      <span className="block text-[11px] font-bold text-muted mb-1">{label}</span>
-      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-page border border-soft text-main px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-brand-primary" />
-    </label>
   )
 }
 
@@ -59,77 +43,78 @@ function PayLine({ label, value, onChange, placeholder }: { label: string; value
  * rules, the things a guest can add, where the guest sends money, and the two figures
  * that exist only for the Earnings Report.
  *
- * One card per KIND of money, in the order the desk meets it (the owner's design,
- * 2026-09). Every figure is unchanged from before — only where it sits has moved.
+ * One part per KIND of money, in the order the desk meets it (the owner's design,
+ * 2026-09). On a wide screen the prices run down the left and the accounts down the
+ * right, so the page is half as long; on a narrow one they follow each other in that
+ * same order.
  */
 export function OtherCharges({ rates, onRate, pay, onPay }: OtherChargesProps) {
   return (
-    <div className="space-y-4">
-      <Card title="Venues" note="Vacation House, Gazebo and Garden Area — the figures their bookings use.">
-        <Num label="Vacation House, per hour" value={rates.venueHourlyRate} onChange={v => onRate({ venueHourlyRate: v })} suffix="₱" />
-        <Num label="Gazebo / Garden block, hours" value={rates.venueDayBlockHours} onChange={v => onRate({ venueDayBlockHours: v })} suffix="hrs" />
-        <Num label="Gazebo / Garden, per block (0 = the venue's own price)" value={rates.dayBlockRate} onChange={v => onRate({ dayBlockRate: v })} suffix="₱" />
-      </Card>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-9 items-start">
+      <div className="space-y-9">
+        <Section title="Venues">
+          <FieldGrid>
+            <Figure label="Vacation House, per hour" value={rates.venueHourlyRate} onChange={v => onRate({ venueHourlyRate: v })} />
+            <Figure label="Gazebo / Garden block, hours" unit="hrs" value={rates.venueDayBlockHours} onChange={v => onRate({ venueDayBlockHours: v })} />
+            <Figure label="Gazebo / Garden, per block" placeholder="Venue's own price" value={rates.dayBlockRate} onChange={v => onRate({ dayBlockRate: v })} />
+          </FieldGrid>
+        </Section>
 
-      <Card title="Arrival & departure" note="The rules printed on the statement: standard times, and what an early arrival or a late departure costs.">
-        <TimeBox label="Standard check-in" value={rates.standardCheckInTime} onChange={v => onRate({ standardCheckInTime: v })} />
-        <TimeBox label="Standard check-out" value={rates.standardCheckOutTime} onChange={v => onRate({ standardCheckOutTime: v })} />
-        <Num label="Early / late, per hour (rooms)" value={rates.lateEarlyRatePesos} onChange={v => onRate({ lateEarlyRatePesos: v })} suffix="₱" />
-        <Num label="After this many hours, a whole night" value={rates.lateEarlyCapHours} onChange={v => onRate({ lateEarlyCapHours: v })} suffix="hrs" />
-        <Num label="Security deposit" value={rates.securityDeposit} onChange={v => onRate({ securityDeposit: v })} suffix="₱" />
-      </Card>
+        <Section title="Arrival & departure">
+          <FieldGrid>
+            <TimeField label="Standard check-in" value={rates.standardCheckInTime} onChange={v => onRate({ standardCheckInTime: v })} />
+            <TimeField label="Standard check-out" value={rates.standardCheckOutTime} onChange={v => onRate({ standardCheckOutTime: v })} />
+            <Figure label="Early / late, per hour (rooms)" value={rates.lateEarlyRatePesos} onChange={v => onRate({ lateEarlyRatePesos: v })} />
+            <Figure label="After this many hours, a whole night" unit="hrs" value={rates.lateEarlyCapHours} onChange={v => onRate({ lateEarlyCapHours: v })} />
+            <Figure label="Security deposit" value={rates.securityDeposit} onChange={v => onRate({ securityDeposit: v })} />
+          </FieldGrid>
+        </Section>
 
-      <Card title="Things guests can add" note="Per night for the room extras, per piece for the event ones.">
-        <Num label="Extra foam · per night" value={rates.foamRate} onChange={v => onRate({ foamRate: v })} suffix="₱" />
-        <Num label="Extra pillow · per night" value={rates.pillowRate} onChange={v => onRate({ pillowRate: v })} suffix="₱" />
-        <Num label="Extra blanket · per night" value={rates.blanketRate} onChange={v => onRate({ blanketRate: v })} suffix="₱" />
-        <Num label="Extra towel · per night" value={rates.towelRate} onChange={v => onRate({ towelRate: v })} suffix="₱" />
-        <Num label="Mineral water" value={rates.mineralWaterRate} onChange={v => onRate({ mineralWaterRate: v })} suffix="₱" />
-        <Num label="Big table (event)" value={rates.bigTableRate} onChange={v => onRate({ bigTableRate: v })} suffix="₱" />
-        <Num label="Small table (event)" value={rates.smallTableRate} onChange={v => onRate({ smallTableRate: v })} suffix="₱" />
-        <Num label="Chair (event)" value={rates.chairRate} onChange={v => onRate({ chairRate: v })} suffix="₱" />
-        <Num label="Tent (event)" value={rates.tentRate} onChange={v => onRate({ tentRate: v })} suffix="₱" />
-      </Card>
-
-      <div className="bg-card border border-soft rounded-xl overflow-hidden font-sans shadow-sm">
-        <div className="px-5 py-3.5 border-b border-soft">
-          <h3 className="text-sm font-semibold text-main">Where guests pay</h3>
-          <p className="text-xs text-muted mt-1">Printed on the guest's statement and shown on the booking portal. Full values, so nothing is cut off.</p>
-        </div>
-        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="space-y-3">
-            <p className="text-[10px] font-bold text-muted tracking-widest uppercase">GCash</p>
-            <PayLine label="Account name" value={pay.gcashName} onChange={v => onPay({ gcashName: v })} placeholder="Narlina D." />
-            <PayLine label="Number" value={pay.gcashNumber} onChange={v => onPay({ gcashNumber: v })} placeholder="0910 000 0000" />
-          </div>
-          <div className="space-y-3">
-            <p className="text-[10px] font-bold text-muted tracking-widest uppercase">Bank transfer</p>
-            <PayLine label="Bank" value={pay.bankName} onChange={v => onPay({ bankName: v })} placeholder="Bank of the Philippine Islands (BPI)" />
-            <PayLine label="Account name" value={pay.bankAccountName} onChange={v => onPay({ bankAccountName: v })} placeholder="Daweez Pension House" />
-            <PayLine label="Account number" value={pay.bankAccountNumber} onChange={v => onPay({ bankAccountNumber: v })} placeholder="5636 0000 00" />
-          </div>
-          {/* A SECOND bank account (the owner, 2026-09): his own PGO bill lists two, and a
-              government office pays into whichever one its paperwork names. Both print on
-              the agency statement; leave these empty and only the first is used. */}
-          <div className="space-y-3">
-            <p className="text-[10px] font-bold text-muted tracking-widest uppercase">Second bank account <span className="text-muted/70 normal-case tracking-normal">(agency bills)</span></p>
-            <PayLine label="Bank" value={pay.bank2Name} onChange={v => onPay({ bank2Name: v })} placeholder="Land Bank of the Philippines (LB)" />
-            <PayLine label="Account name" value={pay.bank2AccountName} onChange={v => onPay({ bank2AccountName: v })} placeholder="Jonathan E. Dango" />
-            <PayLine label="Account number" value={pay.bank2AccountNumber} onChange={v => onPay({ bank2AccountNumber: v })} placeholder="0795 0000 00" />
-          </div>
-        </div>
+        <Section title="Things guests can add">
+          <FieldGrid>
+            <Figure label="Extra foam · per night" value={rates.foamRate} onChange={v => onRate({ foamRate: v })} />
+            <Figure label="Extra pillow · per night" value={rates.pillowRate} onChange={v => onRate({ pillowRate: v })} />
+            <Figure label="Extra blanket · per night" value={rates.blanketRate} onChange={v => onRate({ blanketRate: v })} />
+            <Figure label="Extra towel · per night" value={rates.towelRate} onChange={v => onRate({ towelRate: v })} />
+            <Figure label="Mineral water" value={rates.mineralWaterRate} onChange={v => onRate({ mineralWaterRate: v })} />
+            <Figure label="Big table (event)" value={rates.bigTableRate} onChange={v => onRate({ bigTableRate: v })} />
+            <Figure label="Small table (event)" value={rates.smallTableRate} onChange={v => onRate({ smallTableRate: v })} />
+            <Figure label="Chair (event)" value={rates.chairRate} onChange={v => onRate({ chairRate: v })} />
+            <Figure label="Tent (event)" value={rates.tentRate} onChange={v => onRate({ tentRate: v })} />
+          </FieldGrid>
+        </Section>
       </div>
 
-      {/* Report-only, kept apart on purpose: these look like prices and are not. */}
-      <div className="bg-card border border-soft rounded-xl overflow-hidden font-sans shadow-sm">
-        <div className="px-5 py-3.5 border-b border-soft">
-          <h3 className="text-sm font-semibold text-main">For the Earnings Report only — these never appear on a bill</h3>
-          <p className="text-xs text-muted mt-1">A flat amount added to each group in the Earnings Report. No guest is ever charged these.</p>
-        </div>
-        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Num label="Extras: Rooms + Vacation House" value={rates.accommodationExtras} onChange={v => onRate({ accommodationExtras: v })} suffix="₱" />
-          <Num label="Extras: Garden + Gazebo" value={rates.venueExtras} onChange={v => onRate({ venueExtras: v })} suffix="₱" />
-        </div>
+      <div className="space-y-9">
+        <Section title="Where guests pay" fact="Printed on the guest's statement and shown on the booking portal.">
+          <div className="border-y border-soft divide-y divide-soft">
+            <PayGroup name="GCash">
+              <PayLine label="Account name" value={pay.gcashName} onChange={v => onPay({ gcashName: v })} placeholder="Narlina D." />
+              <PayLine label="Number" value={pay.gcashNumber} onChange={v => onPay({ gcashNumber: v })} placeholder="0910 000 0000" />
+            </PayGroup>
+            <PayGroup name="Bank transfer">
+              <PayLine wide label="Bank" value={pay.bankName} onChange={v => onPay({ bankName: v })} placeholder="Bank of the Philippine Islands (BPI)" />
+              <PayLine wide label="Account name" value={pay.bankAccountName} onChange={v => onPay({ bankAccountName: v })} placeholder="Daweez Pension House" />
+              <PayLine wide label="Account number" value={pay.bankAccountNumber} onChange={v => onPay({ bankAccountNumber: v })} placeholder="5636 0000 00" />
+            </PayGroup>
+            {/* A SECOND bank account (the owner, 2026-09): his own PGO bill lists two, and a
+                government office pays into whichever one its paperwork names. Both print on
+                the agency statement; leave these empty and only the first is used. */}
+            <PayGroup name="Second bank account" note="(agency bills)">
+              <PayLine wide label="Bank" value={pay.bank2Name} onChange={v => onPay({ bank2Name: v })} placeholder="Land Bank of the Philippines (LB)" />
+              <PayLine wide label="Account name" value={pay.bank2AccountName} onChange={v => onPay({ bank2AccountName: v })} placeholder="Jonathan E. Dango" />
+              <PayLine wide label="Account number" value={pay.bank2AccountNumber} onChange={v => onPay({ bank2AccountNumber: v })} placeholder="0795 0000 00" />
+            </PayGroup>
+          </div>
+        </Section>
+
+        {/* Report-only, kept apart on purpose: these look like prices and are not. */}
+        <Section title="For the Earnings Report only" fact="These never appear on a bill. No guest is ever charged these.">
+          <FieldGrid>
+            <Figure label="Extras: Rooms + Vacation House" value={rates.accommodationExtras} onChange={v => onRate({ accommodationExtras: v })} />
+            <Figure label="Extras: Garden + Gazebo" value={rates.venueExtras} onChange={v => onRate({ venueExtras: v })} />
+          </FieldGrid>
+        </Section>
       </div>
     </div>
   )

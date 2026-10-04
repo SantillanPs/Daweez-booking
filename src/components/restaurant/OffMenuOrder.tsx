@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { NumInput } from '../NumInput'
+import { Field } from '../walk-in/Field'
+import { FIELD } from '../walk-in/formStyles'
 
 interface OffMenuOrderProps {
   /** True while the written row is showing; the caller owns that choice. */
@@ -23,49 +25,38 @@ export function OffMenuOrder({ open, onOpen, busy = false, error = '', onAdd }: 
   const [qty, setQty] = useState(1)
   const [unitPrice, setUnitPrice] = useState(0)
 
-  const box = 'w-full bg-card border border-soft text-main px-2.5 py-2.5 rounded-lg text-sm focus:outline-none focus:border-gold-500'
-  const label = 'block text-[10px] font-bold uppercase tracking-wider text-muted'
-
   if (!open) {
     return (
       <button type="button" onClick={onOpen}
-        className="inline-flex items-center min-h-[44px] text-[12px] font-semibold text-muted hover:text-gold-700 transition-colors cursor-pointer">
-        + Something not on the menu
+        className="inline-flex items-center gap-1.5 min-h-[44px] text-[14px] font-semibold text-brand-text hover:underline cursor-pointer">
+        <Plus className="w-4 h-4" /> Something not on the menu
       </button>
     )
   }
 
-  const add = async () => {
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (await onAdd(description, qty, unitPrice)) {
       setDescription(''); setQty(1); setUnitPrice(0)
     }
   }
 
   return (
-    <div className="border border-soft rounded-lg p-2.5 space-y-2 bg-card">
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="flex-1 min-w-[140px]">
-          <span className={label}>Order</span>
-          <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Hotsilog"
-            className={box} />
-        </label>
-        <label className="w-[62px]">
-          <span className={label}>Qty</span>
-          <NumInput value={qty} onChange={setQty} allowDecimal={false} className={box} />
-        </label>
-        <label className="w-[92px]">
-          <span className={label}>Price</span>
-          <NumInput value={unitPrice} onChange={setUnitPrice} className={box} />
-        </label>
-        <button type="button" onClick={() => void add()} disabled={busy}
-          className="inline-flex items-center gap-1.5 min-h-[44px] text-[12.5px] font-bold text-ink-900 bg-gold-400 hover:bg-gold-600 px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50">
-          <Plus className="w-4 h-4" /> Add
-        </button>
-      </div>
-      {error && <p className="text-[11px] font-semibold text-danger-600">{error}</p>}
-      <p className="text-[10.5px] text-muted">
-        Anything the menu does not carry can be written here and priced by hand.
-      </p>
-    </div>
+    <form onSubmit={add} className="flex flex-wrap items-end gap-3 animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
+      <Field label="Order" className="flex-1 min-w-[160px]">
+        <input value={description} onChange={e => setDescription(e.target.value)} autoFocus autoComplete="off" className={FIELD} />
+      </Field>
+      <Field label="How many" className="w-24">
+        <NumInput value={qty} onChange={setQty} allowDecimal={false} className={FIELD + ' text-right tabular-nums'} />
+      </Field>
+      <Field label="Price each (₱)" className="w-32">
+        <NumInput value={unitPrice} onChange={setUnitPrice} className={FIELD + ' text-right tabular-nums'} />
+      </Field>
+      <button type="submit" disabled={busy}
+        className="h-11 px-4 inline-flex items-center gap-1.5 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-[14px] font-bold shadow-sm transition-[background-color,transform] duration-200 active:scale-[0.98] cursor-pointer disabled:opacity-50">
+        <Plus className="w-4 h-4" /> Add
+      </button>
+      {error && <p role="alert" className="basis-full text-[13px] font-medium text-danger-600">{error}</p>}
+    </form>
   )
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { RateConfig, PaymentAccounts } from '../types/booking'
-import { BadgeDollarSign, BedDouble, Loader2, RefreshCw, Save } from 'lucide-react'
+import { Loader2, Save } from 'lucide-react'
 import { getRateConfig, saveRateConfig } from '../utils/rateConfig'
 import { getPaymentAccounts, savePaymentAccounts } from '../utils/paymentAccounts'
 import { RoomRatesEditor } from './settings/RoomRatesEditor'
@@ -13,10 +13,10 @@ import { showToast } from '../utils/toast'
 
 type SettingsTabKey = 'rooms' | 'charges' | 'channels'
 
-const TABS: { key: SettingsTabKey; label: string; icon: React.ReactNode }[] = [
-  { key: 'rooms', label: 'Rooms & prices', icon: <BedDouble className="w-4 h-4" /> },
-  { key: 'charges', label: 'Other charges', icon: <BadgeDollarSign className="w-4 h-4" /> },
-  { key: 'channels', label: 'Channels', icon: <RefreshCw className="w-4 h-4" /> },
+const TABS: { key: SettingsTabKey; label: string }[] = [
+  { key: 'rooms', label: 'Rooms & prices' },
+  { key: 'charges', label: 'Other charges' },
+  { key: 'channels', label: 'Channels' },
 ]
 
 /** How many fields differ between what is on screen and what is stored. */
@@ -39,9 +39,15 @@ function countDiffs<T extends object>(draft: T, saved: T): number {
  * them together; the room rows go through `updateRoomRate` / `updateRoomBreakfastPrice`
  * / `updateRoomHourPrices`, the shared figures through `saveRateConfig` /
  * `savePaymentAccounts`.
+ *
+ * **One flat sheet** (the owner's taste, 2026-10-04: *"I don't like the boxes design. I
+ * prefer a more 2d, clean, minimalistic, simple, yet professional look."*). The three
+ * tabs are plain words down the side, marked the way the top bar's sub-tabs are — a gold
+ * line on the chosen one — and each screen is parts under their names, with no card
+ * round any of them. See `settings/parts.tsx`.
  */
 export function SettingsTab() {
-  const { rooms, feeds, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices } = useDashboardData()
+  const { rooms, feeds, isLoading, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices } = useDashboardData()
   const [tab, setTab] = useState<SettingsTabKey>('rooms')
 
   const [rates, setRates] = useState<RateConfig>(() => getRateConfig())
@@ -82,66 +88,59 @@ export function SettingsTab() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 h-full">
-      <div className="w-full md:w-52 shrink-0">
-        <nav className="flex md:flex-col gap-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors cursor-pointer ' +
-                (tab === t.key ? 'bg-brand-primary text-ink-900 shadow-sm' : 'text-muted hover:bg-softbg')}>
-              {t.icon} {t.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+    <div className="bg-card border border-soft rounded-xl md:grid md:grid-cols-[12.5rem_minmax(0,1fr)]">
+      {/* The same mark as the top bar's sub-tabs: a gold line on the chosen one, lying on the
+          rule between the list and the screen — under the words on a phone, beside them here. */}
+      <nav aria-label="Settings" className="flex md:flex-col gap-5 md:gap-0 px-5 md:px-0 md:py-4 border-b md:border-b-0 md:border-r border-soft overflow-x-auto no-scrollbar">
+        {TABS.map(t => (
+          <button key={t.key} type="button" onClick={() => setTab(t.key)} aria-current={tab === t.key ? 'page' : undefined}
+            className={'flex items-center h-11 -mb-px md:mb-0 md:-mr-px md:pl-6 border-b-2 md:border-b-0 md:border-r-2 text-sm font-medium whitespace-nowrap transition-colors duration-150 cursor-pointer ' +
+              (tab === t.key ? 'border-gold-600 text-main' : 'border-transparent text-muted hover:text-main')}>
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
-      <div className="flex-1 min-w-0 pb-16">
-        {tab === 'rooms' && (
-          <div className="space-y-4">
-            <header>
-              <h2 className="text-base font-semibold text-main">Rooms &amp; prices</h2>
-              <p className="text-xs text-muted mt-1">One price per room, its breakfast, and what it is sold for by the hour.</p>
-            </header>
-            <RoomRatesEditor rooms={rooms} edits={roomEdits} onEdit={editRoom} />
-            <BreakfastMenuEditor items={rates.breakfastMenu} onChange={items => setRates(s => ({ ...s, breakfastMenu: items }))} />
-          </div>
-        )}
+      <div className="min-w-0 px-5 sm:px-8 pt-6 pb-20">
+        <div className="max-w-[1000px]">
+          {/* The chosen tab's name is already on the list beside the screen; it is said
+              again only for a screen reader. */}
+          <h2 className="sr-only">{TABS.find(t => t.key === tab)?.label}</h2>
 
-        {tab === 'charges' && (
-          <div className="space-y-4">
-            <header>
-              <h2 className="text-base font-semibold text-main">Other charges</h2>
-              <p className="text-xs text-muted mt-1">The venues, the arrival and departure rules, what a guest can add, and where they send the money.</p>
-            </header>
+          {tab === 'rooms' && (
+            <div className="space-y-9">
+              <RoomRatesEditor rooms={rooms} edits={roomEdits} onEdit={editRoom} loading={isLoading} />
+              <BreakfastMenuEditor items={rates.breakfastMenu} onChange={items => setRates(s => ({ ...s, breakfastMenu: items }))} />
+            </div>
+          )}
+
+          {tab === 'charges' && (
             <OtherCharges rates={rates} onRate={patch => setRates(s => ({ ...s, ...patch }))} pay={pay} onPay={patch => setPay(s => ({ ...s, ...patch }))} />
-          </div>
-        )}
+          )}
 
-        {tab === 'channels' && (
-          <div className="space-y-4">
-            <header>
-              <h2 className="text-base font-semibold text-main">Channels</h2>
-              <p className="text-xs text-muted mt-1">The calendar links Airbnb and Booking.com read and write.</p>
-            </header>
-            <ChannelFeeds rooms={rooms} feeds={feeds} onSave={async list => {
-              try { await updateFeedUrls(list); showToast('Feed URLs saved.') }
-              catch { showToast('Could not save the feed URLs.', 'error') }
-            }} />
-          </div>
-        )}
+          {tab === 'channels' && (
+            <div className="max-w-[720px]">
+              <ChannelFeeds rooms={rooms} feeds={feeds} onSave={async list => {
+                try { await updateFeedUrls(list); showToast('Feed URLs saved.') }
+                catch { showToast('Could not save the feed URLs.', 'error') }
+              }} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ONE save bar (the owner's ruling): it appears only once something has been
           typed, and it says how many changes are waiting. Kept in the LIGHT shell like
-          the rest of the staff app — no dark bar floating over a light page. */}
+          the rest of the staff app — no dark bar floating over a light page. It is the one
+          thing on the screen that floats, so it is the one thing with a shadow. */}
       {changes > 0 && (
-        <div className="fixed bottom-16 lg:bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-card border border-gold-300 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg">
-          <span className="text-[12px] font-semibold text-main">
+        <div className="fixed bottom-16 lg:bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-card border border-gold-300 rounded-full pl-5 pr-1.5 py-1.5 shadow-softLg">
+          <span className="text-[14px] font-semibold text-main whitespace-nowrap">
             {changes} change{changes === 1 ? '' : 's'} not saved
           </span>
           <button type="button" onClick={() => void handleSave()} disabled={saving}
-            className="inline-flex items-center gap-1.5 bg-gold-400 hover:bg-gold-600 text-ink-900 text-[12px] font-bold px-3.5 py-1.5 rounded-full transition-colors cursor-pointer disabled:opacity-60">
-            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[14px] font-bold whitespace-nowrap transition-colors duration-150 active:scale-[0.98] cursor-pointer disabled:opacity-60">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save changes
           </button>
         </div>

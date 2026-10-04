@@ -6,6 +6,7 @@ import { getPaymentAccounts } from '../../utils/paymentAccounts'
 import { paymentKind, paymentMethodLabel, shortBankName } from '../../utils/paymentMethod'
 import { paymentPlanLabel } from '../../utils/bookingMoney'
 import { HOTEL_POLICY } from '../../utils/hotelPolicy'
+import { guestEmailOf } from '../../utils/emailDocument'
 import { StatementChargesTable } from './StatementChargesTable'
 import { StatementGuestStay } from './StatementGuestStay'
 import { StatementShell, BrandHeader } from './StatementShell'
@@ -59,7 +60,8 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
     : ''
 
   return (
-    <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}>
+    <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}
+      email={{ kind: 'statement', number: statement.invoiceNumber, guestName: b.guest_name, bookingId: b.id, to: guestEmailOf(b) }}>
       <BrandHeader invoiceNumber={statement.invoiceNumber} dateIssued={statement.dateIssued} />
 
       {/* Guest and Stay are ONE two-column grid (card k144, the owner's ruling,

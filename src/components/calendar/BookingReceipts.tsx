@@ -57,7 +57,7 @@ export function BookingReceipts({ records, onPrint, onRemove, coveredRooms }: Bo
                 {about && <p className="text-[12px] text-muted">{about}</p>}
               </div>
               <div className="flex items-center shrink-0">
-                <button type="button" onClick={() => onPrint(r)} className="w-11 h-11 flex items-center justify-center text-gold-700 hover:text-gold-800 cursor-pointer" aria-label="Print receipt" title="Print receipt">
+                <button type="button" onClick={() => onPrint(r)} className="w-11 h-11 flex items-center justify-center text-gold-700 hover:text-gold-800 cursor-pointer" aria-label="Print or email receipt" title="Print or email receipt">
                   <Printer className="w-4 h-4" />
                 </button>
                 {onRemove && (
