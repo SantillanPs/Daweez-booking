@@ -42,7 +42,7 @@ function Counter({ label, value, onChange }: { label: string; value: number; onC
         aria-label={'One fewer ' + label} className={ICON_BUTTON + ' disabled:opacity-30 disabled:hover:bg-transparent'}>
         <Minus className="w-4 h-4" />
       </button>
-      <span className="w-7 text-center text-[15px] font-semibold tabular-nums text-base-content">{value}</span>
+      <span className="w-7 text-center text-[15px] font-semibold tabular-nums text-main">{value}</span>
       <button type="button" onClick={() => onChange(value + 1)} aria-label={'One more ' + label} className={ICON_BUTTON}>
         <Plus className="w-4 h-4" />
       </button>
@@ -57,7 +57,7 @@ function ExtraList({ title, items }: { title: string; items: Extra[] }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
         {items.map(item => (
           <div key={item.label} className="flex items-center justify-between min-h-11">
-            <span className="text-[15px] font-medium text-base-content">
+            <span className="text-[15px] font-medium text-main">
               {item.label}
               <span className="ml-2 text-[13px] font-normal text-muted tabular-nums">₱{item.price}{item.per}</span>
             </span>
@@ -129,7 +129,7 @@ export const AmenitiesForm = React.memo(
           <span className={OPTION_NAME}>Add-ons</span>
           <span className={OPTION_VALUE}>
             {added ? (
-              <span className="truncate text-base-content">
+              <span className="truncate text-main">
                 {added}
                 <span className="ml-2 tabular-nums">+₱{(estRentals + estAddons).toLocaleString()}</span>
               </span>

@@ -63,7 +63,7 @@ export function TabSettlePanel({ tab, total, onSettled, quiet = false }: TabSett
             onClick={() => { setMethod(m); setReference(''); setError('') }}
             aria-pressed={m === method}
             className={'min-h-11 text-[13px] font-bold px-2.5 rounded-lg border transition-colors cursor-pointer ' +
-              (m === method ? 'bg-ink-900 border-ink-900 text-white' : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100')}
+              (m === method ? 'bg-gold-400 border-gold-400 text-ink-900' : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100')}
           >
             {m}
           </button>

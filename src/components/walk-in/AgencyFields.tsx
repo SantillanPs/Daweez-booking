@@ -99,14 +99,14 @@ export function AgencyFields({ value, picking, setPicking, onChange, onOpenProfi
   if (!picking && value.name) {
     return (
       <div className="space-y-1">
-        <div className="flex items-center gap-2 h-11 border border-base-300 rounded-md px-3">
+        <div className="flex items-center gap-2 h-11 border border-soft rounded-md px-3">
           <Building2 className="w-3.5 h-3.5 text-brand-text shrink-0" />
           <span className="text-sm font-bold text-main truncate">{value.name}</span>
           <button type="button" onClick={() => { setPicking(true); setQuery('') }}
             className="ml-auto text-xs font-bold text-brand-text hover:underline cursor-pointer shrink-0">Change</button>
         </div>
         {(value.address || value.contact || value.tin) && (
-          <p className="text-xs text-base-content/70">
+          <p className="text-xs text-muted">
             {[value.address, value.contact, value.tin && 'TIN ' + value.tin].filter(Boolean).join(' · ')}
             {' '}
             <button type="button" onClick={onRemove} className="font-bold text-brand-text hover:underline cursor-pointer">Remove the agency</button>
@@ -119,7 +119,7 @@ export function AgencyFields({ value, picking, setPicking, onChange, onOpenProfi
   // ── Choosing: three marks on one line, everything else floats OVER the fields ──
   return (
     <div className="relative" ref={boxRef}>
-      <div className="flex items-center gap-2 h-11 border border-base-300 rounded-md px-3 transition-[border-color,box-shadow] duration-200 focus-within:border-ink-900 focus-within:ring-2 focus-within:ring-gold-400/40">
+      <div className="flex items-center gap-2 h-11 border border-soft rounded-md px-3 transition-[border-color,box-shadow] duration-200 focus-within:border-gold-500 focus-within:ring-2 focus-within:ring-gold-400/30">
         <Building2 className="w-3.5 h-3.5 text-brand-text shrink-0" />
         <Search className={typed ? 'w-3.5 h-3.5 text-brand-text shrink-0' : 'w-3.5 h-3.5 text-muted shrink-0'} />
         <input autoFocus ref={inputRef} value={query} onChange={e => setQuery(e.target.value)}
@@ -139,19 +139,19 @@ export function AgencyFields({ value, picking, setPicking, onChange, onOpenProfi
           while the cursor is in the search box; `onMouseDown` is swallowed so tapping a row
           does not blur the box and yank the list away before the tap lands. */}
       {focused && matches.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-30 mt-1 bg-base-100 border border-base-300 rounded-sm shadow-lg overflow-hidden"
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 bg-card border border-soft rounded-md shadow-softLg overflow-hidden"
           onMouseDown={e => e.preventDefault()}>
           <div className="max-h-[170px] overflow-y-auto">
             {matches.map(d => (
               <button key={d.id} type="button" onClick={() => pick(d)}
-                className="w-full text-left px-3 py-2 text-[13px] flex items-center gap-2 cursor-pointer hover:bg-base-200 border-b border-base-200 last:border-b-0">
+                className="w-full text-left px-3 py-2 text-[13px] flex items-center gap-2 cursor-pointer hover:bg-gold-100 border-b border-soft last:border-b-0">
                 <span className="truncate font-semibold text-main">{d.name}</span>
                 <span className="ml-auto text-xs text-muted shrink-0">{d.address || d.type}</span>
               </button>
             ))}
           </div>
           {matches.length > 5 && (
-            <p className="px-3 py-1 text-xs text-muted border-t border-base-200">
+            <p className="px-3 py-1 text-xs text-muted border-t border-soft">
               {matches.length} saved · scroll for the rest
             </p>
           )}
@@ -160,11 +160,11 @@ export function AgencyFields({ value, picking, setPicking, onChange, onOpenProfi
 
       {/* Nothing matched — and this is the ONLY place the New agency button lives. */}
       {focused && matches.length === 0 && (
-        <div className="absolute left-0 right-0 top-full z-30 mt-1 bg-base-100 border border-base-300 rounded-sm shadow-lg px-3 py-2 flex items-center gap-2"
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 bg-card border border-soft rounded-md shadow-softLg px-3 py-2 flex items-center gap-2"
           onMouseDown={e => e.preventDefault()}>
-          <span className="text-xs text-base-content/70">No saved agency</span>
+          <span className="text-xs text-muted">No saved agency</span>
           <button type="button" onClick={() => onOpenProfile(null, typed)}
-            className="ml-auto inline-flex items-center gap-1 rounded-sm bg-primary text-primary-content px-3 h-8 text-xs font-bold cursor-pointer">
+            className="ml-auto inline-flex items-center gap-1 rounded-sm bg-gold-400 text-ink-900 px-3 h-8 text-xs font-bold cursor-pointer">
             <Plus className="w-3 h-3" /> New agency
           </button>
         </div>

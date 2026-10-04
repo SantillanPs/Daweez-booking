@@ -56,7 +56,7 @@ export function DiscountPricingControls({
           className={OPTION_ROW + ' cursor-pointer'}>
           <span className={OPTION_NAME}>Discount</span>
           <span className={OPTION_VALUE}>
-            {given ? <span className="text-base-content tabular-nums">{given}</span> : !open && <span>Add</span>}
+            {given ? <span className="text-main tabular-nums">{given}</span> : !open && <span>Add</span>}
             <ChevronDown className={'w-4 h-4 shrink-0 transition-transform duration-200 ' + (open ? 'rotate-180' : '')} />
           </span>
         </button>
@@ -86,7 +86,7 @@ export function DiscountPricingControls({
               aria-label="One block fewer" className={ICON_BUTTON + ' disabled:opacity-30 disabled:hover:bg-transparent'}>
               <Minus className="w-4 h-4" />
             </button>
-            <span className="w-7 text-center text-[15px] font-semibold tabular-nums text-base-content">{venueDayBlocks}</span>
+            <span className="w-7 text-center text-[15px] font-semibold tabular-nums text-main">{venueDayBlocks}</span>
             <button type="button" onClick={() => setVenueDayBlocks(Math.min(8, venueDayBlocks + 1))} disabled={venueDayBlocks >= 8}
               aria-label="One block more" className={ICON_BUTTON + ' disabled:opacity-30 disabled:hover:bg-transparent'}>
               <Plus className="w-4 h-4" />

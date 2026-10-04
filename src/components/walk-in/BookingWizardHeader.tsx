@@ -40,28 +40,28 @@ export function BookingWizardHeader({
   bookingType, formStatus, setFormStatus, formGuestName, editing, stay, onClose,
 }: BookingWizardHeaderProps) {
   return (
-    <div className="flex items-center justify-between gap-3 pl-5 sm:pl-6 pr-2 py-3 border-b border-base-300 shrink-0 bg-base-100">
+    <div className="flex items-center justify-between gap-3 pl-5 sm:pl-6 pr-2 py-3 border-b border-soft shrink-0 bg-card">
       <div className="min-w-0">
-        <h3 className="text-[13px] font-medium text-base-content/70">
+        <h3 className="text-[13px] font-medium text-muted">
           {formStatus === 'blocked' ? 'Blocked dates' : bookingType === 'partner' && formGuestName ? 'c/o ' + formGuestName : editing ? 'Correcting a booking' : 'New booking'}
         </h3>
         {formStatus === 'blocked' || stay.length === 0 ? (
-          <p className="font-display text-[18px] leading-snug font-bold tracking-tight text-base-content">
+          <p className="font-display text-[18px] leading-snug font-bold tracking-tight text-main">
             {formStatus === 'blocked' ? 'Correcting a block' : 'No room or venue picked'}
           </p>
         ) : stay.map(line => (
-          <p key={line} className="font-display text-[18px] leading-snug font-bold tracking-tight text-base-content">{line}</p>
+          <p key={line} className="font-display text-[18px] leading-snug font-bold tracking-tight text-main">{line}</p>
         ))}
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         {/* Only while correcting a block: the only way back to a booking. */}
         {formStatus === 'blocked' && (
-          <button type="button" onClick={() => setFormStatus('confirmed')} className="btn btn-ghost rounded-md h-11 min-h-11">
+          <button type="button" onClick={() => setFormStatus('confirmed')} className="min-h-11 px-3 inline-flex items-center gap-1.5 rounded-lg text-[14px] font-bold text-main hover:bg-softbg transition-colors cursor-pointer">
             <CalendarX className="w-4 h-4" /> &larr; Booking
           </button>
         )}
         <button type="button" onClick={onClose} title="Close" aria-label="Close"
-          className="w-11 h-11 inline-flex items-center justify-center rounded-md text-base-content/70 hover:bg-base-200 hover:text-base-content transition-colors cursor-pointer">
+          className="w-11 h-11 inline-flex items-center justify-center rounded-md text-muted hover:bg-softbg hover:text-main transition-colors cursor-pointer">
           <X className="w-5 h-5" />
         </button>
       </div>

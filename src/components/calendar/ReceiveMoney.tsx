@@ -70,7 +70,7 @@ export function ReceiveMoney({
                 <button type="button" role="radio" aria-checked={on} onClick={() => onPayFor(c.key)}
                   className="w-full min-h-11 flex items-center justify-between gap-3 text-[13px] cursor-pointer">
                   <span className="flex items-center gap-2.5 min-w-0">
-                    <span className={'w-4 h-4 shrink-0 rounded-full border-2 ' + (on ? 'border-ink-900 bg-ink-900 shadow-[inset_0_0_0_3px_white]' : 'border-paper-400')} />
+                    <span className={'w-4 h-4 shrink-0 rounded-full border-2 ' + (on ? 'border-gold-500 bg-gold-500 shadow-[inset_0_0_0_3px_white]' : 'border-paper-400')} />
                     <span className={'truncate ' + (on ? 'font-bold text-main' : 'text-main')}>{c.label}</span>
                   </span>
                   <span className={'shrink-0 ' + (on ? 'font-bold text-main' : 'text-muted')}>{fmtPeso(c.amount)}</span>
@@ -93,7 +93,7 @@ export function ReceiveMoney({
         {PAYMENT_METHODS.map(m => (
           <button key={m} type="button" role="radio" aria-checked={chosen === m} onClick={() => onMethod(m)}
             className={'min-h-11 px-2 rounded-lg border text-[13px] font-bold whitespace-nowrap transition-colors cursor-pointer ' +
-              (chosen === m ? 'bg-ink-900 border-ink-900 text-white' : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100')}>
+              (chosen === m ? 'bg-gold-400 border-gold-400 text-ink-900' : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100')}>
             {m}
           </button>
         ))}

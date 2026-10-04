@@ -63,7 +63,7 @@ export function BirthDateInput({ value, onChange }: {
         onBlur={() => { setLeft(true); if (toIso(typed)) setTyped(toTyped(toIso(typed))) }}
         className={wrong ? FIELD_ERROR : FIELD}
       />
-      {wrong && <p className="text-xs text-error mt-1">Type the date like 06/15/1990.</p>}
+      {wrong && <p className="text-xs text-danger-600 mt-1">Type the date like 06/15/1990.</p>}
     </>
   )
 }

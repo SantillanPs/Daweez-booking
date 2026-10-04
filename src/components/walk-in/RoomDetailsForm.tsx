@@ -128,11 +128,11 @@ export const RoomDetailsForm = React.memo(
             <button type="button" onClick={() => setMenuOpen(o => !o)} title="More for this guest"
               aria-label="More for this guest" aria-expanded={menuOpen}
               className={'w-11 h-11 rounded-md flex items-center justify-center font-bold tracking-widest leading-none cursor-pointer transition-colors ' +
-                (menuOpen ? 'bg-gold-100 text-brand-text' : 'text-muted hover:text-main hover:bg-base-200')}>
+                (menuOpen ? 'bg-gold-100 text-brand-text' : 'text-muted hover:text-main hover:bg-softbg')}>
               ⋯
             </button>
             {menuOpen && (
-              <div className={'absolute right-0 top-11 z-30 min-w-[184px] bg-base-100 border border-base-300 rounded-md shadow-lg overflow-hidden ' + REVEAL}>
+              <div className={'absolute right-0 top-11 z-30 min-w-[184px] bg-card border border-soft rounded-md shadow-softLg overflow-hidden ' + REVEAL}>
                 {!agencyOn ? (
                   <button type="button" onClick={() => { setMenuOpen(false); onAddAgency() }}
                     className="w-full text-left px-3 h-11 text-[14px] font-semibold text-main hover:bg-gold-100 flex items-center gap-2 cursor-pointer">
@@ -216,7 +216,7 @@ export const RoomDetailsForm = React.memo(
               {/* A plain block, not a `Field`: the date box carries its own label for
                   screen readers and draws its own "type it like this" line under itself. */}
               <div className={REVEAL}>
-                <span className="block text-[13px] font-medium text-base-content/70 mb-1.5">Birth date</span>
+                <span className="block text-[13px] font-medium text-muted mb-1.5">Birth date</span>
                 <BirthDateInput value={formGuestBirthdate} onChange={setFormGuestBirthdate} />
               </div>
               <Field label="Sex" className={REVEAL}>

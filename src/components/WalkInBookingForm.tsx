@@ -600,7 +600,7 @@ export function WalkInBookingForm({
           on the right — so the money is beside the guest instead of under everything
           else, and nothing a walk-in needs is below the fold. On a tablet it is one
           column, with the payment last and the amount held beside Confirm. */}
-      <div className="w-full max-w-2xl lg:max-w-5xl bg-base-100 rounded-lg border border-base-300 shadow-xl flex flex-col max-h-[92dvh] overflow-hidden animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
+      <div className="w-full max-w-2xl lg:max-w-5xl bg-card rounded-xl shadow-softLg flex flex-col max-h-[92dvh] overflow-hidden animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
 
         <BookingWizardHeader
           bookingType={bookingType}
@@ -758,7 +758,7 @@ export function WalkInBookingForm({
 
               {/* What the guest pays, and who took it — its own column, with the amount
                   leading it. */}
-              <div className="px-5 sm:px-6 py-5 border-t lg:border-t-0 lg:border-l border-base-300 lg:overflow-y-auto">
+              <div className="px-5 sm:px-6 py-5 border-t lg:border-t-0 lg:border-l border-soft lg:overflow-y-auto">
                 <section className={GROUP + ' font-sans delay-150 animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-both motion-reduce:animate-none'}>
                   <h4 className={GROUP_TITLE}>Payment</h4>
                   <BookingDepositFields
@@ -798,19 +798,19 @@ export function WalkInBookingForm({
               for something that went wrong — a form nobody has finished yet is not a
               mistake. */}
           {formStatus === 'confirmed' && (
-            <div className="shrink-0 border-t border-base-300 bg-base-100 px-5 sm:px-6 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-              <p role="status" className={'basis-full lg:basis-0 lg:flex-1 min-w-0 text-[14px] font-medium empty:hidden ' + (footerProblem ? 'text-danger-600' : 'text-base-content/70')}>
+            <div className="shrink-0 border-t border-soft bg-card px-5 sm:px-6 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <p role="status" className={'basis-full lg:basis-0 lg:flex-1 min-w-0 text-[14px] font-medium empty:hidden ' + (footerProblem ? 'text-danger-600' : 'text-muted')}>
                 {footerProblem || (agencyMissing ? 'Choose the agency — the bill is addressed to them.' : paymentPrompt)}
               </p>
               {!editingBookings && (
                 <p className="lg:hidden flex items-baseline gap-2">
-                  <span className="text-[13px] font-medium text-base-content/70">To pay now</span>
-                  <b className="font-display text-[22px] leading-none font-extrabold tracking-tight tabular-nums text-base-content">₱{paysNow.toLocaleString()}</b>
+                  <span className="text-[13px] font-medium text-muted">To pay now</span>
+                  <b className="font-display text-[22px] leading-none font-extrabold tracking-tight tabular-nums text-main">₱{paysNow.toLocaleString()}</b>
                 </p>
               )}
               <div className="flex items-center gap-2 ml-auto">
-                <button type="button" onClick={onClose} className="btn btn-ghost rounded-md h-12 min-h-12 px-4 text-[15px]">Cancel</button>
-                <button type="submit" disabled={isSubmitting || agencyMissing || !!paymentPrompt} className="btn btn-primary rounded-md shadow-none h-12 min-h-12 px-6 text-[15px]">
+                <button type="button" onClick={onClose} className="min-h-12 px-4 rounded-lg text-[15px] font-bold text-main hover:bg-softbg transition-colors cursor-pointer">Cancel</button>
+                <button type="submit" disabled={isSubmitting || agencyMissing || !!paymentPrompt} className="min-h-12 px-6 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-[15px] font-bold shadow-sm transition-[background-color,transform] duration-150 active:scale-[0.98] cursor-pointer disabled:bg-softbg disabled:text-muted disabled:shadow-none disabled:cursor-default disabled:active:scale-100">
                   {isSubmitting ? 'Saving…' : editingBookings ? 'Save changes' : 'Confirm booking'}
                 </button>
               </div>

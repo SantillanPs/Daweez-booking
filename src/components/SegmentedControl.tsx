@@ -32,10 +32,9 @@ export interface SegmentOption<T extends string> {
  *   own colour, so they are drawn the same on a second line.
  * - `invalid` turns the edge red: the mark for a choice the form is still waiting on.
  *
- * **The chosen cell is charcoal, not gold** (the staff's feedback on the form, 2026-10-04:
- * hard to read). Gold on the chosen cell made `None` on the discount row as loud as the
- * button that finishes the booking. Gold now means one thing on the form — press this —
- * and charcoal means this is chosen.
+ * **The chosen cell is gold, like every other chosen thing in the system** — the tab the
+ * desk is on, the guest being served (the owner, 2026-10-04: the form's colours should be
+ * the system's own). For a few hours it was charcoal, which no other screen uses for that.
  */
 export function SegmentedControl<T extends string>({ options, value, onChange, label, invalid = false }: {
   options: SegmentOption<T>[]
@@ -63,7 +62,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
   return (
     <div role="radiogroup" aria-label={label} aria-invalid={invalid || undefined}
       className={'flex flex-wrap w-full min-w-0 gap-px border rounded-md overflow-hidden ' +
-        (invalid ? 'border-danger-500 bg-danger-200' : 'border-base-300 bg-base-300')}>
+        (invalid ? 'border-danger-400 bg-danger-200' : 'border-soft bg-soft')}>
       {options.map((o, i) => (
         <button key={o.key} type="button" role="radio" title={o.hint} aria-checked={value === o.key}
           ref={el => { cells.current[i] = el }}
@@ -72,7 +71,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
           onKeyDown={e => onKeyDown(e, i)}
           /* The focus ring is drawn INSIDE the cell: the group clips whatever leaves it. */
           className={'grow h-11 px-2 text-[14px] font-semibold whitespace-nowrap cursor-pointer transition-colors duration-150 focus-visible:-outline-offset-2 focus-visible:rounded-none ' +
-            (value === o.key ? 'bg-ink-900 text-white' : 'bg-base-100 text-base-content hover:bg-base-200 active:bg-base-300')}>
+            (value === o.key ? 'bg-gold-400 text-ink-900' : 'bg-card text-main hover:bg-gold-100 active:bg-gold-200')}>
           {o.label}
         </button>
       ))}

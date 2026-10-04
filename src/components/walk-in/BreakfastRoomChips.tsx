@@ -23,7 +23,7 @@ interface BreakfastRoomChipsProps {
  * toggle.
  *
  * A chip says its own state without relying on colour (the owner could not tell
- * that a brown chip meant "on"): a tick and a charcoal fill for ON, an empty circle
+ * that a brown chip meant "on"): a tick and a gold fill for ON, an empty circle
  * for OFF. A room the desk has never priced is NOT tappable — it would charge ₱0 and
  * look like it worked — so it reads "no price".
  *
@@ -69,10 +69,10 @@ export function BreakfastRoomChips({ rooms, chosen, onToggle, onAll }: Breakfast
                 : 'No breakfast price for this room yet — set it in Settings → Room Rates'}
               className={'flex items-center gap-1.5 h-9 text-[14px] font-semibold rounded-md px-3 border transition-[background-color,border-color,color,transform] duration-150 ' +
                 (!sellable
-                  ? 'bg-base-200 text-base-content/50 border-base-300 cursor-not-allowed'
+                  ? 'bg-softbg text-muted border-soft cursor-not-allowed'
                   : on
-                    ? 'bg-ink-900 text-white border-ink-900 cursor-pointer active:scale-[0.97]'
-                    : 'bg-base-100 text-base-content border-base-300 cursor-pointer hover:border-ink-900 active:scale-[0.97]')}
+                    ? 'bg-gold-400 text-ink-900 border-gold-400 cursor-pointer active:scale-[0.97]'
+                    : 'bg-card text-main border-soft cursor-pointer hover:border-gold-400 active:scale-[0.97]')}
             >
               {on
                 ? <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={3} />

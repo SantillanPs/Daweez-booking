@@ -130,11 +130,11 @@ export function BookingDepositFields({
       {/* The figure follows the plan as it is changed, so the desk sees it move. */}
       <div>
         <p className={LABEL}>{taking ? 'To pay now' : 'Total'}</p>
-        <p className="mt-1 font-display text-[34px] leading-none font-extrabold tracking-tight tabular-nums text-base-content">
+        <p className="mt-1 font-display text-[34px] leading-none font-extrabold tracking-tight tabular-nums text-main">
           <AnimatedNumber value={lead} duration={350} prefix="₱" />
         </p>
         {taking && lead !== total && (
-          <p className="mt-1.5 text-[13px] text-base-content/70 tabular-nums">of {peso(total)} for the stay</p>
+          <p className="mt-1.5 text-[13px] text-muted tabular-nums">of {peso(total)} for the stay</p>
         )}
       </div>
 
