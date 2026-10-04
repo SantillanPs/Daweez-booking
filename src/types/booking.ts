@@ -123,6 +123,10 @@ export interface PaymentRecord {
   // this is how much of it settled THIS room's bill. Absent = the whole amount
   // (a single-room payment, or one recorded before this was kept).
   share?: number
+  // Set when the money was taken for order slips alone — a room guest paying for
+  // their food before check-out. Their numbers (`OS-0007`), so the receipt and the
+  // payments list say what was paid for.
+  slips?: string[]
 }
 
 export interface Companion {

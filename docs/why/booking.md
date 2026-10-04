@@ -11,6 +11,10 @@
 - **Add-ons list only what suits the unit** and stay behind "More add-ons", because they are rarely used.
 - **After confirming, the booking opens in the quick view**, so nobody hunts for it on the calendar.
 
+- **It has to be easy to use.** Sebastian, testing it on 2026-10-04: *"I want to feel good or at least not have a hard time using it."*
+- **It is flat, with no cards.** Sebastian, the same day, after the first round of fixes: *"I don't like the boxes design. I prefer a more 2d, clean, minimalistic, simple, yet professional look."*
+- **The staff found the flat form hard to read and understand** when Sebastian showed it to them (2026-10-04). They named nothing specific.
+
 ## Payment plans
 
 The guest picks one of four: **Deposit** (half the stay — the standard, already chosen), **Full pay**, **Custom** (the only one typed), **Reservation**.
@@ -35,7 +39,8 @@ The guest picks one of four: **Deposit** (half the stay — the standard, alread
 - **Blocking dates happens on the calendar**, in a small pane that asks only *why* (Cleaning, Maintenance, Owner use, Other).
 - **An Owner use block can have no end date.** The owner's family sometimes use a room for a few days or weeks, and when they will leave is often not known (the owner, 2026-10-04). The room stays closed until the desk presses "They have left".
 - **A booking that starts before the window shows `‹`**, so a cut-off block is not read as a new arrival.
-- **Payment dot colours:** coral = owes, amber = deposit only, green = paid, grey = reserved.
+- **A pill says what is still to pay and whether the guest is in or out.** The staff, 2026-10-04: they want to look at the calendar and know the amount left for every room, before and after check-in, and which rooms are checked in or checked out — without clicking each pill. The amount used to be a coloured dot.
+- **Where the booking came from is not shown for now.** Sebastian, 2026-10-04: *"remove the 'booked from' for now since ical isn't used yet."*
 
 ## Short stays (3, 6, 12 hours)
 
@@ -53,14 +58,16 @@ The guest picks one of four: **Deposit** (half the stay — the standard, alread
 - **Early check-in is recorded at the door but charged at check-out.** The owner: *"just add it to their bill for when they checkout."* Before this, checking a fully paid guest in at 1 AM flipped the badge to "Partly paid" and he read it as a bug. The desk still sees a line saying what will be added.
 - Early/late is charged per hour up to a cap, then one full night. Venues are always hourly.
 - **Check-out is refused while money is owed**, said under the button. A stay billed to an agency is the exception (see Agencies).
+- **Check-in and check-out must not happen by accident** (the staff, 2026-10-04). Sebastian chose: the app asks first, and a wrong one can be undone.
 - **Food can only be ordered once the guest is checked in** — people order when they are physically in the hotel.
 
 ## The quick view (the panel that opens on a booking)
 
 - **Only one next step is ever on screen**, and nothing appears until it is needed. A paid booking shows one line (`Fully paid ✓`) and its button; the money box appears only while something is owed.
-- **No stack of closed sections.** The owner, 2026-10-04: *"it looks so badly designed… it looks so lazy just stacking accordions."* The panel had become a money box over three closed sections that were there whether or not they held anything. Now a thing appears when the stay reaches it: receipts once there is one, the guest tab once the guest is checked in, and extending is a quiet action in the bottom row beside Print and Cancel.
-- **Money is taken in one place**, the money box. A part-payment is "A different amount" there; the second payment form that sat under Payment receipts is gone.
-- **The title is the room and the guest** (`Room 7 · Noel Bautista`) with one status word — the money word. It used to show two (`Confirmed` and `Reserved`).
+- **No stack of closed sections.** The owner, 2026-10-04: *"it looks so badly designed… it looks so lazy just stacking accordions."* The panel had become a money box over three closed sections that were there whether or not they held anything. Now a thing appears when the stay reaches it: receipts once there is one, the order slips once the guest is checked in, and extending is a quiet action in the bottom row beside Print and Cancel.
+- **Money is taken in one place.** A part-payment is "A different amount" there; the second payment form that sat under Payment receipts is gone.
+- **With the guest's money in hand, nobody could tell where to record it, what came after, or where the booking stood** (the staff and Sebastian, 2026-10-04). Sebastian: *"it's not directing my eyes on where I'm supposed to look at after receiving money."* The staff also could not tell whether a booking was checked in or checked out.
+- **The title is the room and the guest** (`Room 7 · Noel Bautista`). Under it the panel says three things in words: the payment, the check-in, the check-out.
 - The panel is **as wide as its contents**, never a fixed width, and one column.
 - Recording the first payment confirms the booking and prints the receipt.
 

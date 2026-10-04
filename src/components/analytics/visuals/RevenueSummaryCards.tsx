@@ -91,7 +91,7 @@ export const RevenueSummaryCards: React.FC<RevenueSummaryCardsProps> = ({
           <h3 className="text-xl sm:text-2xl font-extrabold text-emerald-600">
             <AnimatedNumber prefix="₱" value={restaurantTotal} />
           </h3>
-          <p className="text-[10px] text-muted mt-1">Food &amp; drinks ordered on a tab</p>
+          <p className="text-[10px] text-muted mt-1">Food &amp; drinks on the order slips</p>
         </div>
       </div>
     </div>

@@ -1,8 +1,11 @@
 import React from 'react'
 import { Companion, PartnerDeal } from '../../types/booking'
-import { User, Phone, Mail, Building2 } from 'lucide-react'
+import { Building2, ChevronDown } from 'lucide-react'
 import { CompanionFields } from './CompanionFields'
 import { BlockReasonFields } from './BlockReasonFields'
+import { BirthDateInput } from './BirthDateInput'
+import { Field } from './Field'
+import { FIELD, FIELD_ERROR, SELECT, GROUP, GROUP_TITLE, OPTION_LIST, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL } from './formStyles'
 
 interface RoomDetailsFormProps {
   formStatus: 'confirmed' | 'blocked'
@@ -101,6 +104,9 @@ export const RoomDetailsForm = React.memo(
       formGuestNationality || formGuestAddress || formGuestEmail ||
       formVehiclePlate || formGuestBirthdate || formGuestGender
     )
+    // Once open because a field holds something, it STAYS open while that field is
+    // retyped — clearing the only filled box used to close the section mid-typing.
+    if (hasMoreDetails && !showMore) setShowMore(true)
     const showExtra = showMore || hasMoreDetails
     // Read the staff-editable rate so the form never quotes a price the bill
     // won't charge (the price used to be hardcoded at ₱150).
@@ -110,32 +116,31 @@ export const RoomDetailsForm = React.memo(
     }
 
     return (
-      <div className="bg-base-100 p-3 rounded-xl border border-base-300 shadow-sm space-y-3 animate-in fade-in duration-200 font-sans">
-        <div className="flex items-center gap-2 pb-2 border-b border-base-300">
-          <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><User className="w-3 h-3" /></span>
-          <h4 className="text-[10px] font-bold text-base-content tracking-widest uppercase">Guest Information</h4>
+      <section className={GROUP + ' font-sans'}>
+        <div className="flex items-center justify-between gap-2">
+          <h4 className={GROUP_TITLE}>Guest</h4>
           {/* The ⋯ — the owner's own idea (2026-09): one small dot menu at the end of this
               row, holding "Add agency?" and, once an agency is on the booking, only
               "Remove agency" — **Change lives on the bill-to line itself** (the owner took
               the duplicate out of this menu), and the popup hangs to the LEFT of the dot
-              rather than across the card. */}
-          <div className="relative ml-auto">
+              rather than across the form. */}
+          <div className="relative -my-2">
             <button type="button" onClick={() => setMenuOpen(o => !o)} title="More for this guest"
-              aria-label="More for this guest"
-              className={'w-6 h-6 rounded-md border flex items-center justify-center font-bold tracking-widest leading-none cursor-pointer transition-colors ' +
-                (menuOpen ? 'bg-gold-100 border-gold-400 text-brand-text' : 'bg-card border-soft text-muted hover:text-main')}>
+              aria-label="More for this guest" aria-expanded={menuOpen}
+              className={'w-11 h-11 rounded-md flex items-center justify-center font-bold tracking-widest leading-none cursor-pointer transition-colors ' +
+                (menuOpen ? 'bg-gold-100 text-brand-text' : 'text-muted hover:text-main hover:bg-base-200')}>
               ⋯
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-7 z-30 min-w-[176px] bg-base-100 border border-base-300 rounded-lg shadow-lg overflow-hidden">
+              <div className={'absolute right-0 top-11 z-30 min-w-[184px] bg-base-100 border border-base-300 rounded-md shadow-lg overflow-hidden ' + REVEAL}>
                 {!agencyOn ? (
                   <button type="button" onClick={() => { setMenuOpen(false); onAddAgency() }}
-                    className="w-full text-left px-3 py-2 text-[11.5px] font-bold text-main hover:bg-gold-100 flex items-center gap-1.5 cursor-pointer">
-                    <Building2 className="w-3.5 h-3.5 text-brand-text" /> Add agency?
+                    className="w-full text-left px-3 h-11 text-[14px] font-semibold text-main hover:bg-gold-100 flex items-center gap-2 cursor-pointer">
+                    <Building2 className="w-4 h-4 text-brand-text" /> Add agency?
                   </button>
                 ) : (
                   <button type="button" onClick={() => { setMenuOpen(false); onRemoveAgency() }}
-                    className="w-full text-left px-3 py-2 text-[11.5px] font-bold text-danger-600 hover:bg-gold-100 cursor-pointer">Remove agency</button>
+                    className="w-full text-left px-3 h-11 text-[14px] font-semibold text-danger-600 hover:bg-gold-100 cursor-pointer">Remove agency</button>
                 )}
               </div>
             )}
@@ -145,127 +150,111 @@ export const RoomDetailsForm = React.memo(
         {/* The agency line (BILL TO …) sits ABOVE the guest's name — the paper's own order,
             COMPANY over NAME OF GUEST. */}
         {agencySlot}
-        
-        <div className="space-y-3">
 
-          {/* Name and Contact No. share the first row (the owner's design, 2026-09-28) —
-              the two things the desk always types. Everything else waits behind "More
-              details" below, and shows itself the moment it holds a value. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-base-content/70 font-medium block mb-1">Name <span className="text-error">*</span></label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
-              <input 
-                type="text" 
-                placeholder="Guest full name" 
-                value={formGuestName} 
-                onChange={e => setFormGuestName(e.target.value.toUpperCase())}
-                onBlur={onGuestNameBlur}
-                className={guestNameError ? 'input input-bordered input-error w-full pl-9' : 'input input-bordered w-full pl-9'} 
-              />
-            </div>
-            {guestNameError && <p className="text-xs text-error mt-1">{guestNameError}</p>}
-          </div>
-
-          <div>
-            <label className="text-xs text-base-content/70 font-medium block mb-1">Contact No.</label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
-              <input
-                type="text"
-                placeholder="09xx-xxx-xxxx"
-                value={formGuestPhone}
-                onChange={e => setFormGuestPhone(e.target.value)}
-                className="input input-bordered w-full pl-9"
-              />
-            </div>
-          </div>
-          </div>
-
-          <button type="button" onClick={() => setShowMore(o => !o)}
-            className="text-[11px] font-bold text-brand-text hover:underline cursor-pointer flex items-center gap-1">
-            {showExtra ? '− Fewer details' : '＋ More details'}
-          </button>
-          {!showExtra && (
-            <p className="text-[10px] text-muted -mt-1">Nationality · Address · Email · Plate No. · Birth Date · Sex</p>
-          )}
+        {/* Name and Contact No. come first (the owner's design, 2026-09-28) — the two
+            things the desk always types. Everything else waits behind "More details"
+            below, and shows itself the moment it holds a value. Only Name is marked (the
+            red star); "(optional)" on three of the rest made the other four read as
+            required. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+          <Field label="Name" required error={guestNameError}>
+            <input
+              type="text"
+              autoComplete="off"
+              value={formGuestName}
+              onChange={e => setFormGuestName(e.target.value.toUpperCase())}
+              onBlur={onGuestNameBlur}
+              aria-invalid={guestNameError ? true : undefined}
+              className={guestNameError ? FIELD_ERROR : FIELD}
+            />
+          </Field>
+          <Field label="Contact no.">
+            <input
+              type="text"
+              inputMode="tel"
+              autoComplete="off"
+              value={formGuestPhone}
+              onChange={e => setFormGuestPhone(e.target.value)}
+              className={FIELD}
+            />
+          </Field>
 
           {showExtra && (
-          <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-base-300">
-            <div>
-              <label className="text-xs text-base-content/70 font-medium block mb-1">Nationality</label>
-              <input 
-                type="text" 
-                placeholder="e.g. Filipino" 
-                value={formGuestNationality || ''} 
-                onChange={e => setFormGuestNationality(e.target.value.toUpperCase())}
-                className="input input-bordered w-full transition-all font-medium" 
-              />
-            </div>
-            <div>
-              <label className="text-xs text-base-content/70 font-medium block mb-1">Address</label>
-              <input 
-                type="text" 
-                placeholder="Home address" 
-                value={formGuestAddress || ''} 
-                onChange={e => setFormGuestAddress(e.target.value.toUpperCase())}
-                className="input input-bordered w-full transition-all font-medium" 
-              />
-            </div>
-            <div>
-              <label className="text-xs text-base-content/70 font-medium block mb-1">Email (optional)</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
-                <input 
-                  type="email" 
-                  placeholder="guest@domain.com" 
-                  value={formGuestEmail} 
-                  onChange={e => setFormGuestEmail(e.target.value)}
-                  className="input input-bordered w-full pl-9" 
+            <>
+              <Field label="Nationality" className={REVEAL}>
+                <input
+                  type="text"
+                  value={formGuestNationality || ''}
+                  onChange={e => setFormGuestNationality(e.target.value.toUpperCase())}
+                  className={FIELD}
                 />
+              </Field>
+              <Field label="Address" className={REVEAL}>
+                <input
+                  type="text"
+                  value={formGuestAddress || ''}
+                  onChange={e => setFormGuestAddress(e.target.value.toUpperCase())}
+                  className={FIELD}
+                />
+              </Field>
+              <Field label="Email" className={REVEAL}>
+                <input
+                  type="email"
+                  value={formGuestEmail}
+                  onChange={e => setFormGuestEmail(e.target.value)}
+                  className={FIELD}
+                />
+              </Field>
+              <Field label="Plate no." className={REVEAL}>
+                <input
+                  type="text"
+                  value={formVehiclePlate || ''}
+                  onChange={e => setFormVehiclePlate(e.target.value.toUpperCase())}
+                  className={FIELD}
+                />
+              </Field>
+              {/* A plain block, not a `Field`: the date box carries its own label for
+                  screen readers and draws its own "type it like this" line under itself. */}
+              <div className={REVEAL}>
+                <span className="block text-[13px] font-medium text-base-content/70 mb-1.5">Birth date</span>
+                <BirthDateInput value={formGuestBirthdate} onChange={setFormGuestBirthdate} />
               </div>
-            </div>
-            <div>
-              <label className="text-xs text-base-content/70 font-medium block mb-1">Plate No. (optional)</label>
-              <input
-                type="text"
-                placeholder="Vehicle plate"
-                value={formVehiclePlate || ''}
-                onChange={e => setFormVehiclePlate(e.target.value.toUpperCase())}
-                className="input input-bordered w-full transition-all font-medium"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-base-content/70 font-medium block mb-1">Birth Date (optional)</label>
-              <input type="date" value={formGuestBirthdate} onChange={e => setFormGuestBirthdate(e.target.value)}
-                className="input input-bordered w-full transition-all font-medium" />
-            </div>
-            <div>
-              <label className="text-xs text-base-content/70 font-medium block mb-1">Sex</label>
-              <select
-                value={formGuestGender || ''}
-                onChange={e => setFormGuestGender(e.target.value)}
-                className="select select-bordered w-full font-medium"
-              >
-                <option value="">Not stated</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </select>
-            </div>
-          </div>
-
-          </>
+              <Field label="Sex" className={REVEAL}>
+                <select
+                  value={formGuestGender || ''}
+                  onChange={e => setFormGuestGender(e.target.value)}
+                  className={SELECT}
+                >
+                  <option value="">Not stated</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </Field>
+            </>
           )}
-
-          <CompanionFields companions={formCompanions} setCompanions={setFormCompanions} />
-
         </div>
-      </div>
+
+        {/* The optional extras, as lines in one ruled list. The whole line is the button. */}
+        <ul className={OPTION_LIST}>
+          {/* Once any of the extra boxes holds something they stay on screen, so there is
+              nothing left for this line to open or close. */}
+          {!hasMoreDetails && (
+            <li>
+              <button type="button" onClick={() => setShowMore(o => !o)} aria-expanded={showExtra}
+                className={OPTION_ROW + ' cursor-pointer'}>
+                <span className={OPTION_NAME}>More details</span>
+                <span className={OPTION_VALUE}>
+                  {showExtra
+                    ? <span>Hide</span>
+                    : <span className="truncate font-normal text-muted">Nationality, address, email, plate no., birth date, sex</span>}
+                  <ChevronDown className={'w-4 h-4 shrink-0 transition-transform duration-200 ' + (showExtra ? 'rotate-180' : '')} />
+                </span>
+              </button>
+            </li>
+          )}
+          <CompanionFields companions={formCompanions} setCompanions={setFormCompanions} />
+        </ul>
+      </section>
     )
   },
   (prevProps, nextProps) => {

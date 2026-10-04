@@ -1,10 +1,10 @@
 import { Booking, Room, Venue } from '../types/booking'
 import * as syncEngine from './syncEngine'
-import { normalizeVenueId } from './helpers'
+import { normalizeVenueId, dateToString } from './helpers'
 import { getRateConfig } from './rateConfig'
 import { chargeableEarlyHours } from './checkInOut'
 import { roomDisplayName } from '../components/calendar/bookingStyles'
-import { TabLine } from '../types/tab'
+import { OrderSlip, slipNumber, slipsTotal } from './orderSlips'
 
 /**
  * The rows of the printed Guest Billing Statement, one per charge.
@@ -35,6 +35,8 @@ export interface StatementLineItem {
   checkOut?: string
   /** Room rows only: the number in the `No. of Night` column. */
   nights?: number
+  /** Order slip rows only: `Paid` or `Not paid`, printed beside the slip's number. */
+  status?: string
 }
 
 /** The nights a booking is charged for (a short stay is one day). */
@@ -98,7 +100,7 @@ export function bookingLines(b: Booking, o: {
   rooms: Room[]
   venues: Venue[]
   bookingsList: Booking[]
-  tabLinesByBooking?: Record<string, TabLine[]>
+  slipsByBooking?: Record<string, OrderSlip[]>
 }): { items: StatementLineItem[]; tabTotal: number } {
   const items: StatementLineItem[] = []
   const pricing = bookingPricing(b, o)
@@ -259,20 +261,26 @@ export function bookingLines(b: Booking, o: {
     })
   }
 
-  // The guest's food and bar tab (k69) — its own band, and only when there is food:
-  // nothing has been ordered before the guest checks in, so no band is drawn at all.
-  const tab = o.tabLinesByBooking?.[b.id] || []
-  const tabTotal = tab.reduce((sum, l) => sum + Number(l.amount || 0), 0)
-  tab.forEach(l => {
+  // The guest's food and bar — its own band, and only when there is food: nothing is
+  // ordered before the guest checks in, so no band is drawn at all.
+  //
+  // **One row per order slip: its number, the day, its total and whether it is paid**
+  // (the staff's feedback, 2026-10-04). The bill used to list every dish, so food the
+  // guest had already paid for kept reading as an open order.
+  const slips = o.slipsByBooking?.[b.id] || []
+  const tabTotal = slipsTotal(slips)
+  slips.forEach(slip => {
     items.push({
-      key: b.id + '-tab-' + l.id,
+      key: b.id + '-slip-' + slip.tab.id,
       band: 'food',
-      description: l.description,
-      qty: String(l.qty || 1),
+      description: slipNumber(slip.tab),
+      qty: '',
       unit: 'PC',
-      price: Math.round(Number(l.unit_price || 0)),
+      price: 0,
       discount: 0,
-      amount: Math.round(Number(l.amount || 0)),
+      amount: Math.round(slip.total),
+      checkIn: slip.tab.opened_at ? dateToString(new Date(slip.tab.opened_at)) : '',
+      status: slip.paid ? 'Paid' : 'Not paid',
     })
   })
 

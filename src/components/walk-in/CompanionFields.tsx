@@ -1,82 +1,76 @@
 import { Companion } from '../../types/booking'
-import { Users, Trash2, Plus } from 'lucide-react'
+import { Trash2, Plus } from 'lucide-react'
+import { FIELD_IN_ROW, ICON_BUTTON, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL } from './formStyles'
 
 /**
- * The companion list inside the guest card.
+ * The companions — one line in the guest's list of extras, and a row for each
+ * companion under it.
  *
- * Extracted from `RoomDetailsForm` (which was 332 lines, over the 300-line limit)
- * when the guest card was restructured on the owner's instruction, 2026-09-28: name
- * and contact share the first row, everything else waits behind "More details", and
- * **the empty grey "No other guests added" placeholder is gone** — the owner's words,
- * *"keep the add a guest the same as before, but just remove the 'no other guests
- * added' section"*. The header and the `＋ Add Guest` button are unchanged, so the
- * desk sees exactly what it saw before; only the furniture under it went.
+ * Extracted from `RoomDetailsForm` when the guest card was restructured on the owner's
+ * instruction, 2026-09-28: name and contact come first, everything else waits behind
+ * "More details", and **the empty grey "No other guests added" placeholder is gone** —
+ * the owner's words, *"keep the add a guest the same as before, but just remove the 'no
+ * other guests added' section"*.
  *
- * The section stays in place rather than collapsing: with no companions it is the
- * header and the button, one line tall, and adding the first guest fills the row
- * where the placeholder used to sit.
+ * With no companions it is one line, and the whole line adds the first one. The words
+ * are **Add companion** (the design review, 2026-10-04): "Add Guest" used a second word
+ * for the same person.
  */
 export function CompanionFields({ companions, setCompanions }: {
   companions: Companion[]
   setCompanions: (val: Companion[]) => void
 }) {
+  const change = (idx: number, patch: Partial<Companion>) => {
+    const next = [...companions]
+    next[idx] = { ...next[idx], ...patch }
+    setCompanions(next)
+  }
+
   return (
-    <div className="pt-2 border-t border-base-300">
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5">
-          <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><Users className="w-3 h-3" /></span>
-          <span className="text-xs font-bold text-base-content">Companion Information</span>
-          {companions.length > 0 && (
-            <span className="badge badge-primary badge-sm ml-1">{companions.length} Guest{companions.length !== 1 ? 's' : ''}</span>
-          )}
+    <li>
+      <button type="button" onClick={() => setCompanions([...companions, { name: '' }])}
+        className={OPTION_ROW + ' cursor-pointer'}>
+        <span className={OPTION_NAME}>
+          Companions
+          {companions.length > 0 && <span className="ml-2 text-muted font-normal">{companions.length}</span>}
         </span>
-        <button
-          type="button"
-          onClick={() => setCompanions([...companions, { name: '' }])}
-          className="btn btn-ghost btn-xs text-primary hover:text-primary/80 font-bold gap-1 normal-case"
-        >
-          <Plus className="w-3.5 h-3.5" /> Add Guest
-        </button>
-      </div>
+        <span className={OPTION_VALUE}><Plus className="w-4 h-4" /> Add companion</span>
+      </button>
 
       {companions.length > 0 && (
-        <div className="space-y-2 pt-2">
+        <div className="space-y-2 pb-3">
           {companions.map((comp, idx) => (
-            <div key={idx} className="flex items-center gap-2 bg-base-200/50 p-2 rounded border border-base-300/60">
+            <div key={idx} className={'flex items-center gap-2 ' + REVEAL}>
               <input
                 type="text"
                 required
                 placeholder="Full name"
+                aria-label={'Companion ' + (idx + 1) + ' name'}
                 value={comp.name}
-                onChange={e => {
-                  const u = [...companions]
-                  u[idx] = { ...u[idx], name: e.target.value.toUpperCase() }
-                  setCompanions(u)
-                }}
-                className="input input-bordered input-sm flex-1"
+                onChange={e => change(idx, { name: e.target.value.toUpperCase() })}
+                className={FIELD_IN_ROW}
               />
               <input
                 type="text"
                 placeholder="Nationality"
-                value={comp.nationality}
-                onChange={e => {
-                  const u = [...companions]
-                  u[idx] = { ...u[idx], nationality: e.target.value.toUpperCase() }
-                  setCompanions(u)
-                }}
-                className="input input-bordered input-sm w-24"
+                aria-label={'Companion ' + (idx + 1) + ' nationality'}
+                value={comp.nationality || ''}
+                onChange={e => change(idx, { nationality: e.target.value.toUpperCase() })}
+                className={FIELD_IN_ROW + ' max-w-[10rem]'}
               />
               <button
                 type="button"
                 onClick={() => setCompanions(companions.filter((_, i) => i !== idx))}
-                className="btn btn-ghost btn-xs text-base-content/60 hover:text-error p-1"
+                title="Remove this companion"
+                aria-label="Remove this companion"
+                className={ICON_BUTTON + ' hover:text-danger-600'}
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </li>
   )
 }

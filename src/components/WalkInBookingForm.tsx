@@ -2,15 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal, PaymentRecord } from '../types/booking'
 import { useDashboardData } from './DashboardContext'
-import {
-  AlertCircle, UserCheck
-} from 'lucide-react'
 
 // Import modular subcomponents
 import { DiscountPricingControls, DiscountType } from './calendar/DiscountPricingControls'
 import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
 import { BookingDepositFields, PayPlan, PayMethod } from './walk-in/BookingDepositFields'
+import { BookingCorrectionFields } from './walk-in/BookingCorrectionFields'
 import { methodNeedsReference, paymentKind, paymentMethodChoice } from '../utils/paymentMethod'
 import { BreakfastRoomChips } from './walk-in/BreakfastRoomChips'
 import { breakfastSellable } from '../utils/breakfast'
@@ -21,6 +19,23 @@ import { AgencyFields } from './walk-in/AgencyFields'
 import { AgencyProfileForm } from './walk-in/AgencyProfileForm'
 import { BookingCreatedPanel } from './walk-in/BookingCreatedPanel'
 import { BookingWizardHeader } from './walk-in/BookingWizardHeader'
+import { Field } from './walk-in/Field'
+import { FIELD, GROUP, GROUP_TITLE, OPTION_LIST } from './walk-in/formStyles'
+import { stayLines } from './walk-in/stayLine'
+
+/**
+ * The receptionist named on the last booking made on THIS computer (the design review,
+ * 2026-10-04). The box used to open empty on every booking and was easy to miss, so
+ * bills and receipts went out with nobody's name on them. Now it opens already filled
+ * and the desk only retypes it when the person on duty changes.
+ */
+const RECEPTIONIST_KEY = 'daweez_pms_receptionist'
+const lastReceptionist = () => {
+  try { return localStorage.getItem(RECEPTIONIST_KEY) || '' } catch { return '' }
+}
+const rememberReceptionist = (name: string) => {
+  try { localStorage.setItem(RECEPTIONIST_KEY, name.trim()) } catch { /* storage is off: nothing to remember */ }
+}
 
 interface WalkInBookingFormProps {
   rooms: Room[]
@@ -202,7 +217,9 @@ export function WalkInBookingForm({
   const [formInvoiceNumber, setFormInvoiceNumber] = useState('')
 
   // ── Quick-form parity fields ──
-  const [formPreparedBy, setFormPreparedBy] = useState('')
+  // A NEW booking opens with the last receptionist; a booking being corrected keeps the
+  // name already on it (seeded below), never the name of whoever is correcting it.
+  const [formPreparedBy, setFormPreparedBy] = useState(() => editingBookings && editingBookings.length > 0 ? '' : lastReceptionist())
   // What the guest agreed to pay now (card k130): half the stay by default,
   // typable when the desk agrees something else. 0 means "work it out".
   const [formAgreedDeposit, setFormAgreedDeposit] = useState(0)
@@ -405,7 +422,8 @@ export function WalkInBookingForm({
    */
   const paysSomething = shortStayHours ? true : (formPaymentPlan !== 'reservation' && formPaymentPlan !== 'agency')
   // Correcting a booking takes no money, so it never waits on a method.
-  const paymentPrompt = editingBookings || !paysSomething || agreedDeposit <= 0 ? ''
+  const methodRequired = !editingBookings && paysSomething && agreedDeposit > 0
+  const paymentPrompt = !methodRequired ? ''
     : !formPaymentMethod ? 'Choose how the guest paid.'
       : methodNeedsReference(formPaymentMethod) && !formPaymentReference.trim()
         ? (paymentKind(formPaymentMethod) === 'gcash'
@@ -433,15 +451,13 @@ export function WalkInBookingForm({
     },
     reference: formPaymentReference,
     setReference: setFormPaymentReference,
-    formInvoiceNumber,
-    setFormInvoiceNumber,
-    formDownpaymentPaid,
-    setFormDownpaymentPaid,
-    formBalanceDue,
-    setFormBalanceDue,
-    formSecurityDeposit,
-    setFormSecurityDeposit,
+    methodRequired,
   }
+
+  /** What the guest hands over in this form — the figure beside the Confirm button. */
+  const paysNow = Math.max(0, Math.round(shortStayHours ? estTotal : agreedDeposit))
+  /** Something that actually went wrong: a refused save, or a box Confirm found empty. */
+  const footerProblem = formError || (trySave ? (Object.values(fieldErrors).find(Boolean) || '') : '')
 
   const staffNames = useMemo(
     () => Array.from(new Set((bookings || []).map(b => (b.prepared_by || '').trim()).filter(Boolean))).sort(),
@@ -551,6 +567,7 @@ export function WalkInBookingForm({
       updateBooking,
     })
     if (!result.ok) { setFormError(result.error); setIsSubmitting(false); return }
+    if (!editingBookings) rememberReceptionist(formPreparedBy)
     setCreatedBookingList(result.bookings)
     // **The money was taken in this form** (2026-09-29), so what the guest is handed is the
     // receipt, not the bill. A Reservation pays nothing and returns no receipt, so it still
@@ -576,230 +593,229 @@ export function WalkInBookingForm({
   }
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 font-sans" onClick={onClose}>
-      <div className="w-full max-w-md md:max-w-4xl bg-base-100 rounded-lg border border-base-300 shadow-xl flex flex-col max-h-[92vh] md:max-h-[85vh] overflow-hidden transition-all duration-300" onClick={e => e.stopPropagation()}>
+    // A press outside the form does nothing: it used to close it, so one stray tap beside
+    // the form threw away everything the desk had typed. Cancel and ✕ are the ways out.
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 font-sans">
+      {/* TWO COLUMNS on a wide screen — the guest and the stay on the left, the payment
+          on the right — so the money is beside the guest instead of under everything
+          else, and nothing a walk-in needs is below the fold. On a tablet it is one
+          column, with the payment last and the amount held beside Confirm. */}
+      <div className="w-full max-w-2xl lg:max-w-5xl bg-base-100 rounded-lg border border-base-300 shadow-xl flex flex-col max-h-[92dvh] overflow-hidden animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
 
         <BookingWizardHeader
-          hasVenues={hasVenues}
-          hasRooms={hasRooms}
           bookingType={bookingType}
           formStatus={formStatus}
           setFormStatus={setFormStatus}
           formGuestName={formGuestName}
+          editing={!!editingBookings && editingBookings.length > 0}
+          stay={stayLines(unitSelections, rooms, venues, shortStayHours)}
           onClose={onClose}
         />
         {/* ── Scrollable Body ── */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="overflow-y-auto flex-1 p-5 bg-base-200/30">
-            <div className="space-y-2.5">
-                {formError && (
-                  <div className="p-3 bg-error/10 border border-error/20 text-error text-xs flex items-center gap-2 rounded-md animate-in fade-in">
-                    <AlertCircle className="w-4 h-4 shrink-0" /><span>{formError}</span>
-                  </div>
+          {/* ONE FORM, THREE PARTS (cards k126, k128, k130, k132, k138, and the staff's
+              feedback of 2026-10-04 that the flat form was hard to read): Guest, Stay,
+              Payment. It is still the paper form the staff already know, on one page,
+              with no steps and no cards. The parts settle in one after another when the
+              form opens, in the order they are filled in. */}
+          {formStatus === 'confirmed' ? (
+            <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+              <div className="px-5 sm:px-6 py-5 space-y-7 lg:overflow-y-auto">
+                {showErr('units') && <p role="alert" className="text-[13px] font-medium text-danger-600">{showErr('units')}</p>}
+
+                <div className="animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-both motion-reduce:animate-none">
+                  <RoomDetailsForm
+                    formStatus={formStatus}
+                    formGuestName={formGuestName}
+                    setFormGuestName={setFormGuestName}
+                    formGuestEmail={formGuestEmail}
+                    setFormGuestEmail={setFormGuestEmail}
+                    formGuestPhone={formGuestPhone}
+                    setFormGuestPhone={setFormGuestPhone}
+                    formGuestGender={formGuestGender}
+                    setFormGuestGender={setFormGuestGender}
+                    formGuestNationality={formGuestNationality}
+                    setFormGuestNationality={setFormGuestNationality}
+                    formGuestAddress={formGuestAddress}
+                    setFormGuestAddress={setFormGuestAddress}
+                    formGuestBirthdate={formBirthdate}
+                    setFormGuestBirthdate={setFormBirthdate}
+                    formBlockNotes={formBlockNotes}
+                    setFormBlockNotes={setFormBlockNotes}
+                    formVehiclePlate={formVehiclePlate}
+                    setFormVehiclePlate={setFormVehiclePlate}
+                    formCompanions={formCompanions}
+                    setFormCompanions={setFormCompanions}
+                    showCompanions={showCompanions}
+                    setShowCompanions={setShowCompanions}
+                    hasRooms={hasRooms}
+                    partnerDeals={partnerDeals}
+                    formPartnerDealId={formPartnerDealId}
+                    setFormPartnerDealId={setFormPartnerDealId}
+                    formCompanyName={formCompanyName}
+                    setFormCompanyName={setFormCompanyName}
+                    formTIN={formTIN}
+                    setFormTIN={setFormTIN}
+                    formAddress={formAddress}
+                    setFormAddress={setFormAddress}
+                    onSelectPartnerDeal={handleSelectPartnerDeal}
+                    guestNameError={showErr('guestName')}
+                    onGuestNameBlur={markTouched('guestName')}
+                    agencyOn={agencyOn}
+                    agencyKey={formPartnerDealId || formCompanyName}
+                    agencyPicking={agencyPicking}
+                    onAddAgency={() => { setAgencyOn(true); setAgencyPicking(true); if (!editingBookings) setFormPaymentPlan('agency') }}
+                    onRemoveAgency={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'deposit' : p) }}
+                    agencySlot={agencyOn ? (
+                      <AgencyFields
+                        value={agency}
+                        picking={agencyPicking}
+                        setPicking={setAgencyPicking}
+                        onChange={v => {
+                          setFormPartnerDealId(v.dealId)
+                          setFormCompanyName(v.name)
+                          setFormAddress(v.address)
+                          setFormTIN(v.tin)
+                          setFormVehiclePlate(v.plate)
+                          if (v.contact) setFormGuestPhone(v.contact)
+                          setAgencyPicking(false)
+                        }}
+                        onOpenProfile={openAgencyProfile}
+                        onRemove={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'deposit' : p) }}
+                      />
+                    ) : null}
+                  />
+                </div>
+
+                {/* THE HOURS ARE CHOSEN ON THE CALENDAR, NOT HERE (the owner's
+                    instruction): the bar that pops up on the day the desk picked carries
+                    the hours at the room's own board prices, and they arrive in this form
+                    already settled. A SHORT STAY takes the room for the whole day and is
+                    paid in full at the counter, so breakfast, add-ons and discount simply
+                    step out of the way. Breakfast is a ROOM's choice, not a guest's
+                    (card k140). */}
+                {!shortStayHours && (
+                  <section className={GROUP + ' font-sans delay-75 animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-both motion-reduce:animate-none'}>
+                    <h4 className={GROUP_TITLE}>Stay</h4>
+                    <ul className={OPTION_LIST}>
+                      <BreakfastRoomChips
+                        rooms={pickedRooms}
+                        chosen={formBreakfastRoomIds}
+                        onToggle={id => setFormBreakfastRoomIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                        onAll={on => setFormBreakfastRoomIds(on ? pickedRooms.filter(breakfastSellable).map(r => r.id) : [])}
+                      />
+                      <AmenitiesForm
+                        hasRooms={hasRooms}
+                        hasVenues={hasVenues}
+                        hasAddons={hasAddons}
+                        estRentals={estRentals}
+                        estAddons={estAddons}
+                        formChairs={formChairs}
+                        setFormChairs={setFormChairs}
+                        formExtraFoam={formExtraFoam}
+                        setFormExtraFoam={setFormExtraFoam}
+                        formExtraPillow={formExtraPillow}
+                        setFormExtraPillow={setFormExtraPillow}
+                        formExtraBlanket={formExtraBlanket}
+                        setFormExtraBlanket={setFormExtraBlanket}
+                        formExtraTowel={formExtraTowel}
+                        setFormExtraTowel={setFormExtraTowel}
+                        formEventTable={formEventTable}
+                        setFormEventTable={setFormEventTable}
+                        formEventTent={formEventTent}
+                        setFormEventTent={setFormEventTent}
+                        formVenueExcessHours={formVenueExcessHours}
+                        setFormVenueExcessHours={setFormVenueExcessHours}
+                      />
+                      <DiscountPricingControls
+                        isDayBlock={hasDayBlock}
+                        discountType={discountType}
+                        setDiscountType={setDiscountType}
+                        discountValue={discountValue}
+                        setDiscountValue={setDiscountValue}
+                        venueDayBlocks={venueDayBlocks}
+                        setVenueDayBlocks={setVenueDayBlocks}
+                      />
+                    </ul>
+                  </section>
                 )}
 
-                <div className="space-y-2.5">
+                {/* Only while correcting a saved booking — and never a short stay,
+                    which is paid in full and has no figures to correct. */}
+                {editingBookings && !shortStayHours && (
+                  <BookingCorrectionFields
+                    formInvoiceNumber={formInvoiceNumber}
+                    setFormInvoiceNumber={setFormInvoiceNumber}
+                    formDownpaymentPaid={formDownpaymentPaid}
+                    setFormDownpaymentPaid={setFormDownpaymentPaid}
+                    formBalanceDue={formBalanceDue}
+                    setFormBalanceDue={setFormBalanceDue}
+                    formSecurityDeposit={formSecurityDeposit}
+                    setFormSecurityDeposit={setFormSecurityDeposit}
+                  />
+                )}
+              </div>
 
-                    {showErr('units') && <p className="text-[10px] text-error mt-1">{showErr('units')}</p>}
-
-                    {/* ONE FORM (cards k126, k128, k130, k132, k138): guest,
-                        companions, unit and dates, add-ons, discount, the
-                        receptionist and the deposit are all on this page — the
-                        paper form the staff already know, with no steps. */}
-                    {formStatus === 'confirmed' && (
-                      <div className="space-y-2.5">
-                        {/* THE HOURS ARE CHOSEN ON THE CALENDAR, NOT HERE (the owner's
-                            instruction): the bar that pops up on the day the desk picked
-                            carries `3h · 6h · 12h` at the room's own board prices, and
-                            the hours arrive in this form already settled. A SHORT STAY
-                            takes the room for the whole day and is paid in full at the
-                            counter, so breakfast, add-ons, discount and deposit simply
-                            step out of the way — the hours and what they cost are stated
-                            on the gold line where the deposit would be. */}
-
-                        <RoomDetailsForm
-                          formStatus={formStatus}
-                          formGuestName={formGuestName}
-                          setFormGuestName={setFormGuestName}
-                          formGuestEmail={formGuestEmail}
-                          setFormGuestEmail={setFormGuestEmail}
-                          formGuestPhone={formGuestPhone}
-                          setFormGuestPhone={setFormGuestPhone}
-                          formGuestGender={formGuestGender}
-                          setFormGuestGender={setFormGuestGender}
-                          formGuestNationality={formGuestNationality}
-                          setFormGuestNationality={setFormGuestNationality}
-                          formGuestAddress={formGuestAddress}
-                          setFormGuestAddress={setFormGuestAddress}
-                          formGuestBirthdate={formBirthdate}
-                          setFormGuestBirthdate={setFormBirthdate}
-                          formBlockNotes={formBlockNotes}
-                          setFormBlockNotes={setFormBlockNotes}
-                          formVehiclePlate={formVehiclePlate}
-                          setFormVehiclePlate={setFormVehiclePlate}
-                          formCompanions={formCompanions}
-                          setFormCompanions={setFormCompanions}
-                          showCompanions={showCompanions}
-                          setShowCompanions={setShowCompanions}
-                          hasRooms={hasRooms}
-                          partnerDeals={partnerDeals}
-                          formPartnerDealId={formPartnerDealId}
-                          setFormPartnerDealId={setFormPartnerDealId}
-                          formCompanyName={formCompanyName}
-                          setFormCompanyName={setFormCompanyName}
-                          formTIN={formTIN}
-                          setFormTIN={setFormTIN}
-                          formAddress={formAddress}
-                          setFormAddress={setFormAddress}
-                          onSelectPartnerDeal={handleSelectPartnerDeal}
-                          guestNameError={showErr('guestName')}
-                          onGuestNameBlur={markTouched('guestName')}
-                          agencyOn={agencyOn}
-                          agencyKey={formPartnerDealId || formCompanyName}
-                          agencyPicking={agencyPicking}
-                          onAddAgency={() => { setAgencyOn(true); setAgencyPicking(true); if (!editingBookings) setFormPaymentPlan('agency') }}
-                          onRemoveAgency={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'deposit' : p) }}
-                          agencySlot={agencyOn ? (
-                            <AgencyFields
-                              value={agency}
-                              picking={agencyPicking}
-                              setPicking={setAgencyPicking}
-                              onChange={v => {
-                                setFormPartnerDealId(v.dealId)
-                                setFormCompanyName(v.name)
-                                setFormAddress(v.address)
-                                setFormTIN(v.tin)
-                                setFormVehiclePlate(v.plate)
-                                if (v.contact) setFormGuestPhone(v.contact)
-                                setAgencyPicking(false)
-                              }}
-                              onOpenProfile={openAgencyProfile}
-                              onRemove={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'deposit' : p) }}
-                            />
-                          ) : null}
-                        />
-
-                        {/* Breakfast is a ROOM's choice, not a guest's (card k140): one line of
-                            room chips, right above the add-ons. Not for a short stay —
-                            a three-hour guest buys no breakfast. */}
-                        {!shortStayHours && (
-                          <>
-                            <BreakfastRoomChips
-                              rooms={pickedRooms}
-                              chosen={formBreakfastRoomIds}
-                              onToggle={id => setFormBreakfastRoomIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                              onAll={on => setFormBreakfastRoomIds(on ? pickedRooms.filter(breakfastSellable).map(r => r.id) : [])}
-                            />
-
-                            <AmenitiesForm
-                          hasRooms={hasRooms}
-                          hasVenues={hasVenues}
-                          hasAddons={hasAddons}
-                          estRentals={estRentals}
-                          estAddons={estAddons}
-                          formChairs={formChairs}
-                          setFormChairs={setFormChairs}
-                          formExtraFoam={formExtraFoam}
-                          setFormExtraFoam={setFormExtraFoam}
-                          formExtraPillow={formExtraPillow}
-                          setFormExtraPillow={setFormExtraPillow}
-                          formExtraBlanket={formExtraBlanket}
-                          setFormExtraBlanket={setFormExtraBlanket}
-                          formExtraTowel={formExtraTowel}
-                          setFormExtraTowel={setFormExtraTowel}
-                          formEventTable={formEventTable}
-                          setFormEventTable={setFormEventTable}
-                          formEventTent={formEventTent}
-                          setFormEventTent={setFormEventTent}
-                          formVenueExcessHours={formVenueExcessHours}
-                          setFormVenueExcessHours={setFormVenueExcessHours}
-                            />
-                          </>
-                        )}
-
-                        {/* ── The money block (the owner's 2026-09-29 layout fix) ──────────
-                            Two columns that end together. The Discount card is one row and the
-                            money card is three, so sitting them side by side left a band of empty
-                            surface under the Discount card — *"the gap between the two is
-                            ridiculous."* Receptionist moves up into that space, and Cancel /
-                            Confirm Booking take its old place directly under the money card, which
-                            is where the eye already is when the button is pressed. */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 items-start">
-                          {/* Left: what the stay is priced at, and who took it. */}
-                          <div className="space-y-2.5">
-                            {!shortStayHours && (
-                              <DiscountPricingControls
-                                isDayBlock={hasDayBlock}
-                                discountType={discountType}
-                                setDiscountType={setDiscountType}
-                                discountValue={discountValue}
-                                setDiscountValue={setDiscountValue}
-                                venueDayBlocks={venueDayBlocks}
-                                setVenueDayBlocks={setVenueDayBlocks}
-                              />
-                            )}
-                            <div className="bg-base-100 border border-base-300 rounded-xl px-3 py-2 flex items-center gap-2">
-                              <span className="flex items-center gap-1.5 shrink-0 w-[104px]" title="Who took this booking — it prints on the bill and the receipt.">
-                                <span className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><UserCheck className="w-2.5 h-2.5" /></span>
-                                <span className="text-[10px] font-bold text-base-content/70 whitespace-nowrap">Receptionist</span>
-                              </span>
-                              {/* The names used before suggest themselves (card k136), so
-                                  the same person is never written two different ways. */}
-                              <input list="staff-names" value={formPreparedBy} aria-label="Receptionist on duty"
-                                onChange={e => setFormPreparedBy(e.target.value.toUpperCase())}
-                                placeholder="Staff name" className="input input-bordered input-sm flex-1 min-w-0" />
-                              <datalist id="staff-names">
-                                {staffNames.map(name => <option key={name} value={name} />)}
-                              </datalist>
-                            </div>
-                          </div>
-
-                          {/* Right: what the guest pays, then the buttons under it. */}
-                          <div className="space-y-2.5">
-                            {shortStayHours ? (
-                              <>
-                                <div className="bg-gold-100 border border-gold-400 rounded-lg px-3.5 py-2">
-                                  <p className="text-[13px] font-bold text-ink-900">
-                                    {shortStayHours}-hour stay · ₱{estTotal.toLocaleString()} — paid in full at the counter
-                                  </p>
-                                  <p className="text-[11px] text-ink-600 mt-0.5">
-                                    No deposit and no statement: the guest pays the whole amount now, and the receipt is printed from the booking. The room stays taken for the rest of the day while it is cleaned.
-                                  </p>
-                                </div>
-                                <BookingDepositFields shortStay {...depositFieldProps} isEditMode={false} />
-                              </>
-                            ) : (
-                              <BookingDepositFields {...depositFieldProps} isEditMode={!!editingBookings} />
-                            )}
-
-                            <div>
-                              <div className="flex justify-end items-center gap-2">
-                                <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
-                                <button type="submit" disabled={isSubmitting || agencyMissing || !!paymentPrompt} className="btn btn-primary">
-                                  {isSubmitting ? 'Booking...' : 'Confirm Booking'}
-                                </button>
-                              </div>
-                              {/* The agency is step one of the agency path (the owner's ruling):
-                                  Confirm stays asleep until the bill has an addressee, and it says
-                                  so right under the button rather than in a popup. */}
-                              {agencyMissing && (
-                                <p className="text-[11px] text-danger-600 font-semibold text-right mt-1">
-                                  Choose the agency above — the bill is addressed to them.
-                                </p>
-                              )}
-                              {/* …and Confirm stays asleep for the money too (2026-09-29), saying
-                                  which half is missing rather than failing on the press. */}
-                              {paymentPrompt && !agencyMissing && (
-                                <p className="text-[11px] text-danger-600 font-semibold text-right mt-1">{paymentPrompt}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+              {/* What the guest pays, and who took it — its own column, with the amount
+                  leading it. */}
+              <div className="px-5 sm:px-6 py-5 border-t lg:border-t-0 lg:border-l border-base-300 lg:overflow-y-auto">
+                <section className={GROUP + ' font-sans delay-150 animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-both motion-reduce:animate-none'}>
+                  <h4 className={GROUP_TITLE}>Payment</h4>
+                  <BookingDepositFields
+                    shortStay={!!shortStayHours}
+                    payNow={editingBookings ? undefined : paysNow}
+                    {...depositFieldProps}
+                  />
+                  {/* The names used before suggest themselves (card k136), so the same
+                      person is never written two different ways. */}
+                  <Field label="Receptionist" className="pt-1">
+                    <input list="staff-names" value={formPreparedBy}
+                      title="Who took this booking — it prints on the bill and the receipt."
+                      autoComplete="off"
+                      onChange={e => setFormPreparedBy(e.target.value.toUpperCase())}
+                      className={FIELD} />
+                    <datalist id="staff-names">
+                      {staffNames.map(name => <option key={name} value={name} />)}
+                    </datalist>
+                  </Field>
+                </section>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex-1 px-5 sm:px-6 py-5">
+              {showErr('units') && <p role="alert" className="text-[13px] font-medium text-danger-600">{showErr('units')}</p>}
+            </div>
+          )}
+
+          {/* ── Cancel / Confirm, always on screen ──
+              The buttons hold the bottom edge the way the title holds the top (the design
+              review, 2026-10-04). On one column the payment is the last part of the form,
+              so what the guest hands over now is repeated here, where it never scrolls
+              away; on two columns it is already beside the buttons.
+
+              ONE line says what Confirm is waiting on, in the order the desk meets it:
+              what a press just refused, then the agency, then the money. It is red only
+              for something that went wrong — a form nobody has finished yet is not a
+              mistake. */}
+          {formStatus === 'confirmed' && (
+            <div className="shrink-0 border-t border-base-300 bg-base-100 px-5 sm:px-6 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <p role="status" className={'basis-full lg:basis-0 lg:flex-1 min-w-0 text-[14px] font-medium empty:hidden ' + (footerProblem ? 'text-danger-600' : 'text-base-content/70')}>
+                {footerProblem || (agencyMissing ? 'Choose the agency — the bill is addressed to them.' : paymentPrompt)}
+              </p>
+              {!editingBookings && (
+                <p className="lg:hidden flex items-baseline gap-2">
+                  <span className="text-[13px] font-medium text-base-content/70">To pay now</span>
+                  <b className="font-display text-[22px] leading-none font-extrabold tracking-tight tabular-nums text-base-content">₱{paysNow.toLocaleString()}</b>
+                </p>
+              )}
+              <div className="flex items-center gap-2 ml-auto">
+                <button type="button" onClick={onClose} className="btn btn-ghost rounded-md h-12 min-h-12 px-4 text-[15px]">Cancel</button>
+                <button type="submit" disabled={isSubmitting || agencyMissing || !!paymentPrompt} className="btn btn-primary rounded-md shadow-none h-12 min-h-12 px-6 text-[15px]">
+                  {isSubmitting ? 'Saving…' : editingBookings ? 'Save changes' : 'Confirm booking'}
+                </button>
+              </div>
+            </div>
+          )}
         </form>
 
         {/* The agency's own profile — details AND its per-room prices (the owner's ruling,

@@ -9,7 +9,7 @@
 ## The money is the status
 
 - **Unpaid / Partly paid / Paid is worked out from the payments recorded. It is never typed.** There is no payment-status control anywhere. To fix a mistake, remove the wrong payment and everything recomputes.
-- **What is owed = the stay + the food tab − the money received.** One function (`recomputeBalance`) does this for the quick view, check-in, check-out, the tab, and (since 2026-10-03) extending a stay.
+- **What is owed = the stay + the food on the order slips − the money received.** One function (`recomputeBalance`) does this for the quick view, check-in, check-out, the order slips, and (since 2026-10-03) extending a stay.
 - **The deposit is agreed on the stay alone.** A lunch eaten later must never raise what the desk asks for on arrival.
 - **The booking form's total uses the same pricing as the bill** (since 2026-10-03). It used to have its own sum, which skipped the staff discount and the agency's price.
 
@@ -18,7 +18,7 @@
 - **One payment, one numbered receipt** (`PR-YYYYMM-NNN`). The number is stored on the payment — never worked out from its position, because removing one payment would renumber the rest, and staff quote these numbers to guests.
 - **Every payment carries its own method.** A guest may pay the deposit in cash and the rest by GCash; each receipt names its own.
 - **One payment for several rooms is written onto every room it paid for.** The owner: *"if there are more than one rooms booked at the same time, the staff would need to find the room that holds the payment receipt."* Each room also keeps its own share. A reprint from any room shows the money actually handed over.
-- **A receipt number belongs to one payment across the whole hotel.** Numbers were once counted per booking, so two fresh bookings both got `…-001`. Walk-in restaurant receipts had the same fault until 2026-10-03; they now look at every tab and every booking.
+- **A receipt number belongs to one payment across the whole hotel.** Numbers were once counted per booking, so two fresh bookings both got `…-001`. Walk-in restaurant receipts had the same fault until 2026-10-03; they now look at every order slip and every booking.
 - **Staff labels read like plain speech:** big green "Paid", amber "Partial · ₱X left", red "Owes ₱X". The most important number ("Who owes right now") sits at the top of money lists.
 - **Profit should feel like a reward** — bold, vibrant green, not a flat theme colour.
 

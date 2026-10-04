@@ -2,7 +2,7 @@ import React from 'react'
 import { Ban, FilePlus, Plus } from 'lucide-react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
-import { getBookingStyle, getVenueBookingStyle, roomDisplayName } from './bookingStyles'
+import { getBookingStyle, roomDisplayName } from './bookingStyles'
 import { normalizeVenueId, dateToString } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
 import { TimelineDayInfo } from './timelineDays'
@@ -188,7 +188,7 @@ export const TimelineGrid = React.memo(
             else break
           }
           cells.push(
-            <TimelineCell key={dayInfo.isoStr} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} isCheckIn={false} isHighlighted={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} getBookingStyle={type === 'room' ? getBookingStyle : getVenueBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={dayInfo.isoStr} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} isCheckIn={false} isHighlighted={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           dIdx += span
         } else {
@@ -317,7 +317,7 @@ export const TimelineGrid = React.memo(
                     Room / Venue
                   </th>
                   {daysList.map((dayInfo, i) => (
-                    <th key={i} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft p-1 text-center w-[84px] min-w-[84px] ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-paper-50') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + (hoverDay === dayInfo.isoStr ? ' !bg-gold-200/70' : '')}>
+                    <th key={i} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft p-1 text-center w-[96px] min-w-[96px] ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-paper-50') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + (hoverDay === dayInfo.isoStr ? ' !bg-gold-200/70' : '')}>
                       <div className={'text-[9px] font-bold uppercase ' + (dayInfo.isToday ? 'text-gold-700' : 'text-muted/70')}>{dayInfo.weekday}</div>
                       <div className="mt-0.5 flex items-center justify-center gap-0.5">
                         {dayInfo.isToday ? (

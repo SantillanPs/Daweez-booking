@@ -1,7 +1,8 @@
-import React from 'react'
-import { Wallet, type LucideIcon } from 'lucide-react'
 import { NumInput } from '../NumInput'
 import { SegmentedControl, SegmentOption } from '../SegmentedControl'
+import { AnimatedNumber } from '../AnimatedNumber'
+import { Field } from './Field'
+import { FIELD, LABEL, REVEAL } from './formStyles'
 import { PAYMENT_METHODS, methodNeedsReference, paymentKind } from '../../utils/paymentMethod'
 
 export type PayPlan = 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'
@@ -30,6 +31,12 @@ interface BookingDepositFieldsProps {
   reference: string
   setReference: (r: string) => void
   /**
+   * The form will not finish without a method (and a reference, for GCash or bank). The
+   * form decides this — it is the same test that keeps Confirm asleep — so the mark on
+   * the row and the line beside the button can never disagree.
+   */
+  methodRequired: boolean
+  /**
    * **A short stay (the printed rate board)** — already paid in full at the counter, so
    * there is no plan to choose and no figure to work out: the gold notice above this card
    * states the amount, and all that is left here is **how the guest paid**. The card
@@ -40,43 +47,15 @@ interface BookingDepositFieldsProps {
   shortStay?: boolean
   /** An agency is on the booking, so it can simply be billed to them. */
   agency?: boolean
-  /** Correcting an existing booking: its invoice number and its figures. */
-  isEditMode: boolean
-  formInvoiceNumber: string
-  setFormInvoiceNumber: (v: string) => void
-  formDownpaymentPaid: number
-  setFormDownpaymentPaid: (v: number) => void
-  formBalanceDue: number | null
-  setFormBalanceDue: (v: number | null) => void
-  formSecurityDeposit: number | null
-  setFormSecurityDeposit: (v: number | null) => void
+  /**
+   * What the guest hands over in this form — the figure the column leads with. Left out
+   * while a saved booking is being corrected: correcting takes no money, so the column
+   * leads with what the stay comes to instead.
+   */
+  payNow?: number
 }
 
 const peso = (n: number) => '₱' + Math.round(n || 0).toLocaleString()
-const input = 'input input-bordered w-full text-sm'
-const label = 'text-[10px] text-base-content/60 font-bold'
-/** Every row of the money block starts with this one fixed column. */
-const LABEL_COL = 'flex items-center gap-1.5 shrink-0 w-[104px]'
-
-/**
- * The label cell every row shares, so `Discount`, `Pays now` and `Paid by` line up and
- * `None`, `Deposit` and `Cash` all begin on the same vertical line. A row without a mark
- * gets an empty 16px slot rather than no slot, which is what keeps that line straight.
- */
-function RowLabel({ icon: Icon, children }: { icon?: LucideIcon; children: React.ReactNode }) {
-  return (
-    <span className={LABEL_COL}>
-      {Icon ? (
-        <span className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-          <Icon className="w-2.5 h-2.5" />
-        </span>
-      ) : (
-        <span className="w-4 h-4 shrink-0" aria-hidden="true" />
-      )}
-      <span className="text-[10px] font-bold text-base-content/70 whitespace-nowrap">{children}</span>
-    </span>
-  )
-}
 
 /**
  * What the guest pays now, and how (cards k126, k130 and the owner's 2026-09 rulings).
@@ -94,6 +73,16 @@ function RowLabel({ icon: Icon, children }: { icon?: LucideIcon; children: React
  * - **Nothing is preselected on the method row**, and the form refuses to finish without
  *   one; GCash and bank also wait for the reference the guest is reading out.
  * - **A Reservation pays nothing**, so it asks for no method and prints no figure.
+ * - **The row the form is waiting on carries the red star** (the design review,
+ *   2026-10-04) — `Paid by`, and the reference once GCash or bank is picked.
+ * - **Nothing is red before a mistake has been made** (the staff's feedback, the same day:
+ *   the form was hard to read). `Paid by` used to open with a red edge, so a form nobody
+ *   had touched yet already looked wrong.
+ * - **The money leads.** The column opens with what the guest hands over now, in the
+ *   largest figures on the form, and what the whole stay comes to under it. It was one
+ *   small figure at the bottom right of the form.
+ * - **Every chooser has its label above it** and fills the column, so the choosers share
+ *   both edges.
  */
 export function BookingDepositFields({
   estTotal,
@@ -105,20 +94,12 @@ export function BookingDepositFields({
   setMethod,
   reference,
   setReference,
+  methodRequired,
   shortStay = false,
   agency = false,
-  isEditMode,
-  formInvoiceNumber,
-  setFormInvoiceNumber,
-  formDownpaymentPaid,
-  setFormDownpaymentPaid,
-  formBalanceDue,
-  setFormBalanceDue,
-  formSecurityDeposit,
-  setFormSecurityDeposit,
+  payNow,
 }: BookingDepositFieldsProps) {
   const half = Math.max(0, Math.round(estTotal / 2))
-  const now = plan === 'full' ? Math.round(estTotal) : plan === 'deposit' ? half : plan === 'reservation' || plan === 'agency' ? 0 : Math.round(agreedDeposit)
   const options: SegmentOption<PayPlan>[] = [
     // An agency pays by check or bank, often months later (the owner, 2026-10-04) — so
     // the first choice on an agency booking takes nothing at the desk.
@@ -139,91 +120,57 @@ export function BookingDepositFields({
   const asksForMoney = shortStay || (plan !== 'reservation' && plan !== 'agency')
   const needsRef = methodNeedsReference(method || undefined)
   const methodOptions: SegmentOption<PayMethod>[] = PAYMENT_METHODS.map(m => ({ key: m as PayMethod, label: m }))
-  const refLabel = paymentKind(method || undefined) === 'gcash' ? 'GCash ref no.' : 'Reference no.'
+  const refLabel = paymentKind(method || undefined) === 'gcash' ? 'GCash reference no.' : 'Reference no.'
+  const total = Math.max(0, Math.round(estTotal))
+  const taking = payNow !== undefined
+  const lead = taking ? Math.max(0, Math.round(payNow)) : total
 
   return (
-    <div className="bg-base-100 border border-base-300 rounded-xl px-3 py-2 space-y-2">
+    <div className="space-y-4">
+      {/* The figure follows the plan as it is changed, so the desk sees it move. */}
+      <div>
+        <p className={LABEL}>{taking ? 'To pay now' : 'Total'}</p>
+        <p className="mt-1 font-display text-[34px] leading-none font-extrabold tracking-tight tabular-nums text-base-content">
+          <AnimatedNumber value={lead} duration={350} prefix="₱" />
+        </p>
+        {taking && lead !== total && (
+          <p className="mt-1.5 text-[13px] text-base-content/70 tabular-nums">of {peso(total)} for the stay</p>
+        )}
+      </div>
+
       {/* What the guest pays now — a short stay already paid in full has no plan to choose. */}
       {!shortStay && (
-        <div className="flex items-center gap-2">
-          <RowLabel icon={Wallet}>Pays now</RowLabel>
+        <Field group label="Pays now">
           <SegmentedControl options={options} value={plan} onChange={setPlan} label="What the guest pays now" />
-        </div>
+        </Field>
+      )}
+
+      {/* Only Custom is typed. */}
+      {!shortStay && plan === 'custom' && (
+        <Field label="Amount (₱)" className={REVEAL}>
+          <NumInput value={agreedDeposit} onChange={setAgreedDeposit} aria-label="Amount the guest pays now"
+            className={FIELD + ' text-right tabular-nums'} />
+        </Field>
       )}
 
       {/* ── How the guest pays — the row that takes the money (2026-09-29) ── */}
       {asksForMoney && (
-        <div className="flex items-center gap-2">
-          <RowLabel>Paid by</RowLabel>
+        <Field group label="Paid by" required={methodRequired}>
           <SegmentedControl options={methodOptions} value={method} onChange={setMethod} label="How the guest pays" />
-        </div>
+        </Field>
       )}
 
       {/* GCash and bank transfers only, and only once one of them is picked. */}
-      {needsRef && (
-        <div className="flex items-center gap-2">
-          <RowLabel>{refLabel}</RowLabel>
+      {asksForMoney && needsRef && (
+        <Field label={refLabel} required={methodRequired} className={REVEAL}>
           <input
             value={reference}
             onChange={e => setReference(e.target.value)}
             placeholder="From the guest's phone"
-            aria-label={refLabel}
-            className="input input-bordered input-sm flex-1 min-w-0 font-mono"
+            autoComplete="off"
+            className={FIELD + ' tabular-nums'}
           />
-        </div>
-      )}
-
-      {/* The money, on its own right-hand line — a stable home, so it never jumps when the
-          plan changes. Only Custom is typed, and it is typed on the row above this one. */}
-      {!shortStay && (
-        plan === 'custom' ? (
-          <div className="flex items-center gap-2">
-            <RowLabel>Amount</RowLabel>
-            <NumInput value={agreedDeposit} onChange={setAgreedDeposit} aria-label="Amount the guest pays now"
-              className="input input-bordered input-sm flex-1 min-w-0 text-right font-mono" />
-          </div>
-        ) : plan === 'agency' ? (
-          <p className="text-right text-[10px] font-semibold text-base-content/60">nothing now · {peso(estTotal)} billed to the agency</p>
-        ) : plan === 'reservation' ? (
-          <p className="text-right text-[10px] font-semibold text-base-content/60">nothing now · pays at check-in</p>
-        ) : (
-          <p className="text-right flex items-baseline justify-end gap-1.5">
-            <b className="font-mono font-bold text-[15px] text-base-content">{peso(now)}</b>
-            <i className="not-italic text-[10px] font-semibold text-base-content/60">
-              {plan === 'full' ? 'paid in full' : `of ${peso(estTotal)}`}
-            </i>
-          </p>
-        )
-      )}
-
-      {isEditMode && (
-        <div className="border border-base-300 rounded-lg p-2.5 bg-base-100/40 space-y-2">
-          <p className="text-[10px] font-bold text-base-content/60 uppercase tracking-wider">Correcting this booking</p>
-          <div className="grid grid-cols-2 gap-2.5">
-            <label className="block">
-              <span className={label}>Already received (₱)</span>
-              <input type="text" inputMode="decimal" value={formDownpaymentPaid || ''}
-                onChange={e => setFormDownpaymentPaid(parseFloat(e.target.value) || 0)} className={input} />
-            </label>
-            <label className="block">
-              <span className={label}>Balance due (₱)</span>
-              <input type="text" inputMode="decimal" value={formBalanceDue ?? ''}
-                onChange={e => setFormBalanceDue(e.target.value ? parseFloat(e.target.value) : null)}
-                placeholder="Worked out from the stay" className={input} />
-            </label>
-            <label className="block">
-              <span className={label}>Security deposit (₱)</span>
-              <input type="text" inputMode="decimal" value={formSecurityDeposit ?? ''}
-                onChange={e => setFormSecurityDeposit(e.target.value ? parseFloat(e.target.value) : null)}
-                placeholder="Optional" className={input} />
-            </label>
-            <label className="block">
-              <span className={label}>Invoice number</span>
-              <input value={formInvoiceNumber} onChange={e => setFormInvoiceNumber(e.target.value)}
-                placeholder="Given one if left empty" className={input} />
-            </label>
-          </div>
-        </div>
+        </Field>
       )}
     </div>
   )

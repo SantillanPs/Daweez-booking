@@ -411,9 +411,9 @@ export function CalendarTab() {
         venues={venues}
         onOpen={b => { setExtendError(''); setExtendCheckoutDate(b.check_out); setSelectedExtendBooking(b) }}
         onBreakfast={b => setBreakfastForId(b.id)}
+        trailing={<CalendarLegend />}
       />
       <div className="flex-grow min-h-0 flex flex-row gap-2 overflow-hidden">
-        <CalendarLegend />
         <TimelineGrid
           rooms={rooms}
           venues={venues}

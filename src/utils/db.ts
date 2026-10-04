@@ -367,6 +367,17 @@ export async function clearStayHours(bookingId: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Takes back a check-in or a check-out pressed by mistake (the staff's feedback,
+ * 2026-10-04). Its own writer because `update_booking` keeps the stored time whenever it
+ * is sent none — which protects a check-in from a stale copy of the booking, and also
+ * means it can never be cleared that way. Undoing a check-in clears the check-out too.
+ */
+export async function undoBookingCheck(bookingId: string, which: 'check_in' | 'check_out'): Promise<void> {
+  const { error } = await supabase.rpc('undo_booking_check', { p_booking_id: bookingId, p_which: which })
+  if (error) throw error
+}
+
 // Business-rule failures (ROOM_UNAVAILABLE / VENUE_UNAVAILABLE / date order) and
 // every other write failure now surface to the caller alike: nothing is parked in
 // the browser, so a booking that could not be saved must say so.

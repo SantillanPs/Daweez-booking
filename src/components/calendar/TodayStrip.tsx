@@ -15,6 +15,8 @@ interface TodayStripProps {
   onOpen: (booking: Booking) => void
   /** Opens the breakfast picker for a room that has breakfast. */
   onBreakfast: (booking: Booking) => void
+  /** Sits at the far end of the line — the key to the calendar's colours. */
+  trailing?: React.ReactNode
 }
 
 const fmtDay = (iso: string) => {
@@ -31,7 +33,7 @@ const fmtDay = (iso: string) => {
 //   In hotel  — everyone checked in and not yet checked out.
 //   Breakfast — the rooms in the hotel that booked breakfast, and how many of them
 //               have been asked what they want this morning (`1/3`).
-export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast }: TodayStripProps) {
+export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trailing }: TodayStripProps) {
   const [open, setOpen] = useState<ListKey | null>(null)
   const today = dateToString(new Date())
 
@@ -114,6 +116,7 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast }: Tod
             </button>
           )
         })}
+        {trailing && <div className="ml-auto">{trailing}</div>}
       </div>
 
       {open && shown.length > 0 && (

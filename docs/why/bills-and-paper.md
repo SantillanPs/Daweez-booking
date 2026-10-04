@@ -9,6 +9,8 @@
 ## The statement
 
 - **The charges table is the hotel's own:** `Room / Particulars · Rate · Date · No. of Night · Total`, grouped under Room Accommodation, Breakfast, Extras, Restaurant & bar, Discount. A group with no rows is not drawn — which is why a guest who has not checked in has no restaurant group.
+- **Restaurant & bar lists each order slip as its number, its total and Paid or Not paid — never the dishes.** The staff, 2026-10-04: the bill kept showing past orders that were already paid.
+- **The bill lists the payments already received.** The staff, the same day: it showed what still had to be paid but not what had been paid.
 - **It prints only what applies.** A field the booking does not hold is skipped; only the chosen payment method is shown; only the matching account is shown; zero rows are hidden. The only blanks are the lines a hand fills in: Prepared by, Guest Signature.
 - **Amount Due is what the guest hands over now** — the deposit, the custom figure, or the whole stay. There is **no "Balance on arrival" line**: the owner read it as a second demand on the same page.
 - **Pension Policies are printed word for word** from the paper form. The app's earlier paraphrase had lost the ₱1,000 smoking penalty and its Tandag City ordinance, the key-card rule and the ₱500 lost-card charge. Never reword them and never tie their figures to Settings — the guest must read the words they signed.

@@ -1,7 +1,6 @@
 import React from 'react'
 import { Booking } from '../../types/booking'
-import { getPaymentDotClass, getPaymentLabel, SOURCE_LABELS } from './bookingStyles'
-import { isReservationAwaitingArrival } from '../../utils/bookingMoney'
+import { pillMoney, stageTag, stageWords } from './bookingStyles'
 import { clockLabel, shortStayEnd } from '../../utils/shortStay'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 
@@ -68,6 +67,12 @@ export const TimelineCell = React.memo(
       const isBlock = booking.status === 'blocked'
       const openEnded = isOpenEnded(booking)
       const pillName = isBlock ? blockReason(booking) + (openEnded ? ' · until further notice' : '') : booking.guest_name
+      const tag = stageTag(booking)
+      const money = pillMoney(booking)
+      // A short stay whose guest is in the room shows THE TIME THE ROOM IS FREE — never
+      // a countdown (the owner's ruling) — unless money is still owed, which comes first.
+      const freeAt = shortStayEnd(booking.actual_check_in, Number(booking.stay_hours || 0))
+      const showClock = !!freeAt && !booking.actual_check_out && money.text === 'Paid'
       return (
         <td
           colSpan={span}
@@ -94,54 +99,32 @@ export const TimelineCell = React.memo(
               setExtendError('')
             }}
             title={pillName}
-            className={'mx-0.5 px-1.5 rounded-md border cursor-pointer select-none transition-shadow hover:shadow-sm text-[10px] font-bold ' +
-              (isShortStayDue ? 'bg-danger-100 border-danger-400 text-danger-600 ' : '') + getBookingStyle(booking) +
-              (booking.stay_hours ? ' h-9 py-1 flex flex-col justify-center' : ' h-8 flex items-center justify-between gap-0.5')}
+            className={'mx-0.5 px-1.5 h-10 rounded-md border cursor-pointer select-none transition-shadow hover:shadow-sm flex flex-col justify-center ' +
+              (isShortStayDue ? 'bg-danger-100 border-danger-400 text-danger-600' : getBookingStyle(booking))}
           >
-            {/* Short stay (the printed rate board): the room was sold for a few hours
-                rather than a night, so the block carries THE TIME THE ROOM IS FREE —
-                never a countdown (the owner's ruling). Two tight lines: who is in the
-                room, then the fact the desk acts on. Before the guest is checked in
-                there is no clock yet, so the second line says what was sold instead of
-                the redundant "short stay" it used to repeat — the gold block and the
-                tooltip already say that. The day columns are 96 px so a real name fits
-                above a full `out 1:12 PM`. */}
-            {booking.stay_hours ? (
-              <>
-                <span className="flex items-center justify-between gap-1 min-w-0 leading-tight">
-                  <span className="min-w-0 truncate">
-                    {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
-                    {booking.guest_name}
-                  </span>
-                  <span
-                    title={'Payment: ' + getPaymentLabel(booking) + ' — from the payments recorded on the booking'}
-                    aria-label={'Payment: ' + getPaymentLabel(booking)}
-                    className={'w-2 h-2 rounded-full shrink-0 ' + getPaymentDotClass(booking)}
-                  />
+            {/* TWO LINES, both in words (the staff's feedback, 2026-10-04): who is in the
+                room and whether they are IN or OUT, then what is still to pay. The desk
+                reads the calendar without opening a booking. A block has one line — why
+                the dates are closed. */}
+            <span className="flex items-center justify-between gap-1 min-w-0 text-[11px] font-bold leading-tight">
+              <span className="min-w-0 truncate">
+                {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
+                {pillName}
+              </span>
+              {!isBlock && tag && (
+                <span className={'shrink-0 rounded-sm px-1 text-[9px] font-bold leading-[14px] ' +
+                  (tag === 'IN' ? 'bg-gold-400 text-ink-900' : 'bg-ink-300 text-ink-700')}>
+                  {tag}
                 </span>
-                <span className="text-[8.5px] font-mono opacity-90 truncate leading-tight">
-                  {shortStayEnd(booking.actual_check_in, Number(booking.stay_hours))
-                    ? 'out ' + clockLabel(shortStayEnd(booking.actual_check_in, Number(booking.stay_hours))!)
-                    : booking.stay_hours + '-hour stay'}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="min-w-0 truncate">
-                  {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
-                  {pillName}
-                </span>
-                {!isBlock && (
-                  <span className="flex items-center gap-1 shrink-0">
-                    {span > 1 ? <span className="text-[8.5px] opacity-70 font-mono">{span}n</span> : null}
-                    <span
-                      title={'Payment: ' + getPaymentLabel(booking) + ' — from the payments recorded on the booking'}
-                      aria-label={'Payment: ' + getPaymentLabel(booking)}
-                      className={'w-2 h-2 rounded-full ' + getPaymentDotClass(booking)}
-                    />
-                  </span>
-                )}
-              </>
+              )}
+            </span>
+            {!isBlock && (
+              <span className={'text-[10.5px] font-bold truncate leading-tight mt-0.5 ' + (isShortStayDue ? '' : showClock ? 'text-ink-700' : money.className)}>
+                {isShortStayDue && freeAt ? 'time up ' + clockLabel(freeAt)
+                  : showClock && freeAt ? 'out ' + clockLabel(freeAt)
+                    : booking.stay_hours && !booking.actual_check_in ? booking.stay_hours + ' hrs · ' + money.text
+                      : money.text}
+              </span>
             )}
           </div>
           {showTooltip && (
@@ -150,44 +133,17 @@ export const TimelineCell = React.memo(
               {booking.stay_hours ? (
                 <div className="text-[10px] font-bold text-brand-text">
                   Short stay · {booking.stay_hours} hours
-                  {shortStayEnd(booking.actual_check_in, Number(booking.stay_hours))
-                    ? ' · out by ' + clockLabel(shortStayEnd(booking.actual_check_in, Number(booking.stay_hours))!)
-                    : ' · clock starts at check-in'}
+                  {freeAt ? ' · out by ' + clockLabel(freeAt) : ' · clock starts at check-in'}
                 </div>
               ) : null}
               <div className="text-[10px] text-muted font-mono">{openEnded ? 'from ' + booking.check_in : booking.check_in + ' → ' + booking.check_out}</div>
-              {!isBlock && (<div className="text-[10px] text-muted">
-                {booking.guest_phone}<br />
-                {/* A RESERVATION whose guest has not arrived says ONE word — **Reserved** —
-                    in a neutral charcoal, and its payment word is left off entirely: there
-                    is no money state to report and "On hold · Reserved" said the same thing
-                    twice while the red made a trusted guest read as a debt (the owner's
-                    ruling, 2026-09-28: the name and the type, nothing else). */}
-                {isReservationAwaitingArrival(booking) ? (
-                  <span className="text-ink-700 font-semibold">Reserved</span>
-                ) : (
-                  <>
-                    <span className={booking.status === 'confirmed' ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'}>
-                      {booking.status === 'confirmed' ? 'Confirmed' : booking.status === 'pending' ? 'On hold' : 'Blocked'}
-                    </span>
-                    {' · '}
-                    <span className={
-                      !booking.payment_status || booking.payment_status === 'unpaid'
-                        ? 'text-danger-500 font-semibold'
-                        : booking.payment_status === 'downpayment' ? 'text-amber-600 font-semibold' : 'text-emerald-600 font-semibold'
-                    }>
-                      {getPaymentLabel(booking)}
-                    </span>
-                  </>
-                )}
-                {' · '}{SOURCE_LABELS[booking.source] || booking.source}
-                {booking.event_addons?.payment_reference && (
-                  <>
-                    <br />
-                    <span className="text-[9.5px] text-brand-text font-bold">Ref: {booking.event_addons.payment_reference}</span>
-                  </>
-                )}
-              </div>)}
+              {!isBlock && (
+                <div className="text-[11px] text-muted space-y-0.5">
+                  {booking.guest_phone && booking.guest_phone.trim() !== 'None' && <div>{booking.guest_phone}</div>}
+                  <div className="font-semibold text-main">{stageWords(booking)}</div>
+                  <div className={'font-semibold ' + money.className}>{money.text}</div>
+                </div>
+              )}
             </div>
           )}
         </td>
@@ -199,7 +155,7 @@ export const TimelineCell = React.memo(
         // The picked day renders as this "In" cell — and it MUST carry the position
         // markers too, or the action bar cannot find the cell it hangs off (that is
         // why the Short stay button never appeared on a single picked day).
-        <td data-unit={id} data-day={isoStr} onClick={() => onCellClick(id, type, date)} className="p-0.5 h-8 relative cursor-cell align-middle">
+        <td data-unit={id} data-day={isoStr} onClick={() => onCellClick(id, type, date)} className="p-0.5 h-10 relative cursor-cell align-middle">
           <div className="w-full h-full rounded-md bg-gold-400 text-ink-900 flex items-center justify-center text-[9px] font-bold uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-150">
             In
           </div>
@@ -213,7 +169,7 @@ export const TimelineCell = React.memo(
           data-unit={id}
           data-day={isoStr}
           onClick={() => onCellClick(id, type, date)}
-          className="p-0 h-8 cursor-cell relative align-middle transition-colors bg-gradient-to-r from-gold-100/70 to-gold-100/60 hover:from-gold-100 hover:to-gold-100"
+          className="p-0 h-10 cursor-cell relative align-middle transition-colors bg-gradient-to-r from-gold-100/70 to-gold-100/60 hover:from-gold-100 hover:to-gold-100"
         >
           <div className="absolute inset-0 border-y border-dashed border-gold-400/50" />
         </td>
@@ -226,7 +182,7 @@ export const TimelineCell = React.memo(
         data-day={isoStr}
         onClick={() => onCellClick(id, type, date)}
         title={checkoutBooking ? checkoutBooking.guest_name + ' checks out this day' : undefined}
-        className={'relative border-r border-soft p-0 h-8 cursor-cell transition-colors ' + (isToday ? 'bg-gold-100/50' : isWeekend ? 'bg-paper-50/60' : '') + ' hover:bg-gold-100/70'}
+        className={'relative border-r border-soft p-0 h-10 cursor-cell transition-colors ' + (isToday ? 'bg-gold-100/50' : isWeekend ? 'bg-paper-50/60' : '') + ' hover:bg-gold-100/70'}
       >
         {checkoutBooking && (
           <span className="absolute top-0.5 right-0.5 pointer-events-none text-[7px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 border border-rose-100 rounded-sm px-1 py-px leading-none">

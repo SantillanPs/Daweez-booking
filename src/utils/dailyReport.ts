@@ -22,6 +22,7 @@
 // that changes** — every line of the report goes through it.
 
 import type { Booking, PaymentRecord, Room } from '../types/booking'
+import { slipNumber } from './orderSlips'
 import type { Expense, ExpenseCategory } from '../types/expense'
 import type { Tab } from '../types/tab'
 import { paymentMethodLabel } from './paymentMethod'
@@ -146,7 +147,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
       .filter(record => hotelDay(record.paid_at) === date)
       .forEach(record => {
         const key = record.receipt_number || record.id
-        const label = tab.label || tab.table_label || 'Tab'
+        const label = [tab.label || tab.table_label, slipNumber(tab)].filter(Boolean).join(' · ') || 'Order slip'
         const found = payments.get(key)
         if (found) found.guest = label
         else payments.set(key, { rooms: [], guest: label, method: paymentMethodLabel(record.method), amount: record.amount })

@@ -7,7 +7,9 @@ import { plugin as shadcn } from '@shadcn/lint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // `.claude` holds working copies of this repo (worktrees), each with its own tsconfig.
+  // Linting into them made every file fail with "multiple candidate TSConfigRootDirs".
+  globalIgnores(['dist', '.claude']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

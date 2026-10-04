@@ -4,7 +4,9 @@ import { Tab, TabLine } from '../types/tab'
 import { PaymentRecord } from '../types/booking'
 import { nextTabReceiptNumber } from './receiptNumber'
 
-// Guest tabs (board card k69). The database is the only home: the browser stores
+// Order slips — the tables are still named `tabs` and `tab_lines` (board card k69);
+// what a stay's slips add up to, and paying them, is in `orderSlips.ts`.
+// The database is the only home: the browser stores
 // that used to mirror tabs and their lines (`l_etoile_tabs_db`,
 // `l_etoile_tab_lines_db`) are gone (2026-09-28). A refused write — an order, a
 // removed line, a settlement — now throws, so the till says so instead of
@@ -33,35 +35,19 @@ export async function getTabs(): Promise<Tab[]> {
   return []
 }
 
-/** The guest's own tab for a booking. A booking has at most one open tab. */
+/** The guest's open order slip for a booking. A booking has at most one open slip. */
 export async function getOpenTabForBooking(bookingId: string): Promise<Tab | null> {
   const tabs = await getTabs()
   return tabs.find(t => t.booking_id === bookingId && t.status === 'open') || null
 }
 
 /**
- * The booking's tab whatever its status: the open one while the guest is in the
- * hotel, otherwise the newest closed one. A stay's tab is closed at check-out so
- * the till stops carrying it, but the bill, the balance and a reprint must still
- * find the food — so everything that READS a stay's food asks this, and only the
- * till asks for open tabs.
- */
-function tabOfBooking(tabs: Tab[], bookingId: string): Tab | null {
-  const own = tabs.filter(t => t.booking_id === bookingId)
-  return own.find(t => t.status === 'open') || own[0] || null
-}
-
-export async function getTabForBooking(bookingId: string): Promise<Tab | null> {
-  return tabOfBooking(await getTabs(), bookingId)
-}
-
-/**
- * Every open tab, a stay's and a diner's alike, in one read.
+ * Every open slip, a stay's and a diner's alike, in one read.
  *
  * The Restaurant screen lists everyone the desk may charge — the guests who are
  * in the hotel and the diners with no room behind them (the trade the owner said
  * is most of it), so it needs both kinds at once instead of one query per guest;
- * the diner tabs are the ones with no `booking_id`.
+ * the diner slips are the ones with no `booking_id`.
  */
 export async function getOpenTabs(): Promise<Tab[]> {
   const tabs = await getTabs()
@@ -69,26 +55,12 @@ export async function getOpenTabs(): Promise<Tab[]> {
 }
 
 /**
- * The open tab's lines for several bookings at once, keyed by booking id.
+ * Opens an order slip, or hands back the one already open for that booking.
  *
- * A printed bill covers a booking plus any other booking sharing its invoice
- * number, and each of those can carry its own food tab — so the statement needs
- * them all. This reads the tabs table once, not once per booking.
- */
-export async function getOpenTabLinesByBooking(bookingIds: string[]): Promise<Record<string, TabLine[]>> {
-  const out: Record<string, TabLine[]> = {}
-  if (bookingIds.length === 0) return out
-  const tabs = await getTabs()
-  for (const id of bookingIds) {
-    const tab = tabOfBooking(tabs, id)
-    if (tab) out[id] = await getTabLines(tab.id)
-  }
-  return out
-}
-
-/**
- * Opens a tab, or hands back the one already open for that booking so the same
- * stay never collects two tabs.
+ * **A stay holds several slips, one open at a time** (the staff's feedback, 2026-10-04):
+ * a slip stays open until it is paid, and the next order after that starts a new one
+ * with its own number. A closed slip is never opened again — it used to be, which is
+ * why food a guest had already paid for stayed on the Restaurant screen.
  */
 export async function openTab(input: {
   bookingId?: string
@@ -97,17 +69,8 @@ export async function openTab(input: {
   openedBy?: string
 }): Promise<Tab> {
   if (input.bookingId) {
-    // One tab per stay, always. A tab closed at check-out is opened again rather
-    // than joined by a second one, or the bill would read only the newer tab's food.
-    const existing = await getTabForBooking(input.bookingId)
-    if (existing?.status === 'open') return existing
-    if (existing) {
-      if (!isSupabaseConfigured) throw new Error(NO_DB)
-      const { data, error } = await supabase.from('tabs')
-        .update({ status: 'open', closed_at: null }).eq('id', existing.id).select().single()
-      if (error) throw error
-      return data as Tab
-    }
+    const existing = await getOpenTabForBooking(input.bookingId)
+    if (existing) return existing
   }
   const now = new Date().toISOString()
   const tab: Tab = {
@@ -206,6 +169,33 @@ export async function addTabLine(input: {
 }
 
 /**
+ * Changes how many of a line there are — `2 ×` on one row instead of a second row (the
+ * staff's feedback, 2026-10-04). The amount is worked out here, and the count the kitchen
+ * has already been given never stays above what is left on the slip.
+ */
+export async function setTabLineQty(line: TabLine, qty: number): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+  const { error } = await supabase.from('tab_lines')
+    .update({
+      qty,
+      amount: money(qty * Number(line.unit_price || 0)),
+      sent_qty: Math.min(Number(line.sent_qty || 0), qty),
+    })
+    .eq('id', line.id)
+  if (error) throw error
+}
+
+/** The kitchen's copy was printed: everything on these lines has now been given to it. */
+export async function markLinesSent(lines: TabLine[]): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+  for (const line of lines) {
+    if (Number(line.sent_qty || 0) >= Number(line.qty || 0)) continue
+    const { error } = await supabase.from('tab_lines').update({ sent_qty: line.qty }).eq('id', line.id)
+    if (error) throw error
+  }
+}
+
+/**
  * Removes a line the guest never ordered.
  *
  * The owner changed the rule here: a mistake is now simply deleted, exactly the
@@ -292,7 +282,10 @@ export async function settleTab(input: {
 
   const { error } = await supabase
     .from('tabs')
-    .update({ payment_records: records, status: 'closed', closed_at })
+    .update({
+      payment_records: records, status: 'closed', closed_at,
+      paid_at: record.paid_at, paid_receipt_number: record.receipt_number,
+    })
     .eq('id', input.tab.id)
   if (error) throw error
   return record

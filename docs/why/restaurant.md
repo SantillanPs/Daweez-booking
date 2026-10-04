@@ -1,10 +1,20 @@
 # Restaurant and bar — why it works this way
 
+## Order slips
+
+How the staff work without the system: **they write an order on a paper order slip and give it to the kitchen** (Sebastian, 2026-10-04). Their feedback the same day shaped everything below.
+
+- **It is called an order slip, not a tab**, because that is the paper the staff already use.
+- **Every order slip has a number (OS no.).** The app gives it, counting up and never restarting.
+- **The app prints the slip for the kitchen.** When more is ordered on the same slip later, the print marks what is new.
+- **A slip stays open until it is paid; the next order after that starts a new slip.** The staff's complaint: the restaurant went on showing a room's items after they had been paid.
+- **The same dish twice is `2 ×` on one row**, not a second row.
+
 ## Who can be charged
 
-- **Anyone can run a tab**, including diners with no room. The owner said walk-in diners are most of the restaurant's trade.
-- **A room guest's food goes on their room and is paid with the stay at check-out.** One tab per booking.
-- **A walk-in diner pays at the counter.** They settle the whole tab — nothing is typed and nothing is part-paid — and the receipt prints at once because they are standing there.
+- **Anyone can have an order slip**, including diners with no room. The owner said walk-in diners are most of the restaurant's trade.
+- **A room guest's food goes on their room.** It can be paid before check-out, and the money is always taken at the front desk, from the booking (Sebastian, 2026-10-04). What is still unpaid at check-out is paid with the stay.
+- **A walk-in diner pays at the counter.** They pay the whole slip — nothing is typed and nothing is part-paid — and the receipt prints at once because they are standing there.
 - **A room guest can only order once checked in.** People order when they are physically in the hotel, never over the phone.
 
 ## The till screen
@@ -15,26 +25,27 @@ Laid out in the order the counter works (the owner picked this from three drawin
 2. **The bill on the left.**
 3. **The menu on the right.**
 
-- **Orders are taken on the Restaurant screen, for both kinds of guest.** A menu squeezed into the booking panel was the wrong place; the booking's Guest tab only shows the food and hands staff over.
+- **Orders are taken on the Restaurant screen, for both kinds of guest.** A menu squeezed into the booking panel was the wrong place; the booking's panel only lists the order slips and hands staff over.
 - **A room guest's balance is updated the moment food is ordered** (since 2026-10-03), so "Who owes" is right without opening the booking.
 
 ## The menu
 
 - **Orders are tapped, never typed.** A hand-written line hides behind "+ Something not on the menu" for the rare dish the menu lacks.
 - **It looks like the hotel's printed menu card:** *"Make it look more like a normal physical menu."* One scroll, no category buttons, name · dotted line · price, two columns.
-- **Staff hold the tablet in front of the guest**, so every dish is a tall row and the whole row is tappable. A dish already on the tab shows a count so it is not ordered twice by mistake.
+- **Staff hold the tablet in front of the guest**, so every dish is a tall row and the whole row is tappable. A dish already on the order slip shows its count.
 - **A "Find a dish" box sits above the card** because hunting one of 61 dishes is slow with a guest waiting.
 - The menu lives in the database (61 items, 15 groups, typed from the laminated card) so every tablet shows the same prices. A dish is retired, never deleted, so old orders still read correctly.
 - It is a staff tool. Nobody hands the tablet to a diner.
 
 ## Mistakes
 
-- **A wrong line is simply removed**, the same way a wrong payment is. The first plan was a "correction" line; the owner changed it so there is one money rule, not two. Nothing edits a line in place.
+- **A wrong line is simply removed**, the same way a wrong payment is. The first plan was a "correction" line; the owner changed it so there is one money rule, not two. The only thing changed on a line is its count.
 
 ## Paper
 
-- **A guest can ask for their running tab mid-stay.** It prints on the 58 mm roll, headed "Running Tab" and stamped **NOT A RECEIPT**, because no money has been received.
-- A walk-in's settled tab prints a numbered receipt.
+- **The kitchen's copy** carries the slip's number, where the food goes, and each dish with its count. No prices.
+- **A guest can ask for their order slip mid-stay.** It prints on the 58 mm roll with the prices, stamped **NOT A RECEIPT**, because no money has been received.
+- A walk-in's paid order slip prints a numbered receipt.
 
 ## In the reports
 

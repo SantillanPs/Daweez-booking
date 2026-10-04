@@ -1,17 +1,21 @@
 import React from 'react'
-import { Percent } from 'lucide-react'
+import { ChevronDown, Minus, Plus } from 'lucide-react'
 import { NumInput } from '../NumInput'
 import { SegmentedControl, SegmentOption } from '../SegmentedControl'
+import { Field } from '../walk-in/Field'
+import { FIELD, ICON_BUTTON, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL } from '../walk-in/formStyles'
 
 export type DiscountType = 'none' | 'percent' | 'flat'
 
 type DiscountKey = 'none' | 'p20' | 'p10' | 'flat'
 
-// One row, as drawn and approved (the owner, 2026-09): the label, the four choices and
-// the typed box when it is needed. The old card stacked a heading, a hint and a row of
-// buttons — three lines of height for one decision. The hint the heading used to carry
-// (`% off the room charge…`) now lives on the label's hover, because the buttons already
-// say what they do and the row has to stay one line tall.
+// The staff discount — one line in the stay's list of extras, opening to the four choices
+// and the typed box when it is needed (the owner approved the choices, 2026-09).
+//
+// A discount is rare, so with none given the line is closed, like Add-ons above it (the
+// staff's feedback, 2026-10-04: the form was hard to read). The four choices used to be on
+// screen for every booking, with `None` filled in as loudly as the payment plan beside it.
+// A booking that has a discount opens with the choices, and the line says what it is.
 // Early/late check-in-out is NOT set here — it is auto-computed at the actual check-in.
 export function DiscountPricingControls({
   isDayBlock, discountType, setDiscountType, discountValue, setDiscountValue,
@@ -40,41 +44,56 @@ export function DiscountPricingControls({
     else { setDiscountType('flat'); setDiscountValue(0) }
   }
 
+  const [open, setOpen] = React.useState(discountType !== 'none')
+  const given = discountType === 'percent' ? discountValue + '% off'
+    : discountType === 'flat' && discountValue > 0 ? '₱' + discountValue.toLocaleString() + ' off'
+      : ''
+
   return (
-    <div className="bg-base-100 border border-base-300 rounded-xl px-3 py-2 space-y-2">
-      {/* The label sits in the same 104px column as every other row in the money block,
-          so `None` starts on the line `Deposit` and `Cash` start on (the owner's
-          2026-09-29 layout fix). */}
-      <div className="flex items-center gap-2">
-        <span className="flex items-center gap-1.5 shrink-0 w-[104px]"
-          title="% off the room charge, or a custom peso discount.">
-          <span className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            <Percent className="w-2.5 h-2.5" />
+    <>
+      <li>
+        <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
+          className={OPTION_ROW + ' cursor-pointer'}>
+          <span className={OPTION_NAME}>Discount</span>
+          <span className={OPTION_VALUE}>
+            {given ? <span className="text-base-content tabular-nums">{given}</span> : !open && <span>Add</span>}
+            <ChevronDown className={'w-4 h-4 shrink-0 transition-transform duration-200 ' + (open ? 'rotate-180' : '')} />
           </span>
-          <span className="text-[10px] font-bold text-base-content/70 whitespace-nowrap">Discount</span>
-        </span>
-        <SegmentedControl options={options} value={value} onChange={pick} label="Staff discount" />
-      </div>
-      {/* A custom price is a figure the desk types, so it takes the row below — the same
-          place the guest's own typed figure takes in the money card beside it. */}
-      {discountType === 'flat' && (
-        <div className="flex items-center gap-2">
-          <span className="shrink-0 w-[104px] text-[10px] font-bold text-base-content/70 whitespace-nowrap pl-5.5">Amount off</span>
-          <NumInput value={discountValue} onChange={setDiscountValue} placeholder="Amount"
-            className="input input-bordered input-sm flex-1 min-w-0 text-right font-mono" />
-        </div>
-      )}
+        </button>
+
+        {open && (
+          <div className={'space-y-3 pb-3 ' + REVEAL}>
+            <SegmentedControl options={options} value={value} onChange={pick} label="Staff discount" />
+            {/* A custom price is a figure the desk types, so it takes the row below. */}
+            {discountType === 'flat' && (
+              <Field label="Amount off (₱)">
+                <NumInput value={discountValue} onChange={setDiscountValue} aria-label="Amount off"
+                  className={FIELD + ' text-right tabular-nums'} />
+              </Field>
+            )}
+          </div>
+        )}
+      </li>
 
       {isDayBlock && (
-        <div className="flex items-center justify-between gap-2 bg-base-200/60 border border-base-300 rounded-lg px-2.5 py-1.5">
-          <span className="text-[10px] font-bold text-base-content/70 whitespace-nowrap">Day blocks (6 hrs)</span>
-          <div className="flex items-center gap-0.5">
-            <button type="button" onClick={() => setVenueDayBlocks(Math.max(1, venueDayBlocks - 1))} className="btn btn-ghost btn-xs">-</button>
-            <span className="font-mono w-8 text-center text-sm font-semibold text-base-content">{venueDayBlocks}</span>
-            <button type="button" onClick={() => setVenueDayBlocks(Math.min(8, venueDayBlocks + 1))} className="btn btn-ghost btn-xs">+</button>
+        <li className="min-h-12 flex items-center justify-between gap-4" title="A venue is booked in blocks of six hours.">
+          <span className={OPTION_NAME}>
+            Day blocks
+            <span className="ml-2 text-[13px] font-normal text-muted">6 hours each</span>
+          </span>
+          <div className="flex items-center select-none">
+            <button type="button" onClick={() => setVenueDayBlocks(Math.max(1, venueDayBlocks - 1))} disabled={venueDayBlocks <= 1}
+              aria-label="One block fewer" className={ICON_BUTTON + ' disabled:opacity-30 disabled:hover:bg-transparent'}>
+              <Minus className="w-4 h-4" />
+            </button>
+            <span className="w-7 text-center text-[15px] font-semibold tabular-nums text-base-content">{venueDayBlocks}</span>
+            <button type="button" onClick={() => setVenueDayBlocks(Math.min(8, venueDayBlocks + 1))} disabled={venueDayBlocks >= 8}
+              aria-label="One block more" className={ICON_BUTTON + ' disabled:opacity-30 disabled:hover:bg-transparent'}>
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
-        </div>
+        </li>
       )}
-    </div>
+    </>
   )
 }

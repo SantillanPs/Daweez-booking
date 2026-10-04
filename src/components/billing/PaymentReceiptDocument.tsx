@@ -70,7 +70,9 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
   const previousBalance = Math.max(0, totalCharge - paidBefore)
 
   const isFirstPay = paidBefore === 0
-  const paymentFor = remainingAfter <= 0 ? (isRoom ? 'Room Accommodation' : 'Event Venue Reservation')
+  // A payment taken for order slips alone says so, by their numbers.
+  const paymentFor = record.slips && record.slips.length > 0 ? 'Order Slip ' + record.slips.join(', ')
+    : remainingAfter <= 0 ? (isRoom ? 'Room Accommodation' : 'Event Venue Reservation')
     : isFirstPay ? 'Reservation'
     : 'Partial Payment'
   const statusLine = remainingAfter <= 0 ? 'Paid in Full'

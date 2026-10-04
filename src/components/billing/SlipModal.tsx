@@ -9,6 +9,8 @@ interface SlipModalProps {
    */
   printLabel: string
   onClose: () => void
+  /** Called once Print has been pressed — the kitchen's copy marks its orders as given. */
+  onPrinted?: () => void
   children: React.ReactNode
 }
 
@@ -19,7 +21,7 @@ interface SlipModalProps {
 // Guest Billing Statement keeps its own page size. The slip itself is passed in,
 // which is what keeps the payment receipt and the running tab from drifting into
 // two different-looking pieces of paper.
-export function SlipModal({ printLabel, onClose, children }: SlipModalProps) {
+export function SlipModal({ printLabel, onClose, onPrinted, children }: SlipModalProps) {
   useEffect(() => {
     const style = document.createElement('style')
     style.textContent = '@page { size: 58mm auto; margin: 3mm }'
@@ -38,7 +40,7 @@ export function SlipModal({ printLabel, onClose, children }: SlipModalProps) {
         <div className="flex items-center justify-between gap-2 mb-2 print:hidden">
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={() => { window.print(); onPrinted?.() }}
             className="inline-flex items-center gap-1.5 text-[12px] font-bold text-ink-900 bg-gold-400 hover:bg-gold-600 px-3 py-2 rounded-lg transition-colors cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5" /> {printLabel}

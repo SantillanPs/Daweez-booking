@@ -33,25 +33,28 @@ interface BookingReceiptsProps {
 export function BookingReceipts({ records, onPrint, onRemove, coveredRooms }: BookingReceiptsProps) {
   return (
     <section>
-      <h4 className="text-[13px] font-bold text-main">Payment receipts</h4>
-      <ul className="mt-1.5 border border-soft rounded-lg divide-y divide-soft">
+      <h4 className="text-[13px] font-bold text-main">Payments received</h4>
+      <ul className="mt-1.5 border-y border-soft divide-y divide-soft">
         {records.map(r => {
           const covers = r.receipt_number ? coveredRooms?.[r.receipt_number] : undefined
+          // What sets this payment apart: its receipt number, the order slips it was
+          // taken for, and — when it covered other rooms — which ones. Naming the rooms
+          // is what makes it findable from here instead of sending staff hunting
+          // through the other bookings.
+          const about = [
+            r.receipt_number,
+            r.slips && r.slips.length > 0 ? 'Order slip ' + r.slips.join(', ') : '',
+            covers && covers.length > 1 ? formatRoomNumbers(covers) + ' together' : '',
+          ].filter(Boolean).join(' · ')
           return (
-            <li key={r.id} className="flex items-center justify-between gap-2 pl-3 pr-0.5 min-h-11">
+            <li key={r.id} className="flex items-center justify-between gap-2 min-h-11">
               <div className="min-w-0 py-1.5 text-[13px]">
                 <p className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="font-semibold text-emerald-600">+{fmtPeso(r.amount)}</span>
+                  <span className="font-bold text-emerald-700">{fmtPeso(r.amount)}</span>
                   <span className="text-main">{r.method}</span>
                   <span className="text-muted text-[12px]">{r.paid_at ? new Date(r.paid_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</span>
                 </p>
-                {/* A receipt that covered other rooms says so, and names them — that is what makes it findable
-                    from here instead of sending staff hunting through the other bookings. */}
-                {covers && covers.length > 1 && (
-                  <p className="text-[12px] text-muted">
-                    {formatRoomNumbers(covers)} together{r.receipt_number ? ' · ' + r.receipt_number : ''}
-                  </p>
-                )}
+                {about && <p className="text-[12px] text-muted">{about}</p>}
               </div>
               <div className="flex items-center shrink-0">
                 <button type="button" onClick={() => onPrint(r)} className="w-11 h-11 flex items-center justify-center text-gold-700 hover:text-gold-800 cursor-pointer" aria-label="Print receipt" title="Print receipt">

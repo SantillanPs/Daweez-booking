@@ -1,14 +1,16 @@
 import React from 'react'
-import { X, BedDouble, PartyPopper, CalendarX } from 'lucide-react'
+import { X, CalendarX } from 'lucide-react'
 
 interface BookingWizardHeaderProps {
-  hasVenues: boolean
-  hasRooms: boolean
   bookingType: 'individual' | 'partner'
   /** Only ever `blocked` while CORRECTING a block — see the note below. */
   formStatus: 'confirmed' | 'blocked'
   setFormStatus: (s: 'confirmed' | 'blocked') => void
   formGuestName: string
+  /** A saved booking is being corrected, not a new one made. */
+  editing: boolean
+  /** What is being booked — `Room 4 · Oct 4 → Oct 5 · 1 night` (see `stayLines`). */
+  stay: string[]
   onClose: () => void
 }
 
@@ -25,39 +27,42 @@ interface BookingWizardHeaderProps {
 //
 // **There is no agency mark in here** (the owner's ruling, 2026-09): asking “is an agency
 // paying?” belongs with the guest, so it lives behind a small ⋯ on the Guest Information
-// card (`RoomDetailsForm` → `AgencyFields`). This header is only a title and a close.
+// section (`RoomDetailsForm` → `AgencyFields`). This header is only a title and a close.
+//
+// **Under the title is the stay itself** (the design review, 2026-10-04): the room, the
+// dates and the nights, so the desk can read them back before taking money. That line
+// used to be a caption about the form (`One form — everything on this page`). The title
+// is `New booking`, the calendar's own words — it said `New Reservation`, and
+// `Reservation` is also one of the four payment plans, meaning something else. The bed
+// in a tinted tile beside it went with the rest of the form's boxes: the line already
+// says `Room 4` or `Gazebo`.
 export function BookingWizardHeader({
-  hasVenues, hasRooms, bookingType,
-  formStatus, setFormStatus, formGuestName, onClose,
+  bookingType, formStatus, setFormStatus, formGuestName, editing, stay, onClose,
 }: BookingWizardHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-5 py-3.5 border-b border-base-300 shrink-0 bg-base-100">
-      <div className="flex items-center gap-2.5">
-        <div className="w-7 h-7 flex items-center justify-center bg-primary/10 border border-base-300 rounded-lg">
-          {hasVenues && !hasRooms
-            ? <PartyPopper className="w-3.5 h-3.5 text-primary" />
-            : <BedDouble className="w-3.5 h-3.5 text-primary" />}
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-base-content">
-            {formStatus === 'blocked' ? 'Blocked dates' : bookingType === 'partner' && formGuestName ? 'c/o ' + formGuestName : 'New Reservation'}
-          </h3>
-          <p className="text-[10px] text-base-content/60 font-medium">
-            {formStatus === 'blocked'
-              ? 'Correcting a block'
-              : bookingType === 'partner' ? 'An agency is paying' : 'One form — everything on this page'}
+    <div className="flex items-center justify-between gap-3 pl-5 sm:pl-6 pr-2 py-3 border-b border-base-300 shrink-0 bg-base-100">
+      <div className="min-w-0">
+        <h3 className="text-[13px] font-medium text-base-content/70">
+          {formStatus === 'blocked' ? 'Blocked dates' : bookingType === 'partner' && formGuestName ? 'c/o ' + formGuestName : editing ? 'Correcting a booking' : 'New booking'}
+        </h3>
+        {formStatus === 'blocked' || stay.length === 0 ? (
+          <p className="font-display text-[18px] leading-snug font-bold tracking-tight text-base-content">
+            {formStatus === 'blocked' ? 'Correcting a block' : 'No room or venue picked'}
           </p>
-        </div>
+        ) : stay.map(line => (
+          <p key={line} className="font-display text-[18px] leading-snug font-bold tracking-tight text-base-content">{line}</p>
+        ))}
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 shrink-0">
         {/* Only while correcting a block: the only way back to a booking. */}
         {formStatus === 'blocked' && (
-          <button type="button" onClick={() => setFormStatus('confirmed')} className="btn btn-ghost btn-sm">
-            <CalendarX className="w-3.5 h-3.5" /> &larr; Booking
+          <button type="button" onClick={() => setFormStatus('confirmed')} className="btn btn-ghost rounded-md h-11 min-h-11">
+            <CalendarX className="w-4 h-4" /> &larr; Booking
           </button>
         )}
-        <button type="button" onClick={onClose} className="btn btn-ghost btn-sm -mr-1.5">
-          <X className="w-4 h-4" />
+        <button type="button" onClick={onClose} title="Close" aria-label="Close"
+          className="w-11 h-11 inline-flex items-center justify-center rounded-md text-base-content/70 hover:bg-base-200 hover:text-base-content transition-colors cursor-pointer">
+          <X className="w-5 h-5" />
         </button>
       </div>
     </div>

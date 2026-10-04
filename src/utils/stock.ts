@@ -225,3 +225,33 @@ export async function deductForSale(
   }
   return recipe.length
 }
+
+/**
+ * Puts one serving of a dish back on the shelf — the count on an order slip went down by
+ * one (`3 ×` to `2 ×`). Written against the same line as the sale, so removing the whole
+ * line later still takes back exactly what is left.
+ */
+export async function returnForSale(
+  line: { id: string; menuItemId?: string | null },
+  by?: string
+): Promise<void> {
+  if (!isSupabaseConfigured || !line.menuItemId) return
+
+  const { data, error } = await supabase
+    .from('menu_item_stock')
+    .select('item_id, quantity')
+    .eq('menu_item_id', line.menuItemId)
+  if (error) throw error
+
+  for (const r of (data || []) as { item_id: string; quantity: number }[]) {
+    await moveStock({
+      itemId: r.item_id,
+      direction: 'in',
+      quantity: num(r.quantity),
+      reason: 'Order changed',
+      movedBy: by,
+      source: 'tab_line',
+      sourceId: line.id,
+    })
+  }
+}

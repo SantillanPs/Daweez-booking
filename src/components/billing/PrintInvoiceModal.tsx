@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Booking, Room, Venue } from '../../types/booking'
-import { TabLine } from '../../types/tab'
 import { InvoiceDocument } from './InvoiceDocument'
 import { AgencyInvoiceDocument } from './AgencyInvoiceDocument'
 import { buildStatement } from '../../utils/statement'
-import { getOpenTabLinesByBooking } from '../../utils/tabs'
+import { OrderSlip, getSlipsByBooking } from '../../utils/orderSlips'
+import { showToast } from '../../utils/toast'
 import { useDashboardData } from '../DashboardContext'
 import { groupOf } from '../../utils/bookingGroup'
 
@@ -38,15 +38,21 @@ export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, boo
   const relatedBookings = asked ? (bookingsToPrint || groupOf(asked, bookingsList)) : []
   const primaryBooking = relatedBookings[0] || asked
 
-  // Null until the tab has been read, so a short bill is never shown even for a
-  // moment — the page is held back rather than printed wrong.
-  const [tabLinesByBooking, setTabLinesByBooking] = useState<Record<string, TabLine[]> | null>(null)
+  // Null until the order slips have been read, so a short bill is never shown even for
+  // a moment — the page is held back rather than printed wrong. A read that fails closes
+  // the bill instead of printing it without the food.
+  const [slipsByBooking, setSlipsByBooking] = useState<Record<string, OrderSlip[]> | null>(null)
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const map = await getOpenTabLinesByBooking(relatedBookings.map(b => b.id))
-      if (!cancelled) setTabLinesByBooking(map)
+      try {
+        const map = await getSlipsByBooking(relatedBookings.map(b => b.id))
+        if (!cancelled) setSlipsByBooking(map)
+      } catch {
+        showToast('Could not read the order slips for this bill. Please try again.', 'error')
+        if (!cancelled) onClose()
+      }
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -61,10 +67,10 @@ export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, boo
   }, [onClose])
 
   if (!primaryBooking) return null
-  if (!tabLinesByBooking) return null
+  if (!slipsByBooking) return null
 
   const statement = buildStatement({
-    primaryBooking, relatedBookings, rooms, venues, bookingsList, tabLinesByBooking,
+    primaryBooking, relatedBookings, rooms, venues, bookingsList, slipsByBooking,
     deal: partnerDeals.find(d => d.id === primaryBooking.partner_deal_id) ?? null,
   })
 

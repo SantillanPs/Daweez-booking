@@ -13,7 +13,7 @@ React 19 + TypeScript + Vite, TanStack Router/Query, Tailwind 3 + DaisyUI, Supab
 ```bash
 npm run dev            # Vite dev server on :5173
 npx tsc -b --force     # type check — must exit 0
-npm run lint           # must report 0 errors (≈277 Tailwind colour warnings are a known baseline)
+npm run lint           # must report 0 errors (≈236 Tailwind colour warnings are a known baseline)
 npm run build          # tsc -b && vite build
 ```
 
@@ -36,7 +36,7 @@ There is **no test suite**. Verify changes by running the app against the develo
 ### How the app reaches the database
 
 - The app uses the public anon key. "Login" is a passcode checked in the browser that sets a `localStorage` flag — there are no staff accounts yet (board card k74).
-- **Bookings cannot be written directly.** anon has SELECT only; every write goes through SECURITY DEFINER functions: `book_booking`, `update_booking`, `cancel_booking`, `delete_booking`, plus narrow single-column writers (`set_booking_agreed_deposit`, `set_booking_stay_hours`). Room prices and `app_settings` follow the same pattern. Tabs, menu, stock, expenses and agencies are written directly.
+- **Bookings cannot be written directly.** anon has SELECT only; every write goes through SECURITY DEFINER functions: `book_booking`, `update_booking`, `cancel_booking`, `delete_booking`, plus narrow single-column writers (`set_booking_agreed_deposit`, `set_booking_stay_hours`, `undo_booking_check`). `update_booking` keeps a stored check-in or check-out time when it is sent none, so clearing one goes through `undo_booking_check`. Room prices and `app_settings` follow the same pattern. Tabs, menu, stock, expenses and agencies are written directly.
 - **Ids are text** (`room-3`, `venue-gazebo`, `partner-…`). Never cast an id to `uuid` inside a database function. Only `tabs` and `tab_lines` use real uuids.
 - Double booking is refused by exclusion constraints on `bookings`; the client check (`utils/availability.ts`) is only an early warning. Cancelled bookings are excluded from both.
 
@@ -62,8 +62,8 @@ There is **no test suite**. Verify changes by running the app against the develo
 
 ### Screens
 
-- **Calendar** (`CalendarTab`) is the landing screen and the only way to start a booking: pick dates on the grid, then the action bar offers New booking / short stay / block / log old booking. `WalkInBookingForm` is the single-page booking form (it takes the payment); `calendar/ExtendStayModal` is the booking "quick view" (payments, check-in/out, extend, cancel).
-- **Restaurant** (`RestaurantTab`): tabs and tab lines live in their own tables, never on the booking. A room guest's food joins the room bill; a walk-in diner settles at the counter. A menu tap writes a tab line and deducts the dish's recipe from stock (`utils/stock.ts`, `apply_stock_movement`).
+- **Calendar** (`CalendarTab`) is the landing screen and the only way to start a booking: pick dates on the grid, then the action bar offers New booking / short stay / block / log old booking. `WalkInBookingForm` is the single-page booking form (it takes the payment); `calendar/ExtendStayModal` is the booking "quick view" (payments, check-in/out, extend, cancel). A pill's colour is the stage of the stay (not arrived, in the hotel, checked out), and it says what is still to pay in words.
+- **Restaurant** (`RestaurantTab`): the staff call a food bill an **order slip** (`OS-0001`); the tables are still named `tabs` and `tab_lines`, and they never live on the booking. A slip is numbered by its first order (a database trigger) and stays open until it is paid, so a stay holds several — read them with `utils/orderSlips.ts`, never one tab per booking. A walk-in diner pays at the counter; a room guest pays at the front desk from the booking panel, which marks the slip paid (`paid_at`) and closes it. A menu tap adds a line or raises its count, and deducts the dish's recipe from stock (`utils/stock.ts`, `apply_stock_movement`).
 - **Stock** (`HousekeepingTab`, still at `/housekeeping`): Stock room · What a dish uses (`/housekeeping/dishes`) · Cleaning checklist (`/housekeeping/cleaning`).
 - **The top bar is four tabs — Front desk, Restaurant, Stock, Money — plus a Settings gear.** The list is `TABS` in `DashboardLayout.tsx`; a tab opens on its first screen and the rest are sub-tabs. A new screen goes inside a tab, never a fifth tab, and never in the bottom bar.
 - `/reserve` (`PublicReservePortal`) is a public page outside the passcode gate.

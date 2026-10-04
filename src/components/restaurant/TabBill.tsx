@@ -1,73 +1,90 @@
 import React from 'react'
-import { Printer, Trash2 } from 'lucide-react'
+import { ChefHat, Minus, Plus, Printer, Trash2 } from 'lucide-react'
 import { TabLine } from '../../types/tab'
+import { newCount } from '../../utils/orderSlips'
 
 const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 interface TabBillProps {
   lines: TabLine[]
-  /** What the tab adds to the bill. */
+  /** What the slip comes to. */
   total: number
   busy?: boolean
-  /** True while the tab may not be touched (a stay that has not checked in). */
-  locked?: boolean
-  onRemove: (line: TabLine) => void
-  /** What to say when nothing is on the tab yet. */
+  /** One more or one fewer of a row. One fewer of a single serving removes the row. */
+  onQty: (line: TabLine, delta: 1 | -1) => void
+  /** What to say when nothing is on the slip yet. */
   emptyText: string
-  /**
-   * Who a mid-stay printout is for (k69, part D). Left out, no print is offered
-   * — the paper would not know whose tab it is.
-   */
-  onPrint?: () => void
+  /** The kitchen's copy: what to cook, with what is new since the last print marked. */
+  onPrintKitchen: () => void
+  /** The guest's copy, with prices. */
+  onPrintGuest: () => void
 }
 
-// What is on the tab right now: the lines, the running total, and the way to see
-// it on paper (board card k69).
+// What is on the order slip right now: one row per dish with its count, the total, and
+// the two papers it prints (the staff's feedback, 2026-10-04).
 //
-// The same bill stands on the left of the Restaurant screen while the menu card
-// scrolls past it, and inside a booking's Guest tab — so it is written once here
-// and both screens cannot drift apart. Nothing edits a line: it is removed and
-// the right one is added, so the bill always recomputes itself.
-export function TabBill({ lines, total, busy = false, locked = false, onRemove, emptyText, onPrint }: TabBillProps) {
+// The count is changed on the row itself — − and + — because the staff asked for `2 ×`
+// rather than a second row. A single serving shows a bin where the − would be: taking
+// the last one off removes the row, and that asks first.
+export function TabBill({ lines, total, busy = false, onQty, emptyText, onPrintKitchen, onPrintGuest }: TabBillProps) {
   if (lines.length === 0) {
-    return <p className="text-[12px] text-muted">{emptyText}</p>
+    return <p className="text-[13px] text-muted">{emptyText}</p>
   }
+
+  const toSend = lines.reduce((n, l) => n + newCount(l), 0)
+  const step = 'w-10 h-10 shrink-0 inline-flex items-center justify-center rounded-lg border border-soft text-main transition-colors cursor-pointer disabled:opacity-40 '
+  const stepHover = 'hover:border-gold-400 hover:bg-gold-100'
+  const binHover = 'hover:border-danger-400 hover:bg-danger-50 hover:text-danger-600'
 
   return (
     <>
-      <ul className="divide-y divide-soft border border-soft rounded-lg overflow-hidden">
-        {lines.map(line => (
-          <li key={line.id} className="px-3 py-2.5 flex items-start justify-between gap-3">
-            <span className="min-w-0">
-              <span className="block text-[13.5px] font-semibold text-main">{line.description}</span>
-              <span className="block text-[11px] text-muted">
-                {line.qty > 1 ? line.qty + ' × ' + fmtPeso(line.unit_price) : fmtPeso(line.unit_price)}
-              </span>
-            </span>
-            <span className="flex items-center gap-2 shrink-0">
-              <span className="text-[13.5px] font-bold text-main">{fmtPeso(line.amount)}</span>
-              <button type="button" onClick={() => onRemove(line)} disabled={busy || locked}
-                title={'Remove ' + line.description}
-                aria-label={'Remove ' + line.description}
-                className="text-muted/60 hover:text-danger-600 p-2 -m-1 transition-colors cursor-pointer disabled:opacity-40">
-                <Trash2 className="w-4 h-4" />
+      <ul className="divide-y divide-soft border-y border-soft">
+        {lines.map(line => {
+          const qty = Number(line.qty || 1)
+          const fresh = newCount(line)
+          return (
+            <li key={line.id} className="py-2 flex items-center gap-2">
+              <button type="button" onClick={() => onQty(line, -1)} disabled={busy}
+                aria-label={qty > 1 ? 'One fewer ' + line.description : 'Remove ' + line.description}
+                title={qty > 1 ? 'One fewer' : 'Remove'}
+                className={step + (qty > 1 ? stepHover : binHover)}>
+                {qty > 1 ? <Minus className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
               </button>
-            </span>
-          </li>
-        ))}
+              <span className="w-6 shrink-0 text-center text-[15px] font-bold text-main">{qty}</span>
+              <button type="button" onClick={() => onQty(line, 1)} disabled={busy}
+                aria-label={'One more ' + line.description} title="One more" className={step + stepHover}>
+                <Plus className="w-4 h-4" />
+              </button>
+              <span className="min-w-0 flex-1 pl-1">
+                <span className="block text-[13.5px] font-semibold text-main break-words">{line.description}</span>
+                <span className="block text-[12px] text-muted">
+                  {fmtPeso(line.unit_price)} each
+                  {fresh > 0 && <span className="font-semibold text-gold-800"> · {fresh} new</span>}
+                </span>
+              </span>
+              <span className="shrink-0 text-[14px] font-bold text-main">{fmtPeso(line.amount)}</span>
+            </li>
+          )
+        })}
       </ul>
 
-      <div className="flex items-center justify-between gap-2 mt-3">
-        <span className="text-[12.5px] text-muted font-semibold">On the tab</span>
-        <span className="flex items-center gap-2.5">
-          {onPrint && (
-            <button type="button" onClick={onPrint}
-              className="inline-flex items-center gap-1.5 text-[12px] font-bold text-ink-600 hover:text-gold-800 border border-soft hover:border-gold-400 bg-card px-3 py-2 rounded-lg transition-colors cursor-pointer">
-              <Printer className="w-3.5 h-3.5" /> Print the tab
-            </button>
-          )}
-          <span className="text-[13px] font-bold text-main">{fmtPeso(total)}</span>
-        </span>
+      <div className="flex items-baseline justify-between gap-2 mt-3">
+        <span className="text-[13px] font-bold text-main">Total</span>
+        <span className="font-display text-[20px] font-extrabold text-ink-900">{fmtPeso(total)}</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mt-3">
+        {/* The kitchen's copy is the loud one while something on the slip has not been
+            given to the kitchen yet; once it has, both are plain reprints. */}
+        <button type="button" onClick={onPrintKitchen}
+          className={'min-h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-[13px] font-bold transition-colors cursor-pointer ' +
+            (toSend > 0 ? 'bg-gold-400 hover:bg-gold-600 text-ink-900' : 'bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100')}>
+          <ChefHat className="w-4 h-4" /> Kitchen copy{toSend > 0 ? ' · ' + toSend + ' new' : ''}
+        </button>
+        <button type="button" onClick={onPrintGuest}
+          className="min-h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-[13px] font-bold bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100 transition-colors cursor-pointer">
+          <Printer className="w-4 h-4" /> Guest copy
+        </button>
       </div>
     </>
   )

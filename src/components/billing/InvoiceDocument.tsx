@@ -21,6 +21,7 @@ interface InvoiceDocumentProps {
 }
 
 const money = (n: number) => '₱' + n.toLocaleString()
+const shortDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
 
 // The printable "Guest Billing Statement" for an ordinary booking — the paper form
 // staff fill in for walk-ins / Facebook calls. Its charges table is the hotel's own
@@ -49,6 +50,8 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
   const planLabel = statement.paymentPlan === 'custom'
     ? 'Custom · ' + money(statement.downpaymentPaid > 0 ? statement.downpaymentPaid : statement.amountDue) + ' now'
     : paymentPlanLabel(statement.paymentPlan || undefined)
+  // Money received with no numbered receipt behind it (old and imported bookings).
+  const earlierPaid = Math.max(0, statement.downpaymentPaid - statement.payments.reduce((sum, p) => sum + p.amount, 0))
   // What the big "Amount Due" figure actually is, spelled out under its label.
   const dueLabel =
     statement.paymentPlan === 'deposit' && statement.downpaymentPaid === 0 ? 'Deposit (50%)'
@@ -150,8 +153,26 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
         </div>
         <div className="space-y-1.5 text-[13px]">
           <div className="flex justify-between"><span className="text-ink-600">Sub-Total</span><span className="font-mono">{money(statement.subTotal)}</span></div>
-          {statement.downpaymentPaid > 0 && (
-            <div className="flex justify-between"><span className="text-ink-600">Less: Downpayment/Deposit</span><span className="font-mono">−{money(statement.downpaymentPaid)}</span></div>
+          {/* What has already been paid, one line per payment with its receipt number
+              (the staff's feedback, 2026-10-04: the bill showed what was still to pay but
+              not what had been paid). Money received before receipts were numbered has no
+              line of its own, so it keeps the single figure it always printed. */}
+          {statement.payments.length > 0 && (
+            <div>
+              <p className="text-ink-600">Less: Payments received</p>
+              {statement.payments.map(p => (
+                <div key={p.key} className="flex justify-between gap-2 pl-2 text-[11px]">
+                  <span className="text-ink-600 min-w-0">
+                    {shortDay(p.paidAt)} · {paymentMethodLabel(p.method)}
+                    {p.receipt && <span className="whitespace-nowrap"> · {p.receipt}</span>}
+                  </span>
+                  <span className="font-mono shrink-0">−{money(p.amount)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {earlierPaid > 0 && (
+            <div className="flex justify-between"><span className="text-ink-600">Less: Downpayment/Deposit</span><span className="font-mono">−{money(earlierPaid)}</span></div>
           )}
           {statement.partialPayment > 0 && (
             <div className="flex justify-between"><span className="text-ink-600">Less: Partial Payment</span><span className="font-mono">−{money(statement.partialPayment)}</span></div>

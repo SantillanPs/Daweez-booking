@@ -76,7 +76,11 @@ export function StatementChargesTable({ items }: { items: StatementLineItem[] })
               </tr>
               {rows.map(it => (
                 <tr key={it.key} className="text-[12px]">
-                  <td className="border border-ink-300 py-1 px-2">{it.description}</td>
+                  {/* An order slip says whether it is paid, beside its number — on one line. */}
+                  <td className={'border border-ink-300 py-1 px-2' + (it.status ? ' whitespace-nowrap' : '')}>
+                    {it.description}
+                    {it.status && <span className="font-bold"> — {it.status}</span>}
+                  </td>
                   <td className="border border-ink-300 py-1 px-2 text-right font-mono">{it.price ? money(it.price) : '—'}</td>
                   <td className="border border-ink-300 py-1 px-2 text-center font-mono text-[11px]">{shortDate(it.checkIn)}</td>
                   <td className="border border-ink-300 py-1 px-2 text-center font-mono text-[11px]">{shortDate(it.checkOut)}</td>

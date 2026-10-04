@@ -2,6 +2,7 @@ import React from 'react'
 import { Tab, TabLine } from '../../types/tab'
 import { PaymentRecord } from '../../types/booking'
 import { paymentMethodLabel } from '../../utils/paymentMethod'
+import { slipNumber } from '../../utils/orderSlips'
 import { Block, Row, Rule } from '../billing/receiptPrimitives'
 import { fmtDateTime, money } from '../billing/receiptText'
 import { SlipModal } from '../billing/SlipModal'
@@ -13,7 +14,7 @@ interface TabReceiptModalProps {
   onClose: () => void
 }
 
-// The receipt for a settled WALK-IN tab (k69, part C).
+// The receipt for a WALK-IN's paid order slip (k69, part C).
 //
 // A diner with no booking gets the same 58 mm slip as any other payment — one
 // column, black on white, nothing wider than the roll — carrying its own stored
@@ -30,13 +31,14 @@ export function TabReceiptModal({ tab, lines, record, onClose }: TabReceiptModal
       </div>
       <Rule />
       <Row label="Receipt No." value={record.receipt_number || '—'} strong />
+      {slipNumber(tab) ? <Row label="Order Slip No." value={slipNumber(tab)} /> : null}
       <Row label="Date" value={fmtDateTime(record.paid_at)} />
       <Rule />
       <Block label="Guest" value={who} />
       {tab.label && tab.table_label ? <Block label="Table" value={tab.table_label} /> : null}
       <Rule />
       {lines.map(l => (
-        <Row key={l.id} label={l.description} value={money(l.amount)} />
+        <Row key={l.id} label={l.qty > 1 ? l.qty + ' × ' + l.description : l.description} value={money(l.amount)} />
       ))}
       <Rule />
       <Row label="TOTAL" value={money(total)} strong />

@@ -31,15 +31,28 @@ export interface TabLine {
   corrects_line_id?: string
   /** Set on a correction: why it was needed. */
   reason?: string
+  /**
+   * How many of this line the kitchen's last printed slip carried. Anything above it
+   * is new on the next print (the staff's feedback, 2026-10-04).
+   */
+  sent_qty?: number
   created_by?: string
   created_at: string
 }
 
-// A tab is opened when the first food is ordered and closed when it is settled.
-// It belongs to a booking when the guest is staying, and to a name/table when
+// The staff call this an ORDER SLIP (their feedback, 2026-10-04): the paper an order is
+// written on and handed to the kitchen. It is opened by the first order and stays open
+// until it is paid; the next order after that starts a new slip, so a stay can hold
+// several. It belongs to a booking when the guest is staying, and to a name/table when
 // they are not — the restaurant is most of this trade.
 export interface Tab {
   id: string
+  /** The slip's number, given when its first order lands. Shown as `OS-0001`. */
+  os_number?: number | null
+  /** When the slip was paid — at the counter for a diner, from the booking for a guest. */
+  paid_at?: string | null
+  /** The receipt that paid it. Taking that payment back makes the slip unpaid again. */
+  paid_receipt_number?: string | null
   /** The booking this tab belongs to, or absent for a walk-in diner. */
   booking_id?: string
   /** The walk-in's name, when there is no booking. */

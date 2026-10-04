@@ -1,5 +1,5 @@
 import { Booking, Room } from '../../types/booking'
-import { isReservationAwaitingArrival, isOwedByAgency } from '../../utils/bookingMoney'
+import { getPaymentView, PaymentTone } from '../../utils/bookingMoney'
 
 // Show the real room name (e.g. "Full Double Deluxe") instead of a bare
 // number, with "Room N" as the fallback when no name is set.
@@ -11,55 +11,65 @@ export const roomDisplayName = (room?: Room): string =>
 export const roomOptionLabel = (room: Room): string =>
   room.name ? 'Room ' + room.room_number + ' · ' + room.name : 'Room ' + room.room_number
 
-// Source colors on the calendar grid. Soft pastel fills with dark readable
-// text so bookings are easy to tell apart without shouting.
+/** Where a stay stands: nobody has arrived, the guest is in the hotel, or they have left. */
+export type BookingStage = 'booked' | 'in' | 'out'
+
+export const bookingStage = (b: Booking): BookingStage =>
+  b.actual_check_out ? 'out' : b.actual_check_in ? 'in' : 'booked'
+
+// **The pill's colour is the stage** (the staff's feedback, 2026-10-04: they could not
+// tell from the calendar which rooms were checked in and which had checked out). It used
+// to be where the booking came from — nine colours for the one thing the desk never acts
+// on — and the owner took that off while the booking sites are not in use.
+//
+// The house colours carry it, so red and green stay free to mean money and nothing else:
+// white while nobody has arrived, gold while the guest is in the hotel, grey once they
+// have left. A walk-in nobody has paid for yet keeps its dashed edge.
 export const getBookingStyle = (b: Booking): string => {
-  if (b.status === 'pending') return 'bg-amber-50 text-amber-800 border-amber-200 border-dashed'
   if (b.status === 'blocked') return 'bg-paper-200/60 text-muted border-paper-300'
-  switch (b.source) {
-    case 'airbnb':      return 'bg-emerald-50 text-emerald-800 border-emerald-200'
-    case 'booking_com': return 'bg-sky-50 text-sky-800 border-sky-200'
-    case 'facebook':    return 'bg-indigo-50 text-indigo-800 border-indigo-200'
-    case 'google_maps': return 'bg-orange-50 text-orange-800 border-orange-200'
-    case 'website':     return 'bg-violet-50 text-violet-800 border-violet-200'
-    default:            return 'bg-gold-100 text-gold-800 border-gold-200' // manual / walk-in
-  }
+  const stage = bookingStage(b)
+  if (stage === 'out') return 'bg-ink-100 text-ink-500 border-ink-200'
+  if (stage === 'in') return 'bg-gold-100 text-ink-900 border-gold-500'
+  if (b.status === 'pending') return 'bg-card text-main border-paper-400 border-dashed'
+  return 'bg-card text-main border-paper-400'
 }
 
-// Event venues use a warm gold tint so they read as "celebration space".
-export const getVenueBookingStyle = (b: Booking): string => {
-  if (b.status === 'pending') return 'bg-amber-50 text-amber-800 border-amber-200 border-dashed'
-  if (b.status === 'blocked') return 'bg-paper-200/60 text-muted border-paper-300'
-  return 'bg-gold-100 text-gold-700 border-gold-200'
+/** The word on the pill for a guest who is in the hotel or has left. Nothing before arrival. */
+export const stageTag = (b: Booking): string => {
+  const stage = bookingStage(b)
+  return stage === 'in' ? 'IN' : stage === 'out' ? 'OUT' : ''
 }
 
-// Small payment dot shown on every booking block.
-// A **reservation whose guest has not arrived** gets a neutral charcoal dot, never the
-// red one: it is a promise, not a debt (the owner's ruling, 2026-09-28).
-export const getPaymentDotClass = (b: Booking): string => {
-  if (isReservationAwaitingArrival(b)) return 'bg-ink-400'
-  if (isOwedByAgency(b)) return 'bg-indigo-500'
-  const s = b.payment_status
-  if (s === 'paid') return 'bg-emerald-500'
-  if (s === 'downpayment') return 'bg-amber-400'
-  return 'bg-danger-500'
+/** The same, as a sentence, for the pill's tooltip. */
+export const stageWords = (b: Booking): string => {
+  const when = (iso?: string) =>
+    iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''
+  if (b.actual_check_out) return 'Checked out ' + when(b.actual_check_out)
+  if (b.actual_check_in) return 'Checked in ' + when(b.actual_check_in)
+  return 'Not checked in'
 }
 
-// Plain-language payment label (no accounting jargon).
-export const getPaymentLabel = (b: Booking): string => {
-  if (isReservationAwaitingArrival(b)) return 'Reserved'
-  if (isOwedByAgency(b)) return 'Billed to agency'
-  const s = b.payment_status
-  if (s === 'paid') return 'Paid'
-  if (s === 'downpayment') return 'Deposit paid'
-  return 'Owes'
+// The money on the pill, in words (the staff: they want to look at the calendar and know
+// what every room still has to pay, before and after check-in, without opening it). The
+// amount comes first so a narrow one-night pill cuts the word, never the figure.
+//
+// A reservation whose guest has not arrived shows its amount too, but never in red: it is
+// a promise, not a debt (the owner's ruling, 2026-09-28). Money an agency will send later
+// is expected, not chased, so it is not red either.
+export const pillMoney = (b: Booking): { text: string; className: string } => {
+  const view = getPaymentView(b)
+  const due = Number(b.balance_due || 0)
+  const peso = '₱' + due.toLocaleString()
+  if (view.tone === 'paid') return { text: 'Paid', className: PILL_MONEY.paid }
+  if (view.tone === 'reserved') return { text: due > 0 ? peso + ' reserved' : 'Reserved', className: PILL_MONEY.reserved }
+  if (view.tone === 'billed') return { text: peso + ' agency', className: PILL_MONEY.billed }
+  return { text: due > 0 ? peso + ' to pay' : 'Not paid', className: PILL_MONEY.owes }
 }
 
-export const SOURCE_LABELS: Record<string, string> = {
-  airbnb: 'Airbnb',
-  booking_com: 'Booking.com',
-  facebook: 'Facebook',
-  google_maps: 'Google Maps',
-  website: 'Website',
-  manual: 'Walk-in'
+const PILL_MONEY: Record<PaymentTone, string> = {
+  paid: 'text-emerald-700',
+  partial: 'text-danger-600',
+  owes: 'text-danger-600',
+  reserved: 'text-ink-600',
+  billed: 'text-indigo-700',
 }
