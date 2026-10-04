@@ -79,5 +79,5 @@ There is **no test suite**. Verify changes by running the app against the develo
 - Tailwind only generates classes written as full literal strings; a class built by concatenation renders unstyled.
 - Number inputs are free-typing (`NumInput`), never the browser number spinner.
 - Printed documents: the guest statement is A5, the payment receipt is a 58 mm thermal slip (`.print-page` / `.print-slip` in `index.css`). Layouts that must hold on paper use fixed columns, not responsive breakpoints.
-- Both can be emailed: `utils/emailDocument.ts` draws the paper on screen into a PDF and the `send-email` edge function posts it from the hotel's Gmail. The function needs the secrets `GMAIL_USER` and `GMAIL_APP_PASSWORD` on the Supabase project and counts its daily limit in `email_log`.
+- Both can be emailed: `utils/emailDocument.ts` draws the paper on screen into a PDF and the `send-email` edge function posts it from the hotel's Gmail. The function needs the secrets `GMAIL_USER` and `GMAIL_APP_PASSWORD` on the Supabase project and counts its daily limit in `email_log`; Settings → Email (`settings/EmailSetup.tsx`) shows whether it is connected, the steps to connect it, and a test send.
 - Code comments in this repo explain the owner's ruling or the bug that led to the code; keep that style when a change has such a reason.

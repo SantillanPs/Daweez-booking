@@ -53,7 +53,8 @@ export function buildTimelineDays(monthAnchor: Date, today: Date = new Date()): 
       isoStr: dateToString(d),
       time: d.getTime(),
       dayNum: d.getDate(),
-      weekday: d.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 1),
+      // `Tue`, not `T`: one letter cannot tell Tuesday from Thursday or Saturday from Sunday.
+      weekday: d.toLocaleDateString('en-US', { weekday: 'short' }),
       isToday: d.toDateString() === todayStr,
       isWeekend: d.getDay() === 0 || d.getDay() === 6,
       monthLabel: d.getDate() === 1 ? d.toLocaleDateString('en-US', { month: 'short' }) : undefined

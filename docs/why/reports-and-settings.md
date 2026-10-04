@@ -17,6 +17,7 @@
 ## Settings
 
 - **Three tabs — Rooms & prices · Other charges · Channels — and one save bar** that appears only when something was typed and says how many changes are waiting. It replaced a page with three different ways of saving.
+- **A fourth tab, Email, says how to connect the hotel's Gmail** — asked for on 2026-10-04, *"so that staff can know how to set it up"*, when receipts and statements became emailable.
 - **Room prices: a list on the left, a panel on the right that follows the room you click.** Chosen after six drawings; the earlier card grid left empty boxes.
 - **"Where guests pay" has GCash and two bank accounts**, because the hotel's agency bill lists both banks.
 - **Two figures are marked "For the Earnings Report only — these never appear on a bill"**, because they used to sit among real prices and looked like charges.

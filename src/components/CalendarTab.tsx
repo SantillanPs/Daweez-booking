@@ -27,7 +27,7 @@ type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | '
 type UnitSel = { checkIn: string; checkOut: string; type: 'room' | 'venue' }
 
 export function CalendarTab() {
-  const { rooms, venues, bookings, allBookings, createManualBooking, cancelBooking, deleteBooking, updateBooking } = useDashboardData()
+  const { rooms, venues, bookings, allBookings, isLoading, createManualBooking, cancelBooking, deleteBooking, updateBooking } = useDashboardData()
 
   // ── Month / timeline state ──
   // The anchor IS the day the 31-day window starts on (card k154 follow-up): Today
@@ -395,25 +395,30 @@ export function CalendarTab() {
   }
 
   return (
-    <div className="space-y-3 font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
-      <CalendarToolbar
-        monthHeader={monthHeader}
-        startsToday={startsToday}
-        datePickerValue={datePickerValue}
-        onPrevMonth={() => stepMonth(-1)}
-        onNextMonth={() => stepMonth(1)}
-        onJumpToDate={jumpToDay}
-        onToday={() => setMonthAnchor(todayStart())}
-      />
-      <TodayStrip
-        bookings={bookings}
-        rooms={rooms}
-        venues={venues}
-        onOpen={b => { setExtendError(''); setExtendCheckoutDate(b.check_out); setSelectedExtendBooking(b) }}
-        onBreakfast={b => setBreakfastForId(b.id)}
-        trailing={<CalendarLegend />}
-      />
-      <div className="flex-grow min-h-0 flex flex-row gap-2 overflow-hidden">
+    <div className="font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
+      {/* ONE sheet (the design pass, 2026-10-04; the owner's taste: *"I don't like the boxes
+          design. I prefer a more 2d, clean, minimalistic, simple, yet professional look."*).
+          The window, today's counts and the grid were three cards with shadows, parted by
+          gaps; they are three lines of one surface, parted by rules, and the height the gaps
+          took goes to the rooms. */}
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-card border border-soft rounded-xl">
+        <CalendarToolbar
+          monthHeader={monthHeader}
+          startsToday={startsToday}
+          datePickerValue={datePickerValue}
+          onPrevMonth={() => stepMonth(-1)}
+          onNextMonth={() => stepMonth(1)}
+          onJumpToDate={jumpToDay}
+          onToday={() => setMonthAnchor(todayStart())}
+        />
+        <TodayStrip
+          bookings={bookings}
+          rooms={rooms}
+          venues={venues}
+          onOpen={b => { setExtendError(''); setExtendCheckoutDate(b.check_out); setSelectedExtendBooking(b) }}
+          onBreakfast={b => setBreakfastForId(b.id)}
+          trailing={<CalendarLegend />}
+        />
         <TimelineGrid
           rooms={rooms}
           venues={venues}
@@ -432,9 +437,9 @@ export function CalendarTab() {
           onNewShortStay={confirmShortStay}
           onClearSelection={() => { setTimelineSelection(null); setGroupSelection(null) }}
           dueShortStayIds={dueShortStayIds}
+          loading={isLoading}
         />
       </div>
-
 
       {liveExtendBooking && (
         <ExtendStayModal

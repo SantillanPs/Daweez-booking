@@ -44,7 +44,16 @@ interface TimelineGridProps {
   onClearSelection: () => void
   /** Ids of short stays whose bought hours have run out — their blocks go red. */
   dueShortStayIds?: string[]
+  /** The rooms have not arrived from the database yet. */
+  loading?: boolean
 }
+
+// One room's row and one day's column, in one place: the header, the rows and the cells
+// must agree on them, and the action bar measures the day column off the page.
+// Narrower on a phone, where the room column was taking half the screen.
+const UNIT_COL = 'w-[136px] min-w-[136px] sm:w-[184px] sm:min-w-[184px]'
+const DAY_COL = 'w-[104px] min-w-[104px]'
+const UNIT_CELL = 'sticky left-0 z-20 bg-card border-r border-b border-soft px-3.5 h-12 transition-colors group-hover:bg-gold-100 ' + UNIT_COL
 
 export const TimelineGrid = React.memo(
   function TimelineGrid({
@@ -64,7 +73,8 @@ export const TimelineGrid = React.memo(
     onLogOldBooking,
     onNewShortStay,
     onClearSelection,
-    dueShortStayIds
+    dueShortStayIds,
+    loading = false
   }: TimelineGridProps) {
     const scrollRef = React.useRef<HTMLDivElement>(null)
 
@@ -93,8 +103,10 @@ export const TimelineGrid = React.memo(
       // the row above still read as touching it, so it clears both. For the first rows
       // there is no room above — the sticky day header is there — so it drops below the
       // row instead, which is the only place left on screen.
-      const BAR_HEIGHT = 36
-      const GAP = 18
+      // The bar and its gap add up to ONE ROW (48px), so above the pick it lies inside
+      // the row over it and covers no more of the grid than that.
+      const BAR_HEIGHT = 42
+      const GAP = 6
       const above = cell.offsetTop - BAR_HEIGHT - GAP
       // The bar starts TWO DAY COLUMNS to the left of the picked day (the owner's ask):
       // it hangs off the picked cell but begins before it, so the pick still sits in
@@ -103,10 +115,11 @@ export const TimelineGrid = React.memo(
       // FIRST day column so a pick near the left edge (the window opens on today, so
       // this is common) can never slide the bar over the sticky room-name column.
       const dayHeaders = scroller.querySelectorAll('th[data-day]') as NodeListOf<HTMLElement>
-      const dayWidth = dayHeaders.length > 1 ? dayHeaders[1].offsetLeft - dayHeaders[0].offsetLeft : 54
+      const dayWidth = dayHeaders.length > 1 ? dayHeaders[1].offsetLeft - dayHeaders[0].offsetLeft : 104
       const firstDayLeft = dayHeaders.length > 0 ? dayHeaders[0].offsetLeft : 0
       const left = Math.max(cell.offsetLeft - 2 * dayWidth, firstDayLeft)
-      setBarPos({ left, top: above > 52 ? above : cell.offsetTop + cell.offsetHeight + GAP })
+      const headerHeight = (scroller.querySelector('thead') as HTMLElement | null)?.offsetHeight ?? 48
+      setBarPos({ left, top: above > headerHeight + 4 ? above : cell.offsetTop + cell.offsetHeight + GAP })
     }, [barAnchor])
     React.useEffect(() => { placeBar() }, [placeBar, daysList, timelineSelection, groupSelection])
     React.useEffect(() => {
@@ -211,170 +224,180 @@ export const TimelineGrid = React.memo(
     const displayPriceFor = (unit: Room | Venue) => getEffectiveNightlyPrice(unit.base_price, unit.promo_price)
 
     return (
-      <div className="space-y-2.5 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
-        <div className="flex-1 min-h-0 bg-card border border-soft rounded-xl overflow-hidden flex flex-col shadow-soft">
-          <div className="flex-1 min-h-0 overflow-auto relative" ref={scrollRef} onMouseMove={handleGridMouseMove} onMouseLeave={handleGridMouseLeave}>
-            {/* The action bar lives INSIDE the scroller, pinned just under the cell the
-                desk picked, so it is beside both the room and the date and it travels
-                with the grid. */}
-            {barAnchor && barPos && (() => {
-              const ranges = groupSelection ? Object.entries(groupSelection) : []
-              const hasRange = ranges.length > 0
-              const first = hasRange ? ranges[0][1] : null
-              const from = first ? first.checkIn : timelineSelection?.checkIn
-              const to = first ? first.checkOut : null
-              const nights = from && to ? Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000)) : 0
-              const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-              // A finished range has no single picked cell, so its name comes from the range.
-              const rangeUnit = ranges.length === 1 ? ranges[0][0] : ''
-              const barName = selectionName || (ranges.length > 1
-                ? ranges.length + ' units'
-                : rangeUnit
-                  ? (rooms.find(r => r.id === rangeUnit) ? roomDisplayName(rooms.find(r => r.id === rangeUnit)) : venues.find(v => v.id === rangeUnit)?.name || '')
-                  : '')
-              return (
-                <div style={{ '--bar-left': barPos.left + 'px', '--bar-top': barPos.top + 'px' } as React.CSSProperties}
-                  className="absolute z-40 [left:var(--bar-left)] [top:var(--bar-top)] bg-card border border-gold-400 rounded-full pl-3 pr-1.5 py-1.5 shadow-softLg flex items-center gap-2 text-[11.5px] font-semibold text-main animate-in fade-in duration-150">
-                  <span className="truncate max-w-[150px]" title={barName}>
-                    <span className="font-display font-bold text-gold-700">{barName}</span>
-                    <span className="text-muted"> · {from ? fmt(from) : ''}{to && nights > 0 ? ' → ' + fmt(to) : ''}</span>
-                  </span>
+      // The grid is the third line of the calendar's one sheet (see `CalendarTab`), so it
+      // draws no card of its own: it is the scroller and nothing round it.
+      <div className="flex-1 min-h-0 min-w-0 overflow-auto relative" ref={scrollRef} onMouseMove={handleGridMouseMove} onMouseLeave={handleGridMouseLeave}>
+        {/* The action bar lives INSIDE the scroller, pinned just under the cell the
+            desk picked, so it is beside both the room and the date and it travels
+            with the grid. */}
+        {barAnchor && barPos && (() => {
+          const ranges = groupSelection ? Object.entries(groupSelection) : []
+          const hasRange = ranges.length > 0
+          const first = hasRange ? ranges[0][1] : null
+          const from = first ? first.checkIn : timelineSelection?.checkIn
+          const to = first ? first.checkOut : null
+          const nights = from && to ? Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000)) : 0
+          const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          // A finished range has no single picked cell, so its name comes from the range.
+          const rangeUnit = ranges.length === 1 ? ranges[0][0] : ''
+          const barName = selectionName || (ranges.length > 1
+            ? ranges.length + ' units'
+            : rangeUnit
+              ? (rooms.find(r => r.id === rangeUnit) ? roomDisplayName(rooms.find(r => r.id === rangeUnit)) : venues.find(v => v.id === rangeUnit)?.name || '')
+              : '')
+          return (
+            <div style={{ '--bar-left': barPos.left + 'px', '--bar-top': barPos.top + 'px' } as React.CSSProperties}
+              className="absolute z-40 [left:var(--bar-left)] [top:var(--bar-top)] bg-card border border-gold-400 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg flex items-center gap-2 text-[13px] font-semibold text-main animate-in fade-in duration-150">
+              {/* When the bar is squeezed against the edge of the screen it is the room's
+                  name that is cut, never the dates — they are what was just picked. */}
+              <span className="flex min-w-0 items-baseline gap-1" title={barName}>
+                <span className="truncate max-w-[170px] font-display font-bold text-brand-text">{barName}</span>
+                <span className="shrink-0 text-muted">· {from ? fmt(from) : ''}{to && nights > 0 ? ' → ' + fmt(to) : ''}</span>
+              </span>
 
-                  {hasRange ? (
-                    <>
-                      <button type="button" onClick={onNewBooking}
-                        className="shrink-0 inline-flex items-center gap-1 bg-gold-400 hover:bg-gold-600 text-ink-900 text-[11.5px] font-bold px-3 py-1.5 rounded-full transition-colors cursor-pointer">
-                        <Plus className="w-3 h-3" /> New booking
+              {hasRange ? (
+                <>
+                  <button type="button" onClick={onNewBooking}
+                    className="shrink-0 inline-flex items-center gap-1 h-7 px-3.5 rounded-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold transition-colors active:scale-[0.98] cursor-pointer">
+                    <Plus className="w-3.5 h-3.5" /> New booking
+                  </button>
+                </>
+              ) : (
+                /* ONE DAY: the short-stay hours straightaway (the owner's ask) —
+                   the old single `Short stay` button just opened the form, which
+                   then asked the same question again. 22 hours is left out on
+                   purpose: it IS the room's own price, so it is an ordinary
+                   overnight stay and the desk gets it by picking a date range.
+                   The buttons carry the HOURS ONLY (the owner's ruling, 2026-09):
+                   the price of the hours is on the room and in the tooltip, so the
+                   bar stays short. */
+                barRoom ? (
+                  SHORT_STAY_HOURS.map(h => {
+                    const price = h === 3 ? barRoom.hour3_price : h === 6 ? barRoom.hour6_price : barRoom.hour12_price
+                    const sellable = !!price && Number(price) > 0
+                    return (
+                      <button key={h} type="button" disabled={!sellable} onClick={() => onNewShortStay(h)}
+                        title={sellable
+                          ? 'A ' + h + '-hour stay — ₱' + Number(price).toLocaleString() + ' — takes ' + roomDisplayName(barRoom) + ' for this whole day'
+                          : 'This room is not sold for ' + h + ' hours — set it in Settings → Rooms & prices'}
+                        className="shrink-0 inline-flex items-center gap-1 h-7 px-3 rounded-full border border-soft text-[13px] font-bold text-brand-text hover:bg-gold-100 hover:border-gold-400 transition-colors active:scale-[0.98] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-soft">
+                        {sellable ? h + 'h' : h + 'h · —'}
                       </button>
-                    </>
-                  ) : (
-                    /* ONE DAY: the short-stay hours straightaway (the owner's ask) —
-                       the old single `Short stay` button just opened the form, which
-                       then asked the same question again. 22 hours is left out on
-                       purpose: it IS the room's own price, so it is an ordinary
-                       overnight stay and the desk gets it by picking a date range.
-                       The buttons carry the HOURS ONLY (the owner's ruling, 2026-09):
-                       the price of the hours is on the room and in the tooltip, so the
-                       bar stays short. */
-                    barRoom ? (
-                      SHORT_STAY_HOURS.map(h => {
-                        const price = h === 3 ? barRoom.hour3_price : h === 6 ? barRoom.hour6_price : barRoom.hour12_price
-                        const sellable = !!price && Number(price) > 0
-                        return (
-                          <button key={h} type="button" disabled={!sellable} onClick={() => onNewShortStay(h)}
-                            title={sellable
-                              ? 'A ' + h + '-hour stay — ₱' + Number(price).toLocaleString() + ' — takes ' + roomDisplayName(barRoom) + ' for this whole day'
-                              : 'This room is not sold for ' + h + ' hours — set it in Settings → Rooms & prices'}
-                            className="shrink-0 inline-flex items-center gap-1 text-[11.5px] font-bold text-gold-700 hover:bg-gold-100 border border-soft hover:border-gold-400 px-3 py-1.5 rounded-full transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-soft">
-                            {sellable ? h + 'h' : h + 'h · —'}
-                          </button>
-                        )
-                      })
-                    ) : (
-                      /* A venue is never sold for hours — only a room is. */
-                      <span className="shrink-0 text-[10.5px] text-muted">Tap the check-out day for a normal stay</span>
                     )
-                  )}
+                  })
+                ) : (
+                  /* A venue is never sold for hours — only a room is. */
+                  <span className="shrink-0 text-[12px] font-medium text-muted">Tap the check-out day for a normal stay</span>
+                )
+              )}
 
-                  {/* Block the dates that are picked — ONE icon, the same on a single day
-                      and on a range (the owner's ruling, 2026-09: the words were noise).
-                      It opens a small pane that only asks why; the room and dates come
-                      from the pick. Blocking is no longer a mode of the booking form. */}
-                  <button type="button" onClick={onBlockDates}
-                    title="Block these dates — cleaning, maintenance or owner use"
-                    aria-label="Block these dates"
-                    className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full border border-gold-400 text-gold-700 hover:bg-gold-100 transition-colors cursor-pointer">
-                    <Ban className="w-3.5 h-3.5" />
-                  </button>
+              {/* Block the dates that are picked — ONE icon, the same on a single day
+                  and on a range (the owner's ruling, 2026-09: the words were noise).
+                  It opens a small pane that only asks why; the room and dates come
+                  from the pick. Blocking is no longer a mode of the booking form. */}
+              <button type="button" onClick={onBlockDates}
+                title="Block these dates — cleaning, maintenance or owner use"
+                aria-label="Block these dates"
+                className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full border border-gold-400 text-brand-text hover:bg-gold-100 transition-colors active:scale-95 cursor-pointer">
+                <Ban className="w-3.5 h-3.5" />
+              </button>
 
-                  {/* Log old booking — **now its only entrance** (the owner, 2026-09-29:
-                      the toolbar's copy was removed as a duplicate). It is offered by the
-                      same pick that fills its dates in, beside the other things the desk
-                      can do with those dates. */}
-                  <button type="button" onClick={onLogOldBooking}
-                    title="Log an old paper booking for these dates"
-                    aria-label="Log old booking"
-                    className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full border border-soft text-muted hover:text-main hover:border-gold-400 transition-colors cursor-pointer">
-                    <FilePlus className="w-3.5 h-3.5" />
-                  </button>
+              {/* Log old booking — **now its only entrance** (the owner, 2026-09-29:
+                  the toolbar's copy was removed as a duplicate). It is offered by the
+                  same pick that fills its dates in, beside the other things the desk
+                  can do with those dates. */}
+              <button type="button" onClick={onLogOldBooking}
+                title="Log an old paper booking for these dates"
+                aria-label="Log old booking"
+                className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full border border-soft text-muted hover:text-main hover:border-gold-400 transition-colors active:scale-95 cursor-pointer">
+                <FilePlus className="w-3.5 h-3.5" />
+              </button>
 
-                  {/* Clears whatever was picked — a single day AND a finished range,
-                      which is why it goes through the caller: the first version only
-                      cleared the single day, so Cancel did nothing on a range. */}
-                  <button type="button" onClick={onClearSelection}
-                    title="Clear the selection"
-                    className="shrink-0 text-[10px] font-bold text-muted hover:text-main transition-all cursor-pointer border border-soft hover:border-gold-400 px-2 py-1 rounded-full bg-page hover:bg-gold-100">
-                    Cancel
-                  </button>
-                </div>
-              )
-            })()}
+              {/* Clears whatever was picked — a single day AND a finished range,
+                  which is why it goes through the caller: the first version only
+                  cleared the single day, so Cancel did nothing on a range. */}
+              <button type="button" onClick={onClearSelection}
+                title="Clear the selection"
+                className="shrink-0 h-7 px-3 rounded-full text-[13px] font-semibold text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer">
+                Cancel
+              </button>
+            </div>
+          )
+        })()}
 
-            <table className="w-full table-fixed border-collapse">
-              <thead>
-                <tr className="bg-paper-50">
-                  <th className="sticky top-0 left-0 z-30 bg-paper-50 border-b border-r border-soft p-3 text-left text-[11px] text-muted font-bold uppercase tracking-wider w-[170px] min-w-[170px]">
-                    Room / Venue
-                  </th>
-                  {daysList.map((dayInfo, i) => (
-                    <th key={i} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft p-1 text-center w-[96px] min-w-[96px] ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-paper-50') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + (hoverDay === dayInfo.isoStr ? ' !bg-gold-200/70' : '')}>
-                      <div className={'text-[9px] font-bold uppercase ' + (dayInfo.isToday ? 'text-gold-700' : 'text-muted/70')}>{dayInfo.weekday}</div>
-                      <div className="mt-0.5 flex items-center justify-center gap-0.5">
-                        {dayInfo.isToday ? (
-                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gold-400 text-ink-900 text-[11px] font-bold">{dayInfo.dayNum}</span>
-                        ) : (
-                          <span className="text-[11px] font-semibold text-main">{dayInfo.dayNum}</span>
-                        )}
-                        {dayInfo.monthLabel && <span className="text-[8px] font-bold uppercase text-gold-800">{dayInfo.monthLabel}</span>}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rooms.map(room => (
-                  <tr key={room.id} className="group border-b border-soft hover:bg-paper-50/50">
-                    <td className="sticky left-0 z-20 bg-card border-r border-soft p-2.5 min-w-[170px] transition-colors group-hover:bg-gold-100">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-gold-100 text-gold-700 font-display font-bold text-xs flex items-center justify-center shrink-0">
-                          {room.room_number}
-                        </div>
-                        <div>
-                          <span className="text-xs font-semibold text-main block">{roomDisplayName(room)}</span>
-                          <span className="text-[10px] text-gold-700 font-medium">₱{displayPriceFor(room).toLocaleString()}/night</span>
-                        </div>
-                      </div>
-                    </td>
-                    {buildRowCells(room.id, 'room')}
-                  </tr>
-                ))}
+        {/* Every cell draws its own rules (`border-separate`). In a collapsed table the
+            rules belong to the table, and the pinned header and room column — which
+            paint over it — lost theirs on an ordinary screen. */}
+        <table className="w-full table-fixed border-separate border-spacing-0">
+          <thead>
+            <tr>
+              <th className={'sticky top-0 left-0 z-30 bg-card border-b border-r border-soft px-3.5 text-left align-bottom pb-2 text-[13px] font-medium text-muted ' + UNIT_COL}>
+                Room
+              </th>
+              {daysList.map((dayInfo, i) => (
+                <th key={i} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft px-1 py-1.5 text-center ' + DAY_COL + ' ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-card') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + (hoverDay === dayInfo.isoStr ? ' !bg-gold-200/70' : '')}>
+                  <div className={'text-[11px] font-semibold leading-none ' + (dayInfo.isToday ? 'text-brand-text' : 'text-muted')}>{dayInfo.weekday}</div>
+                  <div className="mt-1 flex h-6 items-center justify-center gap-1">
+                    {dayInfo.isToday ? (
+                      <span className="inline-flex h-6 min-w-6 px-1 items-center justify-center rounded-full bg-gold-400 text-ink-900 text-[13px] font-bold tabular-nums">{dayInfo.dayNum}</span>
+                    ) : (
+                      <span className="text-[13px] font-semibold tabular-nums text-main">{dayInfo.dayNum}</span>
+                    )}
+                    {dayInfo.monthLabel && <span className="text-[11px] font-bold text-brand-text">{dayInfo.monthLabel}</span>}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {/* The grid's own shape while the rooms are on their way, so nothing jumps
+                when they land. */}
+            {loading && rooms.length === 0 && [0, 1, 2, 3, 4, 5, 6, 7].map(i => (
+              <tr key={'wait-' + i} aria-hidden="true">
+                <td className={UNIT_CELL}>
+                  <span className="block h-3 w-28 rounded bg-softbg animate-pulse" />
+                  <span className="mt-1.5 block h-2.5 w-16 rounded bg-softbg animate-pulse" />
+                </td>
+                <td colSpan={daysList.length} className="h-12 border-b border-soft" />
+              </tr>
+            ))}
 
-                <tr className="bg-gold-100/80">
-                  <td colSpan={daysList.length + 1} className="sticky left-0 z-20 bg-gold-100/90 border-b border-soft p-2 text-[10px] font-bold uppercase tracking-widest text-gold-800 text-left">
-                    Event venues
-                  </td>
-                </tr>
+            {/* A room is its NUMBER first — it is what the desk says aloud — then its
+                kind and its price. No tile behind the number: the row is the box. */}
+            {rooms.map(room => (
+              <tr key={room.id} className="group hover:bg-paper-50/50">
+                <td className={UNIT_CELL}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 shrink-0 text-center font-display text-[15px] font-bold tabular-nums text-main">{room.room_number}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13px] font-semibold leading-4 text-main">{roomDisplayName(room)}</span>
+                      <span className="block text-[12px] leading-4 tabular-nums text-muted">₱{displayPriceFor(room).toLocaleString()}/night</span>
+                    </span>
+                  </div>
+                </td>
+                {buildRowCells(room.id, 'room')}
+              </tr>
+            ))}
 
-                {venues.map(venue => (
-                  <tr key={venue.id} className="group border-b border-soft hover:bg-paper-50/50">
-                    <td className="sticky left-0 z-20 bg-card border-r border-soft p-2.5 min-w-[170px] transition-colors group-hover:bg-gold-100">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-gold-100 text-gold-700 font-display font-bold text-xs flex items-center justify-center shrink-0">
-                          <span>♪</span>
-                        </div>
-                        <div>
-                          <span className="text-xs font-semibold text-main block">{venue.name}</span>
-                          <span className="text-[10px] text-gold-700 font-medium">₱{displayPriceFor(venue).toLocaleString()}/day</span>
-                        </div>
-                      </div>
-                    </td>
-                    {buildRowCells(venue.id, 'venue')}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+            {venues.length > 0 && (
+              <tr>
+                <td colSpan={daysList.length + 1} className="border-b border-soft bg-paper-50 p-0">
+                  <span className="sticky left-0 inline-flex h-8 items-center px-3.5 text-[13px] font-semibold text-main">Event venues</span>
+                </td>
+              </tr>
+            )}
+
+            {venues.map(venue => (
+              <tr key={venue.id} className="group hover:bg-paper-50/50">
+                <td className={UNIT_CELL}>
+                  <span className="block truncate text-[13px] font-semibold leading-4 text-main">{venue.name}</span>
+                  <span className="block text-[12px] leading-4 tabular-nums text-muted">₱{displayPriceFor(venue).toLocaleString()}/day</span>
+                </td>
+                {buildRowCells(venue.id, 'venue')}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     )
   }

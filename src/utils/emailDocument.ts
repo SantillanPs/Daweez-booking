@@ -93,6 +93,20 @@ export async function paperToPdf(paper: HTMLElement, size: Paper): Promise<strin
   return pdf.output('datauristring').split(',')[1]
 }
 
+/** Whether the hotel's Gmail is connected, and the address it sends from. */
+export async function emailSetup(): Promise<{ ready: boolean; from: string }> {
+  const { data, error } = await supabase.functions.invoke('send-email', { body: { check: true } })
+  if (error || !data?.ok) return { ready: false, from: '' }
+  return { ready: !!data.ready, from: String(data.from || '') }
+}
+
+/** The one-line test from Settings → Email. Rejects with a sentence the desk can read. */
+export async function sendTestEmail(to: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('send-email', { body: { test: true, to: to.trim() } })
+  if (error) throw new Error('The test could not be sent. Check the internet connection and try again.')
+  if (!data?.ok) throw new Error(data?.message || 'The test could not be sent.')
+}
+
 /**
  * Send the paper. Resolves once it has left; rejects with a sentence the desk can read.
  */

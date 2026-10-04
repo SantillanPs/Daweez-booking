@@ -33,6 +33,9 @@ const fmtDay = (iso: string) => {
 //   In hotel  — everyone checked in and not yet checked out.
 //   Breakfast — the rooms in the hotel that booked breakfast, and how many of them
 //               have been asked what they want this morning (`1/3`).
+//
+// It is the second line of the calendar's one sheet (the design pass, 2026-10-04), not a
+// card of its own; the names it opens sit under it, above the grid.
 export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trailing }: TodayStripProps) {
   const [open, setOpen] = useState<ListKey | null>(null)
   const today = dateToString(new Date())
@@ -92,9 +95,9 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
   const shown = open ? lists[open] : []
 
   return (
-    <div className="bg-card border border-soft rounded-xl px-3 py-2 flex-shrink-0 shadow-soft">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Today</span>
+    <div className="px-4 py-1.5 border-b border-soft flex-shrink-0">
+      <div className="flex flex-wrap items-center gap-2 min-h-9">
+        <span className="mr-1 text-[13px] font-semibold text-main">Today</span>
         {chips.map(({ key, label, Icon }) => {
           const count = lists[key].length
           const on = open === key
@@ -105,14 +108,14 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
               disabled={count === 0}
               onClick={() => setOpen(on ? null : key)}
               aria-expanded={on}
-              className={'inline-flex items-center gap-1.5 text-[12px] font-bold px-2.5 py-1.5 rounded-lg border transition-colors ' +
-                (on ? 'bg-gold-400 border-gold-400 text-ink-900 cursor-pointer'
-                  : count === 0 ? 'bg-page border-soft text-muted'
-                    : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100 cursor-pointer')}
+              className={'inline-flex items-center gap-1.5 h-9 px-3 rounded-md border text-[13px] font-semibold transition-colors duration-150 ' +
+                (on ? 'bg-gold-400 border-gold-400 text-ink-900 cursor-pointer active:scale-[0.98]'
+                  : count === 0 ? 'bg-transparent border-transparent text-muted'
+                    : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100 cursor-pointer active:scale-[0.98]')}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className="w-4 h-4" />
               {label}
-              <span className="font-mono">{key === 'breakfast' ? breakfastAsked + '/' + count : count}</span>
+              <span className="font-bold tabular-nums">{key === 'breakfast' ? breakfastAsked + '/' + count : count}</span>
             </button>
           )
         })}
@@ -120,7 +123,7 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
       </div>
 
       {open && shown.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-soft flex flex-wrap gap-1.5 max-h-[96px] overflow-y-auto">
+        <div className="mt-1.5 pt-2 pb-0.5 border-t border-soft flex flex-wrap gap-1.5 max-h-[104px] overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
           {shown.map(b => {
             const h = hint(open, b)
             return (
@@ -129,7 +132,7 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
                 type="button"
                 // The breakfast list stays open, so the desk goes down it room by room.
                 onClick={() => { if (open === 'breakfast') onBreakfast(b); else { setOpen(null); onOpen(b) } }}
-                className="inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1.5 rounded-lg border border-soft bg-page hover:border-gold-400 hover:bg-gold-100 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-soft bg-card text-[13px] hover:border-gold-400 hover:bg-gold-100 transition-colors duration-150 active:scale-[0.98] cursor-pointer"
               >
                 <b className="text-main">{b.guest_name}</b>
                 <span className="text-muted">· {place(b)}</span>

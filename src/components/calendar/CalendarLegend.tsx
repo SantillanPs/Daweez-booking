@@ -7,7 +7,7 @@ import React from 'react'
 // fit on the Today line instead, and the grid gets the rail's width back.
 export function CalendarLegend() {
   return (
-    <div className="hidden md:flex items-center gap-3 text-[12px] text-muted">
+    <div className="hidden md:flex items-center gap-3.5 text-[13px] text-muted">
       <LegendSwatch className="bg-card border-paper-400" label="Not arrived" />
       <LegendSwatch className="bg-gold-100 border-gold-500" label="In the hotel" />
       <LegendSwatch className="bg-ink-100 border-ink-200" label="Checked out" />

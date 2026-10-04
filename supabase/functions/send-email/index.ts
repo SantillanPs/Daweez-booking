@@ -11,6 +11,10 @@ import nodemailer from "npm:nodemailer@6.9.16"
  * and `GMAIL_APP_PASSWORD` (an app password made on that Google account) — and says
  * plainly that email is not set up while either is missing.
  *
+ * Settings → Email asks it two more things: `{ check: true }` — is the Gmail connected,
+ * and which address sends — and `{ test: true, to }`, a one-line test email, so whoever
+ * connects it can see it work before a guest is waiting.
+ *
  * **What it refuses, and why.** The app has no staff logins yet (card k74), so this can be
  * called by anyone holding the site's public key. To keep the hotel's address from being
  * used to send anything but its own paper:
@@ -31,8 +35,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const answer = (ok: boolean, message: string) =>
-  new Response(JSON.stringify({ ok, message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+const reply = (body: Record<string, unknown>) =>
+  new Response(JSON.stringify(body), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+const answer = (ok: boolean, message: string) => reply({ ok, message })
 
 /** One line of plain words: no line breaks (they would start a new mail header), no tags. */
 const oneLine = (value: unknown, max: number) =>
@@ -44,6 +49,12 @@ const WHAT = {
   statement: { name: 'billing statement', subject: 'Billing statement', file: 'Billing-Statement' },
 } as const
 
+const SIGN = [
+  'Daweez Pension House',
+  'National Highway, San Agustin Sur, Tandag City, Surigao del Sur',
+  'Mobile No: 0910-7163830',
+]
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -53,31 +64,41 @@ serve(async (req) => {
     const body = await req.json().catch(() => null)
     if (!body) return answer(false, 'The email could not be sent.')
 
+    const user = Deno.env.get('GMAIL_USER') ?? ''
+    const pass = Deno.env.get('GMAIL_APP_PASSWORD') ?? ''
+    const ready = !!(user && pass)
+
+    if (body.check) return reply({ ok: true, ready, from: ready ? user : '' })
+
+    const isTest = body.test === true
     const to = String(body.to ?? '').trim()
+    if (to.length > 254 || !/^[^\s@,;:<>"()]+@[^\s@,;:<>"()]+\.[^\s@,;:<>"()]+$/.test(to)) {
+      return answer(false, 'That email address does not look right.')
+    }
+
     const kind = body.kind as keyof typeof WHAT
     const number = oneLine(body.number, 40)
     const guestName = oneLine(body.guestName, 80)
     const bookingId = oneLine(body.bookingId, 80)
     const pdf = String(body.pdf ?? '')
 
-    if (to.length > 254 || !/^[^\s@,;:<>"()]+@[^\s@,;:<>"()]+\.[^\s@,;:<>"()]+$/.test(to)) {
-      return answer(false, 'That email address does not look right.')
-    }
-    if (!WHAT[kind] || !/^[A-Za-z0-9][A-Za-z0-9 ._/-]*$/.test(number) || !bookingId) {
-      return answer(false, 'The email could not be sent.')
-    }
-    if (!/^[A-Za-z0-9+/]+=*$/.test(pdf) || pdf.length * 0.75 > MAX_PDF_BYTES || !atob(pdf.slice(0, 8)).startsWith('%PDF-')) {
-      return answer(false, 'The paper could not be attached. Close it, open it again and try once more.')
+    if (!isTest) {
+      if (!WHAT[kind] || !/^[A-Za-z0-9][A-Za-z0-9 ._/-]*$/.test(number) || !bookingId) {
+        return answer(false, 'The email could not be sent.')
+      }
+      if (!/^[A-Za-z0-9+/]+=*$/.test(pdf) || pdf.length * 0.75 > MAX_PDF_BYTES || !atob(pdf.slice(0, 8)).startsWith('%PDF-')) {
+        return answer(false, 'The paper could not be attached. Close it, open it again and try once more.')
+      }
     }
 
-    const user = Deno.env.get('GMAIL_USER') ?? ''
-    const pass = Deno.env.get('GMAIL_APP_PASSWORD') ?? ''
-    if (!user || !pass) return answer(false, 'Email is not set up yet.')
+    if (!ready) return answer(false, 'Email is not set up yet.')
 
     const db = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
 
-    const { data: booking } = await db.from('bookings').select('id').eq('id', bookingId).maybeSingle()
-    if (!booking) return answer(false, 'The email could not be sent.')
+    if (!isTest) {
+      const { data: booking } = await db.from('bookings').select('id').eq('id', bookingId).maybeSingle()
+      if (!booking) return answer(false, 'The email could not be sent.')
+    }
 
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { count, error: countError } = await db.from('email_log')
@@ -89,22 +110,19 @@ serve(async (req) => {
 
     log = async (status, error) => {
       await db.from('email_log').insert({
-        kind, document_number: number, to_address: to, booking_id: bookingId, status, error: error ?? null,
+        kind: isTest ? 'test' : kind, document_number: isTest ? 'test' : number, to_address: to,
+        booking_id: isTest ? null : bookingId, status, error: error ?? null,
       })
     }
 
-    const what = WHAT[kind]
-    const greeting = guestName ? 'Good day, ' + guestName + '.' : 'Good day.'
-    const lines = [
-      greeting,
-      'Attached is your ' + what.name + ' ' + number + ' from Daweez Pension House.',
-      'Thank you.',
-    ]
-    const sign = [
-      'Daweez Pension House',
-      'National Highway, San Agustin Sur, Tandag City, Surigao del Sur',
-      'Mobile No: 0910-7163830',
-    ]
+    const what = isTest ? null : WHAT[kind]
+    const lines = what
+      ? [
+          guestName ? 'Good day, ' + guestName + '.' : 'Good day.',
+          'Attached is your ' + what.name + ' ' + number + ' from Daweez Pension House.',
+          'Thank you.',
+        ]
+      : ['This is a test from the Daweez Pension House booking system.', 'Receipts and billing statements can now be emailed from it.']
 
     // Port 465: Supabase blocks 25 and 587 from edge functions.
     const transport = nodemailer.createTransport({
@@ -114,13 +132,13 @@ serve(async (req) => {
     await transport.sendMail({
       from: { name: 'Daweez Pension House', address: user },
       to,
-      subject: what.subject + ' ' + number + ' — Daweez Pension House',
-      text: lines.join('\n\n') + '\n\n' + sign.join('\n'),
-      html: lines.map(l => '<p>' + l + '</p>').join('') + '<p>' + sign.join('<br>') + '</p>',
-      attachments: [{
+      subject: (what ? what.subject + ' ' + number : 'Test email') + ' — Daweez Pension House',
+      text: lines.join('\n\n') + '\n\n' + SIGN.join('\n'),
+      html: lines.map(l => '<p>' + l + '</p>').join('') + '<p>' + SIGN.join('<br>') + '</p>',
+      attachments: what ? [{
         filename: what.file + '-' + number.replace(/[^A-Za-z0-9-]+/g, '-') + '.pdf',
         content: pdf, encoding: 'base64', contentType: 'application/pdf',
-      }],
+      }] : [],
     })
 
     await log('sent')
@@ -129,6 +147,10 @@ serve(async (req) => {
     const reason = err instanceof Error ? err.message : String(err)
     console.error('send-email failed:', reason)
     if (log) await log('failed', reason.slice(0, 500)).catch(() => {})
-    return answer(false, 'The email could not be sent. Check the address and try again.')
+    // Google's own refusal of the address or the app password reads the same from here.
+    const refused = /535|Invalid login|Username and Password not accepted/i.test(reason)
+    return answer(false, refused
+      ? 'Gmail did not accept the address or the app password. Check both in Settings, under Email.'
+      : 'The email could not be sent. Check the address and try again.')
   }
 })

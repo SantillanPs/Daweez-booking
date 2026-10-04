@@ -1,4 +1,5 @@
 import React from 'react'
+import { LogOut } from 'lucide-react'
 import { Booking } from '../../types/booking'
 import { pillMoney, stageTag, stageWords } from './bookingStyles'
 import { clockLabel, shortStayEnd } from '../../utils/shortStay'
@@ -77,7 +78,7 @@ export const TimelineCell = React.memo(
         <td
           colSpan={span}
           data-day={isoStr}
-          className={'p-0 border-r border-soft relative align-middle'}
+          className="p-0 h-12 border-r border-b border-soft relative align-middle"
           onMouseEnter={() => {
             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
             hoverTimeoutRef.current = setTimeout(() => setShowTooltip(true), 500)
@@ -99,27 +100,28 @@ export const TimelineCell = React.memo(
               setExtendError('')
             }}
             title={pillName}
-            className={'mx-0.5 px-1.5 h-10 rounded-md border cursor-pointer select-none transition-shadow hover:shadow-sm flex flex-col justify-center ' +
+            className={'mx-0.5 px-2 h-10 rounded-md border cursor-pointer select-none transition hover:brightness-95 flex flex-col justify-center ' +
               (isShortStayDue ? 'bg-danger-100 border-danger-400 text-danger-600' : getBookingStyle(booking))}
           >
             {/* TWO LINES, both in words (the staff's feedback, 2026-10-04): who is in the
                 room and whether they are IN or OUT, then what is still to pay. The desk
                 reads the calendar without opening a booking. A block has one line — why
-                the dates are closed. */}
-            <span className="flex items-center justify-between gap-1 min-w-0 text-[11px] font-bold leading-tight">
+                the dates are closed. 13px and 12px: the pills are what the desk reads all
+                day, and at 11px they were the smallest words on the screen. */}
+            <span className="flex items-center justify-between gap-1 min-w-0 text-[13px] font-bold leading-4">
               <span className="min-w-0 truncate">
                 {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
                 {pillName}
               </span>
               {!isBlock && tag && (
-                <span className={'shrink-0 rounded-sm px-1 text-[9px] font-bold leading-[14px] ' +
+                <span className={'shrink-0 rounded px-1 text-[10px] font-bold leading-[15px] ' +
                   (tag === 'IN' ? 'bg-gold-400 text-ink-900' : 'bg-ink-300 text-ink-700')}>
                   {tag}
                 </span>
               )}
             </span>
             {!isBlock && (
-              <span className={'text-[10.5px] font-bold truncate leading-tight mt-0.5 ' + (isShortStayDue ? '' : showClock ? 'text-ink-700' : money.className)}>
+              <span className={'text-[12px] font-semibold truncate leading-4 ' + (isShortStayDue ? '' : showClock ? 'text-ink-700' : money.className)}>
                 {isShortStayDue && freeAt ? 'time up ' + clockLabel(freeAt)
                   : showClock && freeAt ? 'out ' + clockLabel(freeAt)
                     : booking.stay_hours && !booking.actual_check_in ? booking.stay_hours + ' hrs · ' + money.text
@@ -128,17 +130,17 @@ export const TimelineCell = React.memo(
             )}
           </div>
           {showTooltip && (
-            <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-56 bg-card border border-soft p-3 shadow-softLg rounded-xl text-xs space-y-1.5 pointer-events-none text-left font-sans">
-              <div className="font-display font-bold text-main">{pillName}</div>
+            <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-60 bg-card border border-soft p-3 shadow-softLg rounded-lg text-[13px] space-y-1.5 pointer-events-none text-left font-sans animate-in fade-in duration-150">
+              <div className="font-display text-[14px] font-bold text-main">{pillName}</div>
               {booking.stay_hours ? (
-                <div className="text-[10px] font-bold text-brand-text">
+                <div className="text-[12px] font-semibold text-brand-text">
                   Short stay · {booking.stay_hours} hours
                   {freeAt ? ' · out by ' + clockLabel(freeAt) : ' · clock starts at check-in'}
                 </div>
               ) : null}
-              <div className="text-[10px] text-muted font-mono">{openEnded ? 'from ' + booking.check_in : booking.check_in + ' → ' + booking.check_out}</div>
+              <div className="text-[12px] text-muted tabular-nums">{openEnded ? 'from ' + booking.check_in : booking.check_in + ' → ' + booking.check_out}</div>
               {!isBlock && (
-                <div className="text-[11px] text-muted space-y-0.5">
+                <div className="text-[13px] text-muted space-y-0.5">
                   {booking.guest_phone && booking.guest_phone.trim() !== 'None' && <div>{booking.guest_phone}</div>}
                   <div className="font-semibold text-main">{stageWords(booking)}</div>
                   <div className={'font-semibold ' + money.className}>{money.text}</div>
@@ -155,8 +157,8 @@ export const TimelineCell = React.memo(
         // The picked day renders as this "In" cell — and it MUST carry the position
         // markers too, or the action bar cannot find the cell it hangs off (that is
         // why the Short stay button never appeared on a single picked day).
-        <td data-unit={id} data-day={isoStr} onClick={() => onCellClick(id, type, date)} className="p-0.5 h-10 relative cursor-cell align-middle">
-          <div className="w-full h-full rounded-md bg-gold-400 text-ink-900 flex items-center justify-center text-[9px] font-bold uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-150">
+        <td data-unit={id} data-day={isoStr} onClick={() => onCellClick(id, type, date)} className="px-0.5 h-12 border-b border-soft relative cursor-cell align-middle">
+          <div className="w-full h-10 rounded-md bg-gold-400 text-ink-900 flex items-center justify-center text-[12px] font-bold animate-in zoom-in-95 duration-150">
             In
           </div>
         </td>
@@ -169,7 +171,7 @@ export const TimelineCell = React.memo(
           data-unit={id}
           data-day={isoStr}
           onClick={() => onCellClick(id, type, date)}
-          className="p-0 h-10 cursor-cell relative align-middle transition-colors bg-gradient-to-r from-gold-100/70 to-gold-100/60 hover:from-gold-100 hover:to-gold-100"
+          className="p-0 h-12 border-b border-soft cursor-cell relative align-middle transition-colors bg-gold-100/70 hover:bg-gold-100"
         >
           <div className="absolute inset-0 border-y border-dashed border-gold-400/50" />
         </td>
@@ -182,11 +184,14 @@ export const TimelineCell = React.memo(
         data-day={isoStr}
         onClick={() => onCellClick(id, type, date)}
         title={checkoutBooking ? checkoutBooking.guest_name + ' checks out this day' : undefined}
-        className={'relative border-r border-soft p-0 h-10 cursor-cell transition-colors ' + (isToday ? 'bg-gold-100/50' : isWeekend ? 'bg-paper-50/60' : '') + ' hover:bg-gold-100/70'}
+        className={'relative border-r border-b border-soft p-0 h-12 cursor-cell transition-colors ' + (isToday ? 'bg-gold-100/50' : isWeekend ? 'bg-paper-50/60' : '') + ' hover:bg-gold-100/70'}
       >
+        {/* The morning a guest leaves, said beside the end of their pill. It was 7px and
+            rose; red on this grid means money owed and nothing else, so it is plain ink at
+            a size that can be read. */}
         {checkoutBooking && (
-          <span className="absolute top-0.5 right-0.5 pointer-events-none text-[7px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 border border-rose-100 rounded-sm px-1 py-px leading-none">
-            out
+          <span className="absolute left-1.5 top-1/2 -translate-y-1/2 pointer-events-none inline-flex items-center gap-1 text-[11px] font-medium text-muted">
+            <LogOut className="w-3 h-3" aria-hidden="true" /> out
           </span>
         )}
       </td>

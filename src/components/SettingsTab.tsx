@@ -9,14 +9,16 @@ import { RoomDraft, roomDraft } from './settings/roomDraft'
 import { BreakfastMenuEditor } from './settings/BreakfastMenuEditor'
 import { OtherCharges } from './settings/OtherCharges'
 import { ChannelFeeds } from './settings/ChannelFeeds'
+import { EmailSetup } from './settings/EmailSetup'
 import { showToast } from '../utils/toast'
 
-type SettingsTabKey = 'rooms' | 'charges' | 'channels'
+type SettingsTabKey = 'rooms' | 'charges' | 'channels' | 'email'
 
 const TABS: { key: SettingsTabKey; label: string }[] = [
   { key: 'rooms', label: 'Rooms & prices' },
   { key: 'charges', label: 'Other charges' },
   { key: 'channels', label: 'Channels' },
+  { key: 'email', label: 'Email' },
 ]
 
 /** How many fields differ between what is on screen and what is stored. */
@@ -39,6 +41,10 @@ function countDiffs<T extends object>(draft: T, saved: T): number {
  * them together; the room rows go through `updateRoomRate` / `updateRoomBreakfastPrice`
  * / `updateRoomHourPrices`, the shared figures through `saveRateConfig` /
  * `savePaymentAccounts`.
+ *
+ * A fourth tab, **Email**, was added on 2026-10-04 when receipts and statements became
+ * emailable: whether the hotel's Gmail is connected, and how to connect it. It saves
+ * nothing here, so it never wakes the save bar.
  *
  * **One flat sheet** (the owner's taste, 2026-10-04: *"I don't like the boxes design. I
  * prefer a more 2d, clean, minimalistic, simple, yet professional look."*). The three
@@ -126,6 +132,8 @@ export function SettingsTab() {
               }} />
             </div>
           )}
+
+          {tab === 'email' && <EmailSetup />}
         </div>
       </div>
 
