@@ -14,6 +14,17 @@ export function inHouseGuests(bookings: Booking[]): Booking[] {
     .sort((a, b) => (a.actual_check_in || '').localeCompare(b.actual_check_in || ''))
 }
 
+/**
+ * Where a diner sits, said in full: the staff type `2` in the Table box, and a bare `2`
+ * beside a name reads as nothing in particular — on a chip, on the kitchen's screen, at
+ * the front desk. `Table 2`; what was typed is kept when it already says so.
+ */
+export function tableName(label?: string | null): string {
+  const typed = (label || '').trim()
+  if (!typed) return ''
+  return /^table\b/i.test(typed) ? typed : 'Table ' + typed
+}
+
 /** Where a guest is: "Room 3", or the venue they booked. */
 export function guestPlace(b: Booking, rooms: Room[], venues: Venue[]): string {
   if (b.room_id) {

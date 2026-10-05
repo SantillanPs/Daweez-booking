@@ -20,15 +20,22 @@ interface TabSettlePanelProps {
    * copy is the next step then, so this button steps back and only one is gold.
    */
   quiet?: boolean
+  /**
+   * Asked just before the money is taken, so it is never taken for a slip that changed
+   * while the desk was looking at it. Answering false stops the payment.
+   */
+  ready?: () => Promise<boolean>
 }
 
 // Paying a walk-in's order slip (k69, part C): the one place a diner with no room pays.
+// It sits on the front desk's screen (`DinerPayModal`), never in the restaurant — the
+// money is always taken at the front desk (Sebastian, 2026-10-04).
 //
 // The amount is the slip's own total — a walk-in pays what they ran up, so there is
 // nothing to type and nothing to part-pay. The receipt prints straight away, because
-// the diner is standing at the counter. **Nothing is preselected** for how they paid:
+// the diner is standing at the desk. **Nothing is preselected** for how they paid:
 // a silent `Cash` is how a GCash guest once got a Cash receipt.
-export function TabSettlePanel({ tab, total, onSettled, quiet = false }: TabSettlePanelProps) {
+export function TabSettlePanel({ tab, total, onSettled, quiet = false, ready }: TabSettlePanelProps) {
   const [method, setMethod] = useState('')
   const [reference, setReference] = useState('')
   const [error, setError] = useState('')
@@ -42,6 +49,7 @@ export function TabSettlePanel({ tab, total, onSettled, quiet = false }: TabSett
     if (needsRef && !reference.trim()) { setError('Enter the ' + method + ' reference number.'); return }
     setError(''); setBusy(true)
     try {
+      if (ready && !(await ready())) return
       const receipt = await settleTab({ tab, amount: total, method, reference })
       setReference('')
       showToast(fmtPeso(total) + ' received · ' + (slipNumber(tab) || 'order slip') + ' paid.', 'success')

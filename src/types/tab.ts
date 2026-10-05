@@ -32,10 +32,20 @@ export interface TabLine {
   /** Set on a correction: why it was needed. */
   reason?: string
   /**
-   * How many of this line the kitchen's last printed slip carried. Anything above it
-   * is new on the next print (the staff's feedback, 2026-10-04).
+   * How many of this line the kitchen has been given. Anything above it is new, and goes
+   * with the next "Send to kitchen" (the staff's feedback, 2026-10-04).
+   *
+   * The order reaches the kitchen on a screen, so a line counts four things in a row:
+   * ordered (`qty`) → given to the kitchen (`sent_qty`) → cooked (`ready_qty`) → on the
+   * table (`served_qty`). Each is never more than the one before it.
    */
   sent_qty?: number
+  /** How many the kitchen has cooked. */
+  ready_qty?: number
+  /** How many have been carried to the guest. */
+  served_qty?: number
+  /** When the kitchen was given what it is still cooking — the kitchen's list is oldest first. */
+  sent_at?: string | null
   created_by?: string
   created_at: string
 }
@@ -49,10 +59,16 @@ export interface Tab {
   id: string
   /** The slip's number, given when its first order lands. Shown as `OS-0001`. */
   os_number?: number | null
-  /** When the slip was paid — at the counter for a diner, from the booking for a guest. */
+  /** When the slip was paid — at the front desk: from the booking for a guest, from "Diners to pay" for a diner. */
   paid_at?: string | null
   /** The receipt that paid it. Taking that payment back makes the slip unpaid again. */
   paid_receipt_number?: string | null
+  /**
+   * When the bill was sent to the front desk (Sebastian, 2026-10-05). The slip is closed
+   * to more orders from then on, and the front desk has it: a diner pays it there, a room
+   * guest's goes on their room.
+   */
+  billed_at?: string | null
   /** The booking this tab belongs to, or absent for a walk-in diner. */
   booking_id?: string
   /** The walk-in's name, when there is no booking. */

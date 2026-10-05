@@ -32,6 +32,16 @@ export function newCount(line: TabLine): number {
   return Math.max(0, Number(line.qty || 0) - Number(line.sent_qty || 0))
 }
 
+/** How many of a line the kitchen has been given and is still cooking. */
+export function cookingCount(line: TabLine): number {
+  return Math.max(0, Number(line.sent_qty || 0) - Number(line.ready_qty || 0))
+}
+
+/** How many of a line are cooked and waiting to be carried to the guest. */
+export function readyCount(line: TabLine): number {
+  return Math.max(0, Number(line.ready_qty || 0) - Number(line.served_qty || 0))
+}
+
 /** What the slips add to the bill, paid or not. */
 export function slipsTotal(slips: OrderSlip[]): number {
   return Math.round(slips.reduce((sum, s) => sum + s.total, 0) * 100) / 100
@@ -47,23 +57,21 @@ export function unpaidSlips(slips: OrderSlip[]): OrderSlip[] {
  * **Thrown on failure**, never answered with an empty list: the callers write the
  * total into a booking's balance, and an empty answer there would take the guest's
  * food off their bill. A slip nobody ordered on is left out — it has no number and
- * adds nothing.
+ * adds nothing. The slips come with their lines in one read.
  */
 export async function getSlipsByBooking(bookingIds: string[]): Promise<Record<string, OrderSlip[]>> {
   const out: Record<string, OrderSlip[]> = {}
   if (bookingIds.length === 0 || !isSupabaseConfigured) return out
 
-  const tabs = await supabase.from('tabs').select('*').in('booking_id', bookingIds).order('created_at', { ascending: true })
-  if (tabs.error) throw tabs.error
-  const found = (tabs.data || []) as Tab[]
-  if (found.length === 0) return out
+  const { data, error } = await supabase.from('tabs').select('*, tab_lines(*)')
+    .in('booking_id', bookingIds)
+    .order('created_at', { ascending: true })
+    .order('created_at', { referencedTable: 'tab_lines', ascending: true })
+  if (error) throw error
 
-  const lines = await supabase.from('tab_lines').select('*').in('tab_id', found.map(t => t.id)).order('created_at', { ascending: true })
-  if (lines.error) throw lines.error
-  const allLines = (lines.data || []) as TabLine[]
-
-  for (const tab of found) {
-    const own = allLines.filter(l => l.tab_id === tab.id)
+  for (const row of (data || []) as (Tab & { tab_lines?: TabLine[] })[]) {
+    const { tab_lines, ...tab } = row
+    const own = tab_lines || []
     if (own.length === 0 || !tab.booking_id) continue
     const list = out[tab.booking_id] || (out[tab.booking_id] = [])
     list.push({ tab, lines: own, total: tabTotal(own), paid: !!tab.paid_at })

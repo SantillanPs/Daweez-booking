@@ -35,23 +35,76 @@ export async function getTabs(): Promise<Tab[]> {
   return []
 }
 
-/** The guest's open order slip for a booking. A booking has at most one open slip. */
+/**
+ * The guest's open order slip for a booking. A booking has at most one open slip.
+ *
+ * The database is asked for that one slip. This used to read every slip the hotel has
+ * ever had and pick one out, which got slower with every slip written.
+ */
 export async function getOpenTabForBooking(bookingId: string): Promise<Tab | null> {
-  const tabs = await getTabs()
-  return tabs.find(t => t.booking_id === bookingId && t.status === 'open') || null
+  if (!isSupabaseConfigured) return null
+
+  try {
+    const { data, error } = await supabase.from('tabs').select('*')
+      .eq('booking_id', bookingId).eq('status', 'open').limit(1)
+    if (error) throw error
+    return (data?.[0] as Tab | undefined) || null
+  } catch (err) {
+    console.error('Supabase getOpenTabForBooking Error:', err)
+    return null
+  }
 }
 
 /**
- * Every open slip, a stay's and a diner's alike, in one read.
+ * Every open slip with its lines, a stay's and a diner's alike, in ONE read.
  *
  * The Restaurant screen lists everyone the desk may charge — the guests who are
  * in the hotel and the diners with no room behind them (the trade the owner said
- * is most of it), so it needs both kinds at once instead of one query per guest;
- * the diner slips are the ones with no `booking_id`.
+ * is most of it); the diner slips are the ones with no `booking_id`. It used to read
+ * every slip ever written and then make one more trip per open slip for its lines,
+ * and it does this again after every change on any tablet.
+ *
+ * **Thrown on failure**, so the screen keeps what it had instead of emptying.
  */
-export async function getOpenTabs(): Promise<Tab[]> {
-  const tabs = await getTabs()
-  return tabs.filter(t => t.status === 'open')
+export async function readOpenSlips(): Promise<{ tabs: Tab[]; lines: Record<string, TabLine[]> }> {
+  if (!isSupabaseConfigured) return { tabs: [], lines: {} }
+
+  const { data, error } = await supabase.from('tabs').select('*, tab_lines(*)')
+    .eq('status', 'open')
+    .order('created_at', { ascending: false })
+    .order('created_at', { referencedTable: 'tab_lines', ascending: true })
+  if (error) throw error
+  return slipsApart(data)
+}
+
+// A slip read together with its lines, taken apart into the two the screens keep.
+function slipsApart(data: unknown): { tabs: Tab[]; lines: Record<string, TabLine[]> } {
+  const tabs: Tab[] = []
+  const lines: Record<string, TabLine[]> = {}
+  for (const row of (data || []) as (Tab & { tab_lines?: TabLine[] })[]) {
+    const { tab_lines, ...tab } = row
+    tabs.push(tab)
+    lines[tab.id] = tab_lines || []
+  }
+  return { tabs, lines }
+}
+
+/**
+ * The diners with no room who have not paid, for the front desk: the ones still at their
+ * table, and the ones whose bill has been sent over — a billed slip is closed, so it is
+ * found by its bill, not by being open. In one read. **Thrown on failure.**
+ */
+export async function readDinerSlips(): Promise<{ tabs: Tab[]; lines: Record<string, TabLine[]> }> {
+  if (!isSupabaseConfigured) return { tabs: [], lines: {} }
+
+  const { data, error } = await supabase.from('tabs').select('*, tab_lines(*)')
+    .is('booking_id', null)
+    .is('paid_at', null)
+    .or('status.eq.open,billed_at.not.is.null')
+    .order('created_at', { ascending: false })
+    .order('created_at', { referencedTable: 'tab_lines', ascending: true })
+  if (error) throw error
+  return slipsApart(data)
 }
 
 /**
@@ -98,21 +151,58 @@ export async function closeTab(tabId: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * The bill goes to the front desk (Sebastian, 2026-10-05: "send bill to front desk maybe
+ * after the guests finish eating or asks for a bill").
+ *
+ * It is how tills work wherever guests pay at a cashier: the bill being asked for is a
+ * step of its own. The slip is stamped, closed to more orders and off the Restaurant
+ * screen, and the front desk has it — under "Diners to pay" for a diner, on the room's
+ * bill for a guest, whose next order starts a new slip. The kitchen still cooks anything
+ * it was given: its list does not look at whether a slip is open.
+ */
+export async function billOutTab(tabId: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+
+  const now = new Date().toISOString()
+  const { error } = await supabase.from('tabs')
+    .update({ status: 'closed', closed_at: now, billed_at: now })
+    .eq('id', tabId).eq('status', 'open')
+  if (error) throw error
+}
+
+/**
+ * A table's bill goes onto a room (Sebastian, 2026-10-05: "not all guests want their bills
+ * added to the rooms"). A guest with a room sits at a table like anybody else, so a table
+ * is not tied to a room while the order is taken; the room is given here, when the bill
+ * comes and the guest asks for it. The slip is closed and joins that stay's slips, to be
+ * paid at the front desk any time before check-out.
+ */
+export async function billToRoom(tabId: string, bookingId: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+
+  const now = new Date().toISOString()
+  const { error } = await supabase.from('tabs')
+    .update({ booking_id: bookingId, status: 'closed', closed_at: now, billed_at: now })
+    .eq('id', tabId).eq('status', 'open')
+  if (error) throw error
+}
+
+/** A bill sent by mistake: the slip goes back to the restaurant, open for more orders. Never a paid one. */
+export async function sendBackTab(tabId: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+
+  const { error } = await supabase.from('tabs')
+    .update({ status: 'open', closed_at: null, billed_at: null })
+    .eq('id', tabId).is('paid_at', null)
+  if (error) throw error
+}
+
 // ── Lines ────────────────────────────────────────────────────────────────────
 
-export async function getTabLines(tabId: string): Promise<TabLine[]> {
-  if (!isSupabaseConfigured) return []
-
-  try {
-    const { data, error } = await supabase.from('tab_lines').select('*').eq('tab_id', tabId).order('created_at', { ascending: true })
-    if (error) throw error
-    if (data) return data as TabLine[]
-  } catch (err) {
-    console.error('Supabase getTabLines Error:', err)
-  }
-
-  return []
-}
+// A line is put on a slip, counted up or down, and taken off again by the database
+// function `apply_order_changes` — see `orderChanges.ts`. The tablet used to do each
+// step itself, one trip at a time.
 
 /**
  * Every line on every tab, read once (k69, part E).
@@ -135,77 +225,43 @@ export async function getAllTabLines(): Promise<TabLine[]> {
   return []
 }
 
-async function insertLine(line: TabLine): Promise<TabLine> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
-
-  const { data, error } = await supabase.from('tab_lines').insert(line).select().single()
-  if (error) throw error
-  return data as TabLine
-}
-
-/** Adds a charge. `amount` is worked out here so every caller agrees on it. */
-export async function addTabLine(input: {
-  tabId: string
-  description: string
-  qty?: number
-  unitPrice: number
-  createdBy?: string
-  /** The menu item behind the line, so a sale can take its stock (k71). Blank for a written line. */
-  menuItemId?: string
-}): Promise<TabLine> {
-  const qty = input.qty && input.qty > 0 ? input.qty : 1
-  return insertLine({
-    id: randomUUID(),
-    tab_id: input.tabId,
-    description: input.description.trim(),
-    qty,
-    unit_price: money(input.unitPrice),
-    amount: money(qty * input.unitPrice),
-    kind: 'charge',
-    menu_item_id: input.menuItemId || null,
-    created_by: input.createdBy?.trim() || undefined,
-    created_at: new Date().toISOString(),
-  })
-}
-
 /**
- * Changes how many of a line there are — `2 ×` on one row instead of a second row (the
- * staff's feedback, 2026-10-04). The amount is worked out here, and the count the kitchen
- * has already been given never stays above what is left on the slip.
+ * "Send to kitchen" was tapped: everything on these lines has now been given to it, and
+ * shows on the kitchen's screen.
+ *
+ * One trip for the whole slip, as the lines stood when it was tapped — a dish another
+ * tablet added a moment later stays new.
  */
-export async function setTabLineQty(line: TabLine, qty: number): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
-  const { error } = await supabase.from('tab_lines')
-    .update({
-      qty,
-      amount: money(qty * Number(line.unit_price || 0)),
-      sent_qty: Math.min(Number(line.sent_qty || 0), qty),
-    })
-    .eq('id', line.id)
-  if (error) throw error
-}
-
-/** The kitchen's copy was printed: everything on these lines has now been given to it. */
 export async function markLinesSent(lines: TabLine[]): Promise<void> {
   if (!isSupabaseConfigured) throw new Error(NO_DB)
-  for (const line of lines) {
-    if (Number(line.sent_qty || 0) >= Number(line.qty || 0)) continue
-    const { error } = await supabase.from('tab_lines').update({ sent_qty: line.qty }).eq('id', line.id)
-    if (error) throw error
-  }
+  const fresh = lines.filter(l => Number(l.sent_qty || 0) < Number(l.qty || 0))
+  if (fresh.length === 0) return
+  const { error } = await supabase.rpc('mark_order_lines_sent', {
+    p_lines: fresh.map(l => ({ id: l.id, qty: Number(l.qty || 0) })),
+  })
+  if (error) throw error
 }
 
 /**
- * Removes a line the guest never ordered.
- *
- * The owner changed the rule here: a mistake is now simply deleted, exactly the
- * way a wrong payment is removed, rather than answered with a correction line.
- * The caller recomputes the bill afterwards.
+ * The cook has cooked these: each line's cooked count becomes `qty`. It can be lowered
+ * again, which is how a wrong tap on the kitchen's screen is put back — but never below
+ * what has already been served, and never above what the kitchen was given.
  */
-export async function deleteTabLine(lineId: string): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error('No database is connected, so this line was not removed.')
+export async function markLinesReady(lines: { id: string; qty: number }[]): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+  if (lines.length === 0) return
+  const { error } = await supabase.rpc('mark_order_lines_ready', { p_lines: lines })
+  if (error) throw error
+}
 
-  const { error } = await supabase.from('tab_lines').delete().eq('id', lineId)
+/** The cooked food on these lines has been carried to the guest. */
+export async function markLinesServed(lines: TabLine[]): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+  const waiting = lines.filter(l => Number(l.served_qty || 0) < Number(l.ready_qty || 0))
+  if (waiting.length === 0) return
+  const { error } = await supabase.rpc('mark_order_lines_served', {
+    p_lines: waiting.map(l => ({ id: l.id, qty: Number(l.ready_qty || 0) })),
+  })
   if (error) throw error
 }
 

@@ -92,6 +92,20 @@ export default {
         md: "10px",
         sm: "8px"
       },
+      // Three questions the Restaurant screen asks that a plain width cannot answer. It is
+      // used on a tablet or a phone most of the time (Sebastian, 2026-10-04), held upright
+      // or sideways:
+      //   wide  — is there room for the order slip beside the menu? A PC, or a tablet
+      //           held sideways. Held upright, the menu takes the whole width instead.
+      //   tall  — is the screen tall enough to pin everything in place and scroll only
+      //           the menu? A phone on its side is not, so there the page scrolls.
+      //   mouse — is this a PC? A line of names slides sideways under a finger, but a
+      //           mouse cannot slide it, so on a PC the line wraps instead.
+      screens: {
+        wide: { raw: "(min-width: 1024px), (min-width: 768px) and (orientation: landscape)" },
+        tall: { raw: "(min-height: 560px)" },
+        mouse: { raw: "(min-width: 1024px) and (pointer: fine)" }
+      },
       boxShadow: {
         soft: "0 4px 24px rgba(28,28,28,0.07)",
         softLg: "0 8px 32px rgba(28,28,28,0.10)",

@@ -1,9 +1,13 @@
 import React, { useMemo, useState } from 'react'
-import { LogIn, LogOut, BedDouble, Coffee } from 'lucide-react'
+import { LogIn, LogOut, BedDouble, Coffee, Utensils } from 'lucide-react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { dateToString } from '../../utils/helpers'
 import { isReservationAwaitingArrival, isOwedByAgency } from '../../utils/bookingMoney'
 import { wantsBreakfastToday, breakfastOn, breakfastSummary } from '../../utils/breakfastChoice'
+import { slipNumber } from '../../utils/orderSlips'
+import { useDinerSlips } from '../../hooks/useDinerSlips'
+import { DinerPayModal } from '../restaurant/DinerPayModal'
+import { tableName } from '../restaurant/served'
 
 type ListKey = 'arriving' | 'leaving' | 'inHouse' | 'breakfast'
 
@@ -33,12 +37,16 @@ const fmtDay = (iso: string) => {
 //   In hotel  — everyone checked in and not yet checked out.
 //   Breakfast — the rooms in the hotel that booked breakfast, and how many of them
 //               have been asked what they want this morning (`1/3`).
+//   Diners    — the diners with no room whose order slips are not paid. The money is
+//               always taken here, at the front desk, never in the restaurant
+//               (Sebastian, 2026-10-04); a room guest's slip is paid from the booking.
 //
 // It is the second line of the calendar's one sheet (the design pass, 2026-10-04), not a
 // card of its own; the names it opens sit under it, above the grid.
 export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trailing }: TodayStripProps) {
-  const [open, setOpen] = useState<ListKey | null>(null)
+  const [open, setOpen] = useState<ListKey | 'diners' | null>(null)
   const today = dateToString(new Date())
+  const diners = useDinerSlips()
 
   const lists = useMemo(() => {
     const stays = bookings.filter(b => b.status !== 'blocked' && b.status !== 'cancelled')
@@ -92,7 +100,13 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
     { key: 'breakfast', label: 'Breakfast', Icon: Coffee },
   ]
   const breakfastAsked = lists.breakfast.filter(b => !!breakfastOn(b, today)).length
-  const shown = open ? lists[open] : []
+  const shown = open && open !== 'diners' ? lists[open] : []
+  const chipLook = (on: boolean, count: number) =>
+    'inline-flex items-center gap-1.5 h-9 px-3 rounded-md border text-[13px] font-semibold transition-colors duration-150 ' +
+    (on ? 'bg-gold-400 border-gold-400 text-ink-900 cursor-pointer active:scale-[0.98]'
+      : count === 0 ? 'bg-transparent border-transparent text-muted'
+        : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100 cursor-pointer active:scale-[0.98]')
+  const NAME = 'inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-soft bg-card text-[13px] hover:border-gold-400 hover:bg-gold-100 transition-colors duration-150 active:scale-[0.98] cursor-pointer'
 
   return (
     <div className="px-4 py-1.5 border-b border-soft flex-shrink-0">
@@ -108,10 +122,7 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
               disabled={count === 0}
               onClick={() => setOpen(on ? null : key)}
               aria-expanded={on}
-              className={'inline-flex items-center gap-1.5 h-9 px-3 rounded-md border text-[13px] font-semibold transition-colors duration-150 ' +
-                (on ? 'bg-gold-400 border-gold-400 text-ink-900 cursor-pointer active:scale-[0.98]'
-                  : count === 0 ? 'bg-transparent border-transparent text-muted'
-                    : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100 cursor-pointer active:scale-[0.98]')}
+              className={chipLook(on, count)}
             >
               <Icon className="w-4 h-4" />
               {label}
@@ -119,10 +130,25 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
             </button>
           )
         })}
+        <button
+          type="button"
+          disabled={diners.slips.length === 0}
+          onClick={() => setOpen(open === 'diners' ? null : 'diners')}
+          aria-expanded={open === 'diners'}
+          className={chipLook(open === 'diners', diners.slips.length)}
+        >
+          <Utensils className="w-4 h-4" />
+          Diners to pay
+          <span className="font-bold tabular-nums">{diners.slips.length}</span>
+          {/* Somebody's bill has been sent over: they are on their way to pay. */}
+          {diners.slips.some(s => !!s.tab.billed_at) && open !== 'diners' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-danger-500 animate-pulse motion-reduce:animate-none" />
+          )}
+        </button>
         {trailing && <div className="ml-auto">{trailing}</div>}
       </div>
 
-      {open && shown.length > 0 && (
+      {open && open !== 'diners' && shown.length > 0 && (
         <div className="mt-1.5 pt-2 pb-0.5 border-t border-soft flex flex-wrap gap-1.5 max-h-[104px] overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
           {shown.map(b => {
             const h = hint(open, b)
@@ -132,7 +158,7 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
                 type="button"
                 // The breakfast list stays open, so the desk goes down it room by room.
                 onClick={() => { if (open === 'breakfast') onBreakfast(b); else { setOpen(null); onOpen(b) } }}
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-soft bg-card text-[13px] hover:border-gold-400 hover:bg-gold-100 transition-colors duration-150 active:scale-[0.98] cursor-pointer"
+                className={NAME}
               >
                 <b className="text-main">{b.guest_name}</b>
                 <span className="text-muted">· {place(b)}</span>
@@ -141,6 +167,30 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
             )
           })}
         </div>
+      )}
+
+      {open === 'diners' && diners.slips.length > 0 && (
+        <div className="mt-1.5 pt-2 pb-0.5 border-t border-soft flex flex-wrap gap-1.5 max-h-[104px] overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
+          {diners.slips.map(s => (
+            <button key={s.tab.id} type="button" onClick={() => { setOpen(null); diners.pay(s) }} className={NAME}>
+              <b className="text-main">{tableName(s.tab.table_label) || s.tab.label || 'Walk-in'}</b>
+              <span className="text-muted">· {[s.tab.table_label ? s.tab.label : '', slipNumber(s.tab)].filter(Boolean).join(' · ')}</span>
+              {/* The bill has been sent over, or they are still at their table. */}
+              {s.tab.billed_at
+                ? <span className="font-semibold text-danger-600">· to pay ₱{s.total.toLocaleString()}</span>
+                : <span className="text-muted">· still eating · ₱{s.total.toLocaleString()}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {diners.paying && (
+        <DinerPayModal
+          key={diners.paying.tab.id}
+          slip={diners.paying}
+          onClose={() => diners.pay(null)}
+          onChanged={() => void diners.reload()}
+        />
       )}
     </div>
   )

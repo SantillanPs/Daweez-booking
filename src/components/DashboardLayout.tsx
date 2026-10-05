@@ -20,7 +20,9 @@ import { ConfirmHost } from './ConfirmDialog'
  * The addresses did not move (`/guests` is still Agencies, `/expenses` Today's money, `/analytics` the Earnings
  * report, `/housekeeping` the stock room), so an old bookmark lands where it always did.
  *
- * A part with one screen shows no sub-tabs: Restaurant gets its row when the Menu screen is built.
+ * A part with one screen shows no sub-tabs. Restaurant has two: Orders, where the order is taken, and Kitchen,
+ * where the cook reads it (Sebastian, 2026-10-04). Every screen is open to every member of staff — they swap
+ * places through the day, and nothing is off limits to them.
  */
 const TABS = [
   {
@@ -35,6 +37,7 @@ const TABS = [
     label: 'Restaurant', Icon: Utensils,
     screens: [
       { label: 'Orders', to: '/restaurant' },
+      { label: 'Kitchen', to: '/restaurant/kitchen' },
     ],
   },
   {
@@ -78,6 +81,11 @@ export function DashboardLayout() {
   const subTabs = currentTab && currentTab.screens.length > 1 ? currentTab.screens : null
   const isCalendarTab = here === '/calendar' || here === '/'
   const isSettings = here === '/settings'
+  // The till is used on a tablet or a phone most of the time (Sebastian, 2026-10-04). It
+  // fills the screen and scrolls only its menu, so who is being served and the order
+  // itself stay in reach of a thumb — unless the screen is too short for that (a phone on
+  // its side), where the page scrolls as it always did.
+  const isTill = here === '/restaurant'
 
   const handleLogout = () => {
     localStorage.removeItem('daweez_pms_auth')
@@ -116,8 +124,10 @@ export function DashboardLayout() {
       createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense,
       onLogout: handleLogout
     }}>
-      <div className={isCalendarTab ? "h-screen bg-background flex flex-col overflow-hidden pb-[calc(57px+env(safe-area-inset-bottom,0px))] lg:pb-0" : "min-h-screen bg-background pb-20 lg:pb-6"}>
-        <header className={`sticky top-0 z-40 bg-card border-b border-soft ${isCalendarTab ? 'flex-shrink-0' : ''}`}>
+      <div className={isCalendarTab ? "h-screen bg-background flex flex-col overflow-hidden pb-[calc(57px+env(safe-area-inset-bottom,0px))] lg:pb-0"
+        : isTill ? "min-h-[100dvh] tall:h-[100dvh] tall:min-h-0 tall:flex tall:flex-col tall:overflow-hidden bg-background pb-[calc(57px+env(safe-area-inset-bottom,0px))] lg:pb-0"
+          : "min-h-screen bg-background pb-20 lg:pb-6"}>
+        <header className={`sticky top-0 z-40 bg-card border-b border-soft ${isCalendarTab || isTill ? 'flex-shrink-0' : ''}`}>
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-[56px] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 shrink-0">
               <div className="w-9 h-9 flex items-center justify-center bg-gold-400 rounded-xl ring-1 ring-gold-600/50">
@@ -135,7 +145,9 @@ export function DashboardLayout() {
                 return (
                   <Link key={tab.label} to={tab.screens[0].to} activeOptions={{ exact: true }}
                     aria-current={isOn ? (currentScreen === tab.screens[0] ? 'page' : 'true') : undefined}
-                    className={'flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors ' +
+                    // A tablet held sideways is as wide as a PC and gets this bar too, so it is
+                    // finger-sized (44px) unless there is a mouse.
+                    className={'flex items-center gap-1.5 px-3.5 min-h-11 mouse:min-h-8 text-sm font-medium rounded-lg transition-colors ' +
                       (isOn ? 'bg-gold-400 text-ink-900 shadow-sm' : 'text-muted hover:text-brand-text hover:bg-card')}>
                     <tab.Icon className="w-4 h-4" aria-hidden="true" />
                     {tab.label}
@@ -144,23 +156,23 @@ export function DashboardLayout() {
               })}
             </nav>
 
-            {/* Settings is the gear, and Logout sits past a divider: neither is one of the four tabs. Below the
-                desktop width these are finger-sized (44px). */}
+            {/* Settings is the gear, and Logout sits past a divider: neither is one of the four tabs. They are
+                finger-sized (44px) unless there is a mouse. */}
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleTriggerSync}
                 disabled={isSyncing}
-                className={`hidden sm:flex items-center gap-1.5 h-11 lg:h-8 text-xs font-semibold border rounded-xl px-3 transition-all cursor-pointer ${isSyncing ? 'bg-brand-primary/10 text-brand-text border-brand-primary/20' : 'bg-card border-soft text-main hover:bg-softbg'}`}>
+                className={`hidden sm:flex items-center gap-1.5 h-11 mouse:h-8 text-xs font-semibold border rounded-xl px-3 transition-all cursor-pointer ${isSyncing ? 'bg-brand-primary/10 text-brand-text border-brand-primary/20' : 'bg-card border-soft text-main hover:bg-softbg'}`}>
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                 {isSyncing ? 'Syncing' : 'Sync'}
               </button>
               <Link to="/settings" activeOptions={{ exact: true }} aria-label="Settings" title="Settings"
-                className={'flex items-center justify-center w-11 h-11 lg:w-8 lg:h-8 border rounded-xl transition-colors ' +
+                className={'flex items-center justify-center w-11 h-11 mouse:w-8 mouse:h-8 border rounded-xl transition-colors ' +
                   (isSettings ? 'bg-gold-400 border-gold-400 text-ink-900' : 'bg-card border-soft text-muted hover:text-main hover:bg-softbg')}>
                 <Settings className="w-4 h-4" aria-hidden="true" />
               </Link>
               <span className="w-px h-5 bg-soft mx-1" aria-hidden="true" />
-              <button onClick={handleLogout} aria-label="Logout" className="flex items-center justify-center gap-1.5 w-11 sm:w-auto h-11 lg:h-8 text-xs font-semibold text-muted border border-soft bg-card hover:bg-danger-50 hover:text-danger-600 hover:border-danger-200 sm:px-3 rounded-xl transition-colors cursor-pointer">
+              <button onClick={handleLogout} aria-label="Logout" className="flex items-center justify-center gap-1.5 w-11 sm:w-auto h-11 mouse:h-8 text-xs font-semibold text-muted border border-soft bg-card hover:bg-danger-50 hover:text-danger-600 hover:border-danger-200 sm:px-3 rounded-xl transition-colors cursor-pointer">
                 <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
                 <span className="hidden sm:inline">Logout</span>
               </button>
@@ -175,7 +187,7 @@ export function DashboardLayout() {
                   return (
                     <Link key={s.to} to={s.to} activeOptions={{ exact: true }}
                       aria-current={isOn ? 'page' : undefined}
-                      className={'flex items-center h-11 lg:h-10 border-b-2 text-[13px] sm:text-sm font-medium whitespace-nowrap transition-colors ' +
+                      className={'flex items-center h-11 mouse:h-10 border-b-2 text-[13px] sm:text-sm font-medium whitespace-nowrap transition-colors ' +
                         (isOn ? 'border-gold-600 text-main' : 'border-transparent text-muted hover:text-main')}>
                       {s.label}
                     </Link>
@@ -204,7 +216,8 @@ export function DashboardLayout() {
 
         <div className={isCalendarTab
           ? "max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-4 flex-1 min-h-0 flex flex-col overflow-hidden"
-          : "max-w-[1600px] mx-auto px-4 sm:px-6 py-4"
+          : isTill ? "max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-3 lg:py-4 tall:flex-1 tall:min-h-0 tall:flex tall:flex-col"
+            : "max-w-[1600px] mx-auto px-4 sm:px-6 py-4"
         }>
           <Outlet />
         </div>

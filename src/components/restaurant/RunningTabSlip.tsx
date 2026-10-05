@@ -13,7 +13,7 @@ interface RunningTabSlipProps {
   place?: { label: string; value: string }
   lines: TabLine[]
   total: number
-  /** What happens with this paper next — a stay pays at the front desk, a diner at the counter. */
+  /** What happens with this paper next — everybody pays at the front desk. */
   note: string
   onClose: () => void
 }

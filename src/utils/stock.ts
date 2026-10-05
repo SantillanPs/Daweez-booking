@@ -156,13 +156,6 @@ export async function moveStock(input: StockMoveInput): Promise<void> {
   if (error) throw error
 }
 
-/** Takes back every movement one thing caused — used when a wrong line comes off a bill. */
-export async function reverseStockFor(source: string, sourceId: string): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
-  const { error } = await supabase.rpc('reverse_stock_movements', { p_source: source, p_source_id: sourceId })
-  if (error) throw error
-}
-
 // ── What a dish uses (the recipe) ─────────────────────────────────────────────
 
 /** Every dish's recipe, read once for the whole menu. */
@@ -189,69 +182,9 @@ export async function saveDishStock(menuItemId: string, lines: { item_id: string
   if (error) throw error
 }
 
-/**
- * Takes a sale off the shelf.
- *
- * Called by the one place a tab line is written, right after the line lands. It reads the dish's recipe and
- * writes one `out` movement for each ingredient, all stamped with the line that caused them — so removing that
- * line can put every gram back (`reverseStockFor`).
- *
- * A dish with no recipe deducts nothing, which is why the stock room shows the dishes that still need one.
- */
-export async function deductForSale(
-  line: { id: string; menuItemId?: string | null },
-  by?: string
-): Promise<number> {
-  if (!isSupabaseConfigured || !line.menuItemId) return 0
-
-  const { data, error } = await supabase
-    .from('menu_item_stock')
-    .select('item_id, quantity')
-    .eq('menu_item_id', line.menuItemId)
-  if (error) throw error
-  const recipe = (data || []) as { item_id: string; quantity: number }[]
-  if (recipe.length === 0) return 0
-
-  for (const r of recipe) {
-    await moveStock({
-      itemId: r.item_id,
-      direction: 'out',
-      quantity: num(r.quantity),
-      reason: 'Sold',
-      movedBy: by,
-      source: 'tab_line',
-      sourceId: line.id,
-    })
-  }
-  return recipe.length
-}
-
-/**
- * Puts one serving of a dish back on the shelf — the count on an order slip went down by
- * one (`3 ×` to `2 ×`). Written against the same line as the sale, so removing the whole
- * line later still takes back exactly what is left.
- */
-export async function returnForSale(
-  line: { id: string; menuItemId?: string | null },
-  by?: string
-): Promise<void> {
-  if (!isSupabaseConfigured || !line.menuItemId) return
-
-  const { data, error } = await supabase
-    .from('menu_item_stock')
-    .select('item_id, quantity')
-    .eq('menu_item_id', line.menuItemId)
-  if (error) throw error
-
-  for (const r of (data || []) as { item_id: string; quantity: number }[]) {
-    await moveStock({
-      itemId: r.item_id,
-      direction: 'in',
-      quantity: num(r.quantity),
-      reason: 'Order changed',
-      movedBy: by,
-      source: 'tab_line',
-      sourceId: line.id,
-    })
-  }
-}
+// A sale takes its dish's recipe off the shelf inside the database, in the same trip that
+// writes the order (`apply_order_changes`, called from `orderChanges.ts`): one `out`
+// movement for each ingredient, stamped with the slip's row that caused it, so taking that
+// row off the slip puts every gram back. The tablet used to read the recipe and make one
+// trip per ingredient itself. A dish with no recipe deducts nothing, which is why the stock
+// room shows the dishes that still need one.
