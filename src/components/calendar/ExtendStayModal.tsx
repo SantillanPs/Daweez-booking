@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
-import { X, Printer, Edit3, CalendarPlus, Undo2 } from 'lucide-react'
+import { X, Printer, Edit3, CalendarPlus, Undo2, ArrowRightLeft } from 'lucide-react'
 import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
 import { computeCheckInOutHours } from '../../utils/checkInOut'
 import { getRateConfig } from '../../utils/rateConfig'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
-import { roomDisplayName } from './bookingStyles'
+import { roomDisplayName, roomOptionLabel } from './bookingStyles'
 import { statusAfterPayment } from '../../utils/bookingStatus'
 import { hasOutstandingBalance, amountToPayNow, isBilledToAgency } from '../../utils/bookingMoney'
 import { methodNeedsReference } from '../../utils/paymentMethod'
@@ -32,6 +32,8 @@ import { groupOf } from '../../utils/bookingGroup'
 import { formatRoomNumbers } from '../../utils/roomNumbers'
 import { BookingReceipts } from './BookingReceipts'
 import { ExtendStayForm } from './ExtendStayForm'
+import { MoveBookingForm } from './MoveBookingForm'
+import { canMoveBooking } from '../../utils/bookingMove'
 import { showToast } from '../../utils/toast'
 import { askConfirm } from '../../utils/confirm'
 import { focusGuestTab } from '../../utils/restaurantFocus'
@@ -120,6 +122,8 @@ export function ExtendStayModal({
   const [payFor, setPayFor] = useState('all')
   const [receiptAmount, setReceiptAmount] = useState(0)
   const [extendOpen, setExtendOpen] = useState(false)
+  // "Change room or dates" opens in the same place as Extend stay; only one is open at a time.
+  const [moveOpen, setMoveOpen] = useState(false)
   // A stay billed to an agency keeps its receive step folded away until it is wanted.
   const [receiveOpen, setReceiveOpen] = useState(false)
   // Nothing is preselected: how the guest paid is asked for every payment, because
@@ -526,6 +530,18 @@ export function ExtendStayModal({
   const extendLabel = isBlock ? 'Change the dates' : isShortStay ? 'Stay longer' : 'Extend stay'
   // A stay that has ended has nothing left to extend; its dates are corrected with the pencil.
   const canExtend = !localBooking.actual_check_out
+  // A booking is moved until the guest arrives (`canMoveBooking`).
+  const canMove = !!onUpdateBooking && canMoveBooking(localBooking)
+  const handleMove = async (moved: Booking) => {
+    await onUpdateBooking?.(moved)
+    // The number goes with the name: three rooms are called "Full Double".
+    const movedRoom = moved.room_id ? rooms.find(r => r.id === moved.room_id) : undefined
+    const where = movedRoom
+      ? roomOptionLabel(movedRoom)
+      : (venues.find(v => v.id === moved.venue_id)?.name || 'the venue')
+    showToast('Moved to ' + where + ' · ' + fmtShort(moved.check_in) + ' → ' + fmtShort(moved.check_out), 'success')
+    onClose()
+  }
   // A block's dates are all it has, so they are simply on screen — no button to open
   // them. The exception is a block with no end date yet, whose one job is "They have left".
   const datesAlwaysShown = isBlock && !openEnded
@@ -734,6 +750,20 @@ export function ExtendStayModal({
                 />
               </section>
             )}
+
+            {moveOpen && canMove && (
+              <section>
+                <h4 className="text-[13px] font-bold text-main mb-1.5">Change room or dates</h4>
+                <MoveBookingForm
+                  booking={localBooking}
+                  rooms={rooms}
+                  venues={venues}
+                  bookings={bookings}
+                  tabTotal={tabAmount}
+                  onMove={handleMove}
+                />
+              </section>
+            )}
           </div>
 
           {/* Quiet actions — never competing with the next step. */}
@@ -741,12 +771,23 @@ export function ExtendStayModal({
             {canExtend && !datesAlwaysShown && (
               <button
                 type="button"
-                onClick={() => setExtendOpen(o => !o)}
+                onClick={() => { setExtendOpen(o => !o); setMoveOpen(false) }}
                 aria-expanded={extendOpen}
                 className={ROW_ACTION + ' text-main hover:text-gold-700'}
               >
                 <CalendarPlus className="w-4 h-4" />
                 {extendLabel}
+              </button>
+            )}
+            {canMove && (
+              <button
+                type="button"
+                onClick={() => { setMoveOpen(o => !o); setExtendOpen(false) }}
+                aria-expanded={moveOpen}
+                className={ROW_ACTION + ' text-main hover:text-gold-700'}
+              >
+                <ArrowRightLeft className="w-4 h-4" />
+                Change room or dates
               </button>
             )}
             {!isBlock && (

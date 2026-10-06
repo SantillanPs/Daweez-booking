@@ -8,6 +8,7 @@
 -- three venues carry, and the picture is the Vacation House's. Both are shown on the public
 -- reservation page, so correct them with an UPDATE when the real ones are known.
 --
+-- Applied to development and, on the owner's go-ahead, to live — both on 2026-10-06.
 -- Safe to run again.
 
 INSERT INTO public.venues (id, name, base_price, capacity, description, image_url, details)

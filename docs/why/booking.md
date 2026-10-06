@@ -74,6 +74,15 @@
 - **Check-in and check-out must not happen by accident** (the staff, 2026-10-04). Sebastian chose: the app asks first, and a wrong one can be undone.
 - **Food can only be ordered once the guest is checked in** — people order when they are physically in the hotel.
 
+## Moving a booking
+
+- **A booking can be moved to another room and other dates until the guest arrives** (Sebastian, 2026-10-06). His example: an agency wants to reschedule and change rooms. The only way had been to cancel the booking and type a new one — the guest retyped, a new invoice number, and the receipts left behind on the cancelled one. It is **Change room or dates** in the booking panel, beside Extend stay: one room (or venue) and the two dates.
+- It is the same booking in a new place, so the guest, the agency, the payments, the receipts, the notes and the invoice number stay on it. Only the bill is worked out again, and it is shown before it is saved.
+- **The agency's rate belongs to a room**, so it does not follow the booking: the new room gets the agency's rate for *it*, or the room's ordinary price when the agency has none. Breakfast is dropped when the new room sells none.
+- **A guest who has paid more than the new stay costs** is told so in a line (`They have paid ₱1,900 more than this stay costs.`). The money stays recorded on the booking; the app does not refund anything.
+- A booking moves as its own room — others booked with it stay where they are. Not offered once the guest has checked in, for a short stay, or for a block (those have Extend stay, a rebooking and the block's own dates).
+- A room that is taken on the chosen dates says `booked` in the list, and a clash is refused with the reason.
+
 ## The quick view (the panel that opens on a booking)
 
 - **Only one next step is ever on screen**, and nothing appears until it is needed. A paid booking shows one line (`Fully paid ✓`) and its button; the money box appears only while something is owed.
