@@ -45,6 +45,7 @@
 ## The calendar
 
 - **It opens on today**, 31 days wide, so nobody scrolls to find today.
+- **The bar of actions always sits above the first cell that was picked, never below it** (Sebastian, 2026-10-06). For the first rooms there is only the date header above, and the bar goes over it rather than dropping onto the rooms the desk is about to pick the next day from.
 - **Actions appear beside the cell that was picked**, never in the toolbar. The rule teaches itself: pick the dates first. One day offers `3h · 6h · 12h`; a range offers `New booking`. Both carry the block icon and Log old booking.
 - **Blocking dates happens on the calendar**, in a small pane that asks only *why* (Cleaning, Maintenance, Owner use, Other).
 - **An Owner use block can have no end date.** The owner's family sometimes use a room for a few days or weeks, and when they will leave is often not known (the owner, 2026-10-04). The room stays closed until the desk presses "They have left".

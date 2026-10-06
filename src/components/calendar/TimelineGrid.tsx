@@ -86,7 +86,7 @@ export const TimelineGrid = React.memo(
     // ── the action bar, pinned to the cell that was picked ────────────────────
     // The owner's complaint about the first build: it lined up with the DATE but sat
     // at the top of the grid, so on a room low down the list the buttons were nowhere
-    // near the room. It now hangs off the picked cell itself — same row, just under
+    // near the room. It now hangs off the picked cell itself — same row, just above
     // it — and lives INSIDE the scroller, so it travels with the grid when the desk
     // scrolls either way instead of drifting away from the selection.
     const barAnchor = React.useMemo(() => {
@@ -105,14 +105,17 @@ export const TimelineGrid = React.memo(
       if (!cell) { setBarPos(null); return }
       // ABOVE the picked row, by one bar height plus a small gap: on the row it covered
       // the very dates the desk had just chosen (the owner's catch), and flush against
-      // the row above still read as touching it, so it clears both. For the first rows
-      // there is no room above — the sticky day header is there — so it drops below the
-      // row instead, which is the only place left on screen.
+      // the row above still read as touching it, so it clears both.
+      // **Always above, never below** (Sebastian, 2026-10-06). It used to drop below the
+      // row for the first rooms, where the sticky day header is what lies above, and then
+      // sat on top of the very rooms the desk was about to pick the next day from. Now it
+      // goes over the header there instead (it is drawn above it), kept inside the grid's
+      // top edge so it is never cut off.
       // The bar and its gap add up to ONE ROW (48px), so above the pick it lies inside
       // the row over it and covers no more of the grid than that.
       const BAR_HEIGHT = 42
       const GAP = 6
-      const above = cell.offsetTop - BAR_HEIGHT - GAP
+      const above = Math.max(0, cell.offsetTop - BAR_HEIGHT - GAP)
       // The bar starts TWO DAY COLUMNS to the left of the picked day (the owner's ask):
       // it hangs off the picked cell but begins before it, so the pick still sits in
       // clear air to the right of the bar's own label. The column width is measured
@@ -123,8 +126,7 @@ export const TimelineGrid = React.memo(
       const dayWidth = dayHeaders.length > 1 ? dayHeaders[1].offsetLeft - dayHeaders[0].offsetLeft : 104
       const firstDayLeft = dayHeaders.length > 0 ? dayHeaders[0].offsetLeft : 0
       const left = Math.max(cell.offsetLeft - 2 * dayWidth, firstDayLeft)
-      const headerHeight = (scroller.querySelector('thead') as HTMLElement | null)?.offsetHeight ?? 48
-      setBarPos({ left, top: above > headerHeight + 4 ? above : cell.offsetTop + cell.offsetHeight + GAP })
+      setBarPos({ left, top: above })
     }, [barAnchor])
     React.useEffect(() => { placeBar() }, [placeBar, daysList, timelineSelection, groupSelection])
     React.useEffect(() => {
