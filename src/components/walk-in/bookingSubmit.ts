@@ -4,6 +4,7 @@ import { recordBookingPayment } from './bookingPayment'
 import { BookingSubmitParams, BookingSubmitResult } from './bookingSubmitTypes'
 import { editedMoney } from './bookingEditMoney'
 import { generateUUID } from '../../utils/helpers'
+import { splitDiscount } from './discountSplit'
 
 // The param and result shapes live in `bookingSubmitTypes`, and the payment logic in
 // `bookingPayment` — both split out to keep this file inside the 300-line limit.
@@ -40,6 +41,16 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
   const appliedDiscount = p.discountType === 'none'
     ? (isEdit ? { type: 'flat' as const, value: 0 } : undefined)
     : { type: p.discountType, value: p.discountValue }
+  // Each unit is saved as its own row, so a flat amount off is SHARED OUT between them
+  // (see `discountSplit`): handed whole to every row it was taken off once per unit.
+  const bookedDeal = p.partnerDeals.find(d => d.id === p.formPartnerDealId)
+  const discounts = splitDiscount(
+    appliedDiscount,
+    Object.entries(p.unitSelections)
+      .filter(([id]) => p.formRoomIds.has(id) || p.formVenueIds.has(id))
+      .map(([id, sel]) => ({ id, type: sel.type, checkIn: sel.checkIn, checkOut: sel.checkOut, contractRate: bookedDeal?.contracted_rates[id] || undefined })),
+    { rooms: p.rooms, venues: p.venues, venueDayBlocks: p.venueDayBlocks, shortStayHours: p.stay_hours },
+  )
   const companions = p.bookingType === 'partner'
     ? undefined
     : (p.formCompanions.length > 0 ? p.formCompanions : (isEdit ? [] : undefined))
@@ -104,7 +115,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         guestAddress: p.formGuestAddress || undefined,
         birthdate: p.formBirthdate || undefined,
         preparedBy: p.formPreparedBy || undefined,
-        appliedDiscount,
+        appliedDiscount: discounts[roomId],
         venueDayBlocks: p.venueDayBlocks,
         notes: p.formBlockNotes.trim() || undefined,
         checkIn: sel.checkIn,
@@ -165,7 +176,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         guestAddress: p.formGuestAddress || undefined,
         birthdate: p.formBirthdate || undefined,
         preparedBy: p.formPreparedBy || undefined,
-        appliedDiscount,
+        appliedDiscount: discounts[venueId],
         venueDayBlocks: p.venueDayBlocks,
         notes: p.formBlockNotes.trim() || undefined,
         checkIn: sel.checkIn,

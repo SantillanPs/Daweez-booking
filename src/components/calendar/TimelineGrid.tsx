@@ -89,20 +89,26 @@ export const TimelineGrid = React.memo(
     // near the room. It now hangs off the picked cell itself — same row, just above
     // it — and lives INSIDE the scroller, so it travels with the grid when the desk
     // scrolls either way instead of drifting away from the selection.
+    // `outIso` is the check-out day once a range is picked (empty while only the first day is).
     const barAnchor = React.useMemo(() => {
       if (timelineSelection) {
         const unitId = timelineSelection.roomId || timelineSelection.venueId
-        return unitId ? { unitId, iso: dateToString(timelineSelection.checkIn) } : null
+        return unitId ? { unitId, iso: dateToString(timelineSelection.checkIn), outIso: '' } : null
       }
       const first = groupSelection ? Object.entries(groupSelection)[0] : null
-      return first ? { unitId: first[0], iso: dateToString(first[1].checkIn) } : null
+      return first ? { unitId: first[0], iso: dateToString(first[1].checkIn), outIso: dateToString(first[1].checkOut) } : null
     }, [timelineSelection, groupSelection])
-    const [barPos, setBarPos] = React.useState<{ left: number; top: number } | null>(null)
+    // Where the bar goes: the middle of the picked dates, its row, how wide it is, and how far
+    // left and right it may reach. The width is the bar's own, read back once it is on screen.
+    const [barPos, setBarPos] = React.useState<{ center: number; top: number; width: number; minLeft: number; maxRight: number } | null>(null)
+    const barRef = React.useRef<HTMLDivElement>(null)
     const placeBar = React.useCallback(() => {
       const scroller = scrollRef.current
       if (!barAnchor || !scroller) { setBarPos(null); return }
-      const cell = scroller.querySelector('[data-unit="' + barAnchor.unitId + '"][data-day="' + barAnchor.iso + '"]') as HTMLElement | null
+      const cellAt = (iso: string) => scroller.querySelector('[data-unit="' + barAnchor.unitId + '"][data-day="' + iso + '"]') as HTMLTableCellElement | null
+      const cell = cellAt(barAnchor.iso)
       if (!cell) { setBarPos(null); return }
+      const outCell = barAnchor.outIso ? cellAt(barAnchor.outIso) : null
       // ABOVE the picked row, by one bar height plus a small gap: on the row it covered
       // the very dates the desk had just chosen (the owner's catch), and flush against
       // the row above still read as touching it, so it clears both.
@@ -116,19 +122,32 @@ export const TimelineGrid = React.memo(
       const BAR_HEIGHT = 42
       const GAP = 6
       const above = Math.max(0, cell.offsetTop - BAR_HEIGHT - GAP)
-      // The bar starts TWO DAY COLUMNS to the left of the picked day (the owner's ask):
-      // it hangs off the picked cell but begins before it, so the pick still sits in
-      // clear air to the right of the bar's own label. The column width is measured
-      // from the day headers rather than hard-coded, and the shift is clamped at the
-      // FIRST day column so a pick near the left edge (the window opens on today, so
-      // this is common) can never slide the bar over the sticky room-name column.
+      // **Centred on the picked dates** (Sebastian, 2026-10-06). It began two day columns to
+      // the left of the first pick; it now sits in the middle of the stay, which runs from
+      // the afternoon of the first day to the morning of the last — the span that is
+      // highlighted (a day that is still whole is `colSpan` 2, and only its half belongs to
+      // the stay). While only the first day is picked, it is centred on that day's mark.
+      const startX = cell.offsetLeft + (cell.colSpan > 1 ? cell.offsetWidth / 2 : 0)
+      const endX = outCell
+        ? outCell.offsetLeft + (outCell.colSpan > 1 ? outCell.offsetWidth / 2 : outCell.offsetWidth)
+        : cell.offsetLeft + cell.offsetWidth
+      // It may not slide left over the sticky room names, nor off the right end of the grid.
       const dayHeaders = scroller.querySelectorAll('th[data-day]') as NodeListOf<HTMLElement>
-      const dayWidth = dayHeaders.length > 1 ? dayHeaders[1].offsetLeft - dayHeaders[0].offsetLeft : 104
-      const firstDayLeft = dayHeaders.length > 0 ? dayHeaders[0].offsetLeft : 0
-      const left = Math.max(cell.offsetLeft - 2 * dayWidth, firstDayLeft)
-      setBarPos({ left, top: above })
+      const minLeft = dayHeaders.length > 0 ? dayHeaders[0].offsetLeft : 0
+      const table = scroller.querySelector('table') as HTMLElement | null
+      const next = {
+        center: Math.round((startX + endX) / 2),
+        top: above,
+        width: barRef.current?.offsetWidth ?? 0,
+        minLeft,
+        maxRight: table ? table.offsetWidth : scroller.scrollWidth,
+      }
+      setBarPos(prev => (prev && prev.center === next.center && prev.top === next.top && prev.width === next.width && prev.minLeft === next.minLeft && prev.maxRight === next.maxRight ? prev : next))
     }, [barAnchor])
-    React.useEffect(() => { placeBar() }, [placeBar, daysList, timelineSelection, groupSelection])
+    // After every render, before the screen is painted: the bar's own width is only known
+    // once it is on screen, and it changes when it goes from one day to a range. Nothing
+    // is set when nothing moved, so this settles at once.
+    React.useLayoutEffect(() => { placeBar() })
     React.useEffect(() => {
       const scroller = scrollRef.current
       if (!scroller) return
@@ -252,11 +271,18 @@ export const TimelineGrid = React.memo(
             : rangeUnit
               ? (rooms.find(r => r.id === rangeUnit) ? roomDisplayName(rooms.find(r => r.id === rangeUnit)) : venues.find(v => v.id === rangeUnit)?.name || '')
               : '')
+          // Centred on the dates, kept between the room names and the end of the grid.
+          const left = Math.min(
+            Math.max(barPos.center - barPos.width / 2, barPos.minLeft),
+            Math.max(barPos.minLeft, barPos.maxRight - barPos.width),
+          )
           return (
-            <div style={{ '--bar-left': barPos.left + 'px', '--bar-top': barPos.top + 'px' } as React.CSSProperties}
-              className="absolute z-40 [left:var(--bar-left)] [top:var(--bar-top)] bg-card border border-gold-400 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg flex items-center gap-2 text-[13px] font-semibold text-main animate-in fade-in duration-150">
-              {/* When the bar is squeezed against the edge of the screen it is the room's
-                  name that is cut, never the dates — they are what was just picked. */}
+            <div ref={barRef} style={{ '--bar-left': left + 'px', '--bar-top': barPos.top + 'px' } as React.CSSProperties}
+              className="absolute z-40 w-max [left:var(--bar-left)] [top:var(--bar-top)] bg-card border border-gold-400 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg flex items-center gap-2 text-[13px] font-semibold text-main animate-in fade-in duration-150">
+              {/* `w-max`: the bar is always as wide as what is in it. Left to the browser, an
+                  absolute box sitting far to the right of the visible grid is squeezed to
+                  the little room that is left, and the buttons ended up ON the dates
+                  (Sebastian, 2026-10-06). */}
               <span className="flex min-w-0 items-baseline gap-1" title={barName}>
                 <span className="truncate max-w-[170px] font-display font-bold text-brand-text">{barName}</span>
                 <span className="shrink-0 text-muted">· {from ? fmt(from) : ''}{to && nights > 0 ? ' → ' + fmt(to) : ''}</span>

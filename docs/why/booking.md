@@ -46,6 +46,7 @@
 
 - **It opens on today**, 31 days wide, so nobody scrolls to find today.
 - **The bar of actions always sits above the first cell that was picked, never below it** (Sebastian, 2026-10-06). For the first rooms there is only the date header above, and the bar goes over it rather than dropping onto the rooms the desk is about to pick the next day from.
+- **The bar is centred on the picked dates**, from the afternoon of check-in to the morning of check-out — the span that is highlighted — and is always as wide as what is in it (Sebastian, the same day: *"the button is covering the text… keep the popup centered to the selected dates"*). Far to the right of the screen the browser had squeezed it to the room left over, and the buttons landed on the dates. It is held inside the grid at either end.
 - **Actions appear beside the cell that was picked**, never in the toolbar. The rule teaches itself: pick the dates first. One day offers `3h · 6h · 12h`; a range offers `New booking`. Both carry the block icon and Log old booking.
 - **Blocking dates happens on the calendar**, in a small pane that asks only *why* (Cleaning, Maintenance, Owner use, Other).
 - **An Owner use block can have no end date.** The owner's family sometimes use a room for a few days or weeks, and when they will leave is often not known (the owner, 2026-10-04). The room stays closed until the desk presses "They have left".

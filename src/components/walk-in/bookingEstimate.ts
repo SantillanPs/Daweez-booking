@@ -1,6 +1,7 @@
 import { Room, Venue, PartnerDeal, Companion, AppliedDiscount } from '../../types/booking'
 import { calculatePricing } from '../../utils/pricing'
 import { getRateConfig } from '../../utils/rateConfig'
+import { splitDiscount } from './discountSplit'
 
 export interface BookingEstimateParams {
   unitSelections: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
@@ -56,6 +57,15 @@ export function computeBookingEstimate(p: BookingEstimateParams): BookingEstimat
   const rates = getRateConfig()
   const appliedDiscount: AppliedDiscount | undefined =
     p.discountType === 'none' ? undefined : { type: p.discountType, value: p.discountValue }
+  // A flat amount off is taken ONCE for the whole booking, so it is shared out between the
+  // units (see `discountSplit`) — handing each of them the full amount took it off twice.
+  const discounts = splitDiscount(
+    appliedDiscount,
+    Object.entries(p.unitSelections)
+      .filter(([, sel]) => sel.checkIn && sel.checkOut)
+      .map(([id, sel]) => ({ id, type: sel.type, checkIn: sel.checkIn, checkOut: sel.checkOut, contractRate: deal?.contracted_rates[id] || undefined })),
+    { rooms: p.rooms, venues: p.venues, venueDayBlocks: p.venueDayBlocks, shortStayHours: p.shortStayHours },
+  )
 
   let breakfast = 0, rentals = 0, addons = 0, total = 0, regularTotal = 0, subtotal = 0
   // Extras are entered once for the whole group, so they go on the FIRST room and the
@@ -84,7 +94,7 @@ export function computeBookingEstimate(p: BookingEstimateParams): BookingEstimat
       contractRateOverride: deal?.contracted_rates[id] || undefined,
       venueExcessHours: isRoom ? undefined : p.formVenueExcessHours,
       breakfastIncluded: isRoom && ((deal ? deal.breakfast_default === 'with' : false) || p.formBreakfastRoomIds.includes(id)),
-      appliedDiscount,
+      appliedDiscount: discounts[id],
       venueDayBlocks: p.venueDayBlocks,
       shortStayHours: isRoom ? (p.shortStayHours ?? undefined) : undefined,
       rooms: p.rooms,

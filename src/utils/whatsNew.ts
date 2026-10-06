@@ -23,6 +23,28 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-06g',
+    changes: [
+      {
+        where: 'Front desk → Booking form',
+        what: [
+          'A “Custom” discount on a booking of several rooms or venues is now taken off once, not once for each. ₱6,200 off ₱50,000 is ₱43,800. The bill shows each room’s share of it.',
+        ],
+      },
+    ],
+  },
+  {
+    id: '2026-10-06f',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'The buttons that appear when you pick dates are now centred on the dates you picked. Far to the right of the screen they used to be squashed, with the buttons on top of the dates. That is fixed.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-06e',
     changes: [
       {

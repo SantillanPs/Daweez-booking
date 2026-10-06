@@ -32,6 +32,7 @@
 ## Discounts and extras
 
 - Staff discount: none, 20%, 10%, or a custom amount. On the bill it is its own negative row so the column adds up in front of the guest.
+- **A custom (flat) amount off is taken once for the whole booking, however many rooms or venues it has** (Sebastian, 2026-10-06: two venues worth ₱50,000 with ₱6,200 off came to ₱37,600; he expected ₱43,800). Each unit is its own row and is priced on its own, and every row had been given the full amount, so it came off once per unit. It is now **shared out in proportion to what each unit costs** (`walk-in/discountSplit.ts`, the same split that divides one payment across rooms), each row keeps only its share, and the shares add back up to exactly what was typed. A percentage needs no sharing — 20% of each part is 20% of the whole. The edit form shows the shares added up. Bookings saved before this fix still carry the full amount on every unit; they are left as they are.
 - The gap between a room's night price and its hours price is **never** printed as a discount.
 - Extras (foam, pillow, blanket, towel, tables, chairs, tent) are entered once for a group and go on the first room or first venue only.
 

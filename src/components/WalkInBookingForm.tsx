@@ -319,7 +319,15 @@ export function WalkInBookingForm({
       setFormBlockNotes(b.notes || '')
       setFormPaymentNote(b.status === 'blocked' ? '' : b.notes || '')
       // A zero discount is a removed one (see `bookingSubmit`), so it reads as None.
-      if (b.applied_discount && b.applied_discount.value > 0) { setDiscountType(b.applied_discount.type); setDiscountValue(b.applied_discount.value) }
+      // A flat amount off is shared out between the rooms of a booking (see `discountSplit`),
+      // so what the desk typed is what the rooms' shares ADD UP to, not the first room's own.
+      const discounted = editingBookings.find(eb => (eb.applied_discount?.value || 0) > 0)?.applied_discount
+      if (discounted) {
+        setDiscountType(discounted.type)
+        setDiscountValue(discounted.type === 'flat'
+          ? editingBookings.reduce((sum, eb) => sum + (eb.applied_discount?.type === 'flat' ? Number(eb.applied_discount.value || 0) : 0), 0)
+          : discounted.value)
+      }
       setVenueDayBlocks(b.venue_day_blocks || 1)
       // Sum financials across all bookings in the group
       let totalDown = 0
