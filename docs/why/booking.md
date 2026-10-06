@@ -3,6 +3,8 @@
 ## The booking form
 
 - **It copies the hotel's paper Guest Registration form.** Same fields (Birth Date, Sex, Plate No., companion name and nationality), so staff recognise it.
+- **A companion has a sex as well.** Sebastian, 2026-10-05: *"can you also add sex for companions."*
+- **Nationality is picked from a list of every nationality, found by typing** — his ask the same day. It still takes anything typed.
 - **One page, no steps.** The owner chose a single scrolling form over a wizard. There is no Total / Deposit / Balance summary on it — the printed statement carries those figures.
 - **Name and contact first; the rest behind "＋ More details".** That line opens by itself when any hidden field already holds a value, so correcting an old booking never hides something.
 - **The form takes the money.** A real walk-in is settled in one sitting: the guest is asked deposit or full pay *and how they will pay* in the same breath, sends the GCash while the desk waits, and only then is the booking finished. So the form records the payment and hands over the **Payment Receipt**, not a bill. (An earlier rule said the form takes no money; the staff's real process overruled it.)
@@ -17,9 +19,12 @@
 
 ## Payment plans
 
-The guest picks one of four: **Deposit** (half the stay — the standard, already chosen), **Full pay**, **Custom** (the only one typed), **Reservation**.
+**The deposit is a figure the desk types.** Half, Full pay and No deposit are shortcuts beside the box, and nothing is chosen when the form opens.
 
-- **A reservation is a hold for somebody the staff personally know** ("they are trustworthy"). The app never checks who qualifies. It blocks the room, never expires, and agrees to no money at all.
+- It used to be one of four choices — Deposit (half the stay, already chosen), Full pay, Custom, Reservation. Sebastian, 2026-10-05: *"the deposit feature is a bit of a nuisance since most of the time the staff would do custom priced deposit."*
+- **A reservation can have a deposit or none.** The same day: *"the staff wants to be able to add a deposit price on the reservation because sometimes they allow no deposit on reservations and sometimes they do."* He wondered about renaming every booking a reservation and was not sure of it. Instead "Reservation" stopped being a kind of booking to choose: every booking has a deposit, and it may be nothing.
+
+- **A booking with no deposit is what the rules below call a reservation.** It is a hold for somebody the staff personally know ("they are trustworthy"). The app never checks who qualifies. It blocks the room, never expires, and agrees to no money at all.
 - **A reserved guest pays when they arrive, not at check-out.** Check-in refuses while money is owed — that refusal is how the money is collected at the door.
 - **Until they arrive, a reservation is a promise, not a debt.** It stays out of "Who owes right now" and shows only the name and the word `Reserved`.
 
@@ -38,13 +43,13 @@ The guest picks one of four: **Deposit** (half the stay — the standard, alread
 - **Actions appear beside the cell that was picked**, never in the toolbar. The rule teaches itself: pick the dates first. One day offers `3h · 6h · 12h`; a range offers `New booking`. Both carry the block icon and Log old booking.
 - **Blocking dates happens on the calendar**, in a small pane that asks only *why* (Cleaning, Maintenance, Owner use, Other).
 - **An Owner use block can have no end date.** The owner's family sometimes use a room for a few days or weeks, and when they will leave is often not known (the owner, 2026-10-04). The room stays closed until the desk presses "They have left".
+- **A stay can end on the day the next guest arrives, so a booking fills half of its first and last day.** Sebastian, 2026-10-06: booking Oct 8 to 9 on a room was impossible because someone checks in on Oct 9, yet the hotel is fine with it — check-out is 12 PM, check-in is 2 PM, so the room has exactly two hours to be cleaned. His fix: *"update the calendar bookings to occupy only half of the box on the day they check in and check out."* The bookings and the database always allowed it (a stay is `[check-in, check-out)`); the calendar did not, because a booking filled every box from check-in to the day before check-out, so the day the next guest arrived was their whole box and could not be picked. Each day is now two halves (`components/calendar/timelineHalves.ts`): a stay runs from the afternoon of its first day to the morning of its last. The free morning of the arrival day is what the desk taps as the check-out. A day another guest arrives on can end a stay but not start one — tapping it first says the room is booked that night.
+- **A short stay is the exception: it still fills its whole day** (it is never resold the same day, see Short stays). If a guest leaves on the day it is on, that guest keeps the morning and the short stay shows the afternoon only. A half-day pill is too narrow for a name, so it shows only the stage (`IN`) or the hours (`6h`); the name is on the hover card.
 - **A booking that starts before the window shows `‹`**, so a cut-off block is not read as a new arrival.
 - **A pill says what is still to pay and whether the guest is in or out.** The staff, 2026-10-04: they want to look at the calendar and know the amount left for every room, before and after check-in, and which rooms are checked in or checked out — without clicking each pill. The amount used to be a coloured dot.
 - **Where the booking came from is not shown for now.** Sebastian, 2026-10-04: *"remove the 'booked from' for now since ical isn't used yet."*
 
 ## Short stays (3, 6, 12 hours)
-- **A stay can end on the day the next guest arrives, so a booking fills half of its first and last day.** Sebastian, 2026-10-06: booking Oct 8 to 9 on a room was impossible because someone checks in on Oct 9, yet the hotel is fine with it — check-out is 12 PM, check-in is 2 PM, so the room has exactly two hours to be cleaned. His fix: *"update the calendar bookings to occupy only half of the box on the day they check in and check out."* The bookings and the database always allowed it (a stay is `[check-in, check-out)`); the calendar did not, because a booking filled every box from check-in to the day before check-out, so the day the next guest arrived was their whole box and could not be picked. Each day is now two halves (`components/calendar/timelineHalves.ts`): a stay runs from the afternoon of its first day to the morning of its last. The free morning of the arrival day is what the desk taps as the check-out. A day another guest arrives on can end a stay but not start one — tapping it first says the room is booked that night.
-- **A short stay is the exception: it still fills its whole day** (it is never resold the same day, see Short stays). If a guest leaves on the day it is on, that guest keeps the morning and the short stay shows the afternoon only. A half-day pill is too narrow for a name, so it shows only the stage (`IN`) or the hours (`6h`); the name is on the hover card.
 
 - From the hotel's printed rate board. Each room has its own price per hours; a blank price means the room is not sold for those hours.
 - **22 hours is just the room's normal night price**, so it is an ordinary booking.

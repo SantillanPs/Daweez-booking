@@ -4,6 +4,7 @@ import { Building2, ChevronDown } from 'lucide-react'
 import { CompanionFields } from './CompanionFields'
 import { BlockReasonFields } from './BlockReasonFields'
 import { BirthDateInput } from './BirthDateInput'
+import { NationalityInput } from '../NationalityInput'
 import { Field } from './Field'
 import { FIELD, FIELD_ERROR, SELECT, GROUP, GROUP_TITLE, OPTION_LIST, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL } from './formStyles'
 
@@ -178,68 +179,17 @@ export const RoomDetailsForm = React.memo(
               className={FIELD}
             />
           </Field>
-
-          {showExtra && (
-            <>
-              <Field label="Nationality" className={REVEAL}>
-                <input
-                  type="text"
-                  value={formGuestNationality || ''}
-                  onChange={e => setFormGuestNationality(e.target.value.toUpperCase())}
-                  className={FIELD}
-                />
-              </Field>
-              <Field label="Address" className={REVEAL}>
-                <input
-                  type="text"
-                  value={formGuestAddress || ''}
-                  onChange={e => setFormGuestAddress(e.target.value.toUpperCase())}
-                  className={FIELD}
-                />
-              </Field>
-              <Field label="Email" className={REVEAL}>
-                <input
-                  type="email"
-                  value={formGuestEmail}
-                  onChange={e => setFormGuestEmail(e.target.value)}
-                  className={FIELD}
-                />
-              </Field>
-              <Field label="Plate no." className={REVEAL}>
-                <input
-                  type="text"
-                  value={formVehiclePlate || ''}
-                  onChange={e => setFormVehiclePlate(e.target.value.toUpperCase())}
-                  className={FIELD}
-                />
-              </Field>
-              {/* A plain block, not a `Field`: the date box carries its own label for
-                  screen readers and draws its own "type it like this" line under itself. */}
-              <div className={REVEAL}>
-                <span className="block text-[13px] font-medium text-muted mb-1.5">Birth date</span>
-                <BirthDateInput value={formGuestBirthdate} onChange={setFormGuestBirthdate} />
-              </div>
-              <Field label="Sex" className={REVEAL}>
-                <select
-                  value={formGuestGender || ''}
-                  onChange={e => setFormGuestGender(e.target.value)}
-                  className={SELECT}
-                >
-                  <option value="">Not stated</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </Field>
-            </>
-          )}
         </div>
 
         {/* The optional extras, as lines in one ruled list. The whole line is the button. */}
         <ul className={OPTION_LIST}>
-          {/* Once any of the extra boxes holds something they stay on screen, so there is
-              nothing left for this line to open or close. */}
-          {!hasMoreDetails && (
-            <li>
+          {/* The extra boxes open UNDER this line, the way every other line here opens (the
+              usability pass, 2026-10-05). They used to appear above it, in the grid with the
+              name: the line that was pressed jumped six boxes down the form and ended up
+              under what it had opened. Once any of them holds something they stay on
+              screen, so there is nothing left for the line to open or close and it goes. */}
+          <li>
+            {!hasMoreDetails && (
               <button type="button" onClick={() => setShowMore(o => !o)} aria-expanded={showExtra}
                 className={OPTION_ROW + ' cursor-pointer'}>
                 <span className={OPTION_NAME}>More details</span>
@@ -250,8 +200,56 @@ export const RoomDetailsForm = React.memo(
                   <ChevronDown className={'w-4 h-4 shrink-0 transition-transform duration-200 ' + (showExtra ? 'rotate-180' : '')} />
                 </span>
               </button>
-            </li>
-          )}
+            )}
+            {showExtra && (
+              <div className={'grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pb-4 ' + (hasMoreDetails ? 'pt-4' : 'pt-1')}>
+                <Field label="Nationality" className={REVEAL}>
+                  <NationalityInput value={formGuestNationality || ''} onChange={setFormGuestNationality} className={FIELD} />
+                </Field>
+                <Field label="Address" className={REVEAL}>
+                  <input
+                    type="text"
+                    value={formGuestAddress || ''}
+                    onChange={e => setFormGuestAddress(e.target.value.toUpperCase())}
+                    className={FIELD}
+                  />
+                </Field>
+                <Field label="Email" className={REVEAL}>
+                  <input
+                    type="email"
+                    value={formGuestEmail}
+                    onChange={e => setFormGuestEmail(e.target.value)}
+                    className={FIELD}
+                  />
+                </Field>
+                <Field label="Plate no." className={REVEAL}>
+                  <input
+                    type="text"
+                    value={formVehiclePlate || ''}
+                    onChange={e => setFormVehiclePlate(e.target.value.toUpperCase())}
+                    className={FIELD}
+                  />
+                </Field>
+                {/* A plain block, not a `Field`: the date box carries its own label for
+                    screen readers and draws its own "type it like this" line under itself. */}
+                <div className={REVEAL}>
+                  <span className="block text-[13px] font-medium text-muted mb-1.5">Birth date</span>
+                  <BirthDateInput value={formGuestBirthdate} onChange={setFormGuestBirthdate} />
+                </div>
+                <Field label="Sex" className={REVEAL}>
+                  <select
+                    value={formGuestGender || ''}
+                    onChange={e => setFormGuestGender(e.target.value)}
+                    className={SELECT}
+                  >
+                    <option value="">Not stated</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </Field>
+              </div>
+            )}
+          </li>
           <CompanionFields companions={formCompanions} setCompanions={setFormCompanions} />
         </ul>
       </section>
@@ -259,7 +257,7 @@ export const RoomDetailsForm = React.memo(
   },
   (prevProps, nextProps) => {
     const compsEqual = prevProps.formCompanions.length === nextProps.formCompanions.length &&
-      prevProps.formCompanions.every((c, i) => c.name === nextProps.formCompanions[i].name && (c.nationality || '') === (nextProps.formCompanions[i].nationality || '') && !!c.breakfast === !!nextProps.formCompanions[i].breakfast)
+      prevProps.formCompanions.every((c, i) => c.name === nextProps.formCompanions[i].name && (c.nationality || '') === (nextProps.formCompanions[i].nationality || '') && (c.sex || '') === (nextProps.formCompanions[i].sex || '') && !!c.breakfast === !!nextProps.formCompanions[i].breakfast)
     
     return (
       prevProps.formStatus === nextProps.formStatus &&

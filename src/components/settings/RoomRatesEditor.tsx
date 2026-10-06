@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { Room } from '../../types/booking'
 import { GROUP_TITLE } from '../walk-in/formStyles'
 import { RoomDraft, roomDraft } from './roomDraft'
@@ -35,6 +35,16 @@ export function RoomRatesEditor({ rooms, edits, onEdit, loading = false }: RoomR
   const selected = rooms.find(r => r.id === selectedId) || rooms[0] || null
   const draft = selected ? roomDraft(selected, edits) : null
 
+  // Where the panel sits under the list instead of beside it (a phone, a tablet held
+  // upright), a tap on a room changed boxes a screen further down and looked as if it
+  // had done nothing. There the panel is brought into view.
+  const panel = useRef<HTMLDivElement>(null)
+  const pick = (roomId: string) => {
+    setSelectedId(roomId)
+    if (window.matchMedia('(min-width: 1024px)').matches) return
+    requestAnimationFrame(() => panel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-x-12 gap-y-8 items-start">
       {/* The price list — every room and its night price on one screen. */}
@@ -63,7 +73,7 @@ export function RoomRatesEditor({ rooms, edits, onEdit, loading = false }: RoomR
           const touched = !!edits[room.id]
           const isOn = selected?.id === room.id
           return (
-            <button key={room.id} type="button" onClick={() => setSelectedId(room.id)} aria-current={isOn ? 'true' : undefined}
+            <button key={room.id} type="button" onClick={() => pick(room.id)} aria-current={isOn ? 'true' : undefined}
               className={'w-full h-12 pl-3 pr-4 flex items-center justify-between gap-3 border-b border-soft border-l-4 text-left transition-colors duration-150 cursor-pointer ' +
                 (isOn ? 'border-l-gold-400 bg-gold-100/70' : 'border-l-transparent hover:bg-softbg/60')}>
               <span className="min-w-0 truncate">
@@ -82,7 +92,7 @@ export function RoomRatesEditor({ rooms, edits, onEdit, loading = false }: RoomR
       {/* The panel — the room you clicked, and nothing else. It settles in on each click, so
           the eye sees the figures change to the new room. */}
       {selected && draft && (
-        <div key={selected.id} className="lg:sticky lg:top-20 space-y-5 animate-in fade-in duration-200 motion-reduce:animate-none">
+        <div key={selected.id} ref={panel} className="scroll-mt-20 lg:sticky lg:top-20 space-y-5 animate-in fade-in duration-200 motion-reduce:animate-none">
           <div>
             <h3 className={GROUP_TITLE}>Room {selected.room_number}</h3>
             <p className="mt-0.5 text-[13px] text-muted">{selected.name}</p>

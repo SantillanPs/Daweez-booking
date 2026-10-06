@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { ChevronDown, Minus, Plus } from 'lucide-react'
 import { ICON_BUTTON, LABEL, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL } from './formStyles'
+import { getRateConfig } from '../../utils/rateConfig'
 
 interface AmenitiesFormProps {
   hasRooms: boolean
@@ -59,7 +60,7 @@ function ExtraList({ title, items }: { title: string; items: Extra[] }) {
           <div key={item.label} className="flex items-center justify-between min-h-11">
             <span className="text-[15px] font-medium text-main">
               {item.label}
-              <span className="ml-2 text-[13px] font-normal text-muted tabular-nums">₱{item.price}{item.per}</span>
+              <span className="ml-2 text-[13px] font-normal text-muted tabular-nums">₱{item.price.toLocaleString()}{item.per}</span>
             </span>
             <Counter label={item.label} value={item.value} onChange={item.set} />
           </div>
@@ -80,6 +81,10 @@ function ExtraList({ title, items }: { title: string; items: Extra[] }) {
 //
 // The sentences that listed what could be added, and the one explaining why a room is
 // not offered a tent, are gone (the staff's feedback, 2026-10-04: hard to read).
+//
+// **The price beside each one is the price in Settings** — the one the bill charges. They
+// were written here by hand (₱200, ₱50, ₱150…), so a price changed in Settings went on
+// the bill while this line went on quoting the old one to the guest.
 export const AmenitiesForm = React.memo(
   ({
     hasRooms,
@@ -105,17 +110,19 @@ export const AmenitiesForm = React.memo(
   }: AmenitiesFormProps) => {
     const [open, setOpen] = useState(false)
 
+    // The same figures `calculatePricing` charges (utils/pricing.ts).
+    const rates = getRateConfig()
     const roomExtras: Extra[] = [
-      { label: 'Foam', value: formExtraFoam, set: setFormExtraFoam, price: 200, per: '/night' },
-      { label: 'Pillow', value: formExtraPillow, set: setFormExtraPillow, price: 50, per: '/night' },
-      { label: 'Blanket', value: formExtraBlanket, set: setFormExtraBlanket, price: 50, per: '/night' },
-      { label: 'Towel', value: formExtraTowel, set: setFormExtraTowel, price: 50, per: '/night' },
+      { label: 'Foam', value: formExtraFoam, set: setFormExtraFoam, price: rates.foamRate, per: '/night' },
+      { label: 'Pillow', value: formExtraPillow, set: setFormExtraPillow, price: rates.pillowRate, per: '/night' },
+      { label: 'Blanket', value: formExtraBlanket, set: setFormExtraBlanket, price: rates.blanketRate, per: '/night' },
+      { label: 'Towel', value: formExtraTowel, set: setFormExtraTowel, price: rates.towelRate, per: '/night' },
     ]
     const venueExtras: Extra[] = [
-      { label: 'Table', value: formEventTable, set: setFormEventTable, price: 150, per: '' },
-      { label: 'Tent', value: formEventTent, set: setFormEventTent, price: 500, per: '' },
-      { label: 'Chairs', value: formChairs, set: setFormChairs, price: 15, per: '' },
-      { label: 'Excess Hours', value: formVenueExcessHours, set: setFormVenueExcessHours, price: 500, per: '' },
+      { label: 'Table', value: formEventTable, set: setFormEventTable, price: rates.bigTableRate, per: '' },
+      { label: 'Tent', value: formEventTent, set: setFormEventTent, price: rates.tentRate, per: '' },
+      { label: 'Chairs', value: formChairs, set: setFormChairs, price: rates.chairRate, per: '' },
+      { label: 'Excess Hours', value: formVenueExcessHours, set: setFormVenueExcessHours, price: rates.venueHourlyRate, per: '' },
     ]
     const added = [...(hasRooms ? roomExtras : []), ...(hasVenues ? venueExtras : [])]
       .filter(item => item.value > 0)

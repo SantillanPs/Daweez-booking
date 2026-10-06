@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
-import type { StockItem, StockMovement } from '../../utils/stock'
+import { fmtQty, type StockItem, type StockMovement } from '../../utils/stock'
 
-const fmtQty = (n: number) => (Math.round(n * 100) / 100).toLocaleString()
 const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-US',
   { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 

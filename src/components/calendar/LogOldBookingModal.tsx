@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { X, Users, Plus } from 'lucide-react'
+import { NationalityInput } from '../NationalityInput'
 import { Booking, Room, Venue, Companion } from '../../types/booking'
 import { dateToString } from '../../utils/helpers'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
@@ -194,7 +195,7 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
                 <input value={guestAddress} onChange={e => setGuestAddress(e.target.value.toUpperCase())} className={field + ' mt-1'} />
               </label>
               <label className={label}>Nationality
-                <input value={guestNationality} onChange={e => setGuestNationality(e.target.value.toUpperCase())} placeholder="e.g. Filipino" className={field + ' mt-1'} />
+                <NationalityInput value={guestNationality} onChange={setGuestNationality} placeholder="e.g. Filipino" className={field + ' mt-1'} />
               </label>
             </div>
 
@@ -205,9 +206,14 @@ export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose
               </p>
               {companions.map((c, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <div className="flex-1 grid grid-cols-2 gap-2">
+                  <div className="flex-1 grid grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1.2fr)] gap-2">
                     <input value={c.name} onChange={e => updateCompanion(i, { name: e.target.value.toUpperCase() })} placeholder="Name" className={field} />
-                    <input value={c.nationality || ''} onChange={e => updateCompanion(i, { nationality: e.target.value.toUpperCase() })} placeholder="Nationality" className={field} />
+                    <NationalityInput value={c.nationality || ''} onChange={v => updateCompanion(i, { nationality: v })} placeholder="Nationality" className={field} />
+                    <select value={c.sex || ''} onChange={e => updateCompanion(i, { sex: e.target.value || undefined })} aria-label="Sex" className={field}>
+                      <option value="">Sex</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
                   </div>
                   <button type="button" onClick={() => removeCompanion(i)} className="text-muted hover:text-danger-600 p-1.5 cursor-pointer" aria-label="Remove companion">
                     <X className="w-4 h-4" />

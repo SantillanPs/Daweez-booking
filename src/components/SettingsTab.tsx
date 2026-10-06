@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
+import { useBlocker } from '@tanstack/react-router'
 import { useDashboardData } from './DashboardContext'
 import { RateConfig, PaymentAccounts } from '../types/booking'
 import { Loader2, Save } from 'lucide-react'
@@ -10,6 +11,8 @@ import { BreakfastMenuEditor } from './settings/BreakfastMenuEditor'
 import { OtherCharges } from './settings/OtherCharges'
 import { ChannelFeeds } from './settings/ChannelFeeds'
 import { EmailSetup } from './settings/EmailSetup'
+import { feedRows, feedUrlClashMessage, findFeedUrlClashes } from '../utils/feedUrls'
+import { askConfirm } from '../utils/confirm'
 import { showToast } from '../utils/toast'
 
 type SettingsTabKey = 'rooms' | 'charges' | 'channels' | 'email'
@@ -51,6 +54,12 @@ function countDiffs<T extends object>(draft: T, saved: T): number {
  * tabs are plain words down the side, marked the way the top bar's sub-tabs are — a gold
  * line on the chosen one — and each screen is parts under their names, with no card
  * round any of them. See `settings/parts.tsx`.
+ *
+ * **What is typed and not saved is never lost without a word** (the usability pass,
+ * 2026-10-05). A new price was typed, the desk tapped Front desk, and the price was gone
+ * with nothing said — the booking form went on charging the old one. Leaving now asks
+ * first. And the calendar links, which had a Save button of their own inside one room's
+ * row, are saved by the one bar like everything else.
  */
 export function SettingsTab() {
   const { rooms, feeds, isLoading, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices } = useDashboardData()
@@ -61,19 +70,70 @@ export function SettingsTab() {
   const [pay, setPay] = useState<PaymentAccounts>(() => getPaymentAccounts())
   const [savedPay, setSavedPay] = useState<PaymentAccounts>(() => getPaymentAccounts())
   const [roomEdits, setRoomEdits] = useState<Record<string, Partial<RoomDraft>>>({})
+  // A calendar link typed and not saved yet, by the row it belongs to. Laid over the
+  // stored links, so a background sync that reads them again never wipes the typing.
+  const [linkEdits, setLinkEdits] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
 
-  const changes = countDiffs(rates, savedRates) + countDiffs(pay, savedPay) + Object.keys(roomEdits).length
+  const storedLinks = useMemo(() => feedRows(rooms, feeds), [rooms, feeds])
+  const links = useMemo(
+    () => storedLinks.map(f => (f.id in linkEdits ? { ...f, url: linkEdits[f.id] } : f)),
+    [storedLinks, linkEdits],
+  )
+
+  const changes = countDiffs(rates, savedRates) + countDiffs(pay, savedPay) + Object.keys(roomEdits).length + Object.keys(linkEdits).length
 
   const editRoom = (roomId: string, patch: Partial<RoomDraft>) =>
     setRoomEdits(prev => ({ ...prev, [roomId]: { ...prev[roomId], ...patch } }))
 
+  // A link typed back to what is stored is not a change.
+  const editLink = (feedId: string, url: string) => setLinkEdits(prev => {
+    const next = { ...prev }
+    if ((storedLinks.find(f => f.id === feedId)?.url || '') === url) delete next[feedId]
+    else next[feedId] = url
+    return next
+  })
+
+  // Leaving with something typed and not saved asks first — the app's own question, never
+  // the browser's.
+  useBlocker({
+    shouldBlockFn: async () => {
+      if (changes === 0) return false
+      const leave = await askConfirm({
+        title: changes + (changes === 1 ? ' change is not saved' : ' changes are not saved'),
+        message: 'Leave Settings without saving?',
+        confirmLabel: 'Leave without saving',
+        tone: 'danger',
+      })
+      return !leave
+    },
+    enableBeforeUnload: false,
+    disabled: changes === 0,
+  })
+
   const handleSave = async () => {
     if (saving || changes === 0) return
+
+    // Nothing is written until everything can be: a save refused halfway would leave the
+    // bar saying "saved" for some boxes and not others.
+    const noPrice = rooms.find(r => !!roomEdits[r.id] && roomDraft(r, roomEdits).price <= 0)
+    if (noPrice) {
+      setTab('rooms')
+      showToast('Room ' + noPrice.room_number + ' has no night price. Type one, then save.', 'error')
+      return
+    }
+    const clash = Object.keys(linkEdits).length > 0 ? findFeedUrlClashes(links)[0] : undefined
+    if (clash) {
+      setTab('channels')
+      showToast(feedUrlClashMessage(clash, id => 'Room ' + (rooms.find(r => r.id === id)?.room_number ?? '?')), 'error')
+      return
+    }
+
     setSaving(true)
     try {
       await saveRateConfig(rates)
       await savePaymentAccounts(pay)
+      if (Object.keys(linkEdits).length > 0) await updateFeedUrls(links)
       for (const roomId of Object.keys(roomEdits)) {
         const room = rooms.find(r => r.id === roomId)
         if (!room) continue
@@ -85,6 +145,7 @@ export function SettingsTab() {
       setSavedRates(rates)
       setSavedPay(pay)
       setRoomEdits({})
+      setLinkEdits({})
       showToast('Saved. The booking form, the board and the printed bill use these.')
     } catch {
       showToast('Could not save the settings. Check the internet connection and try again.', 'error')
@@ -100,8 +161,10 @@ export function SettingsTab() {
       <nav aria-label="Settings" className="flex md:flex-col gap-5 md:gap-0 px-5 md:px-0 md:py-4 border-b md:border-b-0 md:border-r border-soft overflow-x-auto no-scrollbar">
         {TABS.map(t => (
           <button key={t.key} type="button" onClick={() => setTab(t.key)} aria-current={tab === t.key ? 'page' : undefined}
-            className={'flex items-center h-11 -mb-px md:mb-0 md:-mr-px md:pl-6 border-b-2 md:border-b-0 md:border-r-2 text-sm font-medium whitespace-nowrap transition-colors duration-150 cursor-pointer ' +
-              (tab === t.key ? 'border-gold-600 text-main' : 'border-transparent text-muted hover:text-main')}>
+            // The chosen one is heavier as well as marked: down the side its gold line sits a
+            // long way from its words.
+            className={'flex items-center h-11 -mb-px md:mb-0 md:-mr-px md:pl-6 border-b-2 md:border-b-0 md:border-r-2 text-sm whitespace-nowrap transition-colors duration-150 cursor-pointer ' +
+              (tab === t.key ? 'border-gold-600 text-main font-bold' : 'border-transparent text-muted font-medium hover:text-main')}>
             {t.label}
           </button>
         ))}
@@ -126,10 +189,7 @@ export function SettingsTab() {
 
           {tab === 'channels' && (
             <div className="max-w-[720px]">
-              <ChannelFeeds rooms={rooms} feeds={feeds} onSave={async list => {
-                try { await updateFeedUrls(list); showToast('Feed URLs saved.') }
-                catch { showToast('Could not save the feed URLs.', 'error') }
-              }} />
+              <ChannelFeeds rooms={rooms} links={links} unsaved={linkEdits} onLink={editLink} />
             </div>
           )}
 

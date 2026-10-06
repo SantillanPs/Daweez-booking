@@ -44,9 +44,16 @@
 - Old addresses keep working, and Logout stays apart from the tabs.
 - What moved where: Agencies was "Corporate Partners"; Today's money was "Expenses"; the Earnings report was "Analytics"; Stock was "Housekeeping".
 
+## What's new
+
+- **The staff are told what changed after every update to the live system, on the Front desk.** Sebastian, 2026-10-05, the day the kitchen screen went live: *"can you add a what's new after every update we make on the live? make sure it's in the front desk."*
+- It opens by itself once on each device, at the front desk, because the staff do not go looking for a change they have not been told about; and it stays behind a button, because they share devices and swap places, so whoever missed it can still read it.
+- **The button sits beside Sync in the top bar.** It was first put at the top of the calendar; he had it moved the same day: *"move the button next to the sync button."*
+
 ## The staff app's look
 
 - Charcoal and gold, taken from the logo. **The working app stays light** — a dark top bar was tried and reverted. Dark is only for the login screen and the public booking page header.
+- **The hotel's own mark, a gold DP in a ring, is the logo at the top left.** Sebastian, 2026-10-05, handing over the picture: *"use this as the logo on the top left."*
 - Gold is too pale to be text on a light background; gold buttons take dark text.
 - Built for a desktop screen first, usable on tablet and phone.
 - Screens are dense: no wasted space, little scrolling, rare options hidden until needed.

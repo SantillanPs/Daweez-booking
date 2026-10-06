@@ -90,7 +90,9 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
             <thead>
               <tr className="border-y border-ink-300 text-left text-[10px] uppercase tracking-wider text-ink-600">
                 <th className="py-1 px-1 font-bold w-1/2">Name</th>
-                <th className="py-1 px-1 font-bold w-1/2">Nationality</th>
+                <th className="py-1 px-1 font-bold">Nationality</th>
+                {/* Only when it was written down for somebody: an older booking has none. */}
+                {b.companions!.some(c => c.sex) && <th className="py-1 px-1 font-bold w-1/6">Sex</th>}
               </tr>
             </thead>
             <tbody>
@@ -98,6 +100,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
                 <tr key={i} className="border-b border-ink-200">
                   <td className="py-1 px-1 text-[13px]">{c.name}</td>
                   <td className="py-1 px-1 text-[13px] capitalize">{c.nationality || ''}</td>
+                  {b.companions!.some(x => x.sex) && <td className="py-1 px-1 text-[13px]">{c.sex || ''}</td>}
                 </tr>
               ))}
             </tbody>

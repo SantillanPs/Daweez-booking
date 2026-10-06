@@ -78,6 +78,12 @@ const num = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0
 }
 
+/**
+ * A quantity as the staff read it. The count may be a fraction (2.5 kg), and adding two fractions in the
+ * browser leaves tails like 12.299999999999999 — so every screen that shows a quantity rounds it here.
+ */
+export const fmtQty = (n: number): string => (Math.round(n * 100) / 100).toLocaleString()
+
 const toItem = (r: Record<string, unknown>): StockItem => ({
   id: String(r.id),
   name: String(r.name || ''),

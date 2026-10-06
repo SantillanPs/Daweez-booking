@@ -1,12 +1,11 @@
 import React, { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { STOCK_GROUPS, type StockItem, type StockMovement } from '../../utils/stock'
+import { STOCK_GROUPS, fmtQty, type StockItem, type StockMovement } from '../../utils/stock'
 import { ReceiveStockForm } from './ReceiveStockForm'
 import { StockItemForm } from './StockItemForm'
 import { StockMovementsLog } from './StockMovementsLog'
 
 const fmtMoney = (n: number) => '₱' + (Math.round(n * 100) / 100).toLocaleString()
-const fmtQty = (n: number) => (Math.round(n * 100) / 100).toLocaleString()
 
 /**
  * **The stock room** (board card k71, part 1) — one shelf for the kitchen and the hotel.

@@ -132,6 +132,8 @@ export interface PaymentRecord {
 export interface Companion {
   name: string
   nationality?: string
+  /** `Male` or `Female`, the same words the guest's own Sex holds. Empty when not stated. */
+  sex?: string
   breakfast?: boolean
 }
 

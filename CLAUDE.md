@@ -28,7 +28,7 @@ There is **no test suite**. Verify changes by running the app against the develo
 
 - `.env.local` points local work at **development**; the live values are kept there commented out. `.mcp.json` and `vercel.json` still name the **live** ref.
 - Apply every schema or function change to development first, test it, and save it as a file in `supabase/migrations/`. Treat live as read-only unless the owner says to promote something.
-- **The migration files have drifted from live.** Several were pasted in by hand and two stock functions exist only in the database. Always rebuild `book_booking` / `update_booking` from the definition the database holds (`pg_get_functiondef`), never from an older file. The development database was built from the live catalog, not from the files.
+- **The migration files have drifted from live.** Several were pasted in by hand, and the two stock functions were saved to a file only on 2026-10-05 (`20261005120000_stock_foundations.sql`, applied to development, not yet to live). Always rebuild `book_booking` / `update_booking` from the definition the database holds (`pg_get_functiondef`), never from an older file. The development database was built from the live catalog, not from the files.
 - Development holds setup data only (rooms, venues, settings, menu, stock items). Of the edge functions only `send-email` is deployed there, so `sync-ical` console errors on localhost are expected.
 
 ## Architecture
@@ -69,6 +69,10 @@ There is **no test suite**. Verify changes by running the app against the develo
 - **Stock** (`HousekeepingTab`, still at `/housekeeping`): Stock room · What a dish uses (`/housekeeping/dishes`) · Cleaning checklist (`/housekeeping/cleaning`).
 - **The top bar is four tabs — Front desk, Restaurant, Stock, Money — plus a Settings gear.** The list is `TABS` in `DashboardLayout.tsx`; a tab opens on its first screen and the rest are sub-tabs. A new screen goes inside a tab, never a fifth tab, and never in the bottom bar.
 - `/reserve` (`PublicReservePortal`) is a public page outside the passcode gate.
+
+### What's new — every update that goes live adds an entry
+
+The owner asked for a "What's new" on the Front desk after every update to the live system. **Any push to `main` that changes what the staff see adds one entry at the top of `UPDATES` in `src/utils/whatsNew.ts`, in the same push.** Its `id` is the day it goes live (`YYYY-MM-DD`, with a letter for a second update that day). It is written for the staff: what they can now do and on which screen, in plain everyday English, never what changed in the code. A change they cannot see needs no entry. `components/WhatsNew.tsx` shows it: the window opens by itself once on each device after an update, only on the Front desk's calendar and never over a panel the desk has open (the calendar and the top bar tell each other through `utils/deskState.ts`). It stays behind the "What's new" button in the top bar, beside Sync, with a dot until it is opened. What a device has shown is kept in its `localStorage` (`daweez_whats_new_seen`), since there are no staff logins.
 
 ## Project docs
 

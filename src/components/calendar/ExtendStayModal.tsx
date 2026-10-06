@@ -701,7 +701,7 @@ export function ExtendStayModal({
                       <span key={idx}>
                         {idx > 0 ? ', ' : ''}
                         <strong className="text-main">{comp.name}</strong>
-                        {comp.nationality ? <span className="capitalize"> ({comp.nationality})</span> : null}
+                        {(comp.nationality || comp.sex) ? <span className="capitalize"> ({[comp.nationality, comp.sex].filter(Boolean).join(', ').toLowerCase()})</span> : null}
                       </span>
                     ))}
                   </p>

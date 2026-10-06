@@ -34,7 +34,9 @@ export function DiscountPricingControls({
     { key: 'none', label: 'None' },
     { key: 'p20', label: '20%' },
     { key: 'p10', label: '10%' },
-    { key: 'flat', label: 'Custom price', hint: 'A flat peso amount off instead of a percentage.' },
+    // It read "Custom price", and the box under it asks for an amount OFF: a desk meaning
+    // to charge ₱850 for a ₱950 room would have typed 850 and taken ₱850 off.
+    { key: 'flat', label: '₱ off', hint: 'A peso amount off instead of a percentage.' },
   ]
 
   const pick = (key: DiscountKey) => {

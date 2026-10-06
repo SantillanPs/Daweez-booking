@@ -1,4 +1,20 @@
-import { SyncFeed } from '../types/booking'
+import { Room, SyncFeed } from '../types/booking'
+
+/**
+ * Every room's two link rows — Airbnb's and Booking.com's — whether or not one is stored
+ * yet, so each room always has both boxes.
+ */
+export function feedRows(rooms: Room[], feeds: SyncFeed[]): SyncFeed[] {
+  const out: SyncFeed[] = []
+  rooms.forEach(room => {
+    const mine = feeds.filter(f => f.room_id === room.id)
+    const air = mine.find(f => f.channel === 'airbnb')
+    const bk = mine.find(f => f.channel === 'booking_com')
+    out.push(air || { id: 'feed-ab-' + room.id, room_id: room.id, channel: 'airbnb', url: '', last_synced: null })
+    out.push(bk || { id: 'feed-bc-' + room.id, room_id: room.id, channel: 'booking_com', url: '', last_synced: null })
+  })
+  return out
+}
 
 /**
  * **One address, one room.**
@@ -40,6 +56,6 @@ export function findFeedUrlClashes(feeds: SyncFeed[]): FeedUrlClash[] {
  */
 export function feedUrlClashMessage(clash: FeedUrlClash, roomLabel: (roomId: string) => string): string {
   const rooms = clash.roomIds.map(roomLabel)
-  return 'One address on ' + rooms.length + ' rooms (' + rooms.join(', ') + '). ' +
-    'Each room needs its own iCal link — give this one to ' + rooms[0] + ', or paste a different link into the others.'
+  return 'One link is on ' + rooms.length + ' rooms (' + rooms.join(', ') + '). ' +
+    'Each room needs its own calendar link — give this one to ' + rooms[0] + ', or paste a different link into the others.'
 }

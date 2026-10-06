@@ -17,6 +17,7 @@ import { BlockDatesPane } from './calendar/BlockDatesPane'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { CalendarLegend } from './calendar/CalendarLegend'
 import { TodayStrip } from './calendar/TodayStrip'
+import { setDeskBusy, useReadingWhatsNew } from '../utils/deskState'
 import { BreakfastPicker } from './calendar/BreakfastPicker'
 import { roomDisplayName } from './calendar/bookingStyles'
 import { showToast } from '../utils/toast'
@@ -69,6 +70,14 @@ export function CalendarTab() {
   const [dueShortStayIds, setDueShortStayIds] = useState<string[]>([])
   const poppedDueRef = useRef<Set<string>>(new Set())
   const deskBusy = showManualForm || showLogOld || !!selectedExtendBooking || !!blockTarget
+  // "What's new" (in the top bar) is on screen: the short-stay panel waits for it, as it
+  // waits for the rest — and "What's new" is told when the desk is busy, so it never opens
+  // by itself over a panel.
+  const readingWhatsNew = useReadingWhatsNew()
+  React.useEffect(() => {
+    setDeskBusy(deskBusy)
+    return () => setDeskBusy(false)
+  }, [deskBusy])
 
   // Latest-value refs keep the click handler stable so a date click never
   // re-renders the whole grid.
@@ -114,7 +123,7 @@ export function CalendarTab() {
         const ids = due.map(b => b.id)
         return prev.length === ids.length && prev.every((found, i) => found === ids[i]) ? prev : ids
       })
-      if (deskBusy) return
+      if (deskBusy || readingWhatsNew) return
       const next = due.find(b => !poppedDueRef.current.has(b.id))
       if (!next) return
       poppedDueRef.current.add(next.id)
@@ -123,7 +132,7 @@ export function CalendarTab() {
     scan()
     const timer = window.setInterval(scan, 15000)
     return () => window.clearInterval(timer)
-  }, [bookings, deskBusy])
+  }, [bookings, deskBusy, readingWhatsNew])
 
   // Today's own key: the list is rebuilt if the app is left open past midnight.
   const todayKey = dateToString(new Date())

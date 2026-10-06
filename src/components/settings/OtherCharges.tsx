@@ -11,13 +11,17 @@ interface OtherChargesProps {
   onPay: (patch: Partial<PaymentAccounts>) => void
 }
 
-/** One line of an account: its label above the box. */
-function PayLine({ label, value, onChange, placeholder, wide = false }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder: string; wide?: boolean
+/**
+ * One line of an account: its label above the box. An empty box is empty — each used to
+ * show the hotel's own account in grey as an example, so a second bank account nobody had
+ * filled in looked filled in, and printed nothing.
+ */
+function PayLine({ label, value, onChange, wide = false }: {
+  label: string; value: string; onChange: (v: string) => void; wide?: boolean
 }) {
   return (
     <Field label={label} className={wide ? 'sm:col-span-2' : ''}>
-      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={FIELD} />
+      <input value={value} onChange={e => onChange(e.target.value)} className={FIELD} />
     </Field>
   )
 }
@@ -89,21 +93,21 @@ export function OtherCharges({ rates, onRate, pay, onPay }: OtherChargesProps) {
         <Section title="Where guests pay" fact="Printed on the guest's statement and shown on the booking portal.">
           <div className="border-y border-soft divide-y divide-soft">
             <PayGroup name="GCash">
-              <PayLine label="Account name" value={pay.gcashName} onChange={v => onPay({ gcashName: v })} placeholder="Narlina D." />
-              <PayLine label="Number" value={pay.gcashNumber} onChange={v => onPay({ gcashNumber: v })} placeholder="0910 000 0000" />
+              <PayLine label="Account name" value={pay.gcashName} onChange={v => onPay({ gcashName: v })} />
+              <PayLine label="Number" value={pay.gcashNumber} onChange={v => onPay({ gcashNumber: v })} />
             </PayGroup>
             <PayGroup name="Bank transfer">
-              <PayLine wide label="Bank" value={pay.bankName} onChange={v => onPay({ bankName: v })} placeholder="Bank of the Philippine Islands (BPI)" />
-              <PayLine wide label="Account name" value={pay.bankAccountName} onChange={v => onPay({ bankAccountName: v })} placeholder="Daweez Pension House" />
-              <PayLine wide label="Account number" value={pay.bankAccountNumber} onChange={v => onPay({ bankAccountNumber: v })} placeholder="5636 0000 00" />
+              <PayLine wide label="Bank" value={pay.bankName} onChange={v => onPay({ bankName: v })} />
+              <PayLine wide label="Account name" value={pay.bankAccountName} onChange={v => onPay({ bankAccountName: v })} />
+              <PayLine wide label="Account number" value={pay.bankAccountNumber} onChange={v => onPay({ bankAccountNumber: v })} />
             </PayGroup>
             {/* A SECOND bank account (the owner, 2026-09): his own PGO bill lists two, and a
                 government office pays into whichever one its paperwork names. Both print on
                 the agency statement; leave these empty and only the first is used. */}
             <PayGroup name="Second bank account" note="(agency bills)">
-              <PayLine wide label="Bank" value={pay.bank2Name} onChange={v => onPay({ bank2Name: v })} placeholder="Land Bank of the Philippines (LB)" />
-              <PayLine wide label="Account name" value={pay.bank2AccountName} onChange={v => onPay({ bank2AccountName: v })} placeholder="Jonathan E. Dango" />
-              <PayLine wide label="Account number" value={pay.bank2AccountNumber} onChange={v => onPay({ bank2AccountNumber: v })} placeholder="0795 0000 00" />
+              <PayLine wide label="Bank" value={pay.bank2Name} onChange={v => onPay({ bank2Name: v })} />
+              <PayLine wide label="Account name" value={pay.bank2AccountName} onChange={v => onPay({ bank2AccountName: v })} />
+              <PayLine wide label="Account number" value={pay.bank2AccountNumber} onChange={v => onPay({ bank2AccountNumber: v })} />
             </PayGroup>
           </div>
         </Section>

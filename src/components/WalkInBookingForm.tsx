@@ -210,9 +210,11 @@ export function WalkInBookingForm({
   // too. `''` is a real state — nothing is preselected, so a GCash guest can never be
   // handed a Cash receipt by a default the desk never chose.
   const [formPaymentMethod, setFormPaymentMethod] = useState<PayMethod>('')
-  // What the guest pays now (the owner's ruling, 2026-09): Deposit is the standard,
-  // Full pay and Custom are the two other things a guest ever asks for.
-  const [formPaymentPlan, setFormPaymentPlan] = useState<PayPlan>('deposit')
+  // How the deposit is decided. A new booking opens on `custom` with nothing typed — the
+  // deposit is whatever the desk types, and the form waits for it (Sebastian, 2026-10-05:
+  // half the stay used to be chosen already, and "most of the time the staff would do
+  // custom priced deposit"). Half, Full pay and No deposit are shortcuts beside the box.
+  const [formPaymentPlan, setFormPaymentPlan] = useState<PayPlan>('custom')
   const [formPaymentReference, setFormPaymentReference] = useState('')
   const [formInvoiceNumber, setFormInvoiceNumber] = useState('')
 
@@ -423,7 +425,17 @@ export function WalkInBookingForm({
   const paysSomething = shortStayHours ? true : (formPaymentPlan !== 'reservation' && formPaymentPlan !== 'agency')
   // Correcting a booking takes no money, so it never waits on a method.
   const methodRequired = !editingBookings && paysSomething && agreedDeposit > 0
-  const paymentPrompt = !methodRequired ? ''
+  // A new booking says what its deposit is before anything else about the money: a
+  // figure, or none. Nothing is chosen for the desk, so a deposit nobody agreed can never
+  // be printed on a receipt.
+  const depositRequired = !editingBookings && !shortStayHours
+  const depositPrompt = !depositRequired ? ''
+    : formPaymentPlan === 'custom' && agreedDeposit <= 0
+      ? (agencyOn ? 'Type the deposit, or choose Bill the agency.' : 'Type the deposit, or choose No deposit.')
+      : agreedDeposit > Math.round(estTotal) ? 'The deposit is more than the stay comes to.'
+        : ''
+  const paymentPrompt = depositPrompt ? depositPrompt
+    : !methodRequired ? ''
     : !formPaymentMethod ? 'Choose how the guest paid.'
       : methodNeedsReference(formPaymentMethod) && !formPaymentReference.trim()
         ? (paymentKind(formPaymentMethod) === 'gcash'
@@ -452,6 +464,7 @@ export function WalkInBookingForm({
     reference: formPaymentReference,
     setReference: setFormPaymentReference,
     methodRequired,
+    depositRequired,
   }
 
   /** What the guest hands over in this form — the figure beside the Confirm button. */
@@ -513,6 +526,10 @@ export function WalkInBookingForm({
     const paidNow = shortStayHours ? estTotal : agreedDeposit
     // A Reservation and a stay billed to its agency both take nothing at the desk.
     const isReservation = !shortStayHours && (formPaymentPlan === 'reservation' || formPaymentPlan === 'agency')
+    if (depositPrompt) {
+      setFormError(depositPrompt)
+      return
+    }
     if (!editingBookings && !isReservation && paidNow > 0) {
       if (!formPaymentMethod) {
         setFormError('Choose how the guest paid.')
@@ -665,7 +682,7 @@ export function WalkInBookingForm({
                     agencyKey={formPartnerDealId || formCompanyName}
                     agencyPicking={agencyPicking}
                     onAddAgency={() => { setAgencyOn(true); setAgencyPicking(true); if (!editingBookings) setFormPaymentPlan('agency') }}
-                    onRemoveAgency={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'deposit' : p) }}
+                    onRemoveAgency={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'custom' : p) }}
                     agencySlot={agencyOn ? (
                       <AgencyFields
                         value={agency}
@@ -681,7 +698,7 @@ export function WalkInBookingForm({
                           setAgencyPicking(false)
                         }}
                         onOpenProfile={openAgencyProfile}
-                        onRemove={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'deposit' : p) }}
+                        onRemove={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'custom' : p) }}
                       />
                     ) : null}
                   />
@@ -763,7 +780,6 @@ export function WalkInBookingForm({
                   <h4 className={GROUP_TITLE}>Payment</h4>
                   <BookingDepositFields
                     shortStay={!!shortStayHours}
-                    payNow={editingBookings ? undefined : paysNow}
                     {...depositFieldProps}
                   />
                   {/* The names used before suggest themselves (card k136), so the same
@@ -794,13 +810,19 @@ export function WalkInBookingForm({
               away; on two columns it is already beside the buttons.
 
               ONE line says what Confirm is waiting on, in the order the desk meets it:
-              what a press just refused, then the agency, then the money. It is red only
-              for something that went wrong — a form nobody has finished yet is not a
-              mistake. */}
+              what a press just refused, then the guest's name, the agency, the money. It
+              is red only for something that went wrong — a form nobody has finished yet
+              is not a mistake.
+
+              It sits against the buttons (the usability pass, 2026-10-05). It was at the
+              far end of the bar from a button that would not press, in grey, and it asked
+              for the payment while the name — the first box on the form — was still
+              empty, so the form told the desk what it wanted from the bottom up. */}
           {formStatus === 'confirmed' && (
             <div className="shrink-0 border-t border-soft bg-card px-5 sm:px-6 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-              <p role="status" className={'basis-full lg:basis-0 lg:flex-1 min-w-0 text-[14px] font-medium empty:hidden ' + (footerProblem ? 'text-danger-600' : 'text-muted')}>
-                {footerProblem || (agencyMissing ? 'Choose the agency — the bill is addressed to them.' : paymentPrompt)}
+              <p role="status" className={'basis-full lg:basis-0 lg:flex-1 lg:text-right min-w-0 text-[14px] font-medium empty:hidden ' + (footerProblem ? 'text-danger-600' : 'text-main')}>
+                {footerProblem || (!formGuestName.trim() ? 'Type the guest’s name.'
+                  : agencyMissing ? 'Choose the agency — the bill is addressed to them.' : paymentPrompt)}
               </p>
               {!editingBookings && (
                 <p className="lg:hidden flex items-baseline gap-2">

@@ -18,7 +18,7 @@ Only `tabs` and `tab_lines` use real uuids.
 Several migration files were pasted into the live database by hand, and some were never applied through the normal history. So:
 
 - **Always rebuild `book_booking` / `update_booking` from the live definition**, never from an older file — older files silently drop columns the app writes.
-- The two stock functions (`apply_stock_movement`, `reverse_stock_movements`) exist only on the live database, not in the files.
+- The two stock functions (`apply_stock_movement`, `reverse_stock_movements`) existed only on the live database until `20261005120000_stock_foundations.sql` saved them as the database holds them. That file has been applied to development only; live still needs it promoted.
 - New single columns on a booking (agreed deposit, short-stay hours) got their own small writer function instead of touching the big booking functions, for the same reason.
 
 ## Deliberate choices

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { NumInput } from '../NumInput'
-import type { StockItem } from '../../utils/stock'
+import { fmtQty, type StockItem } from '../../utils/stock'
 
 /**
  * Receiving stock (k71 part 1) — **the only movement a person types**.
@@ -36,7 +36,7 @@ export function ReceiveStockForm({ item, onSave, onCancel }: {
     <div className="border border-gold-200 bg-gold-100/40 rounded-lg p-4 space-y-3">
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-sm font-semibold text-main">Receive stock</p>
-        <p className="text-xs text-muted">{item.name} · {item.quantity} {item.unit || 'on hand'}</p>
+        <p className="text-xs text-muted">{item.name} · {fmtQty(item.quantity)} {item.unit || 'on hand'}</p>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -58,7 +58,7 @@ export function ReceiveStockForm({ item, onSave, onCancel }: {
       </div>
 
       <p className="text-xs text-muted">
-        After this delivery: <span className="font-mono font-semibold text-main">{item.quantity + quantity}</span>
+        After this delivery: <span className="font-mono font-semibold text-main">{fmtQty(item.quantity + quantity)}</span>
       </p>
 
       {error && <p className="text-xs text-danger-600 font-medium">{error}</p>}

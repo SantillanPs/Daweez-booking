@@ -3,10 +3,12 @@ import { Link, Outlet, useNavigate, useLocation } from '@tanstack/react-router'
 import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
 import {
-  Sparkles, RefreshCw, LogOut, Settings, ConciergeBell, Utensils, Boxes, PhilippinePeso
+  RefreshCw, LogOut, Settings, ConciergeBell, Utensils, Boxes, PhilippinePeso
 } from 'lucide-react'
+import logo from '../assets/logo.png'
 import { ToastHost } from './Toast'
 import { ConfirmHost } from './ConfirmDialog'
+import { WhatsNew } from './WhatsNew'
 
 /**
  * **Four tabs, and the screens inside each** (the owner's ruling, 2026-10-04 — it replaced the six-tab idea on
@@ -130,9 +132,11 @@ export function DashboardLayout() {
         <header className={`sticky top-0 z-40 bg-card border-b border-soft ${isCalendarTab || isTill ? 'flex-shrink-0' : ''}`}>
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-[56px] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 shrink-0">
-              <div className="w-9 h-9 flex items-center justify-center bg-gold-400 rounded-xl ring-1 ring-gold-600/50">
-                <Sparkles className="w-4 h-4 text-ink-900" />
-              </div>
+              {/* The hotel's own mark (Sebastian, 2026-10-05: "use this as the logo on the top
+                  left"). A sparkle on a gold tile stood here, which was nobody's logo. The
+                  hotel's name is beside it in words, so the picture itself says nothing to a
+                  screen reader. */}
+              <img src={logo} alt="" width={40} height={40} className="w-10 h-10 shrink-0" />
               <div className="leading-tight">
                 <h1 className="text-[13px] font-bold tracking-tight text-main font-display">Daweez PMS</h1>
                 <p className="text-[11px] text-muted font-medium hidden sm:block -mt-0.5">Pension House</p>
@@ -159,6 +163,7 @@ export function DashboardLayout() {
             {/* Settings is the gear, and Logout sits past a divider: neither is one of the four tabs. They are
                 finger-sized (44px) unless there is a mouse. */}
             <div className="flex items-center gap-1.5">
+              <WhatsNew atFrontDesk={isCalendarTab} />
               <button
                 onClick={handleTriggerSync}
                 disabled={isSyncing}
