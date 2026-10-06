@@ -23,6 +23,23 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-06d',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'A booking made with No deposit says “Reserved · No Deposit” in blue, with no amount. An agency booking made with No deposit says the same.',
+        ],
+      },
+      {
+        where: 'Front desk → Booking form',
+        what: [
+          'In the Discount choices, “₱ off” is now called “Custom”. The box under it still asks for the amount to take off.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-06c',
     changes: [
       {

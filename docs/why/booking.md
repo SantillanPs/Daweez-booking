@@ -29,7 +29,7 @@
 
 - **A booking with no deposit is what the rules below call a reservation.** It is a hold for somebody the staff personally know ("they are trustworthy"). The app never checks who qualifies. It blocks the room, never expires, and agrees to no money at all.
 - **A reserved guest pays when they arrive, not at check-out.** Check-in refuses while money is owed — that refusal is how the money is collected at the door.
-- **Until they arrive, a reservation is a promise, not a debt.** It stays out of "Who owes right now". On the calendar its pill says `No Deposit` (Sebastian, 2026-10-06: *"if a reservation has no deposit, then show a 'No Deposit' on the reservation pills"*), with what the stay comes to before it; once any money is recorded against it the pill goes back to `reserved`.
+- **Until they arrive, a reservation is a promise, not a debt.** It stays out of "Who owes right now". On the calendar its pill says **`Reserved · No Deposit` in blue, with no amount** (Sebastian, 2026-10-06: *"it should just say 'Reserved · No Deposit' and turn the color of the text to blue"*, and for an agency booking made with No deposit too: *"they shouldn't show an amount to pay"*). Blue means no deposit and nothing else — red is money owed, green is paid. Once any money is recorded against it the pill goes back to `₱… reserved`, and once the guest arrives it is an ordinary owing stay.
 
 ## Agencies (corporate / government / travel agency)
 

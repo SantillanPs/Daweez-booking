@@ -35,8 +35,11 @@ export function DiscountPricingControls({
     { key: 'p20', label: '20%' },
     { key: 'p10', label: '10%' },
     // It read "Custom price", and the box under it asks for an amount OFF: a desk meaning
-    // to charge ₱850 for a ₱950 room would have typed 850 and taken ₱850 off.
-    { key: 'flat', label: '₱ off', hint: 'A peso amount off instead of a percentage.' },
+    // to charge ₱850 for a ₱950 room would have typed 850 and taken ₱850 off. It was "₱ off"
+    // for that reason, and is "Custom" again (Sebastian, 2026-10-06, to match the payment
+    // choices) — so the box under it must keep saying "Amount off (₱)", which is what stops
+    // it being read as a price.
+    { key: 'flat', label: 'Custom', hint: 'A peso amount off instead of a percentage.' },
   ]
 
   const pick = (key: DiscountKey) => {

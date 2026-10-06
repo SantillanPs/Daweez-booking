@@ -53,25 +53,31 @@ export const stageWords = (b: Booking): string => {
 // what every room still has to pay, before and after check-in, without opening it). The
 // amount comes first so a narrow one-night pill cuts the word, never the figure.
 //
-// A reservation whose guest has not arrived shows its amount too, but never in red: it is
-// a promise, not a debt (the owner's ruling, 2026-09-28). Money an agency will send later
-// is expected, not chased, so it is not red either — and not blue: it has no colour of its
-// own (Sebastian, 2026-10-06).
+// A reservation whose guest has not arrived is never in red: it is a promise, not a debt
+// (the owner's ruling, 2026-09-28). Money an agency will send later is expected, not
+// chased, so it is not red either — and it has no colour of its own (Sebastian, 2026-10-06).
 //
-// **A reservation with no deposit says so**: `No Deposit` (Sebastian, 2026-10-06). Once any
-// money has been recorded against it, it is no longer one and keeps the old wording.
+// **A reservation made with No deposit says exactly that, in blue, and no amount**:
+// `Reserved · No Deposit` (Sebastian, 2026-10-06 — an agency booking made with No deposit
+// included, since it is the same reservation). Nothing is owed until the guest arrives, so
+// there is no figure to show. Once any money has been recorded against it, it is no longer
+// one and keeps the old wording.
 export const pillMoney = (b: Booking): { text: string; className: string } => {
   const view = getPaymentView(b)
   const due = Number(b.balance_due || 0)
   const peso = '₱' + due.toLocaleString()
   if (view.tone === 'paid') return { text: 'Paid', className: PILL_MONEY.paid }
   if (view.tone === 'reserved') {
-    if (!hasPaymentRecorded(b)) return { text: due > 0 ? peso + ' · No Deposit' : 'No Deposit', className: PILL_MONEY.reserved }
+    if (!hasPaymentRecorded(b)) return { text: 'Reserved · No Deposit', className: PILL_NO_DEPOSIT }
     return { text: due > 0 ? peso + ' reserved' : 'Reserved', className: PILL_MONEY.reserved }
   }
   if (view.tone === 'billed') return { text: peso + ' agency', className: PILL_MONEY.billed }
   return { text: due > 0 ? peso + ' to pay' : 'Not paid', className: PILL_MONEY.owes }
 }
+
+/** Blue is the colour of "no deposit" and of nothing else on the calendar — red is money owed,
+ *  green is paid. */
+const PILL_NO_DEPOSIT = 'text-blue-700'
 
 const PILL_MONEY: Record<PaymentTone, string> = {
   paid: 'text-emerald-700',
