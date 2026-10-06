@@ -9,7 +9,7 @@ interface BookingWizardHeaderProps {
   formGuestName: string
   /** A saved booking is being corrected, not a new one made. */
   editing: boolean
-  /** What is being booked — `Room 4 · Oct 4 → Oct 5 · 1 night` (see `stayLines`). */
+  /** What is being booked — `Bunk Bed 3 · Oct 4 → Oct 5 · 1 night` (see `stayLines`). */
   stay: string[]
   onClose: () => void
 }

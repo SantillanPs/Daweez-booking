@@ -145,5 +145,18 @@ export const DEFAULT_VENUES: Venue[] = [
       tables: 10,
       extras: ['Outdoor string lights', 'Big Canopy Tent']
     }
+  },
+  {
+    id: 'venue-exclusive',
+    name: 'Pension House Exclusive',
+    base_price: 20000,
+    capacity: 50,
+    description: 'Exclusive use of Daweez Pension House for your event.',
+    image_url: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80',
+    details: {
+      chairs: 0,
+      tables: 0,
+      extras: []
+    }
   }
 ]

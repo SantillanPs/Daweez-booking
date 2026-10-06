@@ -16,8 +16,9 @@ export const PAYMENT_BADGE_CLASSES: Record<PaymentTone, string> = {
   partial: 'bg-amber-100 text-amber-800 border border-amber-200',
   owes: 'bg-rose-100 text-rose-700 border border-rose-200',
   reserved: 'bg-ink-100 text-ink-800 border border-ink-200',
-  // Money an agency will send later is expected, not chased — so it is not red either.
-  billed: 'bg-indigo-50 text-indigo-800 border border-indigo-200',
+  // Money an agency will send later is expected, not chased — so it is not red either,
+  // and it has no colour of its own: it reads like a reservation (2026-10-06).
+  billed: 'bg-ink-100 text-ink-800 border border-ink-200',
 }
 
 /**

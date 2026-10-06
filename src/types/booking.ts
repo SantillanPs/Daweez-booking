@@ -26,7 +26,9 @@ export interface Room {
 
 export interface Venue {
   id: string
-  name: 'Gazebo' | 'Vacation House' | 'Garden Area'
+  /** `Gazebo`, `Vacation House`, `Garden Area`, `Pension House Exclusive` — a venue is a
+   *  row in the database, so the name is whatever the row says. */
+  name: string
   base_price: number // Regular price (PHP)
   promo_price?: number | null // Promo price when a sale is active
   capacity: number

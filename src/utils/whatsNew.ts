@@ -23,6 +23,26 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-06b',
+    changes: [
+      {
+        where: 'Front desk → Booking form',
+        what: [
+          'Payment is one choice of three: Custom, Full pay or No deposit. None is chosen until you pick one. An agency booking has the same three. “Bill the agency” is gone.',
+          'Custom fills in half of the stay. Change it if the guest agrees to something else, and write a note beside it. Full pay and No deposit have nothing to type.',
+        ],
+      },
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'A booking with no deposit says “No Deposit”.',
+          'A booking made for an agency shows the agency’s name instead of the guest’s. Agency money is no longer blue.',
+          'The arrow and the word “out” at the end of a booking are gone.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-06',
     changes: [
       {

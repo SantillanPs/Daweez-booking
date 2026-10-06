@@ -1,6 +1,7 @@
 import React from 'react'
 import { Ban, FilePlus, Plus } from 'lucide-react'
-import { Booking, Room, Venue } from '../../types/booking'
+import { Booking, PartnerDeal, Room, Venue } from '../../types/booking'
+import { isBilledToAgency } from '../../utils/bookingMoney'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { getBookingStyle, roomDisplayName } from './bookingStyles'
 import { dateToString } from '../../utils/helpers'
@@ -20,6 +21,8 @@ interface TimelineGridProps {
   daysList: TimelineDayInfo[]
   /** Who fills each half of each day, per unit id — see `timelineHalves`. */
   halves: Record<string, (Booking | null)[]>
+  /** The saved agencies — a stay billed to one wears its name on the calendar. */
+  partnerDeals: PartnerDeal[]
   timelineSelection: { roomId?: string; venueId?: string; checkIn: Date } | null
   groupSelection?: Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null
   handleCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
@@ -63,6 +66,7 @@ export const TimelineGrid = React.memo(
     venues,
     daysList,
     halves,
+    partnerDeals,
     timelineSelection,
     groupSelection,
     handleCellClick,
@@ -172,6 +176,16 @@ export const TimelineGrid = React.memo(
       [barAnchor, rooms]
     )
 
+    // The name an agency booking wears on its pill. `company_name` is the agency's name as it
+    // was when the booking was made; the saved agency is the fallback for one that has none.
+    const agencyNames = React.useMemo(() => {
+      const names: Record<string, string> = {}
+      partnerDeals.forEach(d => { names[d.id] = d.name })
+      return names
+    }, [partnerDeals])
+    const agencyNameOf = (b: Booking) =>
+      isBilledToAgency(b) ? ((b.company_name || '').trim() || agencyNames[b.partner_deal_id || ''] || '') : ''
+
     // A row is walked HALF a day at a time (see `timelineHalves`): a stay is one cell as
     // wide as the halves it fills, and what is left is free — a whole day where both halves
     // are, otherwise just the morning or the afternoon.
@@ -188,7 +202,7 @@ export const TimelineGrid = React.memo(
           let span = 1
           while (k + span < width && at(k + span)?.id === booking.id) span++
           cells.push(
-            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} agencyName={agencyNameOf(booking)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           k += span
           continue
@@ -201,16 +215,8 @@ export const TimelineGrid = React.memo(
         const highlight = range
           ? dayInfo.time === range.start ? 'start' : dayInfo.time === range.end ? 'end' : dayInfo.time > range.start && dayInfo.time < range.end ? 'mid' : null
           : null
-        // The guest whose stay ended this morning, said in the afternoon that follows it.
-        //
-        // A SHORT STAY never gets one: its stored check-out is the next day only because
-        // the room is taken for the whole day (housekeeping included), but the guest leaves
-        // the same day they arrived — the rose OUT mark on the following morning made a
-        // 3-hour stay read as an overnight one (the owner's catch).
-        const leaving = halfOf === 'right' ? at(k - 1) : null
-        const checkout = leaving && !leaving.stay_hours ? leaving : null
         cells.push(
-          <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={wholeDay ? 2 : 1} halfOf={halfOf} closesDay={!morning || wholeDay} isCheckIn={!!isDraftCheckIn} highlight={highlight} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} checkoutBooking={checkout} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+          <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={wholeDay ? 2 : 1} halfOf={halfOf} closesDay={!morning || wholeDay} isCheckIn={!!isDraftCheckIn} highlight={highlight} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
         )
         k += wholeDay ? 2 : 1
       }

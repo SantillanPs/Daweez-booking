@@ -1,4 +1,5 @@
 import { Room, Venue } from '../../types/booking'
+import { roomDisplayName } from '../calendar/bookingStyles'
 
 type UnitSelections = Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
 
@@ -9,14 +10,16 @@ const dayOf = (iso: string) => {
 }
 const short = (iso: string) => dayOf(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-/** `4` · `4, 5 and 7` · `4 and Gazebo` — the caller puts `Room` or `Rooms` in front. */
+/** `Bunk Bed 3` · `Double, Bunk Bed 3 and Gazebo` — the units' own names, read in a line. */
 const listOf = (parts: string[]) =>
   parts.length <= 1 ? parts.join('') : parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1]
 
 /**
  * What is being booked, in the words the desk reads back to the guest:
- * `Room 4 · Oct 4 → Oct 5 · 1 night`, or `Room 4 · Oct 4 · 3-hour stay` — the same
- * shapes the quick view's own title uses.
+ * `Bunk Bed 3 · Oct 4 → Oct 5 · 1 night`, or `Bunk Bed 3 · Oct 4 · 3-hour stay`.
+ *
+ * **A room is named, not numbered** (Sebastian, 2026-10-06: *"I prefer you use the Room
+ * name instead of number here"*). A room with no name falls back to `Room 7`.
  *
  * The form's title bar carries this (the design review, 2026-10-04). The form used to
  * say nowhere which room or which dates it was for — only the breakfast chip named the
@@ -26,14 +29,14 @@ const listOf = (parts: string[]) =>
  * one line per set of dates.
  */
 export function stayLines(selections: UnitSelections, rooms: Room[], venues: Venue[], shortStayHours: number | null): string[] {
-  const byDates = new Map<string, { roomNumbers: number[]; venueNames: string[]; checkIn: string; checkOut: string }>()
+  const byDates = new Map<string, { rooms: Room[]; venueNames: string[]; checkIn: string; checkOut: string }>()
   Object.entries(selections).forEach(([id, sel]) => {
     if (!sel.checkIn || !sel.checkOut) return
     const key = sel.checkIn + '|' + sel.checkOut
-    const group = byDates.get(key) || { roomNumbers: [], venueNames: [], checkIn: sel.checkIn, checkOut: sel.checkOut }
+    const group = byDates.get(key) || { rooms: [], venueNames: [], checkIn: sel.checkIn, checkOut: sel.checkOut }
     if (sel.type === 'room') {
       const room = rooms.find(r => r.id === id)
-      if (room) group.roomNumbers.push(room.room_number)
+      if (room) group.rooms.push(room)
     } else {
       const venue = venues.find(v => v.id === id)
       if (venue) group.venueNames.push(venue.name)
@@ -42,11 +45,11 @@ export function stayLines(selections: UnitSelections, rooms: Room[], venues: Ven
   })
 
   return Array.from(byDates.values())
-    .filter(g => g.roomNumbers.length + g.venueNames.length > 0)
+    .filter(g => g.rooms.length + g.venueNames.length > 0)
     .map(g => {
-      const numbers = [...g.roomNumbers].sort((a, b) => a - b)
-      const units = (numbers.length > 1 ? 'Rooms ' : numbers.length === 1 ? 'Room ' : '')
-        + listOf([...numbers.map(String), ...g.venueNames])
+      // In the order of the calendar's rows, so a group reads the way it is laid out.
+      const names = [...g.rooms].sort((a, b) => a.room_number - b.room_number).map(roomDisplayName)
+      const units = listOf([...names, ...g.venueNames])
       if (shortStayHours) return units + ' · ' + short(g.checkIn) + ' · ' + shortStayHours + '-hour stay'
       const nights = Math.max(1, Math.round((dayOf(g.checkOut).getTime() - dayOf(g.checkIn).getTime()) / 86400000))
       return units + ' · ' + short(g.checkIn) + ' → ' + short(g.checkOut) + ' · ' + nights + (nights === 1 ? ' night' : ' nights')

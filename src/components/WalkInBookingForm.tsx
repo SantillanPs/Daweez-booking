@@ -210,11 +210,14 @@ export function WalkInBookingForm({
   // too. `''` is a real state — nothing is preselected, so a GCash guest can never be
   // handed a Cash receipt by a default the desk never chose.
   const [formPaymentMethod, setFormPaymentMethod] = useState<PayMethod>('')
-  // How the deposit is decided. A new booking opens on `custom` with nothing typed — the
-  // deposit is whatever the desk types, and the form waits for it (Sebastian, 2026-10-05:
-  // half the stay used to be chosen already, and "most of the time the staff would do
-  // custom priced deposit"). Half, Full pay and No deposit are shortcuts beside the box.
+  // How the payment is decided: Custom, Full pay or No deposit — one toggle, for an agency
+  // booking too. **A new booking opens with none of the three chosen** (Sebastian,
+  // 2026-10-06: *"don't default to custom. let it be unselected"*), and the form waits for
+  // the desk to pick one — a payment the form chose by itself is one nobody agreed. Until
+  // then `formPaymentPlan` is only a placeholder; `planChosen` says whether it means anything.
+  // A booking being corrected already has its plan, so it opens chosen.
   const [formPaymentPlan, setFormPaymentPlan] = useState<PayPlan>('custom')
+  const [planChosen, setPlanChosen] = useState(() => !!(editingBookings && editingBookings.length > 0))
   const [formPaymentReference, setFormPaymentReference] = useState('')
   const [formInvoiceNumber, setFormInvoiceNumber] = useState('')
 
@@ -237,6 +240,9 @@ export function WalkInBookingForm({
   const shortStayHours = initialStayHours ?? null
   const [formBirthdate, setFormBirthdate] = useState('')
   const [formBlockNotes, setFormBlockNotes] = useState('')
+  /** The note written beside a Custom deposit. It is saved in the booking's `notes`, and
+   *  only a Custom deposit keeps one (Sebastian, 2026-10-06). */
+  const [formPaymentNote, setFormPaymentNote] = useState('')
   const [discountType, setDiscountType] = useState<DiscountType>('none')
   const [discountValue, setDiscountValue] = useState(0)
   const [venueDayBlocks, setVenueDayBlocks] = useState(1)
@@ -299,6 +305,7 @@ export function WalkInBookingForm({
             : b.payment_plan === 'reservation' ? 'reservation'
               : 'deposit',
       )
+      setPlanChosen(true)
       // The Custom figure the desk typed when the booking was made, put back in the box —
       // without this, editing any booking showed Custom as ₱0 and saving wrote that zero
       // over the agreed deposit.
@@ -310,6 +317,7 @@ export function WalkInBookingForm({
       setFormBirthdate(b.birthdate || '')
       setFormPreparedBy(b.prepared_by || '')
       setFormBlockNotes(b.notes || '')
+      setFormPaymentNote(b.status === 'blocked' ? '' : b.notes || '')
       // A zero discount is a removed one (see `bookingSubmit`), so it reads as None.
       if (b.applied_discount && b.applied_discount.value > 0) { setDiscountType(b.applied_discount.type); setDiscountValue(b.applied_discount.value) }
       setVenueDayBlocks(b.venue_day_blocks || 1)
@@ -400,17 +408,21 @@ export function WalkInBookingForm({
     [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues, formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formVenueExcessHours, discountType, discountValue, venueDayBlocks, bookingType, shortStayHours]
   )
 
-  // The figure the desk asks for now, by plan (the owner's ruling): the half for a
-  // deposit, the whole stay for Full pay, and the typed figure for Custom. A
-  // **Reservation** agrees to nothing, so its figure is 0 — deliberately, so no screen
-  // and no printed page can show money the guest never promised. `depositTouched` still
-  // means "the desk has typed in the Custom box". DERIVED, not copied into state by an
-  // effect: an effect here re-rendered the whole form on every estimate change, and the
-  // figure is only ever read below.
-  const agreedDeposit = formPaymentPlan === 'full'
+  // The figure the desk asks for now, by plan (the owner's ruling): the whole stay for
+  // Full pay, and for Custom the typed figure — **which is half the stay until the desk
+  // types one** (2026-10-06), following the stay as it changes. A **Reservation** agrees
+  // to nothing, so its figure is 0 — deliberately, so no screen and no printed page can
+  // show money the guest never promised. `depositTouched` means "the desk has typed in
+  // the Custom box". DERIVED, not copied into state by an effect: an effect here
+  // re-rendered the whole form on every estimate change, and the figure is only ever
+  // read below. **Nothing agreed is nothing owed**: until the desk has chosen one of the
+  // three, the figure is 0.
+  const agreedDeposit = !planChosen
+    ? 0
+    : formPaymentPlan === 'full'
     ? Math.max(0, Math.round(estTotal))
     : formPaymentPlan === 'custom'
-      ? (depositTouched ? formAgreedDeposit : 0)
+      ? (depositTouched ? formAgreedDeposit : Math.max(0, Math.round(estTotal / 2)))
       : formPaymentPlan === 'reservation' || formPaymentPlan === 'agency'
         ? 0
         : Math.max(0, Math.round(estTotal / 2))
@@ -425,14 +437,15 @@ export function WalkInBookingForm({
   const paysSomething = shortStayHours ? true : (formPaymentPlan !== 'reservation' && formPaymentPlan !== 'agency')
   // Correcting a booking takes no money, so it never waits on a method.
   const methodRequired = !editingBookings && paysSomething && agreedDeposit > 0
-  // A new booking says what its deposit is before anything else about the money: a
-  // figure, or none. Nothing is chosen for the desk, so a deposit nobody agreed can never
-  // be printed on a receipt.
+  // A new booking says what the payment is before anything else about the money: one of
+  // the three, and for Custom a figure. Nothing is chosen for the desk, so a payment nobody
+  // agreed can never be printed on a receipt.
   const depositRequired = !editingBookings && !shortStayHours
   const depositPrompt = !depositRequired ? ''
+    : !planChosen ? 'Choose Custom, Full pay or No deposit.'
     : formPaymentPlan === 'custom' && agreedDeposit <= 0
-      ? (agencyOn ? 'Type the deposit, or choose Bill the agency.' : 'Type the deposit, or choose No deposit.')
-      : agreedDeposit > Math.round(estTotal) ? 'The deposit is more than the stay comes to.'
+      ? 'Type the amount, or choose No deposit.'
+      : agreedDeposit > Math.round(estTotal) ? 'The payment is more than the stay comes to.'
         : ''
   const paymentPrompt = depositPrompt ? depositPrompt
     : !methodRequired ? ''
@@ -449,11 +462,13 @@ export function WalkInBookingForm({
    */
   const depositFieldProps = {
     estTotal,
-    agency: agencyOn,
     plan: formPaymentPlan,
-    setPlan: setFormPaymentPlan,
+    chosen: planChosen,
+    setPlan: (p: PayPlan) => { setPlanChosen(true); setFormPaymentPlan(p) },
     agreedDeposit,
     setAgreedDeposit: (v: number) => { setDepositTouched(true); setFormAgreedDeposit(v) },
+    note: formPaymentNote,
+    setNote: setFormPaymentNote,
     method: formPaymentMethod,
     setMethod: (m: PayMethod) => {
       setFormPaymentMethod(m)
@@ -570,7 +585,12 @@ export function WalkInBookingForm({
       formSource, formBreakfastRoomIds, formCompanions,
       formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
       formChairs, formEventTable, formEventTent, formVenueExcessHours,
-      formBlockNotes, discountType, discountValue, venueDayBlocks, editingBookings,
+      // A block's reason, or — on a booking — the note beside a Custom deposit. Any other
+      // way of paying has no note, so one typed and then abandoned is not saved.
+      formBlockNotes: formStatus === 'blocked'
+        ? formBlockNotes
+        : (!shortStayHours && (formPaymentPlan === 'custom' || formPaymentPlan === 'deposit') ? formPaymentNote : ''),
+      discountType, discountValue, venueDayBlocks, editingBookings,
       formPaymentMethod, formPaymentReference, derivedPaymentStatus, formDownpaymentPaid,
       formBalanceDue, formSecurityDeposit, formAgreedDeposit: shortStayHours ? estTotal : agreedDeposit, createManualBooking, cancelBooking, deleteBooking,
       // A short stay is paid in full at the counter, so its plan is the whole amount.
@@ -681,7 +701,7 @@ export function WalkInBookingForm({
                     agencyOn={agencyOn}
                     agencyKey={formPartnerDealId || formCompanyName}
                     agencyPicking={agencyPicking}
-                    onAddAgency={() => { setAgencyOn(true); setAgencyPicking(true); if (!editingBookings) setFormPaymentPlan('agency') }}
+                    onAddAgency={() => { setAgencyOn(true); setAgencyPicking(true) }}
                     onRemoveAgency={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'custom' : p) }}
                     agencySlot={agencyOn ? (
                       <AgencyFields

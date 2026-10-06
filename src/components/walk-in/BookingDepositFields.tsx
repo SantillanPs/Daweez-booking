@@ -9,19 +9,32 @@ export type PayPlan = 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'
 /** A way to pay, or `''` for "the desk has not picked yet" — a real, deliberate state. */
 export type PayMethod = (typeof PAYMENT_METHODS)[number] | ''
 
+/** The three things the desk can choose. Every other `PayPlan` is one of these to the eye. */
+type DepositChoice = 'custom' | 'full' | 'reservation'
+
 interface BookingDepositFieldsProps {
-  /** What the stay comes to — half of it is the Half shortcut, all of it is Full pay. */
+  /** What the stay comes to — half of it fills the Custom box, all of it is Full pay. */
   estTotal: number
   /**
    * How the deposit was decided. It is still stored with the booking, because the rest of
-   * the system reads it: `custom` is a typed figure, `deposit` is half, `full` is the whole
-   * stay, `reservation` is no deposit, `agency` is billed to the agency.
+   * the system reads it: `custom` is a figure (half the stay until the desk changes it),
+   * `full` is the whole stay, `reservation` is no deposit. `deposit` and `agency` are only
+   * read back from bookings made before 2026-10-06 and are shown as Custom and No deposit.
    */
   plan: PayPlan
+  /**
+   * Has the desk chosen one of the three? **A new booking opens with none chosen**, and
+   * until one is, no amount, no note and no `Paid by` is drawn — there is nothing yet to
+   * pay or to say how.
+   */
+  chosen: boolean
   setPlan: (plan: PayPlan) => void
-  /** What the guest hands over now, by the plan. For `custom` it is what was typed. */
+  /** What the guest hands over now, by the plan. For `custom` it is what is in the box. */
   agreedDeposit: number
   setAgreedDeposit: (v: number) => void
+  /** The desk's note beside a Custom deposit. Only a Custom deposit has one. */
+  note: string
+  setNote: (note: string) => void
   /**
    * **How the guest pays** (the owner's ruling, 2026-09-29). The form now takes the money
    * as well as the plan, because that is what really happens: the guest is asked deposit
@@ -49,31 +62,33 @@ interface BookingDepositFieldsProps {
    * one, so the form could never be confirmed at all.)
    */
   shortStay?: boolean
-  /** An agency is on the booking, so it can simply be billed to them. */
-  agency?: boolean
 }
 
-const peso = (n: number) => '₱' + Math.round(n || 0).toLocaleString()
+const choiceOf = (plan: PayPlan): DepositChoice =>
+  plan === 'full' ? 'full' : plan === 'reservation' || plan === 'agency' ? 'reservation' : 'custom'
 
 /**
  * What the guest pays now, and how (cards k126, k130 and the owner's 2026-09 rulings).
  *
- * **The deposit is typed** (Sebastian, 2026-10-05). It was a row of four choices — Deposit,
- * Full pay, Custom, Reservation — with Deposit (half the stay) already chosen. *"The
- * deposit feature is a bit of a nuisance since most of the time the staff would do custom
- * priced deposit"*: nearly every booking began by switching away from what the form had
- * chosen. And a Reservation could take no money at all, while *"sometimes they allow no
- * deposit on reservations and sometimes they do."* So there is no longer a kind of booking
- * called Reservation to choose: every booking has a deposit, which is whatever the desk
- * types — and **Half**, **Full pay** and **No deposit** are shortcuts under the box for
- * the three figures that need no typing.
+ * **Three choices, one toggle, called `Payment`** (Sebastian, 2026-10-06): **Custom**,
+ * **Full pay** and **No deposit**, the same for every booking — an agency booking has no
+ * choice of its own, the agency only changes the price and who the bill is addressed to.
+ * The deposit used to be a box that was always there with shortcuts beside it, and an
+ * agency booking had a fourth choice, "Bill the agency".
  *
- * **Nothing is chosen when the form opens**, for the reason nothing is chosen on `Paid by`:
- * a figure the form picked by itself is a figure nobody agreed. The form waits for one.
+ * **None of the three is chosen when the form opens** (the same day: *"don't default to
+ * custom. let it be unselected between the 3"*), for the reason nothing is chosen on `Paid
+ * by`: a payment the form picked by itself is a payment nobody agreed. The form waits.
+ *
+ * - **Custom** opens the amount, **already filled with half the stay** (and it follows the
+ *   stay while the desk has not typed over it). It also opens a **Notes** box, which exists
+ *   for a custom deposit and for nothing else — it is where the desk writes why the amount
+ *   is what it is. Choosing Full pay or No deposit takes the box away and the note with it.
+ * - **Full pay** and **No deposit** are only the toggle: the figure they mean is not a
+ *   thing to type, so no box is drawn.
  *
  * - **A booking with no deposit is still what the system calls a reservation** — it reads
- *   `Reserved` on the calendar, owes nothing until the guest arrives, and pays at check-in.
- *   Nothing downstream changed; only how the desk says it.
+ *   `No Deposit` on the calendar, owes nothing until the guest arrives, and pays at check-in.
  * - **Nothing is preselected on the method row**, and the form refuses to finish without
  *   one; GCash and bank also wait for the reference the guest is reading out. No deposit
  *   asks for no method.
@@ -85,9 +100,12 @@ const peso = (n: number) => '₱' + Math.round(n || 0).toLocaleString()
 export function BookingDepositFields({
   estTotal,
   plan,
+  chosen,
   setPlan,
   agreedDeposit,
   setAgreedDeposit,
+  note,
+  setNote,
   method,
   setMethod,
   reference,
@@ -95,30 +113,27 @@ export function BookingDepositFields({
   methodRequired,
   depositRequired = false,
   shortStay = false,
-  agency = false,
 }: BookingDepositFieldsProps) {
   const total = Math.max(0, Math.round(estTotal))
-  const half = Math.max(0, Math.round(estTotal / 2))
+  const choice = choiceOf(plan)
 
-  // The figures that need no typing. `hint` is for a mouse; the words carry it without.
-  const shortcuts: { key: PayPlan; label: string; amount?: number; hint: string }[] = [
-    // An agency pays by check or bank, often months later (the owner, 2026-10-04) — so
-    // the first choice on an agency booking takes nothing at the desk.
-    ...(agency ? [{ key: 'agency' as const, label: 'Bill the agency', hint: `Nothing is taken now. ${peso(total)} is billed to the agency, which pays by check or bank.` }] : []),
-    { key: 'deposit', label: 'Half', amount: half, hint: 'Half the stay. The rest is collected at check-out.' },
-    { key: 'full', label: 'Full pay', amount: total, hint: 'The whole stay. Nothing left at check-out.' },
-    // Left off an agency booking: "Bill the agency" already takes nothing at the desk. It
-    // stays when the booking being corrected was itself made with no deposit.
-    ...(agency && plan !== 'reservation' ? [] : [{ key: 'reservation' as const, label: 'No deposit', hint: 'Nothing is paid now. The room is held, and the guest pays when they arrive to check in.' }]),
+  // `''` is "none chosen yet" — a real state, the same as on the `Paid by` row.
+  const picked: DepositChoice | '' = chosen ? choice : ''
+  const choices: SegmentOption<DepositChoice | ''>[] = [
+    { key: 'custom', label: 'Custom', hint: 'The guest pays an amount now. Half the stay is filled in; change it if they agree to something else.' },
+    { key: 'full', label: 'Full pay', hint: 'The whole stay is paid now. Nothing left at check-out.' },
+    { key: 'reservation', label: 'No deposit', hint: 'Nothing is paid now. The room is held, and the guest pays when they arrive to check in.' },
   ]
 
-  // A Reservation pays nothing, so there is no method to ask for.
-  const asksForMoney = shortStay || (plan !== 'reservation' && plan !== 'agency')
+  // A booking with no deposit pays nothing, and one with no choice yet has nothing to pay,
+  // so there is no method to ask for.
+  const asksForMoney = shortStay || (chosen && choice !== 'reservation')
   const needsRef = methodNeedsReference(method || undefined)
   const methodOptions: SegmentOption<PayMethod>[] = PAYMENT_METHODS.map(m => ({ key: m as PayMethod, label: m }))
   const refLabel = paymentKind(method || undefined) === 'gcash' ? 'GCash reference no.' : 'Reference no.'
-  // An empty box says what empty means, the way the boxes in Settings do.
-  const emptySays = plan === 'reservation' ? 'No deposit' : plan === 'agency' ? 'Billed to the agency' : ''
+  // The star shows only while the form is actually waiting: nothing chosen yet, or a Custom
+  // box that has been emptied.
+  const waitingOnPayment = depositRequired && (!chosen || (choice === 'custom' && agreedDeposit <= 0))
 
   return (
     <div className="space-y-4">
@@ -132,28 +147,29 @@ export function BookingDepositFields({
 
       {/* What the guest hands over now — a short stay already paid in full has none to decide. */}
       {!shortStay && (
-        <div>
-          <Field label="Deposit" required={depositRequired}>
-            <span className="relative block">
-              <NumInput value={agreedDeposit} placeholder={emptySays} aria-label="Deposit the guest pays now"
-                onChange={v => { setPlan('custom'); setAgreedDeposit(v) }}
-                className={'peer ' + FIELD + ' text-right text-[17px] font-bold tabular-nums'} />
-              <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-medium text-muted">₱</span>
-            </span>
+        <div className="space-y-3">
+          <Field group label="Payment" required={waitingOnPayment}>
+            <SegmentedControl options={choices} value={picked} onChange={k => { if (k) setPlan(k) }} label="How much the guest pays now" />
           </Field>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {shortcuts.map(s => {
-              const on = plan === s.key
-              return (
-                <button key={s.key} type="button" aria-pressed={on} title={s.hint} onClick={() => setPlan(s.key)}
-                  className={'h-9 px-3 inline-flex items-center gap-1.5 rounded-md border text-[14px] font-semibold cursor-pointer transition-colors duration-150 active:scale-[0.97] ' +
-                    (on ? 'bg-gold-400 border-gold-400 text-ink-900' : 'bg-card border-soft text-main hover:border-gold-400')}>
-                  {s.label}
-                  {s.amount !== undefined && <span className={'tabular-nums ' + (on ? '' : 'text-muted')}>{peso(s.amount)}</span>}
-                </button>
-              )
-            })}
-          </div>
+
+          {chosen && choice === 'custom' && (
+            <div className={'space-y-3 ' + REVEAL}>
+              <span className="relative block">
+                <NumInput value={agreedDeposit} aria-label="Deposit the guest pays now"
+                  onChange={v => { setPlan('custom'); setAgreedDeposit(v) }}
+                  className={'peer ' + FIELD + ' text-right text-[17px] font-bold tabular-nums'} />
+                <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-medium text-muted">₱</span>
+              </span>
+              <Field label="Notes">
+                <input
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  autoComplete="off"
+                  className={FIELD}
+                />
+              </Field>
+            </div>
+          )}
         </div>
       )}
 

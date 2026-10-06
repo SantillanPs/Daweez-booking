@@ -1,5 +1,4 @@
 import React from 'react'
-import { LogOut } from 'lucide-react'
 import { Booking } from '../../types/booking'
 import { pillMoney, stageTag, stageWords } from './bookingStyles'
 import { clockLabel, shortStayEnd } from '../../utils/shortStay'
@@ -32,7 +31,9 @@ export interface TimelineCellProps {
   /** A short stay whose bought hours have run out — the block goes red, because the
    *  room is due for cleaning and the panel pops itself open (the owner's ruling). */
   isShortStayDue?: boolean
-  checkoutBooking?: Booking | null
+  /** The agency that is paying for the stay, when there is one. The pill carries its name
+   *  where the guest's would be (Sebastian, 2026-10-06). */
+  agencyName?: string
   getBookingStyle: (b: Booking) => string
   onCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
   setSelectedExtendBooking: (booking: Booking) => void
@@ -58,7 +59,7 @@ export const TimelineCell = React.memo(
     isWeekend,
     isToday,
     isShortStayDue,
-    checkoutBooking,
+    agencyName,
     getBookingStyle,
     onCellClick,
     setSelectedExtendBooking,
@@ -83,7 +84,9 @@ export const TimelineCell = React.memo(
       // not the placeholder name every block is stored under.
       const isBlock = booking.status === 'blocked'
       const openEnded = isOpenEnded(booking)
-      const pillName = isBlock ? blockReason(booking) + (openEnded ? ' · until further notice' : '') : booking.guest_name
+      // An agency booking is read by whose bill it is: the agency's name, not the name of
+      // the person who made the reservation (they are on the hover card and in the panel).
+      const pillName = isBlock ? blockReason(booking) + (openEnded ? ' · until further notice' : '') : (agencyName || booking.guest_name)
       const tag = stageTag(booking)
       const money = pillMoney(booking)
       // A short stay whose guest is in the room shows THE TIME THE ROOM IS FREE — never
@@ -163,6 +166,7 @@ export const TimelineCell = React.memo(
                   {freeAt ? ' · out by ' + clockLabel(freeAt) : ' · clock starts at check-in'}
                 </div>
               ) : null}
+              {agencyName && !isBlock && <div className="text-[12px] text-muted">c/o {booking.guest_name}</div>}
               <div className="text-[12px] text-muted tabular-nums">{openEnded ? 'from ' + booking.check_in : booking.check_in + ' → ' + booking.check_out}</div>
               {!isBlock && (
                 <div className="text-[13px] text-muted space-y-0.5">
@@ -217,17 +221,10 @@ export const TimelineCell = React.memo(
         data-day={isoStr}
         colSpan={span}
         onClick={() => onCellClick(id, type, date)}
-        title={checkoutBooking ? checkoutBooking.guest_name + ' checks out this day' : undefined}
         className={'relative border-b border-soft p-0 h-12 cursor-cell transition-colors ' + (isToday ? 'bg-gold-100/50' : isWeekend ? 'bg-paper-50/60' : '') + ' hover:bg-gold-100/70' + dayRule}
       >
-        {/* The morning a guest leaves, said beside the end of their pill. It was 7px and
-            rose; red on this grid means money owed and nothing else, so it is plain ink at
-            a size that can be read. */}
-        {checkoutBooking && (
-          <span className="absolute left-1.5 top-1/2 -translate-y-1/2 pointer-events-none inline-flex items-center gap-1 text-[11px] font-medium text-muted">
-            <LogOut className="w-3 h-3" aria-hidden="true" /> out
-          </span>
-        )}
+        {/* Nothing is drawn where a guest left: the end of their pill says it. The arrow and
+            the word "out" that used to stand here were taken off (Sebastian, 2026-10-06). */}
       </td>
     )
   },
@@ -253,7 +250,7 @@ export const TimelineCell = React.memo(
       prevProps.isWeekend === nextProps.isWeekend &&
       prevProps.isToday === nextProps.isToday &&
       prevProps.isShortStayDue === nextProps.isShortStayDue &&
-      prevProps.checkoutBooking?.id === nextProps.checkoutBooking?.id &&
+      prevProps.agencyName === nextProps.agencyName &&
       prevProps.span === nextProps.span &&
       prevProps.booking?.id === nextProps.booking?.id &&
       prevProps.booking?.status === nextProps.booking?.status &&

@@ -11,7 +11,7 @@ const MONEY_TEXT: Record<PaymentTone, string> = {
   partial: 'text-danger-600',
   owes: 'text-danger-600',
   reserved: 'text-ink-800',
-  billed: 'text-indigo-800',
+  billed: 'text-ink-800',
 }
 
 interface BookingStageLineProps {

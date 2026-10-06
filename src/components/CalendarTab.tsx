@@ -29,7 +29,7 @@ type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | '
 type UnitSel = { checkIn: string; checkOut: string; type: 'room' | 'venue' }
 
 export function CalendarTab() {
-  const { rooms, venues, bookings, allBookings, isLoading, createManualBooking, cancelBooking, deleteBooking, updateBooking } = useDashboardData()
+  const { rooms, venues, bookings, allBookings, partnerDeals, isLoading, createManualBooking, cancelBooking, deleteBooking, updateBooking } = useDashboardData()
 
   // ── Month / timeline state ──
   // The anchor IS the day the 31-day window starts on (card k154 follow-up): Today
@@ -421,6 +421,7 @@ export function CalendarTab() {
           venues={venues}
           daysList={daysList}
           halves={halves}
+          partnerDeals={partnerDeals}
           timelineSelection={timelineSelection}
           groupSelection={groupSelection}
           handleCellClick={handleCellClick}

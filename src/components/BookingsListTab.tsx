@@ -144,7 +144,7 @@ export function BookingsListTab() {
               : `Who owes right now: ${owesSummary.count} ${owesSummary.count === 1 ? 'stay' : 'stays'} · ₱${owesSummary.total.toLocaleString()}`}
           </span>
           {agencySummary.count > 0 ? (
-            <span className="text-[12px] font-bold text-indigo-800">
+            <span className="text-[12px] font-bold text-ink-800">
               Agencies owe: {agencySummary.count} {agencySummary.count === 1 ? 'stay' : 'stays'} · ₱{agencySummary.total.toLocaleString()}
             </span>
           ) : (

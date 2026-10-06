@@ -1,5 +1,5 @@
 import { Booking, Room } from '../../types/booking'
-import { getPaymentView, PaymentTone } from '../../utils/bookingMoney'
+import { getPaymentView, hasPaymentRecorded, PaymentTone } from '../../utils/bookingMoney'
 
 // Show the real room name (e.g. "Full Double Deluxe") instead of a bare
 // number, with "Room N" as the fallback when no name is set.
@@ -55,13 +55,20 @@ export const stageWords = (b: Booking): string => {
 //
 // A reservation whose guest has not arrived shows its amount too, but never in red: it is
 // a promise, not a debt (the owner's ruling, 2026-09-28). Money an agency will send later
-// is expected, not chased, so it is not red either.
+// is expected, not chased, so it is not red either — and not blue: it has no colour of its
+// own (Sebastian, 2026-10-06).
+//
+// **A reservation with no deposit says so**: `No Deposit` (Sebastian, 2026-10-06). Once any
+// money has been recorded against it, it is no longer one and keeps the old wording.
 export const pillMoney = (b: Booking): { text: string; className: string } => {
   const view = getPaymentView(b)
   const due = Number(b.balance_due || 0)
   const peso = '₱' + due.toLocaleString()
   if (view.tone === 'paid') return { text: 'Paid', className: PILL_MONEY.paid }
-  if (view.tone === 'reserved') return { text: due > 0 ? peso + ' reserved' : 'Reserved', className: PILL_MONEY.reserved }
+  if (view.tone === 'reserved') {
+    if (!hasPaymentRecorded(b)) return { text: due > 0 ? peso + ' · No Deposit' : 'No Deposit', className: PILL_MONEY.reserved }
+    return { text: due > 0 ? peso + ' reserved' : 'Reserved', className: PILL_MONEY.reserved }
+  }
   if (view.tone === 'billed') return { text: peso + ' agency', className: PILL_MONEY.billed }
   return { text: due > 0 ? peso + ' to pay' : 'Not paid', className: PILL_MONEY.owes }
 }
@@ -71,5 +78,5 @@ const PILL_MONEY: Record<PaymentTone, string> = {
   partial: 'text-danger-600',
   owes: 'text-danger-600',
   reserved: 'text-ink-600',
-  billed: 'text-indigo-700',
+  billed: 'text-ink-700',
 }
