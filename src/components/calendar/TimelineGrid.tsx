@@ -3,7 +3,7 @@ import { Ban, FilePlus, Plus } from 'lucide-react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { getBookingStyle, roomDisplayName } from './bookingStyles'
-import { normalizeVenueId, dateToString } from '../../utils/helpers'
+import { dateToString } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
 import { TimelineDayInfo } from './timelineDays'
 
@@ -17,9 +17,9 @@ const SHORT_STAY_HOURS = [3, 6, 12]
 interface TimelineGridProps {
   rooms: Room[]
   venues: Venue[]
-  bookings: Booking[]
   daysList: TimelineDayInfo[]
-  bookingByRoomAndDate: Record<string, Booking>
+  /** Who fills each half of each day, per unit id — see `timelineHalves`. */
+  halves: Record<string, (Booking | null)[]>
   timelineSelection: { roomId?: string; venueId?: string; checkIn: Date } | null
   groupSelection?: Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null
   handleCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
@@ -52,16 +52,17 @@ interface TimelineGridProps {
 // must agree on them, and the action bar measures the day column off the page.
 // Narrower on a phone, where the room column was taking half the screen.
 const UNIT_COL = 'w-[136px] min-w-[136px] sm:w-[184px] sm:min-w-[184px]'
-const DAY_COL = 'w-[104px] min-w-[104px]'
+// A day is two columns — its morning and its afternoon — each half as wide as the day, so
+// a stay can begin at the middle of one day and end at the middle of another.
+const HALF_COL = 'w-[52px] min-w-[52px]'
 const UNIT_CELL = 'sticky left-0 z-20 bg-card border-r border-b border-soft px-3.5 h-12 transition-colors group-hover:bg-gold-100 ' + UNIT_COL
 
 export const TimelineGrid = React.memo(
   function TimelineGrid({
     rooms,
     venues,
-    bookings,
     daysList,
-    bookingByRoomAndDate,
+    halves,
     timelineSelection,
     groupSelection,
     handleCellClick,
@@ -143,22 +144,6 @@ export const TimelineGrid = React.memo(
     }
     const handleGridMouseLeave = () => setHoverDay(null)
 
-    // Which booking checks out on each unit+day (for the small "out" mark).
-    //
-    // A SHORT STAY never gets one: its stored check-out is the next day only because
-    // the room is taken for the whole day (housekeeping included), but the guest leaves
-    // the same day they arrived — the rose OUT mark on the following morning made a
-    // 3-hour stay read as an overnight one (the owner's catch).
-    const checkoutByUnitAndDate = React.useMemo(() => {
-      const map: Record<string, Booking> = {}
-      bookings.forEach(b => {
-        if (b.stay_hours) return
-        const keyId = b.room_id || normalizeVenueId(b.venue_id)
-        if (keyId && b.check_out) map[keyId + '_' + b.check_out] = b
-      })
-      return map
-    }, [bookings])
-
     const checkInTime = React.useMemo(() => timelineSelection ? timelineSelection.checkIn.getTime() : 0, [timelineSelection])
     const selectionRanges = React.useMemo(() => {
       if (!groupSelection) return {}
@@ -187,33 +172,47 @@ export const TimelineGrid = React.memo(
       [barAnchor, rooms]
     )
 
+    // A row is walked HALF a day at a time (see `timelineHalves`): a stay is one cell as
+    // wide as the halves it fills, and what is left is free — a whole day where both halves
+    // are, otherwise just the morning or the afternoon.
     const buildRowCells = (id: string, type: 'room' | 'venue') => {
       const cells: React.ReactNode[] = []
-      let dIdx = 0
-      while (dIdx < daysList.length) {
-        const dayInfo = daysList[dIdx]
-        const booking = bookingByRoomAndDate[id + '_' + dayInfo.isoStr]
+      const row = halves[id]
+      const width = daysList.length * 2
+      const at = (k: number) => (row ? row[k] : null)
+      let k = 0
+      while (k < width) {
+        const dayInfo = daysList[k >> 1]
+        const booking = at(k)
         if (booking) {
           let span = 1
-          while (dIdx + span < daysList.length) {
-            const nextBooking = bookingByRoomAndDate[id + '_' + daysList[dIdx + span].isoStr]
-            if (nextBooking && nextBooking.id === booking.id) span++
-            else break
-          }
+          while (k + span < width && at(k + span)?.id === booking.id) span++
           cells.push(
-            <TimelineCell key={dayInfo.isoStr} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} isCheckIn={false} isHighlighted={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
-          dIdx += span
-        } else {
-          const isDraftCheckIn = timelineSelection && ((type === 'room' && timelineSelection.roomId === id) || (type === 'venue' && timelineSelection.venueId === id)) && dayInfo.time === checkInTime
-          const range = selectionRanges[id]
-          const isHighlighted = !!(range && dayInfo.time >= range.start && dayInfo.time <= range.end)
-          const checkout = checkoutByUnitAndDate[id + '_' + dayInfo.isoStr] || null
-          cells.push(
-            <TimelineCell key={dayInfo.isoStr} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={1} isCheckIn={!!isDraftCheckIn} isHighlighted={isHighlighted} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} checkoutBooking={checkout} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
-          )
-          dIdx++
+          k += span
+          continue
         }
+        const morning = k % 2 === 0
+        const wholeDay = morning && !at(k + 1)
+        const halfOf = wholeDay ? undefined : morning ? 'left' : 'right'
+        const isDraftCheckIn = timelineSelection && ((type === 'room' && timelineSelection.roomId === id) || (type === 'venue' && timelineSelection.venueId === id)) && dayInfo.time === checkInTime
+        const range = selectionRanges[id]
+        const highlight = range
+          ? dayInfo.time === range.start ? 'start' : dayInfo.time === range.end ? 'end' : dayInfo.time > range.start && dayInfo.time < range.end ? 'mid' : null
+          : null
+        // The guest whose stay ended this morning, said in the afternoon that follows it.
+        //
+        // A SHORT STAY never gets one: its stored check-out is the next day only because
+        // the room is taken for the whole day (housekeeping included), but the guest leaves
+        // the same day they arrived — the rose OUT mark on the following morning made a
+        // 3-hour stay read as an overnight one (the owner's catch).
+        const leaving = halfOf === 'right' ? at(k - 1) : null
+        const checkout = leaving && !leaving.stay_hours ? leaving : null
+        cells.push(
+          <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={wholeDay ? 2 : 1} halfOf={halfOf} closesDay={!morning || wholeDay} isCheckIn={!!isDraftCheckIn} highlight={highlight} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} checkoutBooking={checkout} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+        )
+        k += wholeDay ? 2 : 1
       }
       return cells
     }
@@ -329,13 +328,23 @@ export const TimelineGrid = React.memo(
             rules belong to the table, and the pinned header and room column — which
             paint over it — lost theirs on an ordinary screen. */}
         <table className="w-full table-fixed border-separate border-spacing-0">
+          {/* The widths live on the columns: the day headers span two of them. */}
+          <colgroup>
+            <col className={UNIT_COL} />
+            {daysList.map((dayInfo, i) => (
+              <React.Fragment key={i}>
+                <col className={HALF_COL} />
+                <col className={HALF_COL} />
+              </React.Fragment>
+            ))}
+          </colgroup>
           <thead>
             <tr>
               <th className={'sticky top-0 left-0 z-30 bg-card border-b border-r border-soft px-3.5 text-left align-bottom pb-2 text-[13px] font-medium text-muted ' + UNIT_COL}>
                 Room
               </th>
               {daysList.map((dayInfo, i) => (
-                <th key={i} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft px-1 py-1.5 text-center ' + DAY_COL + ' ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-card') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + (hoverDay === dayInfo.isoStr ? ' !bg-gold-200/70' : '')}>
+                <th key={i} colSpan={2} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft px-1 py-1.5 text-center ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-card') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + (hoverDay === dayInfo.isoStr ? ' !bg-gold-200/70' : '')}>
                   <div className={'text-[11px] font-semibold leading-none ' + (dayInfo.isToday ? 'text-brand-text' : 'text-muted')}>{dayInfo.weekday}</div>
                   <div className="mt-1 flex h-6 items-center justify-center gap-1">
                     {dayInfo.isToday ? (
@@ -358,7 +367,7 @@ export const TimelineGrid = React.memo(
                   <span className="block h-3 w-28 rounded bg-softbg animate-pulse" />
                   <span className="mt-1.5 block h-2.5 w-16 rounded bg-softbg animate-pulse" />
                 </td>
-                <td colSpan={daysList.length} className="h-12 border-b border-soft" />
+                <td colSpan={daysList.length * 2} className="h-12 border-b border-soft" />
               </tr>
             ))}
 
@@ -381,7 +390,7 @@ export const TimelineGrid = React.memo(
 
             {venues.length > 0 && (
               <tr>
-                <td colSpan={daysList.length + 1} className="border-b border-soft bg-paper-50 p-0">
+                <td colSpan={daysList.length * 2 + 1} className="border-b border-soft bg-paper-50 p-0">
                   <span className="sticky left-0 inline-flex h-8 items-center px-3.5 text-[13px] font-semibold text-main">Event venues</span>
                 </td>
               </tr>

@@ -11,6 +11,7 @@ import { takeFocusedBooking } from '../utils/bookingFocus'
 import { ExtendStayModal } from './calendar/ExtendStayModal'
 import { TimelineGrid } from './calendar/TimelineGrid'
 import { TimelineDayInfo, buildTimelineDays, timelineHeader, sameMonth } from './calendar/timelineDays'
+import { halvesByUnit } from './calendar/timelineHalves'
 import { LogOldBookingModal } from './calendar/LogOldBookingModal'
 import { BlockDatesPane } from './calendar/BlockDatesPane'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
@@ -147,33 +148,8 @@ export function CalendarTab() {
 
   const breakfastFor = breakfastForId ? bookings.find(b => b.id === breakfastForId) || null : null
 
-  const toDateKey = (y: number, m: number, d: number) => y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0')
-
-  // Index bookings by Room/Venue+Date — numeric UTC timestamps, no string parsing in loop.
-  const bookingByRoomAndDate = useMemo(() => {
-    const map: Record<string, Booking> = {}
-    const oneDay = 86400000
-    // Only the days on screen are indexed. A block with no end date runs to a far-off
-    // year, and walking every day of it for every render would be thousands of entries
-    // nobody can see.
-    const dayUTC = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d) }
-    const windowStart = daysList.length ? dayUTC(daysList[0].isoStr) : 0
-    const windowEnd = daysList.length ? dayUTC(daysList[daysList.length - 1].isoStr) + oneDay : 0
-    bookings.forEach(b => {
-      const keyId = b.room_id || syncEngine.normalizeVenueId(b.venue_id)
-      if (!keyId) return
-      const [y1, m1, d1] = b.check_in.split('-').map(Number)
-      const [y2, m2, d2] = b.check_out.split('-').map(Number)
-      let cur = Math.max(Date.UTC(y1, m1 - 1, d1), windowStart)
-      const end = Math.min(Date.UTC(y2, m2 - 1, d2), windowEnd)
-      while (cur < end) {
-        const dt = new Date(cur)
-        map[keyId + '_' + toDateKey(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate())] = b
-        cur += oneDay
-      }
-    })
-    return map
-  }, [bookings, daysList])
+  // Who fills each half of each day, per room and venue (see `timelineHalves`).
+  const halves = useMemo(() => halvesByUnit(bookings, daysList), [bookings, daysList])
 
   const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date) => {
     const curTimeline = timelineSelectionRef.current
@@ -195,21 +171,33 @@ export function CalendarTab() {
       return
     }
 
-    if (!curTimeline || (curTimeline.roomId !== id && curTimeline.venueId !== id)) {
-      setTimelineSelection({ [selIdKey]: id, checkIn: date })
-    } else {
-      if (date <= curTimeline.checkIn) {
-        setTimelineSelection({ [selIdKey]: id, checkIn: date })
+    const isFree = (from: Date, to: Date) => type === 'room'
+      ? syncEngine.isRoomAvailable(id, dateToString(from), dateToString(to), bookingsRef.current)
+      : syncEngine.isVenueRangeAvailable(id, dateToString(from), dateToString(to), bookingsRef.current)
+    const unitLabel = () => (type === 'room' ? 'Room' : 'Venue') + ' ' + (type === 'room' ? roomDisplayName(roomsRef.current.find(r => r.id === id)) : (venuesRef.current.find(v => v.id === id)?.name ?? id))
+
+    // A stay can only BEGIN on a day whose night is free. A day that another guest arrives
+    // on is split: its morning half is free (it ends a stay) but the stay would run into
+    // that guest, so it cannot be where a stay starts.
+    const pickCheckIn = () => {
+      const nextDay = new Date(date)
+      nextDay.setDate(nextDay.getDate() + 1)
+      if (!isFree(date, nextDay)) {
+        showToast(unitLabel() + ' is already booked that night.', 'error')
         return
       }
-      const checkInStr = dateToString(curTimeline.checkIn)
-      const checkOutStr = dateToString(date)
-      const isAvailable = type === 'room'
-        ? syncEngine.isRoomAvailable(id, checkInStr, checkOutStr, bookingsRef.current)
-        : syncEngine.isVenueRangeAvailable(id, checkInStr, checkOutStr, bookingsRef.current)
-      if (!isAvailable) {
-        const unitName = type === 'room' ? roomDisplayName(roomsRef.current.find(r => r.id === id)) : (venuesRef.current.find(v => v.id === id)?.name ?? id)
-        showToast((type === 'room' ? 'Room' : 'Venue') + ' ' + unitName + ' is already booked on some of those dates.', 'error')
+      setTimelineSelection({ [selIdKey]: id, checkIn: date })
+    }
+
+    if (!curTimeline || (curTimeline.roomId !== id && curTimeline.venueId !== id)) {
+      pickCheckIn()
+    } else {
+      if (date <= curTimeline.checkIn) {
+        pickCheckIn()
+        return
+      }
+      if (!isFree(curTimeline.checkIn, date)) {
+        showToast(unitLabel() + ' is already booked on some of those dates.', 'error')
         setTimelineSelection(null)
         return
       }
@@ -422,9 +410,8 @@ export function CalendarTab() {
         <TimelineGrid
           rooms={rooms}
           venues={venues}
-          bookings={bookings}
           daysList={daysList}
-          bookingByRoomAndDate={bookingByRoomAndDate}
+          halves={halves}
           timelineSelection={timelineSelection}
           groupSelection={groupSelection}
           handleCellClick={handleCellClick}
