@@ -1,4 +1,4 @@
-import { Booking, PaymentRecord } from '../../types/booking'
+import { Booking, EventAddons, PaymentRecord } from '../../types/booking'
 import * as syncEngine from '../../utils/syncEngine'
 import { recordBookingPayment } from './bookingPayment'
 import { BookingSubmitParams, BookingSubmitResult } from './bookingSubmitTypes'
@@ -9,6 +9,19 @@ import { splitDiscount } from './discountSplit'
 // The param and result shapes live in `bookingSubmitTypes`, and the payment logic in
 // `bookingPayment` — both split out to keep this file inside the 300-line limit.
 export type { BookingSubmitParams, BookingSubmitResult } from './bookingSubmitTypes'
+
+/**
+ * A venue booking's `event_addons` with the chosen KIND of venue (Ground, Exclusive) in it —
+ * or without one when the plain venue is chosen. Whatever else is already in there is kept.
+ * A correction that takes the kind back off must send the rest (an empty `{}` at the least):
+ * sending nothing keeps what the booking has, so the kind would never come off.
+ */
+function withVenueType(existing: EventAddons | undefined, kind: string | undefined): EventAddons | undefined {
+  const rest: EventAddons = { ...(existing || {}) }
+  delete rest.venue_type
+  if (kind) return { ...rest, venue_type: kind }
+  return existing ? rest : undefined
+}
 
 // Collision-check every selected unit, then create/update one booking per room
 // and per venue, cancelling any edit-mode bookings the user removed.
@@ -48,7 +61,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
     appliedDiscount,
     Object.entries(p.unitSelections)
       .filter(([id]) => p.formRoomIds.has(id) || p.formVenueIds.has(id))
-      .map(([id, sel]) => ({ id, type: sel.type, checkIn: sel.checkIn, checkOut: sel.checkOut, contractRate: bookedDeal?.contracted_rates[id] || undefined })),
+      .map(([id, sel]) => ({ id, type: sel.type, checkIn: sel.checkIn, checkOut: sel.checkOut, contractRate: bookedDeal?.contracted_rates[id] || undefined, venueType: sel.type === 'venue' ? p.formVenueTypes[id] : undefined })),
     { rooms: p.rooms, venues: p.venues, venueDayBlocks: p.venueDayBlocks, shortStayHours: p.stay_hours },
   )
   const companions = p.bookingType === 'partner'
@@ -162,6 +175,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
 
       const deal = p.partnerDeals.find(d => d.id === p.formPartnerDealId)
       const contractedPrice = deal?.contracted_rates[venueId]
+      const eventAddons = withVenueType(existingBooking?.event_addons, p.formVenueTypes[venueId])
 
       const b = await p.createManualBooking({
         id: existingBooking?.id,
@@ -176,6 +190,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         guestAddress: p.formGuestAddress || undefined,
         birthdate: p.formBirthdate || undefined,
         preparedBy: p.formPreparedBy || undefined,
+        eventAddons,
         appliedDiscount: discounts[venueId],
         venueDayBlocks: p.venueDayBlocks,
         notes: p.formBlockNotes.trim() || undefined,

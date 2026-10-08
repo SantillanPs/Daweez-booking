@@ -5,6 +5,8 @@ export interface SegmentOption<T extends string> {
   label: string
   /** Shown on hover — for the words that would not fit on the row. */
   hint?: string
+  /** A small line under the label — a price, say. When any option has one, every cell is two lines tall. */
+  sub?: string
 }
 
 /**
@@ -48,6 +50,9 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
   // Nothing picked yet (the `Paid by` row starts that way): Tab lands on the first cell.
   const picked = options.findIndex(o => o.key === value)
   const tabStop = picked === -1 ? 0 : picked
+  // A choice that carries a second line (the Vacation House's kinds, each with its price)
+  // needs the height for both; every cell is the same height so the row stays level.
+  const twoLines = options.some(o => !!o.sub)
 
   const onKeyDown = (e: React.KeyboardEvent, i: number) => {
     const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1
@@ -70,9 +75,15 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
           onClick={() => onChange(o.key)}
           onKeyDown={e => onKeyDown(e, i)}
           /* The focus ring is drawn INSIDE the cell: the group clips whatever leaves it. */
-          className={'grow h-11 px-2 text-[14px] font-semibold whitespace-nowrap cursor-pointer transition-colors duration-150 focus-visible:-outline-offset-2 focus-visible:rounded-none ' +
+          className={'grow px-2 text-[14px] font-semibold whitespace-nowrap cursor-pointer transition-colors duration-150 focus-visible:-outline-offset-2 focus-visible:rounded-none ' +
+            (twoLines ? 'min-h-[52px] py-1.5 ' : 'h-11 ') +
             (value === o.key ? 'bg-gold-400 text-ink-900' : 'bg-card text-main hover:bg-gold-100 active:bg-gold-200')}>
-          {o.label}
+          {twoLines ? (
+            <>
+              <span className="block leading-5">{o.label}</span>
+              <span className={'block text-[12px] font-medium leading-4 tabular-nums ' + (value === o.key ? 'text-ink-800' : 'text-muted')}>{o.sub || ' '}</span>
+            </>
+          ) : o.label}
         </button>
       ))}
     </div>

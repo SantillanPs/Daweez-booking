@@ -12,6 +12,9 @@ import { BookingCorrectionFields } from './walk-in/BookingCorrectionFields'
 import { methodNeedsReference, paymentKind, paymentMethodChoice } from '../utils/paymentMethod'
 import { BreakfastRoomChips } from './walk-in/BreakfastRoomChips'
 import { breakfastSellable } from '../utils/breakfast'
+import { venueTypes } from '../utils/venueTypes'
+import { normalizeVenueId } from '../utils/helpers'
+import { VenueTypeFields } from './walk-in/VenueTypeFields'
 import { focusBookingAfterCreate } from '../utils/bookingFocus'
 import { computeBookingEstimate } from './walk-in/bookingEstimate'
 import { submitBookingForm } from './walk-in/bookingSubmit'
@@ -204,6 +207,9 @@ export function WalkInBookingForm({
   const [formEventTable, setFormEventTable] = useState(0)
   const [formEventTent, setFormEventTent] = useState(0)
   const [formVenueExcessHours, setFormVenueExcessHours] = useState(0)
+  /** Which KIND of each venue is being booked (`VenueType.key`, by venue id) — for the Vacation
+   *  House: Ground or Exclusive. Missing means the plain venue. It sets the day's price. */
+  const [formVenueTypes, setFormVenueTypes] = useState<Record<string, string>>({})
 
   // ── Payment Details ──
   // How the guest pays, asked here since 2026-09-29 because the form now takes the money
@@ -312,6 +318,13 @@ export function WalkInBookingForm({
       setFormAgreedDeposit(b.agreed_deposit ?? 0)
       setDepositTouched(b.agreed_deposit != null)
       setFormVenueExcessHours(b.venue_excess_hours || 0)
+      // The kind of each venue the booking has (Ground, Exclusive), put back in the choice.
+      const kinds: Record<string, string> = {}
+      editingBookings.forEach(eb => {
+        const venueId = eb.venue_id ? normalizeVenueId(eb.venue_id) : undefined
+        if (venueId && eb.event_addons?.venue_type) kinds[venueId] = eb.event_addons.venue_type
+      })
+      setFormVenueTypes(kinds)
       setFormInvoiceNumber(b.invoice_number || '')
       
       setFormBirthdate(b.birthdate || '')
@@ -376,6 +389,11 @@ export function WalkInBookingForm({
 
   const hasRooms = formRoomIds.size > 0
   const hasVenues = formVenueIds.size > 0
+  // The venues being booked that come in kinds (the Vacation House) — the type choice is shown for them.
+  const typedVenues = useMemo(
+    () => Array.from(formVenueIds).map(id => venues.find(v => v.id === id)).filter((v): v is Venue => !!v && venueTypes(v).length > 0),
+    [formVenueIds, venues],
+  )
   const hasDayBlock = useMemo(() =>
     Object.entries(unitSelections).some(([id, sel]) => sel.type === 'venue' && ['Gazebo', 'Garden Area'].includes(venues.find(v => v.id === id)?.name || '')),
   [unitSelections, venues])
@@ -409,11 +427,11 @@ export function WalkInBookingForm({
     () => computeBookingEstimate({
       unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues,
       formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
-      formEventTable, formEventTent, formChairs, formVenueExcessHours,
+      formEventTable, formEventTent, formChairs, formVenueExcessHours, formVenueTypes,
       discountType, discountValue, venueDayBlocks, bookingType,
       shortStayHours,
     }),
-    [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues, formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formVenueExcessHours, discountType, discountValue, venueDayBlocks, bookingType, shortStayHours]
+    [unitSelections, rooms, venues, partnerDeals, formPartnerDealId, formStatus, hasVenues, formBreakfastRoomIds, formCompanions, formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel, formEventTable, formEventTent, formChairs, formVenueExcessHours, formVenueTypes, discountType, discountValue, venueDayBlocks, bookingType, shortStayHours]
   )
 
   // The figure the desk asks for now, by plan (the owner's ruling): the whole stay for
@@ -592,7 +610,7 @@ export function WalkInBookingForm({
       formBirthdate, formPreparedBy, formCompanyName, formVehiclePlate, formInvoiceNumber,
       formSource, formBreakfastRoomIds, formCompanions,
       formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
-      formChairs, formEventTable, formEventTent, formVenueExcessHours,
+      formChairs, formEventTable, formEventTent, formVenueExcessHours, formVenueTypes,
       // A block's reason, or — on a booking — the note beside a Custom deposit. Any other
       // way of paying has no note, so one typed and then abandoned is not saved.
       formBlockNotes: formStatus === 'blocked'
@@ -742,6 +760,16 @@ export function WalkInBookingForm({
                 {!shortStayHours && (
                   <section className={GROUP + ' font-sans delay-75 animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-both motion-reduce:animate-none'}>
                     <h4 className={GROUP_TITLE}>Stay</h4>
+                    {/* WHICH KIND OF VENUE (the Vacation House: Regular, Ground, Exclusive) sets
+                        the day's price, so it is chosen here, above the optional extras — it
+                        is not one of them (Sebastian, 2026-10-06). */}
+                    {typedVenues.length > 0 && (
+                      <VenueTypeFields
+                        venues={typedVenues}
+                        chosen={formVenueTypes}
+                        onChoose={(venueId, key) => setFormVenueTypes(prev => ({ ...prev, [venueId]: key }))}
+                      />
+                    )}
                     <ul className={OPTION_LIST}>
                       <BreakfastRoomChips
                         rooms={pickedRooms}

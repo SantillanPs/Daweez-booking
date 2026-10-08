@@ -3,6 +3,7 @@ import { useDashboardData } from './DashboardContext'
 import { Booking } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { dateToString } from '../utils/helpers'
+import { breakfastOn, wantsBreakfastToday } from '../utils/breakfastChoice'
 import { extendStay } from '../utils/bookingBalance'
 import { clearStayHours } from '../utils/db'
 import { WalkInBookingForm } from './WalkInBookingForm'
@@ -15,7 +16,6 @@ import { halvesByUnit } from './calendar/timelineHalves'
 import { LogOldBookingModal } from './calendar/LogOldBookingModal'
 import { BlockDatesPane } from './calendar/BlockDatesPane'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
-import { CalendarLegend } from './calendar/CalendarLegend'
 import { TodayStrip } from './calendar/TodayStrip'
 import { setDeskBusy, useReadingWhatsNew } from '../utils/deskState'
 import { BreakfastPicker } from './calendar/BreakfastPicker'
@@ -159,6 +159,13 @@ export function CalendarTab() {
 
   // Who fills each half of each day, per room and venue (see `timelineHalves`).
   const halves = useMemo(() => halvesByUnit(bookings, daysList), [bookings, daysList])
+  // The rooms still to be asked about breakfast this morning. Read off every booking, not
+  // off the grid: a guest who has overstayed has no pill on it but is still in the room.
+  const breakfastToAsk = useMemo(() => {
+    const ask: Record<string, Booking> = {}
+    bookings.forEach(b => { if (b.room_id && wantsBreakfastToday(b) && !breakfastOn(b, todayKey)) ask[b.room_id] = b })
+    return ask
+  }, [bookings, todayKey])
 
   const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date) => {
     const curTimeline = timelineSelectionRef.current
@@ -407,15 +414,9 @@ export function CalendarTab() {
           onNextMonth={() => stepMonth(1)}
           onJumpToDate={jumpToDay}
           onToday={() => setMonthAnchor(todayStart())}
-        />
-        <TodayStrip
-          bookings={bookings}
-          rooms={rooms}
-          venues={venues}
-          onOpen={b => { setExtendError(''); setExtendCheckoutDate(b.check_out); setSelectedExtendBooking(b) }}
-          onBreakfast={b => setBreakfastForId(b.id)}
-          trailing={<CalendarLegend />}
-        />
+        >
+          <TodayStrip bookings={bookings} rooms={rooms} venues={venues} onBreakfast={b => setBreakfastForId(b.id)} />
+        </CalendarToolbar>
         <TimelineGrid
           rooms={rooms}
           venues={venues}
@@ -435,6 +436,8 @@ export function CalendarTab() {
           onClearSelection={() => { setTimelineSelection(null); setGroupSelection(null) }}
           dueShortStayIds={dueShortStayIds}
           loading={isLoading}
+          breakfastToAsk={breakfastToAsk}
+          onBreakfast={b => setBreakfastForId(b.id)}
         />
       </div>
 

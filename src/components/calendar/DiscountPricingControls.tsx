@@ -68,7 +68,7 @@ export function DiscountPricingControls({
 
         {open && (
           <div className={'space-y-3 pb-3 ' + REVEAL}>
-            <SegmentedControl options={options} value={value} onChange={pick} label="Staff discount" />
+            <SegmentedControl options={options} value={value} onChange={pick} label="Discount" />
             {/* A custom price is a figure the desk types, so it takes the row below. */}
             {discountType === 'flat' && (
               <Field label="Amount off (₱)">

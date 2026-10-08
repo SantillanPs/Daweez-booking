@@ -34,6 +34,7 @@ import { BookingReceipts } from './BookingReceipts'
 import { ExtendStayForm } from './ExtendStayForm'
 import { MoveBookingForm } from './MoveBookingForm'
 import { canMoveBooking } from '../../utils/bookingMove'
+import { venueTypeOf } from '../../utils/venueTypes'
 import { showToast } from '../../utils/toast'
 import { askConfirm } from '../../utils/confirm'
 import { focusGuestTab } from '../../utils/restaurantFocus'
@@ -521,7 +522,8 @@ export function ExtendStayModal({
   const breakfastToday = breakfastOn(booking, todayKey)
 
   const who = isBlock ? blockReason(localBooking) : booking.guest_name
-  const roomType = booking.room_id && room?.name ? room.name : ''
+  // Under the title: a room's own name, or which kind of venue it is (Ground, Exclusive).
+  const roomType = booking.room_id && room?.name ? room.name : (venueTypeOf(venue, booking.event_addons?.venue_type)?.label || '')
   const stayLine = isBlock
     ? (openEnded ? 'From ' + fmtShort(booking.check_in) + ' · until further notice' : fmtShort(booking.check_in) + ' → ' + fmtShort(booking.check_out))
     : stayHoursOf(booking) > 0

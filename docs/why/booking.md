@@ -30,6 +30,16 @@
 - **A booking with no deposit is what the rules below call a reservation.** It is a hold for somebody the staff personally know ("they are trustworthy"). The app never checks who qualifies. It blocks the room, never expires, and agrees to no money at all.
 - **A reserved guest pays when they arrive, not at check-out.** Check-in refuses while money is owed — that refusal is how the money is collected at the door.
 - **Until they arrive, a reservation is a promise, not a debt.** It stays out of "Who owes right now". On the calendar its pill says **`Reserved · No Deposit` in blue, with no amount** (Sebastian, 2026-10-06: *"it should just say 'Reserved · No Deposit' and turn the color of the text to blue"*, and for an agency booking made with No deposit too: *"they shouldn't show an amount to pay"*). Blue means no deposit and nothing else — red is money owed, green is paid. Once any money is recorded against it the pill goes back to `₱… reserved`, and once the guest arrives it is an ordinary owing stay.
+- **The calendar says it with signs, and the words are in a guide** (Sebastian, 2026-10-08, from the staff: on a guest's last morning the pill said only `IN`, and they wanted the name without opening it; they also could not tell from the room column which rooms were occupied). He chose each sign from a mock and asked throughout for *"visual design, not so much text heavy"*:
+  - A half-day pill shows the guest's **initials**.
+  - A room with a guest in it has a **gold bar** on its left edge. The `IN` tag and a gold circle round the initials were dropped as saying the same thing twice.
+  - **Arrives today** is a green left edge on the pill; **leaves today** is a charcoal right edge.
+  - **No deposit is a blue corner, with no words.** *"As long as the staff records a check or payment, the indicator should be removed."* It stays through the stay and after it, because *"some agencies don't have deposits because they usually pay 3 months after giving a check"*. "Reserved" is no longer written: *"all of them are always reserved."*
+  - An **agency** booking has a building icon before its name.
+  - Under each date: how many **will arrive** and **will leave** that day — worded that way because *"how many arrive"* *"sounds as if they already did"*. They count down as guests are checked in and out.
+  - **The "Today" line was taken off** — *"remove the today strip since it's redundant"* — once the grid said who arrives, leaves and is in. Breakfast and Diners to pay had nowhere else to live, so they moved to the calendar's top line. The two counts stand **over the two halves of their day** (leaving over the morning, arriving over the afternoon), his pick from a mock, with the arriving arrow turned round.
+  - **A room still to be asked about breakfast has a cup that hops** beside the room's name, and the cup goes once the room is asked. It is a button that opens the breakfast list for that room. It began in the corner of the pill, and he moved it: *"I like the idea of clicking the cup. But the problem is that it's too small, but if it's big it doesn't fit the pill. So let's try and move it to the rooms."* A plain cup was not enough: *"it's not bringing the attention of the staff. It looks more of a status than a 'this room needs breakfast'."* He picked the hop from five movements and had its dark background taken off.
+  - *"Add a place in the calendar for guides about what every single signal or sign or indication mean… so that all the calendar is showing is just the visuals."* That is the `?` on the calendar's top line.
 
 ## Agencies (corporate / government / travel agency)
 
@@ -75,6 +85,12 @@
 - **Check-out is refused while money is owed**, said under the button. A stay billed to an agency is the exception (see Agencies).
 - **Check-in and check-out must not happen by accident** (the staff, 2026-10-04). Sebastian chose: the app asks first, and a wrong one can be undone.
 - **Food can only be ordered once the guest is checked in** — people order when they are physically in the hotel.
+
+## Venues
+
+- **The Vacation House is booked as the Vacation House, the Vacation House & Ground, or Exclusive** (Sebastian, 2026-10-06): ₱7,500, ₱10,000 and ₱15,000 a day. His words: it is *"like choosing the vacation house type or an add-on, but it's not technically an add-on."* So it is not charged on top of the day — the kind **is** the day's price — and it is chosen above the Stay extras, as a row of three with each price under its name, not among them.
+- **The choices are named for what they contain.** His correction, after the first build called them Regular / Ground / Exclusive: *"Ground is supposed to be an addition to the regular, like vacation house & Ground. Exclusive is like the entire Vacation House and the others that come with it are all included, that's why it's 15,000."* So the ground is the house **and** the ground, not a different house, and Exclusive is all of it, which is why it costs most. The plain Vacation House is chosen when the form opens, and the Total moves as another is picked. The kind is named on the bill (`Vacation House & Ground`, `Vacation House · Exclusive`) and under the booking panel's title.
+- **The kinds live on the venue's row** (`details.types`), so any venue can have them and one without shows no choice. The Vacation House used to be ₱15,000 a day, which is now its Exclusive price.
 
 ## Moving a booking
 

@@ -1,9 +1,9 @@
 import React from 'react'
-import { Ban, FilePlus, Plus } from 'lucide-react'
+import { Ban, Coffee, FilePlus, LogIn, LogOut, Plus } from 'lucide-react'
 import { Booking, PartnerDeal, Room, Venue } from '../../types/booking'
 import { isBilledToAgency } from '../../utils/bookingMoney'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
-import { getBookingStyle, roomDisplayName } from './bookingStyles'
+import { dueToday, getBookingStyle, roomDisplayName } from './bookingStyles'
 import { dateToString } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
 import { TimelineDayInfo } from './timelineDays'
@@ -49,6 +49,11 @@ interface TimelineGridProps {
   dueShortStayIds?: string[]
   /** The rooms have not arrived from the database yet. */
   loading?: boolean
+  /** The guest to ask about breakfast this morning, per room id — only the rooms that have
+   *  breakfast today and have not been asked yet. */
+  breakfastToAsk?: Record<string, Booking>
+  /** Opens the breakfast picker for that guest. */
+  onBreakfast?: (booking: Booking) => void
 }
 
 // One room's row and one day's column, in one place: the header, the rows and the cells
@@ -58,7 +63,20 @@ const UNIT_COL = 'w-[136px] min-w-[136px] sm:w-[184px] sm:min-w-[184px]'
 // A day is two columns — its morning and its afternoon — each half as wide as the day, so
 // a stay can begin at the middle of one day and end at the middle of another.
 const HALF_COL = 'w-[52px] min-w-[52px]'
-const UNIT_CELL = 'sticky left-0 z-20 bg-card border-r border-b border-soft px-3.5 h-12 transition-colors group-hover:bg-gold-100 ' + UNIT_COL
+const UNIT_CELL_BASE = 'sticky left-0 z-20 border-r border-b border-soft pr-3.5 h-12 transition-colors group-hover:bg-gold-100 ' + UNIT_COL
+const UNIT_CELL = UNIT_CELL_BASE + ' bg-card pl-3.5'
+// **A room with a guest in it wears a gold bar down its left edge** (Sebastian, 2026-10-08:
+// the staff could not tell from the room column which rooms were occupied). The bar takes
+// the place of 5px of the padding, so the room numbers stay in one line down the column.
+const UNIT_CELL_OCCUPIED = UNIT_CELL_BASE + ' bg-paper-50 pl-[9px] border-l-[5px] border-l-gold-400'
+
+function DayCount({ n, title, className, children }: { n: number; title: string; className: string; children: React.ReactNode }) {
+  return (
+    <span title={n + ' ' + title} className={'flex h-5 items-center justify-center gap-0.5 ' + className}>
+      {n > 0 && <>{children}{n}</>}
+    </span>
+  )
+}
 
 export const TimelineGrid = React.memo(
   function TimelineGrid({
@@ -79,7 +97,9 @@ export const TimelineGrid = React.memo(
     onNewShortStay,
     onClearSelection,
     dueShortStayIds,
-    loading = false
+    loading = false,
+    breakfastToAsk,
+    onBreakfast
   }: TimelineGridProps) {
     const scrollRef = React.useRef<HTMLDivElement>(null)
 
@@ -204,6 +224,28 @@ export const TimelineGrid = React.memo(
       partnerDeals.forEach(d => { names[d.id] = d.name })
       return names
     }, [partnerDeals])
+    // Read off the rows already on screen: every stay that touches a day shown is in one.
+    // `occupied` is the rooms and venues with a guest in them now; the counts are, per day,
+    // how many are STILL to arrive and still to leave — they go down as the desk checks
+    // guests in and out (Sebastian, 2026-10-08: "will arrive", "will leave").
+    const todayIso = dateToString(new Date())
+    const { occupied, counts } = React.useMemo(() => {
+      const occupied: Record<string, boolean> = {}
+      const counts: Record<string, { arrive: number; leave: number }> = {}
+      const seen: Record<string, boolean> = {}
+      const at = (iso: string) => counts[iso] || (counts[iso] = { arrive: 0, leave: 0 })
+      Object.entries(halves).forEach(([unitId, row]) => row.forEach(b => {
+        if (!b || b.status === 'blocked' || seen[b.id]) return
+        seen[b.id] = true
+        if (b.actual_check_in && !b.actual_check_out) occupied[unitId] = true
+        // A guest who is late is still to come, or still to go: they count under today.
+        const leaves = b.stay_hours ? b.check_in : b.check_out
+        if (!b.actual_check_in) at(b.check_in < todayIso ? todayIso : b.check_in).arrive++
+        if (!b.actual_check_out) at(leaves < todayIso ? todayIso : leaves).leave++
+      }))
+      return { occupied, counts }
+    }, [halves, todayIso])
+
     const agencyNameOf = (b: Booking) =>
       isBilledToAgency(b) ? ((b.company_name || '').trim() || agencyNames[b.partner_deal_id || ''] || '') : ''
 
@@ -214,6 +256,7 @@ export const TimelineGrid = React.memo(
       const cells: React.ReactNode[] = []
       const row = halves[id]
       const width = daysList.length * 2
+      const todayAt = daysList.findIndex(d => d.isToday)
       const at = (k: number) => (row ? row[k] : null)
       let k = 0
       while (k < width) {
@@ -222,8 +265,11 @@ export const TimelineGrid = React.memo(
         if (booking) {
           let span = 1
           while (k + span < width && at(k + span)?.id === booking.id) span++
+          // The part of this stay that lies on today, in halves from its own left edge.
+          const todayFrom = Math.max(k, todayAt * 2)
+          const todayTo = todayAt < 0 ? 0 : Math.min(k + span, todayAt * 2 + 2)
           cells.push(
-            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} agencyName={agencyNameOf(booking)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} agencyName={agencyNameOf(booking)} due={dueToday(booking, todayIso)} todayFrom={todayTo > todayFrom ? todayFrom - k : -1} todayHalves={Math.max(0, todayTo - todayFrom)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           k += span
           continue
@@ -378,15 +424,25 @@ export const TimelineGrid = React.memo(
                 Room
               </th>
               {daysList.map((dayInfo, i) => (
-                <th key={i} colSpan={2} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft px-1 py-1.5 text-center ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-card') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + (hoverDay === dayInfo.isoStr ? ' !bg-gold-200/70' : '')}>
-                  <div className={'text-[11px] font-semibold leading-none ' + (dayInfo.isToday ? 'text-brand-text' : 'text-muted')}>{dayInfo.weekday}</div>
-                  <div className="mt-1 flex h-6 items-center justify-center gap-1">
+                <th key={i} colSpan={2} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft px-0 pt-1.5 pb-0 text-center ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-card') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + (hoverDay === dayInfo.isoStr ? ' !bg-gold-200/70' : '')}>
+                  <div className="flex h-6 items-center justify-center gap-1.5">
+                    <span className={'text-[12px] font-semibold leading-none ' + (dayInfo.isToday ? 'text-brand-text' : 'text-muted')}>{dayInfo.weekday}</span>
                     {dayInfo.isToday ? (
                       <span className="inline-flex h-6 min-w-6 px-1 items-center justify-center rounded-full bg-gold-400 text-ink-900 text-[13px] font-bold tabular-nums">{dayInfo.dayNum}</span>
                     ) : (
                       <span className="text-[13px] font-semibold tabular-nums text-main">{dayInfo.dayNum}</span>
                     )}
                     {dayInfo.monthLabel && <span className="text-[11px] font-bold text-brand-text">{dayInfo.monthLabel}</span>}
+                  </div>
+                  {/* How many will leave and how many will arrive that day, **each over its own
+                      half of the day** (Sebastian, 2026-10-08): guests leave in the morning and
+                      arrive in the afternoon, so the number stands right above the pills it
+                      counts. Leaving is charcoal and arriving green, like the edges of the
+                      pills, and the arriving arrow is turned round so the two mirror each
+                      other. A zero is left blank. */}
+                  <div className="mt-1 grid grid-cols-2 border-t border-soft text-[12px] font-bold leading-none tabular-nums">
+                    <DayCount n={counts[dayInfo.isoStr]?.leave || 0} title="will leave" className="border-r border-dashed border-soft text-ink-900"><LogOut className="w-3 h-3" /></DayCount>
+                    <DayCount n={counts[dayInfo.isoStr]?.arrive || 0} title="will arrive" className="text-emerald-700"><LogIn className="w-3 h-3 -scale-x-100" /></DayCount>
                   </div>
                 </th>
               ))}
@@ -409,13 +465,27 @@ export const TimelineGrid = React.memo(
                 kind and its price. No tile behind the number: the row is the box. */}
             {rooms.map(room => (
               <tr key={room.id} className="group hover:bg-paper-50/50">
-                <td className={UNIT_CELL}>
+                <td className={occupied[room.id] ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
                   <div className="flex items-center gap-2.5">
                     <span className="w-6 shrink-0 text-center font-display text-[15px] font-bold tabular-nums text-main">{room.room_number}</span>
-                    <span className="min-w-0">
+                    <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-semibold leading-4 text-main">{roomDisplayName(room)}</span>
                       <span className="block text-[12px] leading-4 tabular-nums text-muted">₱{displayPriceFor(room).toLocaleString()}/night</span>
                     </span>
+                    {/* **The breakfast cup is on the ROOM, and it is a button** (Sebastian,
+                        2026-10-08). It began on the pill, where it was too small to tap and
+                        did not fit any bigger. Here it can be, and a guest who has overstayed
+                        — no pill on the calendar — still has a room to wear it. It hops
+                        because it is a job, not a label (*"it looks more of a status than a
+                        'this room needs breakfast'"*), and it is gone once the room is asked. */}
+                    {breakfastToAsk?.[room.id] && (
+                      <button type="button" onClick={() => onBreakfast?.(breakfastToAsk[room.id])}
+                        title={'Ask room ' + room.room_number + ' what they want for breakfast'}
+                        aria-label={'Ask room ' + room.room_number + ' about breakfast'}
+                        className="-mr-1.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-main transition-colors hover:bg-gold-200 active:scale-95 cursor-pointer">
+                        <Coffee className="w-5 h-5 animate-hop" />
+                      </button>
+                    )}
                   </div>
                 </td>
                 {buildRowCells(room.id, 'room')}
@@ -432,7 +502,7 @@ export const TimelineGrid = React.memo(
 
             {venues.map(venue => (
               <tr key={venue.id} className="group hover:bg-paper-50/50">
-                <td className={UNIT_CELL}>
+                <td className={occupied[venue.id] ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
                   <span className="block truncate text-[13px] font-semibold leading-4 text-main">{venue.name}</span>
                   <span className="block text-[12px] leading-4 tabular-nums text-muted">₱{displayPriceFor(venue).toLocaleString()}/day</span>
                 </td>

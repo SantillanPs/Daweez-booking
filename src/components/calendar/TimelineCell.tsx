@@ -1,6 +1,7 @@
 import React from 'react'
+import { Building2, Check } from 'lucide-react'
 import { Booking } from '../../types/booking'
-import { pillMoney, stageTag, stageWords } from './bookingStyles'
+import { hasNoDeposit, pillInitials, pillMoney, stageWords } from './bookingStyles'
 import { clockLabel, shortStayEnd } from '../../utils/shortStay'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 
@@ -34,11 +35,27 @@ export interface TimelineCellProps {
   /** The agency that is paying for the stay, when there is one. The pill carries its name
    *  where the guest's would be (Sebastian, 2026-10-06). */
   agencyName?: string
+  /** The desk still has to check this guest in, or out, today — the pill's edge says so:
+   *  green on the left for an arrival, charcoal on the right for a departure. */
+  due?: 'in' | 'out' | null
+  /** Where today lies under this stay: the half it starts at, counted from the stay's own
+   *  left edge (-1 when the stay is not on today), and how many halves of it. */
+  todayFrom?: number
+  todayHalves?: number
   getBookingStyle: (b: Booking) => string
   onCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
   setSelectedExtendBooking: (booking: Booking) => void
   setExtendCheckoutDate: (date: string) => void
   setExtendError: (err: string) => void
+}
+
+/** The mark of a guest who has checked out: a tick in a small charcoal circle. */
+function LeftTick({ className }: { className: string }) {
+  return (
+    <span className={'inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-ink-600 text-white ' + className} aria-hidden="true">
+      <Check className="w-2.5 h-2.5" strokeWidth={3} />
+    </span>
+  )
 }
 
 // Optimized, memoized timeline cell. Tooltip visibility lives in this cell
@@ -60,6 +77,9 @@ export const TimelineCell = React.memo(
     isToday,
     isShortStayDue,
     agencyName,
+    due,
+    todayFrom = -1,
+    todayHalves = 0,
     getBookingStyle,
     onCellClick,
     setSelectedExtendBooking,
@@ -87,8 +107,9 @@ export const TimelineCell = React.memo(
       // An agency booking is read by whose bill it is: the agency's name, not the name of
       // the person who made the reservation (they are on the hover card and in the panel).
       const pillName = isBlock ? blockReason(booking) + (openEnded ? ' · until further notice' : '') : (agencyName || booking.guest_name)
-      const tag = stageTag(booking)
+      const left = !!booking.actual_check_out
       const money = pillMoney(booking)
+      const noDeposit = hasNoDeposit(booking)
       // A short stay whose guest is in the room shows THE TIME THE ROOM IS FREE — never
       // a countdown (the owner's ruling) — unless money is still owed, which comes first.
       const freeAt = shortStayEnd(booking.actual_check_in, Number(booking.stay_hours || 0))
@@ -111,6 +132,15 @@ export const TimelineCell = React.memo(
             setShowTooltip(false)
           }}
         >
+          {/* **Today's column runs on behind the pill** (Sebastian, 2026-10-08): a stay's cell
+              is one box across all its days, so it used to wipe the highlight out wherever
+              a booking sat on today. It is drawn again here, under the pill, on just the
+              part of the stay that is today. */}
+          {todayFrom >= 0 && (
+            <div aria-hidden="true"
+              style={{ '--today-left': (todayFrom / span) * 100 + '%', '--today-width': (todayHalves / span) * 100 + '%' } as React.CSSProperties}
+              className="absolute inset-y-0 bg-gold-100/50 [left:var(--today-left)] [width:var(--today-width)]" />
+          )}
           <div
             onClick={e => {
               e.stopPropagation()
@@ -120,39 +150,47 @@ export const TimelineCell = React.memo(
               setExtendError('')
             }}
             title={pillName}
-            className={'mx-0.5 h-10 rounded-md border cursor-pointer select-none transition hover:brightness-95 flex flex-col justify-center ' +
+            className={'relative overflow-hidden mx-0.5 h-10 rounded-md border cursor-pointer select-none transition hover:brightness-95 flex flex-col justify-center ' +
               (narrow ? 'items-center px-0 ' : 'px-2 ') +
-              (isShortStayDue ? 'bg-danger-100 border-danger-400 text-danger-600' : getBookingStyle(booking))}
+              (isShortStayDue ? 'bg-danger-100 border-danger-400 text-danger-600' : getBookingStyle(booking)) +
+              (due === 'in' ? ' border-l-[5px] border-l-emerald-700' : due === 'out' ? ' border-r-[5px] border-r-ink-900' : '')}
           >
-            {/* HALF A DAY is too narrow to read a name or an amount — only the stage is
-                shown (it is the stay's last morning, or its first afternoon at the edge
-                of the screen). The name is on the hover card and in the panel. */}
+            {/* SIGNS, NOT WORDS (Sebastian, 2026-10-08: "use visual design, not so much text
+                heavy"). The pill's edge is what the desk has to do today, the blue corner is
+                no deposit, the building is an agency; what each means is in the calendar's
+                guide (`CalendarGuide`), not written on the pill. */}
+            {noDeposit && <span aria-hidden="true" className={'absolute top-0 right-0 bg-blue-700 [clip-path:polygon(0_0,100%_0,100%_100%)] ' + (narrow ? 'w-3 h-3' : 'w-4 h-4')} />}
+            {/* HALF A DAY is too narrow to read a name or an amount — it is the stay's last
+                morning, or its first afternoon at the edge of the screen — so it wears the
+                guest's INITIALS (the staff wanted to see who is leaving; it used to say only
+                IN). The full name is on the hover card and in the panel. */}
             {narrow ? (
-              <span className="text-[10px] font-bold leading-[15px]">{isBlock ? '' : tag || (booking.stay_hours ? booking.stay_hours + 'h' : '')}</span>
+              <span className="relative font-display text-[13px] font-bold leading-4">
+                {isBlock ? '' : pillInitials(pillName)}
+                {left && !isBlock && <LeftTick className="absolute -right-2.5 -bottom-1.5" />}
+              </span>
             ) : (<>
             {/* TWO LINES, both in words (the staff's feedback, 2026-10-04): who is in the
                 room and whether they are IN or OUT, then what is still to pay. The desk
                 reads the calendar without opening a booking. A block has one line — why
                 the dates are closed. 13px and 12px: the pills are what the desk reads all
                 day, and at 11px they were the smallest words on the screen. */}
-            <span className="flex items-center justify-between gap-1 min-w-0 text-[13px] font-bold leading-4">
+            <span className="flex items-center gap-1 min-w-0 text-[13px] font-bold leading-4">
+              {agencyName && !isBlock && <Building2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
               <span className="min-w-0 truncate">
                 {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
                 {pillName}
               </span>
-              {!isBlock && tag && (
-                <span className={'shrink-0 rounded px-1 text-[10px] font-bold leading-[15px] ' +
-                  (tag === 'IN' ? 'bg-gold-400 text-ink-900' : 'bg-ink-300 text-ink-700')}>
-                  {tag}
-                </span>
-              )}
+              {/* No IN tag any more: the gold pill and the gold bar on the room say it. A
+                  guest who has left keeps a tick beside the name. */}
+              {left && !isBlock && <LeftTick className="shrink-0" />}
             </span>
-            {!isBlock && (
+            {!isBlock && !(money.quiet && !isShortStayDue && !showClock && !booking.stay_hours) && (
               <span className={'text-[12px] font-semibold truncate leading-4 ' + (isShortStayDue ? '' : showClock ? 'text-ink-700' : money.className)}>
                 {isShortStayDue && freeAt ? 'time up ' + clockLabel(freeAt)
                   : showClock && freeAt ? 'out ' + clockLabel(freeAt)
-                    : booking.stay_hours && !booking.actual_check_in ? booking.stay_hours + ' hrs · ' + money.text
-                      : money.text}
+                    : booking.stay_hours && !booking.actual_check_in ? booking.stay_hours + ' hrs' + (money.quiet ? '' : ' · ' + money.text)
+                      : money.quiet ? '' : money.text}
               </span>
             )}
             </>)}
@@ -251,6 +289,9 @@ export const TimelineCell = React.memo(
       prevProps.isToday === nextProps.isToday &&
       prevProps.isShortStayDue === nextProps.isShortStayDue &&
       prevProps.agencyName === nextProps.agencyName &&
+      prevProps.due === nextProps.due &&
+      prevProps.todayFrom === nextProps.todayFrom &&
+      prevProps.todayHalves === nextProps.todayHalves &&
       prevProps.span === nextProps.span &&
       prevProps.booking?.id === nextProps.booking?.id &&
       prevProps.booking?.status === nextProps.booking?.status &&

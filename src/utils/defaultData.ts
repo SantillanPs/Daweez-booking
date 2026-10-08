@@ -123,14 +123,18 @@ export const DEFAULT_VENUES: Venue[] = [
   {
     id: 'venue-vacation',
     name: 'Vacation House',
-    base_price: 15000,
+    base_price: 7500,
     capacity: 50,
     description: 'A fully furnished house for staycations. Includes 50 chairs, 10 tables, and a large outdoor tent to protect against rain or sun.',
     image_url: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80',
     details: {
       chairs: 50,
       tables: 10,
-      extras: ['Fully Furnished Interior', 'Big Weather-proof Tent']
+      extras: ['Fully Furnished Interior', 'Big Weather-proof Tent'],
+      types: [
+        { key: 'ground', label: 'Vacation House & Ground', price: 10000 },
+        { key: 'exclusive', label: 'Exclusive', price: 15000, note: 'all included' },
+      ]
     }
   },
   {

@@ -24,20 +24,38 @@ export const bookingStage = (b: Booking): BookingStage =>
 //
 // The house colours carry it, so red and green stay free to mean money and nothing else:
 // white while nobody has arrived, gold while the guest is in the hotel, grey once they
-// have left. A walk-in nobody has paid for yet keeps its dashed edge.
+// have left. A booking nobody had paid for used to wear a dashed edge as well; Sebastian had
+// it taken off (2026-10-08) — the blue corner says that now, and nobody knew what the dashes meant.
 export const getBookingStyle = (b: Booking): string => {
   if (b.status === 'blocked') return 'bg-paper-200/60 text-muted border-paper-300'
   const stage = bookingStage(b)
   if (stage === 'out') return 'bg-ink-100 text-ink-500 border-ink-200'
   if (stage === 'in') return 'bg-gold-100 text-ink-900 border-gold-500'
-  if (b.status === 'pending') return 'bg-card text-main border-paper-400 border-dashed'
   return 'bg-card text-main border-paper-400'
 }
 
-/** The word on the pill for a guest who is in the hotel or has left. Nothing before arrival. */
-export const stageTag = (b: Booking): string => {
-  const stage = bookingStage(b)
-  return stage === 'in' ? 'IN' : stage === 'out' ? 'OUT' : ''
+/** The two letters a stay wears on its last morning, where half a day is too narrow for a
+ *  name (the staff, 2026-10-08: they wanted to know who is leaving without opening it). */
+export const pillInitials = (name: string): string => {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  return ((words[0]?.[0] || '') + (words[1]?.[0] || '')).toUpperCase()
+}
+
+// **No deposit is a blue corner on the pill, not words** (Sebastian, 2026-10-08). It stays
+// for as long as nothing has been recorded against the booking — before the guest arrives,
+// while they are in and after they leave, because an agency checks in and out with the bill
+// open and pays about three months later — and it goes the moment the desk records a
+// cheque or any other payment.
+export const hasNoDeposit = (b: Booking): boolean =>
+  b.status !== 'blocked' && b.payment_status !== 'paid' && !hasPaymentRecorded(b)
+
+/** What the desk still has to do with a stay today: check the guest in, or check them out.
+ *  A day that has already passed still counts — the guest is late, not gone. A short stay
+ *  leaves on the day it came. */
+export const dueToday = (b: Booking, todayIso: string): 'in' | 'out' | null => {
+  if (b.status === 'blocked' || b.actual_check_out) return null
+  if (!b.actual_check_in) return b.check_in <= todayIso ? 'in' : null
+  return (b.stay_hours ? b.check_in : b.check_out) <= todayIso ? 'out' : null
 }
 
 /** The same, as a sentence, for the pill's tooltip. */
@@ -57,21 +75,21 @@ export const stageWords = (b: Booking): string => {
 // (the owner's ruling, 2026-09-28). Money an agency will send later is expected, not
 // chased, so it is not red either — and it has no colour of its own (Sebastian, 2026-10-06).
 //
-// **A reservation made with No deposit says exactly that, in blue, and no amount**:
-// `Reserved · No Deposit` (Sebastian, 2026-10-06 — an agency booking made with No deposit
-// included, since it is the same reservation). Nothing is owed until the guest arrives, so
-// there is no figure to show. Once any money has been recorded against it, it is no longer
-// one and keeps the old wording.
-export const pillMoney = (b: Booking): { text: string; className: string } => {
+// **A reservation made with No deposit says so and shows no amount** (Sebastian,
+// 2026-10-06 — an agency booking made with No deposit included). Nothing is owed until the
+// guest arrives, so there is no figure to show. Since 2026-10-08 the pill itself says it
+// with a blue corner (`hasNoDeposit`) and leaves the line out — `quiet` — and so does an
+// agency's stay nothing has been paid on; the words are still on the hover card.
+export const pillMoney = (b: Booking): { text: string; className: string; quiet?: boolean } => {
   const view = getPaymentView(b)
   const due = Number(b.balance_due || 0)
   const peso = '₱' + due.toLocaleString()
   if (view.tone === 'paid') return { text: 'Paid', className: PILL_MONEY.paid }
   if (view.tone === 'reserved') {
-    if (!hasPaymentRecorded(b)) return { text: 'Reserved · No Deposit', className: PILL_NO_DEPOSIT }
+    if (!hasPaymentRecorded(b)) return { text: 'No deposit', className: PILL_NO_DEPOSIT, quiet: true }
     return { text: due > 0 ? peso + ' reserved' : 'Reserved', className: PILL_MONEY.reserved }
   }
-  if (view.tone === 'billed') return { text: peso + ' agency', className: PILL_MONEY.billed }
+  if (view.tone === 'billed') return { text: peso + ' agency', className: PILL_MONEY.billed, quiet: !hasPaymentRecorded(b) }
   return { text: due > 0 ? peso + ' to pay' : 'Not paid', className: PILL_MONEY.owes }
 }
 

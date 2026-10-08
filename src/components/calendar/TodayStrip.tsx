@@ -1,70 +1,47 @@
-import React, { useMemo, useState } from 'react'
-import { LogIn, LogOut, BedDouble, Coffee, Utensils } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Coffee, Utensils } from 'lucide-react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { dateToString } from '../../utils/helpers'
-import { isReservationAwaitingArrival, isOwedByAgency } from '../../utils/bookingMoney'
 import { wantsBreakfastToday, breakfastOn, breakfastSummary } from '../../utils/breakfastChoice'
 import { slipNumber } from '../../utils/orderSlips'
 import { useDinerSlips } from '../../hooks/useDinerSlips'
 import { DinerPayModal } from '../restaurant/DinerPayModal'
 import { tableName } from '../restaurant/served'
 
-type ListKey = 'arriving' | 'leaving' | 'inHouse' | 'breakfast'
+type ListKey = 'breakfast' | 'diners'
 
 interface TodayStripProps {
   bookings: Booking[]
   rooms: Room[]
   venues: Venue[]
-  /** Opens the booking's quick view — the same panel a tap on the calendar opens. */
-  onOpen: (booking: Booking) => void
   /** Opens the breakfast picker for a room that has breakfast. */
   onBreakfast: (booking: Booking) => void
-  /** Sits at the far end of the line — the key to the calendar's colours. */
-  trailing?: React.ReactNode
 }
 
-const fmtDay = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-// Today at the desk: who is arriving, who is leaving, who is in the hotel. Three
-// counts on one line; a tap opens the names, and a name opens that booking.
+// The two things the desk does today that the calendar cannot show: ask the rooms with
+// breakfast what they want, and take the money of a diner who has no room.
 //
-//   Arriving  — booked to be here today and not checked in yet (a guest due
-//               yesterday who has not shown up is still expected, and says so).
-//   Leaving   — checked in, and today is their last day or already past it.
-//   In hotel  — everyone checked in and not yet checked out.
 //   Breakfast — the rooms in the hotel that booked breakfast, and how many of them
 //               have been asked what they want this morning (`1/3`).
 //   Diners    — the diners with no room whose order slips are not paid. The money is
 //               always taken here, at the front desk, never in the restaurant
 //               (Sebastian, 2026-10-04); a room guest's slip is paid from the booking.
 //
-// It is the second line of the calendar's one sheet (the design pass, 2026-10-04), not a
-// card of its own; the names it opens sit under it, above the grid.
-export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trailing }: TodayStripProps) {
-  const [open, setOpen] = useState<ListKey | 'diners' | null>(null)
+// **It used to be a whole line of the calendar** — "Today: Arriving · Leaving · In the
+// hotel" — and Sebastian had it taken off as redundant (2026-10-08): the grid says all
+// three now (the numbers under each date, the edges of the pills, the gold bar on a room).
+// What was left sits on the calendar's top line, and only while there is something to do.
+export function TodayStrip({ bookings, rooms, venues, onBreakfast }: TodayStripProps) {
+  const [open, setOpen] = useState<ListKey | null>(null)
   const today = dateToString(new Date())
   const diners = useDinerSlips()
 
-  const lists = useMemo(() => {
-    const stays = bookings.filter(b => b.status !== 'blocked' && b.status !== 'cancelled')
-    const inHouse = stays.filter(b => !!b.actual_check_in && !b.actual_check_out)
-    return {
-      arriving: stays
-        .filter(b => !b.actual_check_in && b.check_in <= today && today < b.check_out)
-        .sort((a, b) => a.check_in.localeCompare(b.check_in)),
-      // A short stay leaves the day it arrives, whatever its stored check-out says.
-      leaving: inHouse
-        .filter(b => b.check_out <= today || !!b.stay_hours)
-        .sort((a, b) => a.check_out.localeCompare(b.check_out)),
-      inHouse: inHouse.slice().sort((a, b) => a.check_out.localeCompare(b.check_out)),
-      // Not asked yet first, so the list reads as what is still to do.
-      breakfast: inHouse.filter(wantsBreakfastToday)
-        .sort((a, b) => Number(!!breakfastOn(a, today)) - Number(!!breakfastOn(b, today))),
-    }
-  }, [bookings, today])
+  // Not asked yet first, so the list reads as what is still to do.
+  const breakfast = useMemo(() => bookings
+    .filter(b => b.status !== 'blocked' && b.status !== 'cancelled' && !!b.actual_check_in && !b.actual_check_out)
+    .filter(wantsBreakfastToday)
+    .sort((a, b) => Number(!!breakfastOn(a, today)) - Number(!!breakfastOn(b, today))), [bookings, today])
+  const breakfastAsked = breakfast.filter(b => !!breakfastOn(b, today)).length
 
   const place = (b: Booking) => {
     if (b.room_id) {
@@ -74,69 +51,22 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
     return venues.find(v => v.id === b.venue_id)?.name || 'Venue'
   }
 
-  const hint = (key: ListKey, b: Booking): { text: string; warn: boolean } => {
-    if (key === 'breakfast') {
-      const asked = breakfastOn(b, today)
-      return asked ? { text: breakfastSummary(asked), warn: false } : { text: 'not asked yet', warn: true }
-    }
-    if (key === 'arriving') {
-      if (b.check_in < today) return { text: 'expected ' + fmtDay(b.check_in), warn: true }
-      if (isReservationAwaitingArrival(b)) return { text: 'Reserved', warn: false }
-    }
-    if (key !== 'arriving' && !b.stay_hours && b.check_out < today) {
-      return { text: 'was due out ' + fmtDay(b.check_out), warn: true }
-    }
-    if (isOwedByAgency(b)) return { text: 'billed to agency', warn: false }
-    const owes = b.payment_status !== 'paid' ? Number(b.balance_due || 0) : 0
-    if (owes > 0) return { text: 'owes ₱' + owes.toLocaleString(), warn: true }
-    if (key === 'inHouse') return { text: 'until ' + fmtDay(b.check_out), warn: false }
-    return { text: 'paid', warn: false }
-  }
-
-  const chips: { key: ListKey; label: string; Icon: typeof LogIn }[] = [
-    { key: 'arriving', label: 'Arriving', Icon: LogIn },
-    { key: 'leaving', label: 'Leaving', Icon: LogOut },
-    { key: 'inHouse', label: 'In the hotel', Icon: BedDouble },
-    { key: 'breakfast', label: 'Breakfast', Icon: Coffee },
-  ]
-  const breakfastAsked = lists.breakfast.filter(b => !!breakfastOn(b, today)).length
-  const shown = open && open !== 'diners' ? lists[open] : []
-  const chipLook = (on: boolean, count: number) =>
-    'inline-flex items-center gap-1.5 h-9 px-3 rounded-md border text-[13px] font-semibold transition-colors duration-150 ' +
-    (on ? 'bg-gold-400 border-gold-400 text-ink-900 cursor-pointer active:scale-[0.98]'
-      : count === 0 ? 'bg-transparent border-transparent text-muted'
-        : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100 cursor-pointer active:scale-[0.98]')
-  const NAME = 'inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-soft bg-card text-[13px] hover:border-gold-400 hover:bg-gold-100 transition-colors duration-150 active:scale-[0.98] cursor-pointer'
+  const chipLook = (on: boolean) =>
+    'inline-flex items-center gap-1.5 h-9 px-3 rounded-md border text-[13px] font-semibold transition-colors duration-150 cursor-pointer active:scale-[0.98] ' +
+    (on ? 'bg-gold-400 border-gold-400 text-ink-900' : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100')
+  const NAME = 'flex w-full items-center gap-1.5 min-h-11 px-3 rounded-md border border-soft bg-card text-left text-[13px] hover:border-gold-400 hover:bg-gold-100 transition-colors duration-150 active:scale-[0.98] cursor-pointer'
 
   return (
-    <div className="px-4 py-1.5 border-b border-soft flex-shrink-0">
-      <div className="flex flex-wrap items-center gap-2 min-h-9">
-        <span className="mr-1 text-[13px] font-semibold text-main">Today</span>
-        {chips.map(({ key, label, Icon }) => {
-          const count = lists[key].length
-          const on = open === key
-          return (
-            <button
-              key={key}
-              type="button"
-              disabled={count === 0}
-              onClick={() => setOpen(on ? null : key)}
-              aria-expanded={on}
-              className={chipLook(on, count)}
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-              <span className="font-bold tabular-nums">{key === 'breakfast' ? breakfastAsked + '/' + count : count}</span>
-            </button>
-          )
-        })}
-        <button
-          type="button"
-          disabled={diners.slips.length === 0}
-          onClick={() => setOpen(open === 'diners' ? null : 'diners')}
-          aria-expanded={open === 'diners'}
-          className={chipLook(open === 'diners', diners.slips.length)}
-        >
+    <div className="relative flex items-center gap-1.5 mr-1.5">
+      {breakfast.length > 0 && (
+        <button type="button" onClick={() => setOpen(open === 'breakfast' ? null : 'breakfast')} aria-expanded={open === 'breakfast'} className={chipLook(open === 'breakfast')}>
+          <Coffee className="w-4 h-4" />
+          Breakfast
+          <span className="font-bold tabular-nums">{breakfastAsked + '/' + breakfast.length}</span>
+        </button>
+      )}
+      {diners.slips.length > 0 && (
+        <button type="button" onClick={() => setOpen(open === 'diners' ? null : 'diners')} aria-expanded={open === 'diners'} className={chipLook(open === 'diners')}>
           <Utensils className="w-4 h-4" />
           Diners to pay
           <span className="font-bold tabular-nums">{diners.slips.length}</span>
@@ -145,33 +75,24 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
             <span className="w-1.5 h-1.5 rounded-full bg-danger-500 animate-pulse motion-reduce:animate-none" />
           )}
         </button>
-        {trailing && <div className="ml-auto">{trailing}</div>}
-      </div>
+      )}
 
-      {open && open !== 'diners' && shown.length > 0 && (
-        <div className="mt-1.5 pt-2 pb-0.5 border-t border-soft flex flex-wrap gap-1.5 max-h-[104px] overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
-          {shown.map(b => {
-            const h = hint(open, b)
+      {open && (<>
+        {/* A tap anywhere else puts the list away. */}
+        <button type="button" aria-label="Close the list" onClick={() => setOpen(null)} className="fixed inset-0 z-40 cursor-default" />
+        <div className="absolute right-0 top-full z-50 mt-2 flex max-h-[320px] w-[320px] max-w-[calc(100vw-2rem)] flex-col gap-1.5 overflow-y-auto rounded-lg border border-gold-400 bg-card p-2 animate-in fade-in duration-150 motion-reduce:animate-none">
+          {open === 'breakfast' && breakfast.map(b => {
+            const asked = breakfastOn(b, today)
             return (
-              <button
-                key={b.id}
-                type="button"
-                // The breakfast list stays open, so the desk goes down it room by room.
-                onClick={() => { if (open === 'breakfast') onBreakfast(b); else { setOpen(null); onOpen(b) } }}
-                className={NAME}
-              >
+              // The list stays open, so the desk goes down it room by room.
+              <button key={b.id} type="button" onClick={() => onBreakfast(b)} className={NAME}>
                 <b className="text-main">{b.guest_name}</b>
                 <span className="text-muted">· {place(b)}</span>
-                <span className={h.warn ? 'font-semibold text-danger-600' : 'text-muted'}>· {h.text}</span>
+                <span className={asked ? 'text-muted' : 'font-semibold text-danger-600'}>· {asked ? breakfastSummary(asked) : 'not asked yet'}</span>
               </button>
             )
           })}
-        </div>
-      )}
-
-      {open === 'diners' && diners.slips.length > 0 && (
-        <div className="mt-1.5 pt-2 pb-0.5 border-t border-soft flex flex-wrap gap-1.5 max-h-[104px] overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
-          {diners.slips.map(s => (
+          {open === 'diners' && diners.slips.map(s => (
             <button key={s.tab.id} type="button" onClick={() => { setOpen(null); diners.pay(s) }} className={NAME}>
               <b className="text-main">{tableName(s.tab.table_label) || s.tab.label || 'Walk-in'}</b>
               <span className="text-muted">· {[s.tab.table_label ? s.tab.label : '', slipNumber(s.tab)].filter(Boolean).join(' · ')}</span>
@@ -182,7 +103,7 @@ export function TodayStrip({ bookings, rooms, venues, onOpen, onBreakfast, trail
             </button>
           ))}
         </div>
-      )}
+      </>)}
 
       {diners.paying && (
         <DinerPayModal

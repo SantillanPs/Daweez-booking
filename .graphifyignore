@@ -1,0 +1,10 @@
+# The graph covers the booking system itself. These folders belong to other
+# tools (agent definitions, design mock-ups, their state) and would be half
+# the graph if they were read.
+.gemini/
+.lavish/
+.lavish-state/
+.understand-anything/
+.compound-engineering/
+.claude/
+.npm-cache/

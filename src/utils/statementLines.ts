@@ -5,6 +5,7 @@ import { getRateConfig } from './rateConfig'
 import { chargeableEarlyHours } from './checkInOut'
 import { roomDisplayName } from '../components/calendar/bookingStyles'
 import { OrderSlip, slipNumber, slipsTotal } from './orderSlips'
+import { venueTypeOf, venueTypeTitle } from './venueTypes'
 
 /**
  * The rows of the printed Guest Billing Statement, one per charge.
@@ -37,6 +38,36 @@ export interface StatementLineItem {
   nights?: number
   /** Order slip rows only: `Paid` or `Not paid`, printed beside the slip's number. */
   status?: string
+}
+
+/**
+ * **One discount row for the whole bill** (Sebastian, 2026-10-06: *"there's more than one
+ * bookings, the discount usually has its own row for each room that has a discount, so just
+ * use 1 row for the discount and just show the total of the discount for all"*).
+ *
+ * A booking of several rooms is one row per room, and each room that was given a discount
+ * printed its own `Discount` line. They are joined into one that shows what all of them come
+ * to. It keeps the percentage in its words only when every room was given the same one.
+ */
+export function mergeDiscountRows(items: StatementLineItem[]): StatementLineItem[] {
+  const discounts = items.filter(i => i.band === 'discount')
+  if (discounts.length < 2) return items
+  const total = discounts.reduce((sum, i) => sum + i.amount, 0)
+  const same = discounts.every(i => i.description === discounts[0].description)
+  const merged: StatementLineItem = {
+    ...discounts[0],
+    description: same ? discounts[0].description : 'Discount',
+    price: total,
+    amount: total,
+  }
+  // Where the first discount row stood — the table groups by band, so this is only its order.
+  let placed = false
+  return items.flatMap(i => {
+    if (i.band !== 'discount') return [i]
+    if (placed) return []
+    placed = true
+    return [merged]
+  })
 }
 
 /** The nights a booking is charged for (a short stay is one day). */
@@ -113,6 +144,11 @@ export function bookingLines(b: Booking, o: {
   // No "promo" wording on the printed paper (card k128): there is one price, so the room
   // line simply names the room. Only a partner's contracted rate is worth calling out.
   const rateLabel = b.contract_rate_override != null ? ' · corporate' : ''
+  // The kind of venue that was booked is named on its row: `Vacation House & Ground`,
+  // `Vacation House · Exclusive`.
+  const bookedVenue = isRoom ? undefined : venues.find(v => v.id === normalizeVenueId(b.venue_id || ''))
+  const kind = bookedVenue ? venueTypeOf(bookedVenue, b.event_addons?.venue_type) : undefined
+  const kindTitle = bookedVenue && kind ? venueTypeTitle(bookedVenue, kind) : ''
   const stayHours = Number(b.stay_hours || 0)
   const isShortStay = stayHours > 0
 
@@ -121,7 +157,7 @@ export function bookingLines(b: Booking, o: {
   items.push({
     key: b.id + '-stay',
     band: 'room',
-    description: unitName(b, rooms, venues) + (isShortStay ? ' · ' + stayHours + ' hours' : '') + rateLabel,
+    description: (kindTitle || unitName(b, rooms, venues)) + (isShortStay ? ' · ' + stayHours + ' hours' : '') + rateLabel,
     // A short stay is ONE charge, but the column must read the hours bought (`12 hrs`):
     // the charge count printed `1 hrs` on every short stay, whatever its length.
     qty: isShortStay ? String(stayHours) : String(stayQty),
@@ -139,9 +175,10 @@ export function bookingLines(b: Booking, o: {
     items.push({
       key: b.id + '-discount',
       band: 'discount',
+      // Just `Discount` (Sebastian, 2026-10-06: *"remove the 'Staff' in the discount"*).
       description: b.applied_discount?.type === 'percent'
-        ? 'Staff discount (' + b.applied_discount.value + '%)'
-        : 'Staff discount',
+        ? 'Discount (' + b.applied_discount.value + '%)'
+        : 'Discount',
       qty: '1',
       unit: 'PC',
       price: -Math.round(pricing.appliedDiscountAmount),

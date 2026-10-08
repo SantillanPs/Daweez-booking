@@ -212,7 +212,7 @@ export function ChatbotWidget() {
         replyText = "🏰 **Daweez Pension House Event Venues (Up to 50 Guests Capacity)** 🏰\nHost your dream milestones with our dynamic spaces:\n\n" +
           "1. 🛖 **Gazebo (₱5,000 promo):** Elegant octagonal structure, 50 classy chairs, 9 large banquet tables, Bluetooth sound system, and water dispenser.\n" +
           "2. 🌿 **Garden Area (₱7,500 promo):** Manicured lawn borders, warm string fairy lights, 50 chairs, 10 tables, and heavy-duty shade tent.\n" +
-          "3. 🏡 **Vacation House (₱15,000 promo):** Full-furnished staycation premier villa, 50 guest chairs, 10 tables, and outdoor canopy setups.\n\n" +
+          "3. 🏡 **Vacation House (₱7,500 · with the Ground ₱10,000 · Exclusive, everything included, ₱15,000):** Full-furnished staycation premier villa, 50 guest chairs, 10 tables, and outdoor canopy setups.\n\n" +
           "🎹 *Need Event Add-ons? We offer a Live Band & Stage Lights (₱2,000), raised Stage (₱2,000), or a professional LED Wall (₱5,000)! We also lease extra tables and chairs.*"
         buttons = [
           { text: 'Book Event Venue 🏰', action: 'reply', payload: 'how_to_book_venue' },

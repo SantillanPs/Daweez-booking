@@ -1,6 +1,6 @@
 import {
   Booking, BookingSource, Room, Venue, PartnerDeal, Companion,
-  EquipmentRental, BreakfastOrder, AppliedDiscount, PaymentRecord,
+  EquipmentRental, BreakfastOrder, AppliedDiscount, PaymentRecord, EventAddons,
 } from '../../types/booking'
 import { DiscountType } from '../calendar/DiscountPricingControls'
 
@@ -31,6 +31,8 @@ export interface ManualBookingInput {
   source: BookingSource
   status: 'pending' | 'confirmed' | 'blocked'
   equipmentRentals?: EquipmentRental
+  /** A venue booking's `event_addons` — here it holds the chosen kind of venue (`venue_type`). */
+  eventAddons?: EventAddons
   agreedDeposit?: number
   companions?: Companion[]
   partnerDealId?: string
@@ -93,6 +95,8 @@ export interface BookingSubmitParams {
   formBlockNotes: string
   discountType: DiscountType
   discountValue: number
+  /** The kind chosen for each venue (`VenueType.key`, by venue id). */
+  formVenueTypes: Record<string, string>
   venueDayBlocks: number
   editingBookings?: Booking[]
   formPaymentMethod: string

@@ -26,13 +26,14 @@
 
 - **Breakfast belongs to the room, and it is one charge for the whole stay at that room's own breakfast price.** The desk types the price per room in Settings.
 - **A room with no breakfast price sells no breakfast.** The owner: *"remove every trace of 150 per head for breakfast calculations since the staff decides what the breakfast price is."* The old ₱150-per-head fallback once charged a guest ₱300 for breakfast they were never offered.
-- **A guest who booked breakfast is asked every morning what they want** (the owner, 2026-10-04). The staff write the choice down for the kitchen; it does not change the price.
+- **A guest who booked breakfast is asked every morning what they want** (the owner, 2026-10-04). The staff write the choice down for the kitchen; it does not change the price. **Since 2026-10-08 it really reaches the kitchen:** Sebastian asked for a *"satisfying sent to kitchen card"* after pressing Serve, and until then nothing on the kitchen's screen read a breakfast at all. A served breakfast is now a card on Restaurant → Kitchen with one "Order ready" button. The window itself was redrawn the same day to read like the restaurant's menu (dish, dotted line, how many), *"Save"* became *"Serve"*, and every tap in it is animated — his general rule: *"aside from core functionality, I prioritise satisfying user experience over everything else."*
 - Two earlier ideas are dead: ₱150 × beds, and per person per day. Old bookings that recorded breakfast day by day keep what they were charged.
 
 ## Discounts and extras
 
 - Staff discount: none, 20%, 10%, or a custom amount. On the bill it is its own negative row so the column adds up in front of the guest.
 - **A custom (flat) amount off is taken once for the whole booking, however many rooms or venues it has** (Sebastian, 2026-10-06: two venues worth ₱50,000 with ₱6,200 off came to ₱37,600; he expected ₱43,800). Each unit is its own row and is priced on its own, and every row had been given the full amount, so it came off once per unit. It is now **shared out in proportion to what each unit costs** (`walk-in/discountSplit.ts`, the same split that divides one payment across rooms), each row keeps only its share, and the shares add back up to exactly what was typed. A percentage needs no sharing — 20% of each part is 20% of the whole. The edit form shows the shares added up. Bookings saved before this fix still carry the full amount on every unit; they are left as they are.
+- **The bill has one `Discount` row, however many rooms were given one** (Sebastian, 2026-10-06: *"just use 1 row for the discount and just show the total of the discount for all"*), and it says `Discount`, not `Staff discount`. Each room still carries its own share in its booking; the rows are joined when the bill is made (`mergeDiscountRows`), and keep the percentage in their words only when every room had the same one.
 - The gap between a room's night price and its hours price is **never** printed as a discount.
 - Extras (foam, pillow, blanket, towel, tables, chairs, tent) are entered once for a group and go on the first room or first venue only.
 

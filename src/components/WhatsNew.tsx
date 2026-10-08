@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Megaphone, X } from 'lucide-react'
-import { UPDATES, markUpdatesSeen, unseenUpdates, updateDay } from '../utils/whatsNew'
+import { UPDATES, markUpdatesSeen, unseenUpdates, updateDay, type Update } from '../utils/whatsNew'
 import { isDeskBusy, setReadingWhatsNew } from '../utils/deskState'
 
-// The latest updates are what the staff read; the list does not grow down the screen for ever.
+// Only what this device has not seen is listed (Sebastian, 2026-10-07: what was already
+// opened should be gone to make room for the new). The cap keeps a long absence readable.
 const LISTED = 5
 
 interface WhatsNewProps {
@@ -28,10 +29,13 @@ export function WhatsNew({ atFrontDesk }: WhatsNewProps) {
   // The updates this device had not shown when the window was opened — marked "New" in
   // it. Null while it is closed.
   const [fresh, setFresh] = useState<string[] | null>(null)
+  // Earlier updates, kept behind a button and listed by day.
+  const [older, setOlder] = useState(false)
   const [waiting, setWaiting] = useState(() => unseenUpdates().length > 0)
 
   const show = () => {
     setFresh(unseenUpdates().map(u => u.id))
+    setOlder(false)
     markUpdatesSeen()
     setWaiting(false)
     setReadingWhatsNew(true)
@@ -61,6 +65,16 @@ export function WhatsNew({ atFrontDesk }: WhatsNewProps) {
 
   if (UPDATES.length === 0) return null
 
+  // Everything already seen, one block for each day.
+  const olderDays: [string, Update[]][] = []
+  for (const u of UPDATES) {
+    if (fresh?.includes(u.id)) continue
+    const day = u.id.slice(0, 10)
+    const last = olderDays[olderDays.length - 1]
+    if (last && last[0] === day) last[1].push(u)
+    else olderDays.push([day, [u]])
+  }
+
   return (
     <>
       {/* The same shape as Sync beside it; on a phone, where Sync is not shown, only the mark. */}
@@ -85,27 +99,32 @@ export function WhatsNew({ atFrontDesk }: WhatsNewProps) {
 
             {/* One update after another, parted by a rule — lines on one sheet, not boxes. */}
             <div className="min-h-0 overflow-y-auto overscroll-contain px-5 divide-y divide-soft">
-              {UPDATES.slice(0, LISTED).map(update => (
+              {fresh.length === 0 && (
+                <p className="py-8 text-center text-[14px] text-muted">Nothing new since you last looked.</p>
+              )}
+              {UPDATES.filter(u => fresh.includes(u.id)).slice(0, LISTED).map(update => (
                 <section key={update.id} className="py-4 space-y-4">
                   <p className="flex items-center gap-2 text-[13px] font-semibold text-muted">
                     {updateDay(update.id)}
-                    {fresh.includes(update.id) && (
-                      <span className="px-1.5 py-0.5 rounded bg-gold-100 text-gold-800 text-[12px] font-bold leading-none">New</span>
-                    )}
+                    <span className="px-1.5 py-0.5 rounded bg-gold-100 text-gold-800 text-[12px] font-bold leading-none">New</span>
                   </p>
-                  {update.changes.map(group => (
-                    <div key={group.where}>
-                      <h4 className="font-display text-[15px] font-bold text-main">{group.where}</h4>
-                      <ul className="mt-1.5 space-y-1.5">
-                        {group.what.map(line => (
-                          <li key={line} className="flex gap-2.5 text-[14px] leading-snug text-main">
-                            <span className="mt-[7px] w-1.5 h-1.5 shrink-0 rounded-full bg-gold-400" aria-hidden="true" />
-                            <span>{line}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+                  <Changes update={update} />
+                </section>
+              ))}
+
+              {UPDATES.some(u => !fresh.includes(u.id)) && (
+                <div className="py-3">
+                  <button type="button" onClick={() => setOlder(o => !o)} aria-expanded={older}
+                    className="w-full h-11 rounded-lg text-[14px] font-semibold text-main hover:bg-softbg transition-colors cursor-pointer">
+                    {older ? 'Hide previous changes' : 'Show previous changes'}
+                  </button>
+                </div>
+              )}
+
+              {older && olderDays.map(([day, updates]) => (
+                <section key={day} className="py-4 space-y-4">
+                  <p className="text-[13px] font-semibold text-muted">{updateDay(day)}</p>
+                  {updates.map(update => <Changes key={update.id} update={update} />)}
                 </section>
               ))}
             </div>
@@ -120,6 +139,26 @@ export function WhatsNew({ atFrontDesk }: WhatsNewProps) {
         </div>,
         document.body,
       )}
+    </>
+  )
+}
+
+function Changes({ update }: { update: Update }) {
+  return (
+    <>
+      {update.changes.map(group => (
+        <div key={group.where}>
+          <h4 className="font-display text-[15px] font-bold text-main">{group.where}</h4>
+          <ul className="mt-1.5 space-y-1.5">
+            {group.what.map(line => (
+              <li key={line} className="flex gap-2.5 text-[14px] leading-snug text-main">
+                <span className="mt-[7px] w-1.5 h-1.5 shrink-0 rounded-full bg-gold-400" aria-hidden="true" />
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </>
   )
 }

@@ -1,5 +1,6 @@
 import React from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarGuide } from './CalendarGuide'
 
 interface CalendarToolbarProps {
   monthHeader: string
@@ -13,6 +14,8 @@ interface CalendarToolbarProps {
   /** Jump the window to the day the desk picked (option A, card k154). */
   onJumpToDate: (value: string) => void
   onToday: () => void
+  /** What the desk still has to do today that the grid cannot show (`TodayStrip`). */
+  children?: React.ReactNode
 }
 
 const STEP = 'w-9 h-9 inline-flex items-center justify-center rounded-md text-muted hover:text-main hover:bg-softbg transition-colors duration-150 active:scale-95 cursor-pointer'
@@ -27,7 +30,7 @@ const STEP = 'w-9 h-9 inline-flex items-center justify-center rounded-md text-mu
 //
 // It is the top line of the calendar's one sheet, not a card of its own (the design pass,
 // 2026-10-04): the title at one end, the days at the other, a rule under them.
-export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onPrevMonth, onNextMonth, onJumpToDate, onToday }: CalendarToolbarProps) {
+export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onPrevMonth, onNextMonth, onJumpToDate, onToday, children }: CalendarToolbarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5 min-h-12 border-b border-soft flex-shrink-0">
       <h2 className="flex items-baseline gap-2.5 font-display font-bold text-[19px] text-main tracking-tight">
@@ -35,7 +38,8 @@ export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onP
         {startsToday && <span className="font-sans text-[13px] font-medium tracking-normal text-muted">from today</span>}
       </h2>
 
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
+        {children}
         <button type="button" onClick={onPrevMonth} title="Previous month" aria-label="Previous month" className={STEP}>
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -60,6 +64,7 @@ export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onP
           className="h-9 px-2.5 rounded-md text-[13px] font-semibold text-brand-text hover:bg-softbg transition-colors duration-150 active:scale-95 cursor-pointer">
           Today
         </button>
+        <CalendarGuide />
       </div>
     </div>
   )

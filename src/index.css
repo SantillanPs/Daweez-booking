@@ -104,6 +104,72 @@
   animation: shake 0.5s ease-in-out;
 }
 
+/* A small double hop, then a rest — for a sign that is waiting on the desk (the breakfast
+   cup on a calendar pill). It is the movement that makes it a job and not a label. */
+@keyframes hop {
+  0%, 60%, 100% { transform: translateY(0); }
+  68% { transform: translateY(-4px); }
+  76% { transform: translateY(0); }
+  84% { transform: translateY(-2.5px); }
+  92% { transform: translateY(0); }
+}
+
+.animate-hop {
+  animation: hop 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+/* ── The breakfast window's moves (`BreakfastPicker`) ───────────────────────
+   Everything in that window answers a tap (the owner's rule: once it works, how it feels
+   comes first). Two curves carry it: a soft landing, and a spring that overshoots. The
+   reduced-motion rule at the foot of this file stills all of them. */
+@keyframes bp-rise { from { opacity: 0; transform: translateY(14px) scale(0.98); } }
+@keyframes bp-slide { from { opacity: 0; transform: translateY(8px); } }
+@keyframes bp-up { from { opacity: 0; transform: translateY(70%) scale(0.8); } }
+@keyframes bp-down { from { opacity: 0; transform: translateY(-70%) scale(0.8); } }
+@keyframes bp-nudge { 40% { transform: translateX(3px); } }
+@keyframes bp-ready { 50% { transform: scale(1.06); } }
+@keyframes bp-squash { 0% { transform: scale(1); } 25% { transform: scale(0.9, 0.94); } 60% { transform: scale(1.07, 1.03); } 100% { transform: scale(1); } }
+@keyframes bp-tick { to { stroke-dashoffset: 0; } }
+@keyframes bp-dim { from { opacity: 0; } }
+@keyframes bp-undim { to { opacity: 0; } }
+@keyframes bp-drop { from { opacity: 0; transform: translateY(40px) scale(0.9) rotate(-3deg); } }
+@keyframes bp-fly { to { opacity: 0; transform: translateY(-140%) scale(0.85) rotate(4deg); } }
+@keyframes bp-pop { from { transform: scale(0); } }
+@keyframes bp-spark {
+  0% { opacity: 1; transform: rotate(var(--a)) translateY(-22px) scale(0.4); }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(-46px) scale(1); }
+}
+
+.bp-rise { animation: bp-rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+/* `--i` is the line's place in its list, so the lines arrive one after another. */
+.bp-row { animation: bp-slide 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i) * 45ms + 80ms); }
+.bp-line { animation: bp-slide 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i) * 90ms + 250ms); }
+.bp-up { display: inline-block; animation: bp-up 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bp-down { display: inline-block; animation: bp-down 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+.bp-nudge { display: inline-block; animation: bp-nudge 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bp-ready { animation: bp-ready 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bp-squash { animation: bp-squash 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+/* A tick that draws itself: the stroke starts hidden and is run out along its path. */
+.bp-tick { stroke-dasharray: 24; stroke-dashoffset: 24; animation: bp-tick 0.35s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.bp-tick-late { animation-delay: 0.35s; animation-duration: 0.4s; }
+.bp-dim { animation: bp-dim 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.bp-undim { animation: bp-undim 0.3s 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.bp-drop { animation: bp-drop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.bp-fly { animation: bp-fly 0.45s cubic-bezier(0.5, 0, 0.9, 0.4) both; }
+.bp-seal { animation: bp-pop 0.5s 0.1s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+/* Six gold sparks thrown out from the seal, one every sixty degrees. */
+.bp-seal > i {
+  position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px;
+  border-radius: 9999px; background: #D0AB60; opacity: 0;
+  animation: bp-spark 0.6s 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.bp-seal > i:nth-child(1) { --a: 0deg; }
+.bp-seal > i:nth-child(2) { --a: 60deg; }
+.bp-seal > i:nth-child(3) { --a: 120deg; }
+.bp-seal > i:nth-child(4) { --a: 180deg; }
+.bp-seal > i:nth-child(5) { --a: 240deg; }
+.bp-seal > i:nth-child(6) { --a: 300deg; }
+
 /* Hide scrollbar but keep scroll */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

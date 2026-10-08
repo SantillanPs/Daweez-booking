@@ -1,9 +1,14 @@
-import React, { useEffect, useState } from 'react'
-import { Bell, BellOff, Check, ChefHat, ConciergeBell, Undo2 } from 'lucide-react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Bell, BellOff, Check, ChefHat, Coffee, ConciergeBell, Undo2 } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { guestPlace, tableName } from './restaurant/served'
 import { KitchenOrder, useKitchenQueue } from '../hooks/useKitchenQueue'
 import { kitchenSoundIsOn, playKitchenChime, setKitchenSound, wakeKitchenSound } from '../utils/kitchenSound'
+import { Booking } from '../types/booking'
+import { dateToString } from '../utils/helpers'
+import { breakfastOn, saveBreakfastChoices } from '../utils/breakfastChoice'
+import { showToast } from '../utils/toast'
 
 const QUIET = 'min-h-11 inline-flex items-center gap-1.5 px-3 rounded-lg border border-soft bg-card text-[14px] font-semibold text-main hover:border-gold-400 hover:bg-gold-100 transition-colors duration-200 active:scale-[0.98] cursor-pointer'
 const LOUD = 'min-h-11 inline-flex items-center gap-1.5 px-3 rounded-lg bg-gold-400 hover:bg-gold-600 text-[14px] font-bold text-ink-900 transition-colors duration-200 active:scale-[0.98] cursor-pointer'
@@ -104,7 +109,38 @@ export function KitchenTab() {
     return booking ? guestPlace(booking, rooms, venues) : ''
   }
 
-  const waiting = kitchen.orders.length
+  // **The breakfasts the desk has served are orders too** (Sebastian, 2026-10-08). The
+  // desk asks each room what it wants and presses Serve, and its window says "Sent to the
+  // kitchen" — so it has to arrive here. A breakfast is not on an order slip (it is in the
+  // price of the room), so it is read off the bookings: today's answer, with something on
+  // it, that the kitchen has not yet called ready. It has one button, no dish-by-dish
+  // ticks: there is nowhere yet to remember a half-cooked breakfast.
+  const queryClient = useQueryClient()
+  const today = dateToString(new Date())
+  const breakfasts = useMemo(() => allBookings
+    .filter(b => b.status !== 'cancelled')
+    .map(b => ({ booking: b, choice: breakfastOn(b, today) }))
+    .filter((x): x is { booking: Booking; choice: NonNullable<ReturnType<typeof breakfastOn>> } =>
+      !!x.choice && x.choice.items.length > 0 && !x.choice.ready_at)
+    .sort((a, b) => (a.choice.sent_at || '').localeCompare(b.choice.sent_at || '')), [allBookings, today])
+
+  // The same sound as any other order when one comes in.
+  const breakfastCount = useRef(breakfasts.length)
+  useEffect(() => {
+    if (breakfasts.length > breakfastCount.current && kitchenSoundIsOn()) playKitchenChime()
+    breakfastCount.current = breakfasts.length
+  }, [breakfasts.length])
+
+  const breakfastReady = async (booking: Booking) => {
+    const choices = (booking.breakfast_choices || []).map(c => c.date === today ? { ...c, ready_at: new Date().toISOString() } : c)
+    const before = queryClient.getQueryData<Booking[]>(['bookings'])
+    // Gone from the screen at once; put back if the database says no.
+    queryClient.setQueryData<Booking[]>(['bookings'], old => old?.map(b => b.id === booking.id ? { ...b, breakfast_choices: choices } : b))
+    try { await saveBreakfastChoices(booking.id, choices) }
+    catch { queryClient.setQueryData(['bookings'], before); showToast('Could not mark the breakfast ready. Please try again.', 'error') }
+  }
+
+  const waiting = kitchen.orders.length + breakfasts.length
   return (
     <div className="space-y-4 font-sans">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
@@ -157,6 +193,37 @@ export function KitchenTab() {
 
       {!kitchen.loading && waiting > 0 && (
         <div className="grid gap-4 items-start sm:grid-cols-2 xl:grid-cols-3">
+          {breakfasts.map(({ booking, choice }) => {
+            const minutes = minutesWaited(choice.sent_at || null, now)
+            const late = minutes >= WAITING_TOO_LONG
+            return (
+              <article key={'breakfast-' + booking.id}
+                className={'bg-card border rounded-xl p-5 space-y-4 animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none ' + (late ? 'border-danger-400' : 'border-soft')}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="font-display text-[30px] leading-none font-extrabold tracking-tight text-main">{guestPlace(booking, rooms, venues)}</h3>
+                    <p className="mt-2 flex items-center gap-1.5 text-[16px] text-muted"><Coffee className="w-4 h-4 shrink-0" /> Breakfast · {booking.guest_name}</p>
+                  </div>
+                  <span className={'shrink-0 px-2.5 py-1 rounded-lg text-[17px] font-bold tabular-nums ' +
+                    (late ? 'bg-danger-50 text-danger-600' : minutes >= WAITING_LONG ? 'bg-gold-100 text-gold-800' : 'text-main')}>
+                    {waited(minutes)}
+                  </span>
+                </div>
+                <ul className="divide-y divide-soft border-y border-soft">
+                  {choice.items.map(item => (
+                    <li key={item.name} className="min-h-16 py-2 flex items-center gap-3">
+                      <span className="w-14 shrink-0 text-[26px] leading-none font-extrabold tabular-nums text-main">{item.qty} ×</span>
+                      <span className="min-w-0 flex-1 text-[22px] leading-tight font-bold break-words text-main">{item.name}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button type="button" onClick={() => void breakfastReady(booking)}
+                  className="w-full min-h-16 inline-flex items-center justify-center gap-2 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-[19px] font-bold transition-colors duration-200 active:scale-[0.98] cursor-pointer">
+                  <ConciergeBell className="w-5 h-5" /> Order ready
+                </button>
+              </article>
+            )
+          })}
           {kitchen.orders.map(order => {
             const place = placeOf(order)
             const minutes = minutesWaited(order.sentAt, now)

@@ -26,7 +26,9 @@ export function breakfastSummary(choice: BreakfastChoice): string {
 /** The booking's choices with `date` set to `items` (replacing that day's earlier answer). */
 export function withBreakfastChoice(b: Booking, date: string, items: BreakfastChoice['items']): BreakfastChoice[] {
   const others = (b.breakfast_choices || []).filter(c => c.date !== date)
-  return [...others, { date, items: items.filter(i => i.qty > 0) }].sort((x, y) => x.date.localeCompare(y.date))
+  // A new answer is a new order: it is stamped now and it is not ready, so the kitchen's
+  // screen shows it (again, if the desk changed an answer the kitchen had already cooked).
+  return [...others, { date, items: items.filter(i => i.qty > 0), sent_at: new Date().toISOString() }].sort((x, y) => x.date.localeCompare(y.date))
 }
 
 /** Saves the choices through their own small writer, so no other booking field is touched. */

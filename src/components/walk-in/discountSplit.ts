@@ -27,6 +27,8 @@ export interface DiscountUnit {
   checkOut: string
   /** The agency's agreed rate for this unit, when an agency is paying. */
   contractRate?: number
+  /** The kind of venue chosen (Ground, Exclusive), which sets the day's price. */
+  venueType?: string
 }
 
 export function splitDiscount(
@@ -48,6 +50,7 @@ export function splitDiscount(
     checkOut: u.checkOut,
     guestEmail: '',
     contractRateOverride: u.contractRate,
+    eventAddons: u.venueType ? { venue_type: u.venueType } : undefined,
     venueDayBlocks: o.venueDayBlocks,
     shortStayHours: u.type === 'room' ? (o.shortStayHours ?? undefined) : undefined,
     rooms: o.rooms,

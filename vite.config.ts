@@ -14,6 +14,9 @@ export default defineConfig({
   // ".File.tsx.<pid>.<uuid>.tmpdir/File.tsx.tmp"). Vite's file watcher otherwise
   // tries to fs.watch them; on Windows that throws EBUSY and crashes the dev server.
   server: {
+    // The preview pane hands out a free port in PORT when 5173 is taken by
+    // another project's dev server; Vite does not read PORT by itself.
+    port: Number(process.env.PORT) || 5173,
     watch: {
       ignored: [
         '**/*.tmp',

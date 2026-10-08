@@ -23,6 +23,51 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-08',
+    changes: [
+      {
+        where: 'Front desk → Breakfast today',
+        what: [
+          'The breakfast window now looks like the restaurant menu. Tap a dish to add one. Tap its number to take one off.',
+          '“Save” is now “Serve”. When you press it, the order goes to the kitchen and the window tells you so.',
+        ],
+      },
+      {
+        where: 'Restaurant → Kitchen',
+        what: [
+          'A breakfast served at the front desk now shows on the kitchen screen as an order, with the room and the dishes. Press “Order ready” when it is done.',
+        ],
+      },
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'On a guest’s last morning the booking now shows their initials, not just “IN”.',
+          'A room with a guest in it has a gold bar beside its number.',
+          'The dotted outline on some bookings is gone. The blue corner is the sign for nothing paid.',
+          'A booking that arrives today has a green left edge. One that leaves today has a dark right edge.',
+          'A booking with no deposit has a blue corner. It goes away once you record a cheque or any payment.',
+          'An agency booking has a small building beside its name.',
+          'A hopping cup beside a room means that room has breakfast today and has not been asked what they want. Tap the cup to ask. It goes away once you have.',
+          'Under each date are two numbers: how many will leave (left, dark) and how many will arrive (right, green) that day.',
+          'The “Today” line is gone, because the calendar now shows who arrives, who leaves and who is in. “Breakfast” and “Diners to pay” moved to the top right, and show only when there is something to do.',
+          'Tap the “?” at the top right of the calendar to see what every sign means.',
+        ],
+      },
+    ],
+  },
+  {
+    id: '2026-10-06h',
+    changes: [
+      {
+        where: 'Receipts and statements',
+        what: [
+          'The discount on a bill now says “Discount”, not “Staff discount”.',
+          'A booking of several rooms prints one Discount row, with the total of all of them, instead of a row for each room.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-06g',
     changes: [
       {

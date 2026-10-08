@@ -38,7 +38,28 @@ export interface Venue {
     chairs: number
     tables: number
     extras: string[]
+    /**
+     * The kinds of this venue the desk chooses between when booking it, each with its own
+     * price a day (Sebastian, 2026-10-06: the Vacation House is ₱7,500; **Vacation House &
+     * Ground** ₱10,000; **Exclusive**, all of it with everything that comes with it, ₱15,000).
+     * `base_price` is the plain venue; a kind replaces it. A venue with no kinds is booked at
+     * `base_price` and shows no choice. See `venueTypes.ts`.
+     */
+    types?: VenueType[]
   }
+}
+
+/**
+ * One kind of a venue — `ground`, `Vacation House & Ground`, ₱10,000 a day. The label is what
+ * the choice, the bill and the booking panel call it, so it says what the guest is taking:
+ * the Vacation House **and** the ground, or `Exclusive` — all of it, with everything that
+ * comes with it. `note` is the short fact under its price in the choice (`all included`).
+ */
+export interface VenueType {
+  key: string
+  label: string
+  price: number
+  note?: string
 }
 
 export type BookingSource = 
@@ -80,6 +101,10 @@ export interface BreakfastRecord {
 export interface BreakfastChoice {
   date: string // YYYY-MM-DD the breakfast is for
   items: { name: string; qty: number }[] // empty = asked, and the guest wanted nothing
+  /** When the desk pressed Serve — the kitchen's screen counts the wait from here. */
+  sent_at?: string
+  /** When the kitchen said the breakfast was ready. Until then it is on the kitchen's screen. */
+  ready_at?: string
 }
 
 export interface EquipmentRental {
@@ -100,6 +125,12 @@ export interface EventAddons {
   stage?: boolean             // ₱2,000
   ledWall?: boolean           // ₱5,000
   payment_reference?: string
+  /**
+   * Which kind of the venue was booked (`VenueType.key`) — not an add-on and not charged as
+   * one: it chooses the venue's price. It rides in this JSON because the column already
+   * exists and every writer already carries it; no key means the plain venue.
+   */
+  venue_type?: string
 }
 
 // Staff-applied discount. 'percent' takes a % (20% or 10%) off the stay;

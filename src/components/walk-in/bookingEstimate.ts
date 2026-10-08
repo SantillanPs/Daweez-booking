@@ -24,6 +24,8 @@ export interface BookingEstimateParams {
   /** The staff discount, exactly as the booking will store it. */
   discountType: 'none' | AppliedDiscount['type']
   discountValue: number
+  /** The kind chosen for each venue (`VenueType.key`, by venue id) — it sets the day's price. */
+  formVenueTypes: Record<string, string>
   venueDayBlocks: number
   bookingType: 'individual' | 'partner'
   /**
@@ -63,7 +65,7 @@ export function computeBookingEstimate(p: BookingEstimateParams): BookingEstimat
     appliedDiscount,
     Object.entries(p.unitSelections)
       .filter(([, sel]) => sel.checkIn && sel.checkOut)
-      .map(([id, sel]) => ({ id, type: sel.type, checkIn: sel.checkIn, checkOut: sel.checkOut, contractRate: deal?.contracted_rates[id] || undefined })),
+      .map(([id, sel]) => ({ id, type: sel.type, checkIn: sel.checkIn, checkOut: sel.checkOut, contractRate: deal?.contracted_rates[id] || undefined, venueType: sel.type === 'venue' ? p.formVenueTypes[id] : undefined })),
     { rooms: p.rooms, venues: p.venues, venueDayBlocks: p.venueDayBlocks, shortStayHours: p.shortStayHours },
   )
 
@@ -94,6 +96,8 @@ export function computeBookingEstimate(p: BookingEstimateParams): BookingEstimat
       contractRateOverride: deal?.contracted_rates[id] || undefined,
       venueExcessHours: isRoom ? undefined : p.formVenueExcessHours,
       breakfastIncluded: isRoom && ((deal ? deal.breakfast_default === 'with' : false) || p.formBreakfastRoomIds.includes(id)),
+      // The kind of venue (Ground, Exclusive) chooses its price — it is not an add-on.
+      eventAddons: !isRoom && p.formVenueTypes[id] ? { venue_type: p.formVenueTypes[id] } : undefined,
       appliedDiscount: discounts[id],
       venueDayBlocks: p.venueDayBlocks,
       shortStayHours: isRoom ? (p.shortStayHours ?? undefined) : undefined,

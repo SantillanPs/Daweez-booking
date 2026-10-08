@@ -1,5 +1,6 @@
 import { Booking, EquipmentRental, EventAddons, BookingSource, Room, Venue, AppliedDiscount, RateConfig, BreakfastRecord } from '../types/booking'
 import { normalizeVenueId } from './helpers'
+import { venueTypePrice } from './venueTypes'
 import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 import { DEFAULT_RATE_CONFIG } from './rateConfig'
 
@@ -117,8 +118,11 @@ export function calculatePricing(params: {
       stayQuantity = blocks
       stayUnit = 'BLOCK'
     } else {
-      const regular = venue ? venue.base_price : 0
-      const promo = venue ? (venue.promo_price ?? null) : null
+      // A KIND of the venue (Ground, Exclusive) has its own price a day and replaces the
+      // venue's — it is not added on top. The agency's rate, above, still comes first.
+      const kindPrice = venueTypePrice(venue, eventAddons?.venue_type)
+      const regular = kindPrice ?? (venue ? venue.base_price : 0)
+      const promo = kindPrice !== undefined ? null : venue ? (venue.promo_price ?? null) : null
       const singlePrice = promo != null && promo > 0 ? promo : regular
       undiscountedBasePrice = regular
       if (rateMultiplier !== undefined && rateMultiplier !== 1) {
