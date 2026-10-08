@@ -1,7 +1,7 @@
 import React from 'react'
 import { Building2, Check } from 'lucide-react'
 import { Booking } from '../../types/booking'
-import { hasNoDeposit, pillInitials, pillMoney, stageWords } from './bookingStyles'
+import { pillInitials, pillMoney, stageWords } from './bookingStyles'
 import { clockLabel, shortStayEnd } from '../../utils/shortStay'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 
@@ -87,6 +87,12 @@ export const TimelineCell = React.memo(
     setExtendError
   }: TimelineCellProps) {
     const [showTooltip, setShowTooltip] = React.useState(false)
+    // **The hover card opens downwards on the top rows** (Sebastian, 2026-10-08). It
+    // always opened above the pill, and on the first few rooms that put it under the
+    // calendar's top line, cut off. It now looks at how much grid there is above the pill
+    // and drops below it when there is not enough.
+    const [tipBelow, setTipBelow] = React.useState(false)
+    const TIP_NEEDS = 190
     const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
     React.useEffect(() => {
@@ -109,7 +115,6 @@ export const TimelineCell = React.memo(
       const pillName = isBlock ? blockReason(booking) + (openEnded ? ' · until further notice' : '') : (agencyName || booking.guest_name)
       const left = !!booking.actual_check_out
       const money = pillMoney(booking)
-      const noDeposit = hasNoDeposit(booking)
       // A short stay whose guest is in the room shows THE TIME THE ROOM IS FREE — never
       // a countdown (the owner's ruling) — unless money is still owed, which comes first.
       const freeAt = shortStayEnd(booking.actual_check_in, Number(booking.stay_hours || 0))
@@ -120,7 +125,11 @@ export const TimelineCell = React.memo(
           colSpan={span}
           data-day={isoStr}
           className={'p-0 h-12 border-b border-soft relative align-middle' + dayRule}
-          onMouseEnter={() => {
+          onMouseEnter={e => {
+            const cell = e.currentTarget
+            const grid = cell.closest('[data-grid]')
+            const head = grid?.querySelector('thead')
+            if (grid) setTipBelow(cell.getBoundingClientRect().top - grid.getBoundingClientRect().top - (head?.getBoundingClientRect().height || 0) < TIP_NEEDS)
             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
             hoverTimeoutRef.current = setTimeout(() => setShowTooltip(true), 500)
           }}
@@ -156,16 +165,16 @@ export const TimelineCell = React.memo(
               (due === 'in' ? ' border-l-[5px] border-l-emerald-700' : due === 'out' ? ' border-r-[5px] border-r-ink-900' : '')}
           >
             {/* SIGNS, NOT WORDS (Sebastian, 2026-10-08: "use visual design, not so much text
-                heavy"). The pill's edge is what the desk has to do today, the blue corner is
-                no deposit, the building is an agency; what each means is in the calendar's
-                guide (`CalendarGuide`), not written on the pill. */}
-            {noDeposit && <span aria-hidden="true" className={'absolute top-0 right-0 bg-blue-700 [clip-path:polygon(0_0,100%_0,100%_100%)] ' + (narrow ? 'w-3 h-3' : 'w-4 h-4')} />}
+                heavy"). The pill's edge is what the desk has to do today and the
+                building is an agency; what each means is in the calendar's guide
+                (`CalendarGuide`), not written on the pill. No deposit is the exception: it
+                is back in words, and blue initials where there is no room for them. */}
             {/* HALF A DAY is too narrow to read a name or an amount — it is the stay's last
                 morning, or its first afternoon at the edge of the screen — so it wears the
                 guest's INITIALS (the staff wanted to see who is leaving; it used to say only
                 IN). The full name is on the hover card and in the panel. */}
             {narrow ? (
-              <span className="relative font-display text-[13px] font-bold leading-4">
+              <span className={'relative font-display text-[13px] font-bold leading-4' + (money.noDeposit && !isBlock ? ' text-blue-700' : '')}>
                 {isBlock ? '' : pillInitials(pillName)}
                 {left && !isBlock && <LeftTick className="absolute -right-2.5 -bottom-1.5" />}
               </span>
@@ -185,18 +194,18 @@ export const TimelineCell = React.memo(
                   guest who has left keeps a tick beside the name. */}
               {left && !isBlock && <LeftTick className="shrink-0" />}
             </span>
-            {!isBlock && !(money.quiet && !isShortStayDue && !showClock && !booking.stay_hours) && (
+            {!isBlock && (
               <span className={'text-[12px] font-semibold truncate leading-4 ' + (isShortStayDue ? '' : showClock ? 'text-ink-700' : money.className)}>
                 {isShortStayDue && freeAt ? 'time up ' + clockLabel(freeAt)
                   : showClock && freeAt ? 'out ' + clockLabel(freeAt)
-                    : booking.stay_hours && !booking.actual_check_in ? booking.stay_hours + ' hrs' + (money.quiet ? '' : ' · ' + money.text)
-                      : money.quiet ? '' : money.text}
+                    : booking.stay_hours && !booking.actual_check_in ? booking.stay_hours + ' hrs · ' + money.text
+                      : money.text}
               </span>
             )}
             </>)}
           </div>
           {showTooltip && (
-            <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-30 w-60 bg-card border border-soft p-3 shadow-softLg rounded-lg text-[13px] space-y-1.5 pointer-events-none text-left font-sans animate-in fade-in duration-150">
+            <div className={'absolute left-1/2 -translate-x-1/2 z-30 w-60 ' + (tipBelow ? 'top-full mt-2' : 'bottom-full mb-2') + ' bg-card border border-soft p-3 shadow-softLg rounded-lg text-[13px] space-y-1.5 pointer-events-none text-left font-sans animate-in fade-in duration-150'}>
               <div className="font-display text-[14px] font-bold text-main">{pillName}</div>
               {booking.stay_hours ? (
                 <div className="text-[12px] font-semibold text-brand-text">

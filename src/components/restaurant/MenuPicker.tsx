@@ -4,6 +4,7 @@ import {
   IceCreamCone, Salad, Sandwich, Search, Soup, Utensils, Wheat, X,
 } from 'lucide-react'
 import { MenuCategory, MenuItem, getMenu } from '../../utils/restaurantMenu'
+import { getAllTabLines } from '../../utils/tabs'
 
 const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
@@ -29,8 +30,8 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 }
 
 interface MenuPickerProps {
-  /** Called once per tap. The caller writes the line onto the tab. */
-  onPick: (item: MenuItem) => void
+  /** Called once per tap, with where the dish is on screen. The caller writes the line onto the tab. */
+  onPick: (item: MenuItem, from: DOMRect) => void
   busy?: boolean
   /** How many of each dish are already on the tab, keyed by dish name. */
   counts?: Record<string, number>
@@ -54,11 +55,12 @@ function splitColumns(menu: MenuCategory[]): [MenuCategory[], MenuCategory[]] {
   return [left, menu.filter(c => !onTheLeft.has(c.id))]
 }
 
-function MenuColumn({ categories, onPick, busy, counts }: {
+function MenuColumn({ categories, onPick, busy, counts, best }: {
   categories: MenuCategory[]
-  onPick: (item: MenuItem) => void
+  onPick: (item: MenuItem, from: DOMRect) => void
   busy: boolean
   counts: Record<string, number>
+  best: Best | null
 }) {
   return (
     <div>
@@ -80,28 +82,29 @@ function MenuColumn({ categories, onPick, busy, counts }: {
 
             {category.items.map(item => {
               const alreadyOn = counts[item.name] || 0
+              const isBest = best?.name === item.name
               return (
                 <button
                   key={item.id}
                   type="button"
                   disabled={busy}
-                  onClick={() => onPick(item)}
-                  title={item.note ? item.name + ' — ' + item.note : item.name}
+                  onClick={e => onPick(item, e.currentTarget.getBoundingClientRect())}
+                  title={isBest ? item.name + ' — ordered ' + best.count + ' times' : item.note ? item.name + ' — ' + item.note : item.name}
                   // A finger, not a mouse: every dish is a 48px row whatever its
                   // text, because the staff hold the tablet in front of the guest.
-                  className={'flex w-full flex-col justify-center text-left min-h-[48px] px-2.5 py-1.5 rounded-lg transition-[background-color,transform] duration-200 active:scale-[0.99] cursor-pointer disabled:opacity-50 ' +
-                    (alreadyOn > 0 ? 'bg-gold-100' : 'hover:bg-paper-100')}
+                  // **A gold bar** is a dish on this order, as the gold bar on a room is a
+                  // guest in it; the count is on the slip, not here (it used to be both).
+                  className={'relative flex w-full flex-col justify-center text-left min-h-[48px] px-2.5 py-1.5 transition-[background-color,transform] duration-200 active:scale-[0.99] cursor-pointer disabled:opacity-50 ' +
+                    (isBest ? 'menu-best my-1.5 py-2.5 gap-0.5 border-y border-gold-400 ' : 'rounded-lg ') +
+                    (alreadyOn > 0 ? 'bg-gold-100 shadow-[inset_4px_0_0_#D0AB60]' : 'hover:bg-paper-100')}
                 >
+                  {isBest && <span aria-hidden="true" className="menu-best-mark" />}
                   <span className="flex items-baseline gap-2">
-                    <span className="text-[15px] font-bold text-main">{item.name}</span>
+                    <span className={isBest ? 'font-display text-[15.5px] font-bold tracking-tight text-main' : 'text-[15px] font-bold text-main'}>{item.name}</span>
                     <span className="flex-1 border-b border-dotted border-paper-400 translate-y-[-4px]" />
                     <span className="font-display text-[15px] font-bold tabular-nums text-main">{fmtPeso(item.price)}</span>
-                    {alreadyOn > 0 && (
-                      <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-gold-400 text-ink-900 text-[12px] font-bold inline-flex items-center justify-center self-center">
-                        {alreadyOn}
-                      </span>
-                    )}
                   </span>
+                  {isBest && <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-gold-800">Best seller</span>}
                   {item.note && <span className="block text-[12px] italic text-muted mt-0.5">{item.note}</span>}
                 </button>
               )
@@ -111,6 +114,28 @@ function MenuColumn({ categories, onPick, busy, counts }: {
       })}
     </div>
   )
+}
+
+/** The dish ordered most, and how many times. */
+interface Best { name: string; count: number }
+
+/**
+ * The best seller: the dish on today's menu that has been ordered the most, over every
+ * order slip there has ever been (Sebastian, 2026-10-08: *"keep track of how many times
+ * each item has been ordered and add an indicator of which item is the most popular"*).
+ * Nothing new is stored — every order line is already kept. One dish on the whole menu,
+ * not one per section; he saw it per section and asked why there were three.
+ */
+// ponytail: reads every order line once when the menu opens and adds them up here.
+// Move the sum into a database view when the table is big enough to feel.
+async function readBest(menu: MenuCategory[]): Promise<Best | null> {
+  const onMenu = new Set(menu.flatMap(c => c.items.map(i => i.name)))
+  const counts: Record<string, number> = {}
+  for (const l of await getAllTabLines()) {
+    if (l.kind === 'charge' && onMenu.has(l.description)) counts[l.description] = (counts[l.description] || 0) + Number(l.qty || 1)
+  }
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
+  return top ? { name: top[0], count: top[1] } : null
 }
 
 // The menu board (board card k70).
@@ -123,8 +148,12 @@ function MenuColumn({ categories, onPick, busy, counts }: {
 //
 // It is still a till, never a poster: the whole line is the tap target (a finger
 // never aims at an 8px price), the row lifts under the cursor, and a dish already
-// on the bill has its count written on its own line, so the same order cannot
-// quietly land twice.
+// on the bill wears a gold bar, so the same order cannot quietly land twice.
+//
+// **The best seller is set like a signature dish** — fine double gold rules above and
+// below, a diamond in the top one, its name in the heading face, "Best seller" under it
+// (`menu-best` in `index.css`). Sebastian chose it over medals, stars and a crown: the
+// crown "made it look less like a food item".
 export function MenuPicker({ onPick, busy = false, counts = {} }: MenuPickerProps) {
   // The menu is read from the database so every tablet shows the same one, so it
   // arrives a moment after the first render.
@@ -133,12 +162,17 @@ export function MenuPicker({ onPick, busy = false, counts = {} }: MenuPickerProp
   // it. It narrows the CARD — the paper look, the categories and the count badges
   // all stay — and empties back to the whole menu in one tap.
   const [query, setQuery] = useState('')
+  const [best, setBest] = useState<Best | null>(null)
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
       const loaded = await getMenu()
-      if (!cancelled) setMenu(loaded)
+      if (cancelled) return
+      setMenu(loaded)
+      // The menu does not wait for this: the best seller's rules are drawn when it lands.
+      const top = await readBest(loaded)
+      if (!cancelled) setBest(top)
     })()
     return () => { cancelled = true }
   }, [])
@@ -206,8 +240,8 @@ export function MenuPicker({ onPick, busy = false, counts = {} }: MenuPickerProp
             </p>
           ) : (
             <div className="grid gap-x-7 sm:grid-cols-2">
-              <MenuColumn categories={left} onPick={onPick} busy={busy} counts={counts} />
-              <MenuColumn categories={right} onPick={onPick} busy={busy} counts={counts} />
+              <MenuColumn categories={left} onPick={onPick} busy={busy} counts={counts} best={best} />
+              <MenuColumn categories={right} onPick={onPick} busy={busy} counts={counts} best={best} />
             </div>
           )}
         </div>

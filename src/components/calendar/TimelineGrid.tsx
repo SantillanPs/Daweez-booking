@@ -298,7 +298,7 @@ export const TimelineGrid = React.memo(
     return (
       // The grid is the third line of the calendar's one sheet (see `CalendarTab`), so it
       // draws no card of its own: it is the scroller and nothing round it.
-      <div className="flex-1 min-h-0 min-w-0 overflow-auto relative" ref={scrollRef} onMouseMove={handleGridMouseMove} onMouseLeave={handleGridMouseLeave}>
+      <div data-grid className="flex-1 min-h-0 min-w-0 overflow-auto relative" ref={scrollRef} onMouseMove={handleGridMouseMove} onMouseLeave={handleGridMouseLeave}>
         {/* The action bar lives INSIDE the scroller, pinned just under the cell the
             desk picked, so it is beside both the room and the date and it travels
             with the grid. */}

@@ -1,9 +1,10 @@
 import React from 'react'
-import { Receipt, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Tab, TabLine } from '../../types/tab'
 import { OrderSlip, slipNumber } from '../../utils/orderSlips'
-import { Served } from './ServedStrip'
+import { Served } from './served'
 import { TabBill } from './TabBill'
+import { TableButton } from './TablesPopup'
 
 const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
@@ -19,13 +20,19 @@ interface OrderSlipPanelProps {
   errors: string[]
   /** True while an order is on its way to the kitchen, or being marked as served. */
   working: boolean
+  /** Dishes cooked and waiting to be carried out, on any table. */
+  ready: number
+  /** True while the tables are open. */
+  tablesOpen: boolean
+  /** Opens the tables, hung from the slip's title. */
+  onTables: (at: DOMRect) => void
   onClose: () => void
   onQty: (line: TabLine, delta: 1 | -1) => void
-  onSendKitchen: () => void
-  onServed: () => void
+  onSendKitchen: () => Promise<boolean>
+  onServeLine: (line: TabLine) => void
   /** The guest has finished, or asks for the bill: it leaves the restaurant. */
-  onBill: () => void
-  /** A diner who sat down and ordered nothing: the empty slip is taken off the strip. */
+  onBill: (at: DOMRect) => void
+  /** A diner who sat down and ordered nothing: the empty slip is taken off the screen. */
   onDropEmpty: (tab: Tab) => void
 }
 
@@ -35,52 +42,49 @@ interface OrderSlipPanelProps {
 // screen has room for both (a PC, a tablet held sideways), and in the sheet that slides up
 // from the order bar when it does not (a phone, a tablet held upright).
 //
+// **Its title is the way to the other tables** (`TableButton`): the line of tables that
+// stood across the top of the screen is put away behind it (Sebastian, 2026-10-08).
+//
 // It hands back the pieces of a column, not a box: whoever shows it gives the column its
 // height, and only the rows give way and scroll — the total and its buttons never move.
 export function OrderSlipPanel({
-  person, number, lines, total, earlier, errors, working,
-  onClose, onQty, onSendKitchen, onServed, onBill, onDropEmpty,
+  person, number, lines, total, earlier, errors, working, ready, tablesOpen,
+  onTables, onClose, onQty, onSendKitchen, onServeLine, onBill, onDropEmpty,
 }: OrderSlipPanelProps) {
   return (
     <>
       <div className="shrink-0 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="font-display text-[19px] font-bold tracking-tight text-main leading-tight">
-            {number ? 'Order slip ' + number : 'New order slip'}
-          </h3>
-          <p className="text-[14px] text-muted mt-1">
-            {person.name}{person.place ? ' · ' + person.place : ''}
+          <TableButton label={person.name} ready={ready} open={tablesOpen} onOpen={onTables} />
+          <p className="text-[13px] text-muted tabular-nums">
+            {[person.place, number].filter(Boolean).join(' · ') || 'New order slip'}
           </p>
         </div>
         <button type="button" onClick={onClose} aria-label="Close this order slip" title="Close"
-          className="w-11 h-11 -mr-2.5 -mt-2.5 inline-flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer shrink-0">
+          className="w-11 h-11 -mr-2.5 -mt-1 inline-flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer shrink-0">
           <X className="w-4 h-4" />
         </button>
       </div>
 
+      {/* Nobody pays here, and nothing is printed here. Once the guest has finished, or asks
+          for the bill, it leaves the restaurant (Sebastian, 2026-10-05): a table's bill is
+          asked where it goes — the front desk, or a room — and a slip that was started
+          for a room goes onto that room. */}
       <TabBill
         lines={lines}
         total={total}
         working={working}
         onQty={onQty}
         onSendKitchen={onSendKitchen}
-        onServed={onServed}
-        emptyText="Nothing ordered yet."
+        onServeLine={onServeLine}
+        onBill={onBill}
+        billLabel={person.booking ? 'Add to ' + person.place + '’s bill' : 'Send bill'}
+        emptyText="Tap a dish on the menu"
       />
       {errors.filter(Boolean).map(text => (
         <p key={text} role="alert" className="shrink-0 text-[13px] font-medium text-danger-600">{text}</p>
       ))}
 
-      {/* Nobody pays here, and nothing is printed here. Once the guest has finished, or asks
-          for the bill, it leaves the restaurant (Sebastian, 2026-10-05): a table's bill is
-          asked where it goes — the front desk, or a room — and a slip that was started
-          for a room goes onto that room. */}
-      {lines.length > 0 && (
-        <button type="button" onClick={onBill} disabled={working}
-          className="shrink-0 w-full min-h-12 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg border border-soft bg-card text-[14px] font-bold text-main hover:border-gold-400 hover:bg-gold-100 transition-colors duration-200 active:scale-[0.98] cursor-pointer disabled:opacity-60 disabled:pointer-events-none">
-          <Receipt className="w-4 h-4 shrink-0" /> {person.booking ? 'Add to ' + person.place + '’s bill' : 'Send bill'}
-        </button>
-      )}
       {!person.booking && person.tab && lines.length === 0 && (
         <button type="button" onClick={() => onDropEmpty(person.tab as Tab)}
           className="shrink-0 self-start min-h-11 text-[14px] font-semibold text-muted hover:text-danger-600 transition-colors cursor-pointer">

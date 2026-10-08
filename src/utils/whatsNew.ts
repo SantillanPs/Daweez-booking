@@ -23,6 +23,36 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-08b',
+    changes: [
+      {
+        where: 'Restaurant → Orders',
+        what: [
+          'The line of tables at the top is gone. Tap the name at the top of the order slip (“Table 3”, or “Pick a table”) to see the tables.',
+          'The tables are squares numbered 1 to 12. Tap an empty one to start that table. Tap one with an order to switch to it. “Other” is for a table with no number.',
+          'A table is white while you take the order and gold while the kitchen has it. A green left edge means a dish is ready to serve.',
+          'A green bell beside the table’s name shows how many dishes are cooked and waiting, on any table.',
+          'You can tap a dish first. It asks which table, then puts the dish on it.',
+          'The order slip has two parts: “To send” and “In the kitchen”. Each dish in the kitchen says cooking, ready or served.',
+          'Tap a dish’s number to take one off. To add one, tap the dish on the menu.',
+          'A dish that is ready turns green and has its own “Serve” button.',
+          'After “Send to kitchen”, the slip tells you the order was sent.',
+          '“Send bill” cannot be pressed until at least one dish has been served.',
+          '“Send bill” now asks “Front desk” or “A room”. “A room” shows the rooms with a guest in them.',
+          'On the menu, a dish on this order has a gold bar. The dish ordered the most has gold lines above and below it and says “Best seller”.',
+        ],
+      },
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'A booking with nothing paid says “No deposit” in blue again. The blue corner is gone.',
+          'The “Breakfast” button at the top is gone. Tap the cup beside the room.',
+          'The small card that shows when you point at a booking no longer hides under the top of the calendar.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-08',
     changes: [
       {
@@ -43,13 +73,13 @@ export const UPDATES: Update[] = [
         what: [
           'On a guest’s last morning the booking now shows their initials, not just “IN”.',
           'A room with a guest in it has a gold bar beside its number.',
-          'The dotted outline on some bookings is gone. The blue corner is the sign for nothing paid.',
+          'The dotted outline on some bookings is gone.',
           'A booking that arrives today has a green left edge. One that leaves today has a dark right edge.',
-          'A booking with no deposit has a blue corner. It goes away once you record a cheque or any payment.',
+          'A booking with nothing paid says “No deposit” in blue, on a half-day booking the initials are blue. It goes away once you record a cheque or any payment.',
           'An agency booking has a small building beside its name.',
           'A hopping cup beside a room means that room has breakfast today and has not been asked what they want. Tap the cup to ask. It goes away once you have.',
           'Under each date are two numbers: how many will leave (left, dark) and how many will arrive (right, green) that day.',
-          'The “Today” line is gone, because the calendar now shows who arrives, who leaves and who is in. “Breakfast” and “Diners to pay” moved to the top right, and show only when there is something to do.',
+          'The “Today” line is gone, because the calendar now shows who arrives, who leaves and who is in. “Diners to pay” moved to the top right, and shows only when a diner has a bill open. For breakfast, tap the cup beside the room.',
           'Tap the “?” at the top right of the calendar to see what every sign means.',
         ],
       },

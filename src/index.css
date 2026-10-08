@@ -170,6 +170,21 @@
 .bp-seal > i:nth-child(5) { --a: 240deg; }
 .bp-seal > i:nth-child(6) { --a: 300deg; }
 
+/* ── The Restaurant's Orders screen ─────────────────────────────────────────
+   The tables are put away behind the slip's title (`TablesPopup`); its squares arrive one
+   after another, and the bell on the title rings while cooked food is waiting. */
+@keyframes tp-cell { from { opacity: 0; transform: scale(0.8); } }
+@keyframes tp-ring { 0%, 70%, 100% { rotate: 0deg; } 76% { rotate: 14deg; } 82% { rotate: -12deg; } 88% { rotate: 8deg; } 94% { rotate: -4deg; } }
+.tp-cell { animation: tp-cell 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--i) * 22ms); }
+.tp-ring { transform-origin: 50% 20%; animation: tp-ring 2.4s ease-in-out infinite; }
+
+/* The menu's most ordered dish, set like the signature dish on a printed menu: a second,
+   fainter gold rule inside each of its own, and a small diamond let into the top one. */
+.menu-best::before, .menu-best::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; background: #D0AB60; opacity: 0.45; }
+.menu-best::before { top: 2px; }
+.menu-best::after { bottom: 2px; }
+.menu-best-mark { position: absolute; top: -5px; left: 50%; width: 8px; height: 8px; margin-left: -4px; rotate: 45deg; background: #D0AB60; box-shadow: 0 0 0 4px #F8F5EF; }
+
 /* Hide scrollbar but keep scroll */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

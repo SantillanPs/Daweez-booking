@@ -1,4 +1,18 @@
 import { Booking, Room, Venue } from '../../types/booking'
+import { Tab } from '../../types/tab'
+
+/** One person the desk is serving: a guest in a room, or a diner with no room. */
+export interface Served {
+  /** Stable: the slip, or the booking while it has no open slip. */
+  key: string
+  name: string
+  place: string
+  /** The open order slip, if there is one. */
+  tab: Tab | null
+  booking: Booking | null
+  /** A room guest's room number — what the staff call them by. */
+  room?: number
+}
 
 /**
  * A guest who is in the hotel right now: checked in and not yet checked out.

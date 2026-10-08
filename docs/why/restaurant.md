@@ -44,6 +44,19 @@ Laid out in the order the counter works (the owner picked this from three drawin
 - **Orders are taken on the Restaurant screen, for both kinds of guest.** A menu squeezed into the booking panel was the wrong place; the booking's panel only lists the order slips and hands staff over.
 - **A room guest's balance is updated the moment food is ordered** (since 2026-10-03), so "Who owes" is right without opening the booking.
 
+**The redesign of 2026-10-08.** Sebastian asked for the Orders screen to be *"simpler … a more visual design instead of a text heavy design and … more of a satisfying experience to use"*, and worked through it on drawings. What he ruled, in his words:
+
+- **The tables are put away, not the menu or the slip.** He looked at the screen with the menu and the slip hidden until a table was picked: *"the menu and list shouldn't be the ones hidden. the tables should be hidden."* The line of tables across the top (1, above) is gone; the slip's title opens them, *"just below the table button"*, as one square per table.
+- **The table button says when food is ready:** *"the table button should have a notification when a dish is ready to serve."*
+- **No bill before the food:** *"the send bill shouldn't even be clickable if nothing has been served yet."* One served dish is enough; he was offered "every dish served" and did not ask for it.
+- **"Send bill" asks where:** *"make the send bill give options like room? or front desk?"*
+- **The number on a slip line takes one off**, as in the breakfast window, and the count is no longer shown on the menu: *"can we remove the number on the menu when added to the list?"*
+- **The dot flies to the dish's own line** — *"make it move towards the position of the item selected."*
+- **A best seller.** *"Keep track of how many times each item has been ordered and add an indicator of which item is the most popular."* He chose fine double gold rules with a diamond over medals, stars, bars and a crown (*"it's making it look less like a food item"*), wanted it *"less loud"* but *"a bit more premium"*, called it **"Best seller"** (not "House favourite"), and dropped second and third place. One dish on the whole menu — it was first one per section: *"why are there 3?"*
+- **It must look like the Front desk.** The first drawings (round table tokens, big dish tiles) *"feel too simple … and it doesn't feel consistent with the front desk's design"*, so it is built from the calendar's own parts: its pills' colours and edges, its cards, its buttons.
+- **No guide here:** *"no need for the guide in the restaurant."*
+- Twelve numbered tables is a guess; he was asked how many the restaurant has and had not said.
+
 ## The menu
 
 - **Orders are tapped, never typed.** A hand-written line hides behind "+ Something not on the menu" for the rare dish the menu lacks.

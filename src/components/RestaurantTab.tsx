@@ -1,34 +1,43 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Tab, TabLine } from '../types/tab'
 import { Booking } from '../types/booking'
-import { guestPlace, inHouseGuests, tableName } from './restaurant/served'
+import { Served, guestPlace, inHouseGuests, tableName } from './restaurant/served'
 import { MenuPicker } from './restaurant/MenuPicker'
 import { OffMenuOrder } from './restaurant/OffMenuOrder'
 import { OrderSlipPanel } from './restaurant/OrderSlipPanel'
 import { OrderDock, OrderSheet } from './restaurant/OrderDock'
 import { BillPicker } from './restaurant/BillPicker'
-import { Served, ServedStrip } from './restaurant/ServedStrip'
+import { TableButton, TablesPopup } from './restaurant/TablesPopup'
+import { flyDot } from './restaurant/flyDot'
 import { useTabOrder } from './restaurant/useTabOrder'
 import { useOpenSlips } from './restaurant/useOpenSlips'
 import { billOutTab, billToRoom, closeTab, markLinesSent, markLinesServed, openTab, tabTotal } from '../utils/tabs'
 import { withChanges } from '../utils/orderChanges'
+import { MenuItem } from '../utils/restaurantMenu'
 import { OrderSlip, cookingCount, getSlipsForBooking, newCount, readBookingFoodTotal, readyCount, slipNumber } from '../utils/orderSlips'
 import { recomputeBalance } from '../utils/bookingBalance'
 import { takeFocusedGuestTab } from '../utils/restaurantFocus'
 import { askConfirm } from '../utils/confirm'
 import { useDashboardData } from './DashboardContext'
 import { showToast } from '../utils/toast'
+import { UtensilsCrossed } from 'lucide-react'
 
 const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 // The restaurant and bar (board cards k69 + k70), in the shape the owner picked.
 //
-// Three things on one screen, in the order the counter works:
-//   1. the strip across the top — the tables with an order open, each with what its
-//      slip comes to, so switching tables is one tap. The staff start a table;
-//   2. the order slip on the left — what that person has ordered, where each dish has
-//      got to (new, cooking, ready, served), and the bill going to the front desk;
-//   3. the menu card on the right — one scroll, every line tappable.
+// Two things on the screen, and a third put away behind the first:
+//   1. the order slip on the left — what that person has ordered, where each dish has
+//      got to (to send, cooking, ready, served), and the bill going to the front desk;
+//   2. the menu card on the right — one scroll, every line tappable;
+//   3. the tables, behind the slip's title — one square per table, opened when a table
+//      is to be started or switched to (`TablesPopup`).
+//
+// **The tables stood in a line across the top until 2026-10-08.** Sebastian asked for the
+// screen to be "simpler … more visual … a satisfying experience", tried it with the menu
+// and the slip put away, and ruled the other way round: *"the menu and list shouldn't be
+// the ones hidden. the tables should be hidden."* What a put-away table may still say is
+// on the slip's title — a green bell with how many dishes are ready to carry out.
 //
 // **It is used on a tablet or a phone most of the time** (Sebastian, 2026-10-04), held
 // upright or sideways. The screen is filled and only the menu scrolls, so who is being
@@ -63,7 +72,11 @@ export function RestaurantTab() {
   // The whole slip, slid up from the order bar — only where the slip has no room beside the menu.
   const [sheetOpen, setSheetOpen] = useState(false)
   // A table's bill, waiting to be told where it goes: the front desk, or a room.
-  const [billFor, setBillFor] = useState<{ person: Served; tab: Tab; total: number } | null>(null)
+  const [billFor, setBillFor] = useState<{ person: Served; tab: Tab; total: number; at: DOMRect } | null>(null)
+  // The tables, open and hung from the button at this place.
+  const [tablesAt, setTablesAt] = useState<DOMRect | null>(null)
+  // A dish tapped with nobody picked, by name: the tables ask which table it is for.
+  const [askFor, setAskFor] = useState('')
   // A guest sent here from their booking, picked once the bookings are loaded.
   const [wantedGuest, setWantedGuest] = useState<string | null>(null)
 
@@ -162,6 +175,20 @@ export function RestaurantTab() {
   }
   const order = useTabOrder(slips, selected, syncRoomBalance)
 
+  // A dish tapped before there was a table goes onto the table picked next (it used to
+  // put nothing anywhere and say "Pick a table first"). It waits here until somebody is
+  // being served, then is added the ordinary way.
+  const pending = useRef<MenuItem | null>(null)
+  const pickItemNow = useRef(order.pickItem)
+  useEffect(() => { pickItemNow.current = order.pickItem })
+  useEffect(() => {
+    const item = pending.current
+    if (!item || !selected) return
+    pending.current = null
+    queueMicrotask(() => { pickItemNow.current(item); setAskFor('') })
+  }, [selected])
+  const closeTables = () => { pending.current = null; setAskFor(''); setTablesAt(null) }
+
   // Each slip as the desk sees it: what is saved, with what was tapped a moment ago
   // and is still on its way laid over it. A stay's first order shows before its slip exists.
   const shown = useMemo(() => {
@@ -207,22 +234,21 @@ export function RestaurantTab() {
 
   // "Send to kitchen" and "Served": one tap for the whole slip. The slips are read again
   // when it lands, and a read that was already on its way is not allowed to overtake it.
-  const kitchenStep = async (step: 'send' | 'served') => {
+  // `only` is one dish's "Serve" on the slip; without it the whole slip's cooked food is served.
+  const kitchenStep = async (step: 'send' | 'served', only?: TabLine): Promise<boolean> => {
     const saved = await savedSlipOf(selected)
-    if (!saved) return
+    if (!saved) return false
     setError(''); setWorking(true)
     slips.beginSave()
     try {
-      if (step === 'send') {
-        await markLinesSent(saved.lines)
-        showToast('Sent to the kitchen.', 'success')
-      } else {
-        await markLinesServed(saved.lines)
-      }
+      if (step === 'send') await markLinesSent(saved.lines)
+      else await markLinesServed(only ? saved.lines.filter(l => l.id === only.id) : saved.lines)
+      return true
     } catch {
       setError(step === 'send'
         ? 'The order was not sent to the kitchen. Please try again.'
         : 'Could not mark that as served. Please try again.')
+      return false
     } finally {
       slips.endSave()
       setWorking(false)
@@ -264,6 +290,7 @@ export function RestaurantTab() {
     try {
       const tab = await openTab({ label: name, tableLabel: table })
       pick('tab:' + tab.id)
+      setTablesAt(null)
       await load()
       return ''
     } catch {
@@ -296,7 +323,7 @@ export function RestaurantTab() {
   // sits at a table like anybody else, and "not all guests want their bills added to the
   // rooms": they pay now at the front desk, or it goes on their room to be paid before
   // they check out.
-  const askForBill = async (person: Served) => {
+  const askForBill = async (person: Served, at: DOMRect) => {
     const saved = await savedSlipOf(person)
     if (!saved || !saved.tab || saved.lines.length === 0) return
     // A dish the kitchen was never given would never be cooked.
@@ -304,7 +331,7 @@ export function RestaurantTab() {
       showToast('Send the new dishes to the kitchen first.', 'info')
       return
     }
-    const bill = { person, tab: saved.tab, total: tabTotal(saved.lines) }
+    const bill = { person, tab: saved.tab, total: tabTotal(saved.lines), at }
     if (!person.booking) { setBillFor(bill); return }
 
     // A slip that was started for a room already belongs to it.
@@ -396,7 +423,9 @@ export function RestaurantTab() {
   }, [people, kitchen, loading])
 
   const totals = Object.fromEntries(served.map(p => [p.key, tabTotal(shown[p.key] || [])]))
-  // How many of each dish are on the slip, so the menu card shows the count on its line.
+  // Cooked and not yet carried out, on any table: the bell on the slip's title.
+  const readyAll = people.reduce((n, p) => n + (kitchen[p.key]?.ready || 0), 0)
+  // How many of each dish are on the slip, so the menu card marks its line.
   const pickedCounts = selectedLines.reduce<Record<string, number>>((acc, l) => {
     if (l.kind === 'charge') acc[l.description] = (acc[l.description] || 0) + Number(l.qty || 1)
     return acc
@@ -410,11 +439,14 @@ export function RestaurantTab() {
       earlier={earlier}
       errors={[order.saveError, error]}
       working={working}
+      ready={readyAll}
+      tablesOpen={!!tablesAt}
+      onTables={setTablesAt}
       onClose={onClose}
       onQty={(line, delta) => void order.changeQty(line, delta)}
-      onSendKitchen={() => void kitchenStep('send')}
-      onServed={() => void kitchenStep('served')}
-      onBill={() => void askForBill(person)}
+      onSendKitchen={() => kitchenStep('send')}
+      onServeLine={line => void kitchenStep('served', line)}
+      onBill={at => void askForBill(person, at)}
       onDropEmpty={tab => void dropEmptySlip(tab)}
     />
   )
@@ -425,38 +457,40 @@ export function RestaurantTab() {
           when diners paid here; nobody pays in the restaurant any more (the front desk
           lists them), so it was a figure nobody on this screen could act on. And the tab
           bar already says where this is: on a tablet those lines belong to the menu. */}
-      <ServedStrip
-        served={served}
-        selectedKey={selectedKey}
-        totals={totals}
-        kitchen={kitchen}
-        busy={busy}
-        loading={loading}
-        onPick={person => { pick(person.key); setError(''); setSheetOpen(false) }}
-        onOpenDiner={openDiner}
-      />
-
       {/* Where there is room, the order slip beside the menu card; each keeps to its own
           height and scrolls inside it. Where there is not, the menu alone, with the order
           docked under it. */}
       <div className="grid gap-5 tall:flex-1 tall:min-h-0 tall:grid-rows-[minmax(0,1fr)] wide:grid-cols-[clamp(300px,34vw,380px)_minmax(0,1fr)]">
-        <section className="hidden wide:flex flex-col gap-4 min-h-0 self-start tall:max-h-full wide:sticky wide:top-[114px] bg-card border border-soft rounded-xl p-5">
+        <section className="relative hidden wide:flex flex-col gap-3 min-h-[320px] self-start tall:max-h-full wide:sticky wide:top-[114px] bg-card border border-soft rounded-xl p-5">
           {selected ? slipPanel(selected, () => pick(null)) : (
             <>
-              <h3 className="font-display text-[19px] font-bold tracking-tight text-main leading-tight">Order slip</h3>
-              <p className="text-[14px] text-muted">No table picked.</p>
+              <div className="shrink-0"><TableButton label="Pick a table" ready={readyAll} open={!!tablesAt} onOpen={setTablesAt} /></div>
+              <div className="flex-1 grid place-content-center justify-items-center gap-2 py-8 text-[14px] text-muted">
+                <UtensilsCrossed className="w-12 h-12 text-paper-400" strokeWidth={1.2} />
+                Tap a dish on the menu
+              </div>
             </>
           )}
         </section>
 
         {/* The menu is always on screen, so a price can be read out without choosing
             anybody. It used to be an empty box saying it would open later. A dish tapped
-            with nobody chosen puts nothing anywhere and says who is missing. */}
+            with nobody chosen opens the tables to ask which one it is for. */}
         <div className="min-w-0 min-h-0 flex flex-col gap-2.5">
           <MenuPicker
-            onPick={item => {
-              if (!selected) { showToast('Pick a table first, or start a new one.', 'info'); return }
+            onPick={(item, from) => {
+              if (!selected) {
+                const button = Array.from(document.querySelectorAll('[data-table-button]')).find(el => el.getClientRects().length > 0)
+                if (!button) return
+                pending.current = item
+                setAskFor(item.name)
+                setTablesAt(button.getBoundingClientRect())
+                return
+              }
               order.pickItem(item)
+              // Two frames on: the dish's line is on the slip by then, and the dot lands on it.
+              requestAnimationFrame(() => requestAnimationFrame(() =>
+                flyDot(from, ['[data-slip-line="' + CSS.escape(item.name) + '"]', '[data-slip-dock]'])))
             }}
             counts={pickedCounts}
           />
@@ -482,10 +516,13 @@ export function RestaurantTab() {
         lines={selectedLines}
         total={selectedTotal}
         working={working}
+        ready={readyAll}
+        tablesOpen={!!tablesAt}
+        onTables={setTablesAt}
         onOpen={() => setSheetOpen(true)}
-        onSendKitchen={() => void kitchenStep('send')}
+        onSendKitchen={() => void kitchenStep('send').then(sent => { if (sent) showToast('Sent to the kitchen.', 'success') })}
         onServed={() => void kitchenStep('served')}
-        onBill={() => { if (selected) void askForBill(selected) }}
+        onBill={at => { if (selected) void askForBill(selected, at) }}
       />
       {sheetOpen && selected && (
         <OrderSheet onClose={() => setSheetOpen(false)}>
@@ -493,8 +530,24 @@ export function RestaurantTab() {
         </OrderSheet>
       )}
 
+      {tablesAt && (
+        <TablesPopup
+          anchor={tablesAt}
+          served={served}
+          selectedKey={selectedKey}
+          totals={totals}
+          kitchen={kitchen}
+          busy={busy}
+          askFor={askFor}
+          onPick={person => { pick(person.key); setError(''); setTablesAt(null) }}
+          onStart={(table, name) => openDiner(name, table)}
+          onClose={closeTables}
+        />
+      )}
+
       {billFor && (
         <BillPicker
+          anchor={billFor.at}
           title={[billFor.person.name, slipNumber(billFor.tab)].filter(Boolean).join(' · ')}
           total={billFor.total}
           guests={roomGuests}

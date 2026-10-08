@@ -415,7 +415,7 @@ export function CalendarTab() {
           onJumpToDate={jumpToDay}
           onToday={() => setMonthAnchor(todayStart())}
         >
-          <TodayStrip bookings={bookings} rooms={rooms} venues={venues} onBreakfast={b => setBreakfastForId(b.id)} />
+          <TodayStrip />
         </CalendarToolbar>
         <TimelineGrid
           rooms={rooms}

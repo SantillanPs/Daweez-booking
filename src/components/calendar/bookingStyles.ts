@@ -41,14 +41,6 @@ export const pillInitials = (name: string): string => {
   return ((words[0]?.[0] || '') + (words[1]?.[0] || '')).toUpperCase()
 }
 
-// **No deposit is a blue corner on the pill, not words** (Sebastian, 2026-10-08). It stays
-// for as long as nothing has been recorded against the booking — before the guest arrives,
-// while they are in and after they leave, because an agency checks in and out with the bill
-// open and pays about three months later — and it goes the moment the desk records a
-// cheque or any other payment.
-export const hasNoDeposit = (b: Booking): boolean =>
-  b.status !== 'blocked' && b.payment_status !== 'paid' && !hasPaymentRecorded(b)
-
 /** What the desk still has to do with a stay today: check the guest in, or check them out.
  *  A day that has already passed still counts — the guest is late, not gone. A short stay
  *  leaves on the day it came. */
@@ -77,19 +69,22 @@ export const stageWords = (b: Booking): string => {
 //
 // **A reservation made with No deposit says so and shows no amount** (Sebastian,
 // 2026-10-06 — an agency booking made with No deposit included). Nothing is owed until the
-// guest arrives, so there is no figure to show. Since 2026-10-08 the pill itself says it
-// with a blue corner (`hasNoDeposit`) and leaves the line out — `quiet` — and so does an
-// agency's stay nothing has been paid on; the words are still on the hover card.
-export const pillMoney = (b: Booking): { text: string; className: string; quiet?: boolean } => {
+// guest arrives, so there is no figure to show. An agency's stay nothing has been paid on
+// says the same. For a few hours on 2026-10-08 the words were a blue corner instead;
+// Sebastian had the words back the same day — the corner on a rounded pill looked like a
+// skullcap — so `noDeposit` now only tells a half-day pill to turn its initials blue.
+export const pillMoney = (b: Booking): { text: string; className: string; noDeposit?: boolean } => {
   const view = getPaymentView(b)
   const due = Number(b.balance_due || 0)
   const peso = '₱' + due.toLocaleString()
   if (view.tone === 'paid') return { text: 'Paid', className: PILL_MONEY.paid }
   if (view.tone === 'reserved') {
-    if (!hasPaymentRecorded(b)) return { text: 'No deposit', className: PILL_NO_DEPOSIT, quiet: true }
+    if (!hasPaymentRecorded(b)) return { text: 'No deposit', className: PILL_NO_DEPOSIT, noDeposit: true }
     return { text: due > 0 ? peso + ' reserved' : 'Reserved', className: PILL_MONEY.reserved }
   }
-  if (view.tone === 'billed') return { text: peso + ' agency', className: PILL_MONEY.billed, quiet: !hasPaymentRecorded(b) }
+  if (view.tone === 'billed') return hasPaymentRecorded(b)
+    ? { text: peso + ' agency', className: PILL_MONEY.billed }
+    : { text: 'No deposit', className: PILL_NO_DEPOSIT, noDeposit: true }
   return { text: due > 0 ? peso + ' to pay' : 'Not paid', className: PILL_MONEY.owes }
 }
 

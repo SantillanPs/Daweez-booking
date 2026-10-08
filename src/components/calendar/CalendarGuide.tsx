@@ -35,7 +35,7 @@ export function CalendarGuide() {
             <Row sign={<Pill className="bg-ink-100 border-ink-200 text-white"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-ink-600"><Check className="w-2 h-2" strokeWidth={3} /></span></Pill>}>Has left</Row>
             <Row sign={<Pill className="bg-paper-200/60 border-paper-300" />}>Blocked</Row>
             <Row sign={<Building2 className="w-4 h-4" />}>Agency reservation</Row>
-            <Row sign={<Pill className="bg-card border-paper-400"><span className="absolute top-0 right-0 h-2.5 w-2.5 bg-blue-700 [clip-path:polygon(0_0,100%_0,100%_100%)]" /></Pill>}>No deposit</Row>
+            <Row sign={<span className="font-display text-[13px] font-bold text-blue-700">AB</span>}>Blue initials: no deposit</Row>
             <Row sign={<span className="font-display font-bold"><span className="text-danger-600">₱</span> <span className="text-emerald-700">₱</span></span>}>Red to pay, green paid</Row>
           </Section>
 

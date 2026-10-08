@@ -4,7 +4,7 @@ import { MenuItem } from '../../utils/restaurantMenu'
 import { OrderChange, saveOrderChanges, squash, withChanges } from '../../utils/orderChanges'
 import { randomUUID } from '../../utils/helpers'
 import { askConfirm } from '../../utils/confirm'
-import { Served } from './ServedStrip'
+import { Served } from './served'
 import { OpenSlipsStore } from './useOpenSlips'
 
 const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
