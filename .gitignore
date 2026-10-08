@@ -35,3 +35,6 @@ real-invoice.json
 
 # local npm cache (workspace-local, used when the sandbox blocks the global cache)
 .npm-cache/
+
+# The graphify knowledge graph: rebuilt on each machine, never committed.
+graphify-out/
