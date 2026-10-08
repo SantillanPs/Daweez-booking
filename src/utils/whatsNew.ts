@@ -23,6 +23,26 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-09',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'A guest who has checked in is now green, not gold. The bar beside their room is green too.',
+          'The date at the top has two pairs of arrows. The single arrows move the calendar one day. The double arrows move it one month.',
+          'The small card that shows when you point at a booking is tidier: the name, then the dates as days with the number of nights, then the money.',
+          '“Diners to pay” now shows only when the restaurant has sent a bill to the front desk. A table that is still eating is not on it.',
+        ],
+      },
+      {
+        where: 'Restaurant → Orders',
+        what: [
+          'The order slip is now on the right and the menu on the left.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-08b',
     changes: [
       {

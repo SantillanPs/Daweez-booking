@@ -30,7 +30,10 @@ export const getBookingStyle = (b: Booking): string => {
   if (b.status === 'blocked') return 'bg-paper-200/60 text-muted border-paper-300'
   const stage = bookingStage(b)
   if (stage === 'out') return 'bg-ink-100 text-ink-500 border-ink-200'
-  if (stage === 'in') return 'bg-gold-100 text-ink-900 border-gold-500'
+  // **A guest in the hotel is green** (Sebastian, 2026-10-09: *"when a guest checks in, the
+  // pill should turn green"*; he picked the soft green of five). It was gold, the colour
+  // of today's column and of every button, so it said nothing of its own.
+  if (stage === 'in') return 'bg-emerald-50 text-ink-900 border-emerald-600'
   return 'bg-card text-main border-paper-400'
 }
 
@@ -48,15 +51,6 @@ export const dueToday = (b: Booking, todayIso: string): 'in' | 'out' | null => {
   if (b.status === 'blocked' || b.actual_check_out) return null
   if (!b.actual_check_in) return b.check_in <= todayIso ? 'in' : null
   return (b.stay_hours ? b.check_in : b.check_out) <= todayIso ? 'out' : null
-}
-
-/** The same, as a sentence, for the pill's tooltip. */
-export const stageWords = (b: Booking): string => {
-  const when = (iso?: string) =>
-    iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''
-  if (b.actual_check_out) return 'Checked out ' + when(b.actual_check_out)
-  if (b.actual_check_in) return 'Checked in ' + when(b.actual_check_in)
-  return 'Not checked in'
 }
 
 // The money on the pill, in words (the staff: they want to look at the calendar and know

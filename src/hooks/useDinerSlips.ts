@@ -13,12 +13,16 @@ import { showToast } from '../utils/toast'
  * their slips are listed here and paid from the calendar's Today line.
  *
  * **The restaurant sends the bill over** (Sebastian, 2026-10-05), once the diner has
- * finished or asks for it. Those come first — they are on their way to pay, the one who
- * has waited longest at the top — and the desk is told as each arrives. A diner still at
- * their table is listed too, because some walk up and pay before anybody sends anything.
+ * finished or asks for it. The one who has waited longest is at the top, and the desk is
+ * told as each arrives.
  *
- * Read when the front desk opens and again whenever a slip changes on any tablet. A slip
- * nobody has ordered on is left out — there is nothing to pay. A failed read changes nothing.
+ * **Only a bill that was sent is here** (Sebastian, 2026-10-09, of "Diners to pay" showing
+ * for a table still eating: *"this should only pop up if the restaurant actually sends it
+ * to front desk"*). A diner still at their table used to be listed too, in case they
+ * walked up to pay early; the restaurant presses "Send bill" first now.
+ *
+ * Read when the front desk opens and again whenever a slip changes on any tablet. A
+ * failed read changes nothing.
  */
 export function useDinerSlips() {
   const [slips, setSlips] = useState<OrderSlip[]>([])
@@ -35,15 +39,13 @@ export function useDinerSlips() {
     try {
       const { tabs, lines } = await readDinerSlips()
       if (mine !== reads.current) return // a newer read is on its way
-      const billedAt = (s: OrderSlip) => (s.tab.billed_at ? Date.parse(s.tab.billed_at) : Number.MAX_SAFE_INTEGER)
-      const diners = tabs
-        .filter(t => (lines[t.id] || []).length > 0)
+      const billed: OrderSlip[] = tabs
+        .filter(t => !!t.billed_at && (lines[t.id] || []).length > 0)
         .map(t => ({ tab: t, lines: lines[t.id], total: tabTotal(lines[t.id]), paid: false }))
-        .sort((a, b) => billedAt(a) - billedAt(b))
-      setSlips(diners)
+        .sort((a, b) => Date.parse(a.tab.billed_at || '') - Date.parse(b.tab.billed_at || ''))
+      setSlips(billed)
 
       const before = told.current
-      const billed = diners.filter(s => !!s.tab.billed_at)
       if (before) {
         for (const s of billed) {
           if (before.has(s.tab.id)) continue

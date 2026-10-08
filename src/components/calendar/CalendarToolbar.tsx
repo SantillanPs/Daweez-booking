@@ -1,5 +1,6 @@
 import React from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { dateToString } from '../../utils/helpers'
 import { CalendarGuide } from './CalendarGuide'
 
 interface CalendarToolbarProps {
@@ -31,6 +32,14 @@ const STEP = 'w-9 h-9 inline-flex items-center justify-center rounded-md text-mu
 // It is the top line of the calendar's one sheet, not a card of its own (the design pass,
 // 2026-10-04): the title at one end, the days at the other, a rule under them.
 export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onPrevMonth, onNextMonth, onJumpToDate, onToday, children }: CalendarToolbarProps) {
+  // One day either way: the day the window begins on, moved by one. Built from local
+  // time parts — the hotel is UTC+8, and a date read as UTC lands on the day before.
+  const stepDay = (by: 1 | -1) => {
+    const [y, m, d] = datePickerValue.split('-').map(Number)
+    if (!y || !m || !d) return
+    onJumpToDate(dateToString(new Date(y, m - 1, d + by)))
+  }
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5 min-h-12 border-b border-soft flex-shrink-0">
       <h2 className="flex items-baseline gap-2.5 font-display font-bold text-[19px] text-main tracking-tight">
@@ -40,7 +49,13 @@ export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onP
 
       <div className="flex flex-wrap items-center gap-1">
         {children}
-        <button type="button" onClick={onPrevMonth} title="Previous month" aria-label="Previous month" className={STEP}>
+        {/* Two pairs of arrows round the date (Sebastian, 2026-10-09: *"add monthly arrows
+            and day arrows"*): the double ones move a month, the single ones a day. There
+            was one pair, and it moved a month. */}
+        <button type="button" onClick={onPrevMonth} title="Back a month" aria-label="Back a month" className={STEP}>
+          <ChevronsLeft className="w-4 h-4" />
+        </button>
+        <button type="button" onClick={() => stepDay(-1)} title="Back a day" aria-label="Back a day" className={STEP}>
           <ChevronLeft className="w-4 h-4" />
         </button>
         {/* A DATE, not a month (option A, card k154): the grid is a rolling
@@ -56,8 +71,11 @@ export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onP
           aria-label="Jump to a day"
           className="h-9 w-[150px] rounded-md border border-soft bg-card px-2 text-[13px] font-medium tabular-nums text-main text-center outline-none transition-colors duration-200 focus:border-gold-500 focus:ring-2 focus:ring-gold-400/30 cursor-pointer"
         />
-        <button type="button" onClick={onNextMonth} title="Next month" aria-label="Next month" className={STEP}>
+        <button type="button" onClick={() => stepDay(1)} title="Forward a day" aria-label="Forward a day" className={STEP}>
           <ChevronRight className="w-4 h-4" />
+        </button>
+        <button type="button" onClick={onNextMonth} title="Forward a month" aria-label="Forward a month" className={STEP}>
+          <ChevronsRight className="w-4 h-4" />
         </button>
         <span className="h-5 w-px bg-soft mx-1.5" aria-hidden="true" />
         <button type="button" onClick={onToday} title="Back to today"

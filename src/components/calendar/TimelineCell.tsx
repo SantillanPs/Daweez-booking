@@ -1,7 +1,7 @@
 import React from 'react'
 import { Building2, Check } from 'lucide-react'
 import { Booking } from '../../types/booking'
-import { pillInitials, pillMoney, stageWords } from './bookingStyles'
+import { pillInitials, pillMoney } from './bookingStyles'
 import { clockLabel, shortStayEnd } from '../../utils/shortStay'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 
@@ -47,6 +47,21 @@ export interface TimelineCellProps {
   setSelectedExtendBooking: (booking: Booking) => void
   setExtendCheckoutDate: (date: string) => void
   setExtendError: (err: string) => void
+}
+
+/** `2026-10-08` as the desk says it: `Thu 8 Oct`. Read as a local day — the hotel is UTC+8. */
+const niceDay = (iso: string): string => {
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return iso
+  const day = new Date(y, m - 1, d)
+  return day.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + d + ' ' + day.toLocaleDateString('en-US', { month: 'short' })
+}
+
+/** `3 nights`, counted between two days. A short stay ends the day it begins and has none. */
+const nightsWord = (from: string, to: string): string => {
+  const at = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d) }
+  const n = Math.round((at(to) - at(from)) / 86400000)
+  return n > 0 ? n + (n === 1 ? ' night' : ' nights') : ''
 }
 
 /** The mark of a guest who has checked out: a tick in a small charcoal circle. */
@@ -190,7 +205,7 @@ export const TimelineCell = React.memo(
                 {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
                 {pillName}
               </span>
-              {/* No IN tag any more: the gold pill and the gold bar on the room say it. A
+              {/* No IN tag any more: the green pill and the green bar on the room say it. A
                   guest who has left keeps a tick beside the name. */}
               {left && !isBlock && <LeftTick className="shrink-0" />}
             </span>
@@ -204,22 +219,29 @@ export const TimelineCell = React.memo(
             )}
             </>)}
           </div>
+          {/* THREE BANDS: who, when, how much (Sebastian, 2026-10-09: the card "looks messy").
+              It was six grey lines of about one size, the dates as raw numbers, and a line
+              saying whether the guest had checked in — which he had taken off: the pill's
+              own colour says it. The dates read as days now and say how many nights. */}
           {showTooltip && (
-            <div className={'absolute left-1/2 -translate-x-1/2 z-30 w-60 ' + (tipBelow ? 'top-full mt-2' : 'bottom-full mb-2') + ' bg-card border border-soft p-3 shadow-softLg rounded-lg text-[13px] space-y-1.5 pointer-events-none text-left font-sans animate-in fade-in duration-150'}>
-              <div className="font-display text-[14px] font-bold text-main">{pillName}</div>
-              {booking.stay_hours ? (
-                <div className="text-[12px] font-semibold text-brand-text">
-                  Short stay · {booking.stay_hours} hours
-                  {freeAt ? ' · out by ' + clockLabel(freeAt) : ' · clock starts at check-in'}
+            <div className={'absolute left-1/2 -translate-x-1/2 z-30 w-60 ' + (tipBelow ? 'top-full mt-2' : 'bottom-full mb-2') + ' bg-card border border-soft shadow-softLg rounded-xl text-[13px] divide-y divide-soft pointer-events-none text-left font-sans animate-in fade-in duration-150'}>
+              <div className="px-3 pt-2.5 pb-2">
+                <div className="flex items-center gap-1.5 font-display text-[14px] font-bold tracking-tight text-main">
+                  {agencyName && !isBlock && <Building2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
+                  <span className="min-w-0 truncate">{pillName}</span>
                 </div>
-              ) : null}
-              {agencyName && !isBlock && <div className="text-[12px] text-muted">c/o {booking.guest_name}</div>}
-              <div className="text-[12px] text-muted tabular-nums">{openEnded ? 'from ' + booking.check_in : booking.check_in + ' → ' + booking.check_out}</div>
+                {agencyName && !isBlock && <div className="text-[12px] text-muted truncate">for {booking.guest_name}</div>}
+              </div>
+              <div className="px-3 py-2 flex items-baseline justify-between gap-2 font-semibold text-main">
+                <span>{openEnded ? 'from ' + niceDay(booking.check_in) : niceDay(booking.check_in) + ' → ' + niceDay(booking.check_out)}</span>
+                {booking.stay_hours
+                  ? <span className="shrink-0 text-[12px] font-medium text-muted">{booking.stay_hours} hrs{freeAt ? ' · out ' + clockLabel(freeAt) : ''}</span>
+                  : !openEnded && <span className="shrink-0 text-[12px] font-medium text-muted">{nightsWord(booking.check_in, booking.check_out)}</span>}
+              </div>
               {!isBlock && (
-                <div className="text-[13px] text-muted space-y-0.5">
-                  {booking.guest_phone && booking.guest_phone.trim() !== 'None' && <div>{booking.guest_phone}</div>}
-                  <div className="font-semibold text-main">{stageWords(booking)}</div>
-                  <div className={'font-semibold ' + money.className}>{money.text}</div>
+                <div className="px-3 py-2 flex items-baseline justify-between gap-2">
+                  <b className={'font-display text-[15px] font-bold tracking-tight ' + money.className}>{money.text}</b>
+                  {booking.guest_phone && booking.guest_phone.trim() !== 'None' && <span className="shrink-0 text-[12px] text-muted tabular-nums">{booking.guest_phone}</span>}
                 </div>
               )}
             </div>

@@ -56,8 +56,8 @@ export function BillPicker({ anchor, title, total, guests, onFrontDesk, onRoom, 
             <p className="px-0.5 font-display text-[15px] font-bold tracking-tight text-main">Which room?</p>
             {guests.map(({ booking, place, room }, i) => (
               <button key={booking.id} type="button" onClick={() => onRoom(booking, place)} className={ROW} style={{ animationDelay: i * 45 + 'ms' }}>
-                {/* The room's number in the gold tile the calendar gives a room with a guest in it. */}
-                <span className="w-[38px] h-[38px] shrink-0 grid place-items-center rounded-lg bg-gold-100 shadow-[inset_4px_0_0_#D0AB60] font-display text-[16px] font-bold text-main">
+                {/* The room's number with the green bar the calendar gives a room with a guest in it. */}
+                <span className="w-[38px] h-[38px] shrink-0 grid place-items-center rounded-lg bg-emerald-50 shadow-[inset_4px_0_0_#059669] font-display text-[16px] font-bold text-main">
                   {room ?? <BedDouble className="w-4 h-4" />}
                 </span>
                 <span className="min-w-0">

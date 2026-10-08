@@ -507,11 +507,12 @@ export function RestaurantTab() {
           when diners paid here; nobody pays in the restaurant any more (the front desk
           lists them), so it was a figure nobody on this screen could act on. And the tab
           bar already says where this is: on a tablet those lines belong to the menu. */}
-      {/* Where there is room, the order slip beside the menu card; each keeps to its own
+      {/* Where there is room, the order slip beside the menu card, on the right (Sebastian,
+          2026-10-08; it was on the left); each keeps to its own
           height and scrolls inside it. Where there is not, the menu alone, with the order
           docked under it. */}
-      <div className="grid gap-5 tall:flex-1 tall:min-h-0 tall:grid-rows-[minmax(0,1fr)] wide:grid-cols-[clamp(300px,34vw,380px)_minmax(0,1fr)]">
-        <section className="relative hidden wide:flex flex-col gap-3 min-h-[320px] self-start tall:max-h-full wide:sticky wide:top-[114px] bg-card border border-soft rounded-xl p-5">
+      <div className="grid gap-5 tall:flex-1 tall:min-h-0 tall:grid-rows-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_clamp(300px,34vw,380px)]">
+        <section className="relative hidden wide:flex wide:order-last flex-col gap-3 min-h-[320px] self-start tall:max-h-full wide:sticky wide:top-[114px] bg-card border border-soft rounded-xl p-5">
           {selected ? slipPanel(selected, () => pick(null)) : (
             <>
               <div className="shrink-0"><TableButton label={opening || 'Pick a table'} ready={readyAll} open={!!tablesAt} onOpen={setTablesAt} /></div>

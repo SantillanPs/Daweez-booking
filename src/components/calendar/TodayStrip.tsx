@@ -5,10 +5,11 @@ import { useDinerSlips } from '../../hooks/useDinerSlips'
 import { DinerPayModal } from '../restaurant/DinerPayModal'
 import { tableName } from '../restaurant/served'
 
-// **Diners to pay** — the diners with no room whose order slips are not paid. The money
-// is always taken here, at the front desk, never in the restaurant (Sebastian,
-// 2026-10-04); a room guest's slip is paid from the booking. It sits on the calendar's top
-// line, and only while somebody has a slip open.
+// **Diners to pay** — the diners with no room whose bill the restaurant has sent over and
+// who have not paid it. The money is always taken here, at the front desk, never in the
+// restaurant (Sebastian, 2026-10-04); a room guest's slip is paid from the booking. It
+// sits on the calendar's top line, and only while a sent bill is waiting — a table still
+// eating does not bring it up (his ruling, 2026-10-09).
 //
 // **It used to be a whole line of the calendar** — "Today: Arriving · Leaving · In the
 // hotel · Breakfast" — and Sebastian had it taken off piece by piece as redundant
@@ -29,10 +30,6 @@ export function TodayStrip() {
           <Utensils className="w-4 h-4" />
           Diners to pay
           <span className="font-bold tabular-nums">{diners.slips.length}</span>
-          {/* Somebody's bill has been sent over: they are on their way to pay. */}
-          {diners.slips.some(s => !!s.tab.billed_at) && !open && (
-            <span className="w-1.5 h-1.5 rounded-full bg-danger-500 animate-pulse motion-reduce:animate-none" />
-          )}
         </button>
       )}
 
@@ -44,10 +41,7 @@ export function TodayStrip() {
             <button key={s.tab.id} type="button" onClick={() => { setOpen(false); diners.pay(s) }} className={NAME}>
               <b className="text-main">{tableName(s.tab.table_label) || s.tab.label || 'Walk-in'}</b>
               <span className="text-muted">· {[s.tab.table_label ? s.tab.label : '', slipNumber(s.tab)].filter(Boolean).join(' · ')}</span>
-              {/* The bill has been sent over, or they are still at their table. */}
-              {s.tab.billed_at
-                ? <span className="font-semibold text-danger-600">· to pay ₱{s.total.toLocaleString()}</span>
-                : <span className="text-muted">· still eating · ₱{s.total.toLocaleString()}</span>}
+              <span className="font-semibold text-danger-600">· to pay ₱{s.total.toLocaleString()}</span>
             </button>
           ))}
         </div>

@@ -30,8 +30,8 @@ export function CalendarGuide() {
           <Section title="On the booking">
             <Row sign={<Pill className="bg-card border-paper-400" />}>Booked, not here yet</Row>
             <Row sign={<Pill className="bg-card border-paper-400 border-l-[5px] border-l-emerald-700" />}>Arrives today</Row>
-            <Row sign={<Pill className="bg-gold-100 border-gold-500" />}>In the room</Row>
-            <Row sign={<Pill className="bg-gold-100 border-gold-500 border-r-[5px] border-r-ink-900" />}>Leaves today</Row>
+            <Row sign={<Pill className="bg-emerald-50 border-emerald-600" />}>In the room</Row>
+            <Row sign={<Pill className="bg-emerald-50 border-emerald-600 border-r-[5px] border-r-ink-900" />}>Leaves today</Row>
             <Row sign={<Pill className="bg-ink-100 border-ink-200 text-white"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-ink-600"><Check className="w-2 h-2" strokeWidth={3} /></span></Pill>}>Has left</Row>
             <Row sign={<Pill className="bg-paper-200/60 border-paper-300" />}>Blocked</Row>
             <Row sign={<Building2 className="w-4 h-4" />}>Agency reservation</Row>
@@ -40,7 +40,7 @@ export function CalendarGuide() {
           </Section>
 
           <Section title="On the room">
-            <Row sign={<span className="h-5 w-[5px] rounded-sm bg-gold-400" />}>A guest is in this room</Row>
+            <Row sign={<span className="h-5 w-[5px] rounded-sm bg-emerald-600" />}>A guest is in this room</Row>
             <Row sign={<Coffee className="w-5 h-5 animate-hop" />}>Tap to ask this room about breakfast</Row>
           </Section>
 

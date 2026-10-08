@@ -65,10 +65,11 @@ const UNIT_COL = 'w-[136px] min-w-[136px] sm:w-[184px] sm:min-w-[184px]'
 const HALF_COL = 'w-[52px] min-w-[52px]'
 const UNIT_CELL_BASE = 'sticky left-0 z-20 border-r border-b border-soft pr-3.5 h-12 transition-colors group-hover:bg-gold-100 ' + UNIT_COL
 const UNIT_CELL = UNIT_CELL_BASE + ' bg-card pl-3.5'
-// **A room with a guest in it wears a gold bar down its left edge** (Sebastian, 2026-10-08:
+// **A room with a guest in it wears a bar down its left edge** — green since 2026-10-09,
+// when the checked-in pill turned green; it was gold (Sebastian, 2026-10-08:
 // the staff could not tell from the room column which rooms were occupied). The bar takes
 // the place of 5px of the padding, so the room numbers stay in one line down the column.
-const UNIT_CELL_OCCUPIED = UNIT_CELL_BASE + ' bg-paper-50 pl-[9px] border-l-[5px] border-l-gold-400'
+const UNIT_CELL_OCCUPIED = UNIT_CELL_BASE + ' bg-paper-50 pl-[9px] border-l-[5px] border-l-emerald-600'
 
 function DayCount({ n, title, className, children }: { n: number; title: string; className: string; children: React.ReactNode }) {
   return (
