@@ -40,6 +40,7 @@ export const UPDATES: Update[] = [
           '“Send bill” cannot be pressed until at least one dish has been served.',
           '“Send bill” now asks “Front desk” or “A room”. “A room” shows the rooms with a guest in them.',
           'On the menu, a dish on this order has a gold bar. The dish ordered the most has gold lines above and below it and says “Best seller”.',
+          'Every button answers at once. You do not wait for “Serve”, “Send bill” or a new table before your next tap.',
         ],
       },
       {

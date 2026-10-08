@@ -61,12 +61,11 @@ interface TablesPopupProps {
   /** What each person's open slip comes to, by `Served.key`. */
   totals: Record<string, number>
   kitchen: KitchenCounts
-  busy: boolean
   /** A dish tapped with nobody picked: the popup asks which table it is for. */
   askFor?: string
   onPick: (person: Served) => void
-  /** Starts a table. Returns the reason when it could not. */
-  onStart: (table: string, name: string) => Promise<string>
+  /** Starts a table. The popup closes at once; the slip is made behind it. */
+  onStart: (table: string, name: string) => void
   onClose: () => void
 }
 
@@ -82,7 +81,7 @@ const NOTE = 'h-3.5 inline-flex items-center gap-1 text-[11.5px] font-semibold t
 //
 // A room's slip (started from its booking's "Take orders") and a table with a name stand
 // after the numbers; "Other" starts a table that has no number.
-export function TablesPopup({ anchor, served, selectedKey, totals, kitchen, busy, askFor, onPick, onStart, onClose }: TablesPopupProps) {
+export function TablesPopup({ anchor, served, selectedKey, totals, kitchen, askFor, onPick, onStart, onClose }: TablesPopupProps) {
   const [other, setOther] = useState(false)
   const [table, setTable] = useState('')
   const [name, setName] = useState('')
@@ -94,16 +93,15 @@ export function TablesPopup({ anchor, served, selectedKey, totals, kitchen, busy
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const start = async (t: string, n: string) => {
+  const start = (t: string, n: string) => {
     if (!t.trim()) { setError('Which table?'); return }
-    const failed = await onStart(t, n)
-    if (failed) setError(failed)
+    onStart(t, n)
   }
 
   const open = (person: Served, big: React.ReactNode, i: number) => {
     const k = kitchen[person.key] || { fresh: 0, cooking: 0, ready: 0 }
     return (
-      <button key={person.key} type="button" disabled={busy} onClick={() => onPick(person)}
+      <button key={person.key} type="button" onClick={() => onPick(person)}
         title={[person.name, person.place].filter(Boolean).join(' · ')}
         style={{ '--i': i } as React.CSSProperties}
         className={CELL + 'border text-main hover:brightness-95 ' +
@@ -136,7 +134,7 @@ export function TablesPopup({ anchor, served, selectedKey, totals, kitchen, busy
             const person = served.find(p => squareOf(p) === n)
             if (person) return open(person, <b className={NUMBER}>{n}</b>, i)
             return (
-              <button key={n} type="button" disabled={busy} onClick={() => void start(String(n), '')}
+              <button key={n} type="button" onClick={() => start(String(n), '')}
                 aria-label={'Start table ' + n} style={{ '--i': i } as React.CSSProperties} className={CELL + FREE}>
                 <b className={NUMBER}>{n}</b>
                 <span className={NOTE + 'opacity-0 translate-y-0.5 group-hover:opacity-100 group-hover:translate-y-0 transition-[opacity,transform] duration-150'}><Plus className="w-3 h-3" />start</span>
@@ -155,7 +153,7 @@ export function TablesPopup({ anchor, served, selectedKey, totals, kitchen, busy
         </div>
 
         {other && (
-          <form onSubmit={e => { e.preventDefault(); void start(table, name) }}
+          <form onSubmit={e => { e.preventDefault(); start(table, name) }}
             className="flex flex-col gap-2.5 pt-1 animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
             <Field label="Table">
               <input value={table} onChange={e => setTable(e.target.value)} autoFocus autoComplete="off" className={FIELD} />
@@ -163,7 +161,7 @@ export function TablesPopup({ anchor, served, selectedKey, totals, kitchen, busy
             <Field label="Name (if they give one)">
               <input value={name} onChange={e => setName(e.target.value)} autoComplete="off" className={FIELD} />
             </Field>
-            <button type="submit" disabled={busy}
+            <button type="submit"
               className="h-11 px-4 inline-flex items-center justify-center rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-[14px] font-bold transition-[background-color,transform] duration-200 active:scale-[0.98] cursor-pointer disabled:opacity-50">
               Start order
             </button>

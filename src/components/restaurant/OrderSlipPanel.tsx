@@ -18,8 +18,6 @@ interface OrderSlipPanelProps {
   earlier: OrderSlip[]
   /** What went wrong, when something did. */
   errors: string[]
-  /** True while an order is on its way to the kitchen, or being marked as served. */
-  working: boolean
   /** Dishes cooked and waiting to be carried out, on any table. */
   ready: number
   /** True while the tables are open. */
@@ -48,7 +46,7 @@ interface OrderSlipPanelProps {
 // It hands back the pieces of a column, not a box: whoever shows it gives the column its
 // height, and only the rows give way and scroll — the total and its buttons never move.
 export function OrderSlipPanel({
-  person, number, lines, total, earlier, errors, working, ready, tablesOpen,
+  person, number, lines, total, earlier, errors, ready, tablesOpen,
   onTables, onClose, onQty, onSendKitchen, onServeLine, onBill, onDropEmpty,
 }: OrderSlipPanelProps) {
   return (
@@ -73,7 +71,6 @@ export function OrderSlipPanel({
       <TabBill
         lines={lines}
         total={total}
-        working={working}
         onQty={onQty}
         onSendKitchen={onSendKitchen}
         onServeLine={onServeLine}

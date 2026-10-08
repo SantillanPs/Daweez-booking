@@ -54,6 +54,7 @@ Laid out in the order the counter works (the owner picked this from three drawin
 - **The dot flies to the dish's own line** — *"make it move towards the position of the item selected."*
 - **A best seller.** *"Keep track of how many times each item has been ordered and add an indicator of which item is the most popular."* He chose fine double gold rules with a diamond over medals, stars, bars and a crown (*"it's making it look less like a food item"*), wanted it *"less loud"* but *"a bit more premium"*, called it **"Best seller"** (not "House favourite"), and dropped second and third place. One dish on the whole menu — it was first one per section: *"why are there 3?"*
 - **It must look like the Front desk.** The first drawings (round table tokens, big dish tiles) *"feel too simple … and it doesn't feel consistent with the front desk's design"*, so it is built from the calendar's own parts: its pills' colours and edges, its cards, its buttons.
+- **No button waits for the server.** Testing it live the same day: *"the serve and send bill flashes when I click serve. can you make sure every single button uses the same method of hiding the backend interaction to make it feel more fluid?"* Serve, Send to kitchen, Send bill and starting a table now show at once and save behind, as a menu tap always did; a save that fails is taken back off the screen and said.
 - **No guide here:** *"no need for the guide in the restaurant."*
 - Twelve numbered tables is a guess; he was asked how many the restaurant has and had not said.
 

@@ -66,9 +66,18 @@ export function RestaurantTab() {
   // The picked guest's slips that are already closed — paid, or left with the stay.
   const [earlier, setEarlier] = useState<OrderSlip[]>([])
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-  // True while an order is on its way to the kitchen, or being marked as served.
-  const [working, setWorking] = useState(false)
+  // **Nothing on this screen waits for the server** (Sebastian, 2026-10-08: "Serve" made
+  // the buttons flash while it saved — *"make sure every single button uses the same
+  // method of hiding the backend interaction"*). A tap shows at once and is saved behind
+  // it, the way a dish tapped on the menu always was; if the save fails it is taken back
+  // off the screen and said. These three hold what has been tapped and not yet landed:
+  //
+  // what "Send to kitchen" and "Serve" have marked, by line: counts laid over the saved ones;
+  const [marks, setMarks] = useState<Record<string, { sent?: number; served?: number }>>({})
+  // the slips whose bill has been sent, already off the screen;
+  const [billed, setBilled] = useState<string[]>([])
+  // and the table being started, by name, shown as the slip's title until its slip exists.
+  const [opening, setOpening] = useState('')
   // The whole slip, slid up from the order bar — only where the slip has no room beside the menu.
   const [sheetOpen, setSheetOpen] = useState(false)
   // A table's bill, waiting to be told where it goes: the front desk, or a room.
@@ -178,16 +187,16 @@ export function RestaurantTab() {
   // A dish tapped before there was a table goes onto the table picked next (it used to
   // put nothing anywhere and say "Pick a table first"). It waits here until somebody is
   // being served, then is added the ordinary way.
-  const pending = useRef<MenuItem | null>(null)
+  const pending = useRef<MenuItem[]>([])
   const pickItemNow = useRef(order.pickItem)
   useEffect(() => { pickItemNow.current = order.pickItem })
   useEffect(() => {
-    const item = pending.current
-    if (!item || !selected) return
-    pending.current = null
-    queueMicrotask(() => { pickItemNow.current(item); setAskFor('') })
+    const items = pending.current
+    if (items.length === 0 || !selected) return
+    pending.current = []
+    queueMicrotask(() => { items.forEach(item => pickItemNow.current(item)); setAskFor('') })
   }, [selected])
-  const closeTables = () => { pending.current = null; setAskFor(''); setTablesAt(null) }
+  const closeTables = () => { pending.current = []; setAskFor(''); setTablesAt(null) }
 
   // Each slip as the desk sees it: what is saved, with what was tapped a moment ago
   // and is still on its way laid over it. A stay's first order shows before its slip exists.
@@ -195,10 +204,30 @@ export function RestaurantTab() {
     const out: Record<string, TabLine[]> = {}
     for (const p of people) {
       const mine = order.waiting.filter(w => w.key === p.key).map(w => w.change)
-      out[p.key] = withChanges(p.tab ? lines[p.tab.id] || [] : [], mine, p.tab?.id)
+      out[p.key] = withChanges(p.tab ? lines[p.tab.id] || [] : [], mine, p.tab?.id).map(l => {
+        // What was sent or served a moment ago, never past what the row can hold.
+        const mark = marks[l.id]
+        if (!mark) return l
+        return {
+          ...l,
+          sent_qty: Math.min(Number(l.qty || 0), Math.max(Number(l.sent_qty || 0), mark.sent ?? 0)),
+          served_qty: Math.min(Number(l.ready_qty || 0), Math.max(Number(l.served_qty || 0), mark.served ?? 0)),
+        }
+      })
     }
     return out
-  }, [people, lines, order.waiting])
+  }, [people, lines, order.waiting, marks])
+
+  // A mark is dropped once the saved row has caught up with it.
+  useEffect(() => {
+    const saved = Object.values(lines).flat()
+    const landed = Object.keys(marks).filter(id => {
+      const row = saved.find(l => l.id === id)
+      return row && Number(row.sent_qty || 0) >= (marks[id].sent ?? 0) && Number(row.served_qty || 0) >= (marks[id].served ?? 0)
+    })
+    if (landed.length === 0) return
+    queueMicrotask(() => setMarks(m => Object.fromEntries(Object.entries(m).filter(([id]) => !landed.includes(id)))))
+  }, [lines, marks])
   const selectedLines = selected ? shown[selected.key] || [] : []
   const selectedTotal = tabTotal(selectedLines)
 
@@ -216,11 +245,12 @@ export function RestaurantTab() {
   //   * a slip with nothing on it is not here at all;
   //   * whoever is being served right now is always here.
   const served = useMemo(() => people.filter(p => {
+    if (p.tab && billed.includes(p.tab.id)) return false
     if (p.key === selectedKey) return true
     const own = shown[p.key] || []
     if (!p.booking) return own.length > 0
     return own.some(l => newCount(l) + cookingCount(l) + readyCount(l) > 0)
-  }), [people, shown, selectedKey])
+  }), [people, shown, selectedKey, billed])
 
   // The slip as the database holds it: anything tapped a moment ago is saved first, so
   // the kitchen is given — and the front desk is billed for — exactly the rows that are
@@ -235,23 +265,36 @@ export function RestaurantTab() {
   // "Send to kitchen" and "Served": one tap for the whole slip. The slips are read again
   // when it lands, and a read that was already on its way is not allowed to overtake it.
   // `only` is one dish's "Serve" on the slip; without it the whole slip's cooked food is served.
+  //
+  // The slip on screen is marked first, so the dishes move the moment the button is
+  // pressed; the save follows, and takes its marks back if it fails.
   const kitchenStep = async (step: 'send' | 'served', only?: TabLine): Promise<boolean> => {
+    if (!selected) return false
+    const mine = (shown[selected.key] || []).filter(l => !only || l.id === only.id)
+    const marked = Object.fromEntries(mine.map(l => [l.id, step === 'send' ? { sent: Number(l.qty || 0) } : { served: Number(l.ready_qty || 0) }]))
+    setMarks(m => {
+      const next = { ...m }
+      for (const [id, mark] of Object.entries(marked)) next[id] = { ...next[id], ...mark }
+      return next
+    })
+    setError('')
+    const unmark = () => setMarks(m => Object.fromEntries(Object.entries(m).filter(([id]) => !(id in marked))))
+
     const saved = await savedSlipOf(selected)
-    if (!saved) return false
-    setError(''); setWorking(true)
+    if (!saved) { unmark(); return false }
     slips.beginSave()
     try {
       if (step === 'send') await markLinesSent(saved.lines)
       else await markLinesServed(only ? saved.lines.filter(l => l.id === only.id) : saved.lines)
       return true
     } catch {
+      unmark()
       setError(step === 'send'
         ? 'The order was not sent to the kitchen. Please try again.'
         : 'Could not mark that as served. Please try again.')
       return false
     } finally {
       slips.endSave()
-      setWorking(false)
     }
   }
 
@@ -285,18 +328,21 @@ export function RestaurantTab() {
   useEffect(() => { leaving.current = () => tidyAway(selected) })
   useEffect(() => () => leaving.current(), [])
 
-  const openDiner = async (name: string, table: string): Promise<string> => {
-    setBusy(true)
+  // The tables close and the slip is titled with the new table at once; its slip is made
+  // behind that. A dish tapped in between waits and goes onto it.
+  const openDiner = async (name: string, table: string) => {
+    setTablesAt(null)
+    setOpening(tableName(table) || name || 'New table')
     try {
       const tab = await openTab({ label: name, tableLabel: table })
       pick('tab:' + tab.id)
-      setTablesAt(null)
       await load()
-      return ''
     } catch {
-      return 'Could not open that order slip. Please try again.'
+      pending.current = []
+      setAskFor('')
+      showToast('Could not open that order slip. Please try again.', 'error')
     } finally {
-      setBusy(false)
+      setOpening('')
     }
   }
 
@@ -341,30 +387,35 @@ export function RestaurantTab() {
         '. It is paid at the front desk, any time before check-out. Nothing more can be ordered on this slip.',
       confirmLabel: 'Add to the bill',
     })
-    if (ok) await closeBill(() => billOutTab(bill.tab.id), 'Added to ' + person.place + '’s bill · ' + fmtPeso(bill.total))
+    if (ok) closeBill(bill.tab.id, () => billOutTab(bill.tab.id), 'Added to ' + person.place + '’s bill · ' + fmtPeso(bill.total))
   }
 
-  const closeBill = async (write: () => Promise<void>, said: string) => {
-    setError(''); setWorking(true)
-    slips.beginSave()
-    try {
-      await write()
-      setBillFor(null)
-      setSheetOpen(false)
-      setSelectedKey(null)
-      showToast(said, 'success')
-    } catch {
-      setError('The bill was not sent. Please try again.')
-    } finally {
-      slips.endSave()
-      setWorking(false)
-    }
+  // The slip leaves the screen as the choice is made, and the bill is written behind it.
+  // If that fails the slip comes back, and it is said.
+  const closeBill = (tabId: string, write: () => Promise<void>, said: string) => {
+    setError('')
+    setBillFor(null)
+    setSheetOpen(false)
+    setSelectedKey(null)
+    setBilled(b => [...b, tabId])
+    showToast(said, 'success')
+    void (async () => {
+      slips.beginSave()
+      try {
+        await write()
+      } catch {
+        setBilled(b => b.filter(id => id !== tabId))
+        showToast('The bill was not sent. Please try again.', 'error')
+      } finally {
+        slips.endSave()
+      }
+    })()
   }
 
   const billToFrontDesk = () => {
     if (!billFor) return
     const bill = billFor
-    void closeBill(() => billOutTab(bill.tab.id), 'Bill sent to the front desk · ' + fmtPeso(bill.total))
+    closeBill(bill.tab.id, () => billOutTab(bill.tab.id), 'Bill sent to the front desk · ' + fmtPeso(bill.total))
   }
 
   // Onto a room: it asks first, by room and by name — a bill on the wrong guest's room is
@@ -379,7 +430,7 @@ export function RestaurantTab() {
       confirmLabel: 'Add to the bill',
     })
     if (!ok) return
-    await closeBill(async () => {
+    closeBill(bill.tab.id, async () => {
       await billToRoom(bill.tab.id, guest.id)
       syncRoomBalance(guest.id)
     }, 'Added to ' + place + '’s bill · ' + fmtPeso(bill.total))
@@ -438,7 +489,6 @@ export function RestaurantTab() {
       total={selectedTotal}
       earlier={earlier}
       errors={[order.saveError, error]}
-      working={working}
       ready={readyAll}
       tablesOpen={!!tablesAt}
       onTables={setTablesAt}
@@ -464,7 +514,7 @@ export function RestaurantTab() {
         <section className="relative hidden wide:flex flex-col gap-3 min-h-[320px] self-start tall:max-h-full wide:sticky wide:top-[114px] bg-card border border-soft rounded-xl p-5">
           {selected ? slipPanel(selected, () => pick(null)) : (
             <>
-              <div className="shrink-0"><TableButton label="Pick a table" ready={readyAll} open={!!tablesAt} onOpen={setTablesAt} /></div>
+              <div className="shrink-0"><TableButton label={opening || 'Pick a table'} ready={readyAll} open={!!tablesAt} onOpen={setTablesAt} /></div>
               <div className="flex-1 grid place-content-center justify-items-center gap-2 py-8 text-[14px] text-muted">
                 <UtensilsCrossed className="w-12 h-12 text-paper-400" strokeWidth={1.2} />
                 Tap a dish on the menu
@@ -480,9 +530,11 @@ export function RestaurantTab() {
           <MenuPicker
             onPick={(item, from) => {
               if (!selected) {
+                // A table is on its way: the dish waits for it.
+                if (opening) { pending.current.push(item); return }
                 const button = Array.from(document.querySelectorAll('[data-table-button]')).find(el => el.getClientRects().length > 0)
                 if (!button) return
-                pending.current = item
+                pending.current = [item]
                 setAskFor(item.name)
                 setTablesAt(button.getBoundingClientRect())
                 return
@@ -515,7 +567,7 @@ export function RestaurantTab() {
         number={number}
         lines={selectedLines}
         total={selectedTotal}
-        working={working}
+        idleLabel={opening || 'Pick a table'}
         ready={readyAll}
         tablesOpen={!!tablesAt}
         onTables={setTablesAt}
@@ -537,10 +589,9 @@ export function RestaurantTab() {
           selectedKey={selectedKey}
           totals={totals}
           kitchen={kitchen}
-          busy={busy}
           askFor={askFor}
           onPick={person => { pick(person.key); setError(''); setTablesAt(null) }}
-          onStart={(table, name) => openDiner(name, table)}
+          onStart={(table, name) => void openDiner(name, table)}
           onClose={closeTables}
         />
       )}

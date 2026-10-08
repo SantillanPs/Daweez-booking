@@ -15,8 +15,8 @@ interface OrderDockProps {
   number: string
   lines: TabLine[]
   total: number
-  /** True while an order is on its way to the kitchen, or being marked as served. */
-  working: boolean
+  /** The bar's title while nobody is being served: `Pick a table`, or the table being started. */
+  idleLabel: string
   /** Dishes cooked and waiting to be carried out, on any table. */
   ready: number
   /** True while the tables are open. */
@@ -40,13 +40,13 @@ interface OrderDockProps {
 // menu has the screen, and the order is this one bar a thumb can reach: whose it is (a tap
 // there opens the tables), how much it has come to, and the one thing to do next. A tap on
 // the middle opens the whole slip.
-export function OrderDock({ person, number, lines, total, working, ready, tablesOpen, onTables, onOpen, onSendKitchen, onServed, onBill }: OrderDockProps) {
+export function OrderDock({ person, number, lines, total, idleLabel, ready, tablesOpen, onTables, onOpen, onSendKitchen, onServed, onBill }: OrderDockProps) {
   const bar = 'wide:hidden shrink-0 z-10 sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] tall:static flex items-stretch gap-1.5 p-1.5 pl-4 rounded-xl bg-card border border-soft shadow-soft'
 
   if (!person) {
     return (
       <div data-slip-dock className={bar}>
-        <TableButton label="Pick a table" ready={ready} open={tablesOpen} onOpen={onTables} />
+        <TableButton label={idleLabel} ready={ready} open={tablesOpen} onOpen={onTables} />
       </div>
     )
   }
@@ -81,18 +81,18 @@ export function OrderDock({ person, number, lines, total, working, ready, tables
           something has been served and nothing is left to send, the next thing is the bill
           — quieter, because it is the guest who decides when. */}
       {toServe > 0 ? (
-        <button type="button" onClick={onServed} disabled={working} className={next}>
+        <button type="button" onClick={onServed} className={next}>
           <ConciergeBell className="w-4 h-4 shrink-0" /> Served · {toServe}
         </button>
       ) : toSend > 0 ? (
-        <button type="button" onClick={onSendKitchen} disabled={working} className={next}
+        <button type="button" onClick={onSendKitchen} className={next}
           aria-label={'Send to kitchen, ' + toSend + ' new'}>
           <ChefHat className="w-4 h-4 shrink-0" />
           <span className="sm:hidden">Send · {toSend} new</span>
           <span className="hidden sm:inline">Send to kitchen · {toSend} new</span>
         </button>
       ) : canBill ? (
-        <button type="button" onClick={e => onBill(e.currentTarget.getBoundingClientRect())} disabled={working} aria-label="Send bill"
+        <button type="button" onClick={e => onBill(e.currentTarget.getBoundingClientRect())} aria-label="Send bill"
           className="shrink-0 min-h-12 inline-flex items-center justify-center gap-1.5 px-4 rounded-lg border border-soft bg-card text-main text-[14px] font-bold hover:border-gold-400 hover:bg-gold-100 transition-colors duration-200 active:scale-[0.98] cursor-pointer disabled:opacity-60 disabled:pointer-events-none">
           <Receipt className="w-4 h-4 shrink-0" />
           Send bill

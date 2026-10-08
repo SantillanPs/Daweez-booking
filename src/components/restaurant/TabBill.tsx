@@ -10,7 +10,6 @@ interface TabBillProps {
   lines: TabLine[]
   /** What the slip comes to. */
   total: number
-  busy?: boolean
   /** One fewer of a row. One fewer of a single serving removes the row, which asks first. */
   onQty: (line: TabLine, delta: 1 | -1) => void
   /** What to say when nothing is on the slip yet. */
@@ -23,8 +22,6 @@ interface TabBillProps {
   onBill: (at: DOMRect) => void
   /** `Send bill`, or `Add to Room 3’s bill`. */
   billLabel: string
-  /** True while an order is on its way to the kitchen, or being marked as served. */
-  working?: boolean
 }
 
 // What is on the order slip right now, and what happens to it next.
@@ -45,11 +42,16 @@ interface TabBillProps {
 // **"Send bill" cannot be pressed until something has been served** (his ruling the same
 // day), nor while a dish is still to send: a table is not billed for food it has not had.
 //
+// **No button here waits for the server**, so none of them greys out and comes back: a
+// dish is served, sent or taken off on screen the moment it is tapped (`RestaurantTab`
+// marks the slip and saves behind it). The one wait that shows is the sweep across "Send
+// to kitchen", which is at least half a second so the card that follows is always earned.
+//
 // **Only the rows scroll.** The slip is read on a tablet or a phone most of the time, and
 // a long order used to push the total and "Send to kitchen" off the bottom of the screen.
 // Whoever shows this gives it a column with a height, and `relative`: the "Sent to the
 // kitchen" card lays itself over the whole slip.
-export function TabBill({ lines, total, busy = false, onQty, emptyText, onSendKitchen, onServeLine, onBill, billLabel, working = false }: TabBillProps) {
+export function TabBill({ lines, total, onQty, emptyText, onSendKitchen, onServeLine, onBill, billLabel }: TabBillProps) {
   const [stage, setStage] = useState<'idle' | 'sending' | 'sent'>('idle')
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
@@ -68,7 +70,8 @@ export function TabBill({ lines, total, busy = false, onQty, emptyText, onSendKi
 
   const send = async () => {
     setStage('sending')
-    if (!(await onSendKitchen())) { setStage('idle'); return }
+    const [sent] = await Promise.all([onSendKitchen(), new Promise(r => window.setTimeout(r, 550))])
+    if (!sent) { setStage('idle'); return }
     setStage('sent')
     timer.current = window.setTimeout(() => setStage('idle'), 1700)
   }
@@ -88,7 +91,7 @@ export function TabBill({ lines, total, busy = false, onQty, emptyText, onSendKi
       <li key={line.id + (sent ? ':k' : ':n')} data-slip-line={line.description}
         className={'flex items-center gap-2.5 py-1.5 pl-1.5 pr-2 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300 motion-reduce:animate-none ' +
           (ready > 0 ? 'bg-emerald-50 shadow-[inset_4px_0_0_#047857]' : '')}>
-        <button type="button" onClick={() => onQty(line, -1)} disabled={busy}
+        <button type="button" onClick={() => onQty(line, -1)}
           aria-label={Number(line.qty || 1) > 1 ? 'One fewer ' + line.description : 'Remove ' + line.description}
           className="group/less relative w-11 h-11 shrink-0 grid place-items-center rounded-lg border border-soft text-[15px] font-bold tabular-nums text-main transition-[background-color,border-color,color,transform] duration-150 hover:bg-ink-900 hover:border-ink-900 hover:text-gold-400 active:scale-90 cursor-pointer disabled:opacity-40">
           {/* `key` on the count: a changed number is a new element, so it lands with a bump. */}
@@ -106,7 +109,7 @@ export function TabBill({ lines, total, busy = false, onQty, emptyText, onSendKi
           )}
         </span>
         {ready > 0 ? (
-          <button type="button" onClick={() => onServeLine(line)} disabled={working}
+          <button type="button" onClick={() => onServeLine(line)}
             className="shrink-0 h-9 px-3 inline-flex items-center gap-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[13px] font-bold transition-[background-color,transform] duration-150 active:scale-95 cursor-pointer disabled:opacity-60 animate-in zoom-in-50 duration-300 motion-reduce:animate-none">
             <Check className="w-4 h-4" /> Serve
           </button>
@@ -143,7 +146,7 @@ export function TabBill({ lines, total, busy = false, onQty, emptyText, onSendKi
           {/* Gold while something on the slip has not been given to the kitchen; a dark
               sweep crosses it as the order goes. Once everything has gone it says so and
               there is nothing to tap. */}
-          <button type="button" onClick={() => void send()} disabled={working || toSend === 0 || stage !== 'idle'}
+          <button type="button" onClick={() => void send()} disabled={toSend === 0 || stage !== 'idle'}
             aria-label={toSend > 0 ? 'Send to kitchen, ' + toSend + ' new' : 'Sent to the kitchen'}
             className={ACTION + 'relative overflow-hidden flex-1 basis-44 ' +
               (stage === 'sending' ? 'bg-gold-400 text-gold-400' : toSend > 0 ? 'bg-gold-400 hover:bg-gold-600 text-ink-900' : 'bg-card border border-soft text-muted')}>
@@ -156,7 +159,7 @@ export function TabBill({ lines, total, busy = false, onQty, emptyText, onSendKi
               </span>
             )}
           </button>
-          <button type="button" onClick={e => onBill(e.currentTarget.getBoundingClientRect())} disabled={working || !canBill}
+          <button type="button" onClick={e => onBill(e.currentTarget.getBoundingClientRect())} disabled={!canBill}
             title={canBill ? undefined : toSend > 0 ? 'Send the new dishes to the kitchen first' : 'Nothing has been served yet'}
             className={ACTION + 'bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100 disabled:opacity-40'}>
             <Receipt className="w-4 h-4 shrink-0" /> {billLabel}
