@@ -3,7 +3,8 @@ import { useDashboardData } from './DashboardContext'
 import { Booking } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { dateToString } from '../utils/helpers'
-import { breakfastOn, wantsBreakfastToday } from '../utils/breakfastChoice'
+import { breakfastOn, wantsBreakfastToday, saveBreakfastChoices } from '../utils/breakfastChoice'
+import { useQueryClient } from '@tanstack/react-query'
 import { extendStay } from '../utils/bookingBalance'
 import { clearStayHours } from '../utils/db'
 import { WalkInBookingForm } from './WalkInBookingForm'
@@ -166,6 +167,27 @@ export function CalendarTab() {
     bookings.forEach(b => { if (b.room_id && wantsBreakfastToday(b) && !breakfastOn(b, todayKey)) ask[b.room_id] = b })
     return ask
   }, [bookings, todayKey])
+
+  // **A cooked breakfast comes back to the desk** (Sebastian, 2026-10-09: "after the kitchen
+  // finishes cooking, where does it go next?"). It used to leave the kitchen's screen and
+  // nobody was told. The room's cup returns in green until the desk has brought it.
+  const breakfastReady = useMemo(() => {
+    const ready: Record<string, Booking> = {}
+    bookings.forEach(b => {
+      const c = breakfastOn(b, todayKey)
+      if (b.room_id && c && c.items.length > 0 && c.ready_at && !c.served_at) ready[b.room_id] = b
+    })
+    return ready
+  }, [bookings, todayKey])
+  const queryClient = useQueryClient()
+  const serveBreakfast = useCallback(async (booking: Booking) => {
+    const choices = (booking.breakfast_choices || []).map(c => c.date === todayKey ? { ...c, served_at: new Date().toISOString() } : c)
+    const before = queryClient.getQueryData<Booking[]>(['bookings'])
+    // Gone from the room at once; put back if the database says no.
+    queryClient.setQueryData<Booking[]>(['bookings'], old => old?.map(b => b.id === booking.id ? { ...b, breakfast_choices: choices } : b))
+    try { await saveBreakfastChoices(booking.id, choices) }
+    catch { queryClient.setQueryData(['bookings'], before); showToast('Could not mark the breakfast served. Please try again.', 'error') }
+  }, [queryClient, todayKey])
 
   const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date) => {
     const curTimeline = timelineSelectionRef.current
@@ -438,6 +460,8 @@ export function CalendarTab() {
           loading={isLoading}
           breakfastToAsk={breakfastToAsk}
           onBreakfast={b => setBreakfastForId(b.id)}
+          breakfastReady={breakfastReady}
+          onBreakfastServed={serveBreakfast}
         />
       </div>
 

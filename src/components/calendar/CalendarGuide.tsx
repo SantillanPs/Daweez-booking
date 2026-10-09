@@ -42,6 +42,7 @@ export function CalendarGuide() {
           <Section title="On the room">
             <Row sign={<span className="h-5 w-[5px] rounded-sm bg-emerald-600" />}>A guest is in this room</Row>
             <Row sign={<Coffee className="w-5 h-5 animate-hop" />}>Tap to ask this room about breakfast</Row>
+            <Row sign={<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><Coffee className="w-4 h-4" /></span>}>Breakfast is ready. Tap once it is served</Row>
           </Section>
 
           <Section title="Under the date">

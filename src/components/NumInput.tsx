@@ -10,6 +10,7 @@ interface NumInputProps {
   allowDecimal?: boolean
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
   'aria-label'?: string
   title?: string
 }

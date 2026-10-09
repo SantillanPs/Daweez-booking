@@ -40,6 +40,7 @@ const TABS = [
     screens: [
       { label: 'Orders', to: '/restaurant' },
       { label: 'Kitchen', to: '/restaurant/kitchen' },
+      { label: 'Menu', to: '/restaurant/menu' },
     ],
   },
   {

@@ -23,6 +23,36 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-09b',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'The calendar now shows what you just did. When you check a guest in, the green crosses their booking and the green bar grows beside the room. When you check them out, it drains to grey.',
+          'When you receive money, the booking shows it straight away: the amount counts down, or changes to “Paid”.',
+          'The numbers under each date drop as guests are checked in and out.',
+          'The days slide sideways when you use the arrows, so you can see which way you moved.',
+          'A booking now says “Reserved” before the guest checks in and “Occupied” while they are in the room. The guest’s name shows after they check out. Point at a booking, or open it, to see who it is. An agency’s booking still shows the agency.',
+          'When the kitchen has cooked a room’s breakfast, a green cup shows beside that room. Tap it once the breakfast has been served.',
+        ],
+      },
+      {
+        where: 'Restaurant → Menu',
+        what: [
+          'New screen. You can change a dish’s name or price, add a new dish, and take one off the menu. Type in the box and it is saved when you leave it.',
+          'Each dish also says how many times it has been ordered.',
+        ],
+      },
+      {
+        where: 'Front desk → a booking',
+        what: [
+          'After “Check in”, “Check out” or receiving money, the booking shows a mark for a moment to say it is done. A payment’s receipt opens right after it.',
+          'A green bar under “Payment” shows how much of the bill has been paid.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-09',
     changes: [
       {

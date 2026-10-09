@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
-import { X, Printer, Edit3, CalendarPlus, Undo2, ArrowRightLeft } from 'lucide-react'
+import { X, Printer, Edit3, CalendarPlus, Undo2, ArrowRightLeft, Banknote, Check, DoorOpen, KeyRound } from 'lucide-react'
 import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
 import { computeCheckInOutHours } from '../../utils/checkInOut'
 import { getRateConfig } from '../../utils/rateConfig'
@@ -62,7 +62,7 @@ const fmtShort = (d: string) => (d ? new Date(d).toLocaleDateString('en-US', { m
 const fmtPeso = (n: number) => '₱' + n.toLocaleString()
 
 // One loud button for the next step, one quiet one for the step that is not open yet.
-const BTN = 'w-full min-h-12 px-4 rounded-lg text-[15px] font-bold transition-colors cursor-pointer '
+const BTN = 'w-full min-h-12 px-4 rounded-lg text-[15px] font-bold transition-[background-color,border-color,transform] duration-200 active:scale-[0.98] cursor-pointer '
 const BTN_GOLD = BTN + 'bg-gold-400 hover:bg-gold-600 text-ink-900 shadow-sm'
 const BTN_GREEN = BTN + 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
 const BTN_QUIET = BTN + 'bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100'
@@ -91,6 +91,12 @@ const ROW_ACTION = 'min-h-11 inline-flex items-center gap-1.5 text-[13px] font-s
  *
  * Nothing smaller than 12px, and nothing to press smaller than a fingertip (44px) — the
  * desk uses a tablet as well as the PC.
+ *
+ * **A finished step is marked** (Sebastian, 2026-10-09: the Front desk "just changed and
+ * saved, with nothing marking the moment"). Checking in, checking out and receiving money
+ * each lay a seal over the panel for a moment — the same one the kitchen's "Sent" wears —
+ * while the calendar behind answers: the pill's green crosses it, the bar on the room
+ * grows, the amount counts down. A payment's receipt opens once its seal has been seen.
  */
 export function ExtendStayModal({
   booking,
@@ -136,6 +142,17 @@ export function ExtendStayModal({
   const [showReceipt, setShowReceipt] = useState(false)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [trySave, setTrySave] = useState(false)
+  // The step just finished, said over the panel for a moment.
+  const [seal, setSeal] = useState<{ title: string; sub: string; icon: 'in' | 'out' | 'paid' } | null>(null)
+  const sealTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(sealTimer.current), [])
+  const SEAL_MS = 1300
+  const mark = (next: { title: string; sub: string; icon: 'in' | 'out' | 'paid' }) => {
+    setSeal(next)
+    window.clearTimeout(sealTimer.current)
+    sealTimer.current = window.setTimeout(() => setSeal(null), SEAL_MS)
+  }
+  const clock = () => new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
   // The panel follows the live booking: an order taken in the restaurant, or a payment
   // recorded on another screen, changes what is owed while this is open.
@@ -324,6 +341,7 @@ export function ExtendStayModal({
       })
     const updated: Booking = { ...localBooking, actual_check_in: actualCheckIn, early_check_in_hours: earlyHours, status: 'confirmed' }
     setLocalBooking(updated)
+    mark({ title: 'Checked in', sub: place + ' · ' + clock(), icon: 'in' })
     if (earlyHours > 0) {
       const hours = earlyHours + ' hour' + (earlyHours > 1 ? 's' : '')
       const why = earlyHours > rates.lateEarlyCapHours
@@ -360,6 +378,8 @@ export function ExtendStayModal({
       })
     const updated = withRecomputedBalance(localBooking, { actual_check_out: actualCheckOut, late_check_out_hours: lateHours })
     setLocalBooking(updated)
+    // A stay that grew at check-out still has money to take: that is said, not sealed.
+    if (!hasOutstandingBalance(updated) || billedToAgency) mark({ title: 'Checked out', sub: place + ' is free · ' + clock(), icon: 'out' })
     try {
       await onUpdateBooking?.(updated)
       // The guest has left, so nothing more is ordered on this stay: its open slip is
@@ -454,8 +474,12 @@ export function ExtendStayModal({
     setLocalBooking(updated)
     setActionNotice('')
     setReceiptAmount(0); setPayFor('all'); setTryPayment(false); setReceiptMethod(''); setReceiptRef(''); setReceiveOpen(false)
+    // The money is marked at once; its receipt opens when it is saved and the seal has been seen.
+    mark({ title: remaining <= 0 ? 'Paid' : 'Received', sub: fmtPeso(amount) + ' · ' + receiptMethod, icon: 'paid' })
+    const sealSeen = new Promise(resolve => window.setTimeout(resolve, SEAL_MS - 250))
     try {
       await onUpdateBooking?.(updated)
+      await sealSeen
       setReceiptFor(rec)
       setShowReceipt(true)
       // Dismissing the receipt closes this whole panel **only when the guest has already
@@ -554,12 +578,22 @@ export function ExtendStayModal({
   const checkOutDue = isShortStay || localBooking.check_out <= todayKey
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 animate-in fade-in duration-200 motion-reduce:animate-none">
       {/* The panel is as wide as its contents, not a fixed number (the owner: *"don't
           make the width fixed"*): `w-fit` lets the widest row set the width and the short
           rows fill it. The floor keeps a block's short panel from collapsing; the cap
           stops a long name or email from stretching it across the screen. */}
-      <div className="w-fit min-w-[min(92vw,26rem)] max-w-[min(92vw,34rem)] bg-card rounded-xl shadow-softLg overflow-hidden flex flex-col max-h-[88vh]">
+      <div className="relative w-fit min-w-[min(92vw,26rem)] max-w-[min(92vw,34rem)] bg-card rounded-xl shadow-softLg overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300 motion-reduce:animate-none">
+        {seal && (
+          <div role="status" className="absolute inset-0 z-10 bg-card/95 grid place-content-center justify-items-center gap-2.5 pointer-events-none bp-dim">
+            <span className="relative w-16 h-16 grid place-items-center rounded-full bg-ink-900 text-gold-400 bp-seal">
+              {seal.icon === 'in' ? <KeyRound className="w-7 h-7" /> : seal.icon === 'out' ? <DoorOpen className="w-7 h-7" /> : seal.icon === 'paid' ? <Banknote className="w-7 h-7" /> : <Check className="w-7 h-7" />}
+              <i /><i /><i /><i /><i /><i />
+            </span>
+            <b className="font-display text-[19px] font-bold tracking-tight text-main">{seal.title}</b>
+            <span className="text-[13px] text-muted">{seal.sub}</span>
+          </div>
+        )}
 
         <div className="flex items-start justify-between gap-2 pl-5 pr-1.5 py-1.5 border-b border-soft shrink-0">
           {/* Nothing here is cut short: on a phone a long name wraps rather than reading `Angela…`. */}
@@ -590,6 +624,13 @@ export function ExtendStayModal({
             {!isBlock && (
               <div>
                 <BookingStageLine booking={localBooking} now={step} />
+                {/* How much of the bill is in: green for what is paid, and it fills as money is received. */}
+                {totalCharge > 0 && (
+                  <div aria-hidden="true" className={'mt-2.5 h-1.5 rounded-full overflow-hidden ' + (paidSoFar > 0 ? 'bg-danger-200' : 'bg-paper-300')}>
+                    <div style={{ '--paid': Math.min(1, paidSoFar / totalCharge) } as React.CSSProperties}
+                      className="h-full rounded-full bg-emerald-600 origin-left [transform:scaleX(var(--paid))] transition-transform duration-700 ease-out" />
+                  </div>
+                )}
                 {(paidSoFar > 0 || tabAmount > 0) && totalCharge > 0 && (
                   <p className="mt-2 text-[12px] text-muted">
                     Total <strong className="text-main">{fmtPeso(totalCharge)}</strong>

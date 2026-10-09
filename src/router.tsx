@@ -165,6 +165,13 @@ const kitchenRoute = createRoute({
   component: lazyRouteComponent(() => import('./components/KitchenTab'), 'KitchenTab')
 })
 
+// Where the restaurant changes its own dishes and prices (Sebastian, 2026-10-09).
+const menuRoute = createRoute({
+  getParentRoute: () => dashboardRoute,
+  path: '/restaurant/menu',
+  component: lazyRouteComponent(() => import('./components/MenuTab'), 'MenuTab')
+})
+
 // 5. Construct Route Tree
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -180,6 +187,7 @@ const routeTree = rootRoute.addChildren([
     housekeepingRoute,
     restaurantRoute,
     kitchenRoute,
+    menuRoute,
     dailyReportRoute
   ])
 ])

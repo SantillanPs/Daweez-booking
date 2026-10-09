@@ -119,4 +119,6 @@
 - **Double booking:** every create or move checks for a clash; the database is the real gate. A save that changes neither room nor dates must *not* check — that check once made every paid booking collide with itself.
 - **Log old booking** exists to enter past paper bookings. It keeps the paper log's own number and date so staff can find the physical page.
 - **No browser pop-ups anywhere** (`alert`, `confirm`). A problem is shown under the box or button it belongs to; everything else is a toast. Destructive actions ask through the app's own confirm dialog.
+- **No guest's name is written on the calendar** (the owner, 2026-10-09). A pill says "Reserved" until the guest checks in, "Occupied" while they are in, and the guest's name once they have checked out; who it is stays on the hover card and in the booking's panel. An agency's name and a block's reason are still shown, and a half-day pill keeps its initials.
+- **A cooked breakfast comes back to the desk** (the owner, 2026-10-09: "after the kitchen finishes cooking, where does it go next?"). The room's cup returns in green; the desk taps it once the breakfast is served.
 - **Number boxes are free-typing**, never the browser's number spinner — the spinner's snap-to-zero confused staff.

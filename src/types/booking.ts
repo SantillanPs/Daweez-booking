@@ -105,6 +105,9 @@ export interface BreakfastChoice {
   sent_at?: string
   /** When the kitchen said the breakfast was ready. Until then it is on the kitchen's screen. */
   ready_at?: string
+  /** When the desk said it was brought to the room. Between ready and this, the room's
+   *  cup on the calendar is green. */
+  served_at?: string
 }
 
 export interface EquipmentRental {

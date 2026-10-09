@@ -133,6 +133,28 @@ export async function getMenu(): Promise<MenuCategory[]> {
   return DEFAULT_MENU
 }
 
+/** An id for a dish the restaurant adds itself. Not made from its name: the name is typed
+ *  after the row exists, and may be changed later. */
+export const newMenuItemId = (categoryId: string): string =>
+  categoryId + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+
+/** Adds a dish, or writes its new name and price (Restaurant → Menu). */
+export async function saveMenuItem(categoryId: string, item: MenuItem, sortOrder: number): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('No database is connected, so the menu was not saved.')
+  const { error } = await supabase.from('menu_items').upsert({
+    id: item.id, category_id: categoryId, name: item.name, price: item.price, note: item.note ?? null, sort_order: sortOrder, active: true,
+  })
+  if (error) throw error
+}
+
+/** Takes a dish off the menu. It is hidden, not deleted: order slips and what a dish uses
+ *  from the stock room still point at it. */
+export async function removeMenuItem(id: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('No database is connected, so the menu was not saved.')
+  const { error } = await supabase.from('menu_items').update({ active: false }).eq('id', id)
+  if (error) throw error
+}
+
 /** Writes the whole menu — prices included — for every device to read. */
 export async function saveMenu(menu: MenuCategory[]): Promise<void> {
   if (!isSupabaseConfigured) {

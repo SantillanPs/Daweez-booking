@@ -33,7 +33,10 @@ export const getBookingStyle = (b: Booking): string => {
   // **A guest in the hotel is green** (Sebastian, 2026-10-09: *"when a guest checks in, the
   // pill should turn green"*; he picked the soft green of five). It was gold, the colour
   // of today's column and of every button, so it said nothing of its own.
-  if (stage === 'in') return 'bg-emerald-50 text-ink-900 border-emerald-600'
+  //
+  // The pill itself stays white: its green is a wash laid inside it (`TimelineCell`), so
+  // it can cross the pill from the left as the guest checks in and drain off as they leave.
+  if (stage === 'in') return 'bg-card text-ink-900 border-emerald-600'
   return 'bg-card text-main border-paper-400'
 }
 

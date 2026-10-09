@@ -3,6 +3,7 @@ import { Building2, Check } from 'lucide-react'
 import { Booking } from '../../types/booking'
 import { pillInitials, pillMoney } from './bookingStyles'
 import { clockLabel, shortStayEnd } from '../../utils/shortStay'
+import { CountPeso } from '../CountPeso'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 
 export interface TimelineCellProps {
@@ -62,6 +63,26 @@ const nightsWord = (from: string, to: string): string => {
   const at = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d) }
   const n = Math.round((at(to) - at(from)) / 86400000)
   return n > 0 ? n + (n === 1 ? ' night' : ' nights') : ''
+}
+
+/**
+ * The money line of a pill. **It answers a payment where the desk is looking** (Sebastian,
+ * 2026-10-09): an amount counts down to its new figure, and when the words change kind —
+ * "₱2,800 to pay" to "Paid" — the new words come up from under the line. Nothing moves
+ * when the calendar first opens: the words it was first given are simply there.
+ */
+function MoneyWords({ text, amount, className }: { text: string; amount: number; className: string }) {
+  const [first] = React.useState(text)
+  // `₱2,800 to pay`, `₱500 agency`: the figure counts, the words after it stay.
+  const tail = text.startsWith('₱') ? text.slice(text.indexOf(' ')) : ''
+  const kind = tail || text
+  return (
+    <span className={'relative text-[12px] font-semibold truncate leading-4 ' + className}>
+      <span key={kind} className={kind === (first.startsWith('₱') ? first.slice(first.indexOf(' ')) : first) ? '' : 'bp-up'}>
+        {tail ? <><CountPeso value={amount} />{tail}</> : text}
+      </span>
+    </span>
+  )
 }
 
 /** The mark of a guest who has checked out: a tick in a small charcoal circle. */
@@ -129,7 +150,14 @@ export const TimelineCell = React.memo(
       // the person who made the reservation (they are on the hover card and in the panel).
       const pillName = isBlock ? blockReason(booking) + (openEnded ? ' · until further notice' : '') : (agencyName || booking.guest_name)
       const left = !!booking.actual_check_out
+      // **A pill says where the stay is, not who it is** (Sebastian, 2026-10-09): "Reserved"
+      // until the guest checks in, "Occupied" while they are in the room, and the guest's
+      // name only once they have left. Who it is stays on the hover card and in the panel.
+      // An agency's name and a block's reason are not a guest's name, so they are still
+      // shown, and a half-day pill keeps its initials — how the desk tells who is leaving.
+      const pillWords = isBlock || agencyName || left ? pillName : booking.actual_check_in ? 'Occupied' : 'Reserved'
       const money = pillMoney(booking)
+      const inHotel = !isBlock && !isShortStayDue && !!booking.actual_check_in && !booking.actual_check_out
       // A short stay whose guest is in the room shows THE TIME THE ROOM IS FREE — never
       // a countdown (the owner's ruling) — unless money is still owed, which comes first.
       const freeAt = shortStayEnd(booking.actual_check_in, Number(booking.stay_hours || 0))
@@ -173,12 +201,18 @@ export const TimelineCell = React.memo(
               setExtendCheckoutDate(openEnded ? '' : booking.check_out)
               setExtendError('')
             }}
-            title={pillName}
-            className={'relative overflow-hidden mx-0.5 h-10 rounded-md border cursor-pointer select-none transition hover:brightness-95 flex flex-col justify-center ' +
+            className={'relative overflow-hidden mx-0.5 h-10 rounded-md border cursor-pointer select-none transition-[filter,transform,border-color,background-color,color] duration-300 hover:brightness-95 active:scale-[0.98] flex flex-col justify-center animate-in fade-in zoom-in-95 motion-reduce:animate-none ' +
               (narrow ? 'items-center px-0 ' : 'px-2 ') +
               (isShortStayDue ? 'bg-danger-100 border-danger-400 text-danger-600' : getBookingStyle(booking)) +
               (due === 'in' ? ' border-l-[5px] border-l-emerald-700' : due === 'out' ? ' border-r-[5px] border-r-ink-900' : '')}
           >
+            {/* THE GREEN OF A GUEST WHO IS IN. It is a wash inside the pill, not the pill's
+                own colour, so checking in is seen: it crosses from the left. Checking out
+                drains it off to the right as the pill turns grey. */}
+            {!isBlock && (
+              <span aria-hidden="true" className={'absolute inset-0 bg-emerald-50 transition-transform duration-[600ms] ease-out ' +
+                (inHotel ? 'origin-left scale-x-100' : left ? 'origin-right scale-x-0' : 'origin-left scale-x-0')} />
+            )}
             {/* SIGNS, NOT WORDS (Sebastian, 2026-10-08: "use visual design, not so much text
                 heavy"). The pill's edge is what the desk has to do today and the
                 building is an agency; what each means is in the calendar's guide
@@ -199,24 +233,25 @@ export const TimelineCell = React.memo(
                 reads the calendar without opening a booking. A block has one line — why
                 the dates are closed. 13px and 12px: the pills are what the desk reads all
                 day, and at 11px they were the smallest words on the screen. */}
-            <span className="flex items-center gap-1 min-w-0 text-[13px] font-bold leading-4">
+            <span className="relative flex items-center gap-1 min-w-0 text-[13px] font-bold leading-4">
               {agencyName && !isBlock && <Building2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
               <span className="min-w-0 truncate">
                 {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
-                {pillName}
+                {pillWords}
               </span>
               {/* No IN tag any more: the green pill and the green bar on the room say it. A
                   guest who has left keeps a tick beside the name. */}
               {left && !isBlock && <LeftTick className="shrink-0" />}
             </span>
-            {!isBlock && (
-              <span className={'text-[12px] font-semibold truncate leading-4 ' + (isShortStayDue ? '' : showClock ? 'text-ink-700' : money.className)}>
+            {!isBlock && (isShortStayDue || showClock || (booking.stay_hours && !booking.actual_check_in) ? (
+              <span className={'relative text-[12px] font-semibold truncate leading-4 ' + (isShortStayDue ? '' : showClock ? 'text-ink-700' : money.className)}>
                 {isShortStayDue && freeAt ? 'time up ' + clockLabel(freeAt)
                   : showClock && freeAt ? 'out ' + clockLabel(freeAt)
-                    : booking.stay_hours && !booking.actual_check_in ? booking.stay_hours + ' hrs · ' + money.text
-                      : money.text}
+                    : booking.stay_hours + ' hrs · ' + money.text}
               </span>
-            )}
+            ) : (
+              <MoneyWords text={money.text} amount={Number(booking.balance_due || 0)} className={money.className} />
+            ))}
             </>)}
           </div>
           {/* THREE BANDS: who, when, how much (Sebastian, 2026-10-09: the card "looks messy").

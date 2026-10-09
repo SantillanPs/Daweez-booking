@@ -1,6 +1,8 @@
+import React from 'react'
 import { Booking } from '../../types/booking'
 import { getPaymentView, PaymentTone } from '../../utils/bookingMoney'
 import { BookingStep } from './bookingStep'
+import { CountPeso } from '../CountPeso'
 
 const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 const fmtWhen = (iso?: string) =>
@@ -37,8 +39,12 @@ export function BookingStageLine({ booking, now }: BookingStageLineProps) {
         : view.tone === 'billed' ? 'Agency · ' + fmtPeso(due)
           : due > 0 ? fmtPeso(due) + ' left' : 'Not paid'
 
-  const steps: { key: BookingStep; label: string; word: string; done: boolean; tone: string }[] = [
-    { key: 'payment', label: 'Payment', word: moneyWord, done: view.tone === 'paid', tone: MONEY_TEXT[view.tone] },
+  const steps: { key: BookingStep; label: string; word: React.ReactNode; done: boolean; tone: string }[] = [
+    // What is left counts down as money is received, where the desk is looking.
+    {
+      key: 'payment', label: 'Payment', done: view.tone === 'paid', tone: MONEY_TEXT[view.tone],
+      word: view.tone === 'partial' || view.tone === 'owes' ? (due > 0 ? <><CountPeso value={due} /> left</> : moneyWord) : moneyWord,
+    },
     {
       key: 'checkIn', label: 'Check in', done: !!booking.actual_check_in,
       word: booking.actual_check_in ? fmtWhen(booking.actual_check_in) : 'Not yet',
@@ -55,9 +61,9 @@ export function BookingStageLine({ booking, now }: BookingStageLineProps) {
     <ol className="grid grid-cols-3 gap-2">
       {steps.map(step => (
         <li key={step.key} className="min-w-0">
-          <span className={'block h-1 rounded-full ' + (step.done ? 'bg-emerald-500' : step.key === now ? 'bg-gold-400' : 'bg-paper-300')} />
+          <span className={'block h-1 rounded-full transition-colors duration-500 ' + (step.done ? 'bg-emerald-500' : step.key === now ? 'bg-gold-400' : 'bg-paper-300')} />
           <span className="block mt-1.5 text-[12px] text-muted">{step.label}</span>
-          <span className={'block text-[14px] font-bold leading-tight ' + step.tone}>{step.word}</span>
+          <span className={'block text-[14px] font-bold leading-tight transition-colors duration-300 ' + step.tone}>{step.word}</span>
         </li>
       ))}
     </ol>

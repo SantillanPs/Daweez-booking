@@ -54,6 +54,10 @@ interface TimelineGridProps {
   breakfastToAsk?: Record<string, Booking>
   /** Opens the breakfast picker for that guest. */
   onBreakfast?: (booking: Booking) => void
+  /** The guest whose breakfast the kitchen has cooked and the desk has not yet brought, per room id. */
+  breakfastReady?: Record<string, Booking>
+  /** The desk has brought that breakfast to the room. */
+  onBreakfastServed?: (booking: Booking) => void
 }
 
 // One room's row and one day's column, in one place: the header, the rows and the cells
@@ -100,7 +104,9 @@ export const TimelineGrid = React.memo(
     dueShortStayIds,
     loading = false,
     breakfastToAsk,
-    onBreakfast
+    onBreakfast,
+    breakfastReady,
+    onBreakfastServed
   }: TimelineGridProps) {
     const scrollRef = React.useRef<HTMLDivElement>(null)
 
@@ -484,6 +490,16 @@ export const TimelineGrid = React.memo(
                         title={'Ask room ' + room.room_number + ' what they want for breakfast'}
                         aria-label={'Ask room ' + room.room_number + ' about breakfast'}
                         className="-mr-1.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-main transition-colors hover:bg-gold-200 active:scale-95 cursor-pointer">
+                        <Coffee className="w-5 h-5 animate-hop" />
+                      </button>
+                    )}
+                    {/* The same cup in green: the kitchen has cooked it. One tap once it
+                        is brought to the room, and it is gone. */}
+                    {breakfastReady?.[room.id] && (
+                      <button type="button" onClick={() => onBreakfastServed?.(breakfastReady[room.id])}
+                        title={'Breakfast is ready for room ' + room.room_number + '. Tap once it is served.'}
+                        aria-label={'Breakfast is ready for room ' + room.room_number + '. Tap once it is served.'}
+                        className="-mr-1.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition-colors hover:bg-emerald-200 active:scale-95 cursor-pointer">
                         <Coffee className="w-5 h-5 animate-hop" />
                       </button>
                     )}
