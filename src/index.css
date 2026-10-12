@@ -229,7 +229,10 @@
   width: 100% !important;
   max-width: 58mm !important;
   margin: 0 !important;
-  padding: 0 1mm !important;
+  /* 5 mm each side: the roll is 58 mm but the head prints the middle 48 mm of it. At
+     1 mm the start of every line was cut off ("EST" for GUEST, the owner's photo,
+     2026-10-12). */
+  padding: 0 5mm !important;
   box-shadow: none !important;
   border-radius: 0 !important;
 }
