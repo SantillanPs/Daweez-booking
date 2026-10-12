@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Printer, X } from 'lucide-react'
+import { useSlipPage } from './useSlipPage'
 
 interface SlipModalProps {
   /**
@@ -22,16 +23,11 @@ interface SlipModalProps {
 // which is what keeps the payment receipt and the running tab from drifting into
 // two different-looking pieces of paper.
 export function SlipModal({ printLabel, onClose, onPrinted, children }: SlipModalProps) {
+  useSlipPage()
   useEffect(() => {
-    const style = document.createElement('style')
-    style.textContent = '@page { size: 58mm auto; margin: 3mm }'
-    document.head.appendChild(style)
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
-    return () => {
-      document.head.removeChild(style)
-      window.removeEventListener('keydown', onKey)
-    }
+    return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
   return createPortal(

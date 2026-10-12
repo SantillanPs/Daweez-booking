@@ -252,7 +252,9 @@
     position: fixed !important;
     left: 0 !important;
     top: 0 !important;
-    width: 58mm !important;
+    /* The paper less the page's 3 mm margins (`useSlipPage`): at the full 58 mm the
+       right of the slip ran off the page. */
+    width: 52mm !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
