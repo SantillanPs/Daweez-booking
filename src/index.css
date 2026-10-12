@@ -221,9 +221,22 @@
    **and still flow onto a second page** if a booking is long enough to need one —
    pinning it fixed would clip a long bill instead, which is worse than a gap.
    The `visibility` rules are kept as a fallback for a browser without `:has()`. */
+/* The copy of a slip made for the printer (`billing/useSlipPage`): never on screen, and
+   on paper as wide as the printer's own page — 48 mm on the hotel's roll — but never
+   wider than the roll when it is printed on a bigger sheet. */
+.print-root { display: none; }
+.print-root .print-slip {
+  width: 100% !important;
+  max-width: 58mm !important;
+  margin: 0 !important;
+  padding: 0 1mm !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
 @media print {
   body * { visibility: hidden !important; }
-  .print-slip, .print-slip *,
+  .print-root, .print-root *,
   .print-page, .print-page * { visibility: visible !important; }
 
   /* **Keep the statement's own colours on paper** (card k144, the owner's screenshot,
@@ -245,20 +258,11 @@
   /* Everything except the document being printed leaves the page — including the
      portal wrapper it was rendered into, which is why the check is `:has()`. */
   body > * { display: none !important; }
-  body > *:has(.print-page),
-  body > *:has(.print-slip) { display: block !important; }
-
-  .print-slip {
-    position: fixed !important;
-    left: 0 !important;
-    top: 0 !important;
-    /* The paper less the page's 3 mm margins (`useSlipPage`): at the full 58 mm the
-       right of the slip ran off the page. */
-    width: 52mm !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-  }
+  body > *:has(.print-page) { display: block !important; }
+  /* A slip is printed from its copy alone — never from where it stands on screen, where
+     the panel around it decides its place (it printed blank on the narrow roll). */
+  body:has(> .print-root) > * { display: none !important; }
+  body > .print-root { display: block !important; position: static !important; }
   .print-page {
     position: static !important;
     width: 100% !important;
