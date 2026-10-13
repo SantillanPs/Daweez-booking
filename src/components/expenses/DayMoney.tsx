@@ -1,7 +1,7 @@
 import { Check, Trash2 } from 'lucide-react'
 import { Expense, ExpenseCategory, Handover } from '../../types/expense'
 import { CountPeso } from '../CountPeso'
-import { DailyReport } from '../../utils/dailyReport'
+import { DailyReport, forwardedLabel } from '../../utils/dailyReport'
 
 const peso = (n: number) => '₱' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
 
@@ -78,7 +78,7 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandove
           left from the days before is carried in, and the last line is what the hotel holds now. */}
       <div className="px-4 py-3 border-t-2 border-ink-800 bg-page">
         <div className="flex justify-between gap-3 text-[13px] text-main">
-          <span>Left from the day before</span>
+          <span>{forwardedLabel(report.date)}</span>
           <span className="font-mono font-bold">{signed(report.broughtForward)}</span>
         </div>
         <div className="flex justify-between gap-3 text-[13px] text-main mt-1">

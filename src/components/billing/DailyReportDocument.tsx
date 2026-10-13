@@ -1,7 +1,7 @@
 import React from 'react'
 import { StatementShell, BrandHeader } from './StatementShell'
 import { money } from './receiptText'
-import type { DailyReport } from '../../utils/dailyReport'
+import { forwardedLabel, type DailyReport } from '../../utils/dailyReport'
 
 /**
  * **The Daily Report sheet** — the owner's design, approved 2026-09-29, and the paper the front desk prints
@@ -82,7 +82,7 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
       {/* THE CONCLUSION, where a conclusion belongs. */}
       <div className="border-y-4 border-double border-ink-800 py-2">
         <div className="flex justify-between gap-3 text-[12px]">
-          <span>Left from the day before</span>
+          <span>{forwardedLabel(report.date)}</span>
           <span className="font-mono">{money(report.broughtForward)}</span>
         </div>
         <div className="flex justify-between gap-3 text-[12px] mb-1">

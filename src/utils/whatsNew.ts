@@ -23,6 +23,17 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-13c',
+    changes: [
+      {
+        where: 'Money → Today’s money',
+        what: [
+          '“Left from the day before” is now called “Cash balance forwarded”, with the date of the day before beside it. The printed daily report says the same.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-13b',
     changes: [
       {

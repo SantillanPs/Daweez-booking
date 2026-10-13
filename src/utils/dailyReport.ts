@@ -108,6 +108,17 @@ function guestLabel(booking: Booking): string {
   return name.length > 22 ? `${name.slice(0, 21)}…` : name
 }
 
+/**
+ * The name of the line that carries the money in from the day before — `Cash balance forwarded - Oct 12, 2026`
+ * (the owner's wording, 2026-10-13). The day is built from local parts, like every date here.
+ */
+export function forwardedLabel(date: string): string {
+  const [y, m, d] = date.split('-').map(Number)
+  if (!y || !m || !d) return 'Cash balance forwarded'
+  const before = new Date(y, m - 1, d - 1)
+  return 'Cash balance forwarded - ' + before.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 export interface DailyReportInput {
   /** The day to report, `YYYY-MM-DD`. */
   date: string
