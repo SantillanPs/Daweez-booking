@@ -81,16 +81,18 @@ export function BrandHeader({ invoiceNumber, dateIssued, showDate = true, headin
         </div>
         <div className="text-right shrink-0">
           <h2 className="font-display font-bold text-[10.5px] text-ink-900 uppercase tracking-[0.12em] whitespace-nowrap">{heading}</h2>
-          <div className="mt-1 grid grid-cols-[auto_auto] justify-end items-baseline gap-x-2 gap-y-px">
+          {/* The labels lean left under the title and the figures stay on the right edge (his
+              ruling on the drawing, 2026-10-13). */}
+          <div className="mt-1 grid grid-cols-[auto_1fr] items-baseline gap-x-2 gap-y-px">
             {invoiceNumber && (
               <>
-                <span className="text-[10px] text-muted">Bill no.</span>
+                <span className="text-[10px] text-muted text-left">Bill no.</span>
                 <span className="font-mono text-[13px] font-bold text-ink-900">{invoiceNumber}</span>
               </>
             )}
             {showDate && dateIssued && (
               <>
-                <span className="text-[10px] text-muted">{dateLabel}</span>
+                <span className="text-[10px] text-muted text-left">{dateLabel}</span>
                 <span className="text-[11.5px] font-semibold text-ink-900">{dateIssued}</span>
               </>
             )}

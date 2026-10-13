@@ -23,6 +23,24 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-13g',
+    changes: [
+      {
+        where: 'Money → Today’s money',
+        what: [
+          'The bottom of the day now has the heading “Summary”.',
+          '“Cash for today” is now “Total Sales”, and “Less: Expenses” is now “Total Expenses”. The printed daily report says the same.',
+        ],
+      },
+      {
+        where: 'Guest billing statement',
+        what: [
+          'At the top right, “Bill no.” and “Date Issued” now line up on the left, with the number and the date on the right.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-13f',
     changes: [
       {

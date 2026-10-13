@@ -81,8 +81,9 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandove
           above — money in green, money out red — and a hand-over is gold, so it is not read as
           money spent. */}
       <div className="px-4 py-3 border-t-2 border-ink-800 bg-page text-[13px] text-main">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Summary</p>
         <div className="flex justify-between gap-3 py-0.5">
-          <span>Cash for today</span>
+          <span>Total Sales</span>
           <span className="font-mono font-bold text-emerald-600">{peso(report.totalIn)}</span>
         </div>
         <div className="flex justify-between gap-3 py-0.5">
@@ -94,7 +95,7 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandove
           <span className="font-mono">{signed(report.broughtForward + report.totalIn)}</span>
         </div>
         <div className="flex justify-between gap-3 py-0.5 mt-0.5">
-          <span><span className="text-muted">Less:</span> Expenses</span>
+          <span>Total Expenses</span>
           <span className="font-mono font-bold text-danger-600">− {peso(report.totalOut)}</span>
         </div>
         {/* A hand-over is rare, so its line is here only on the day it happened. */}

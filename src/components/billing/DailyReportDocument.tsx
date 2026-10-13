@@ -83,8 +83,9 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
       {/* The staff's own summary, line for line (their paper, 2026-10-13) — the same lines the
           screen shows, so the paper and the screen cannot disagree. */}
       <div className="border-y-4 border-double border-ink-800 py-2 text-[12px]">
+        <p className="text-[10px] font-extrabold tracking-[0.14em] uppercase text-ink-600 mb-1">Summary</p>
         <div className="flex justify-between gap-3">
-          <span>Cash for today</span>
+          <span>Total Sales</span>
           <span className="font-mono">{money(report.totalIn)}</span>
         </div>
         <div className="flex justify-between gap-3">
@@ -96,7 +97,7 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
           <span className="font-mono">{money(report.broughtForward + report.totalIn)}</span>
         </div>
         <div className="flex justify-between gap-3">
-          <span>Less: Expenses</span>
+          <span>Total Expenses</span>
           <span className="font-mono">− {money(report.totalOut)}</span>
         </div>
         {/* Money handed to the owner: printed only on a day it happened, like every line here. */}
