@@ -23,6 +23,17 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-13h',
+    changes: [
+      {
+        where: 'Money → Today’s money',
+        what: [
+          'Money taken off in the Summary is now written in brackets, like (₱1,600), instead of with a minus sign. The printed daily report says the same.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-13g',
     changes: [
       {

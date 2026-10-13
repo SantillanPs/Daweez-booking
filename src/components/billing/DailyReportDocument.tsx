@@ -65,7 +65,7 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
             <span className="h-3 bg-paper-200 rounded-sm overflow-hidden">
               <span className="block h-full bg-ink-400" style={{ width: outWidth }} />
             </span>
-            <span className="font-mono text-[13px] font-extrabold text-ink-700">− {money(report.totalOut)}</span>
+            <span className="font-mono text-[13px] font-extrabold text-ink-700">({money(report.totalOut)})</span>
           </div>
         )}
       </div>
@@ -98,13 +98,13 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
         </div>
         <div className="flex justify-between gap-3">
           <span>Total Expenses</span>
-          <span className="font-mono">− {money(report.totalOut)}</span>
+          <span className="font-mono">({money(report.totalOut)})</span>
         </div>
         {/* Money handed to the owner: printed only on a day it happened, like every line here. */}
         {report.handedOver.map((line, index) => (
           <div key={`${line.label}-${index}`} className="flex justify-between gap-3">
             <span className="truncate">Less: {line.label}</span>
-            <span className="font-mono shrink-0">− {money(line.amount)}</span>
+            <span className="font-mono shrink-0">({money(line.amount)})</span>
           </div>
         ))}
         <div className="flex justify-between items-baseline mt-1.5">

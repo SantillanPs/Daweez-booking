@@ -5,7 +5,7 @@ import { DailyReport, forwardedLabel } from '../../utils/dailyReport'
 
 const peso = (n: number) => '₱' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
 
-const signed = (n: number) => (n < 0 ? '− ' : '') + peso(Math.abs(n))
+const signed = (n: number) => n < 0 ? '(' + peso(-n) + ')' : peso(n)
 
 interface DayMoneyProps {
   /** The day's sheet — the same figures the printed daily report carries. */
@@ -96,7 +96,7 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandove
         </div>
         <div className="flex justify-between gap-3 py-0.5 mt-0.5">
           <span>Total Expenses</span>
-          <span className="font-mono font-bold text-danger-600">− {peso(report.totalOut)}</span>
+          <span className="font-mono font-bold text-danger-600">({peso(report.totalOut)})</span>
         </div>
         {/* A hand-over is rare, so its line is here only on the day it happened. */}
         {dayHandovers.map(handover => (
@@ -114,14 +114,14 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandove
               >
                 Take back
               </button>
-              <span className="font-mono font-bold">− {peso(handover.amount)}</span>
+              <span className="font-mono font-bold">({peso(handover.amount)})</span>
             </span>
           </div>
         ))}
         <div className="flex items-baseline justify-between gap-3 border-t border-soft mt-2 pt-2.5">
           <span className="text-[12px] font-extrabold uppercase tracking-[0.14em]">Total cash on hand</span>
           <span className={'font-mono text-[26px] font-extrabold leading-none ' + (report.balance < 0 ? 'text-danger-600' : 'text-emerald-600')}>
-            {report.balance < 0 ? '− ' : ''}<CountPeso value={Math.abs(report.balance)} />
+            {report.balance < 0 && '('}<CountPeso value={Math.abs(report.balance)} />{report.balance < 0 && ')'}
           </span>
         </div>
       </div>
