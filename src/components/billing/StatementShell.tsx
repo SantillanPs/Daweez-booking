@@ -66,49 +66,53 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
 
 /** The hotel's own letterhead, identical on every piece of paper the office prints. */
 export function BrandHeader({ invoiceNumber, dateIssued, showDate = true, heading = 'Guest Billing Statement', dateLabel = 'Date Issued' }: { invoiceNumber?: string; dateIssued?: string; showDate?: boolean; heading?: string; dateLabel?: string }) {
+  // The owner's pick from the drawings, 2026-10-13. Still **always** two columns, never
+  // `sm:flex-row` (card k144): A5 is 559px wide and `sm` starts at 640px, so a breakpoint
+  // never fires on paper. The bill number sits alone under the title, larger than anything
+  // beside it; `Bill no.` and the date's label are grey, the figures black — the page's one
+  // rule for telling a label from the information.
   return (
     <>
-      {/* The letterhead is **always** two columns, never `sm:flex-row` (card k144, the
-          owner's ruling, 2026-09-29): A5 is 559px wide and `sm` starts at 640px, so the
-          breakpoint never fires on paper — the hotel's address and the bill number were
-          stacking and costing the page height for nothing. The document is always rendered
-          at 576px or less (`max-w-xl`), so this is also what the preview now shows.
-
-          `pb-4` here and `my-2` on the rule below were **16px + 16px** around the bold
-          rule; with the field block's `py-3` underneath, the rule floated in 46px of air
-          (the owner's *"massive padding in those bold lines"*). Both are gone now — the
-          shell's `space-y-2` gives the rule its 8px above and below. */}
       <div className="flex flex-row justify-between items-start gap-3">
         <div className="min-w-0">
-          {/* `text-[16px]` and `whitespace-nowrap` (card k144): at `text-lg` the hotel's name
-              needed ~240px and the bill-number block was leaving it ~235, so it broke after
-              "PENSION" and cost the page a line. The right-hand block is now `text-[12px]`,
-              which gives the name the room it needs to sit on one line. */}
-          <h1 className="font-display font-extrabold text-[16px] text-ink-800 uppercase tracking-tight whitespace-nowrap">Daweez Pension House</h1>
-          <p className="text-[11px] text-ink-600 mt-0.5">National Highway, San Agustin Sur, Tandag City, Surigao del Sur</p>
-          <p className="text-[11px] text-ink-600">Email Address: daweezpensionhouse@gmail.com</p>
-          <p className="text-[11px] text-ink-600">Mobile No: 0910-7163830</p>
+          <h1 className="font-display font-extrabold text-[17px] text-ink-900 uppercase tracking-tight whitespace-nowrap leading-tight">Daweez Pension House</h1>
+          <p className="text-[9.5px] text-ink-600 mt-0.5 leading-snug">National Highway, San Agustin Sur, Tandag City, Surigao del Sur</p>
+          <p className="text-[9.5px] text-ink-600 leading-snug">daweezpensionhouse@gmail.com · 0910-7163830</p>
         </div>
         <div className="text-right shrink-0">
-          <h2 className="font-display font-bold text-[12px] text-ink-800 uppercase tracking-wider whitespace-nowrap">{heading}</h2>
-          <div className="mt-2 text-[12px] text-ink-700 space-y-1">
+          <h2 className="font-display font-bold text-[10.5px] text-ink-900 uppercase tracking-[0.12em] whitespace-nowrap">{heading}</h2>
+          <div className="mt-1 grid grid-cols-[auto_auto] justify-end items-baseline gap-x-2 gap-y-px">
             {invoiceNumber && (
-              <div className="flex items-center gap-2 justify-end">
-                <span className="text-[11px] font-bold whitespace-nowrap">Bill / Invoice No.:</span>
-                <span className="font-mono border-b border-ink-300">{invoiceNumber}</span>
-              </div>
+              <>
+                <span className="text-[10px] text-muted">Bill no.</span>
+                <span className="font-mono text-[13px] font-bold text-ink-900">{invoiceNumber}</span>
+              </>
             )}
             {showDate && dateIssued && (
-              <div className="flex items-center gap-2 justify-end">
-                <span className="text-[11px] font-bold whitespace-nowrap">{dateLabel}:</span>
-                <span className="font-mono border-b border-ink-300">{dateIssued}</span>
-              </div>
+              <>
+                <span className="text-[10px] text-muted">{dateLabel}</span>
+                <span className="text-[11.5px] font-semibold text-ink-900">{dateIssued}</span>
+              </>
             )}
           </div>
         </div>
       </div>
-      <div className="border-t-2 border-ink-700" />
+      <div className="h-[3px] bg-ink-900" />
     </>
+  )
+}
+
+/**
+ * The name of a block of the sheet — `Guest`, `Stay`, `Payment`: black capitals sitting on a
+ * rule. One of the page's three kinds of text (the owner, 2026-10-13: *"I can't immediately
+ * differentiate between labels and actual information"*); the other two are a grey label and
+ * the black information beside it.
+ */
+export function SectionName({ children, bare = false }: { children: React.ReactNode; bare?: boolean }) {
+  return (
+    <span className={'block text-[9.5px] font-extrabold uppercase tracking-[0.12em] text-ink-900 ' + (bare ? 'mb-1' : 'pb-0.5 border-b-[1.5px] border-ink-900 mb-1')}>
+      {children}
+    </span>
   )
 }
 

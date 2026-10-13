@@ -17,8 +17,8 @@ import { forwardedLabel, type DailyReport } from '../../utils/dailyReport'
  *    row per receipt and per expense, named `Room 4 · SEB · Cash`. There is no "Room payments ₱6,400" bucket and
  *    no Cash/GCash sub-total; the method rides on each line instead.
  * 4. **The conclusion at the bottom** (*"the total should be very clear. like, how a conclusion is always at
- *    the bottom"*) — `MONEY IN THE HOTEL` is the last thing on the sheet (it was `NET TODAY` until
- *    2026-10-13, when he asked for the money to carry over from one day to the next), the biggest figure on it, closed above and
+ *    the bottom"*) — `TOTAL CASH ON HAND` is the last thing on the sheet (the staff's own name for it;
+ *    it was `NET TODAY` until 2026-10-13, when the money began to carry over from day to day), the biggest figure on it, closed above and
  *    below by a double rule the way a ledger closes a column. The two bars at the top say the shape of the day;
  *    the conclusion says the answer.
  *
@@ -80,24 +80,34 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
       )}
 
       {/* THE CONCLUSION, where a conclusion belongs. */}
-      <div className="border-y-4 border-double border-ink-800 py-2">
-        <div className="flex justify-between gap-3 text-[12px]">
-          <span>{forwardedLabel(report.date)}</span>
+      {/* The staff's own summary, line for line (their paper, 2026-10-13) — the same lines the
+          screen shows, so the paper and the screen cannot disagree. */}
+      <div className="border-y-4 border-double border-ink-800 py-2 text-[12px]">
+        <div className="flex justify-between gap-3">
+          <span>Cash for today</span>
+          <span className="font-mono">{money(report.totalIn)}</span>
+        </div>
+        <div className="flex justify-between gap-3">
+          <span>Add: {forwardedLabel(report.date)}</span>
           <span className="font-mono">{money(report.broughtForward)}</span>
         </div>
-        <div className="flex justify-between gap-3 text-[12px] mb-1">
-          <span>TOTAL CASH</span>
-          <span className="font-mono">{money(report.net)}</span>
+        <div className="flex justify-between gap-3 font-bold border-t border-ink-400 mt-0.5 pt-0.5">
+          <span>Cash on hand</span>
+          <span className="font-mono">{money(report.broughtForward + report.totalIn)}</span>
+        </div>
+        <div className="flex justify-between gap-3">
+          <span>Less: Expenses</span>
+          <span className="font-mono">− {money(report.totalOut)}</span>
         </div>
         {/* Money handed to the owner: printed only on a day it happened, like every line here. */}
         {report.handedOver.map((line, index) => (
-          <div key={`${line.label}-${index}`} className="flex justify-between gap-3 text-[12px] mb-1">
-            <span className="truncate">{line.label}</span>
+          <div key={`${line.label}-${index}`} className="flex justify-between gap-3">
+            <span className="truncate">Less: {line.label}</span>
             <span className="font-mono shrink-0">− {money(line.amount)}</span>
           </div>
         ))}
-        <div className="flex justify-between items-baseline">
-          <span className="text-[12px] font-extrabold tracking-[0.18em] uppercase">Money in the hotel</span>
+        <div className="flex justify-between items-baseline mt-1.5">
+          <span className="text-[12px] font-extrabold tracking-[0.18em] uppercase">Total cash on hand</span>
           <span className="font-mono text-[24px] font-extrabold leading-none">{money(report.balance)}</span>
         </div>
       </div>

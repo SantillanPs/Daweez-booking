@@ -8,6 +8,10 @@
 
 ## The statement
 
+- **Redrawn on 2026-10-13, chosen by Sebastian from mock designs.** He liked the first drawing (guest beside stay, the name and the room in large type, no boxes in the table, Amount Due in one solid black band) but said: *"I can't immediately differentiate between labels and actual information."* So the page has three kinds of text that never share a look: a section name (black capitals on a rule), a label (grey and light), and the information (black). He turned down a version that listed every guest field as label and value (*"I prefer the first mock design over this"*) and one that cut fields to be less text heavy.
+- He asked that the table follow the bill as it was: each kind of charge under its own heading, `Date` over Check In and Check Out.
+- The Amount Due band lines up with the figures above it and the table's Total column; he called the first drawing's band *"crooked"*.
+
 - **The charges table is the hotel's own:** `Room / Particulars · Rate · Date · No. of Night · Total`, grouped under Room Accommodation, Breakfast, Extras, Restaurant & bar, Discount. A group with no rows is not drawn — which is why a guest who has not checked in has no restaurant group.
 - **Restaurant & bar lists each order slip as its number, its total and Paid or Not paid — never the dishes.** The staff, 2026-10-04: the bill kept showing past orders that were already paid.
 - **The bill lists the payments already received.** The staff, the same day: it showed what still had to be paid but not what had been paid.

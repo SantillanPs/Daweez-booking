@@ -42,55 +42,50 @@ export function StatementChargesTable({ items }: { items: StatementLineItem[] })
     .map(band => ({ band, rows: items.filter(i => i.band === band) }))
     .filter(b => b.rows.length > 0)
 
+  // No boxes and no grey header (the owner's pick, 2026-10-13): one thin line under each row.
+  // The column names and the band names are labels, so they are grey; everything the guest
+  // is charged is black.
+  const head = 'pb-1 pl-2 text-[8.5px] font-medium uppercase tracking-[0.08em] text-muted align-bottom whitespace-nowrap'
+  const cell = 'py-[3px] pl-2 border-b border-ink-200 text-[11px] font-semibold text-ink-900 whitespace-nowrap'
   return (
-    // No rule above the table: the owner took the long separating lines out of the
-    // statement (2026-09) so the page reads as one form; the table's own border says
-    // where the charges start.
-    // **And no vertical padding of its own** (card k144): this used to carry `py-3`,
-    // which stacked with the field block's `py-3` above it and the payment block's `py-3`
-    // below — 24px of air at a boundary that needs 8, which is why the table read as
-    // floating. The blocks either side are `py-2` now and own the space, so the spacing
-    // lives in ONE place instead of three meeting in the middle.
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="bg-paper-100 text-center text-[9.5px] uppercase tracking-wider text-ink-800">
-            <th rowSpan={2} className="border border-ink-400 py-1 px-2 font-bold text-left">Room / Particulars</th>
-            <th rowSpan={2} className="border border-ink-400 py-1 px-2 font-bold w-16">Rate</th>
-            <th colSpan={2} className="border border-ink-400 py-1 px-2 font-bold">Date</th>
-            <th rowSpan={2} className="border border-ink-400 py-1 px-2 font-bold w-16">No. of Night</th>
-            <th rowSpan={2} className="border border-ink-400 py-1 px-2 font-bold w-20">Total</th>
+          <tr>
+            <th rowSpan={2} className={head + ' pl-0 text-left border-b-[1.5px] border-ink-900'}>Room / Particulars</th>
+            <th rowSpan={2} className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>Rate</th>
+            <th colSpan={2} className={head + ' pb-0.5 text-center border-b border-ink-200'}>Date</th>
+            <th rowSpan={2} className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>No. of Night</th>
+            <th rowSpan={2} className={head + ' text-right w-20 border-b-[1.5px] border-ink-900'}>Total</th>
           </tr>
-          <tr className="bg-paper-100 text-center text-[9px] uppercase tracking-wider text-ink-700">
-            <th className="border border-ink-400 py-0.5 px-2 font-bold w-20">Check In</th>
-            <th className="border border-ink-400 py-0.5 px-2 font-bold w-20">Check Out</th>
+          <tr>
+            <th className={head + ' pt-0.5 text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check In</th>
+            <th className={head + ' pt-0.5 text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check Out</th>
           </tr>
         </thead>
         <tbody>
           {bands.map(({ band, rows }) => (
             <React.Fragment key={band}>
-              <tr className="bg-paper-200">
-                <td colSpan={6} className="border border-ink-400 py-1 px-2 text-[11px] font-bold text-ink-800">
-                  {BAND_LABEL[band]}
-                </td>
+              <tr>
+                <td colSpan={6} className="pt-1 text-[10px] font-medium text-muted">{BAND_LABEL[band]}</td>
               </tr>
               {rows.map(it => (
-                <tr key={it.key} className="text-[12px]">
+                <tr key={it.key}>
                   {/* An order slip says whether it is paid, beside its number — on one line. */}
-                  <td className={'border border-ink-300 py-1 px-2' + (it.status ? ' whitespace-nowrap' : '')}>
+                  <td className={cell + ' pl-0 text-left' + (it.status ? '' : ' whitespace-normal')}>
                     {it.description}
-                    {it.status && <span className="font-bold"> — {it.status}</span>}
+                    {it.status && <span className="ml-1.5 border border-ink-900 px-1 text-[8.5px] font-bold uppercase tracking-wide">{it.status}</span>}
                   </td>
-                  <td className="border border-ink-300 py-1 px-2 text-right font-mono">{it.price ? money(it.price) : '—'}</td>
-                  <td className="border border-ink-300 py-1 px-2 text-center font-mono text-[11px]">{shortDate(it.checkIn)}</td>
-                  <td className="border border-ink-300 py-1 px-2 text-center font-mono text-[11px]">{shortDate(it.checkOut)}</td>
+                  <td className={cell + ' text-right font-mono'}>{it.price ? money(it.price) : '—'}</td>
+                  <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>
+                  <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>
                   {/* The unit lives here when it is not a night: `3 hrs` for a short stay,
                       and the count for anything sold by the piece. */}
-                  <td className="border border-ink-300 py-1 px-2 text-center font-mono text-[11px]">
+                  <td className={cell + ' text-right font-mono'}>
                     {it.band === 'room' && it.unit === 'HOURS' ? it.qty + ' hrs' : it.qty}
                     {it.band !== 'room' && it.unit && it.unit !== 'PC' ? ' ' + it.unit.toLowerCase() : ''}
                   </td>
-                  <td className="border border-ink-300 py-1 px-2 text-right font-mono">{money(it.amount)}</td>
+                  <td className={cell + ' text-right font-mono font-bold'}>{money(it.amount)}</td>
                 </tr>
               ))}
             </React.Fragment>

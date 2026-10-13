@@ -23,6 +23,27 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-13e',
+    changes: [
+      {
+        where: 'Money → Today’s money',
+        what: [
+          'The bottom of the day now follows your own summary sheet: Cash for today, Add: Cash balance forwarded, Cash on hand, Less: Expenses, Less: Cash remitted, and Total cash on hand.',
+          'Money handed to the owner shows as “Less: Cash remitted”, with “Take back” beside it.',
+          'The printed daily report has the same lines.',
+        ],
+      },
+      {
+        where: 'Guest billing statement',
+        what: [
+          'The bill has a new look. The guest’s name and the room are in large type, the table has no boxes, and Amount due is in a black band at the bottom.',
+          'Labels are grey and the information is black, so the two are easy to tell apart.',
+          'Please print one bill and check that it fits the page.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-13d',
     changes: [
       {

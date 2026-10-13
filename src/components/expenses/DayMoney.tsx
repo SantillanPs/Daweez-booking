@@ -1,4 +1,4 @@
-import { Check, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { Expense, ExpenseCategory, Handover } from '../../types/expense'
 import { CountPeso } from '../CountPeso'
 import { DailyReport, forwardedLabel } from '../../utils/dailyReport'
@@ -74,48 +74,51 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandove
         </div>
       </div>
 
-      {/* The hotel's money does not start again at zero each morning (the owner, 2026-10-13): what was
-          left from the days before is carried in, and the last line is what the hotel holds now. */}
-      <div className="px-4 py-3 border-t-2 border-ink-800 bg-page">
-        <div className="flex justify-between gap-3 text-[13px] text-main">
-          <span>{forwardedLabel(report.date)}</span>
+      {/* THE SUMMARY, line for line as the staff write it on paper (their sheet, 2026-10-13):
+          Cash for today · Add: Cash balance forwarded · Cash on hand · Less: Expenses ·
+          Less: Cash remitted · Total cash on hand. The hotel's money does not start again at
+          zero each morning, so the day before is carried in. Each figure keeps the colour it has
+          above — money in green, money out red — and a hand-over is gold, so it is not read as
+          money spent. */}
+      <div className="px-4 py-3 border-t-2 border-ink-800 bg-page text-[13px] text-main">
+        <div className="flex justify-between gap-3 py-0.5">
+          <span>Cash for today</span>
+          <span className="font-mono font-bold text-emerald-600">{peso(report.totalIn)}</span>
+        </div>
+        <div className="flex justify-between gap-3 py-0.5">
+          <span><span className="text-muted">Add:</span> {forwardedLabel(report.date)}</span>
           <span className="font-mono font-bold">{signed(report.broughtForward)}</span>
         </div>
-        <div className="flex justify-between gap-3 text-[13px] text-main mt-1">
-          <span>TOTAL CASH</span>
-          <span className={'font-mono font-bold ' + (report.net < 0 ? 'text-danger-600' : 'text-emerald-600')}>
-            {report.net < 0 ? '− ' : '+ '}{peso(Math.abs(report.net))}
-          </span>
+        <div className="flex justify-between gap-3 border-t border-soft mt-1 pt-1.5 font-bold">
+          <span>Cash on hand</span>
+          <span className="font-mono">{signed(report.broughtForward + report.totalIn)}</span>
         </div>
-        {/* A hand-over is rare, so it has no place on an ordinary day: its line is here only on the
-            day it happened, in gold so it is not read as money spent. */}
+        <div className="flex justify-between gap-3 py-0.5 mt-0.5">
+          <span><span className="text-muted">Less:</span> Expenses</span>
+          <span className="font-mono font-bold text-danger-600">− {peso(report.totalOut)}</span>
+        </div>
+        {/* A hand-over is rare, so its line is here only on the day it happened. */}
         {dayHandovers.map(handover => (
-          <div
-            key={handover.id}
-            className="flex items-center justify-between gap-3 mt-2 pl-3 pr-1 bg-gold-100 border border-gold-200 rounded-lg text-[13px] text-gold-900 [animation:bp-slide_.3s_cubic-bezier(.16,1,.3,1)]"
-          >
-            <span className="flex items-center gap-2 min-w-0 py-2">
-              <Check className="w-4 h-4 shrink-0" />
-              <span className="truncate">
-                <span className="font-semibold">Handed over</span>
-                {handover.handed_by ? ' · by ' + handover.handed_by : ''} · {timeOf(handover.created_at)}
-                {handover.notes ? ' · ' + handover.notes : ''}
-              </span>
+          <div key={handover.id} className="flex items-center justify-between gap-3 text-gold-800 [animation:bp-slide_.3s_cubic-bezier(.16,1,.3,1)]">
+            <span className="min-w-0 truncate">
+              <span className="opacity-80">Less:</span> Cash remitted
+              {handover.handed_by ? ' · by ' + handover.handed_by : ''} · {timeOf(handover.created_at)}
+              {handover.notes ? ' · ' + handover.notes : ''}
             </span>
             <span className="flex items-center gap-1 shrink-0">
-              <span className="font-mono font-extrabold">− {peso(handover.amount)}</span>
               <button
                 type="button"
                 onClick={() => onTakeBack(handover)}
-                className="min-h-[44px] px-2 text-[12px] font-bold text-gold-800 hover:text-ink-900 transition-colors cursor-pointer"
+                className="min-h-[44px] px-2 text-[12px] font-bold underline underline-offset-2 hover:text-ink-900 transition-colors cursor-pointer"
               >
                 Take back
               </button>
+              <span className="font-mono font-bold">− {peso(handover.amount)}</span>
             </span>
           </div>
         ))}
-        <div className="flex items-baseline justify-between gap-3 border-t border-soft mt-2 pt-2">
-          <span className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-main">Money in the hotel</span>
+        <div className="flex items-baseline justify-between gap-3 border-t border-soft mt-2 pt-2.5">
+          <span className="text-[12px] font-extrabold uppercase tracking-[0.14em]">Total cash on hand</span>
           <span className={'font-mono text-[26px] font-extrabold leading-none ' + (report.balance < 0 ? 'text-danger-600' : 'text-emerald-600')}>
             {report.balance < 0 ? '− ' : ''}<CountPeso value={Math.abs(report.balance)} />
           </span>

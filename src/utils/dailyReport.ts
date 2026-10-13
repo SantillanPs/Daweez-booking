@@ -228,7 +228,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
   const handedOver: DailyReportLine[] = handovers
     .filter(h => h.handover_date === date)
     .map(h => ({
-      label: ['Handed over', h.handed_by ? `by ${h.handed_by}` : '', (h.notes || '').trim()].filter(Boolean).join(' · '),
+      label: ['Cash remitted', h.handed_by ? `by ${h.handed_by}` : '', (h.notes || '').trim()].filter(Boolean).join(' · '),
       amount: h.amount,
     }))
   const totalHandedOver = handedOver.reduce((sum, line) => sum + line.amount, 0)
