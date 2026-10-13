@@ -4,7 +4,6 @@ import { Booking, PaymentRecord, Room, Venue } from '../../types/booking'
 import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
 import { receiptNumberFor, paymentBreakdown } from '../../utils/receiptNumber'
 import { formatRoomNumbers } from '../../utils/roomNumbers'
-import { Block, Row, Rule } from './receiptPrimitives'
 import { fmtDateTime, fmtDay, money } from './receiptText'
 import { guestEmailOf } from '../../utils/emailDocument'
 import { EmailBar, EmailButton } from './EmailBar'
@@ -26,6 +25,18 @@ interface PaymentReceiptDocumentProps {
    * 2026-09-30). Omit it for a single-room payment and the slip is exactly what it always was.
    */
   covered?: Booking[]
+}
+
+/** One line of the slip: what it is on the left, the fact on the right. A blank fact prints nothing. */
+function SlipRow({ label, value, mono = false }: { label: string; value?: string; mono?: boolean }) {
+  const shown = (value ?? '').trim()
+  if (!shown) return null
+  return (
+    <div className="flex items-baseline justify-between gap-2 text-[10px]">
+      <span className="shrink-0">{label}</span>
+      <span className={'font-bold text-right break-words min-w-0 ' + (mono ? 'font-mono' : '')}>{shown}</span>
+    </div>
+  )
 }
 
 // A filled-in payment receipt, sized for the hotel's 58 mm thermal roll: ONE
@@ -77,9 +88,6 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
     : remainingAfter <= 0 ? (isRoom ? 'Room Accommodation' : 'Event Venue Reservation')
     : isFirstPay ? 'Reservation'
     : 'Partial Payment'
-  const statusLine = remainingAfter <= 0 ? 'Paid in Full'
-    : paidBefore > 0 ? 'Partially Paid'
-    : (isRoom ? 'Booked Confirmed' : 'Venue or Room Reserved')
 
   const rawMethod = (record.method || '').trim()
   const kind = paymentKind(rawMethod)
@@ -87,6 +95,7 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
   const showRef = (kind === 'gcash' || kind === 'bank') && !!record.reference
 
   // The slip itself — what is attached when the receipt is emailed.
+  const lab = 'text-[8px] font-bold uppercase tracking-[0.1em]'
   const slip = useRef<HTMLDivElement>(null)
   const [emailing, setEmailing] = useState(false)
 
@@ -125,73 +134,70 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
       <div ref={slip} className={((embedded ? 'my-0 ' : 'my-2 ') + 'print-slip w-[58mm] max-w-full bg-white text-black font-sans leading-snug px-2.5 py-3 ' +
         'print:w-auto print:max-w-none print:px-0 print:py-0 print:my-0 print:shadow-none print:rounded-none')}>
         <div className="text-center">
-          <h1 className="font-display font-extrabold text-[13px] uppercase leading-tight">Daweez Pension House</h1>
-          <p className="text-[8.5px] mt-0.5">San Agustin Sur, Tandag City</p>
-          <p className="text-[8.5px]">Surigao del Sur</p>
-          <p className="text-[8.5px] break-all">daweezpensionhouse@gmail.com</p>
-          <p className="text-[8.5px]">Mobile No: 0910-7163830</p>
+          <h1 className="font-display font-extrabold text-[13px] uppercase leading-[1.15]">Daweez<br />Pension House</h1>
+          <p className="text-[8.5px] mt-1">San Agustin Sur, Tandag City</p>
+          <p className="text-[8.5px]">0910-7163830</p>
         </div>
 
-        <Rule />
+        <div className="border-t-2 border-black my-2" />
 
-        <div className="text-center">
-          <h2 className="font-display font-bold text-[11px] uppercase tracking-widest">Payment Receipt</h2>
-          <p className="font-mono text-[10px] font-bold mt-1">{receiptNo}</p>
-          <p className="text-[8.5px] mt-0.5">{fmtDateTime(record.paid_at)}</p>
+        <div className="flex items-baseline justify-between gap-1.5">
+          <span className={lab}>Payment receipt</span>
+          <span className="font-mono text-[10.5px] font-bold">{receiptNo}</span>
+        </div>
+        <p className="text-[8.5px] text-right">{fmtDateTime(record.paid_at)}</p>
+
+        {/* THE AMOUNT, first and largest, white on black (the owner's pick from the drawings,
+            2026-10-13). **The black is a border, not a background**: a browser throws
+            backgrounds away when it prints, and a slip is deliberately left out of
+            `print-color-adjust` (see `index.css`), so a black background would come off the
+            roll as white paper with white figures on it — an empty receipt. A border always
+            prints. */}
+        <div className="relative my-2">
+          <div className="border-t-[46px] border-black" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+            <span className={lab}>Received</span>
+            <span className="font-display text-[25px] font-extrabold leading-none mt-1">{money(amountPaid)}</span>
+          </div>
         </div>
 
-        <Rule />
-
-        {/* "Received From" is a heading, not a field: it says what the lines
-            under it are — who the money came from. */}
-        <p className="text-[8px] font-bold uppercase tracking-wider">Received From</p>
-        <Block label="Guest" value={booking.guest_name} />
-        <Block label={multi ? 'Rooms' : 'Room No'} value={unitLabel} />
-        {/* A short stay says WHICH day and HOW LONG under the room, so the slip the
-            guest keeps proves what was bought — "Room Accommodation" alone could be
-            3 hours or a night. Ordinary stays print nothing here. */}
-        {booking.stay_hours ? (
-          <Block label="Stay" value={fmtDay(booking.check_in) + ' · ' + booking.stay_hours + ' hours'} />
-        ) : null}
-        <Block label="Status" value={statusLine} />
-
-        <Rule />
-
-        <div className="text-center">
-          <p className="text-[8px] font-bold uppercase tracking-wider">Amount Received</p>
-          <p className="font-display text-[17px] font-extrabold leading-none mt-1">{money(amountPaid)}</p>
+        <div className="space-y-[3px]">
+          <SlipRow label="From" value={booking.guest_name} />
+          <SlipRow label={multi ? 'Rooms' : 'Room'} value={unitLabel} />
+          {/* A short stay says WHICH day and HOW LONG, so the slip the guest keeps proves
+              what was bought — "Room Accommodation" alone could be 3 hours or a night. */}
+          {booking.stay_hours ? <SlipRow label="Stay" value={fmtDay(booking.check_in) + ' · ' + booking.stay_hours + ' hours'} /> : null}
+          <SlipRow label="For" value={paymentFor} />
+          <SlipRow label="Paid by" value={methodLabel} />
+          {showRef ? <SlipRow label={kind === 'gcash' ? 'GCash ref no.' : 'Bank ref no.'} value={record.reference || ''} mono /> : null}
+          <SlipRow label="Bill no." value={booking.invoice_number} mono />
         </div>
 
-        <Rule />
+        {/* A settled stay says so once, in a box; a stay with money left shows the sum in plain
+            words. The amount is no longer printed twice. */}
+        {remainingAfter <= 0 ? (
+          <p className="my-2 border-2 border-black py-1.5 text-center font-display text-[13px] font-extrabold uppercase tracking-[0.12em]">Paid in full</p>
+        ) : (
+          <>
+            <div className="border-t border-dashed border-black my-2" />
+            <div className="space-y-[3px]">
+              <SlipRow label="Bill before" value={money(previousBalance)} mono />
+              <SlipRow label="This payment" value={'−' + money(amountPaid)} mono />
+              <div className="flex items-baseline justify-between gap-2 border-t-2 border-black pt-1 mt-1 text-[12.5px] font-extrabold">
+                <span>Still to pay</span>
+                <span className="font-mono">{money(remainingAfter)}</span>
+              </div>
+            </div>
+            <div className="border-t border-dashed border-black my-2" />
+          </>
+        )}
 
-        <Block label="Payment For" value={paymentFor} />
-        <Block label="Invoice" value={booking.invoice_number} />
+        {/* No guest signature on the slip (his ruling, 2026-10-13). */}
+        <p className={lab}>Received by</p>
+        <p className="text-[10.5px] font-bold min-h-[13px]">{record.prepared_by || booking.prepared_by || ''}</p>
 
-        <Rule />
-
-        <Row label="Previous Balance" value={money(previousBalance)} />
-        <Row label="Amount Paid" value={money(amountPaid)} />
-        <Row label="Remaining Balance" value={money(remainingAfter)} strong />
-
-        <Rule />
-
-        <Row label="Payment Method" value={methodLabel} />
-        {showRef ? <Row label={kind === 'gcash' ? 'GCash Ref No.' : 'Bank Ref No.'} value={record.reference || ''} /> : null}
-
-        <Rule />
-
-        <p className="text-[8px] font-bold uppercase tracking-wider">Received By</p>
-        <p className="text-[10px] font-semibold mt-0.5 min-h-[12px]">{record.prepared_by || booking.prepared_by || ''}</p>
-        <p className="text-[8px] font-bold uppercase tracking-wider mt-2">Guest Signature</p>
-        <div className="border-b border-black h-4 mt-0.5" />
-
-        <Rule />
-
-        <div className="text-center">
-          <p className="text-[8.5px]">Thank you for staying at</p>
-          <p className="font-display font-extrabold text-[10px] uppercase mt-0.5">Daweez Pension House</p>
-          <p className="text-[8px] mt-1">Guest copy · {statusLine}</p>
-        </div>
+        <p className="text-center text-[8.5px] mt-2.5">Thank you for staying with us.</p>
+        <p className="text-center text-[8.5px]">Guest copy</p>
       </div>
     </div>
   )

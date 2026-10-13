@@ -32,6 +32,8 @@
 
 ## The 58 mm payment receipt
 
+- **Redrawn on 2026-10-13, chosen by Sebastian from a mock.** The amount received is first and largest, white on a black bar; the balance reads in plain words (Bill before, This payment, Still to pay); a settled stay prints one boxed "Paid in full". He asked for **the guest signature to be removed** from the slip. The hotel's email and the second address line are left off to save paper.
+
 - **It prints on the hotel's thermal roll:** one column, pure black on white (the printer cannot do grey), nothing wider than 58 mm. The screen preview is the same slip.
 - It shows only what happened: the one method used and its reference, what the payment was for, and the real status.
 - **A receipt for several rooms describes the whole set** — `Rooms 2, 3, 5, 7`, with balances for the set. Printing one room's figures beside the whole payment added up to nothing.

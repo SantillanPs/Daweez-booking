@@ -23,6 +23,26 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-13f',
+    changes: [
+      {
+        where: 'Payment receipt',
+        what: [
+          'The receipt has a new look. The amount received is first, in a black bar.',
+          'The balance is in plain words: Bill before, This payment, Still to pay. A stay that is fully paid shows “Paid in full” in a box.',
+          'The guest signature line is gone from the receipt.',
+          'Please print one receipt and check that the amount in the black bar is clear.',
+        ],
+      },
+      {
+        where: 'Guest billing statement',
+        what: [
+          'The bill no longer prints “None” when the guest has no contact number.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-13e',
     changes: [
       {

@@ -59,8 +59,11 @@ export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel =
   const guestEmail = b.guest_email && b.guest_email !== 'admin@daweez-booking.vercel.app' ? b.guest_email : ''
 
   const text = (v?: string) => (v ?? '').toString().trim()
+  // A booking saved with no contact number stores the word `None`; it is not a number to
+  // print (he asked of the bill, 2026-10-13: *"why is there none"*).
+  const phone = text(b.guest_phone) === 'None' ? '' : text(b.guest_phone)
   const guestLines = [
-    [text(b.guest_phone), text(b.guest_nationality), text(b.guest_gender)].filter(Boolean).join(' · '),
+    [phone, text(b.guest_nationality), text(b.guest_gender)].filter(Boolean).join(' · '),
     text(b.guest_address),
     guestEmail,
   ].filter(Boolean)
