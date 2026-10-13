@@ -23,6 +23,23 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-13',
+    changes: [
+      {
+        where: 'Front desk → New booking',
+        what: [
+          'The Vacation House now has three choices when you book it: Vacation House ₱7,500, Vacation House & Ground ₱10,000, and Exclusive ₱15,000.',
+        ],
+      },
+      {
+        where: 'Everywhere',
+        what: [
+          'The system has a new icon on its browser tab.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-12',
     changes: [
       {
