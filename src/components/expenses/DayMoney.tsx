@@ -1,8 +1,11 @@
-import { Trash2 } from 'lucide-react'
-import { Expense, ExpenseCategory } from '../../types/expense'
+import { Check, Trash2 } from 'lucide-react'
+import { Expense, ExpenseCategory, Handover } from '../../types/expense'
+import { CountPeso } from '../CountPeso'
 import { DailyReport } from '../../utils/dailyReport'
 
 const peso = (n: number) => '₱' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
+
+const signed = (n: number) => (n < 0 ? '− ' : '') + peso(Math.abs(n))
 
 interface DayMoneyProps {
   /** The day's sheet — the same figures the printed daily report carries. */
@@ -11,12 +14,17 @@ interface DayMoneyProps {
   dayExpenses: Expense[]
   categories: ExpenseCategory[]
   onRemove: (expense: Expense) => void
+  /** Money handed to the owner on this day, so each can be taken back. */
+  dayHandovers: Handover[]
+  onTakeBack: (handover: Handover) => void
 }
 
+const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+
 // The day on screen, in the order the printed sheet reads: money in, money out, and
-// what is left at the bottom. Money in is read-only here — it comes from the receipts
+// the money in the hotel at the bottom. Money in is read-only here — it comes from the receipts
 // recorded on bookings and at the restaurant — and money out is the list just typed.
-export function DayMoney({ report, dayExpenses, categories, onRemove }: DayMoneyProps) {
+export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandovers, onTakeBack }: DayMoneyProps) {
   const nameOf = (id: string) => categories.find(c => c.id === id)?.name || 'Other'
 
   return (
@@ -66,11 +74,52 @@ export function DayMoney({ report, dayExpenses, categories, onRemove }: DayMoney
         </div>
       </div>
 
-      <div className="flex items-baseline justify-between gap-3 px-4 py-3 border-t-2 border-ink-800 bg-page">
-        <span className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-main">Left today</span>
-        <span className={'font-mono text-[26px] font-extrabold leading-none ' + (report.net < 0 ? 'text-danger-600' : 'text-emerald-600')}>
-          {report.net < 0 ? '− ' : ''}{peso(Math.abs(report.net))}
-        </span>
+      {/* The hotel's money does not start again at zero each morning (the owner, 2026-10-13): what was
+          left from the days before is carried in, and the last line is what the hotel holds now. */}
+      <div className="px-4 py-3 border-t-2 border-ink-800 bg-page">
+        <div className="flex justify-between gap-3 text-[13px] text-main">
+          <span>Left from the day before</span>
+          <span className="font-mono font-bold">{signed(report.broughtForward)}</span>
+        </div>
+        <div className="flex justify-between gap-3 text-[13px] text-main mt-1">
+          <span>This day</span>
+          <span className={'font-mono font-bold ' + (report.net < 0 ? 'text-danger-600' : 'text-emerald-600')}>
+            {report.net < 0 ? '− ' : '+ '}{peso(Math.abs(report.net))}
+          </span>
+        </div>
+        {/* A hand-over is rare, so it has no place on an ordinary day: its line is here only on the
+            day it happened, in gold so it is not read as money spent. */}
+        {dayHandovers.map(handover => (
+          <div
+            key={handover.id}
+            className="flex items-center justify-between gap-3 mt-2 pl-3 pr-1 bg-gold-100 border border-gold-200 rounded-lg text-[13px] text-gold-900 [animation:bp-slide_.3s_cubic-bezier(.16,1,.3,1)]"
+          >
+            <span className="flex items-center gap-2 min-w-0 py-2">
+              <Check className="w-4 h-4 shrink-0" />
+              <span className="truncate">
+                <span className="font-semibold">Handed over</span>
+                {handover.handed_by ? ' · by ' + handover.handed_by : ''} · {timeOf(handover.created_at)}
+                {handover.notes ? ' · ' + handover.notes : ''}
+              </span>
+            </span>
+            <span className="flex items-center gap-1 shrink-0">
+              <span className="font-mono font-extrabold">− {peso(handover.amount)}</span>
+              <button
+                type="button"
+                onClick={() => onTakeBack(handover)}
+                className="min-h-[44px] px-2 text-[12px] font-bold text-gold-800 hover:text-ink-900 transition-colors cursor-pointer"
+              >
+                Take back
+              </button>
+            </span>
+          </div>
+        ))}
+        <div className="flex items-baseline justify-between gap-3 border-t border-soft mt-2 pt-2">
+          <span className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-main">Money in the hotel</span>
+          <span className={'font-mono text-[26px] font-extrabold leading-none ' + (report.balance < 0 ? 'text-danger-600' : 'text-emerald-600')}>
+            {report.balance < 0 ? '− ' : ''}<CountPeso value={Math.abs(report.balance)} />
+          </span>
+        </div>
       </div>
     </div>
   )

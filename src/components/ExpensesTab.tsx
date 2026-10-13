@@ -1,18 +1,20 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Printer, Wallet } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { generateUUID } from '../utils/syncEngine'
 import { dateToString } from '../utils/helpers'
 import { getTabs } from '../utils/tabs'
 import { buildDailyReport } from '../utils/dailyReport'
-import { Expense, ExpenseCategory } from '../types/expense'
+import { Expense, ExpenseCategory, Handover } from '../types/expense'
+import { getHandovers, insertHandover, deleteHandover } from '../utils/handovers'
 import { showToast } from '../utils/toast'
 import { askConfirm } from '../utils/confirm'
 import { QuickExpense } from './expenses/QuickExpense'
 import { DayMoney } from './expenses/DayMoney'
 import { ExpenseHistory } from './expenses/ExpenseHistory'
 import { CategoryManager } from './expenses/CategoryManager'
+import { HandOverModal } from './expenses/HandOverModal'
 import { DailyReportModal } from './analytics/DailyReportModal'
 
 const prettyDay = (iso: string) => {
@@ -43,14 +45,19 @@ export function ExpensesTab() {
   const [printing, setPrinting] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
+  const [handingOver, setHandingOver] = useState(false)
 
   // A tab settled at the counter is money in with no booking behind it.
   const { data: tabs = [] } = useQuery({ queryKey: ['tabs'], queryFn: getTabs })
 
+  const queryClient = useQueryClient()
+  const { data: handovers = [] } = useQuery({ queryKey: ['handovers'], queryFn: getHandovers })
+
   const report = useMemo(
-    () => buildDailyReport({ date, bookings: allBookings, tabs, expenses, categories: expenseCategories, rooms }),
-    [date, allBookings, tabs, expenses, expenseCategories, rooms],
+    () => buildDailyReport({ date, bookings: allBookings, tabs, expenses, handovers, categories: expenseCategories, rooms }),
+    [date, allBookings, tabs, expenses, handovers, expenseCategories, rooms],
   )
+  const dayHandovers = useMemo(() => handovers.filter(h => h.handover_date === date), [handovers, date])
   const dayExpenses = useMemo(
     () => expenses.filter(e => e.expense_date === date).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')),
     [expenses, date],
@@ -79,6 +86,41 @@ export function ExpensesTab() {
     })
     if (!ok) return
     try { await deleteExpense(expense.id) } catch { showToast('Could not remove the expense.', 'error') }
+  }
+
+  // Shown at once and saved behind it; taken back off the screen if the save fails.
+  const setHandovers = (change: (list: Handover[]) => Handover[]) =>
+    queryClient.setQueryData<Handover[]>(['handovers'], (list = []) => change(list))
+
+  const handOver = (input: { amount: number; handedBy?: string; notes?: string }) => {
+    const row: Handover = {
+      id: 'ho-' + generateUUID(),
+      amount: input.amount,
+      handover_date: date,
+      handed_by: input.handedBy,
+      notes: input.notes,
+      created_at: new Date().toISOString(),
+    }
+    setHandovers(list => [...list, row])
+    setHandingOver(false)
+    insertHandover(row).catch(() => {
+      setHandovers(list => list.filter(h => h.id !== row.id))
+      showToast('Could not save the money handed over. Please try again.', 'error')
+    })
+  }
+
+  const takeBack = async (handover: Handover) => {
+    const ok = await askConfirm({
+      title: 'Take back this ₱' + handover.amount.toLocaleString() + ' hand-over?',
+      confirmLabel: 'Take back',
+      tone: 'danger',
+    })
+    if (!ok) return
+    setHandovers(list => list.filter(h => h.id !== handover.id))
+    deleteHandover(handover.id).catch(() => {
+      setHandovers(list => [...list, handover])
+      showToast('Could not take it back. Please try again.', 'error')
+    })
   }
 
   const addCategory = async (name: string) => {
@@ -142,7 +184,14 @@ export function ExpensesTab() {
 
       <QuickExpense key={date} categories={expenseCategories} expenses={expenses} onAdd={addExpense} />
 
-      <DayMoney report={report} dayExpenses={dayExpenses} categories={expenseCategories} onRemove={removeExpense} />
+      <DayMoney
+        report={report}
+        dayExpenses={dayExpenses}
+        categories={expenseCategories}
+        onRemove={removeExpense}
+        dayHandovers={dayHandovers}
+        onTakeBack={takeBack}
+      />
 
       <div className="flex items-center justify-between gap-3 px-1">
         {report.undatedCount > 0 ? (
@@ -153,6 +202,7 @@ export function ExpensesTab() {
         <div className="flex items-center gap-4">
           <button type="button" onClick={() => setShowHistory(true)} className={quiet}>All expenses</button>
           <button type="button" onClick={() => setShowCategories(true)} className={quiet}>Categories</button>
+          <button type="button" onClick={() => setHandingOver(true)} className={quiet}>Hand over money</button>
         </div>
       </div>
 
@@ -166,6 +216,7 @@ export function ExpensesTab() {
           onClose={() => setShowHistory(false)}
         />
       )}
+      {handingOver && <HandOverModal inHotel={report.balance} onHandOver={handOver} onClose={() => setHandingOver(false)} />}
       {showCategories && (
         <CategoryManager
           categories={expenseCategories}

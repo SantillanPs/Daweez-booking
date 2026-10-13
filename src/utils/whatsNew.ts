@@ -23,6 +23,21 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-13b',
+    changes: [
+      {
+        where: 'Money → Today’s money',
+        what: [
+          'The money now carries over from one day to the next. The bottom shows what was left from the day before, this day’s money, and “Money in the hotel”.',
+          'When you hand money to the owner, tap “Hand over money” under the day. Type how much, who handed it over, and a note. It comes off “Money in the hotel” and is not counted as an expense.',
+          'A hand-over shows as a gold line on the day it happened. “Take back” removes it if it was a mistake.',
+          'Adding an expense is tidier: the four things you buy most are on the line, and the rest are under “More”.',
+          'The printed daily report shows the same figures.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-13',
     changes: [
       {

@@ -7,7 +7,8 @@
 //
 // So: **every peso is its own line, named by where it came from** (`Room 4 · SEB · Cash`) — never a
 // bucket like "Room payments ₱6,400", and never a summary of summaries. No check-ins, no rooms occupied,
-// no method sub-totals. The sheet's last line is NET TODAY.
+// no method sub-totals. The sheet's last line is MONEY IN THE HOTEL: what was left from the days before,
+// plus this day's money in, less its money out.
 //
 // **WHAT MAKES A PESO COUNT: a dated receipt.** Money in comes from `payment_records` — a booking's or a
 // walk-in tab's — because each record carries the `paid_at` the money actually arrived and the method it
@@ -23,7 +24,7 @@
 
 import type { Booking, PaymentRecord, Room } from '../types/booking'
 import { slipNumber } from './orderSlips'
-import type { Expense, ExpenseCategory } from '../types/expense'
+import type { Expense, ExpenseCategory, Handover } from '../types/expense'
 import type { Tab } from '../types/tab'
 import { paymentMethodLabel } from './paymentMethod'
 import { formatRoomNumbers } from './roomNumbers'
@@ -43,6 +44,17 @@ export interface DailyReport {
   totalIn: number
   totalOut: number
   net: number
+  /**
+   * What the hotel was holding when this day began: every dated payment before it, less every expense
+   * before it. The owner, 2026-10-13: *"it should be like a balance in the hotel. it should continue till
+   * tomorrow. so if the hotel earned 10k after expenses, then it should still be there tomorrow."*
+   */
+  broughtForward: number
+  /** Money handed to the owner on this day, one line each. It left the hotel but was not spent. */
+  handedOver: DailyReportLine[]
+  totalHandedOver: number
+  /** What the hotel holds at the end of this day: `broughtForward + net − totalHandedOver`. Tomorrow begins with it. */
+  balance: number
   /** Money bookings hold that carries no payment date, so it belongs to no day. */
   undatedMoney: number
   undatedCount: number
@@ -102,6 +114,8 @@ export interface DailyReportInput {
   bookings: Booking[]
   tabs?: Tab[]
   expenses?: Expense[]
+  /** Money handed to the owner (`utils/handovers.ts`). */
+  handovers?: Handover[]
   categories?: ExpenseCategory[]
   rooms?: Room[]
 }
@@ -111,7 +125,7 @@ export interface DailyReportInput {
  * paper and any later reader of the same day cannot disagree.
  */
 export function buildDailyReport(input: DailyReportInput): DailyReport {
-  const { date, bookings, tabs = [], expenses = [], categories = [], rooms = [] } = input
+  const { date, bookings, tabs = [], expenses = [], handovers = [], categories = [], rooms = [] } = input
 
   // ── MONEY IN: one line per PAYMENT that landed on this day ───────────────────────────────────────────
   //
@@ -120,41 +134,47 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
   // any room it paid for, and must reprint the money that was actually handed over — never a room's
   // slice of it). Listing the rows as they come would print ₱9,200 seven times. The number is what says
   // those seven rows are one payment, so the day is summed by number and the line names every room.
-  const payments = new Map<string, { rooms: number[]; guest: string; method: string; amount: number }>()
+  const payments = new Map<string, { day: string; rooms: number[]; guest: string; method: string; amount: number }>()
 
-  const addPayment = (key: string, room: number | null, guest: string, method: string, amount: number) => {
+  //
+  // Every dated payment is gathered, not only this day's: the ones before it are what the hotel was
+  // already holding (`broughtForward`), and they need the same grouping or a seven-room payment would be
+  // carried over seven times.
+  const addPayment = (key: string, day: string, room: number | null, guest: string, method: string, amount: number) => {
     const found = payments.get(key)
     if (found) {
       if (room !== null && !found.rooms.includes(room)) found.rooms.push(room)
       return
     }
-    payments.set(key, { rooms: room === null ? [] : [room], guest, method, amount })
+    payments.set(key, { day, rooms: room === null ? [] : [room], guest, method, amount })
   }
 
   bookings.forEach(booking => {
     recordsOf(booking.payment_records)
-      .filter(record => hotelDay(record.paid_at) === date)
       .forEach(record => {
+        const day = hotelDay(record.paid_at)
+        if (!day) return
         const room = roomNumberOf(booking, rooms)
         // A record with no number of its own (legacy) stands alone, keyed by its own id.
         const key = record.receipt_number || record.id
-        addPayment(key, room, guestLabel(booking), paymentMethodLabel(record.method), record.amount)
+        addPayment(key, day, room, guestLabel(booking), paymentMethodLabel(record.method), record.amount)
       })
   })
 
   tabs.forEach(tab => {
     recordsOf(tab.payment_records)
-      .filter(record => hotelDay(record.paid_at) === date)
       .forEach(record => {
+        const day = hotelDay(record.paid_at)
+        if (!day) return
         const key = record.receipt_number || record.id
         const label = [tab.label || tab.table_label, slipNumber(tab)].filter(Boolean).join(' · ') || 'Order slip'
         const found = payments.get(key)
         if (found) found.guest = label
-        else payments.set(key, { rooms: [], guest: label, method: paymentMethodLabel(record.method), amount: record.amount })
+        else payments.set(key, { day, rooms: [], guest: label, method: paymentMethodLabel(record.method), amount: record.amount })
       })
   })
 
-  const moneyIn: DailyReportLine[] = Array.from(payments.values()).map(payment => ({
+  const moneyIn: DailyReportLine[] = Array.from(payments.values()).filter(payment => payment.day === date).map(payment => ({
     label: [payment.guest, roomList(payment.rooms), payment.method].filter(Boolean).join(' · '),
     amount: payment.amount,
   }))
@@ -188,6 +208,21 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
   const totalIn = moneyIn.reduce((sum, line) => sum + line.amount, 0)
   const totalOut = moneyOut.reduce((sum, line) => sum + line.amount, 0)
 
+  // `YYYY-MM-DD` sorts as text, so "before this day" is a plain comparison.
+  const inBefore = Array.from(payments.values()).reduce((sum, p) => (p.day < date ? sum + p.amount : sum), 0)
+  const outBefore = expenses.reduce((sum, e) => (e.expense_date < date ? sum + e.amount : sum), 0)
+  // Money handed to the owner is gone from the hotel, so it comes off what is carried over — but it
+  // is never in `moneyOut`: the hotel earned it, it did not spend it.
+  const handedBefore = handovers.reduce((sum, h) => (h.handover_date < date ? sum + h.amount : sum), 0)
+  const handedOver: DailyReportLine[] = handovers
+    .filter(h => h.handover_date === date)
+    .map(h => ({
+      label: ['Handed over', h.handed_by ? `by ${h.handed_by}` : '', (h.notes || '').trim()].filter(Boolean).join(' · '),
+      amount: h.amount,
+    }))
+  const totalHandedOver = handedOver.reduce((sum, line) => sum + line.amount, 0)
+  const broughtForward = Math.round((inBefore - outBefore - handedBefore) * 100) / 100
+
   return {
     date,
     moneyIn,
@@ -195,6 +230,10 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
     totalIn,
     totalOut,
     net: totalIn - totalOut,
+    broughtForward,
+    handedOver,
+    totalHandedOver,
+    balance: Math.round((broughtForward + totalIn - totalOut - totalHandedOver) * 100) / 100,
     undatedMoney,
     undatedCount,
   }

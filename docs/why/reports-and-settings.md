@@ -12,6 +12,8 @@
 ## The day's money
 
 - **Every day the staff log the day's expenses and print a daily report for the owner:** the money received, the money spent, and what is left at the bottom (the owner, 2026-10-04).
+- **The money carries over from one day to the next, like a balance in the hotel** (Sebastian, 2026-10-13: *"it should continue till tomorrow. so if the hotel earned 10k after expenses, then it should still be there tomorrow."*). The bottom of the screen and of the printed sheet is what was left from the day before, this day's money in less money out, and the money in the hotel now. It counts from the first payment ever recorded.
+- **The staff hand the money they collected over to the owner** (Sebastian, 2026-10-13: *"the staff or the owner usually do some remittance with the money"*). It comes off the money in the hotel, but it is not an expense, so the earnings report does not count it. It happens rarely (*"the remittance usually happens rarely, so can you apply contextual design?"*), so "Hand over money" is a quiet link under the day, and the gold "Handed over" line shows only on a day it happened. The window asks three things, his own cut of the first drawing: how much, handed over by, notes. Still to ask the staff: whether they hand over cash only (then the balance should count cash only).
 - **The people who log expenses are the staff working in the hotel**, and the old screen felt slow and unpleasant to them: *"you just don't want to use it."* So the day is one screen — type the amount, tap what it was for — with the day's money in, money out and the print button together.
 
 ## Settings

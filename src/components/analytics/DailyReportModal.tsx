@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useDashboardData } from '../DashboardContext'
 import { getTabs } from '../../utils/tabs'
+import { getHandovers } from '../../utils/handovers'
 import { buildDailyReport } from '../../utils/dailyReport'
 import { DailyReportDocument } from '../billing/DailyReportDocument'
 
@@ -31,9 +32,11 @@ export function DailyReportModal({ onClose, initialDate }: {
   // a tab settled at the counter is money this sheet must show, and it belongs to no booking.
   const { data: tabs = [] } = useQuery({ queryKey: ['tabs'], queryFn: getTabs })
 
+  const { data: handovers = [] } = useQuery({ queryKey: ['handovers'], queryFn: getHandovers })
+
   const report = useMemo(
-    () => buildDailyReport({ date, bookings, tabs, expenses, categories: expenseCategories, rooms }),
-    [date, bookings, tabs, expenses, expenseCategories, rooms],
+    () => buildDailyReport({ date, bookings, tabs, expenses, handovers, categories: expenseCategories, rooms }),
+    [date, bookings, tabs, expenses, handovers, expenseCategories, rooms],
   )
 
   // **Rendered through a portal to `document.body`**, the way every other print modal in the app is

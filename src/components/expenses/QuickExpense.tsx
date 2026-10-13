@@ -22,6 +22,7 @@ export function QuickExpense({ categories, expenses, onAdd }: QuickExpenseProps)
   const [notes, setNotes] = useState('')
   const [tried, setTried] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const amountRef = useRef<HTMLInputElement>(null)
   const noteRef = useRef<HTMLInputElement>(null)
 
@@ -34,6 +35,10 @@ export function QuickExpense({ categories, expenses, onAdd }: QuickExpenseProps)
     expenses.forEach(e => { used[e.category_id] = (used[e.category_id] || 0) + 1 })
     return [...categories].sort((a, b) => (used[b.id] || 0) - (used[a.id] || 0) || a.name.localeCompare(b.name))
   }, [categories, expenses])
+
+  // The four the hotel buys most are on the line; the rest wait behind "More" (the owner's
+  // pick from the drawing, 2026-10-13). One chosen from the rest stays in view.
+  const shown = showAll ? ordered : ordered.filter((cat, i) => i < 4 || cat.id === categoryId)
 
   const value = parseFloat(amount) || 0
   const problem = !tried ? '' : value <= 0 ? 'Type the amount.' : !categoryId ? 'Tap what it was for.' : ''
@@ -60,11 +65,11 @@ export function QuickExpense({ categories, expenses, onAdd }: QuickExpenseProps)
   }
 
   return (
-    <form onSubmit={submit} className="bg-card border border-soft rounded-xl shadow-soft px-3 py-3 space-y-2.5">
+    <form onSubmit={submit} className="bg-card border border-soft rounded-xl px-4 py-3 space-y-2.5">
       {/* How much, then what for — the chips sit right after the amount, so Tab (or a
           thumb) goes from one to the other in the order it is said. */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted shrink-0 mr-1">Money out</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-muted shrink-0 mr-1">Spent</span>
         <div className="relative w-[130px] mr-1">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-semibold">₱</span>
           <input
@@ -78,14 +83,14 @@ export function QuickExpense({ categories, expenses, onAdd }: QuickExpenseProps)
             className="w-full pl-7 pr-2.5 py-2 bg-page border border-soft rounded-lg text-[15px] font-mono font-bold text-main outline-none focus:bg-card focus:border-gold-500"
           />
         </div>
-        {ordered.map(cat => {
+        {shown.map(cat => {
           const on = cat.id === categoryId
           return (
             <button
               key={cat.id}
               type="button"
               // Picking what it was for moves on to the note, so Enter there saves it.
-              onClick={() => { setCategoryId(on ? '' : cat.id); if (!on) noteRef.current?.focus() }}
+              onClick={() => { setCategoryId(on ? '' : cat.id); if (!on) setTimeout(() => noteRef.current?.focus()) }}
               aria-pressed={on}
               className={'px-3 py-2 rounded-lg text-[12px] font-bold border transition-colors cursor-pointer ' +
                 (on ? 'bg-gold-400 border-gold-400 text-ink-900' : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100')}
@@ -94,10 +99,22 @@ export function QuickExpense({ categories, expenses, onAdd }: QuickExpenseProps)
             </button>
           )
         })}
+        {ordered.length > shown.length || showAll ? (
+          <button
+            type="button"
+            onClick={() => setShowAll(!showAll)}
+            aria-expanded={showAll}
+            className="px-3 py-2 rounded-lg text-[12px] font-bold text-gold-800 hover:bg-gold-100 transition-colors cursor-pointer"
+          >
+            {showAll ? 'Less' : 'More'}
+          </button>
+        ) : null}
         {categories.length === 0 && <span className="text-[12px] text-muted">Add a category first.</span>}
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* The note and Add have nothing to do until there is an amount or a pick, so they
+          are not on the line before then. */}
+      <div className={(amount || categoryId || notes ? 'flex' : 'hidden') + ' items-center gap-2 [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]'}>
         <input
           ref={noteRef}
           value={notes}
