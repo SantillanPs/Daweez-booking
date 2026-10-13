@@ -23,6 +23,23 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-13d',
+    changes: [
+      {
+        where: 'Restaurant → Orders',
+        what: [
+          'The menu is now white, so it stands out from the page behind it.',
+        ],
+      },
+      {
+        where: 'Money → Today’s money',
+        what: [
+          '“This day” is now called “TOTAL CASH”. The printed daily report says the same.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-13c',
     changes: [
       {

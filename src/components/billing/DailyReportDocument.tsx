@@ -86,7 +86,7 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
           <span className="font-mono">{money(report.broughtForward)}</span>
         </div>
         <div className="flex justify-between gap-3 text-[12px] mb-1">
-          <span>This day</span>
+          <span>TOTAL CASH</span>
           <span className="font-mono">{money(report.net)}</span>
         </div>
         {/* Money handed to the owner: printed only on a day it happened, like every line here. */}

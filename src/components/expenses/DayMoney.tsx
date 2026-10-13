@@ -82,7 +82,7 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandove
           <span className="font-mono font-bold">{signed(report.broughtForward)}</span>
         </div>
         <div className="flex justify-between gap-3 text-[13px] text-main mt-1">
-          <span>This day</span>
+          <span>TOTAL CASH</span>
           <span className={'font-mono font-bold ' + (report.net < 0 ? 'text-danger-600' : 'text-emerald-600')}>
             {report.net < 0 ? '− ' : '+ '}{peso(Math.abs(report.net))}
           </span>

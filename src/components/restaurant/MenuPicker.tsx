@@ -70,14 +70,14 @@ function MenuColumn({ categories, onPick, busy, counts, best }: {
           <section key={category.id}>
             {/* The category sits centred between its own thin rules, the way it is
                 printed on the laminated card the staff already know. */}
-            <p className="sticky top-0 z-10 bg-paper-50 flex items-center gap-2 pt-4 pb-1.5 text-[12px] font-bold uppercase tracking-[0.13em] text-brand-text">
-              <span className="flex-1 border-t border-paper-300" />
+            <p className="sticky top-0 z-10 bg-card flex items-center gap-2 pt-4 pb-1.5 text-[12px] font-bold uppercase tracking-[0.13em] text-brand-text">
+              <span className="flex-1 border-t border-paper-200" />
               <GroupIcon className="w-4 h-4" />
               <span className="whitespace-nowrap">
                 {category.name}
                 {category.note && <span className="ml-1.5 font-semibold tracking-normal normal-case text-muted">{category.note}</span>}
               </span>
-              <span className="flex-1 border-t border-paper-300" />
+              <span className="flex-1 border-t border-paper-200" />
             </p>
 
             {category.items.map(item => {
@@ -220,7 +220,7 @@ export function MenuPicker({ onPick, busy = false, counts = {} }: MenuPickerProp
         )}
       </div>
 
-      <div className="min-h-0 flex flex-col tall:flex-1 rounded-lg border border-paper-300 bg-paper-50 overflow-hidden">
+      <div className="min-h-0 flex flex-col tall:flex-1 rounded-lg border border-soft bg-card overflow-hidden">
         <div className="shrink-0 px-4 pt-3 pb-2 text-center border-b-2 border-ink-900">
           <p className="font-display font-extrabold uppercase tracking-[0.16em] text-[13.5px] text-main">
             Daweez Restaurant &amp; Bar
