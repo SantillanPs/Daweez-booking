@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-14',
+    changes: [
+      {
+        where: 'Money → Today’s money',
+        what: [
+          'You can now add the cash you already have in the hotel. Tap “Add cash on hand” under the day, type how much, and it is added to the Total cash on hand.',
+          'It shows in the Summary as “Add: Cash added” on that day and carries over to the next days. It is not counted as sales. Tap “Take back” if it was a mistake.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-13h',
     changes: [
       {

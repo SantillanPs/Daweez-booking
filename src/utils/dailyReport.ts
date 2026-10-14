@@ -53,7 +53,12 @@ export interface DailyReport {
   /** Money handed to the owner on this day, one line each. It left the hotel but was not spent. */
   handedOver: DailyReportLine[]
   totalHandedOver: number
-  /** What the hotel holds at the end of this day: `broughtForward + net − totalHandedOver`. Tomorrow begins with it. */
+  /** Cash put into the hotel on this day (`kind: 'in'`). It adds to the money in the hotel but was not earned. */
+  cashAdded: DailyReportLine[]
+  totalAdded: number
+  /** `broughtForward + totalIn + totalAdded`: the paper's "Cash on hand" line. */
+  cashOnHand: number
+  /** What the hotel holds at the end of this day: `cashOnHand − totalOut − totalHandedOver`. Tomorrow begins with it. */
   balance: number
   /** Money bookings hold that carries no payment date, so it belongs to no day. */
   undatedMoney: number
@@ -224,14 +229,22 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
   const outBefore = expenses.reduce((sum, e) => (e.expense_date < date ? sum + e.amount : sum), 0)
   // Money handed to the owner is gone from the hotel, so it comes off what is carried over — but it
   // is never in `moneyOut`: the hotel earned it, it did not spend it.
-  const handedBefore = handovers.reduce((sum, h) => (h.handover_date < date ? sum + h.amount : sum), 0)
+  // Cash added (`kind: 'in'`) is the same row the other way round, so it counts as a hand-over taken back.
+  const handedBefore = handovers.reduce((sum, h) => (h.handover_date < date ? sum + (h.kind === 'in' ? -h.amount : h.amount) : sum), 0)
   const handedOver: DailyReportLine[] = handovers
-    .filter(h => h.handover_date === date)
+    .filter(h => h.handover_date === date && h.kind !== 'in')
     .map(h => ({
       label: ['Cash remitted', h.handed_by ? `by ${h.handed_by}` : '', (h.notes || '').trim()].filter(Boolean).join(' · '),
       amount: h.amount,
     }))
   const totalHandedOver = handedOver.reduce((sum, line) => sum + line.amount, 0)
+  const cashAdded: DailyReportLine[] = handovers
+    .filter(h => h.handover_date === date && h.kind === 'in')
+    .map(h => ({
+      label: ['Cash added', h.handed_by ? `by ${h.handed_by}` : '', (h.notes || '').trim()].filter(Boolean).join(' · '),
+      amount: h.amount,
+    }))
+  const totalAdded = cashAdded.reduce((sum, line) => sum + line.amount, 0)
   const broughtForward = Math.round((inBefore - outBefore - handedBefore) * 100) / 100
 
   return {
@@ -244,7 +257,10 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
     broughtForward,
     handedOver,
     totalHandedOver,
-    balance: Math.round((broughtForward + totalIn - totalOut - totalHandedOver) * 100) / 100,
+    cashAdded,
+    totalAdded,
+    cashOnHand: Math.round((broughtForward + totalIn + totalAdded) * 100) / 100,
+    balance: Math.round((broughtForward + totalIn + totalAdded - totalOut - totalHandedOver) * 100) / 100,
     undatedMoney,
     undatedCount,
   }

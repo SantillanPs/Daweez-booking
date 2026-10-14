@@ -45,7 +45,7 @@ export function ExpensesTab() {
   const [printing, setPrinting] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
-  const [handingOver, setHandingOver] = useState(false)
+  const [handingOver, setHandingOver] = useState<'out' | 'in' | null>(null)
 
   // A tab settled at the counter is money in with no booking behind it.
   const { data: tabs = [] } = useQuery({ queryKey: ['tabs'], queryFn: getTabs })
@@ -93,25 +93,27 @@ export function ExpensesTab() {
     queryClient.setQueryData<Handover[]>(['handovers'], (list = []) => change(list))
 
   const handOver = (input: { amount: number; handedBy?: string; notes?: string }) => {
+    const kind = handingOver === 'in' ? 'in' : 'out'
     const row: Handover = {
       id: 'ho-' + generateUUID(),
       amount: input.amount,
       handover_date: date,
       handed_by: input.handedBy,
       notes: input.notes,
+      kind,
       created_at: new Date().toISOString(),
     }
     setHandovers(list => [...list, row])
-    setHandingOver(false)
+    setHandingOver(null)
     insertHandover(row).catch(() => {
       setHandovers(list => list.filter(h => h.id !== row.id))
-      showToast('Could not save the money handed over. Please try again.', 'error')
+      showToast(kind === 'in' ? 'Could not save the cash added. Please try again.' : 'Could not save the money handed over. Please try again.', 'error')
     })
   }
 
   const takeBack = async (handover: Handover) => {
     const ok = await askConfirm({
-      title: 'Take back this ₱' + handover.amount.toLocaleString() + ' hand-over?',
+      title: 'Take back this ₱' + handover.amount.toLocaleString() + (handover.kind === 'in' ? ' cash added?' : ' hand-over?'),
       confirmLabel: 'Take back',
       tone: 'danger',
     })
@@ -202,7 +204,8 @@ export function ExpensesTab() {
         <div className="flex items-center gap-4">
           <button type="button" onClick={() => setShowHistory(true)} className={quiet}>All expenses</button>
           <button type="button" onClick={() => setShowCategories(true)} className={quiet}>Categories</button>
-          <button type="button" onClick={() => setHandingOver(true)} className={quiet}>Hand over money</button>
+          <button type="button" onClick={() => setHandingOver('in')} className={quiet}>Add cash on hand</button>
+          <button type="button" onClick={() => setHandingOver('out')} className={quiet}>Hand over money</button>
         </div>
       </div>
 
@@ -216,7 +219,7 @@ export function ExpensesTab() {
           onClose={() => setShowHistory(false)}
         />
       )}
-      {handingOver && <HandOverModal inHotel={report.balance} onHandOver={handOver} onClose={() => setHandingOver(false)} />}
+      {handingOver && <HandOverModal key={handingOver} kind={handingOver} inHotel={report.balance} onHandOver={handOver} onClose={() => setHandingOver(null)} />}
       {showCategories && (
         <CategoryManager
           categories={expenseCategories}

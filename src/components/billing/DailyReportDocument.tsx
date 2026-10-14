@@ -92,9 +92,15 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
           <span>Add: {forwardedLabel(report.date)}</span>
           <span className="font-mono">{money(report.broughtForward)}</span>
         </div>
+        {report.cashAdded.map((line, index) => (
+          <div key={`${line.label}-${index}`} className="flex justify-between gap-3">
+            <span className="truncate">Add: {line.label}</span>
+            <span className="font-mono shrink-0">{money(line.amount)}</span>
+          </div>
+        ))}
         <div className="flex justify-between gap-3 font-bold border-t border-ink-400 mt-0.5 pt-0.5">
           <span>Cash on hand</span>
-          <span className="font-mono">{money(report.broughtForward + report.totalIn)}</span>
+          <span className="font-mono">{money(report.cashOnHand)}</span>
         </div>
         <div className="flex justify-between gap-3">
           <span>Total Expenses</span>

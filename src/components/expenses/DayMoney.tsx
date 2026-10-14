@@ -90,16 +90,36 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandove
           <span><span className="text-muted">Add:</span> {forwardedLabel(report.date)}</span>
           <span className="font-mono font-bold">{signed(report.broughtForward)}</span>
         </div>
+        {/* Cash put into the hotel, like a hand-over, is here only on the day it happened. */}
+        {dayHandovers.filter(h => h.kind === 'in').map(added => (
+          <div key={added.id} className="flex items-center justify-between gap-3 text-gold-800 [animation:bp-slide_.3s_cubic-bezier(.16,1,.3,1)]">
+            <span className="min-w-0 truncate">
+              <span className="opacity-80">Add:</span> Cash added
+              {added.handed_by ? ' · by ' + added.handed_by : ''} · {timeOf(added.created_at)}
+              {added.notes ? ' · ' + added.notes : ''}
+            </span>
+            <span className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => onTakeBack(added)}
+                className="min-h-[44px] px-2 text-[12px] font-bold underline underline-offset-2 hover:text-ink-900 transition-colors cursor-pointer"
+              >
+                Take back
+              </button>
+              <span className="font-mono font-bold">{peso(added.amount)}</span>
+            </span>
+          </div>
+        ))}
         <div className="flex justify-between gap-3 border-t border-soft mt-1 pt-1.5 font-bold">
           <span>Cash on hand</span>
-          <span className="font-mono">{signed(report.broughtForward + report.totalIn)}</span>
+          <span className="font-mono">{signed(report.cashOnHand)}</span>
         </div>
         <div className="flex justify-between gap-3 py-0.5 mt-0.5">
           <span>Total Expenses</span>
           <span className="font-mono font-bold text-danger-600">({peso(report.totalOut)})</span>
         </div>
         {/* A hand-over is rare, so its line is here only on the day it happened. */}
-        {dayHandovers.map(handover => (
+        {dayHandovers.filter(h => h.kind !== 'in').map(handover => (
           <div key={handover.id} className="flex items-center justify-between gap-3 text-gold-800 [animation:bp-slide_.3s_cubic-bezier(.16,1,.3,1)]">
             <span className="min-w-0 truncate">
               <span className="opacity-80">Less:</span> Cash remitted

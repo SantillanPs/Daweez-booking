@@ -6,6 +6,10 @@ import { supabase, isSupabaseConfigured } from './supabaseClient'
 // leaves the hotel, so it comes off "Money in the hotel" — but it is not an expense:
 // the hotel still earned it, so it lives in its own table (`money_handovers`) and the
 // earnings report never sees it.
+//
+// CASH ADDED is the same row the other way round (`kind: 'in'`, the owner, 2026-10-14): the cash the
+// staff already held when they began using the system, or cash the owner puts in. It adds to the money in
+// the hotel and, like a hand-over, is never income.
 
 export async function getHandovers(): Promise<Handover[]> {
   if (!isSupabaseConfigured) return []
