@@ -23,6 +23,32 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-14d',
+    changes: [
+      {
+        where: 'The top bar',
+        what: [
+          'Money is now called Cash Flow, and Stock is now called Inventory. Everything inside them is where it was.',
+        ],
+      },
+      {
+        where: 'Cash Flow → Earnings report',
+        what: [
+          'The report opens on Profit, Money in and Spent, then each place with what it earned and its share. Room rate and breakfast show under Pension; tap Pension to see each room.',
+          'Table and Charts is now a switch beside Day / Week / Month. Charts shows how the hotel, each room, each venue and the restaurant are doing over 30 days, this year, all time or dates you pick. Tap a room in the list beside the chart to see only that room.',
+          'Print daily report is a button under the report. “Count not yet confirmed” shows only when there is a booking not yet confirmed.',
+        ],
+      },
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'The breakfast cup beside a room shows only until 12 PM.',
+          'When the kitchen has cooked a breakfast, the cup is now brown instead of green. Tap it once the breakfast is served.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-14c',
     changes: [
       {

@@ -1,125 +1,71 @@
 import React from 'react'
-import { Calendar, BarChart2, Table, ToggleRight, ToggleLeft, Printer } from 'lucide-react'
+import { TrendingUp } from 'lucide-react'
 
 type Timeframe = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
 
 interface AnalyticsFiltersProps {
+  /** The dates the report covers, in words, under the title. */
+  periodLabel: string
   timeframe: Timeframe
   setTimeframe: (t: Timeframe) => void
   customStart: string
   setCustomStart: (d: string) => void
   customEnd: string
   setCustomEnd: (d: string) => void
-  viewMode: 'visuals' | 'spreadsheet'
-  setViewMode: React.Dispatch<React.SetStateAction<'visuals' | 'spreadsheet'>>
-  includePending: boolean
-  setIncludePending: React.Dispatch<React.SetStateAction<boolean>>
-  /** Opens the day's sheet for printing — an action here, not a page of its own (the owner's ruling). */
-  onPrintDailyReport: () => void
+  /** The Table / Charts switch, shown beside the period. */
+  tools?: React.ReactNode
 }
 
+const PERIODS: [Timeframe, string][] = [
+  ['daily', 'Day'], ['weekly', 'Week'], ['monthly', 'Month'], ['yearly', 'Year'], ['custom', 'Other dates'],
+]
+
+const dateBox = 'bg-card border border-soft text-main text-base px-2 py-1.5 rounded-lg outline-none font-mono focus:border-gold-500 cursor-pointer'
+
+// The top of the Earnings report, drawn like the top of Today's money (the owner, 2026-10-13: the page
+// "looks so out of place with the rest of the system"): a title with the dates under it, and the period
+// to its right. The two date boxes show only for "Other dates".
 export const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
-  timeframe,
-  setTimeframe,
-  customStart,
-  setCustomStart,
-  customEnd,
-  setCustomEnd,
-  viewMode,
-  setViewMode,
-  includePending,
-  setIncludePending,
-  onPrintDailyReport
-}) => {
-  return (
-    <div className="bg-card border border-soft rounded-xl p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-      {/* Left Side: Timeframes and Dates */}
-      <div className="flex flex-wrap items-center gap-4">
-        {/* Timeframe selector */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {(['daily', 'weekly', 'monthly', 'yearly', 'custom'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTimeframe(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider cursor-pointer transition-all shrink-0 ${
-                timeframe === t 
-                  ? 'bg-brand-primary text-ink-900' 
-                  : 'bg-page hover:bg-softbg text-muted'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
-        {/* Dynamic Custom Date Inputs */}
-        {timeframe === 'custom' && (
-          <div className="flex items-center gap-2">
-            <Calendar className="w-3.5 h-3.5 text-brand-text shrink-0" />
-            <input
-              type="date"
-              value={customStart}
-              onChange={e => setCustomStart(e.target.value)}
-              className="text-xs font-medium bg-page border border-soft rounded px-2.5 py-1.5 focus:outline-none focus:border-brand-primary"
-            />
-            <span className="text-muted text-xs">to</span>
-            <input
-              type="date"
-              value={customEnd}
-              onChange={e => setCustomEnd(e.target.value)}
-              className="text-xs font-medium bg-page border border-soft rounded px-2.5 py-1.5 focus:outline-none focus:border-brand-primary"
-            />
-          </div>
-        )}
+  periodLabel, timeframe, setTimeframe, customStart, setCustomStart, customEnd, setCustomEnd, tools,
+}) => (
+  <>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 className="font-display font-bold text-xl text-main flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-gold-600" />
+          Earnings report
+        </h2>
+        <p className="text-[13px] text-muted mt-0.5">{periodLabel}</p>
       </div>
-
-      {/* Right Side: View Mode Toggle & Status Toggle */}
-      <div className="flex flex-wrap items-center gap-4 xl:justify-end">
-        {/* Print the day's sheet. It sits here, beside the view control, because it is the same kind of thing:
-            a way of looking at the money — on paper. It is deliberately NOT a third view. */}
-        <button
-          onClick={onPrintDailyReport}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest cursor-pointer transition-all bg-card border-2 border-soft hover:border-brand-primary/30 hover:bg-page text-muted shadow-sm"
-        >
-          <Printer className="w-4 h-4 text-brand-text" />
-          Print daily report
-        </button>
-
-        {/* View Mode Toggle */}
-        <button
-          onClick={() => setViewMode(prev => prev === 'spreadsheet' ? 'visuals' : 'spreadsheet')}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest cursor-pointer transition-all bg-white border-2 border-slate-100 hover:border-brand-primary/30 hover:bg-slate-50 text-slate-600 shadow-sm"
-        >
-          {viewMode === 'spreadsheet' ? (
-            <>
-              <BarChart2 className="w-4 h-4 text-brand-text" />
-              Switch to Visuals
-            </>
-          ) : (
-            <>
-              <Table className="w-4 h-4 text-brand-text" />
-              Switch to Spreadsheet
-            </>
-          )}
-        </button>
-
-        {/* Status Toggle */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <span className="text-xs font-medium text-muted whitespace-nowrap">
-            Include Pending Bookings
-          </span>
-          <button 
-            onClick={() => setIncludePending(prev => !prev)}
-            className="text-muted hover:text-brand-text transition-all cursor-pointer"
+      <div className="flex flex-wrap items-center gap-2">
+      {tools}
+      <div role="group" aria-label="Period" className="flex flex-wrap gap-1 p-1 bg-card border border-soft rounded-xl">
+        {PERIODS.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={timeframe === key}
+            onClick={() => setTimeframe(key)}
+            className={`min-h-9 px-3.5 rounded-lg text-[13px] cursor-pointer transition-colors ${
+              timeframe === key ? 'bg-brand-primary text-ink-900 font-bold' : 'text-muted font-semibold hover:text-main'
+            }`}
           >
-            {includePending ? (
-              <ToggleRight className="w-8 h-8 text-brand-text" />
-            ) : (
-              <ToggleLeft className="w-8 h-8 text-muted" />
-            )}
+            {label}
           </button>
-        </div>
+        ))}
+      </div>
       </div>
     </div>
-  )
-}
+
+    {timeframe === 'custom' && (
+      <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 text-[13px] text-muted">
+        <label className="flex items-center gap-2">From
+          <input type="date" value={customStart} onChange={e => { if (e.target.value) setCustomStart(e.target.value) }} className={dateBox} />
+        </label>
+        <label className="flex items-center gap-2">to
+          <input type="date" value={customEnd} onChange={e => { if (e.target.value) setCustomEnd(e.target.value) }} className={dateBox} />
+        </label>
+      </div>
+    )}
+  </>
+)

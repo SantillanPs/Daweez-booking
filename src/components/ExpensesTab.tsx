@@ -151,12 +151,12 @@ export function ExpensesTab() {
   const quiet = 'text-[12px] font-semibold text-muted hover:text-gold-700 transition-colors cursor-pointer'
 
   return (
-    <div className="max-w-4xl mx-auto space-y-3 font-sans">
+    <div className="space-y-3 font-sans">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-display font-bold text-xl text-main flex items-center gap-2">
             <Wallet className="w-5 h-5 text-gold-600" />
-            {date === today ? "Today's money" : 'Money on this day'}
+            Cash Flow
           </h2>
           <p className="text-[13px] text-muted mt-0.5">{prettyDay(date)}</p>
         </div>

@@ -44,7 +44,7 @@ const TABS = [
     ],
   },
   {
-    label: 'Stock', Icon: Boxes,
+    label: 'Inventory', Icon: Boxes,
     screens: [
       { label: 'Stock room', to: '/housekeeping' },
       { label: 'What a dish uses', to: '/housekeeping/dishes' },
@@ -52,7 +52,7 @@ const TABS = [
     ],
   },
   {
-    label: 'Money', Icon: PhilippinePeso,
+    label: 'Cash Flow', Icon: PhilippinePeso,
     screens: [
       { label: "Today's money", to: '/expenses' },
       { label: 'Earnings report', to: '/analytics' },

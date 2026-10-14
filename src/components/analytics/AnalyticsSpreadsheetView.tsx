@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ChevronDown, ChevronRight, BedDouble, House, Flower2, PartyPopper, Coins, Coffee, PackagePlus, PieChart, CircleDollarSign, Building2, Utensils } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { AnimatedNumber } from '../AnimatedNumber'
 
 interface RoomRevenue {
@@ -43,210 +43,128 @@ interface AnalyticsSpreadsheetViewProps {
 
 // The Earnings Report (board card k69, part E).
 //
-// Every row is a place the money comes from and every column a kind of money, so
-// the restaurant and bar is its own row rather than being folded into a room —
-// the owner runs it as its own business, and food money that quietly landed in
-// the room column would read as rooms earning more than they did.
-export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> = ({ calculations }) => {
-  const [isPensionExpanded, setIsPensionExpanded] = useState(false)
-  const dash = <span className="text-slate-300 font-normal">-</span>
+// Every place the money comes from is a row, and the restaurant and bar is its own row rather than being
+// folded into a room — the owner runs it as its own business.
+//
+// It was a grid of kinds of money, but each place filled only one column, so most of it was dashes and the
+// venues sat under "Room rate". The owner found it "messy and too plain" and chose this list (2026-10-14):
+// the profit first, as on the Charts view, then each place, and the kinds of money only under the place that
+// has them. The places keep one order, so each is always where the eye expects it; the owner had the Vacation
+// House moved below the restaurant (2026-10-14).
+//
+// Drawn as a ledger (the owner, 2026-10-14: the full-width list was "a bit hard to read"; chosen from a
+// mock): a line between places, every amount in one right-hand column, and a short share bar out of 100%
+// beside it, so the eye no longer crosses a bar the width of the screen to reach a figure.
+const peso = (n: number) => '₱' + Math.round(n).toLocaleString()
+
+type Part = [string, number]
+
+/** A place's share of the money in, out of 100%. Left out for a place that earned nothing. */
+const Share: React.FC<{ pct: number }> = ({ pct }) => (
+  <span className="col-span-2 sm:col-span-1 grid grid-cols-[minmax(0,1fr)_2.75rem] items-center gap-2.5">
+    <span className="block h-2 rounded-full bg-page overflow-hidden">
+      <span className="block h-full w-[var(--w)] rounded-full bg-emerald-600 transition-[width] duration-500 ease-out" style={{ '--w': pct + '%' } as React.CSSProperties} />
+    </span>
+    <span className="font-mono text-[12.5px] text-muted text-right">{pct}%</span>
+  </span>
+)
+
+const grid = 'grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_9rem_11rem] items-center gap-x-6 gap-y-2 px-4 sm:px-6'
+
+export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> = ({ calculations: c }) => {
+  const [roomsOpen, setRoomsOpen] = useState(false)
+  const loss = c.netProfit < 0
+
+  const places: { id: string; name: string; hint?: string; total: number; parts: Part[] }[] = [
+    { id: 'pension', name: 'Pension', hint: 'Rooms 1–10', total: c.totalPension, parts: [['Room rate', c.totalPensionBase], ['Breakfast', c.totalPensionBreakfast], ['Extras', c.totalPensionRentals]] },
+    { id: 'food', name: 'Restaurant & bar', total: c.restaurantTotal, parts: [] },
+    { id: 'vacation', name: 'Vacation House', total: c.vacationTotal, parts: [['Booking', c.totalVacationHouse], ['Extras', c.vacationExtras]] },
+    { id: 'garden', name: 'Garden Area', total: c.gardenTotal, parts: [['Booking', c.totalGardenArea], ['Extras', c.gardenExtras]] },
+    { id: 'gazebo', name: 'Gazebo', total: c.gazeboTotal, parts: [['Booking', c.totalGazebo], ['Extras', c.gazeboExtras]] },
+  ]
+  const pctOf = (n: number, of: number) => (of > 0 ? Math.round((n / of) * 100) : 0)
+  // the kinds of money show only where there is more than one, so a place is not split into a lone part
+  const split = (parts: Part[]) => {
+    const shown = parts.filter(([, n]) => n > 0)
+    return shown.length > 1 || (shown.length === 1 && shown[0][0] === 'Extras') ? shown : []
+  }
 
   return (
-    <div className="bg-card border border-soft rounded-xl overflow-hidden">
-      <div className="p-4 border-b border-soft flex items-center justify-between gap-3">
-        <div>
-          <h4 className="text-xs sm:text-sm font-bold text-main">Earnings Report</h4>
-          <p className="text-[10px] text-muted">Where your money comes from{calculations.totalRevenue === 0 && calculations.totalExpenses === 0 ? ' — nothing recorded yet this period' : ''}</p>
+    <div className="bg-card border border-soft rounded-2xl overflow-hidden">
+      <div className="grid grid-cols-2 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border-soft">
+        <div className="col-span-2 sm:col-span-1 px-5 py-4 flex flex-col gap-1">
+          <span className="text-[13px] font-semibold text-muted">{loss ? 'Loss' : 'Profit'}</span>
+          <span className={`font-mono text-[36px] leading-none font-extrabold tracking-tight ${loss ? 'text-danger-600' : 'text-emerald-600'}`}>
+            {loss && '('}<AnimatedNumber prefix="₱" value={Math.abs(c.netProfit)} />{loss && ')'}
+          </span>
         </div>
-        <span className="text-[10px] font-semibold text-brand-text bg-brand-bg border border-brand-border rounded-full px-3 py-1 whitespace-nowrap">
-          {calculations.periodLabel}
-        </span>
+        <div className="px-5 py-4 flex flex-col gap-1 border-t sm:border-t-0 sm:border-l border-soft">
+          <span className="text-[13px] font-semibold text-muted">Money in</span>
+          <span className="font-mono text-[20px] font-extrabold text-main">{peso(c.totalRevenue)}</span>
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-1 border-t border-l border-soft sm:border-t-0">
+          <span className="text-[13px] font-semibold text-muted">Spent</span>
+          {/* always red, as money going out (the owner, 2026-10-14); brackets only round an amount, never ₱0 */}
+          <span className="font-mono text-[20px] font-extrabold text-danger-600">
+            {c.totalExpenses ? '(' + peso(c.totalExpenses) + ')' : peso(0)}
+          </span>
+        </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse whitespace-nowrap">
-          <thead>
-            <tr className="bg-slate-100/50 border-b-2 border-slate-200 text-slate-500 uppercase tracking-wider font-bold text-[11px]">
-              <th className="py-4 px-5" title="Which room or venue the money came from"><span className="inline-flex items-center gap-1"><Building2 className="w-3.5 h-3.5 text-slate-400" />Area / Room</span></th>
-              <th className="py-4 px-5 text-right" title="Money from the room's nightly rate"><span className="inline-flex items-center gap-1 justify-end"><Coins className="w-3.5 h-3.5 text-[#2E7D78]" />Room Rate</span></th>
-              <th className="py-4 px-5 text-right" title="Money from breakfast served during stays"><span className="inline-flex items-center gap-1 justify-end"><Coffee className="w-3.5 h-3.5 text-[#C9922F]" />Breakfast</span></th>
-              <th className="py-4 px-5 text-right" title="Money from the restaurant and bar — the food and drinks on the order slips"><span className="inline-flex items-center gap-1 justify-end"><Utensils className="w-3.5 h-3.5 text-brand-text" />Restaurant &amp; bar</span></th>
-              <th className="py-4 px-5 text-right" title="Money from extra items (rentals, linens, etc.)"><span className="inline-flex items-center gap-1 justify-end"><PackagePlus className="w-3.5 h-3.5 text-[#0EA5E9]" />Extras</span></th>
-              <th className="py-4 px-5 text-right" title="Share of everything that came in"><span className="inline-flex items-center gap-1 justify-end"><PieChart className="w-3.5 h-3.5 text-slate-500" />% of Total</span></th>
-              <th className="py-4 px-5 text-right text-slate-800" title="Every column added up for this row"><span className="inline-flex items-center gap-1 justify-end"><CircleDollarSign className="w-3.5 h-3.5 text-emerald-600" />Total Earned</span></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-main text-sm">
-            {/* Row 1: Pension */}
-            <tr 
-              className="cursor-pointer hover:bg-slate-50 transition-colors group"
-              onClick={() => setIsPensionExpanded(!isPensionExpanded)}
-            >
-              <td className="py-4 px-5 font-semibold flex items-center gap-3">
-                <div className="p-1 rounded bg-slate-100 group-hover:bg-slate-200 transition-colors">
-                  {isPensionExpanded ? <ChevronDown className="w-4 h-4 text-slate-600" /> : <ChevronRight className="w-4 h-4 text-slate-600" />}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-[#2E7D78]/10 text-[#2E7D78] flex items-center justify-center shrink-0"><BedDouble className="w-3.5 h-3.5" /></span>
-                  <span className="text-slate-800">Pension <span className="text-slate-500 font-normal">(Rooms 1-10)</span></span>
-                </div>
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-[#2E7D78]">₱{calculations.totalPensionBase.toLocaleString()}</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-[#C9922F]">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
-              <td className="py-4 px-5 text-right">{dash}</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-[#0EA5E9]">₱{calculations.totalPensionRentals.toLocaleString()}</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-slate-600">
-                {calculations.totalRevenue > 0 ? Math.round((calculations.totalPension / calculations.totalRevenue) * 100) : 0}%
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700"><AnimatedNumber prefix="₱" value={calculations.totalPension} /></td>
-            </tr>
-
-            {/* Pension Individual Rooms */}
-            {isPensionExpanded && calculations.roomRevenues.map((room, idx) => (
-              <tr key={room.id} className={`hover:bg-slate-50 transition-colors ${idx % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
-                <td className="py-3 px-5 pl-[52px] text-[13px] font-semibold text-slate-800 flex items-center gap-2 relative">
-                  <div className="absolute left-[30px] top-0 bottom-0 w-px bg-slate-200"></div>
-                  <div className="absolute left-[30px] top-1/2 w-3 h-px bg-slate-200"></div>
-                  <span className="text-slate-400 font-normal">Room {room.room_number}</span><span>{room.name}</span>
-                </td>
-                <td className="py-3 px-5 text-right font-mono text-[13px] font-semibold text-slate-800">
-                  {room.base > 0 ? <span className="text-[#2E7D78]">{`₱${Math.round(room.base).toLocaleString()}`}</span> : dash}
-                </td>
-                <td className="py-3 px-5 text-right font-mono text-[13px] font-semibold text-slate-800">
-                  {room.breakfast > 0 ? <span className="text-[#C9922F]">{`₱${Math.round(room.breakfast).toLocaleString()}`}</span> : dash}
-                </td>
-                <td className="py-3 px-5 text-right">{dash}</td>
-                <td className="py-3 px-5 text-right font-mono text-[13px] font-semibold text-slate-800">
-                  {room.rentals > 0 ? <span className="text-[#0EA5E9]">{`₱${Math.round(room.rentals).toLocaleString()}`}</span> : dash}
-                </td>
-                <td className="py-3 px-5 text-right font-mono font-medium text-[13px] text-slate-600">
-                  {calculations.totalRevenue > 0 && room.total > 0 ? `${Math.round((room.total / calculations.totalRevenue) * 100)}%` : <span className="text-slate-300">-</span>}
-                </td>
-                <td className="py-3 px-5 text-right font-mono font-bold text-[13px] text-emerald-700">
-                  {room.total > 0 ? <AnimatedNumber prefix="₱" value={room.total} /> : dash}
-                </td>
-              </tr>
-            ))}
-
-            {/* Row 2: Vacation House */}
-            <tr className="hover:bg-slate-50 transition-colors">
-              <td className="py-4 px-5 font-semibold flex items-center gap-2 pl-[44px]">
-                <span className="w-6 h-6 rounded-full bg-[#4A90E2]/10 text-[#4A90E2] flex items-center justify-center shrink-0"><House className="w-3.5 h-3.5" /></span>
-                <span className="text-slate-800">Vacation House</span>
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-[#2E7D78]">
-                ₱{Math.round(calculations.totalVacationHouse).toLocaleString()}
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-medium text-slate-300">-</td>
-              <td className="py-4 px-5 text-right">{dash}</td>
-              <td className="py-4 px-5 text-right font-mono font-semibold text-[#0EA5E9]">{calculations.vacationExtras > 0 ? `₱${calculations.vacationExtras.toLocaleString()}` : dash}</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-slate-600">
-                {calculations.totalRevenue > 0 ? Math.round((calculations.vacationTotal / calculations.totalRevenue) * 100) : 0}%
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700">
-                <AnimatedNumber prefix="₱" value={calculations.vacationTotal} />
-              </td>
-            </tr>
-
-            {/* Row 3: Garden Area */}
-            <tr className="hover:bg-slate-50 transition-colors">
-              <td className="py-4 px-5 font-semibold flex items-center gap-2 pl-[44px]">
-                <span className="w-6 h-6 rounded-full bg-[#2ECC71]/10 text-[#2ECC71] flex items-center justify-center shrink-0"><Flower2 className="w-3.5 h-3.5" /></span>
-                <span className="text-slate-800">Garden Area</span>
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-[#2E7D78]">
-                ₱{Math.round(calculations.totalGardenArea).toLocaleString()}
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-medium text-slate-300">-</td>
-              <td className="py-4 px-5 text-right">{dash}</td>
-              <td className="py-4 px-5 text-right font-mono font-semibold text-[#0EA5E9]">{calculations.gardenExtras > 0 ? `₱${calculations.gardenExtras.toLocaleString()}` : dash}</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-slate-600">
-                {calculations.totalRevenue > 0 ? Math.round((calculations.gardenTotal / calculations.totalRevenue) * 100) : 0}%
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700">
-                <AnimatedNumber prefix="₱" value={calculations.gardenTotal} />
-              </td>
-            </tr>
-
-            {/* Row 4: Gazebo */}
-            <tr className="hover:bg-slate-50 transition-colors">
-              <td className="py-4 px-5 font-semibold flex items-center gap-2 pl-[44px]">
-                <span className="w-6 h-6 rounded-full bg-[#F39C12]/10 text-[#F39C12] flex items-center justify-center shrink-0"><PartyPopper className="w-3.5 h-3.5" /></span>
-                <span className="text-slate-800">Gazebo</span>
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-[#2E7D78]">
-                ₱{Math.round(calculations.totalGazebo).toLocaleString()}
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-medium text-slate-300">-</td>
-              <td className="py-4 px-5 text-right">{dash}</td>
-              <td className="py-4 px-5 text-right font-mono font-semibold text-[#0EA5E9]">{calculations.gazeboExtras > 0 ? `₱${calculations.gazeboExtras.toLocaleString()}` : dash}</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-slate-600">
-                {calculations.totalRevenue > 0 ? Math.round((calculations.gazeboTotal / calculations.totalRevenue) * 100) : 0}%
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700">
-                <AnimatedNumber prefix="₱" value={calculations.gazeboTotal} />
-              </td>
-            </tr>
-
-            {/* Row 5: Restaurant & bar (k69) — the food and drinks, on their own line */}
-            <tr className="hover:bg-slate-50 transition-colors">
-              <td className="py-4 px-5 font-semibold flex items-center gap-2 pl-[44px]">
-                <span className="w-6 h-6 rounded-full bg-brand-bg text-brand-text flex items-center justify-center shrink-0"><Utensils className="w-3.5 h-3.5" /></span>
-                <span className="text-slate-800">Restaurant &amp; bar</span>
-              </td>
-              <td className="py-4 px-5 text-right">{dash}</td>
-              <td className="py-4 px-5 text-right">{dash}</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-brand-text">
-                {calculations.restaurantTotal > 0 ? `₱${calculations.restaurantTotal.toLocaleString()}` : dash}
-              </td>
-              <td className="py-4 px-5 text-right">{dash}</td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-slate-600">
-                {calculations.totalRevenue > 0 ? Math.round((calculations.restaurantTotal / calculations.totalRevenue) * 100) : 0}%
-              </td>
-              <td className="py-4 px-5 text-right font-mono font-bold text-emerald-700">
-                <AnimatedNumber prefix="₱" value={calculations.restaurantTotal} />
-              </td>
-            </tr>
-
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-slate-200 bg-slate-50 text-slate-800">
-              <td className="py-5 px-5 font-bold text-[13px] uppercase tracking-wider">Total Money In</td>
-              <td className="py-5 px-5 text-right font-mono font-bold text-[#2E7D78]">
-                ₱{(calculations.totalPensionBase + calculations.totalVacationHouse + calculations.totalGardenArea + calculations.totalGazebo).toLocaleString()}
-              </td>
-              <td className="py-5 px-5 text-right font-mono font-bold text-[#C9922F]">₱{calculations.totalPensionBreakfast.toLocaleString()}</td>
-              <td className="py-5 px-5 text-right font-mono font-bold text-brand-text">₱{calculations.restaurantTotal.toLocaleString()}</td>
-              <td className="py-5 px-5 text-right font-mono font-bold text-[#0EA5E9]">₱{calculations.totalExtras.toLocaleString()}</td>
-              <td className="py-5 px-5 text-right font-mono font-black text-slate-600 text-[17px]">100%</td>
-              <td className="py-5 px-5 text-right font-mono font-black text-emerald-700 text-[17px]"><AnimatedNumber prefix="₱" value={calculations.totalRevenue} /></td>
-            </tr>
-            <tr className="border-t border-slate-200 bg-rose-50/50 text-rose-800">
-              <td className="py-4 px-5 font-bold text-[13px] uppercase tracking-wider text-rose-600" colSpan={5}>Total Money Out (Expenses)</td>
-              <td className="py-4 px-5 text-right"></td>
-              <td className="py-4 px-5 text-right font-mono font-black text-rose-600 text-[17px]">
-                -<AnimatedNumber prefix="₱" value={calculations.totalExpenses} />
-              </td>
-            </tr>
-            <tr className="bg-slate-900 text-white shadow-xl">
-              <td className="py-6 px-6 font-black tracking-widest text-[15px] uppercase" colSpan={5}>
-                Your Profit <span className="font-medium text-slate-400 text-xs ml-2 tracking-normal">(Money In - Money Out)</span>
-              </td>
-              <td className="py-6 px-6 text-right"></td>
-              <td className="py-6 px-6 text-right font-mono font-black text-3xl text-emerald-400 relative overflow-hidden">
-                {/* The glow behind the figure lives INSIDE the cell. It used to be a `<div>` child of this
-                    `<tr>`, which is invalid HTML — a table row may only hold cells — and React reported it as
-                    *"In HTML, `<div>` cannot be a child of `<tr>`"* (the owner's console, 2026-09-30). The
-                    figure is positioned too, so it still paints above the glow. */}
-                <div className="absolute inset-0 bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none"></div>
-                <span className="relative">
-                  <AnimatedNumber prefix="₱" value={calculations.netProfit} />
+      <div className={`${grid} hidden sm:grid pt-3.5 pb-2.5 border-b border-soft text-[11px] font-bold uppercase tracking-wider text-muted`}>
+        <span>Where it came from</span><span className="text-right">Earned</span><span>Share of money in</span>
+      </div>
+      <ul className="divide-y divide-soft">
+        {places.map(p => {
+          const parts = split(p.parts)
+          const pension = p.id === 'pension'
+          const body = (
+            <>
+              <span className="flex flex-col gap-1.5 min-w-0">
+                <span className={`flex items-center gap-2 text-[15px] font-bold ${p.total ? 'text-main' : 'text-ink-300'}`}>
+                  {pension && <ChevronRight className={`w-4 h-4 shrink-0 text-muted transition-transform ${roomsOpen ? 'rotate-90' : ''}`} strokeWidth={2.5} />}
+                  <span className="truncate">{p.name}</span>
+                  {p.hint && <span className="text-[13px] font-medium text-muted shrink-0">{p.hint}</span>}
                 </span>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+                {parts.length > 0 && (
+                  <span className="flex flex-wrap gap-1.5">
+                    {parts.map(([label, n]) => (
+                      <span key={label} className="text-[12.5px] text-main bg-page rounded-md px-2 py-0.5"><span className="text-muted mr-1">{label}</span>{peso(n)}</span>
+                    ))}
+                  </span>
+                )}
+              </span>
+              <span className={`font-mono text-[16px] font-extrabold text-right ${p.total ? 'text-emerald-600' : 'text-ink-300'}`}>{p.total ? peso(p.total) : '–'}</span>
+              {p.total > 0 ? <Share pct={pctOf(p.total, c.totalRevenue)} /> : <span className="hidden sm:block" />}
+            </>
+          )
+          return (
+            <li key={p.id}>
+              {/* the whole Pension row opens the ten rooms, so it is a 44px target, not a small chevron */}
+              {pension ? (
+                <button type="button" onClick={() => setRoomsOpen(open => !open)} aria-expanded={roomsOpen}
+                  className={`${grid} w-full min-h-14 py-3.5 text-left cursor-pointer hover:bg-page transition-colors`}>
+                  {body}
+                </button>
+              ) : (
+                <div className={`${grid} min-h-14 py-3.5 hover:bg-page transition-colors`}>{body}</div>
+              )}
+              {pension && roomsOpen && (
+                <ul className="pb-2">
+                  {c.roomRevenues.map(r => (
+                    <li key={r.id} className={`${grid} py-1.5 sm:pl-12`}>
+                      <span className="text-[13px] text-muted truncate">Room {r.room_number} · {r.name}</span>
+                      <span className={`font-mono text-[13px] font-bold text-right ${r.total ? 'text-main' : 'text-ink-300'}`}>{r.total ? peso(r.total) : '–'}</span>
+                      {/* a room's share is of the Pension, so the ten add up to its 100% */}
+                      {r.total > 0 ? <Share pct={pctOf(r.total, c.totalPension)} /> : <span className="hidden sm:block" />}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }

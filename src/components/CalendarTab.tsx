@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { Booking } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
@@ -162,11 +162,22 @@ export function CalendarTab() {
   const halves = useMemo(() => halvesByUnit(bookings, daysList), [bookings, daysList])
   // The rooms still to be asked about breakfast this morning. Read off every booking, not
   // off the grid: a guest who has overstayed has no pill on it but is still in the room.
+  // **Only in the morning** (Sebastian, 2026-10-14): breakfast is not asked after 12 PM, so the cup is gone
+  // then. A timer flips it at noon, so a calendar left open all morning does not keep it.
+  const [morning, setMorning] = useState(() => new Date().getHours() < 12)
+  useEffect(() => {
+    if (!morning) return
+    const noon = new Date()
+    noon.setHours(12, 0, 0, 0)
+    const id = setTimeout(() => setMorning(false), noon.getTime() - new Date().getTime())
+    return () => clearTimeout(id)
+  }, [morning])
   const breakfastToAsk = useMemo(() => {
     const ask: Record<string, Booking> = {}
+    if (!morning) return ask
     bookings.forEach(b => { if (b.room_id && wantsBreakfastToday(b) && !breakfastOn(b, todayKey)) ask[b.room_id] = b })
     return ask
-  }, [bookings, todayKey])
+  }, [bookings, todayKey, morning])
 
   // **A cooked breakfast comes back to the desk** (Sebastian, 2026-10-09: "after the kitchen
   // finishes cooking, where does it go next?"). It used to leave the kitchen's screen and

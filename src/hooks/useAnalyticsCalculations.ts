@@ -163,7 +163,18 @@ export function useAnalyticsCalculations({
         gardenArea: 0,
         gazebo: 0
       }))
-    } else if (timeframe === 'monthly' || (timeframe === 'custom' && allRangeDates.length <= 60)) {
+    } else if (timeframe === 'monthly' || (timeframe === 'custom' && allRangeDates.length <= 31)) {
+      // A month is a column a day, named by its number.
+      trendSlots = allRangeDates.map(d => ({
+        label: String(Number(d.slice(8))),
+        start: d,
+        end: d,
+        pension: 0,
+        vacationHouse: 0,
+        gardenArea: 0,
+        gazebo: 0
+      }))
+    } else if (timeframe === 'custom' && allRangeDates.length <= 60) {
       // Group by weeks
       const numWeeks = Math.ceil(allRangeDates.length / 7)
       for (let i = 0; i < numWeeks; i++) {
@@ -254,10 +265,15 @@ export function useAnalyticsCalculations({
           totalAddonsRentals += nightlyRentals + nightlyAddons
 
           // Categorize
-          let category: 'pension' | 'vacationHouse' | 'gardenArea' | 'gazebo' = 'pension'
+          // What a column of the chart gets is what the report's totals count, so the columns add up to
+          // "Total money in": a room's rate and breakfast, a named venue's day. A venue the report does not
+          // name (Pension House Exclusive) used to fall into the Pension column and nowhere else.
+          let category: 'pension' | 'vacationHouse' | 'gardenArea' | 'gazebo' | null = null
+          let counted = nightlyTotal
 
           if (b.room_id) {
             category = 'pension'
+            counted = nightlyBase + nightlyBreakfast
             totalPensionBase += nightlyBase
             totalPensionBreakfast += nightlyBreakfast
             totalPensionRentals += nightlyRentals
@@ -285,8 +301,8 @@ export function useAnalyticsCalculations({
 
           // Add to trend slots
           trendSlots.forEach(slot => {
-            if (isDateBetween(date, slot.start, slot.end)) {
-              slot[category] += nightlyTotal
+            if (category && isDateBetween(date, slot.start, slot.end)) {
+              slot[category] += counted
             }
           })
         }
@@ -320,7 +336,10 @@ export function useAnalyticsCalculations({
 
     const parseISO = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d) }
     const fmtMdy = (iso: string) => parseISO(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    const periodLabel = timeframe === 'monthly'
+    // One day is said in full, as Today's money says it.
+    const periodLabel = dateRange.start === dateRange.end
+      ? parseISO(dateRange.start).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+      : timeframe === 'monthly'
       ? parseISO(dateRange.start).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
       : timeframe === 'yearly'
         ? dateRange.start.slice(0, 4)
@@ -370,38 +389,8 @@ export function useAnalyticsCalculations({
   }, [isLoading, bookings, venues, rooms, expenses, tabLines, dateRange, includePending, timeframe])
 
   // Custom donut calculations
-  const donutSegments = useMemo(() => {
-    if (!calculations) return []
-    const { totalPension, vacationTotal, gardenTotal, gazeboTotal, restaurantTotal } = calculations
-    const sum = totalPension + vacationTotal + gardenTotal + gazeboTotal + restaurantTotal
-    if (sum === 0) return []
-
-    const segments = [
-      { name: 'Pension (Rooms 1-10)', value: totalPension, color: '#B89251' },
-      { name: 'Vacation House', value: vacationTotal, color: '#4A90E2' },
-      { name: 'Garden Area', value: gardenTotal, color: '#2ECC71' },
-      { name: 'Gazebo', value: gazeboTotal, color: '#F39C12' },
-      { name: 'Restaurant & bar', value: restaurantTotal, color: '#D0AB60' }
-    ]
-
-    let exactCumulative = 0
-    return segments.map(seg => {
-      const exactPercent = (seg.value / sum) * 100
-      const roundedPercent = Math.round(exactPercent)
-      const item = {
-        ...seg,
-        percentage: roundedPercent,
-        renderPercent: exactPercent,
-        renderStartPercent: exactCumulative
-      }
-      exactCumulative += exactPercent
-      return item
-    })
-  }, [calculations])
-
   return {
     dateRange,
-    calculations,
-    donutSegments
+    calculations
   }
 }
