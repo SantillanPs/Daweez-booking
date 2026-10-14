@@ -23,6 +23,17 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-14c',
+    changes: [
+      {
+        where: 'Money → Today’s money',
+        what: [
+          '“All expenses” now shows a week, a month or a year: the total spent, a bar for each kind of expense, and the list. Use the arrows to go back to an earlier week, month or year.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-14b',
     changes: [
       {

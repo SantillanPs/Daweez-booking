@@ -213,6 +213,7 @@ export function ExpensesTab() {
       {showHistory && (
         <ExpenseHistory
           expenses={expenses}
+          date={date}
           categories={expenseCategories}
           onRemove={removeExpense}
           onOpenDay={day => { setDate(day); setShowHistory(false) }}
