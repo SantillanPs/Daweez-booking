@@ -23,6 +23,17 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-14e',
+    changes: [
+      {
+        where: 'Cash Flow → Earnings report',
+        what: [
+          'When you open Pension, a room that earned money is now written in black so it is easier to read; a room with nothing stays grey.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-14d',
     changes: [
       {
