@@ -154,7 +154,7 @@ export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> =
                   {c.roomRevenues.map(r => (
                     <li key={r.id} className={`${grid} py-1.5 sm:pl-12`}>
                       <span className={`text-[13px] truncate ${r.total ? 'text-main font-medium' : 'text-ink-300'}`}>Room {r.room_number} · {r.name}</span>
-                      <span className={`font-mono text-[13px] font-bold text-right ${r.total ? 'text-emerald-600' : 'text-ink-300'}`}>{r.total ? peso(r.total) : '–'}</span>
+                      <span className={`font-mono text-[13px] font-bold text-right ${r.total ? 'text-main' : 'text-ink-300'}`}>{r.total ? peso(r.total) : '–'}</span>
                       {/* a room's share is of the Pension, so the ten add up to its 100% */}
                       {r.total > 0 ? <Share pct={pctOf(r.total, c.totalPension)} /> : <span className="hidden sm:block" />}
                     </li>

@@ -28,7 +28,6 @@ export const UPDATES: Update[] = [
       {
         where: 'Cash Flow → Earnings report',
         what: [
-          'Each room’s earnings under Pension are now in green, like the other places.',
           'The Print daily report button is gone from here. Print it from Today’s money, as before.',
         ],
       },
