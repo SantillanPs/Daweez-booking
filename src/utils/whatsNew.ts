@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-14b',
+    changes: [
+      {
+        where: 'Front desk → History',
+        what: [
+          'Bookings is now History: everything that happened at the front desk, newest first, day by day. Payments received, new bookings, check-ins, check-outs and cancellations.',
+          'Search a guest, room or receipt number, or tap Payments, Bookings, Check-ins & outs, Cancelled or Still to pay to see only those. Open takes you to the booking on the calendar.',
+          'A payment logged by mistake can be removed from its row. It is taken off every room it paid for, and stays in the History crossed out so everyone can see it was removed.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-14',
     changes: [
       {

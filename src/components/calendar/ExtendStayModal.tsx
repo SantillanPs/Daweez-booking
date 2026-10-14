@@ -13,6 +13,7 @@ import { hasOutstandingBalance, amountToPayNow, isBilledToAgency } from '../../u
 import { methodNeedsReference } from '../../utils/paymentMethod'
 import { nextReceiptNumber } from '../../utils/receiptNumber'
 import { withoutPayment } from '../walk-in/bookingPayment'
+import { logRemovedPayment } from '../../utils/removedPayments'
 import { recomputeBalance, pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
 import { useBookingSlips } from '../../hooks/useBookingSlips'
 import { closeTab, getOpenTabForBooking } from '../../utils/tabs'
@@ -289,6 +290,13 @@ export function ExtendStayModal({
       // The order slips that payment paid are unpaid again.
       if (rec.receipt_number) await unpaySlipsOfReceipt(rec.receipt_number)
       await reloadSlips()
+      // Kept so the Front desk's History can still show it, struck through.
+      void logRemovedPayment({
+        receipt_number: rec.receipt_number, amount: Number(rec.amount || 0), method: rec.method, paid_at: rec.paid_at,
+        prepared_by: rec.prepared_by, guest_name: localBooking.guest_name,
+        rooms: (rec.receipt_number && coveredRooms[rec.receipt_number] || []).map(n => 'Room ' + n).join(', '),
+        booking_ids: [localBooking.id, ...otherRooms.map(b => b.id)],
+      }).catch(() => {})
     } catch {
       showToast('Could not remove the payment. Please try again.', 'error')
     }

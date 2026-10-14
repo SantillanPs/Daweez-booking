@@ -122,3 +122,9 @@
 - **No guest's name is written on the calendar** (the owner, 2026-10-09). A pill says "Reserved" until the guest checks in, "Occupied" while they are in, and the guest's name once they have checked out; who it is stays on the hover card and in the booking's panel. An agency's name and a block's reason are still shown, and a half-day pill keeps its initials.
 - **A cooked breakfast comes back to the desk** (the owner, 2026-10-09: "after the kitchen finishes cooking, where does it go next?"). The room's cup returns in green; the desk taps it once the breakfast is served.
 - **Number boxes are free-typing**, never the browser's number spinner — the spinner's snap-to-zero confused staff.
+
+## History (was the Bookings list)
+
+- **The Bookings sub-tab became History** (Sebastian, 2026-10-14: *"turn the bookings page into a history of whatever happened in the front desk, from payments, bookings, check ins, etc… and I want to add a way to remove data like a payment received"*). One list, newest first, grouped by day with the day's money received: payments, new bookings, check-ins, check-outs and cancellations, read from what the desk already records. Chosen from a mock.
+- **A payment can be removed from its own row**, after the row asks in place. It is taken off every room it paid for, as in the booking panel. A removed payment stays in the History struck through (`removed_payments`), so the owner can see it happened.
+- **"Still to pay" is a chip here**, so the list of who owes did not need a page of its own.

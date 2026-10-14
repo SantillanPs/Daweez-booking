@@ -134,7 +134,7 @@ const expensesRoute = createRoute({
 const bookingsRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/bookings',
-  component: lazyRouteComponent(() => import('./components/BookingsListTab'), 'BookingsListTab')
+  component: lazyRouteComponent(() => import('./components/DeskHistory'), 'DeskHistory')
 })
 
 /**

@@ -31,7 +31,7 @@ const TABS = [
     label: 'Front desk', Icon: ConciergeBell,
     screens: [
       { label: 'Calendar', to: '/calendar' },
-      { label: 'Bookings', to: '/bookings' },
+      { label: 'History', to: '/bookings' },
       { label: 'Agencies', to: '/guests' },
     ],
   },
