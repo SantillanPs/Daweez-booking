@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChartSpline, Printer, Rows3 } from 'lucide-react'
+import { ChartSpline, Rows3 } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { useAnalyticsCalculations } from '../hooks/useAnalyticsCalculations'
 import { getAllTabLines } from '../utils/tabs'
@@ -8,7 +8,6 @@ import { TabLine } from '../types/tab'
 import { AnalyticsFilters } from './analytics/AnalyticsFilters'
 import { AnalyticsSpreadsheetView } from './analytics/AnalyticsSpreadsheetView'
 import { AnalyticsVisualsView } from './analytics/AnalyticsVisualsView'
-import { DailyReportModal } from './analytics/DailyReportModal'
 
 type Timeframe = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
 
@@ -38,9 +37,6 @@ export function AnalyticsTab() {
 
   // 2. Booking Status Filter state
   const [includePending, setIncludePending] = useState<boolean>(false)
-
-  // 3. The day's sheet, printed from here — an action, not a page (the owner's ruling, 2026-09-30).
-  const [printingDay, setPrintingDay] = useState(false)
 
   // Use extracted hook for all heavy lifting calculations
   const { calculations } = useAnalyticsCalculations({
@@ -101,8 +97,9 @@ export function AnalyticsTab() {
         </>
       )}
 
-      <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2 px-1">
-        {(pending > 0 || includePending) && (
+      {/* No Print daily report here: Today's money prints the same sheet (the owner, 2026-10-14: "it's redundant"). */}
+      {(pending > 0 || includePending) && (
+        <div className="flex justify-end px-1">
           <button type="button" role="switch" aria-checked={includePending} onClick={() => setIncludePending(on => !on)}
             className="inline-flex items-center gap-2.5 min-h-9 text-[13px] font-semibold text-muted hover:text-main cursor-pointer">
             <span className={`relative w-9 h-5 rounded-full transition-colors ${includePending ? 'bg-emerald-600' : 'bg-ink-900/15'}`}>
@@ -110,14 +107,8 @@ export function AnalyticsTab() {
             </span>
             Count {pending} not yet confirmed
           </button>
-        )}
-        <button type="button" onClick={() => setPrintingDay(true)}
-          className="inline-flex items-center gap-2 min-h-9 px-3.5 rounded-lg bg-card border border-soft text-[13px] font-semibold text-main hover:border-ink-900/30 cursor-pointer transition-colors active:translate-y-px">
-          <Printer className="w-4 h-4" strokeWidth={2} />Print daily report
-        </button>
-      </div>
-
-      {printingDay && <DailyReportModal onClose={() => setPrintingDay(false)} />}
+        </div>
+      )}
     </div>
   )
 }
