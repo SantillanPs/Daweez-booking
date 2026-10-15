@@ -196,11 +196,13 @@ export function WalkInBookingForm({
   // quietly charged the regular ones, so a booking made during a promo sale came
   // out at the wrong price unless staff noticed this switch.
   const [createdBookingList, setCreatedBookingList] = useState<Booking[]>([])
-  // THE BOOKING MOMENTS (the mock Sebastian approved, 2026-10-16). Confirm turns into a green
-  // "Booked" for a moment and the form steps back (`leaving`) before the receipt rises, so the
-  // desk sees the booking take before the paper arrives.
+  // THE BOOKED MOMENT (the mock Sebastian approved, 2026-10-16). Confirm fills green while it
+  // saves and draws its tick, then this same card shrinks into the Booked card (`from` is where
+  // it stood), so the desk sees the booking take before the paper arrives.
   const [booked, setBooked] = useState(false)
-  const [leaving, setLeaving] = useState(false)
+  const [fromRect, setFromRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  // The form's contents fade out first, so what shrinks is the card itself, not the form.
+  const [morphing, setMorphing] = useState(false)
   // Where the desk picked the stay on the calendar: the form grows out of it.
   const [origin] = useState(readFormOrigin)
   const card = useRef<HTMLDivElement>(null)
@@ -208,10 +210,12 @@ export function WalkInBookingForm({
     const el = card.current
     if (!origin || !el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const to = el.getBoundingClientRect()
-    el.animate([
+    const grow = el.animate([
       { transformOrigin: '0 0', opacity: 0.4, transform: `translate(${origin.x - to.left}px, ${origin.y - to.top}px) scale(${origin.w / to.width}, ${origin.h / to.height})` },
       { transformOrigin: '0 0', opacity: 1, transform: 'none' },
     ], { duration: 500, easing: 'cubic-bezier(0.2, 1.1, 0.3, 1)' })
+    // React's development check runs this twice; the second run must not measure mid-grow.
+    return () => grow.cancel()
   }, [origin])
   // The window eases to its new height when a part opens or closes, instead of jumping (the
   // owner, 2026-10-16: "when the form gets taller it doesn't have an animation"). While it
@@ -224,6 +228,7 @@ export function WalkInBookingForm({
     const ro = new ResizeObserver(() => {
       if (moving) return
       const now = el.offsetHeight
+      if (now === 0) return // the form is leaving the page, not changing height
       if (Math.abs(now - last) > 2) {
         // While it grows, its columns are briefly shorter than what they hold; `data-growing`
         // hides the scrollbar that would flash between them (the owner, 2026-10-16).
@@ -693,9 +698,11 @@ export function WalkInBookingForm({
     if (!editingBookings) rememberReceptionist(formPreparedBy)
     setIsSubmitting(false)
     setBooked(true)
-    await new Promise(r => setTimeout(r, 700))
-    setLeaving(true)
-    await new Promise(r => setTimeout(r, 220))
+    await new Promise(r => setTimeout(r, 650))
+    setMorphing(true)
+    await new Promise(r => setTimeout(r, 160))
+    const at = card.current?.getBoundingClientRect()
+    if (at) setFromRect({ x: at.left, y: at.top, w: at.width, h: at.height })
     setCreatedBookingList(result.bookings)
     // **The money was taken in this form** (2026-09-29), so what the guest is handed is the
     // receipt, not the bill. A Reservation pays nothing and returns no receipt, so it still
@@ -712,6 +719,8 @@ export function WalkInBookingForm({
         venues={venues}
         bookings={bookings}
         receipt={createdReceipt}
+        from={fromRect}
+        editing={!!editingBookings && editingBookings.length > 0}
         /* Closing the paper opens the booking that was just made in the quick view
            (card k134). */
         onClose={() => { focusBookingAfterCreate(createdBookingList[0]?.id); onClose() }}
@@ -729,7 +738,8 @@ export function WalkInBookingForm({
           else, and nothing a walk-in needs is below the fold. On a tablet it is one
           column, with the payment last and the amount held beside Confirm. */}
       <div ref={card} className={'w-full max-w-2xl lg:max-w-5xl bg-card rounded-xl shadow-softLg flex flex-col max-h-[92dvh] overflow-hidden ' +
-        (leaving ? 'bk-leave' : origin ? '' : 'animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none')}>
+        '[&>*]:transition-opacity [&>*]:duration-150 ' + (morphing ? '[&>*]:opacity-0 ' : '') +
+        (origin ? '' : 'animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none')}>
 
         <BookingWizardHeader
           bookingType={bookingType}
@@ -954,12 +964,22 @@ export function WalkInBookingForm({
               )}
               <div className="flex items-center gap-2 ml-auto">
                 <button type="button" onClick={onClose} className="min-h-12 px-4 rounded-lg text-[15px] font-bold text-main hover:bg-softbg transition-colors cursor-pointer">Cancel</button>
-                {/* It wakes when the form is ready — grey to gold with one shine (`bk-wake`) —
-                    and turns green once the booking has taken. */}
-                <button type="submit" disabled={booked || isSubmitting || agencyMissing || !!paymentPrompt} className={'bk-wake relative overflow-hidden min-h-12 px-6 rounded-lg text-[15px] font-bold transition-[background-color,color,transform] duration-300 ' + (booked
-                  ? 'bg-emerald-600 text-white cursor-default'
-                  : 'bg-gold-400 hover:bg-gold-600 text-ink-900 shadow-sm active:scale-[0.98] cursor-pointer disabled:bg-softbg disabled:text-muted disabled:shadow-none disabled:cursor-default disabled:active:scale-100')}>
-                  {booked ? (editingBookings ? '✓ Saved' : '✓ Booked') : isSubmitting ? 'Saving…' : editingBookings ? 'Save changes' : 'Confirm booking'}
+                {/* It wakes when the form is ready — grey to gold with one shine (`bk-wake`). Pressed,
+                    it fills green from the left while the booking saves (`bk-go`), then draws its
+                    tick: "Booked" (the Booked moment mock, 2026-10-16). */}
+                <button type="submit" disabled={booked || isSubmitting || agencyMissing || !!paymentPrompt}
+                  data-state={booked ? 'done' : isSubmitting ? 'saving' : undefined}
+                  className={'bk-wake bk-go relative overflow-hidden min-h-12 px-6 rounded-lg text-[15px] font-bold transition-[background-color,color,transform] duration-300 ' + (booked || isSubmitting
+                  ? 'bg-gold-400 text-white cursor-default'
+                  : 'bg-gold-400 hover:bg-gold-600 text-ink-900 shadow-sm active:scale-95 cursor-pointer disabled:bg-softbg disabled:text-muted disabled:shadow-none disabled:cursor-default disabled:active:scale-100')}>
+                  <span className="inline-flex items-center gap-2">
+                    {booked && (
+                      <svg className="bk-tick w-[18px] h-[18px]" viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="M4 10.5l4 4L16 6" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                    {booked ? (editingBookings ? 'Saved' : 'Booked') : isSubmitting ? 'Saving…' : editingBookings ? 'Save changes' : 'Confirm booking'}
+                  </span>
                 </button>
               </div>
             </div>

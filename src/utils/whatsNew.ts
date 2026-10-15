@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-16b',
+    changes: [
+      {
+        where: 'Front desk → Calendar → making a booking',
+        what: [
+          'When you confirm, the button fills green and says “Booked”.',
+          'The form then turns into a Booked card showing what was paid, with the receipt below it — print or email it there.',
+          'Press Done and the card lands on the calendar as the new booking, which then opens.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-16',
     changes: [
       {

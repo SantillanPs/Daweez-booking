@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { Printer, X } from 'lucide-react'
+import { Mail, Printer, X } from 'lucide-react'
 import { Booking, PaymentRecord, Room, Venue } from '../../types/booking'
 import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
 import { receiptNumberFor, paymentBreakdown } from '../../utils/receiptNumber'
@@ -16,6 +16,8 @@ interface PaymentReceiptDocumentProps {
   onClose: () => void
   onPrint: () => void
   embedded?: boolean
+  /** On the Booked card: no dark bar, and Print, Email and Done along the bottom. */
+  card?: boolean
   /**
    * Every booking this payment covered, when it covered more than one.
    *
@@ -45,7 +47,7 @@ function SlipRow({ label, value, mono = false }: { label: string; value?: string
 //
 // The screen preview is the same 58 mm slip rather than a wide page, so what
 // staff see is what comes out of the printer.
-export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose, onPrint, embedded = false, covered }: PaymentReceiptDocumentProps) {
+export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose, onPrint, embedded = false, covered, card = false }: PaymentReceiptDocumentProps) {
   const isRoom = !!booking.room_id
   const room = rooms.find(r => r.id === booking.room_id)
   const venue = venues.find(v => v.id === booking.venue_id)
@@ -99,38 +101,9 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
   const slip = useRef<HTMLDivElement>(null)
   const [emailing, setEmailing] = useState(false)
 
-  return (
-    <div className="flex flex-col items-center w-full">
-      {/* **The control bar is ALWAYS drawn, embedded or not** — the same rule `StatementShell`
-          follows. It used to be hidden while `embedded`, and the booking form hands the
-          receipt over embedded, so the receipt that appears after a paid booking arrived with
-          **no way to print it and no way to close it** (the owner, 2026-09-29: *"what happened
-          to the header? I can't choose to close or print it"*). Whoever shows the paper does
-          not also supply the chrome — the document owns it. */}
-      <div className="w-full max-w-md mb-3 flex items-center justify-between gap-3 rounded-xl bg-slate-800 px-4 py-2.5 text-white print:hidden">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="bg-white text-slate-800 text-[11px] font-bold px-2 py-0.5 rounded uppercase shrink-0">Payment receipt</span>
-          <span className="text-xs font-mono text-white/70 truncate">{receiptNo}</span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <EmailButton tone="slate" onClick={() => setEmailing(open => !open)} />
-          <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
-            <Printer className="w-3.5 h-3.5" /> Print
-          </button>
-          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer" aria-label="Close">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {emailing && (
-        <EmailBar target={{ kind: 'receipt', number: receiptNo, guestName: booking.guest_name, bookingId: booking.id, to: guestEmailOf(booking) }}
-          paper={() => slip.current} size="slip" onClose={() => setEmailing(false)}
-          className="w-full max-w-md mb-3 rounded-xl border border-soft px-4 py-3" />
-      )}
-
-      {/* The 58 mm slip. Printed width comes from the @page box the modal sets,
-          so in print it simply fills that page instead of a fixed 58 mm. */}
+  // The 58 mm slip — the same in the window and on the Booked card. Printed width comes from
+  // the @page box the modal sets, so in print it simply fills that page instead of a fixed 58 mm.
+  const paper = (
       <div ref={slip} className={((embedded ? 'my-0 ' : 'my-2 ') + 'print-slip w-[58mm] max-w-full bg-white text-black font-sans leading-snug px-2.5 py-3 ' +
         'print:w-auto print:max-w-none print:px-0 print:py-0 print:my-0 print:shadow-none print:rounded-none')}>
         <div className="text-center">
@@ -199,6 +172,65 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
         <p className="text-center text-[8.5px] mt-2.5">Thank you for staying with us.</p>
         <p className="text-center text-[8.5px]">Guest copy</p>
       </div>
+  )
+
+  // ON THE BOOKED CARD (the Booked moment mock, 2026-10-16) the slip is handed up from below
+  // inside the card, and the card's own row carries Print, Email and Done — the dark bar
+  // above it would have said the same thing twice.
+  if (card) return (
+    <div className="flex flex-col flex-1 min-h-0 w-full">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex justify-center px-4 pt-4">
+        <div className="bk-hand self-start rounded-t-lg border border-b-0 border-soft shadow-sm bg-white">{paper}</div>
+      </div>
+      {emailing && (
+        <EmailBar target={{ kind: 'receipt', number: receiptNo, guestName: booking.guest_name, bookingId: booking.id, to: guestEmailOf(booking) }}
+          paper={() => slip.current} size="slip" onClose={() => setEmailing(false)}
+          className="border-t border-soft px-4 py-3 print:hidden" />
+      )}
+      <div className="bk-rise [--d:1.5s] flex items-center gap-2 border-t border-soft px-4 py-3 print:hidden">
+        <button type="button" onClick={onPrint} className="min-h-11 px-4 rounded-lg border border-soft text-[14px] font-bold text-main hover:bg-softbg inline-flex items-center gap-1.5 cursor-pointer active:scale-95 transition-transform">
+          <Printer className="w-4 h-4" /> Print
+        </button>
+        <button type="button" onClick={() => setEmailing(open => !open)} aria-expanded={emailing}
+          className={'min-h-11 px-4 rounded-lg border text-[14px] font-bold text-main inline-flex items-center gap-1.5 cursor-pointer active:scale-95 transition-[transform,background-color] ' + (emailing ? 'border-gold-400 bg-gold-100' : 'border-soft hover:bg-softbg')}>
+          <Mail className="w-4 h-4" /> Email
+        </button>
+        <button type="button" onClick={onClose} className="ml-auto min-h-11 px-6 flex-1 rounded-lg bg-ink-900 text-white text-[15px] font-bold hover:bg-ink-800 cursor-pointer active:scale-95 transition-transform">Done</button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="flex flex-col items-center w-full">
+      {/* **The control bar is ALWAYS drawn, embedded or not** — the same rule `StatementShell`
+          follows. It used to be hidden while `embedded`, and the booking form hands the
+          receipt over embedded, so the receipt that appears after a paid booking arrived with
+          **no way to print it and no way to close it** (the owner, 2026-09-29: *"what happened
+          to the header? I can't choose to close or print it"*). Whoever shows the paper does
+          not also supply the chrome — the document owns it. */}
+      <div className="w-full max-w-md mb-3 flex items-center justify-between gap-3 rounded-xl bg-slate-800 px-4 py-2.5 text-white print:hidden">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="bg-white text-slate-800 text-[11px] font-bold px-2 py-0.5 rounded uppercase shrink-0">Payment receipt</span>
+          <span className="text-xs font-mono text-white/70 truncate">{receiptNo}</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <EmailButton tone="slate" onClick={() => setEmailing(open => !open)} />
+          <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
+            <Printer className="w-3.5 h-3.5" /> Print
+          </button>
+          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer" aria-label="Close">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {emailing && (
+        <EmailBar target={{ kind: 'receipt', number: receiptNo, guestName: booking.guest_name, bookingId: booking.id, to: guestEmailOf(booking) }}
+          paper={() => slip.current} size="slip" onClose={() => setEmailing(false)}
+          className="w-full max-w-md mb-3 rounded-xl border border-soft px-4 py-3" />
+      )}
+
+      {paper}
     </div>
   )
 }
