@@ -145,12 +145,21 @@ export function ExtendStayModal({
   const [trySave, setTrySave] = useState(false)
   // The step just finished, said over the panel for a moment.
   const [seal, setSeal] = useState<{ title: string; sub: string; icon: 'in' | 'out' | 'paid' } | null>(null)
+  // The seal fades for its last 300 ms instead of vanishing in one frame, so the panel
+  // comes back into view before anything else moves (the owner, 2026-10-15).
+  const [sealLeaving, setSealLeaving] = useState(false)
   const sealTimer = useRef<number | undefined>(undefined)
-  useEffect(() => () => window.clearTimeout(sealTimer.current), [])
+  const sealFade = useRef<number | undefined>(undefined)
+  useEffect(() => () => { window.clearTimeout(sealTimer.current); window.clearTimeout(sealFade.current) }, [])
   const SEAL_MS = 1300
+  // How long the money bar takes to fill; the receipt waits for it.
+  const FILL_MS = 700
   const mark = (next: { title: string; sub: string; icon: 'in' | 'out' | 'paid' }) => {
     setSeal(next)
+    setSealLeaving(false)
     window.clearTimeout(sealTimer.current)
+    window.clearTimeout(sealFade.current)
+    sealFade.current = window.setTimeout(() => setSealLeaving(true), SEAL_MS - 300)
     sealTimer.current = window.setTimeout(() => setSeal(null), SEAL_MS)
   }
   const clock = () => new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -482,9 +491,11 @@ export function ExtendStayModal({
     setLocalBooking(updated)
     setActionNotice('')
     setReceiptAmount(0); setPayFor('all'); setTryPayment(false); setReceiptMethod(''); setReceiptRef(''); setReceiveOpen(false)
-    // The money is marked at once; its receipt opens when it is saved and the seal has been seen.
+    // The money is marked at once; then the seal fades, the green bar fills where it can be
+    // seen, and only then does the receipt rise in. It once opened at 1.05 s, over the seal's
+    // sparks, while the bar filled unseen behind it (the owner, 2026-10-15: "weird or broken").
     mark({ title: remaining <= 0 ? 'Paid' : 'Received', sub: fmtPeso(amount) + ' · ' + receiptMethod, icon: 'paid' })
-    const sealSeen = new Promise(resolve => window.setTimeout(resolve, SEAL_MS - 250))
+    const sealSeen = new Promise(resolve => window.setTimeout(resolve, SEAL_MS + FILL_MS))
     try {
       await onUpdateBooking?.(updated)
       await sealSeen
@@ -593,7 +604,7 @@ export function ExtendStayModal({
           stops a long name or email from stretching it across the screen. */}
       <div className="relative w-fit min-w-[min(92vw,26rem)] max-w-[min(92vw,34rem)] bg-card rounded-xl shadow-softLg overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300 motion-reduce:animate-none">
         {seal && (
-          <div role="status" className="absolute inset-0 z-10 bg-card/95 grid place-content-center justify-items-center gap-2.5 pointer-events-none bp-dim">
+          <div role="status" className={'absolute inset-0 z-10 bg-card/95 grid place-content-center justify-items-center gap-2.5 pointer-events-none ' + (sealLeaving ? 'bp-gone' : 'bp-dim')}>
             <span className="relative w-16 h-16 grid place-items-center rounded-full bg-ink-900 text-gold-400 bp-seal">
               {seal.icon === 'in' ? <KeyRound className="w-7 h-7" /> : seal.icon === 'out' ? <DoorOpen className="w-7 h-7" /> : seal.icon === 'paid' ? <Banknote className="w-7 h-7" /> : <Check className="w-7 h-7" />}
               <i /><i /><i /><i /><i /><i />
@@ -635,8 +646,11 @@ export function ExtendStayModal({
                 {/* How much of the bill is in: green for what is paid, and it fills as money is received. */}
                 {totalCharge > 0 && (
                   <div aria-hidden="true" className={'mt-2.5 h-1.5 rounded-full overflow-hidden ' + (paidSoFar > 0 ? 'bg-danger-200' : 'bg-paper-300')}>
+                    {/* While a seal is up the fill waits for it to fade, so the money going in is seen. */}
+                    {/* 1300 ms is SEAL_MS. Spelled as a property: `delay-[1300ms]` is claimed by both
+                        Tailwind and tailwindcss-animate, so it is never generated. */}
                     <div style={{ '--paid': Math.min(1, paidSoFar / totalCharge) } as React.CSSProperties}
-                      className="h-full rounded-full bg-emerald-600 origin-left [transform:scaleX(var(--paid))] transition-transform duration-700 ease-out" />
+                      className={'h-full rounded-full bg-emerald-600 origin-left [transform:scaleX(var(--paid))] transition-transform duration-700 ease-out ' + (seal && !sealLeaving ? '[transition-delay:1300ms]' : '')} />
                   </div>
                 )}
                 {(paidSoFar > 0 || tabAmount > 0) && totalCharge > 0 && (

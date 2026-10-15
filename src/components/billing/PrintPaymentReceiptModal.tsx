@@ -46,8 +46,10 @@ export function PrintPaymentReceiptModal({ booking, record, rooms, venues, onClo
   if (embedded) return doc
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] p-3 sm:p-4 bg-slate-900/50 print:bg-white print:p-0 print:static overflow-y-auto">
-      {doc}
+    // The receipt rises in rather than appearing in one frame: after a payment it follows the
+    // seal, and a slip that slammed in over it read as broken (the owner, 2026-10-15).
+    <div className="fixed inset-0 z-[70] p-3 sm:p-4 bg-slate-900/50 print:bg-white print:p-0 print:static overflow-y-auto bp-dim print:[animation:none]">
+      <div className="bp-rise motion-reduce:[animation:none] print:[animation:none]">{doc}</div>
     </div>,
     document.body
   )

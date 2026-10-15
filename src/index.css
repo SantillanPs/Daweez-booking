@@ -154,6 +154,8 @@
 .bp-tick-late { animation-delay: 0.35s; animation-duration: 0.4s; }
 .bp-dim { animation: bp-dim 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .bp-undim { animation: bp-undim 0.3s 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+/* The booking panel's seal leaving: the same fade, at once. */
+.bp-gone { animation: bp-undim 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .bp-drop { animation: bp-drop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .bp-fly { animation: bp-fly 0.45s cubic-bezier(0.5, 0, 0.9, 0.4) both; }
 .bp-seal { animation: bp-pop 0.5s 0.1s cubic-bezier(0.34, 1.56, 0.64, 1) both; }

@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-15b',
+    changes: [
+      {
+        where: 'Front desk → a booking → Receive',
+        what: [
+          'After you receive money, the green bar fills so you can see the money go in, and then the receipt opens.',
+          'The receipt no longer jumps onto the screen before the “Paid” sign has finished.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-15',
     changes: [
       {
