@@ -604,7 +604,7 @@ export function ExtendStayModal({
           stops a long name or email from stretching it across the screen. */}
       <div className="relative w-fit min-w-[min(92vw,26rem)] max-w-[min(92vw,34rem)] bg-card rounded-xl shadow-softLg overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300 motion-reduce:animate-none">
         {seal && (
-          <div role="status" className={'absolute inset-0 z-10 bg-card/95 grid place-content-center justify-items-center gap-2.5 pointer-events-none ' + (sealLeaving ? 'bp-gone' : 'bp-dim')}>
+          <div role="status" className={'absolute inset-0 z-10 bg-card grid place-content-center justify-items-center gap-2.5 pointer-events-none ' + (sealLeaving ? 'bp-gone' : 'bp-dim')}>
             <span className="relative w-16 h-16 grid place-items-center rounded-full bg-ink-900 text-gold-400 bp-seal">
               {seal.icon === 'in' ? <KeyRound className="w-7 h-7" /> : seal.icon === 'out' ? <DoorOpen className="w-7 h-7" /> : seal.icon === 'paid' ? <Banknote className="w-7 h-7" /> : <Check className="w-7 h-7" />}
               <i /><i /><i /><i /><i /><i />

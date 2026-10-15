@@ -194,6 +194,40 @@
   .hc-grow, .hc-grow > *, .hc-night, .hc-bar { animation: none; }
 }
 
+/* ── Diners to pay: the bills hang on the top line as receipts (`TodayStrip`) ──
+   The owner picked option B of the mock, without the utensils, with an idle move
+   (2026-10-15): a new receipt tears in from above, and each one sways now and then
+   from its top edge so a waiting bill keeps catching the eye. The tear is
+   `transform`, the sway is `rotate`, so the two never fight. */
+@keyframes dp-tear { from { opacity: 0; transform: translateY(-60%); clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 -8px 0); } }
+@keyframes dp-sway { 0%, 82%, 100% { rotate: 0deg; } 86% { rotate: calc(var(--sway) * -4deg); } 90% { rotate: calc(var(--sway) * 3deg); } 94% { rotate: calc(var(--sway) * -1.5deg); } 97% { rotate: calc(var(--sway) * 0.5deg); } }
+.dp-ticket { --sway: 1; transform-origin: top center;
+  animation: dp-tear 0.5s cubic-bezier(0.16, 1, 0.3, 1) both, dp-sway 6s 1.5s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 120ms), calc(var(--i) * 180ms + 1.5s); }
+/* Pointed at, a receipt comes down to meet the pointer and stops swaying (the owner
+   picked "Pull", 2026-10-15); pressed, it comes down a little further. The sway is
+   stilled by `--sway`, never by `animation: none`: that restarted both moves when the
+   pointer left, and the receipt tore in all over again. */
+.dp-ticket { transition: translate 0.25s cubic-bezier(0.34, 1.4, 0.64, 1), background-color 0.15s; }
+.dp-ticket:not(.dp-rip):hover { --sway: 0; translate: 0 4px; }
+.dp-ticket:not(.dp-rip):active { translate: 0 6px; }
+/* The torn bottom edge. */
+.dp-ticket::after { content: ""; position: absolute; left: -1.5px; right: -1.5px; bottom: -5px; height: 5px;
+  background: linear-gradient(-45deg, transparent 3.5px, theme('colors.gold.400') 0) 0 0 / 7px 5px repeat-x,
+              linear-gradient(45deg, transparent 3.5px, theme('colors.gold.400') 0) 0 0 / 7px 5px repeat-x; }
+/* A paid receipt tears off at one corner and drops away, then its gap closes. */
+@keyframes dp-rip {
+  0% { max-width: 10rem; }
+  25% { transform: rotate(-7deg); opacity: 1; }
+  65% { transform: translateY(28px) rotate(14deg); opacity: 0; max-width: 10rem; padding-inline: 0.75rem; margin-right: 0; }
+  100% { transform: translateY(28px) rotate(14deg); opacity: 0; max-width: 0; padding-inline: 0; border-width: 0; margin-right: -0.375rem; }
+}
+.dp-ticket.dp-rip { transform-origin: top right; overflow: hidden; animation: dp-rip 0.5s cubic-bezier(0.5, 0, 0.75, 0) both; }
+@media (prefers-reduced-motion: reduce) {
+  .dp-ticket, .dp-ticket.dp-rip { animation: none; }
+  .dp-ticket.dp-rip { display: none; }
+}
+
 /* ── The Restaurant's Orders screen ─────────────────────────────────────────
    The tables are put away behind the slip's title (`TablesPopup`); its squares arrive one
    after another, and the bell on the title rings while cooked food is waiting. */

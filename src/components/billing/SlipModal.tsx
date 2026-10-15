@@ -31,8 +31,9 @@ export function SlipModal({ printLabel, onClose, onPrinted, children }: SlipModa
   }, [onClose])
 
   return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-slate-900/60 p-3 print:static print:bg-white print:p-0">
-      <div className="w-full max-w-[300px]">
+    <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-slate-900/60 p-3 print:static print:bg-white print:p-0 bp-dim print:[animation:none]">
+      {/* Rises in like the payment receipt (PrintPaymentReceiptModal), not in one frame. */}
+      <div className="w-full max-w-[300px] bp-rise motion-reduce:[animation:none] print:[animation:none]">
         <div className="flex items-center justify-between gap-2 mb-2 print:hidden">
           <button
             type="button"

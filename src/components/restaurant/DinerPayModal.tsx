@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Printer, Undo2, Utensils, X } from 'lucide-react'
+import { Banknote, Printer, Undo2, Utensils, X } from 'lucide-react'
 import { Tab, TabLine } from '../../types/tab'
 import { PaymentRecord } from '../../types/booking'
 import { OrderSlip, slipNumber } from '../../utils/orderSlips'
@@ -37,6 +37,13 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
   const [changed, setChanged] = useState('')
   const [printing, setPrinting] = useState(false)
   const [busy, setBusy] = useState(false)
+  // **The money is sealed before the receipt opens** (the owner, 2026-10-15: animations
+  // for the table payments). The same seal as the booking panel's (`mark` in
+  // ExtendStayModal): it stamps over the slip, fades for its last 300 ms, then the receipt
+  // rises in. The receipt once opened in the same frame the money was saved.
+  const [sealed, setSealed] = useState<'on' | 'leaving' | null>(null)
+  const sealTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(sealTimer.current), [])
 
   if (receipt) {
     return <TabReceiptModal tab={receipt.tab} lines={receipt.lines} record={receipt.record} onClose={onClose} />
@@ -73,8 +80,18 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
   return (
     <>
       {createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-ink-900/50 font-sans" onClick={onClose}>
-      <div className="w-full max-w-sm bg-card rounded-xl border border-soft shadow-softLg overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-ink-900/50 font-sans bp-dim" onClick={onClose}>
+      <div className="relative w-full max-w-sm bg-card rounded-xl border border-soft shadow-softLg overflow-hidden bp-rise motion-reduce:[animation:none]" onClick={e => e.stopPropagation()}>
+        {sealed && (
+          <div role="status" className={'absolute inset-0 z-10 bg-card grid place-content-center justify-items-center gap-2.5 pointer-events-none ' + (sealed === 'leaving' ? 'bp-gone' : 'bp-dim')}>
+            <span className="relative w-16 h-16 grid place-items-center rounded-full bg-ink-900 text-gold-400 bp-seal">
+              <Banknote className="w-7 h-7" />
+              <i /><i /><i /><i /><i /><i />
+            </span>
+            <b className="font-display text-[19px] font-bold tracking-tight text-main">Paid {fmtPeso(slip.total)}</b>
+            <span className="text-[13px] text-muted">{[table || who, slipNumber(slip.tab)].filter(Boolean).join(' · ')}</span>
+          </div>
+        )}
         <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-soft">
           <div className="min-w-0">
             <h3 className="font-display font-bold text-main flex items-center gap-2">
@@ -89,8 +106,8 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
 
         <div className="px-4 pt-3 pb-3">
           <ul className="max-h-[38vh] overflow-y-auto divide-y divide-soft text-[14px]">
-            {slip.lines.map(line => (
-              <li key={line.id} className="py-1.5 flex items-baseline justify-between gap-3">
+            {slip.lines.map((line, i) => (
+              <li key={line.id} style={{ '--i': Math.min(i, 8) } as React.CSSProperties} className="bp-row motion-reduce:[animation:none] py-1.5 flex items-baseline justify-between gap-3">
                 <span className="min-w-0 text-main break-words">
                   <b className="tabular-nums">{Number(line.qty || 1)} ×</b> {line.description}
                 </span>
@@ -108,7 +125,14 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
             tab={slip.tab}
             total={slip.total}
             ready={stillTheSame}
-            onSettled={record => { setReceipt({ tab: slip.tab, lines: slip.lines, record }); onChanged() }}
+            onSettled={record => {
+              onChanged()
+              setSealed('on')
+              sealTimer.current = window.setTimeout(() => setSealed('leaving'), 1000)
+              return new Promise<void>(done => {
+                sealTimer.current = window.setTimeout(() => { setReceipt({ tab: slip.tab, lines: slip.lines, record }); done() }, 1300)
+              })
+            }}
           />
 
           {/* The paper the diner is shown before paying, and the way back for a bill sent

@@ -169,7 +169,7 @@ export function TabBill({ lines, total, onQty, emptyText, onSendKitchen, onServe
 
       {/* The order has gone: said over the whole slip for a moment, then it clears itself. */}
       {stage === 'sent' && (
-        <div role="status" className="absolute inset-0 z-10 rounded-[inherit] bg-card/95 grid place-content-center justify-items-center gap-3 pointer-events-none bp-dim">
+        <div role="status" className="absolute inset-0 z-10 rounded-[inherit] bg-card grid place-content-center justify-items-center gap-3 pointer-events-none bp-dim">
           <span className="relative w-14 h-14 grid place-items-center rounded-full bg-ink-900 text-gold-400 bp-seal">
             <Check className="w-6 h-6" strokeWidth={2.6} />
             <i /><i /><i /><i /><i /><i />

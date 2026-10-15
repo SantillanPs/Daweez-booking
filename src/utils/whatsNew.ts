@@ -40,6 +40,19 @@ export const UPDATES: Update[] = [
           'It opens faster, and at once when you move to the next booking.',
         ],
       },
+      {
+        where: 'Front desk → Calendar → the top line',
+        what: [
+          'Each bill the restaurant sends over now hangs on the top line as its own receipt, with the table and the amount. Tap it to take the money.',
+          'After the diner pays, a “Paid” sign shows, then the receipt opens. When you close it, the bill tears off the line.',
+        ],
+      },
+      {
+        where: 'Front desk → a booking, and Restaurant → Send to kitchen',
+        what: [
+          'The “Paid”, “Checked in”, “Checked out” and “Sent to the kitchen” signs now cover the window properly instead of showing through.',
+        ],
+      },
     ],
   },
   {
