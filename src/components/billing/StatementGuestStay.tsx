@@ -36,8 +36,14 @@ const count = (n: number, word: string) => n + ' ' + word + (n === 1 ? '' : 's')
  * SHORT STAY is hours, not nights, so it names no check-out the guest never had; the count of
  * guests sits with the stay.
  */
-export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel = '' }: {
+export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel = '', billTo }: {
   booking: Booking
+  /**
+   * The agency bill (the owner's pick, 2026-10-15): the first block is **Bill to** — the agency,
+   * the guest as `c/o`, the agency's own address and contact. Its Stay leads with the nights;
+   * the rooms' numbers sit under it, since the table rows name only each room's type.
+   */
+  billTo?: { name: string; lines: string[] }
   /** `7, 9` when the bill covers several rooms; the table below lists each room's type. */
   roomsLabel?: string
   rooms: Room[]
@@ -79,6 +85,14 @@ export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel =
 
   return (
     <div className="grid grid-cols-2 gap-6 items-start">
+      {billTo ? (
+        <div>
+          <SectionName>Bill to</SectionName>
+          <p className={big}>{billTo.name}</p>
+          <p className={info + ' mt-0.5'}><span className={label}>c/o</span> {b.guest_name}</p>
+          {billTo.lines.filter(Boolean).map(line => <p key={line} className={info + ' break-words'}>{line}</p>)}
+        </div>
+      ) : (
       <div>
         <SectionName>Guest</SectionName>
         <p className={big}>{b.guest_name}</p>
@@ -89,13 +103,27 @@ export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel =
           {withLine && <p className={info}><span className={label}>With</span> {withLine}</p>}
         </div>
       </div>
+      )}
 
       <div>
         <SectionName>Stay</SectionName>
-        <p className={big}>{unit}</p>
-        <p className={info + ' mt-0.5'}>
-          {stayHours > 0 ? count(stayHours, 'hour') : count(nights, isRoom ? 'night' : 'day')} · {count(guestCount, 'guest')}
-        </p>
+        {billTo ? (
+          <>
+            <p className={big}>{stayHours > 0 ? count(stayHours, 'hour') : count(nights, isRoom ? 'night' : 'day')}</p>
+            {/* The table's rows name the room's type, not its number, so the number is here. */}
+            <p className={info + ' mt-0.5'}>
+              {roomsLabel ? 'Rooms ' + roomsLabel : isRoom ? 'Room ' + (room?.room_number ?? '') : (venue?.name || '')} · {count(guestCount, 'guest')}
+              {text(b.vehicle_plate) && <> · <span className={label}>Plate no.</span> {b.vehicle_plate}</>}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className={big}>{unit}</p>
+            <p className={info + ' mt-0.5'}>
+              {stayHours > 0 ? count(stayHours, 'hour') : count(nights, isRoom ? 'night' : 'day')} · {count(guestCount, 'guest')}
+            </p>
+          </>
+        )}
         <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 mt-1 pt-1 border-t border-ink-200">
           <div>
             <p className={label}>Check in</p>

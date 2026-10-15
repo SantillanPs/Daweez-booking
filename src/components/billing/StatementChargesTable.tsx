@@ -37,7 +37,12 @@ const BAND_LABEL: Record<StatementBand, string> = {
 // then anything taken off the price, then the food they ordered.
 const BAND_ORDER: StatementBand[] = ['room', 'breakfast', 'extras', 'food', 'discount']
 
-export function StatementChargesTable({ items }: { items: StatementLineItem[] }) {
+/**
+ * `dates={false}` drops the Check In / Check Out columns and calls the count `Qty`: the agency
+ * bill says its dates once, in its Stay block (the owner, 2026-10-15: *"make sure to check for
+ * redundancies"*). A group whose rooms have different dates then shows only the first room's.
+ */
+export function StatementChargesTable({ items, dates = true }: { items: StatementLineItem[]; dates?: boolean }) {
   const bands = BAND_ORDER
     .map(band => ({ band, rows: items.filter(i => i.band === band) }))
     .filter(b => b.rows.length > 0)
@@ -52,22 +57,24 @@ export function StatementChargesTable({ items }: { items: StatementLineItem[] })
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th rowSpan={2} className={head + ' pl-0 text-left border-b-[1.5px] border-ink-900'}>Room / Particulars</th>
-            <th rowSpan={2} className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>Rate</th>
-            <th colSpan={2} className={head + ' pb-0.5 text-center border-b border-ink-200'}>Date</th>
-            <th rowSpan={2} className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>No. of Night</th>
-            <th rowSpan={2} className={head + ' text-right w-20 border-b-[1.5px] border-ink-900'}>Total</th>
+            <th rowSpan={dates ? 2 : 1} className={head + ' pl-0 text-left border-b-[1.5px] border-ink-900'}>Room / Particulars</th>
+            <th rowSpan={dates ? 2 : 1} className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>Rate</th>
+            {dates && <th colSpan={2} className={head + ' pb-0.5 text-center border-b border-ink-200'}>Date</th>}
+            <th rowSpan={dates ? 2 : 1} className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>{dates ? 'No. of Night' : 'Qty'}</th>
+            <th rowSpan={dates ? 2 : 1} className={head + ' text-right w-20 border-b-[1.5px] border-ink-900'}>Total</th>
           </tr>
-          <tr>
-            <th className={head + ' pt-0.5 text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check In</th>
-            <th className={head + ' pt-0.5 text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check Out</th>
-          </tr>
+          {dates ? (
+            <tr>
+              <th className={head + ' pt-0.5 text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check In</th>
+              <th className={head + ' pt-0.5 text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check Out</th>
+            </tr>
+          ) : null}
         </thead>
         <tbody>
           {bands.map(({ band, rows }) => (
             <React.Fragment key={band}>
               <tr>
-                <td colSpan={6} className="pt-1 text-[10px] font-medium text-muted">{BAND_LABEL[band]}</td>
+                <td colSpan={dates ? 6 : 4} className="pt-1 text-[10px] font-medium text-muted">{BAND_LABEL[band]}</td>
               </tr>
               {rows.map(it => (
                 <tr key={it.key}>
@@ -77,8 +84,8 @@ export function StatementChargesTable({ items }: { items: StatementLineItem[] })
                     {it.status && <span className="ml-1.5 border border-ink-900 px-1 text-[8.5px] font-bold uppercase tracking-wide">{it.status}</span>}
                   </td>
                   <td className={cell + ' text-right font-mono'}>{it.price ? money(it.price) : '—'}</td>
-                  <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>
-                  <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>
+                  {dates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>}
+                  {dates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>}
                   {/* The unit lives here when it is not a night: `3 hrs` for a short stay,
                       and the count for anything sold by the piece. */}
                   <td className={cell + ' text-right font-mono'}>

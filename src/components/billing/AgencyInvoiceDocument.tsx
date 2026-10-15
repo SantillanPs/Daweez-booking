@@ -1,30 +1,36 @@
 import React from 'react'
-import { Booking } from '../../types/booking'
+import { Booking, Room, Venue } from '../../types/booking'
 import { Statement } from '../../utils/statement'
 import { getPaymentAccounts } from '../../utils/paymentAccounts'
+import { getRateConfig } from '../../utils/rateConfig'
+import { shortBankName } from '../../utils/paymentMethod'
 import { guestEmailOf } from '../../utils/emailDocument'
 import { StatementChargesTable } from './StatementChargesTable'
-import { StatementShell, BrandHeader, Line } from './StatementShell'
+import { StatementGuestStay } from './StatementGuestStay'
+import { StatementShell, BrandHeader, SectionName } from './StatementShell'
 
-const money = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const money = (n: number) => '₱' + n.toLocaleString()
 
 /**
  * The **agency's** Guest Billing Statement — the owner's own document (2026-09), read line
- * by line from the hotel's real Provincial Governor's Office bill.
+ * by line from the hotel's real Provincial Governor's Office bill, redrawn on 2026-10-15 in
+ * the look of the guest bill (`InvoiceDocument`): the same letterhead, the same three kinds of
+ * text, the same table.
  *
- * It is the hotel's paper, not ours: the charges are the paper's own table (banded, one row
- * per room), the money line is **`TOTAL`** and nothing else, the ways to pay name **both**
- * bank accounts and the GCash number, and the page ends with **`Prepared by`** and the
- * thank-you line — **no Pension Policies and no guest signature**, because a government
- * office files this copy and the guest never signs it.
+ * What makes it the agency's: **Bill to** the agency with the guest as `c/o`, the money line
+ * is **`Total`** and nothing else (the office is billed for the whole stay — no Sub-total, no
+ * deposit lines, no Amount due), the ways to pay name **both** bank accounts and the GCash
+ * number, and the page ends with `Prepared by`, a `Received by` line for the agency, and the
+ * thank-you line — **no Pension Policies and no guest signature**, because the office files
+ * this copy and the guest never signs it.
  *
- * Everything it does NOT do is deliberate: no Sub-Total, no deposit lines, no Amount Due
- * (the office is billed for the whole stay), and `Prepared by` is the very same field the
- * normal bill prints — whoever made the booking, as the owner asked. The normal statement
- * is untouched by any of this and stays in `InvoiceDocument`.
+ * Each fact is said once (the owner, 2026-10-15): the dates in Stay, not on every row; the
+ * rooms in the table, not in Stay.
  */
-export function AgencyInvoiceDocument({ primaryBooking, statement, onClose, onPrint, embedded = false }: {
+export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement, onClose, onPrint, embedded = false }: {
   primaryBooking: Booking
+  rooms: Room[]
+  venues: Venue[]
   statement: Statement
   onClose: () => void
   onPrint: () => void
@@ -32,61 +38,68 @@ export function AgencyInvoiceDocument({ primaryBooking, statement, onClose, onPr
 }) {
   const acct = getPaymentAccounts()
   const b = primaryBooking
+  const email = b.guest_email && b.guest_email !== 'admin@daweez-booking.vercel.app' ? b.guest_email : ''
+  const phone = (b.guest_phone || '').trim() === 'None' ? '' : (b.guest_phone || '').trim()
+
+  const accounts = [
+    { name: shortBankName(acct.bankName), holder: acct.bankAccountName, number: acct.bankAccountNumber },
+    ...(acct.bank2Name ? [{ name: shortBankName(acct.bank2Name), holder: acct.bank2AccountName || '', number: acct.bank2AccountNumber || '' }] : []),
+    { name: 'GCash', holder: acct.gcashName, number: acct.gcashNumber },
+  ]
+
+  const label = 'text-[10px] text-muted'
 
   return (
     <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}
       email={{ kind: 'statement', number: statement.invoiceNumber, guestName: statement.companyName, bookingId: b.id, to: guestEmailOf(b) }}>
-      {/* The paper's own head: the bill number, and no issue date — the office's copy
-          carries `Bill No.` alone. */}
+      {/* The office's copy carries `Bill no.` alone, no issue date. */}
       <BrandHeader invoiceNumber={statement.invoiceNumber} showDate={false} />
 
-      {/* COMPANY above NAME OF GUEST, the guest as `c/o …` — the paper's own order, with
-          the paper's own fields: address, email, contact no. and the vehicle plate.
-          Two columns with **no `sm:` breakpoint** (card k144): A5 is 559px wide and `sm`
-          starts at 640px, so the `sm:grid-cols-2` this used to carry never fired on paper
-          and the agency bill stacked too. */}
-      <div className="grid grid-cols-2 gap-x-8 gap-y-0.5">
-        <div className="space-y-1">
-          <Line label="Company" value={statement.companyName} />
-          <Line label="Name of Guest" value={'c/o ' + (b.guest_name || '')} />
-          <Line label="Address" value={statement.companyAddress || b.guest_address} />
-          <Line label="Email Address" value={b.guest_email && b.guest_email !== 'admin@daweez-booking.vercel.app' ? b.guest_email : ''} />
+      <StatementGuestStay booking={b} rooms={rooms} venues={venues} rates={getRateConfig()}
+        billTo={{
+          name: statement.companyName,
+          lines: [
+            statement.companyAddress || (b.guest_address || '').trim(),
+            [statement.companyContact || phone, email].filter(Boolean).join(' · '),
+          ],
+        }} />
+
+      <StatementChargesTable items={statement.lineItems} dates={false} />
+
+      <div className="grid grid-cols-[1fr_200px] gap-6 items-start">
+        <div>
+          <SectionName>Pay by bank, check or cash</SectionName>
+          {/* A bank account number that wraps is how a payer mistypes it (card k144). */}
+          {accounts.map((a, i) => (
+            <div key={a.name + i} className={i > 0 ? 'mt-1 pt-1 border-t border-ink-200' : ''}>
+              <p className="text-[11px] font-bold text-ink-900">{a.name}</p>
+              <p className="text-[10.5px] flex gap-2"><span className={label + ' w-[52px] shrink-0'}>Name</span><span className="font-semibold text-ink-900">{a.holder}</span></p>
+              <p className="text-[10.5px] flex gap-2"><span className={label + ' w-[52px] shrink-0'}>{a.name === 'GCash' ? 'No.' : 'Acct no.'}</span><span className="font-mono font-semibold text-ink-900 whitespace-nowrap">{a.number}</span></p>
+            </div>
+          ))}
         </div>
-        <div className="space-y-1">
-          <Line label="Contact No." value={statement.companyContact || b.guest_phone} />
-          <Line label="Vehicle Plate #" value={b.vehicle_plate} />
+
+        {/* TOTAL — the whole stay, the one figure the office pays. `print-color-adjust` keeps
+            the band black on paper. */}
+        <div className="mt-[18px] px-3 py-2 flex items-center justify-between gap-2.5 bg-ink-900 text-white [print-color-adjust:exact] [-webkit-print-color-adjust:exact]">
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">Total</span>
+          <span className="font-display text-[22px] font-extrabold leading-none">{money(statement.subTotal)}</span>
         </div>
       </div>
 
-      <StatementChargesTable items={statement.lineItems} />
-
-      {/* TOTAL — the whole stay, and nothing about deposits or what is left. */}
-      <div className="flex justify-end pt-2 border-t-2 border-ink-700">
-        <div className="flex items-baseline gap-6">
-          <span className="font-bold uppercase tracking-wider text-main">Total</span>
-          <span className="font-display text-[20px] font-extrabold text-ink-900">{money(statement.subTotal)}</span>
+      {/* Prepared by — the same field the guest bill prints: whoever made the booking. */}
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <p className="h-5 flex items-end pb-0.5 border-b border-ink-900 text-[12px] font-bold text-ink-900">{(b.prepared_by || '').trim()}</p>
+          <p className={label + ' mt-0.5'}>Prepared by</p>
+        </div>
+        <div>
+          <p className="h-5 border-b border-ink-900" />
+          <p className={label + ' mt-0.5'}>Received by (agency)</p>
         </div>
       </div>
 
-      <div className="pt-3 border-t border-ink-300 space-y-1 text-[12px] text-ink-700">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-main">Payment Method: Bank Transfer / Cash / Check</p>
-        <p>Bank Name: <strong className="text-main">{acct.bankName}</strong> · Account Name: <strong className="text-main">{acct.bankAccountName}</strong> · Account Number: <strong className="font-mono text-main">{acct.bankAccountNumber}</strong></p>
-        {acct.bank2Name && (
-          <p>Bank Name: <strong className="text-main">{acct.bank2Name}</strong> · Account Name: <strong className="text-main">{acct.bank2AccountName}</strong> · Account Number: <strong className="font-mono text-main">{acct.bank2AccountNumber}</strong></p>
-        )}
-        <p>GCash No.: <strong className="font-mono text-main">{acct.gcashNumber}</strong> · Name: <strong className="text-main">{acct.gcashName}</strong></p>
-      </div>
-
-      {/* Prepared by — the SAME field the normal bill prints (the owner's note): whoever
-          made the booking. No policies, no signature line on this copy.
-          `mt-6 pt-4` was **40px** — the biggest single gap in either bill (card k144);
-          the two bills now share one spacing scale instead of two. */}
-      <div className="pt-3 border-t border-dashed border-ink-300 flex items-end gap-3">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-main whitespace-nowrap">Prepared by</span>
-        <span className="flex-1 text-[12px] font-semibold text-main border-b border-ink-300 min-h-[24px] pb-0.5">{(b.prepared_by || '').trim()}</span>
-      </div>
-
-      <p className="text-center text-[10px] font-bold tracking-wider text-brand-text uppercase">Thank you for choosing Daweez Pension House</p>
+      <p className="pt-1.5 border-t border-ink-200 text-center text-[9.5px] font-bold tracking-[0.12em] text-ink-900 uppercase">Thank you for choosing Daweez Pension House</p>
     </StatementShell>
   )
 }

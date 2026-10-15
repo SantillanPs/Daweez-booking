@@ -5,6 +5,7 @@
 - **Ordinary booking → Guest Billing Statement.** It mirrors the paper form staff already fill in.
 - **Agency booking → the agency bill**, copied line by line from the hotel's real PGO paper: COMPANY above NAME OF GUEST (`c/o …`), the room table, **TOTAL only**, both bank accounts plus GCash and Check, Prepared by, a thank-you line. **No Pension Policies and no guest signature** — the office files this copy; the guest never signs it.
 - Both share the same page frame and the same charges table, so they are one piece of paper with different contents.
+- **The agency bill was redrawn in the guest bill's look on 2026-10-15**, from a mock Sebastian approved: a **Bill to** block (agency, guest as c/o) beside Stay, and a **Received by (agency)** line beside Prepared by. He asked to *"make sure to check for redundancies"*, so each fact is printed once: the dates in Stay only (the table drops its Check In / Check Out columns and counts in Qty), the nights in Stay, the room number in Stay and the room type in the table.
 
 ## The statement
 

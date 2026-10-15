@@ -96,11 +96,13 @@ export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, boo
   // WHICH BILL (the owner's design, 2026-09): an ordinary booking gets the usual Guest
   // Billing Statement; **an agency booking gets its own document**, read line by line from
   // the hotel's real PGO bill — the paper's banded room table, `TOTAL` only, both bank
-  // accounts, `Prepared by` and the thank-you line, with no Pension Policies and no guest
-  // signature. The two never mix, and the normal bill is untouched by any of it.
+  // accounts, `Prepared by`, `Received by` and the thank-you line, with no Pension Policies
+  // and no guest signature. The two never mix, and the normal bill is untouched by any of it.
   const doc = statement.companyName ? (
     <AgencyInvoiceDocument
       primaryBooking={primaryBooking}
+      rooms={rooms}
+      venues={venues}
       statement={statement}
       onClose={onClose}
       onPrint={handlePrint}
