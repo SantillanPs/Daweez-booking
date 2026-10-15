@@ -339,15 +339,18 @@ export function ExtendStayModal({
   // are picked up by the recompute at check-out, which is where the owner wants the
   // extra night to land ("just add it to their bill for when they checkout").
   const handleCheckIn = async () => {
-    // Check-in is how the money is collected at the door, so it waits for it.
-    if (owes && !billedToAgency) {
-      setActionNotice('This guest still owes ' + fmtPeso(due) + '. Receive it first, then check them in.')
-      return
-    }
+    // The money is still asked for first (Receive leads), but a guest who has not paid
+    // in full may be let in: the desk's choice, said plainly before it happens
+    // (Sebastian, 2026-10-15: "let it be an option"). What is owed stays on the bill and
+    // check-out still waits for it.
+    const owesNow = owes && !billedToAgency
+    const early = localBooking.check_in > todayKey ? 'This booking starts on ' + fmtShort(localBooking.check_in) + '. ' : ''
     const ok = await askConfirm({
-      title: 'Check in ' + booking.guest_name + ' to ' + place + '?',
-      message: localBooking.check_in > todayKey ? 'This booking starts on ' + fmtShort(localBooking.check_in) + '.' : undefined,
-      confirmLabel: 'Check in',
+      title: owesNow
+        ? 'Check in ' + booking.guest_name + ' with ' + fmtPeso(due) + ' still to pay?'
+        : 'Check in ' + booking.guest_name + ' to ' + place + '?',
+      message: (early + (owesNow ? 'The ' + fmtPeso(due) + ' stays on their bill. They pay it before they check out.' : '')).trim() || undefined,
+      confirmLabel: owesNow ? 'Check in anyway' : 'Check in',
     })
     if (!ok) return
     setActionNotice('')
@@ -757,11 +760,11 @@ export function ExtendStayModal({
                     onReceive={() => void handleAddReceipt()}
                   />
                 )}
-                {/* Check in leads once it is the next step; before that it is a quiet word —
-                    pressing it says the money comes first. */}
+                {/* Check in leads once it is the next step; while money is owed it is a quiet
+                    word under Receive — the desk may still let the guest in, and pay later. */}
                 {!isBlock && !localBooking.actual_check_in && (
                   <button type="button" onClick={() => void handleCheckIn()} className={step === 'checkIn' ? BTN_GREEN : QUIET_LINK}>
-                    Check in
+                    {step === 'checkIn' ? 'Check in' : 'Check in, pay later'}
                   </button>
                 )}
                 {!isBlock && isIn && (

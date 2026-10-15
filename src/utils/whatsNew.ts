@@ -60,6 +60,7 @@ export const UPDATES: Update[] = [
           'How the guest paid is now a box beside the Receive button.',
           'The bill — the room, order slips and payments — is folded under “Bill”. Tap it to see the lines and reprint a receipt.',
           'Extend, Move, Print bill, Take orders and Undo are small words along the bottom.',
+          'A guest who has not paid in full can now be checked in: tap “Check in, pay later” under Receive. What they owe stays on the bill, and they pay it before they check out.',
         ],
       },
       {
