@@ -54,6 +54,15 @@ export const UPDATES: Update[] = [
         ],
       },
       {
+        where: 'Front desk → a booking',
+        what: [
+          'The booking window is new: what the guest still owes is the biggest thing on it, with the one button to press right under it.',
+          'How the guest paid is now a box beside the Receive button.',
+          'The bill — the room, order slips and payments — is folded under “Bill”. Tap it to see the lines and reprint a receipt.',
+          'Extend, Move, Print bill, Take orders and Undo are small words along the bottom.',
+        ],
+      },
+      {
         where: 'Front desk → the top bar and the Calendar',
         what: [
           'The gold mark under the tabs now slides to the tab you pick.',

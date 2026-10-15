@@ -21,7 +21,9 @@ interface BookingReceiptsProps {
 }
 
 /**
- * Every payment the guest has made, each with its own receipt to reprint.
+ * Every payment the guest has made, each with its own receipt to reprint — as lines of the
+ * panel's folded bill, under the charges (the owner chose the "visual hierarchy" panel,
+ * 2026-10-15). Rendered as `<li>`s; the bill owns the list.
  *
  * **A plain list, shown only once there is a payment** (the owner's feedback, 2026-10-04:
  * *"it looks so lazy just stacking accordions"*). It used to be a closed section that was
@@ -32,44 +34,38 @@ interface BookingReceiptsProps {
  */
 export function BookingReceipts({ records, onPrint, onRemove, coveredRooms }: BookingReceiptsProps) {
   return (
-    <section>
-      <h4 className="text-[13px] font-bold text-main">Payments received</h4>
-      <ul className="mt-1.5 border-y border-soft divide-y divide-soft">
-        {records.map(r => {
-          const covers = r.receipt_number ? coveredRooms?.[r.receipt_number] : undefined
-          // What sets this payment apart: its receipt number, the order slips it was
-          // taken for, and — when it covered other rooms — which ones. Naming the rooms
-          // is what makes it findable from here instead of sending staff hunting
-          // through the other bookings.
-          const about = [
-            r.receipt_number,
-            r.slips && r.slips.length > 0 ? 'Order slip ' + r.slips.join(', ') : '',
-            covers && covers.length > 1 ? formatRoomNumbers(covers) + ' together' : '',
-          ].filter(Boolean).join(' · ')
-          return (
-            <li key={r.id} className="flex items-center justify-between gap-2 min-h-11">
-              <div className="min-w-0 py-1.5 text-[13px]">
-                <p className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="font-bold text-emerald-700">{fmtPeso(r.amount)}</span>
-                  <span className="text-main">{r.method}</span>
-                  <span className="text-muted text-[12px]">{r.paid_at ? new Date(r.paid_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</span>
-                </p>
-                {about && <p className="text-[12px] text-muted">{about}</p>}
-              </div>
-              <div className="flex items-center shrink-0">
-                <button type="button" onClick={() => onPrint(r)} className="w-11 h-11 flex items-center justify-center text-gold-700 hover:text-gold-800 cursor-pointer" aria-label="Print or email receipt" title="Print or email receipt">
-                  <Printer className="w-4 h-4" />
+    <>
+      {records.map(r => {
+        const covers = r.receipt_number ? coveredRooms?.[r.receipt_number] : undefined
+        // What sets this payment apart: its receipt number, the order slips it was
+        // taken for, and — when it covered other rooms — which ones. Naming the rooms
+        // is what makes it findable from here instead of sending staff hunting
+        // through the other bookings.
+        const about = [
+          r.paid_at ? new Date(r.paid_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '',
+          r.receipt_number,
+          r.slips && r.slips.length > 0 ? 'Order slip ' + r.slips.join(', ') : '',
+          covers && covers.length > 1 ? formatRoomNumbers(covers) + ' together' : '',
+        ].filter(Boolean).join(' · ')
+        return (
+          <li key={r.id} className="flex items-center justify-between gap-2 border-b border-dashed border-paper-300 last:border-0">
+            <span className="min-w-0 py-1.5 text-[12px] text-muted">
+              <span className="font-semibold text-main">{r.method}</span>{about && ' · ' + about}
+            </span>
+            <span className="flex items-center shrink-0">
+              <span className="text-[12px] font-semibold text-emerald-700 tabular-nums mr-1">−{fmtPeso(r.amount)}</span>
+              <button type="button" onClick={() => onPrint(r)} className="w-10 h-10 flex items-center justify-center text-gold-700 hover:text-gold-800 cursor-pointer" aria-label="Print or email receipt" title="Print or email receipt">
+                <Printer className="w-4 h-4" />
+              </button>
+              {onRemove && (
+                <button type="button" onClick={() => onRemove(r)} className="w-10 h-10 flex items-center justify-center text-muted hover:text-danger-600 cursor-pointer" aria-label="Remove payment" title="Remove this payment">
+                  <Trash2 className="w-4 h-4" />
                 </button>
-                {onRemove && (
-                  <button type="button" onClick={() => onRemove(r)} className="w-11 h-11 flex items-center justify-center text-muted hover:text-danger-600 cursor-pointer" aria-label="Remove payment" title="Remove this payment">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-    </section>
+              )}
+            </span>
+          </li>
+        )
+      })}
+    </>
   )
 }

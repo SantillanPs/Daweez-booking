@@ -38,9 +38,8 @@ interface ReceiveMoneyProps {
  * with the guest's money in hand they could not tell where to record it.
  *
  * It reads top to bottom as the desk does it: what the money is for (only asked when
- * there is a choice), how the guest paid, then one button carrying the amount. How they
- * paid is four buttons, none chosen for them — a silent `Cash` is how a GCash guest once
- * got a Cash receipt.
+ * there is a choice), then how the guest paid beside one button carrying the amount. How
+ * they paid starts empty — a silent `Cash` is how a GCash guest once got a Cash receipt.
  */
 export function ReceiveMoney({
   choices, payFor, onPayFor, otherAmount, onOtherAmount, method, onMethod,
@@ -60,43 +59,44 @@ export function ReceiveMoney({
           : ''
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       {choices.length > 1 && (
-        <ul role="radiogroup" aria-label="What the guest is paying for" className="border-y border-soft divide-y divide-soft">
+        <div role="radiogroup" aria-label="What the guest is paying for" className="flex flex-wrap gap-1.5">
           {choices.map(c => {
             const on = payFor === c.key
             return (
-              <li key={c.key}>
-                <button type="button" role="radio" aria-checked={on} onClick={() => onPayFor(c.key)}
-                  className="w-full min-h-11 flex items-center justify-between gap-3 text-[13px] cursor-pointer">
-                  <span className="flex items-center gap-2.5 min-w-0">
-                    <span className={'w-4 h-4 shrink-0 rounded-full border-2 ' + (on ? 'border-gold-500 bg-gold-500 shadow-[inset_0_0_0_3px_white]' : 'border-paper-400')} />
-                    <span className={'truncate ' + (on ? 'font-bold text-main' : 'text-main')}>{c.label}</span>
-                  </span>
-                  <span className={'shrink-0 ' + (on ? 'font-bold text-main' : 'text-muted')}>{fmtPeso(c.amount)}</span>
-                </button>
-              </li>
+              <button key={c.key} type="button" role="radio" aria-checked={on} onClick={() => onPayFor(c.key)}
+                className={'min-h-9 px-3 rounded-full border-[1.5px] text-[12px] font-bold transition-colors cursor-pointer ' +
+                  (on ? 'border-ink-900 text-main' : 'border-soft text-muted hover:text-main')}>
+                {c.label} {fmtPeso(c.amount)}
+              </button>
             )
           })}
-        </ul>
+        </div>
       )}
 
       {other && (
         <label className="block">
           <span className="block text-[12px] font-semibold text-muted">Amount received (₱)</span>
           <NumInput value={otherAmount} onChange={onOtherAmount} aria-label="Amount received"
-            className="mt-1 w-full h-11 bg-card border border-soft text-main px-3 rounded-lg text-[14px] focus:outline-none focus:border-gold-500" />
+            className="mt-1 w-full h-11 bg-card border border-soft text-main px-3 rounded-lg text-[16px] focus:outline-none focus:border-gold-500" />
         </label>
       )}
 
-      <div role="radiogroup" aria-label="How the guest paid" className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-        {PAYMENT_METHODS.map(m => (
-          <button key={m} type="button" role="radio" aria-checked={chosen === m} onClick={() => onMethod(m)}
-            className={'min-h-11 px-2 rounded-lg border text-[13px] font-bold whitespace-nowrap transition-colors cursor-pointer ' +
-              (chosen === m ? 'bg-gold-400 border-gold-400 text-ink-900' : 'bg-card border-soft text-main hover:border-gold-400 hover:bg-gold-100')}>
-            {m}
-          </button>
-        ))}
+      {/* How they paid sits beside the button that takes the money, so the two are read
+          as one act. It starts empty — never a silent Cash. */}
+      <div className="grid grid-cols-[minmax(0,7.5rem)_1fr] gap-2">
+        <select value={chosen} onChange={e => onMethod(e.target.value)} aria-label="How the guest paid"
+          className={'min-h-[54px] w-full pl-3 pr-2 rounded-xl border bg-card text-[14px] font-bold cursor-pointer focus:outline-none focus:border-gold-500 ' +
+            (tried && !chosen ? 'border-danger-400 text-danger-600' : chosen ? 'border-soft text-main' : 'border-soft text-muted')}>
+          <option value="" disabled>Paid by…</option>
+          {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <button type="button" onClick={onReceive}
+          className={'min-h-[54px] px-4 rounded-xl text-[16px] font-bold transition-[background-color,transform] duration-200 active:scale-[0.98] cursor-pointer ' +
+            (loud ? 'bg-gold-400 hover:bg-gold-600 text-ink-900' : 'bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100')}>
+          {amount > 0 ? 'Receive ' + fmtPeso(amount) : 'Receive money'}
+        </button>
       </div>
 
       {needsRef && (
@@ -107,21 +107,15 @@ export function ReceiveMoney({
             onChange={e => onReference(e.target.value)}
             onBlur={onReferenceCommit}
             placeholder="From the guest's phone"
-            className="mt-1 w-full h-11 bg-card border border-soft text-main px-3 rounded-lg text-[14px] font-mono focus:outline-none focus:border-gold-500"
+            className="mt-1 w-full h-11 bg-card border border-soft text-main px-3 rounded-lg text-[16px] font-mono focus:outline-none focus:border-gold-500"
           />
         </label>
       )}
 
       {missing && <p className="text-[12px] font-semibold text-danger-600">{missing}</p>}
 
-      <button type="button" onClick={onReceive}
-        className={'w-full min-h-12 px-4 rounded-lg text-[15px] font-bold transition-colors cursor-pointer ' +
-          (loud ? 'bg-gold-400 hover:bg-gold-600 text-ink-900 shadow-sm' : 'bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100')}>
-        {amount > 0 ? 'Receive ' + fmtPeso(amount) : 'Receive money'}
-      </button>
-
       <button type="button" onClick={() => onPayFor(other ? choices[0].key : 'other')}
-        className="w-full min-h-11 -mt-1 text-[13px] font-semibold text-muted hover:text-main transition-colors cursor-pointer">
+        className="block mx-auto min-h-11 px-2 text-[13px] font-semibold text-muted hover:text-main transition-colors cursor-pointer">
         {other ? 'Back to ' + fmtPeso(choices[0]?.amount || 0) : 'A different amount'}
       </button>
     </div>
