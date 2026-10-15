@@ -308,7 +308,7 @@ export const TimelineCell = React.memo(
               setExtendCheckoutDate(openEnded ? '' : booking.check_out)
               setExtendError('')
             }}
-            className={'relative overflow-hidden mx-0.5 h-10 rounded-md border cursor-pointer select-none transition-[filter,transform,border-color,background-color,color] duration-300 hover:brightness-95 active:scale-[0.98] flex flex-col justify-center animate-in fade-in zoom-in-95 motion-reduce:animate-none ' +
+            className={'relative overflow-hidden mx-0.5 h-10 rounded-md border cursor-pointer select-none transition-[filter,transform,border-color,background-color,color,box-shadow] duration-300 hover:brightness-95 hover:-translate-y-0.5 hover:shadow-soft active:translate-y-0 active:shadow-none active:scale-[0.98] flex flex-col justify-center animate-in fade-in zoom-in-95 motion-reduce:animate-none ' +
               (narrow ? 'items-center px-0 ' : 'px-2 ') +
               (isShortStayDue ? 'bg-danger-100 border-danger-400 text-danger-600' : getBookingStyle(booking)) +
               (due === 'in' ? ' border-l-[5px] border-l-emerald-700' : due === 'out' ? ' border-r-[5px] border-r-ink-900' : '')}
@@ -398,7 +398,7 @@ export const TimelineCell = React.memo(
           onClick={() => onCellClick(id, type, date)}
           className={'p-0 h-12 border-b border-soft cursor-cell relative align-middle' + dayRule}
         >
-          <div className={'absolute inset-y-0 border-y border-dashed border-gold-400/50 bg-gold-100/70 transition-colors hover:bg-gold-100 ' + place} />
+          <div className={'fd-pick absolute inset-y-0 border-y border-dashed border-gold-400/50 bg-gold-100/70 transition-colors hover:bg-gold-100 ' + place} />
         </td>
       )
     }
@@ -409,7 +409,7 @@ export const TimelineCell = React.memo(
         data-day={isoStr}
         colSpan={span}
         onClick={() => onCellClick(id, type, date)}
-        className={'relative border-b border-soft p-0 h-12 cursor-cell transition-colors ' + (isToday ? 'bg-gold-100/50' : isWeekend ? 'bg-paper-50/60' : '') + ' hover:bg-gold-100/70' + dayRule}
+        className={'fd-free relative border-b border-soft p-0 h-12 cursor-cell transition-colors ' + (isToday ? 'bg-gold-100/50' : isWeekend ? 'bg-paper-50/60' : '') + ' hover:bg-gold-100/70' + dayRule}
       >
         {/* Nothing is drawn where a guest left: the end of their pill says it. The arrow and
             the word "out" that used to stand here were taken off (Sebastian, 2026-10-06). */}

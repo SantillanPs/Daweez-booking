@@ -19,7 +19,7 @@ interface CalendarToolbarProps {
   children?: React.ReactNode
 }
 
-const STEP = 'w-9 h-9 inline-flex items-center justify-center rounded-md text-muted hover:text-main hover:bg-softbg transition-colors duration-150 active:scale-95 cursor-pointer'
+const STEP = 'fd-step w-9 h-9 inline-flex items-center justify-center rounded-md text-muted hover:text-main hover:bg-softbg transition-colors duration-150 active:scale-95 cursor-pointer'
 
 // Calendar top bar: window title and day navigation. **Every action lives in the grid's own
 // action bar** (see TimelineGrid) — they appear once dates are picked, so the rule teaches
@@ -52,10 +52,10 @@ export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onP
         {/* Two pairs of arrows round the date (Sebastian, 2026-10-09: *"add monthly arrows
             and day arrows"*): the double ones move a month, the single ones a day. There
             was one pair, and it moved a month. */}
-        <button type="button" onClick={onPrevMonth} title="Back a month" aria-label="Back a month" className={STEP}>
+        <button type="button" onClick={onPrevMonth} title="Back a month" aria-label="Back a month" className={STEP + ' fd-step-l'}>
           <ChevronsLeft className="w-4 h-4" />
         </button>
-        <button type="button" onClick={() => stepDay(-1)} title="Back a day" aria-label="Back a day" className={STEP}>
+        <button type="button" onClick={() => stepDay(-1)} title="Back a day" aria-label="Back a day" className={STEP + ' fd-step-l'}>
           <ChevronLeft className="w-4 h-4" />
         </button>
         {/* A DATE, not a month (option A, card k154): the grid is a rolling
@@ -71,15 +71,18 @@ export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onP
           aria-label="Jump to a day"
           className="h-9 w-[150px] rounded-md border border-soft bg-card px-2 text-[13px] font-medium tabular-nums text-main text-center outline-none transition-colors duration-200 focus:border-gold-500 focus:ring-2 focus:ring-gold-400/30 cursor-pointer"
         />
-        <button type="button" onClick={() => stepDay(1)} title="Forward a day" aria-label="Forward a day" className={STEP}>
+        <button type="button" onClick={() => stepDay(1)} title="Forward a day" aria-label="Forward a day" className={STEP + ' fd-step-r'}>
           <ChevronRight className="w-4 h-4" />
         </button>
-        <button type="button" onClick={onNextMonth} title="Forward a month" aria-label="Forward a month" className={STEP}>
+        <button type="button" onClick={onNextMonth} title="Forward a month" aria-label="Forward a month" className={STEP + ' fd-step-r'}>
           <ChevronsRight className="w-4 h-4" />
         </button>
         <span className="h-5 w-px bg-soft mx-1.5" aria-hidden="true" />
+        {/* Gold once the window has left today, so the way back is the thing to see
+            (the owner approved the Front desk's microinteractions, 2026-10-15). */}
         <button type="button" onClick={onToday} title="Back to today"
-          className="h-9 px-2.5 rounded-md text-[13px] font-semibold text-brand-text hover:bg-softbg transition-colors duration-150 active:scale-95 cursor-pointer">
+          className={'h-9 px-2.5 rounded-md text-[13px] font-semibold transition-colors duration-150 active:scale-95 cursor-pointer ' +
+            (startsToday ? 'text-brand-text hover:bg-softbg' : 'fd-away bg-gold-400 text-ink-900 hover:bg-gold-600')}>
           Today
         </button>
         <CalendarGuide />

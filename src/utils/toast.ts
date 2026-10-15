@@ -24,18 +24,20 @@ function emit() {
   listeners.forEach(l => l(current))
 }
 
+/** How long a message stays: errors stay a little longer — they usually need reading twice. */
+export const toastMs = (tone: ToastTone) => tone === 'error' ? 5000 : 3200
+
 export function showToast(text: string, tone: ToastTone = 'success') {
   const id = nextId++
   current = { id, text, tone }
   emit()
   if (timer) clearTimeout(timer)
-  // Errors stay a little longer — they usually need reading twice.
   timer = setTimeout(() => {
     if (current && current.id === id) {
       current = null
       emit()
     }
-  }, tone === 'error' ? 5000 : 3200)
+  }, toastMs(tone))
 }
 
 export function useToastMessage(): ToastMessage | null {

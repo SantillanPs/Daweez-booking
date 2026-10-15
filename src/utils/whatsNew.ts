@@ -53,6 +53,16 @@ export const UPDATES: Update[] = [
           'The “Paid”, “Checked in”, “Checked out” and “Sent to the kitchen” signs now cover the window properly instead of showing through.',
         ],
       },
+      {
+        where: 'Front desk → the top bar and the Calendar',
+        what: [
+          'The gold mark under the tabs now slides to the tab you pick.',
+          'After Sync works, the button turns green and says “Up to date”.',
+          'Today turns gold when the calendar is showing other days, so you can jump back.',
+          'A “+” shows on an empty day when you point at it.',
+          'A line under each message runs out while it waits to close.',
+        ],
+      },
     ],
   },
   {

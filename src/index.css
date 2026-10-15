@@ -228,6 +228,73 @@
   .dp-ticket.dp-rip { display: none; }
 }
 
+/* ── Front desk microinteractions (the owner approved the mock, 2026-10-15) ────
+   Every control answers a touch. Drawn in the mock "Front desk, every touch answered". */
+
+/* A gold mark that slides to the tab that is on (`useSlideMark` in DashboardLayout).
+   It only moves once it has been placed, so the page does not open with it flying in. */
+.fd-mark { position: absolute; left: var(--mark-x, 0); width: var(--mark-w, 0); pointer-events: none; }
+[data-mark-ready] > .fd-mark { transition: left 0.4s cubic-bezier(0.34, 1.4, 0.64, 1), width 0.4s cubic-bezier(0.34, 1.4, 0.64, 1); }
+/* A top tab's icon lifts when pointed at. */
+.fd-tab svg { transition: translate 0.3s cubic-bezier(0.34, 1.4, 0.64, 1); }
+.fd-tab:not([aria-current]):hover svg { translate: 0 -2px; }
+/* A sub-tab grows a soft gold line from the middle when pointed at — where the underline
+   would go — and sinks a little when pressed (the owner's comment on the mock). */
+.fd-sub { position: relative; transition: color 0.2s, translate 0.25s cubic-bezier(0.34, 1.4, 0.64, 1); }
+.fd-sub::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px; background: theme('colors.gold.200'); transform: scaleX(0); transition: transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1); }
+.fd-sub:not([aria-current]):hover { translate: 0 -1px; }
+.fd-sub:not([aria-current]):hover::after { transform: scaleX(1); }
+.fd-sub:active { translate: 0 1px; }
+
+/* What's new: the dot ripples while there is something unread; the megaphone wiggles when pointed at. */
+@keyframes fd-ping { to { transform: scale(2.6); opacity: 0; } }
+.fd-ping { position: relative; }
+.fd-ping::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: inherit; animation: fd-ping 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+@keyframes fd-wiggle { 20% { rotate: -14deg; } 45% { rotate: 10deg; } 70% { rotate: -5deg; } }
+.fd-wiggle:hover svg:first-child { animation: fd-wiggle 0.5s ease-in-out; transform-origin: 30% 50%; }
+/* The settings gear turns when pointed at. */
+.fd-gear svg { transition: rotate 0.6s cubic-bezier(0.34, 1.4, 0.64, 1); }
+.fd-gear:hover svg { rotate: 90deg; }
+/* Sync done: the button itself says so for a moment. */
+@keyframes fd-pop { 50% { scale: 1.08; } }
+.fd-pop { animation: fd-pop 0.4s cubic-bezier(0.34, 1.4, 0.64, 1); }
+
+/* The day arrows nudge the way they go. */
+.fd-step svg { transition: translate 0.25s cubic-bezier(0.34, 1.4, 0.64, 1); }
+.fd-step-l:hover svg { translate: -3px 0; }
+.fd-step-r:hover svg { translate: 3px 0; }
+.fd-step:active svg { scale: 0.8; }
+
+/* An empty half-day shows a "+" under the pointer: a booking starts here. */
+@keyframes fd-plus { from { opacity: 0; scale: 0.4; } }
+.fd-free:hover::after { content: "+"; position: absolute; inset: 0; display: grid; place-items: center; color: theme('colors.gold.600'); font-weight: 700; font-size: 17px; pointer-events: none; animation: fd-plus 0.25s cubic-bezier(0.34, 1.4, 0.64, 1); }
+/* Picked days pop in; the action bar springs up and its buttons follow one by one. */
+@keyframes fd-pick { from { background-color: theme('colors.gold.200'); scale: 1 0.6; } }
+.fd-pick { animation: fd-pick 0.35s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+@keyframes fd-bar { from { opacity: 0; translate: 0 10px; scale: 0.92; } }
+@keyframes fd-rise { from { opacity: 0; translate: 0 6px; } }
+.fd-bar { animation: fd-bar 0.4s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+.fd-bar > * { animation: fd-rise 0.35s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+.fd-bar > :nth-child(2) { animation-delay: 0.04s; }
+.fd-bar > :nth-child(3) { animation-delay: 0.08s; }
+.fd-bar > :nth-child(4) { animation-delay: 0.12s; }
+.fd-bar > :nth-child(5) { animation-delay: 0.16s; }
+.fd-bar > :nth-child(n+6) { animation-delay: 0.2s; }
+/* A day's arrive / leave count rolls to its new number (never on first draw). */
+@keyframes fd-roll { from { opacity: 0; translate: 0 8px; } }
+.fd-roll { display: inline-block; animation: fd-roll 0.3s cubic-bezier(0.34, 1.4, 0.64, 1); }
+/* Today turns gold once the window has moved away from it. */
+.fd-away { animation: fd-pop 0.4s cubic-bezier(0.34, 1.4, 0.64, 1); }
+
+/* A message's line runs out while it waits to close (`ToastHost`). */
+@keyframes fd-drain { to { transform: scaleX(0); } }
+.fd-drain { transform-origin: left; animation: fd-drain var(--ms, 3200ms) linear forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-mark-ready] > .fd-mark, .fd-tab svg, .fd-sub, .fd-sub::after, .fd-gear svg, .fd-step svg { transition: none; }
+  .fd-ping::after, .fd-wiggle:hover svg:first-child, .fd-pop, .fd-free:hover::after, .fd-pick, .fd-bar, .fd-bar > *, .fd-roll, .fd-away, .fd-drain { animation: none; }
+}
+
 /* ── The Restaurant's Orders screen ─────────────────────────────────────────
    The tables are put away behind the slip's title (`TablesPopup`); its squares arrive one
    after another, and the bell on the title rings while cooked food is waiting. */

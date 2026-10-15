@@ -76,9 +76,11 @@ const UNIT_CELL = UNIT_CELL_BASE + ' bg-card pl-3.5'
 const UNIT_CELL_OCCUPIED = UNIT_CELL_BASE + ' bg-paper-50 pl-[9px] border-l-[5px] border-l-emerald-600'
 
 function DayCount({ n, title, className, children }: { n: number; title: string; className: string; children: React.ReactNode }) {
+  // The number rolls in when it changes — a check-in takes one off — never on first draw.
+  const [first] = React.useState(n)
   return (
     <span title={n + ' ' + title} className={'flex h-5 items-center justify-center gap-0.5 ' + className}>
-      {n > 0 && <>{children}{n}</>}
+      {n > 0 && <>{children}<span key={n} className={n !== first ? 'fd-roll' : ''}>{n}</span></>}
     </span>
   )
 }
@@ -331,7 +333,7 @@ export const TimelineGrid = React.memo(
           )
           return (
             <div ref={barRef} style={{ '--bar-left': left + 'px', '--bar-top': barPos.top + 'px' } as React.CSSProperties}
-              className="absolute z-40 w-max [left:var(--bar-left)] [top:var(--bar-top)] bg-card border border-gold-400 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg flex items-center gap-2 text-[13px] font-semibold text-main animate-in fade-in duration-150">
+              className="absolute z-40 w-max [left:var(--bar-left)] [top:var(--bar-top)] bg-card border border-gold-400 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg flex items-center gap-2 text-[13px] font-semibold text-main fd-bar">
               {/* `w-max`: the bar is always as wide as what is in it. Left to the browser, an
                   absolute box sitting far to the right of the visible grid is squeezed to
                   the little room that is left, and the buttons ended up ON the dates

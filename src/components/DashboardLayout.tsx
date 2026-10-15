@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from '@tanstack/react-router'
 import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
 import {
-  RefreshCw, LogOut, Settings, ConciergeBell, Utensils, Boxes, PhilippinePeso
+  Check, RefreshCw, LogOut, Settings, ConciergeBell, Utensils, Boxes, PhilippinePeso
 } from 'lucide-react'
 import logo from '../assets/logo.png'
 import { ToastHost } from './Toast'
@@ -60,6 +60,31 @@ const TABS = [
   },
 ]
 
+/**
+ * The gold mark under a row of tabs slides to the one that is on, instead of jumping
+ * (the owner approved the Front desk's microinteractions, 2026-10-15). It measures the
+ * link marked `aria-current` and hands its place to `.fd-mark` as CSS variables; it is
+ * placed once before it is allowed to move, so a page never opens with it flying in.
+ */
+function useSlideMark<T extends HTMLElement>(on: string | undefined) {
+  const ref = useRef<T>(null)
+  useLayoutEffect(() => {
+    const box = ref.current
+    if (!box) return
+    const place = () => {
+      const tab = box.querySelector<HTMLElement>('[aria-current]')
+      box.style.setProperty('--mark-x', (tab ? tab.offsetLeft : 0) + 'px')
+      box.style.setProperty('--mark-w', (tab ? tab.offsetWidth : 0) + 'px')
+    }
+    place()
+    const ready = requestAnimationFrame(() => box.setAttribute('data-mark-ready', ''))
+    const watch = new ResizeObserver(place)
+    watch.observe(box)
+    return () => { cancelAnimationFrame(ready); watch.disconnect() }
+  }, [on])
+  return ref
+}
+
 export function DashboardLayout() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -73,6 +98,8 @@ export function DashboardLayout() {
 
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('')
   const [isSyncing, setIsSyncing] = useState(false)
+  // A sync that went through says so on the button itself for a moment.
+  const [synced, setSynced] = useState(false)
   // The promo ON/OFF switch is retired (card k128): there is ONE price now, so
   // there is nothing left to switch. A room's price is simply its price.
 
@@ -89,6 +116,8 @@ export function DashboardLayout() {
   // itself stay in reach of a thumb — unless the screen is too short for that (a phone on
   // its side), where the page scrolls as it always did.
   const isTill = here === '/restaurant'
+  const tabsRef = useSlideMark<HTMLElement>(currentTab?.label)
+  const subRef = useSlideMark<HTMLDivElement>(currentScreen?.to)
 
   const handleLogout = () => {
     localStorage.removeItem('daweez_pms_auth')
@@ -100,6 +129,8 @@ export function DashboardLayout() {
     try {
       setIsSyncing(true)
       const n = await triggerOTASync()
+      setSynced(true)
+      setTimeout(() => setSynced(false), 2000)
       setSyncSuccessMsg(`Sync done — added ${n} bookings.`)
       setTimeout(() => setSyncSuccessMsg(''), 4000)
     } catch {
@@ -144,7 +175,8 @@ export function DashboardLayout() {
               </div>
             </div>
 
-            <nav aria-label="Main" className="hidden lg:flex items-center gap-1 p-1 bg-page/70 border border-soft rounded-xl">
+            <nav ref={tabsRef} aria-label="Main" className="relative hidden lg:flex items-center gap-1 p-1 bg-page/70 border border-soft rounded-xl">
+              <span aria-hidden="true" className="fd-mark top-1 bottom-1 rounded-lg bg-gold-400 shadow-sm" />
               {TABS.map(tab => {
                 const isOn = tab === currentTab
                 return (
@@ -152,8 +184,8 @@ export function DashboardLayout() {
                     aria-current={isOn ? (currentScreen === tab.screens[0] ? 'page' : 'true') : undefined}
                     // A tablet held sideways is as wide as a PC and gets this bar too, so it is
                     // finger-sized (44px) unless there is a mouse.
-                    className={'flex items-center gap-1.5 px-3.5 min-h-11 mouse:min-h-8 text-sm font-medium rounded-lg transition-colors ' +
-                      (isOn ? 'bg-gold-400 text-ink-900 shadow-sm' : 'text-muted hover:text-brand-text hover:bg-card')}>
+                    className={'fd-tab relative flex items-center gap-1.5 px-3.5 min-h-11 mouse:min-h-8 text-sm font-medium rounded-lg transition-colors ' +
+                      (isOn ? 'text-ink-900' : 'text-muted hover:text-brand-text hover:bg-card')}>
                     <tab.Icon className="w-4 h-4" aria-hidden="true" />
                     {tab.label}
                   </Link>
@@ -168,12 +200,12 @@ export function DashboardLayout() {
               <button
                 onClick={handleTriggerSync}
                 disabled={isSyncing}
-                className={`hidden sm:flex items-center gap-1.5 h-11 mouse:h-8 text-xs font-semibold border rounded-xl px-3 transition-all cursor-pointer ${isSyncing ? 'bg-brand-primary/10 text-brand-text border-brand-primary/20' : 'bg-card border-soft text-main hover:bg-softbg'}`}>
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? 'Syncing' : 'Sync'}
+                className={`hidden sm:flex items-center gap-1.5 h-11 mouse:h-8 text-xs font-semibold border rounded-xl px-3 transition-all cursor-pointer ${isSyncing ? 'bg-brand-primary/10 text-brand-text border-brand-primary/20' : synced ? 'fd-pop bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-card border-soft text-main hover:bg-softbg'}`}>
+                {synced ? <Check className="w-3.5 h-3.5" /> : <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />}
+                {isSyncing ? 'Syncing' : synced ? 'Up to date' : 'Sync'}
               </button>
               <Link to="/settings" activeOptions={{ exact: true }} aria-label="Settings" title="Settings"
-                className={'flex items-center justify-center w-11 h-11 mouse:w-8 mouse:h-8 border rounded-xl transition-colors ' +
+                className={'fd-gear flex items-center justify-center w-11 h-11 mouse:w-8 mouse:h-8 border rounded-xl transition-colors ' +
                   (isSettings ? 'bg-gold-400 border-gold-400 text-ink-900' : 'bg-card border-soft text-muted hover:text-main hover:bg-softbg')}>
                 <Settings className="w-4 h-4" aria-hidden="true" />
               </Link>
@@ -187,14 +219,15 @@ export function DashboardLayout() {
 
           {subTabs && (
             <nav aria-label={currentTab?.label} className="border-t border-soft">
-              <div className="max-w-[1600px] mx-auto px-4 sm:px-6 flex gap-4 sm:gap-6 overflow-x-auto no-scrollbar">
+              <div ref={subRef} className="relative max-w-[1600px] mx-auto px-4 sm:px-6 flex gap-4 sm:gap-6 overflow-x-auto no-scrollbar">
+                <span aria-hidden="true" className="fd-mark bottom-0 h-0.5 rounded-full bg-gold-600" />
                 {subTabs.map(s => {
                   const isOn = s === currentScreen
                   return (
                     <Link key={s.to} to={s.to} activeOptions={{ exact: true }}
                       aria-current={isOn ? 'page' : undefined}
-                      className={'flex items-center h-11 mouse:h-10 border-b-2 text-[13px] sm:text-sm font-medium whitespace-nowrap transition-colors ' +
-                        (isOn ? 'border-gold-600 text-main' : 'border-transparent text-muted hover:text-main')}>
+                      className={'fd-sub flex items-center h-11 mouse:h-10 text-[13px] sm:text-sm font-medium whitespace-nowrap ' +
+                        (isOn ? 'text-main' : 'text-muted hover:text-main')}>
                       {s.label}
                     </Link>
                   )

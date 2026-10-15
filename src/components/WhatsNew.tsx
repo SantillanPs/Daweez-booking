@@ -79,10 +79,10 @@ export function WhatsNew({ atFrontDesk }: WhatsNewProps) {
     <>
       {/* The same shape as Sync beside it; on a phone, where Sync is not shown, only the mark. */}
       <button type="button" onClick={show} aria-haspopup="dialog" aria-label="What’s new" title="What’s new"
-        className="flex items-center justify-center gap-1.5 w-11 sm:w-auto h-11 mouse:h-8 text-xs font-semibold border rounded-xl sm:px-3 bg-card border-soft text-main hover:bg-softbg transition-colors cursor-pointer">
+        className="fd-wiggle flex items-center justify-center gap-1.5 w-11 sm:w-auto h-11 mouse:h-8 text-xs font-semibold border rounded-xl sm:px-3 bg-card border-soft text-main hover:bg-softbg transition-colors cursor-pointer">
         <Megaphone className="w-3.5 h-3.5" aria-hidden="true" />
         <span className="hidden sm:inline whitespace-nowrap">What’s new</span>
-        {waiting && <span className="w-1.5 h-1.5 rounded-full bg-danger-500 animate-pulse motion-reduce:animate-none" />}
+        {waiting && <span className="fd-ping w-1.5 h-1.5 rounded-full bg-danger-500" />}
       </button>
 
       {fresh && createPortal(
