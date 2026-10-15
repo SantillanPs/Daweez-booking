@@ -4,7 +4,7 @@ import { Booking, Room, Venue, SyncFeed, BookingSource, BreakfastOrder, Equipmen
 import { getRateConfig } from '../utils/rateConfig'
 import { Expense, ExpenseCategory } from '../types/expense'
 import { useRealtimeBookings } from './useRealtimeBookings'
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { supabase, isSupabaseConfigured } from '../utils/supabaseClient'
 
 type MutationContext = { previous: Booking[] | undefined }
@@ -77,7 +77,10 @@ export function useBookings() {
     staleTime: Infinity,
   })
 
-  // Subscribe to Supabase Realtime — patches bookings cache on INSERT/UPDATE/DELETE
+  // Subscribe to Supabase Realtime — patches bookings cache on INSERT/UPDATE/DELETE.
+  // So a save does NOT read the bookings again afterwards: it used to, and every payment,
+  // check-in or edit fetched every booking ever made and redrew the whole calendar, while
+  // the row had already been put in place by the save itself and then by Realtime.
   useRealtimeBookings()
 
   // Realtime listeners for rooms & venues — invalidates price cache when DB changes
@@ -182,9 +185,6 @@ export function useBookings() {
     },
     onError: (_err, _vars, ctx) => {
       queryClient.setQueryData(['bookings'], ctx?.previous)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] })
     }
   })
 
@@ -208,9 +208,6 @@ export function useBookings() {
     },
     onError: (_err, _vars, ctx) => {
       queryClient.setQueryData(['bookings'], ctx?.previous)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] })
     }
   })
 
@@ -228,9 +225,6 @@ export function useBookings() {
     },
     onError: (_err, _vars, ctx) => {
       queryClient.setQueryData(['bookings'], ctx?.previous)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] })
     }
   })
 
@@ -464,9 +458,6 @@ export function useBookings() {
     },
     onError: (_err, _vars, ctx) => {
       queryClient.setQueryData(['bookings'], ctx?.previous)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] })
     }
   })
 
@@ -477,10 +468,8 @@ export function useBookings() {
       const currentFeeds = queryClient.getQueryData<SyncFeed[]>(['feeds']) || []
       return await syncEngine.runSimulatedOTASync(currentBookings, currentFeeds)
     },
-    onSuccess: () => {
-      // Bookings are kept fresh by Realtime — only feeds need a refetch
-      queryClient.invalidateQueries({ queryKey: ['feeds'] })
-    }
+    // Nothing is read again afterwards: bookings are kept fresh by Realtime, and the feeds'
+    // only change is a "last synced" stamp that no screen shows.
   })
 
   // 10. Mutation: Update Room iCal Feeds URLs
@@ -605,6 +594,19 @@ export function useBookings() {
     }
   })
 
+  // The same functions every render, so the screens' shared data is not rebuilt for nothing.
+  const rateAsync = updateRoomRateMutation.mutateAsync
+  const breakfastAsync = updateRoomBreakfastMutation.mutateAsync
+  const hoursAsync = updateRoomHourPricesMutation.mutateAsync
+  const updateRoomRate = useCallback((roomId: string, basePrice: number, promoPrice?: number | null) =>
+    rateAsync({ roomId, basePrice, promoPrice }), [rateAsync])
+  const updateRoomBreakfastPrice = useCallback(async (roomId: string, price: number) => {
+    await breakfastAsync({ roomId, price })
+  }, [breakfastAsync])
+  const updateRoomHourPrices = useCallback(async (roomId: string, hour3: number, hour6: number, hour12: number) => {
+    await hoursAsync({ roomId, hour3, hour6, hour12 })
+  }, [hoursAsync])
+
   return {
     rooms,
     venues,
@@ -639,15 +641,12 @@ export function useBookings() {
     updateFeedUrls: updateFeedUrlsMutation.mutateAsync,
     isUpdatingFeeds: updateFeedUrlsMutation.isPending,
 
-    updateRoomRate: async (roomId: string, basePrice: number, promoPrice?: number | null) =>
-      updateRoomRateMutation.mutateAsync({ roomId, basePrice, promoPrice }),
+    updateRoomRate,
     isUpdatingRoomRate: updateRoomRateMutation.isPending,
 
-    updateRoomBreakfastPrice: async (roomId: string, price: number) =>
-      updateRoomBreakfastMutation.mutateAsync({ roomId, price }),
+    updateRoomBreakfastPrice,
 
-    updateRoomHourPrices: async (roomId: string, hour3: number, hour6: number, hour12: number) =>
-      updateRoomHourPricesMutation.mutateAsync({ roomId, hour3, hour6, hour12 }),
+    updateRoomHourPrices,
 
     createPartnerDeal: createPartnerDealMutation.mutateAsync,
     savePartnerDeals: savePartnerDealsMutation.mutateAsync,

@@ -190,13 +190,22 @@ export const TimelineGrid = React.memo(
     const windowStartIso = daysList[0]?.isoStr
     React.useEffect(() => { scrollRef.current?.scrollTo({ left: 0 }) }, [windowStartIso])
 
-    // Crosshair: know the hovered day so the column + row read at a glance.
-    const [hoverDay, setHoverDay] = React.useState<string | null>(null)
+    // Crosshair: the hovered day's header lights up so the column + row read at a glance.
+    // It is marked on the header itself (`data-hover`), never kept as state: as state, every
+    // day column the mouse crossed redrew the whole grid.
+    const hoverDay = React.useRef<string | null>(null)
+    const markHoverDay = (day: string | null) => {
+      if (day === hoverDay.current) return
+      const scroller = scrollRef.current
+      scroller?.querySelector('th[data-hover]')?.removeAttribute('data-hover')
+      if (day) scroller?.querySelector('th[data-day="' + day + '"]')?.setAttribute('data-hover', '')
+      hoverDay.current = day
+    }
     const handleGridMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
       const t = (e.target as HTMLElement).closest('[data-day]') as HTMLElement | null
-      setHoverDay(t ? t.getAttribute('data-day') : null)
+      markHoverDay(t ? t.getAttribute('data-day') : null)
     }
-    const handleGridMouseLeave = () => setHoverDay(null)
+    const handleGridMouseLeave = () => markHoverDay(null)
 
     const checkInTime = React.useMemo(() => timelineSelection ? timelineSelection.checkIn.getTime() : 0, [timelineSelection])
     const selectionRanges = React.useMemo(() => {
@@ -433,7 +442,7 @@ export const TimelineGrid = React.memo(
                 Room
               </th>
               {daysList.map((dayInfo, i) => (
-                <th key={i} colSpan={2} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft px-0 pt-1.5 pb-0 text-center ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-card') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + (hoverDay === dayInfo.isoStr ? ' !bg-gold-200/70' : '')}>
+                <th key={i} colSpan={2} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft px-0 pt-1.5 pb-0 text-center ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-card') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + ' data-[hover]:!bg-gold-200/70'}>
                   <div className="flex h-6 items-center justify-center gap-1.5">
                     <span className={'text-[12px] font-semibold leading-none ' + (dayInfo.isToday ? 'text-brand-text' : 'text-muted')}>{dayInfo.weekday}</span>
                     {dayInfo.isToday ? (

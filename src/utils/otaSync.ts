@@ -115,9 +115,13 @@ export async function runSimulatedOTASync(currentBookings?: Booking[], currentFe
       if (error) throw error
       return data?.syncedCount ?? 0
     } catch (err) {
-      console.error('Failed to invoke sync-ical edge function, falling back to local simulation:', err)
+      console.error('Failed to invoke sync-ical edge function:', err)
     }
   }
+
+  // Without the mock feeds the local simulation has nothing to add. It used to go on and
+  // write a "last synced" stamp — which no screen shows — every 5 minutes from every device.
+  if (!MOCK_SYNC_ENABLED) return 0
 
   const bookings = currentBookings || await getBookings()
   const feeds = currentFeeds || await getFeeds()

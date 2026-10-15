@@ -8,8 +8,12 @@ import { supabase, isSupabaseConfigured } from '../utils/supabaseClient'
  * another tablet — the staff's feedback (2026-10-04) was that the restaurant went on
  * showing food that had already been paid. The screen reads its slips again on every
  * change instead of only after its own orders. Changes that arrive together are read once.
+ *
+ * `linesToo: false` listens to the slips alone, for a screen that only cares when a slip is
+ * sent, paid or sent back: every dish tapped in the restaurant is a line change, and the
+ * front desk's "Diners to pay" was reading every waiting bill again on each one.
  */
-export function useRealtimeTabs(onChange: () => void) {
+export function useRealtimeTabs(onChange: () => void, linesToo = true) {
   const latest = useRef(onChange)
   useEffect(() => { latest.current = onChange })
 
@@ -23,12 +27,12 @@ export function useRealtimeTabs(onChange: () => void) {
     const channel = supabase
       .channel('order-slips-' + Math.random().toString(36).slice(2))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tabs' }, changed)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tab_lines' }, changed)
-      .subscribe()
+    if (linesToo) channel.on('postgres_changes', { event: '*', schema: 'public', table: 'tab_lines' }, changed)
+    channel.subscribe()
 
     return () => {
       window.clearTimeout(timer)
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [linesToo])
 }

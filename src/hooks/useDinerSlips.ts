@@ -60,7 +60,8 @@ export function useDinerSlips() {
   }, [])
 
   useEffect(() => { queueMicrotask(() => void load()) }, [load])
-  useRealtimeTabs(() => void load())
+  // A sent bill takes no more dishes, so only the slips themselves are listened to.
+  useRealtimeTabs(() => void load(), false)
 
   // The slip being paid follows the restaurant: more ordered on it shows here at once.
   // Once it is paid it leaves the list, and what was picked is kept for its receipt.

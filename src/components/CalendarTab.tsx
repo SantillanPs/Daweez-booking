@@ -7,14 +7,12 @@ import { breakfastOn, wantsBreakfastToday, saveBreakfastChoices } from '../utils
 import { useQueryClient } from '@tanstack/react-query'
 import { extendStay } from '../utils/bookingBalance'
 import { clearStayHours } from '../utils/db'
-import { WalkInBookingForm } from './WalkInBookingForm'
 import { shortStayEnd, stayHoursOf } from '../utils/shortStay'
 import { takeFocusedBooking } from '../utils/bookingFocus'
 import { ExtendStayModal } from './calendar/ExtendStayModal'
 import { TimelineGrid } from './calendar/TimelineGrid'
 import { TimelineDayInfo, buildTimelineDays, timelineHeader, sameMonth } from './calendar/timelineDays'
 import { halvesByUnit } from './calendar/timelineHalves'
-import { LogOldBookingModal } from './calendar/LogOldBookingModal'
 import { BlockDatesPane } from './calendar/BlockDatesPane'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { TodayStrip } from './calendar/TodayStrip'
@@ -24,6 +22,14 @@ import { roomDisplayName } from './calendar/bookingStyles'
 import { showToast } from '../utils/toast'
 import { OPEN_END, isOpenEnded } from '../utils/openBlock'
 import { groupOf } from '../utils/bookingGroup'
+
+// The booking form and the old-booking window are only fetched when needed, so the calendar
+// itself loads faster. Both are fetched a moment after the calendar opens, so the first
+// "New booking" still opens at once.
+const loadForm = () => import('./WalkInBookingForm')
+const loadLogOld = () => import('./calendar/LogOldBookingModal')
+const WalkInBookingForm = React.lazy(() => loadForm().then(m => ({ default: m.WalkInBookingForm })))
+const LogOldBookingModal = React.lazy(() => loadLogOld().then(m => ({ default: m.LogOldBookingModal })))
 
 type Selection = { roomId?: string; venueId?: string; checkIn: Date }
 type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }>
@@ -61,6 +67,11 @@ export function CalendarTab() {
   // every render would re-seed the form and wipe what the desk has typed.
   const [editingGroup, setEditingGroup] = useState<Booking[] | null>(null)
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null); const [showManualForm, setShowManualForm] = useState(false); const [formSelections, setFormSelections] = useState<Record<string, UnitSel>>({}); const [manualBookingType, setManualBookingType] = useState<'individual' | 'partner'>('individual'); const [formStayHours, setFormStayHours] = useState<number | null>(null)
+
+  useEffect(() => {
+    const id = window.setTimeout(() => { void loadForm(); void loadLogOld() }, 1500)
+    return () => window.clearTimeout(id)
+  }, [])
 
   // ── The short-stay clock (the owner's ruling) ────────────────────────────────
   // No countdown is ever printed: the calendar block shows the TIME the room is free,
@@ -275,7 +286,7 @@ export function CalendarTab() {
   }
 
   /** Short stay: the SAME flow as New booking — pick on the grid first, then press the button — except a short stay needs ONE day rather than a range, because the room is taken for that whole day. Check-out is filled in as the next day for the desk, and the hours tapped on the bar (3, 6 or 12) travel into the form already chosen. */
-  const confirmShortStay = (hours: number) => {
+  const confirmShortStay = useCallback((hours: number) => {
     const picked = timelineSelectionRef.current
     const roomId = picked?.roomId
     if (!roomId) return
@@ -289,9 +300,13 @@ export function CalendarTab() {
     setFormStayHours(hours)
     setFormSelections({ [roomId]: { checkIn: dateToString(checkIn), checkOut: dateToString(checkOut), type: 'room' } })
     setShowManualForm(true)
-  }
+  }, [])
 
-  const confirmGroup = () => {
+  // The grid's actions stay the same functions from render to render (they read the picks
+  // through the refs above): a new function each time made the memoized grid redraw every
+  // room and day whenever anything on this screen changed, such as opening a booking.
+  const confirmGroup = useCallback(() => {
+    const groupSelection = groupSelectionRef.current
     if (!groupSelection) return
     const serialized: Record<string, UnitSel> = {}
     Object.entries(groupSelection).forEach(([id, sel]) => {
@@ -304,7 +319,18 @@ export function CalendarTab() {
     setEditingBooking(null); setEditingGroup(null)
     setManualBookingType('individual')
     setShowManualForm(true)
-  }
+  }, [])
+
+  /** Who the block is for, in the pane's own line: the room's name, or how many units. */
+  const blockLabel = useCallback((units: { id: string; type: 'room' | 'venue' }[]) => {
+    if (units.length !== 1) return units.length + ' units'
+    const u = units[0]
+    if (u.type === 'room') {
+      const room = roomsRef.current.find(r => r.id === u.id)
+      return room ? roomDisplayName(room) : 'Room'
+    }
+    return venuesRef.current.find(v => v.id === u.id)?.name || 'Venue'
+  }, [])
 
   /**
    * Block the dates that were picked (the owner's design, 2026-09).
@@ -315,8 +341,9 @@ export function CalendarTab() {
    * form); the owner moved it here, beside every other thing the desk can do with the
    * dates they just picked.
    */
-  const openBlockPane = () => {
+  const openBlockPane = useCallback(() => {
     const picked = timelineSelectionRef.current
+    const groupSelection = groupSelectionRef.current
     const units: { id: string; type: 'room' | 'venue' }[] = []
     let checkIn = ''
     let checkOut = ''
@@ -339,7 +366,7 @@ export function CalendarTab() {
     setBlockTarget({ units, label: blockLabel(units), checkIn, checkOut })
     setTimelineSelection(null)
     setGroupSelection(null)
-  }
+  }, [blockLabel])
 
   /** One block per picked unit, so a whole floor can be blocked in one go. */
   const createBlocks = async (notes: string, openEnded: boolean) => {
@@ -397,22 +424,12 @@ export function CalendarTab() {
     setMonthAnchor(new Date(y, m - 1, d))
   }
 
-  /** Who the block is for, in the pane's own line: the room's name, or how many units. */
-  const blockLabel = (units: { id: string; type: 'room' | 'venue' }[]) => {
-    if (units.length !== 1) return units.length + ' units'
-    const u = units[0]
-    if (u.type === 'room') {
-      const room = rooms.find(r => r.id === u.id)
-      return room ? roomDisplayName(room) : 'Room'
-    }
-    return venues.find(v => v.id === u.id)?.name || 'Venue'
-  }
-
   /** Log an old paper booking for the picked dates — the toolbar icon and the action
    *  bar's own icon both come here, so there is one way to start it. */
-  const openLogOldBooking = () => {
+  const openLogOldBooking = useCallback(() => {
     const serialized: Record<string, UnitSel> = {}
     const picked = timelineSelectionRef.current
+    const groupSelection = groupSelectionRef.current
     const roomId = picked?.roomId
     if (groupSelection) {
       Object.entries(groupSelection).forEach(([id, sel]) => { serialized[id] = { checkIn: dateToString(sel.checkIn), checkOut: dateToString(sel.checkOut), type: sel.type } })
@@ -424,7 +441,9 @@ export function CalendarTab() {
     setGroupSelection(null)
     setTimelineSelection(null)
     setShowLogOld(true)
-  }
+  }, [])
+  const clearSelection = useCallback(() => { setTimelineSelection(null); setGroupSelection(null) }, [])
+  const askBreakfast = useCallback((b: Booking) => setBreakfastForId(b.id), [])
 
   const fmtBlockDate = (iso: string) => {
     const [y, m, d] = iso.split('-').map(Number)
@@ -466,11 +485,11 @@ export function CalendarTab() {
           onBlockDates={openBlockPane}
           onLogOldBooking={openLogOldBooking}
           onNewShortStay={confirmShortStay}
-          onClearSelection={() => { setTimelineSelection(null); setGroupSelection(null) }}
+          onClearSelection={clearSelection}
           dueShortStayIds={dueShortStayIds}
           loading={isLoading}
           breakfastToAsk={breakfastToAsk}
-          onBreakfast={b => setBreakfastForId(b.id)}
+          onBreakfast={askBreakfast}
           breakfastReady={breakfastReady}
           onBreakfastServed={serveBreakfast}
         />
@@ -497,31 +516,33 @@ export function CalendarTab() {
       )}
 
       {showManualForm && (
-        <WalkInBookingForm
-          key={editingBooking ? 'edit-' + editingBooking.id : Object.keys(formSelections).join(',') + (formStayHours ? '-h' + formStayHours : '')}
-          rooms={rooms}
-          venues={venues}
-          bookings={bookings}
-          createManualBooking={createManualBooking}
-          cancelBooking={cancelBooking}
-          deleteBooking={deleteBooking}
-          allBookings={allBookings}
-          updateBooking={updateBooking}
-          initialSelections={editingBooking
-            ? { [editingBooking.room_id || editingBooking.venue_id || '']: { checkIn: editingBooking.check_in, checkOut: editingBooking.check_out, type: editingBooking.room_id ? 'room' : 'venue' } }
-            : formSelections}
-          editingBookings={editingBooking ? (editingGroup || undefined) : undefined}
-          initialBookingType={manualBookingType}
-          initialStayHours={formStayHours ?? undefined}
-          onClose={() => {
-            setShowManualForm(false); setEditingBooking(null); setEditingGroup(null); setFormSelections({}); setFormStayHours(null)
-            // Once the billing statement is closed, the booking just made opens
-            // itself in the quick view (card k134).
-            const created = takeFocusedBooking()
-            const booking = created ? bookings.find(b => b.id === created) : undefined
-            if (booking) setSelectedExtendBooking(booking)
-          }}
-        />
+        <React.Suspense fallback={null}>
+          <WalkInBookingForm
+            key={editingBooking ? 'edit-' + editingBooking.id : Object.keys(formSelections).join(',') + (formStayHours ? '-h' + formStayHours : '')}
+            rooms={rooms}
+            venues={venues}
+            bookings={bookings}
+            createManualBooking={createManualBooking}
+            cancelBooking={cancelBooking}
+            deleteBooking={deleteBooking}
+            allBookings={allBookings}
+            updateBooking={updateBooking}
+            initialSelections={editingBooking
+              ? { [editingBooking.room_id || editingBooking.venue_id || '']: { checkIn: editingBooking.check_in, checkOut: editingBooking.check_out, type: editingBooking.room_id ? 'room' : 'venue' } }
+              : formSelections}
+            editingBookings={editingBooking ? (editingGroup || undefined) : undefined}
+            initialBookingType={manualBookingType}
+            initialStayHours={formStayHours ?? undefined}
+            onClose={() => {
+              setShowManualForm(false); setEditingBooking(null); setEditingGroup(null); setFormSelections({}); setFormStayHours(null)
+              // Once the billing statement is closed, the booking just made opens
+              // itself in the quick view (card k134).
+              const created = takeFocusedBooking()
+              const booking = created ? bookings.find(b => b.id === created) : undefined
+              if (booking) setSelectedExtendBooking(booking)
+            }}
+          />
+        </React.Suspense>
       )}
 
       {/* Blocking the picked dates: a small pane of its own, never the booking form
@@ -548,13 +569,15 @@ export function CalendarTab() {
       )}
 
       {showLogOld && (
-        <LogOldBookingModal
-          rooms={rooms}
-          venues={venues}
-          createManualBooking={createManualBooking}
-          initialSelections={logOldSelections}
-          onClose={() => setShowLogOld(false)}
-        />
+        <React.Suspense fallback={null}>
+          <LogOldBookingModal
+            rooms={rooms}
+            venues={venues}
+            createManualBooking={createManualBooking}
+            initialSelections={logOldSelections}
+            onClose={() => setShowLogOld(false)}
+          />
+        </React.Suspense>
       )}
 
     </div>

@@ -166,8 +166,10 @@ export async function getBookings(): Promise<Booking[]> {
           return true
         })
 
-        // Remove abandoned 30-min locks via RPC (anon no longer has DELETE).
-        try { await supabase.rpc('cleanup_expired_pending') } catch { /* non-fatal */ }
+        // Remove abandoned 30-min locks via RPC (anon no longer has DELETE). Not waited on:
+        // the expired ones are already filtered out above, and the read had to wait a whole
+        // extra trip to the database for it.
+        supabase.rpc('cleanup_expired_pending').then(undefined, () => { /* non-fatal */ })
 
         return activeRecords.map(b => ({
           id: b.id,

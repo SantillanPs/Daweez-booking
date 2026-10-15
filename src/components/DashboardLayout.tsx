@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from '@tanstack/react-router'
 import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
@@ -119,10 +119,10 @@ export function DashboardLayout() {
   const tabsRef = useSlideMark<HTMLElement>(currentTab?.label)
   const subRef = useSlideMark<HTMLDivElement>(currentScreen?.to)
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('daweez_pms_auth')
     navigate({ to: '/login' })
-  }
+  }, [navigate])
 
   const handleTriggerSync = async () => {
     if (isSyncing) return
@@ -149,15 +149,23 @@ export function DashboardLayout() {
     return () => clearInterval(id)
   }, [triggerOTASync])
 
+  // Built again only when something in it changes. It was a new object on every render of
+  // this bar — each Sync flash, each change of screen — and every screen reading it, the
+  // calendar among them, redrew with it.
+  const data = useMemo(() => ({
+    rooms, venues, bookings, allBookings, feeds, partnerDeals, expenses, expenseCategories, isLoading,
+    isConfirming: isConfirmingBooking,
+    confirmBooking, cancelBooking, deleteBooking, createManualBooking, updateBooking,
+    triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
+    createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense,
+    onLogout: handleLogout
+  }), [rooms, venues, bookings, allBookings, feeds, partnerDeals, expenses, expenseCategories, isLoading, isConfirmingBooking,
+    confirmBooking, cancelBooking, deleteBooking, createManualBooking, updateBooking,
+    triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
+    createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense, handleLogout])
+
   return (
-    <DashboardDataContext.Provider value={{
-      rooms, venues, bookings, allBookings, feeds, partnerDeals, expenses, expenseCategories, isLoading,
-      isConfirming: isConfirmingBooking,
-      confirmBooking, cancelBooking, deleteBooking, createManualBooking, updateBooking,
-      triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
-      createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense,
-      onLogout: handleLogout
-    }}>
+    <DashboardDataContext.Provider value={data}>
       <div className={isCalendarTab ? "h-screen bg-background flex flex-col overflow-hidden pb-[calc(57px+env(safe-area-inset-bottom,0px))] lg:pb-0"
         : isTill ? "min-h-[100dvh] tall:h-[100dvh] tall:min-h-0 tall:flex tall:flex-col tall:overflow-hidden bg-background pb-[calc(57px+env(safe-area-inset-bottom,0px))] lg:pb-0"
           : "min-h-screen bg-background pb-20 lg:pb-6"}>
