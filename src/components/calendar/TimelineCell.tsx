@@ -1,5 +1,6 @@
 import React from 'react'
-import { Building2, Check } from 'lucide-react'
+import { Building2, Check, LogIn, LogOut } from 'lucide-react'
+import { dateToString } from '../../utils/helpers'
 import { Booking } from '../../types/booking'
 import { pillInitials, pillMoney } from './bookingStyles'
 import { clockLabel, shortStayEnd } from '../../utils/shortStay'
@@ -85,6 +86,104 @@ function MoneyWords({ text, amount, className }: { text: string; amount: number;
   )
 }
 
+/**
+ * The card a pill shows on hover. **One card that changes with the stay** (Sebastian,
+ * 2026-10-15, redesigned from a mock he approved): the name leads beside a circle in the
+ * pill's own colour; the stay is drawn as one block per night — slept nights green,
+ * tonight gold; the money is the booking panel's bar; and a line for today appears only
+ * when the desk has to check the guest in or out. It used to be three boxed rows of one
+ * weight that read the same on arrival day, mid-stay and after leaving.
+ *
+ * **It grows up out of the pill** (animation A in the mock): the card scales from the
+ * pill's edge, its parts arrive in turn, the nights fill left to right, the bar runs out.
+ */
+function HoverCard({ booking, pillName, agencyName, isBlock, openEnded, money, freeAt, due, inHotel, left, below }: {
+  booking: Booking
+  pillName: string
+  agencyName?: string
+  isBlock: boolean
+  openEnded: boolean
+  money: { text: string; className: string }
+  freeAt: Date | null
+  due?: 'in' | 'out' | null
+  inHotel: boolean
+  left: boolean
+  below: boolean
+}) {
+  const at = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d) }
+  const nights = openEnded || booking.stay_hours ? 0 : Math.max(0, Math.round((at(booking.check_out) - at(booking.check_in)) / 86400000))
+  const today = at(dateToString(new Date()))
+  // Tonight's place in the stay: 0 is the first night. Before arrival it is below 0.
+  const tonight = Math.round((today - at(booking.check_in)) / 86400000)
+  const paid = Number(booking.downpayment_paid || 0)
+  const owed = Number(booking.balance_due || 0)
+  const phone = booking.guest_phone && booking.guest_phone.trim() !== 'None' ? booking.guest_phone : ''
+  const sub = agencyName ? 'for ' + booking.guest_name : phone
+  const circle = isBlock || left ? 'bg-ink-200 text-ink-600'
+    : agencyName ? 'bg-ink-900 text-gold-400'
+      : inHotel ? 'bg-emerald-600 text-white'
+        : 'bg-paper-50 text-main border-[1.5px] ' + (due === 'in' ? 'border-emerald-600' : 'border-soft')
+  const middle = booking.stay_hours ? booking.stay_hours + ' hrs' + (freeAt ? ' · out ' + clockLabel(freeAt) : '')
+    : openEnded ? 'until further notice'
+      : inHotel && tonight >= 0 && tonight < nights ? 'night ' + (tonight + 1) + ' of ' + nights
+        : nightsWord(booking.check_in, booking.check_out)
+  return (
+    <div className={'absolute left-1/2 -translate-x-1/2 z-30 pointer-events-none ' + (below ? 'top-full mt-2' : 'bottom-full mb-2')}>
+      <div className={'hc-grow w-64 bg-card border border-soft shadow-softLg rounded-xl px-3.5 pt-3 pb-3.5 grid gap-2.5 text-left font-sans ' + (below ? 'origin-top' : 'origin-bottom')}>
+        <div className="flex items-center gap-2.5">
+          <span className={'w-[34px] h-[34px] shrink-0 rounded-full grid place-items-center font-display text-[13px] font-bold ' + circle} aria-hidden="true">
+            {agencyName ? <Building2 className="w-4 h-4" /> : pillInitials(pillName)}
+          </span>
+          <span className="min-w-0 grid">
+            <b className="font-display text-[15px] font-bold tracking-tight text-main leading-tight truncate">{pillName}</b>
+            {sub && <span className="text-[12px] text-muted truncate">{sub}</span>}
+          </span>
+        </div>
+        {due && !isBlock && (
+          <div className={'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-bold ' + (due === 'in' ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-main')}>
+            {due === 'in' ? <LogIn className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /> : <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
+            {due === 'in' ? 'Check in today, from 2 PM' : 'Check out today, by 12 PM'}
+          </div>
+        )}
+        <div className="grid gap-1.5">
+          {nights > 0 && nights <= 31 && (
+            <div className="flex gap-[3px]" aria-hidden="true">
+              {Array.from({ length: nights }, (_, i) => (
+                <span key={i} className="relative flex-1 h-2 rounded-[3px] bg-paper-100 border border-soft overflow-hidden">
+                  {(left || (inHotel && i <= tonight)) && (
+                    <span style={{ '--i': i } as React.CSSProperties}
+                      className={'hc-night absolute -inset-px ' + (!left && i === tonight ? 'bg-gold-400' : 'bg-emerald-600')} />
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-baseline justify-between gap-2 text-[12px] font-semibold text-main tabular-nums">
+            <span>{niceDay(booking.check_in)}</span>
+            <span className="font-medium text-muted">{middle}</span>
+            {!openEnded && !booking.stay_hours && <span>{niceDay(booking.check_out)}</span>}
+          </div>
+        </div>
+        {!isBlock && (
+          <div className="grid gap-1.5">
+            {paid + owed > 0 && !agencyName && (
+              <div className="h-[5px] rounded-full overflow-hidden bg-danger-200" aria-hidden="true">
+                <span style={{ '--paid': Math.min(1, paid / (paid + owed)) } as React.CSSProperties}
+                  className="hc-bar block h-full rounded-full bg-emerald-600 origin-left [transform:scaleX(var(--paid))]" />
+              </div>
+            )}
+            <div className="flex items-baseline justify-between gap-2">
+              <b className={'font-display text-[15px] font-bold tracking-tight ' + money.className}>{money.text}</b>
+              {paid + owed > 0 && money.text !== 'Paid' && !agencyName && <span className="text-[12px] text-muted tabular-nums">of ₱{(paid + owed).toLocaleString()}</span>}
+              {agencyName && phone && <span className="text-[12px] text-muted tabular-nums">{phone}</span>}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /** The mark of a guest who has checked out: a tick in a small charcoal circle. */
 function LeftTick({ className }: { className: string }) {
   return (
@@ -93,6 +192,13 @@ function LeftTick({ className }: { className: string }) {
     </span>
   )
 }
+
+// **The hover card answers quickly** (Sebastian, 2026-10-15: the reservation hover felt
+// slow). It waited half a second; it now waits a short beat so a mouse passing over the
+// grid does not flash cards, and once one card has been open, the next pill's card opens
+// at once — the desk reading down a column is not made to wait on every pill.
+const TIP_WAIT_MS = 200
+let tipWarmUntil = 0
 
 // Optimized, memoized timeline cell. Tooltip visibility lives in this cell
 // only, so hovering a booking never re-renders the whole grid.
@@ -174,13 +280,14 @@ export const TimelineCell = React.memo(
             const head = grid?.querySelector('thead')
             if (grid) setTipBelow(cell.getBoundingClientRect().top - grid.getBoundingClientRect().top - (head?.getBoundingClientRect().height || 0) < TIP_NEEDS)
             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
-            hoverTimeoutRef.current = setTimeout(() => setShowTooltip(true), 500)
+            hoverTimeoutRef.current = setTimeout(() => setShowTooltip(true), Date.now() < tipWarmUntil ? 0 : TIP_WAIT_MS)
           }}
           onMouseLeave={() => {
             if (hoverTimeoutRef.current) {
               clearTimeout(hoverTimeoutRef.current)
               hoverTimeoutRef.current = null
             }
+            if (showTooltip) tipWarmUntil = Date.now() + 400
             setShowTooltip(false)
           }}
         >
@@ -254,32 +361,9 @@ export const TimelineCell = React.memo(
             ))}
             </>)}
           </div>
-          {/* THREE BANDS: who, when, how much (Sebastian, 2026-10-09: the card "looks messy").
-              It was six grey lines of about one size, the dates as raw numbers, and a line
-              saying whether the guest had checked in — which he had taken off: the pill's
-              own colour says it. The dates read as days now and say how many nights. */}
           {showTooltip && (
-            <div className={'absolute left-1/2 -translate-x-1/2 z-30 w-60 ' + (tipBelow ? 'top-full mt-2' : 'bottom-full mb-2') + ' bg-card border border-soft shadow-softLg rounded-xl text-[13px] divide-y divide-soft pointer-events-none text-left font-sans animate-in fade-in duration-150'}>
-              <div className="px-3 pt-2.5 pb-2">
-                <div className="flex items-center gap-1.5 font-display text-[14px] font-bold tracking-tight text-main">
-                  {agencyName && !isBlock && <Building2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
-                  <span className="min-w-0 truncate">{pillName}</span>
-                </div>
-                {agencyName && !isBlock && <div className="text-[12px] text-muted truncate">for {booking.guest_name}</div>}
-              </div>
-              <div className="px-3 py-2 flex items-baseline justify-between gap-2 font-semibold text-main">
-                <span>{openEnded ? 'from ' + niceDay(booking.check_in) : niceDay(booking.check_in) + ' → ' + niceDay(booking.check_out)}</span>
-                {booking.stay_hours
-                  ? <span className="shrink-0 text-[12px] font-medium text-muted">{booking.stay_hours} hrs{freeAt ? ' · out ' + clockLabel(freeAt) : ''}</span>
-                  : !openEnded && <span className="shrink-0 text-[12px] font-medium text-muted">{nightsWord(booking.check_in, booking.check_out)}</span>}
-              </div>
-              {!isBlock && (
-                <div className="px-3 py-2 flex items-baseline justify-between gap-2">
-                  <b className={'font-display text-[15px] font-bold tracking-tight ' + money.className}>{money.text}</b>
-                  {booking.guest_phone && booking.guest_phone.trim() !== 'None' && <span className="shrink-0 text-[12px] text-muted tabular-nums">{booking.guest_phone}</span>}
-                </div>
-              )}
-            </div>
+            <HoverCard booking={booking} pillName={pillName} agencyName={isBlock ? undefined : agencyName} isBlock={isBlock}
+              openEnded={openEnded} money={money} freeAt={freeAt} due={due} inHotel={inHotel} left={left} below={tipBelow} />
           )}
         </td>
       )

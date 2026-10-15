@@ -32,6 +32,14 @@ export const UPDATES: Update[] = [
           'The receipt no longer jumps onto the screen before the “Paid” sign has finished.',
         ],
       },
+      {
+        where: 'Front desk → Calendar → point at a booking',
+        what: [
+          'The card that pops up is new: the guest’s name first, one block for each night (green for nights already slept, gold for tonight), and a bar showing how much is paid.',
+          'It says when the guest is due to check in or out today.',
+          'It opens faster, and at once when you move to the next booking.',
+        ],
+      },
     ],
   },
   {
