@@ -23,6 +23,25 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-16',
+    changes: [
+      {
+        where: 'Front desk → Calendar → making a booking',
+        what: [
+          'When you pick the dates, the gold stretches across night by night, and the bar shows how many nights.',
+          'The booking form now opens from the dates you picked.',
+          'The box the form is waiting for glows gold, so you can see what to fill in next.',
+          'The form grows and shrinks smoothly as you open its parts.',
+          'Nationality has a new list: Filipino is on top, the letters you type show in brown, and a green tick shows once one is picked.',
+          'Receptionist is now the names used before, as buttons — tap yours. “Someone else” adds a new name.',
+          'Guest and Payment get a green tick once they are filled in, and Confirm booking turns gold when it is ready.',
+          'Breakfast shows what it adds beside the total.',
+          'After you confirm, the button says “Booked”, then the receipt comes up. When you close the receipt, the new booking lands on the calendar and opens.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-15b',
     changes: [
       {

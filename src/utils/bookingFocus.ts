@@ -18,3 +18,18 @@ export function takeFocusedBooking(): string | null {
   focusedBookingId = null
   return id
 }
+
+// Where on screen the desk picked the stay, so the booking form grows out of the pick
+// (the booking moments mock, Sebastian, 2026-10-16). Read without clearing — React runs a
+// state initialiser twice while developing — and only trusted for a moment, so a form opened
+// later from somewhere else (the edit pencil) opens in the ordinary way.
+type Rect = { x: number; y: number; w: number; h: number }
+let formOrigin: { rect: Rect; at: number } | null = null
+
+export function rememberFormOrigin(rect: Rect): void {
+  formOrigin = { rect, at: Date.now() }
+}
+
+export function readFormOrigin(): Rect | null {
+  return formOrigin && Date.now() - formOrigin.at < 2000 ? formOrigin.rect : null
+}

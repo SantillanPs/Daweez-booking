@@ -1,5 +1,5 @@
 import React from 'react'
-import { Check } from 'lucide-react'
+import { Check, Coffee } from 'lucide-react'
 import { Room } from '../../types/booking'
 import { breakfastSellable } from '../../utils/breakfast'
 import { OPTION_NAME } from './formStyles'
@@ -87,8 +87,10 @@ export function BreakfastRoomChips({ rooms, chosen, onToggle, onAll }: Breakfast
                 // as the very circle it replaces.
                 className={'w-4 h-4 shrink-0 inline-flex items-center justify-center rounded border-2 ' +
                   (on ? 'bg-ink-900 border-ink-900 text-gold-100' : 'border-ink-300')}>
-                {on && <Check className="w-3 h-3" strokeWidth={4} />}
+                {on && <Check className="w-3 h-3 bk-pop" strokeWidth={4} />}
               </span>
+              {/* The cup hops once as breakfast goes on (the booking moments mock, 2026-10-16). */}
+              {sellable && <Coffee aria-hidden="true" className={'w-4 h-4 shrink-0 ' + (on ? 'bk-hop' : 'text-muted')} />}
               {!alone && <span>Room {room.room_number}</span>}
               <span className={'tabular-nums ' + (on || alone ? '' : 'text-muted')}>
                 {sellable ? (alone ? price + ' for the stay' : price) : 'no price'}

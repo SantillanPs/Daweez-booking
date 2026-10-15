@@ -61,7 +61,7 @@ export function DiscountPricingControls({
           className={OPTION_ROW + ' cursor-pointer'}>
           <span className={OPTION_NAME}>Discount</span>
           <span className={OPTION_VALUE}>
-            {given ? <span className="text-main tabular-nums">{given}</span> : !open && <span>Add</span>}
+            {given ? <span key={given} className="bp-up text-main tabular-nums">{given}</span> : !open && <span>Add</span>}
             <ChevronDown className={'w-4 h-4 shrink-0 transition-transform duration-200 ' + (open ? 'rotate-180' : '')} />
           </span>
         </button>

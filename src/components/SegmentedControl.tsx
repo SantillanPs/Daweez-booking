@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useLayoutEffect, useRef, useState } from 'react'
 
 export interface SegmentOption<T extends string> {
   key: T
@@ -54,6 +54,25 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
   // needs the height for both; every cell is the same height so the row stays level.
   const twoLines = options.some(o => !!o.sub)
 
+  // THE GOLD SLIDES to the new choice (the booking moments mock, Sebastian, 2026-10-16).
+  // It is a gold cell of its own drawn over the row, carrying the chosen words, because the
+  // white cells it passes would hide it from underneath. Measured after every render and on
+  // resize; nothing is set when nothing moved.
+  const row = useRef<HTMLDivElement>(null)
+  const [thumb, setThumb] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = picked === -1 ? null : cells.current[picked]
+      const next = el ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight } : null
+      setThumb(prev => (prev && next && prev.x === next.x && prev.y === next.y && prev.w === next.w && prev.h === next.h) || prev === next ? prev : next)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    if (row.current) ro.observe(row.current)
+    return () => ro.disconnect()
+  })
+  const chosen = picked === -1 ? null : options[picked]
+
   const onKeyDown = (e: React.KeyboardEvent, i: number) => {
     const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1
       : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
@@ -65,8 +84,8 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
   }
 
   return (
-    <div role="radiogroup" aria-label={label} aria-invalid={invalid || undefined}
-      className={'flex flex-wrap w-full min-w-0 gap-px border rounded-md overflow-hidden ' +
+    <div ref={row} role="radiogroup" aria-label={label} aria-invalid={invalid || undefined}
+      className={'group/seg relative flex flex-wrap w-full min-w-0 gap-px border rounded-md overflow-hidden ' +
         (invalid ? 'border-danger-400 bg-danger-200' : 'border-soft bg-soft')}>
       {options.map((o, i) => (
         <button key={o.key} type="button" role="radio" title={o.hint} aria-checked={value === o.key}
@@ -86,6 +105,17 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
           ) : o.label}
         </button>
       ))}
+      {thumb && chosen && (
+        <span aria-hidden="true" style={{ '--x': thumb.x + 'px', '--y': thumb.y + 'px', '--w': thumb.w + 'px', '--h': thumb.h + 'px' } as React.CSSProperties}
+          className="bk-thumb absolute left-0 top-0 [transform:translate(var(--x),var(--y))] w-[var(--w)] h-[var(--h)] pointer-events-none group-has-[:focus-visible]/seg:outline group-has-[:focus-visible]/seg:outline-2 group-has-[:focus-visible]/seg:-outline-offset-2 group-has-[:focus-visible]/seg:outline-[var(--brand-ring)] bg-gold-400 text-ink-900 text-[14px] font-semibold whitespace-nowrap flex flex-col items-center justify-center">
+          {twoLines ? (
+            <>
+              <span className="block leading-5">{chosen.label}</span>
+              <span className="block text-[12px] font-medium leading-4 tabular-nums text-ink-800">{chosen.sub || ' '}</span>
+            </>
+          ) : chosen.label}
+        </span>
+      )}
     </div>
   )
 }

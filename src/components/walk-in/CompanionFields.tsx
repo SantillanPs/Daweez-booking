@@ -37,7 +37,8 @@ export function CompanionFields({ companions, setCompanions }: {
         className={OPTION_ROW + ' cursor-pointer'}>
         <span className={OPTION_NAME}>
           Companions
-          {companions.length > 0 && <span className="ml-2 text-muted font-normal">{companions.length}</span>}
+          {/* The count pops each time it changes (the booking form mock, 2026-10-16). */}
+          {companions.length > 0 && <span key={companions.length} className="bk-pop inline-block ml-2 text-muted font-normal">{companions.length}</span>}
         </span>
         <span className={OPTION_VALUE}><Plus className="w-4 h-4" /> Add companion</span>
       </button>
@@ -45,7 +46,7 @@ export function CompanionFields({ companions, setCompanions }: {
       {companions.length > 0 && (
         <div className="space-y-2 pb-3">
           {companions.map((comp, idx) => (
-            <div key={idx} className={'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] sm:grid-cols-[minmax(0,1fr)_9rem_7.5rem_2.75rem] items-center gap-2 ' + REVEAL}>
+            <div key={idx} className={'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] sm:grid-cols-[minmax(0,1fr)_10.5rem_7.5rem_2.75rem] items-center gap-2 ' + REVEAL}>
               <input
                 type="text"
                 required

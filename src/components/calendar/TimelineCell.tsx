@@ -26,6 +26,9 @@ export interface TimelineCellProps {
   /** Part of the range that was just picked: its first day (from the afternoon), the days
    *  between, or its last day (until the morning). */
   highlight?: 'start' | 'mid' | 'end' | null
+  /** The highlighted day's place in the pick (0 is the check-in day), so the pick sweeps
+   *  across night by night. */
+  pickAt?: number
   /** The stay began before the first day on screen (the grid opens at today,
    *  card k154), so the pill is cut off at the left edge and says so. */
   isContinuation?: boolean
@@ -214,6 +217,7 @@ export const TimelineCell = React.memo(
     closesDay,
     isCheckIn,
     highlight,
+    pickAt = 0,
     isContinuation,
     isWeekend,
     isToday,
@@ -301,6 +305,8 @@ export const TimelineCell = React.memo(
               className="absolute inset-y-0 bg-gold-100/50 [left:var(--today-left)] [width:var(--today-width)]" />
           )}
           <div
+            // Found by the booking form once its receipt is closed, so the new pill can land (`BookingCreatedPanel`).
+            data-pill={booking.id}
             onClick={e => {
               e.stopPropagation()
               // A block opens its panel too — that is where it is ended or removed.
@@ -398,7 +404,7 @@ export const TimelineCell = React.memo(
           onClick={() => onCellClick(id, type, date)}
           className={'p-0 h-12 border-b border-soft cursor-cell relative align-middle' + dayRule}
         >
-          <div className={'fd-pick absolute inset-y-0 border-y border-dashed border-gold-400/50 bg-gold-100/70 transition-colors hover:bg-gold-100 ' + place} />
+          <div style={{ '--i': pickAt } as React.CSSProperties} className={'fd-pick absolute inset-y-0 border-y border-dashed border-gold-400/50 bg-gold-100/70 transition-colors hover:bg-gold-100 ' + place} />
         </td>
       )
     }
@@ -432,6 +438,7 @@ export const TimelineCell = React.memo(
       prevProps.onCellClick === nextProps.onCellClick &&
       prevProps.isCheckIn === nextProps.isCheckIn &&
       prevProps.highlight === nextProps.highlight &&
+      prevProps.pickAt === nextProps.pickAt &&
       prevProps.halfOf === nextProps.halfOf &&
       prevProps.closesDay === nextProps.closesDay &&
       prevProps.isContinuation === nextProps.isContinuation &&

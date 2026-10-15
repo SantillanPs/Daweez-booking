@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Room, Venue, Booking, BookingSource, BreakfastOrder, Companion, EquipmentRental, EventAddons, PartnerDeal, PaymentRecord } from '../types/booking'
 import { useDashboardData } from './DashboardContext'
@@ -7,7 +7,7 @@ import { useDashboardData } from './DashboardContext'
 import { DiscountPricingControls, DiscountType } from './calendar/DiscountPricingControls'
 import { RoomDetailsForm } from './walk-in/RoomDetailsForm'
 import { AmenitiesForm } from './walk-in/AmenitiesForm'
-import { BookingDepositFields, PayPlan, PayMethod } from './walk-in/BookingDepositFields'
+import { BookingDepositFields, PayPlan, PayMethod, Want } from './walk-in/BookingDepositFields'
 import { BookingCorrectionFields } from './walk-in/BookingCorrectionFields'
 import { methodNeedsReference, paymentKind, paymentMethodChoice } from '../utils/paymentMethod'
 import { BreakfastRoomChips } from './walk-in/BreakfastRoomChips'
@@ -15,7 +15,9 @@ import { breakfastSellable } from '../utils/breakfast'
 import { venueTypes } from '../utils/venueTypes'
 import { normalizeVenueId } from '../utils/helpers'
 import { VenueTypeFields } from './walk-in/VenueTypeFields'
-import { focusBookingAfterCreate } from '../utils/bookingFocus'
+import { focusBookingAfterCreate, readFormOrigin } from '../utils/bookingFocus'
+import { Seal } from './walk-in/Seal'
+import { ReceptionistChips } from './walk-in/ReceptionistChips'
 import { computeBookingEstimate } from './walk-in/bookingEstimate'
 import { submitBookingForm } from './walk-in/bookingSubmit'
 import { AgencyFields } from './walk-in/AgencyFields'
@@ -23,7 +25,7 @@ import { AgencyProfileForm } from './walk-in/AgencyProfileForm'
 import { BookingCreatedPanel } from './walk-in/BookingCreatedPanel'
 import { BookingWizardHeader } from './walk-in/BookingWizardHeader'
 import { Field } from './walk-in/Field'
-import { FIELD, GROUP, GROUP_TITLE, OPTION_LIST } from './walk-in/formStyles'
+import { GROUP, GROUP_TITLE, OPTION_LIST } from './walk-in/formStyles'
 import { stayLines } from './walk-in/stayLine'
 
 /**
@@ -194,6 +196,46 @@ export function WalkInBookingForm({
   // quietly charged the regular ones, so a booking made during a promo sale came
   // out at the wrong price unless staff noticed this switch.
   const [createdBookingList, setCreatedBookingList] = useState<Booking[]>([])
+  // THE BOOKING MOMENTS (the mock Sebastian approved, 2026-10-16). Confirm turns into a green
+  // "Booked" for a moment and the form steps back (`leaving`) before the receipt rises, so the
+  // desk sees the booking take before the paper arrives.
+  const [booked, setBooked] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  // Where the desk picked the stay on the calendar: the form grows out of it.
+  const [origin] = useState(readFormOrigin)
+  const card = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = card.current
+    if (!origin || !el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const to = el.getBoundingClientRect()
+    el.animate([
+      { transformOrigin: '0 0', opacity: 0.4, transform: `translate(${origin.x - to.left}px, ${origin.y - to.top}px) scale(${origin.w / to.width}, ${origin.h / to.height})` },
+      { transformOrigin: '0 0', opacity: 1, transform: 'none' },
+    ], { duration: 500, easing: 'cubic-bezier(0.2, 1.1, 0.3, 1)' })
+  }, [origin])
+  // The window eases to its new height when a part opens or closes, instead of jumping (the
+  // owner, 2026-10-16: "when the form gets taller it doesn't have an animation"). While it
+  // moves, the sizes it passes through are ignored, so it never chases its own animation.
+  useEffect(() => {
+    const el = card.current
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let last = el.offsetHeight
+    let moving: Animation | null = null
+    const ro = new ResizeObserver(() => {
+      if (moving) return
+      const now = el.offsetHeight
+      if (Math.abs(now - last) > 2) {
+        // While it grows, its columns are briefly shorter than what they hold; `data-growing`
+        // hides the scrollbar that would flash between them (the owner, 2026-10-16).
+        el.dataset.growing = ''
+        moving = el.animate([{ height: last + 'px' }, { height: now + 'px' }], { duration: 320, easing: 'cubic-bezier(0.2, 1, 0.3, 1)' })
+        moving.onfinish = moving.oncancel = () => { moving = null; last = el.offsetHeight; delete el.dataset.growing }
+      }
+      last = now
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   /** The receipt for money taken **in this form** — null for a Reservation, which pays nothing. */
   const [createdReceipt, setCreatedReceipt] = useState<PaymentRecord | null>(null)
 
@@ -506,6 +548,7 @@ export function WalkInBookingForm({
     setReference: setFormPaymentReference,
     methodRequired,
     depositRequired,
+    breakfast: estBreakfast,
   }
 
   /** What the guest hands over in this form — the figure beside the Confirm button. */
@@ -513,10 +556,16 @@ export function WalkInBookingForm({
   /** Something that actually went wrong: a refused save, or a box Confirm found empty. */
   const footerProblem = formError || (trySave ? (Object.values(fieldErrors).find(Boolean) || '') : '')
 
-  const staffNames = useMemo(
-    () => Array.from(new Set((bookings || []).map(b => (b.prepared_by || '').trim()).filter(Boolean))).sort(),
-    [bookings]
-  )
+  // The receptionists as chips: the names on the bookings, most used first, at most six, so
+  // a name typed once by mistake does not stay on the form for ever.
+  const staffNames = useMemo(() => {
+    const count = new Map<string, number>()
+    for (const b of bookings || []) {
+      const n = (b.prepared_by || '').trim().toUpperCase()
+      if (n) count.set(n, (count.get(n) || 0) + 1)
+    }
+    return [...count].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([n]) => n)
+  }, [bookings])
 
   // The picked rooms, in calendar order — what the breakfast chips offer.
   const pickedRooms = useMemo(
@@ -538,6 +587,17 @@ export function WalkInBookingForm({
 
   /** An agency booking cannot be confirmed until the bill has an addressee. */
   const agencyMissing = agencyOn && formStatus === 'confirmed' && !formCompanyName.trim()
+  const removeAgency = () => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'custom' : p) }
+  /** The one box the form is waiting on wears gold (`bk-want`), in the same order as the
+   *  line beside Confirm — the booking form mock, 2026-10-16. */
+  const want: Want = formStatus !== 'confirmed' ? null
+    : !formGuestName.trim() ? 'name'
+    : agencyMissing ? null
+    : depositRequired && !planChosen ? 'plan'
+    : depositRequired && formPaymentPlan === 'custom' && agreedDeposit <= 0 ? 'amount'
+    : methodRequired && !formPaymentMethod ? 'method'
+    : methodRequired && methodNeedsReference(formPaymentMethod) && !formPaymentReference.trim() ? 'ref'
+    : null
 
   /**
    * Create a new agency, or correct the one that is on the booking — same profile form.
@@ -631,6 +691,11 @@ export function WalkInBookingForm({
     })
     if (!result.ok) { setFormError(result.error); setIsSubmitting(false); return }
     if (!editingBookings) rememberReceptionist(formPreparedBy)
+    setIsSubmitting(false)
+    setBooked(true)
+    await new Promise(r => setTimeout(r, 700))
+    setLeaving(true)
+    await new Promise(r => setTimeout(r, 220))
     setCreatedBookingList(result.bookings)
     // **The money was taken in this form** (2026-09-29), so what the guest is handed is the
     // receipt, not the bill. A Reservation pays nothing and returns no receipt, so it still
@@ -658,12 +723,13 @@ export function WalkInBookingForm({
   const modalContent = (
     // A press outside the form does nothing: it used to close it, so one stray tap beside
     // the form threw away everything the desk had typed. Cancel and ✕ are the ways out.
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 font-sans">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 font-sans bp-dim motion-reduce:[animation:none]">
       {/* TWO COLUMNS on a wide screen — the guest and the stay on the left, the payment
           on the right — so the money is beside the guest instead of under everything
           else, and nothing a walk-in needs is below the fold. On a tablet it is one
           column, with the payment last and the amount held beside Confirm. */}
-      <div className="w-full max-w-2xl lg:max-w-5xl bg-card rounded-xl shadow-softLg flex flex-col max-h-[92dvh] overflow-hidden animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
+      <div ref={card} className={'w-full max-w-2xl lg:max-w-5xl bg-card rounded-xl shadow-softLg flex flex-col max-h-[92dvh] overflow-hidden ' +
+        (leaving ? 'bk-leave' : origin ? '' : 'animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none')}>
 
         <BookingWizardHeader
           bookingType={bookingType}
@@ -723,12 +789,13 @@ export function WalkInBookingForm({
                     setFormAddress={setFormAddress}
                     onSelectPartnerDeal={handleSelectPartnerDeal}
                     guestNameError={showErr('guestName')}
+                    nameWanted={want === 'name'}
                     onGuestNameBlur={markTouched('guestName')}
                     agencyOn={agencyOn}
                     agencyKey={formPartnerDealId || formCompanyName}
                     agencyPicking={agencyPicking}
                     onAddAgency={() => { setAgencyOn(true); setAgencyPicking(true) }}
-                    onRemoveAgency={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'custom' : p) }}
+                    onRemoveAgency={removeAgency}
                     agencySlot={agencyOn ? (
                       <AgencyFields
                         value={agency}
@@ -744,7 +811,7 @@ export function WalkInBookingForm({
                           setAgencyPicking(false)
                         }}
                         onOpenProfile={openAgencyProfile}
-                        onRemove={() => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'custom' : p) }}
+                        onRemove={removeAgency}
                       />
                     ) : null}
                   />
@@ -833,22 +900,17 @@ export function WalkInBookingForm({
                   leading it. */}
               <div className="px-5 sm:px-6 py-5 border-t lg:border-t-0 lg:border-l border-soft lg:overflow-y-auto">
                 <section className={GROUP + ' font-sans delay-150 animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-both motion-reduce:animate-none'}>
-                  <h4 className={GROUP_TITLE}>Payment</h4>
+                  <h4 className={GROUP_TITLE + ' flex items-center gap-1.5'}>
+                    Payment
+                    {!editingBookings && !paymentPrompt && (shortStayHours ? !!formPaymentMethod : planChosen) && <Seal />}
+                  </h4>
                   <BookingDepositFields
                     shortStay={!!shortStayHours}
                     {...depositFieldProps}
+                    want={want}
                   />
-                  {/* The names used before suggest themselves (card k136), so the same
-                      person is never written two different ways. */}
-                  <Field label="Receptionist" className="pt-1">
-                    <input list="staff-names" value={formPreparedBy}
-                      title="Who took this booking — it prints on the bill and the receipt."
-                      autoComplete="off"
-                      onChange={e => setFormPreparedBy(e.target.value.toUpperCase())}
-                      className={FIELD} />
-                    <datalist id="staff-names">
-                      {staffNames.map(name => <option key={name} value={name} />)}
-                    </datalist>
+                  <Field group label="Receptionist" className="pt-1">
+                    <ReceptionistChips names={staffNames} value={formPreparedBy} onChange={setFormPreparedBy} />
                   </Field>
                 </section>
               </div>
@@ -877,8 +939,12 @@ export function WalkInBookingForm({
           {formStatus === 'confirmed' && (
             <div className="shrink-0 border-t border-soft bg-card px-5 sm:px-6 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <p role="status" className={'basis-full lg:basis-0 lg:flex-1 lg:text-right min-w-0 text-[14px] font-medium empty:hidden ' + (footerProblem ? 'text-danger-600' : 'text-main')}>
-                {footerProblem || (!formGuestName.trim() ? 'Type the guest’s name.'
-                  : agencyMissing ? 'Choose the agency — the bill is addressed to them.' : paymentPrompt)}
+                {/* Each new line rises in as the last is met (the booking moments mock). */}
+                {(() => {
+                  const line = footerProblem || (!formGuestName.trim() ? 'Type the guest’s name.'
+                    : agencyMissing ? 'Choose the agency — the bill is addressed to them.' : paymentPrompt)
+                  return line ? <span key={line} className="bp-up motion-reduce:[animation:none]">{line}</span> : null
+                })()}
               </p>
               {!editingBookings && (
                 <p className="lg:hidden flex items-baseline gap-2">
@@ -888,8 +954,12 @@ export function WalkInBookingForm({
               )}
               <div className="flex items-center gap-2 ml-auto">
                 <button type="button" onClick={onClose} className="min-h-12 px-4 rounded-lg text-[15px] font-bold text-main hover:bg-softbg transition-colors cursor-pointer">Cancel</button>
-                <button type="submit" disabled={isSubmitting || agencyMissing || !!paymentPrompt} className="min-h-12 px-6 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-[15px] font-bold shadow-sm transition-[background-color,transform] duration-150 active:scale-[0.98] cursor-pointer disabled:bg-softbg disabled:text-muted disabled:shadow-none disabled:cursor-default disabled:active:scale-100">
-                  {isSubmitting ? 'Saving…' : editingBookings ? 'Save changes' : 'Confirm booking'}
+                {/* It wakes when the form is ready — grey to gold with one shine (`bk-wake`) —
+                    and turns green once the booking has taken. */}
+                <button type="submit" disabled={booked || isSubmitting || agencyMissing || !!paymentPrompt} className={'bk-wake relative overflow-hidden min-h-12 px-6 rounded-lg text-[15px] font-bold transition-[background-color,color,transform] duration-300 ' + (booked
+                  ? 'bg-emerald-600 text-white cursor-default'
+                  : 'bg-gold-400 hover:bg-gold-600 text-ink-900 shadow-sm active:scale-[0.98] cursor-pointer disabled:bg-softbg disabled:text-muted disabled:shadow-none disabled:cursor-default disabled:active:scale-100')}>
+                  {booked ? (editingBookings ? '✓ Saved' : '✓ Booked') : isSubmitting ? 'Saving…' : editingBookings ? 'Save changes' : 'Confirm booking'}
                 </button>
               </div>
             </div>

@@ -43,7 +43,8 @@ function Counter({ label, value, onChange }: { label: string; value: number; onC
         aria-label={'One fewer ' + label} className={ICON_BUTTON + ' disabled:opacity-30 disabled:hover:bg-transparent'}>
         <Minus className="w-4 h-4" />
       </button>
-      <span className="w-7 text-center text-[15px] font-semibold tabular-nums text-main">{value}</span>
+      {/* The figure pops as it changes (the booking form mock, 2026-10-16). */}
+      <span className="w-7 text-center"><span key={value} className="bk-pop inline-block text-[15px] font-semibold tabular-nums text-main">{value}</span></span>
       <button type="button" onClick={() => onChange(value + 1)} aria-label={'One more ' + label} className={ICON_BUTTON}>
         <Plus className="w-4 h-4" />
       </button>
@@ -136,7 +137,7 @@ export const AmenitiesForm = React.memo(
           <span className={OPTION_NAME}>Add-ons</span>
           <span className={OPTION_VALUE}>
             {added ? (
-              <span className="truncate text-main">
+              <span key={added} className="bp-up truncate text-main">
                 {added}
                 <span className="ml-2 tabular-nums">+₱{(estRentals + estAddons).toLocaleString()}</span>
               </span>

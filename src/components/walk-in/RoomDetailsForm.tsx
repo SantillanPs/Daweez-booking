@@ -6,6 +6,7 @@ import { BlockReasonFields } from './BlockReasonFields'
 import { BirthDateInput } from './BirthDateInput'
 import { NationalityInput } from '../NationalityInput'
 import { Field } from './Field'
+import { Seal } from './Seal'
 import { FIELD, FIELD_ERROR, SELECT, GROUP, GROUP_TITLE, OPTION_LIST, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL } from './formStyles'
 
 interface RoomDetailsFormProps {
@@ -44,6 +45,8 @@ interface RoomDetailsFormProps {
   setFormAddress: (val: string) => void
   onSelectPartnerDeal: (deal: PartnerDeal | null) => void
   guestNameError: string
+  /** The name is the box the form is waiting on, so it wears gold (`bk-want`). */
+  nameWanted?: boolean
   onGuestNameBlur: () => void
   /** An agency is paying: the ⋯ menu offers it, and `agencySlot` sits above the name. */
   agencyOn: boolean
@@ -81,8 +84,10 @@ export const RoomDetailsForm = React.memo(
     formCompanions,
     setFormCompanions,
     guestNameError,
+    nameWanted = false,
     onGuestNameBlur,
     agencyOn,
+    formCompanyName,
     onAddAgency,
     onRemoveAgency,
     agencySlot
@@ -119,7 +124,11 @@ export const RoomDetailsForm = React.memo(
     return (
       <section className={GROUP + ' font-sans'}>
         <div className="flex items-center justify-between gap-2">
-          <h4 className={GROUP_TITLE}>Guest</h4>
+          <h4 className={GROUP_TITLE + ' flex items-center gap-1.5'}>
+            {agencyOn && formCompanyName.trim() && <Building2 aria-hidden="true" className="bk-pop w-4 h-4 text-brand-text" />}
+            Guest
+            {formGuestName.trim() && (!agencyOn || formCompanyName.trim()) && <Seal />}
+          </h4>
           {/* The ⋯ — the owner's own idea (2026-09): one small dot menu at the end of this
               row, holding "Add agency?" and, once an agency is on the booking, only
               "Remove agency" — **Change lives on the bill-to line itself** (the owner took
@@ -133,7 +142,7 @@ export const RoomDetailsForm = React.memo(
               ⋯
             </button>
             {menuOpen && (
-              <div className={'absolute right-0 top-11 z-30 min-w-[184px] bg-card border border-soft rounded-md shadow-softLg overflow-hidden ' + REVEAL}>
+              <div className={'bk-pop origin-top-right absolute right-0 top-11 z-30 min-w-[184px] bg-card border border-soft rounded-md shadow-softLg overflow-hidden'}>
                 {!agencyOn ? (
                   <button type="button" onClick={() => { setMenuOpen(false); onAddAgency() }}
                     className="w-full text-left px-3 h-11 text-[14px] font-semibold text-main hover:bg-gold-100 flex items-center gap-2 cursor-pointer">
@@ -166,7 +175,7 @@ export const RoomDetailsForm = React.memo(
               onChange={e => setFormGuestName(e.target.value.toUpperCase())}
               onBlur={onGuestNameBlur}
               aria-invalid={guestNameError ? true : undefined}
-              className={guestNameError ? FIELD_ERROR : FIELD}
+              className={guestNameError ? FIELD_ERROR : FIELD + (nameWanted ? ' bk-want' : '')}
             />
           </Field>
           <Field label="Contact no.">
@@ -272,6 +281,7 @@ export const RoomDetailsForm = React.memo(
       prevProps.formVehiclePlate === nextProps.formVehiclePlate &&
       prevProps.showCompanions === nextProps.showCompanions &&
       prevProps.guestNameError === nextProps.guestNameError &&
+      prevProps.nameWanted === nextProps.nameWanted &&
       // The agency slot is a ReactNode, so the memo compares WHAT IT SHOWS (the agency's
       // identity) rather than the node itself — otherwise the card could keep an older
       // bill-to line after the agency changed.

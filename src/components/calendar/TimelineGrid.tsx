@@ -7,6 +7,7 @@ import { dueToday, getBookingStyle, roomDisplayName } from './bookingStyles'
 import { dateToString } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
 import { TimelineDayInfo } from './timelineDays'
+import { rememberFormOrigin } from '../../utils/bookingFocus'
 
 export type { TimelineDayInfo }
 
@@ -173,6 +174,21 @@ export const TimelineGrid = React.memo(
       }
       setBarPos(prev => (prev && prev.center === next.center && prev.top === next.top && prev.width === next.width && prev.minLeft === next.minLeft && prev.maxRight === next.maxRight ? prev : next))
     }, [barAnchor])
+    // Where the picked stay is on screen, so the booking form can grow out of it rather than
+    // appear from nowhere (the booking moments mock, Sebastian, 2026-10-16).
+    const rememberPick = () => {
+      const scroller = scrollRef.current
+      if (!barAnchor || !scroller) return
+      const cellAt = (iso: string) => scroller.querySelector('[data-unit="' + barAnchor.unitId + '"][data-day="' + iso + '"]') as HTMLTableCellElement | null
+      const a = cellAt(barAnchor.iso)
+      if (!a) return
+      const b = barAnchor.outIso ? cellAt(barAnchor.outIso) : null
+      const ra = a.getBoundingClientRect()
+      const rb = b ? b.getBoundingClientRect() : null
+      const left = ra.left + (a.colSpan > 1 ? ra.width / 2 : 0)
+      const right = b && rb ? rb.left + (b.colSpan > 1 ? rb.width / 2 : rb.width) : ra.right
+      rememberFormOrigin({ x: left, y: ra.top, w: Math.max(8, right - left), h: ra.height })
+    }
     // After every render, before the screen is painted: the bar's own width is only known
     // once it is on screen, and it changes when it goes from one day to a range. Nothing
     // is set when nothing moved, so this settles at once.
@@ -301,7 +317,7 @@ export const TimelineGrid = React.memo(
           ? dayInfo.time === range.start ? 'start' : dayInfo.time === range.end ? 'end' : dayInfo.time > range.start && dayInfo.time < range.end ? 'mid' : null
           : null
         cells.push(
-          <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={wholeDay ? 2 : 1} halfOf={halfOf} closesDay={!morning || wholeDay} isCheckIn={!!isDraftCheckIn} highlight={highlight} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+          <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={wholeDay ? 2 : 1} halfOf={halfOf} closesDay={!morning || wholeDay} isCheckIn={!!isDraftCheckIn} highlight={highlight} pickAt={range ? Math.round((dayInfo.time - range.start) / 86400000) : 0} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
         )
         k += wholeDay ? 2 : 1
       }
@@ -351,10 +367,17 @@ export const TimelineGrid = React.memo(
                 <span className="truncate max-w-[170px] font-display font-bold text-brand-text">{barName}</span>
                 <span className="shrink-0 text-muted">· {from ? fmt(from) : ''}{to && nights > 0 ? ' → ' + fmt(to) : ''}</span>
               </span>
+              {/* How many nights, popping to its new figure as the pick grows (the booking
+                  moments mock, 2026-10-16). */}
+              {hasRange && nights > 0 && (
+                <span key={nights} className="bp-up shrink-0 h-5 px-2 rounded-full bg-ink-900 text-white text-[12px] font-bold leading-5 tabular-nums">
+                  {nights} {nights === 1 ? 'night' : 'nights'}
+                </span>
+              )}
 
               {hasRange ? (
                 <>
-                  <button type="button" onClick={onNewBooking}
+                  <button type="button" onClick={() => { rememberPick(); onNewBooking() }}
                     className="shrink-0 inline-flex items-center gap-1 h-7 px-3.5 rounded-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold transition-colors active:scale-[0.98] cursor-pointer">
                     <Plus className="w-3.5 h-3.5" /> New booking
                   </button>

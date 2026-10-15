@@ -62,7 +62,13 @@ interface BookingDepositFieldsProps {
    * one, so the form could never be confirmed at all.)
    */
   shortStay?: boolean
+  /** What breakfast adds to the stay, shown beside the total while it is on. */
+  breakfast?: number
+  /** The box the form is waiting on, which wears gold. */
+  want?: Want
 }
+
+export type Want = 'name' | 'plan' | 'amount' | 'method' | 'ref' | null
 
 const choiceOf = (plan: PayPlan): DepositChoice =>
   plan === 'full' ? 'full' : plan === 'reservation' || plan === 'agency' ? 'reservation' : 'custom'
@@ -113,7 +119,10 @@ export function BookingDepositFields({
   methodRequired,
   depositRequired = false,
   shortStay = false,
+  breakfast = 0,
+  want = null,
 }: BookingDepositFieldsProps) {
+  const wants = (w: Want) => (want === w ? ' bk-want' : '')
   const total = Math.max(0, Math.round(estTotal))
   const choice = choiceOf(plan)
 
@@ -142,6 +151,9 @@ export function BookingDepositFields({
         <p className={LABEL}>{shortStay ? 'To pay now' : 'Total'}</p>
         <p className="mt-1 font-display text-[34px] leading-none font-extrabold tracking-tight tabular-nums text-main">
           <AnimatedNumber value={total} duration={350} prefix="₱" />
+          {breakfast > 0 && (
+            <span className="bp-up ml-2 align-middle text-[13px] font-bold tracking-normal text-gold-800">+₱{breakfast.toLocaleString()} breakfast</span>
+          )}
         </p>
       </div>
 
@@ -149,7 +161,9 @@ export function BookingDepositFields({
       {!shortStay && (
         <div className="space-y-3">
           <Field group label="Payment" required={waitingOnPayment}>
-            <SegmentedControl options={choices} value={picked} onChange={k => { if (k) setPlan(k) }} label="How much the guest pays now" />
+            <div className={'rounded-md' + wants('plan')}>
+              <SegmentedControl options={choices} value={picked} onChange={k => { if (k) setPlan(k) }} label="How much the guest pays now" />
+            </div>
           </Field>
 
           {chosen && choice === 'custom' && (
@@ -157,7 +171,7 @@ export function BookingDepositFields({
               <span className="relative block">
                 <NumInput value={agreedDeposit} aria-label="Deposit the guest pays now"
                   onChange={v => { setPlan('custom'); setAgreedDeposit(v) }}
-                  className={'peer ' + FIELD + ' text-right text-[17px] font-bold tabular-nums'} />
+                  className={'peer ' + FIELD + ' text-right text-[17px] font-bold tabular-nums' + wants('amount')} />
                 <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-medium text-muted">₱</span>
               </span>
               <Field label="Notes">
@@ -176,7 +190,9 @@ export function BookingDepositFields({
       {/* ── How the guest pays — the row that takes the money (2026-09-29) ── */}
       {asksForMoney && (
         <Field group label="Paid by" required={methodRequired}>
-          <SegmentedControl options={methodOptions} value={method} onChange={setMethod} label="How the guest pays" />
+          <div className={'rounded-md' + wants('method')}>
+            <SegmentedControl options={methodOptions} value={method} onChange={setMethod} label="How the guest pays" />
+          </div>
         </Field>
       )}
 
@@ -188,7 +204,7 @@ export function BookingDepositFields({
             onChange={e => setReference(e.target.value)}
             placeholder="From the guest's phone"
             autoComplete="off"
-            className={FIELD + ' tabular-nums'}
+            className={FIELD + ' tabular-nums' + wants('ref')}
           />
         </Field>
       )}
