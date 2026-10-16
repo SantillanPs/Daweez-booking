@@ -23,6 +23,23 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-16d',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'A room with no price for 3, 6 or 12 hours shows a dashed chip. Tap it, type the price, and the short stay opens. The price is kept for that room.',
+        ],
+      },
+      {
+        where: 'Front desk → New booking',
+        what: [
+          'A room with no breakfast price shows “Set price”. Tap it and type the price: breakfast goes on, and the price is kept for that room.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-16c',
     changes: [
       {

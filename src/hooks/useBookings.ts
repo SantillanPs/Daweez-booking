@@ -600,12 +600,23 @@ export function useBookings() {
   const hoursAsync = updateRoomHourPricesMutation.mutateAsync
   const updateRoomRate = useCallback((roomId: string, basePrice: number, promoPrice?: number | null) =>
     rateAsync({ roomId, basePrice, promoPrice }), [rateAsync])
-  const updateRoomBreakfastPrice = useCallback(async (roomId: string, price: number) => {
-    await breakfastAsync({ roomId, price })
-  }, [breakfastAsync])
-  const updateRoomHourPrices = useCallback(async (roomId: string, hour3: number, hour6: number, hour12: number) => {
-    await hoursAsync({ roomId, hour3, hour6, hour12 })
-  }, [hoursAsync])
+  // A price typed on the spot (the booking form, the calendar's short-stay hours) is on the
+  // room at once and saved behind it, so the form that opens next already charges it; a failed
+  // save puts the old figures back (the price-on-the-spot mock Sebastian approved, 2026-10-16).
+  const patchRoom = useCallback(async (roomId: string, patch: Partial<Room>, save: () => Promise<unknown>) => {
+    const before = queryClient.getQueryData<Room[]>(['rooms'])
+    queryClient.setQueryData<Room[]>(['rooms'], list => list?.map(r => r.id === roomId ? { ...r, ...patch } : r))
+    try {
+      await save()
+    } catch (e) {
+      queryClient.setQueryData(['rooms'], before)
+      throw e
+    }
+  }, [queryClient])
+  const updateRoomBreakfastPrice = useCallback((roomId: string, price: number) =>
+    patchRoom(roomId, { breakfast_price: price }, () => breakfastAsync({ roomId, price })), [patchRoom, breakfastAsync])
+  const updateRoomHourPrices = useCallback((roomId: string, hour3: number, hour6: number, hour12: number) =>
+    patchRoom(roomId, { hour3_price: hour3, hour6_price: hour6, hour12_price: hour12 }, () => hoursAsync({ roomId, hour3, hour6, hour12 })), [patchRoom, hoursAsync])
 
   return {
     rooms,

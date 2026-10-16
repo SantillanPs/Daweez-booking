@@ -8,6 +8,9 @@ import { dateToString } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
 import { TimelineDayInfo } from './timelineDays'
 import { rememberFormOrigin } from '../../utils/bookingFocus'
+import { useDashboardData } from '../DashboardContext'
+import { PriceBox } from '../PriceBox'
+import { showToast } from '../../utils/toast'
 
 export type { TimelineDayInfo }
 
@@ -108,6 +111,11 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
   // left and right it may reach. The width is the bar's own, read back once it is on screen.
   const [barPos, setBarPos] = React.useState<{ center: number; top: number; width: number; minLeft: number; maxRight: number } | null>(null)
   const barRef = React.useRef<HTMLDivElement>(null)
+  // The hours whose price is being typed in the bar (a room not yet sold for them), and for
+  // which pick — picking another day or room puts the chip back.
+  const [pricing, setPricing] = React.useState<{ h: number; pick: string } | null>(null)
+  const pick = barAnchor ? barAnchor.unitId + barAnchor.iso : ''
+  const { updateRoomHourPrices } = useDashboardData()
   const placeBar = React.useCallback(() => {
     const scroller = scrollRef.current
     if (!barAnchor || !scroller) { setBarPos(null); return }
@@ -236,13 +244,31 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
           SHORT_STAY_HOURS.map(h => {
             const price = h === 3 ? barRoom.hour3_price : h === 6 ? barRoom.hour6_price : barRoom.hour12_price
             const sellable = !!price && Number(price) > 0
+            // A room with no price for these hours asks for it right here instead of being
+            // greyed out (Sebastian, 2026-10-16: "ask the staff to enter a price for that room
+            // on the spot"). The price is saved on the room and the short stay opens at once.
+            if (pricing?.h === h && pricing.pick === pick) return (
+              <PriceBox key={h} label={h + 'h'} className="h-8 text-[13px]"
+                onBack={() => setPricing(null)}
+                onSave={p => {
+                  setPricing(null)
+                  const now = (n?: number | null) => Number(n || 0)
+                  updateRoomHourPrices?.(barRoom.id,
+                    h === 3 ? p : now(barRoom.hour3_price), h === 6 ? p : now(barRoom.hour6_price), h === 12 ? p : now(barRoom.hour12_price))
+                    .catch(() => showToast('The ' + h + '-hour price for ' + roomDisplayName(barRoom) + ' was not saved. Try again.', 'error'))
+                  rememberPick()
+                  onNewShortStay(h)
+                }} />
+            )
             return (
-              <button key={h} type="button" disabled={!sellable} onClick={() => onNewShortStay(h)}
+              <button key={h} type="button"
+                onClick={() => { if (sellable) { rememberPick(); onNewShortStay(h) } else setPricing({ h, pick }) }}
                 title={sellable
                   ? 'A ' + h + '-hour stay — ₱' + Number(price).toLocaleString() + ' — takes ' + roomDisplayName(barRoom) + ' for this whole day'
-                  : 'This room is not sold for ' + h + ' hours — set it in Settings → Rooms & prices'}
-                className="shrink-0 inline-flex items-center gap-1 h-7 px-3 rounded-full border border-soft text-[13px] font-bold text-brand-text hover:bg-gold-100 hover:border-gold-400 transition-colors active:scale-[0.98] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-soft">
-                {sellable ? h + 'h' : h + 'h · —'}
+                  : 'No ' + h + '-hour price for this room yet — tap to set it'}
+                className={'shrink-0 inline-flex items-center gap-1 h-7 px-3 rounded-full border text-[13px] font-bold text-brand-text hover:bg-gold-100 hover:border-gold-400 transition-[background-color,border-color,transform] duration-200 active:scale-90 cursor-pointer ' +
+                  (sellable ? 'border-soft' : 'border-dashed border-gold-400')}>
+                {h}h{!sellable && <span className="font-semibold text-muted">· ₱?</span>}
               </button>
             )
           })

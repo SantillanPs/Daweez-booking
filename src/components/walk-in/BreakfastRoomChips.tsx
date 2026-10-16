@@ -1,8 +1,11 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Check, Coffee } from 'lucide-react'
 import { Room } from '../../types/booking'
 import { breakfastSellable } from '../../utils/breakfast'
 import { OPTION_NAME } from './formStyles'
+import { PriceBox } from '../PriceBox'
+import { useDashboardData } from '../DashboardContext'
+import { showToast } from '../../utils/toast'
 
 interface BreakfastRoomChipsProps {
   /** The rooms this booking actually picked, in the order they were picked. */
@@ -30,8 +33,9 @@ interface BreakfastRoomChipsProps {
  * brown chip meant "on"). With one room the box says what it adds — `₱300 for the stay`;
  * the room is already in the form's title. With several, each box is named by its room.
  *
- * A room the desk has never priced is NOT tappable — it would charge ₱0 and look like it
- * worked — so it reads "no price".
+ * A room the desk has never priced never charges ₱0: its chip is dashed and reads "Set price",
+ * and tapping it asks for the price right there (Sebastian, 2026-10-16: "ask the staff to enter
+ * a price for that room on the spot"). The price is saved on the room and breakfast goes on.
  *
  * It builds OFF: a room starts without breakfast, so nothing is ever charged by
  * accident.
@@ -41,6 +45,8 @@ interface BreakfastRoomChipsProps {
  * said; the total is in the payment column.
  */
 export function BreakfastRoomChips({ rooms, chosen, onToggle, onAll }: BreakfastRoomChipsProps) {
+  const [pricing, setPricing] = useState<string | null>(null)
+  const { updateRoomBreakfastPrice } = useDashboardData()
   if (rooms.length === 0) return null
 
   const priced = rooms.filter(breakfastSellable)
@@ -62,6 +68,27 @@ export function BreakfastRoomChips({ rooms, chosen, onToggle, onAll }: Breakfast
         )}
         {rooms.map(room => {
           const sellable = breakfastSellable(room)
+          if (!sellable && pricing === room.id) return (
+            <PriceBox key={room.id} className="h-9 text-[14px]"
+              label={<><Coffee aria-hidden="true" className="w-4 h-4" />{!alone && <span>Room {room.room_number}</span>}</>}
+              onBack={() => setPricing(null)}
+              onSave={p => {
+                setPricing(null)
+                updateRoomBreakfastPrice?.(room.id, p)
+                  .catch(() => showToast('The breakfast price for Room ' + room.room_number + ' was not saved. Try again.', 'error'))
+                // The desk tapped it to add breakfast, so it goes on.
+                if (!chosen.includes(room.id)) onToggle(room.id)
+              }} />
+          )
+          if (!sellable) return (
+            <button key={room.id} type="button" onClick={() => setPricing(room.id)}
+              aria-label={'Breakfast for Room ' + room.room_number + ', no price yet — set it'}
+              className="flex items-center gap-2 h-9 text-[14px] font-semibold rounded-md px-3 border border-dashed border-gold-400 text-gold-800 hover:bg-gold-100 cursor-pointer transition-[background-color,transform] duration-200 active:scale-[0.95]">
+              <Coffee aria-hidden="true" className="w-4 h-4 shrink-0" />
+              {!alone && <span>Room {room.room_number}</span>}
+              <span>Set price</span>
+            </button>
+          )
           const amount = Number(room.breakfast_price || 0)
           const on = sellable && chosen.includes(room.id)
           const price = '₱' + amount.toLocaleString()

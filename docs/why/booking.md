@@ -75,6 +75,7 @@
 - **22 hours is just the room's normal night price**, so it is an ordinary booking.
 - **A short stay blocks the whole day**, because housekeeping cleans the room afterwards and it is never resold the same day.
 - **The clock starts at the Check in press.** The app shows the *time* the room is free (`out 1:12 PM`), never a countdown. When time is up the block turns red and the booking's panel opens by itself — one at a time, never reopened once closed. The app only tells the desk; it adds no money on its own. Once time is up the panel says `Time up · out by 1:00 PM` and how long it is past (`+18 min`) — the design he kept from the mock (2026-10-16); that time is still not charged.
+- **A room with no price for those hours asks for it on the spot** (the owner, 2026-10-16: *"if a room has no price, then it should just ask the staff to enter a price for that room on the spot"*). The dashed hour opens into a ₱ box in the calendar bar; the price is saved on the room, as if typed in Settings, and the short stay opens.
 - **No early or late charge on a short stay.** A 10am arrival for three hours is not "four hours early".
 - **Extending a short stay turns it into a normal stay priced by nights** (ruled 2026-10-03).
 - Everywhere a short stay is shown it reads `Sep 25 · 3 hours`, never `Sep 25 → Sep 26`.
