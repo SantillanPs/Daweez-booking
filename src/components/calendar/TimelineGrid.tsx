@@ -86,6 +86,207 @@ function DayCount({ n, title, className, children }: { n: number; title: string;
   )
 }
 
+type BarAnchor = { unitId: string; iso: string; outIso: string }
+
+/**
+ * The action bar, in a component of its own: placing it reads its own width back after it
+ * is drawn, and while it lived in the grid every one of those reads redrew all ~400 cells
+ * again — four times a click, which the desk felt as a delay on every tap (Sebastian,
+ * 2026-10-16: "when I click on a cell in the calendar there's a short delay").
+ */
+function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection, selectionName, rooms, venues, barRoom, onNewBooking, onBlockDates, onLogOldBooking, onNewShortStay, onClearSelection }: {
+  scrollRef: React.RefObject<HTMLDivElement | null>
+  barAnchor: BarAnchor | null
+  timelineSelection: TimelineGridProps['timelineSelection']
+  groupSelection: TimelineGridProps['groupSelection']
+  selectionName: string
+  rooms: Room[]
+  venues: Venue[]
+  barRoom: Room | null
+} & Pick<TimelineGridProps, 'onNewBooking' | 'onBlockDates' | 'onLogOldBooking' | 'onNewShortStay' | 'onClearSelection'>) {
+  // Where the bar goes: the middle of the picked dates, its row, how wide it is, and how far
+  // left and right it may reach. The width is the bar's own, read back once it is on screen.
+  const [barPos, setBarPos] = React.useState<{ center: number; top: number; width: number; minLeft: number; maxRight: number } | null>(null)
+  const barRef = React.useRef<HTMLDivElement>(null)
+  const placeBar = React.useCallback(() => {
+    const scroller = scrollRef.current
+    if (!barAnchor || !scroller) { setBarPos(null); return }
+    const cellAt = (iso: string) => scroller.querySelector('[data-unit="' + barAnchor.unitId + '"][data-day="' + iso + '"]') as HTMLTableCellElement | null
+    const cell = cellAt(barAnchor.iso)
+    if (!cell) { setBarPos(null); return }
+    const outCell = barAnchor.outIso ? cellAt(barAnchor.outIso) : null
+    // ABOVE the picked row, by one bar height plus a small gap: on the row it covered
+    // the very dates the desk had just chosen (the owner's catch), and flush against
+    // the row above still read as touching it, so it clears both.
+    // **Always above, never below** (Sebastian, 2026-10-06). It used to drop below the
+    // row for the first rooms, where the sticky day header is what lies above, and then
+    // sat on top of the very rooms the desk was about to pick the next day from. Now it
+    // goes over the header there instead (it is drawn above it), kept inside the grid's
+    // top edge so it is never cut off.
+    // The bar and its gap add up to ONE ROW (48px), so above the pick it lies inside
+    // the row over it and covers no more of the grid than that.
+    const BAR_HEIGHT = 42
+    const GAP = 6
+    const above = Math.max(0, cell.offsetTop - BAR_HEIGHT - GAP)
+    // **Centred on the picked dates** (Sebastian, 2026-10-06). It began two day columns to
+    // the left of the first pick; it now sits in the middle of the stay, which runs from
+    // the afternoon of the first day to the morning of the last — the span that is
+    // highlighted (a day that is still whole is `colSpan` 2, and only its half belongs to
+    // the stay). While only the first day is picked, it is centred on that day's mark.
+    const startX = cell.offsetLeft + (cell.colSpan > 1 ? cell.offsetWidth / 2 : 0)
+    const endX = outCell
+      ? outCell.offsetLeft + (outCell.colSpan > 1 ? outCell.offsetWidth / 2 : outCell.offsetWidth)
+      : cell.offsetLeft + cell.offsetWidth
+    // It may not slide left over the sticky room names, nor off the right end of the grid.
+    const dayHeaders = scroller.querySelectorAll('th[data-day]') as NodeListOf<HTMLElement>
+    const minLeft = dayHeaders.length > 0 ? dayHeaders[0].offsetLeft : 0
+    const table = scroller.querySelector('table') as HTMLElement | null
+    const next = {
+      center: Math.round((startX + endX) / 2),
+      top: above,
+      width: barRef.current?.offsetWidth ?? 0,
+      minLeft,
+      maxRight: table ? table.offsetWidth : scroller.scrollWidth,
+    }
+    setBarPos(prev => (prev && prev.center === next.center && prev.top === next.top && prev.width === next.width && prev.minLeft === next.minLeft && prev.maxRight === next.maxRight ? prev : next))
+  }, [barAnchor])
+  // Where the picked stay is on screen, so the booking form can grow out of it rather than
+  // appear from nowhere (the booking moments mock, Sebastian, 2026-10-16).
+  const rememberPick = () => {
+    const scroller = scrollRef.current
+    if (!barAnchor || !scroller) return
+    const cellAt = (iso: string) => scroller.querySelector('[data-unit="' + barAnchor.unitId + '"][data-day="' + iso + '"]') as HTMLTableCellElement | null
+    const a = cellAt(barAnchor.iso)
+    if (!a) return
+    const b = barAnchor.outIso ? cellAt(barAnchor.outIso) : null
+    const ra = a.getBoundingClientRect()
+    const rb = b ? b.getBoundingClientRect() : null
+    const left = ra.left + (a.colSpan > 1 ? ra.width / 2 : 0)
+    const right = b && rb ? rb.left + (b.colSpan > 1 ? rb.width / 2 : rb.width) : ra.right
+    rememberFormOrigin({ x: left, y: ra.top, w: Math.max(8, right - left), h: ra.height })
+  }
+  // After every render, before the screen is painted: the bar's own width is only known
+  // once it is on screen, and it changes when it goes from one day to a range. Nothing
+  // is set when nothing moved, so this settles at once.
+  React.useLayoutEffect(() => { placeBar() })
+  React.useEffect(() => {
+    const scroller = scrollRef.current
+    if (!scroller) return
+    scroller.addEventListener('scroll', placeBar)
+    window.addEventListener('resize', placeBar)
+    return () => { scroller.removeEventListener('scroll', placeBar); window.removeEventListener('resize', placeBar) }
+  }, [placeBar])
+
+  if (!barAnchor || !barPos) return null
+  const ranges = groupSelection ? Object.entries(groupSelection) : []
+  const hasRange = ranges.length > 0
+  const first = hasRange ? ranges[0][1] : null
+  const from = first ? first.checkIn : timelineSelection?.checkIn
+  const to = first ? first.checkOut : null
+  const nights = from && to ? Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000)) : 0
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  // A finished range has no single picked cell, so its name comes from the range.
+  const rangeUnit = ranges.length === 1 ? ranges[0][0] : ''
+  const barName = selectionName || (ranges.length > 1
+    ? ranges.length + ' units'
+    : rangeUnit
+      ? (rooms.find(r => r.id === rangeUnit) ? roomDisplayName(rooms.find(r => r.id === rangeUnit)) : venues.find(v => v.id === rangeUnit)?.name || '')
+      : '')
+  // Centred on the dates, kept between the room names and the end of the grid.
+  const left = Math.min(
+    Math.max(barPos.center - barPos.width / 2, barPos.minLeft),
+    Math.max(barPos.minLeft, barPos.maxRight - barPos.width),
+  )
+  return (
+    <div ref={barRef} style={{ '--bar-left': left + 'px', '--bar-top': barPos.top + 'px' } as React.CSSProperties}
+      className="absolute z-40 w-max [left:var(--bar-left)] [top:var(--bar-top)] bg-card border border-gold-400 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg flex items-center gap-2 text-[13px] font-semibold text-main fd-bar">
+      {/* `w-max`: the bar is always as wide as what is in it. Left to the browser, an
+          absolute box sitting far to the right of the visible grid is squeezed to
+          the little room that is left, and the buttons ended up ON the dates
+          (Sebastian, 2026-10-06). */}
+      <span className="flex min-w-0 items-baseline gap-1" title={barName}>
+        <span className="truncate max-w-[170px] font-display font-bold text-brand-text">{barName}</span>
+        <span className="shrink-0 text-muted">· {from ? fmt(from) : ''}{to && nights > 0 ? ' → ' + fmt(to) : ''}</span>
+      </span>
+      {/* How many nights, popping to its new figure as the pick grows (the booking
+          moments mock, 2026-10-16). */}
+      {hasRange && nights > 0 && (
+        <span key={nights} className="bp-up shrink-0 h-5 px-2 rounded-full bg-ink-900 text-white text-[12px] font-bold leading-5 tabular-nums">
+          {nights} {nights === 1 ? 'night' : 'nights'}
+        </span>
+      )}
+
+      {hasRange ? (
+        <>
+          <button type="button" onClick={() => { rememberPick(); onNewBooking() }}
+            className="shrink-0 inline-flex items-center gap-1 h-7 px-3.5 rounded-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold transition-colors active:scale-[0.98] cursor-pointer">
+            <Plus className="w-3.5 h-3.5" /> New booking
+          </button>
+        </>
+      ) : (
+        /* ONE DAY: the short-stay hours straightaway (the owner's ask) —
+           the old single `Short stay` button just opened the form, which
+           then asked the same question again. 22 hours is left out on
+           purpose: it IS the room's own price, so it is an ordinary
+           overnight stay and the desk gets it by picking a date range.
+           The buttons carry the HOURS ONLY (the owner's ruling, 2026-09):
+           the price of the hours is on the room and in the tooltip, so the
+           bar stays short. */
+        barRoom ? (
+          SHORT_STAY_HOURS.map(h => {
+            const price = h === 3 ? barRoom.hour3_price : h === 6 ? barRoom.hour6_price : barRoom.hour12_price
+            const sellable = !!price && Number(price) > 0
+            return (
+              <button key={h} type="button" disabled={!sellable} onClick={() => onNewShortStay(h)}
+                title={sellable
+                  ? 'A ' + h + '-hour stay — ₱' + Number(price).toLocaleString() + ' — takes ' + roomDisplayName(barRoom) + ' for this whole day'
+                  : 'This room is not sold for ' + h + ' hours — set it in Settings → Rooms & prices'}
+                className="shrink-0 inline-flex items-center gap-1 h-7 px-3 rounded-full border border-soft text-[13px] font-bold text-brand-text hover:bg-gold-100 hover:border-gold-400 transition-colors active:scale-[0.98] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-soft">
+                {sellable ? h + 'h' : h + 'h · —'}
+              </button>
+            )
+          })
+        ) : (
+          /* A venue is never sold for hours — only a room is. */
+          <span className="shrink-0 text-[12px] font-medium text-muted">Tap the check-out day for a normal stay</span>
+        )
+      )}
+
+      {/* Block the dates that are picked — ONE icon, the same on a single day
+          and on a range (the owner's ruling, 2026-09: the words were noise).
+          It opens a small pane that only asks why; the room and dates come
+          from the pick. Blocking is no longer a mode of the booking form. */}
+      <button type="button" onClick={onBlockDates}
+        title="Block these dates — cleaning, maintenance or owner use"
+        aria-label="Block these dates"
+        className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full border border-gold-400 text-brand-text hover:bg-gold-100 transition-colors active:scale-95 cursor-pointer">
+        <Ban className="w-3.5 h-3.5" />
+      </button>
+
+      {/* Log old booking — **now its only entrance** (the owner, 2026-09-29:
+          the toolbar's copy was removed as a duplicate). It is offered by the
+          same pick that fills its dates in, beside the other things the desk
+          can do with those dates. */}
+      <button type="button" onClick={onLogOldBooking}
+        title="Log an old paper booking for these dates"
+        aria-label="Log old booking"
+        className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full border border-soft text-muted hover:text-main hover:border-gold-400 transition-colors active:scale-95 cursor-pointer">
+        <FilePlus className="w-3.5 h-3.5" />
+      </button>
+
+      {/* Clears whatever was picked — a single day AND a finished range,
+          which is why it goes through the caller: the first version only
+          cleared the single day, so Cancel did nothing on a range. */}
+      <button type="button" onClick={onClearSelection}
+        title="Clear the selection"
+        className="shrink-0 h-7 px-3 rounded-full text-[13px] font-semibold text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer">
+        Cancel
+      </button>
+    </div>
+  )
+}
+
+
 export const TimelineGrid = React.memo(
   function TimelineGrid({
     rooms,
@@ -128,78 +329,6 @@ export const TimelineGrid = React.memo(
       const first = groupSelection ? Object.entries(groupSelection)[0] : null
       return first ? { unitId: first[0], iso: dateToString(first[1].checkIn), outIso: dateToString(first[1].checkOut) } : null
     }, [timelineSelection, groupSelection])
-    // Where the bar goes: the middle of the picked dates, its row, how wide it is, and how far
-    // left and right it may reach. The width is the bar's own, read back once it is on screen.
-    const [barPos, setBarPos] = React.useState<{ center: number; top: number; width: number; minLeft: number; maxRight: number } | null>(null)
-    const barRef = React.useRef<HTMLDivElement>(null)
-    const placeBar = React.useCallback(() => {
-      const scroller = scrollRef.current
-      if (!barAnchor || !scroller) { setBarPos(null); return }
-      const cellAt = (iso: string) => scroller.querySelector('[data-unit="' + barAnchor.unitId + '"][data-day="' + iso + '"]') as HTMLTableCellElement | null
-      const cell = cellAt(barAnchor.iso)
-      if (!cell) { setBarPos(null); return }
-      const outCell = barAnchor.outIso ? cellAt(barAnchor.outIso) : null
-      // ABOVE the picked row, by one bar height plus a small gap: on the row it covered
-      // the very dates the desk had just chosen (the owner's catch), and flush against
-      // the row above still read as touching it, so it clears both.
-      // **Always above, never below** (Sebastian, 2026-10-06). It used to drop below the
-      // row for the first rooms, where the sticky day header is what lies above, and then
-      // sat on top of the very rooms the desk was about to pick the next day from. Now it
-      // goes over the header there instead (it is drawn above it), kept inside the grid's
-      // top edge so it is never cut off.
-      // The bar and its gap add up to ONE ROW (48px), so above the pick it lies inside
-      // the row over it and covers no more of the grid than that.
-      const BAR_HEIGHT = 42
-      const GAP = 6
-      const above = Math.max(0, cell.offsetTop - BAR_HEIGHT - GAP)
-      // **Centred on the picked dates** (Sebastian, 2026-10-06). It began two day columns to
-      // the left of the first pick; it now sits in the middle of the stay, which runs from
-      // the afternoon of the first day to the morning of the last — the span that is
-      // highlighted (a day that is still whole is `colSpan` 2, and only its half belongs to
-      // the stay). While only the first day is picked, it is centred on that day's mark.
-      const startX = cell.offsetLeft + (cell.colSpan > 1 ? cell.offsetWidth / 2 : 0)
-      const endX = outCell
-        ? outCell.offsetLeft + (outCell.colSpan > 1 ? outCell.offsetWidth / 2 : outCell.offsetWidth)
-        : cell.offsetLeft + cell.offsetWidth
-      // It may not slide left over the sticky room names, nor off the right end of the grid.
-      const dayHeaders = scroller.querySelectorAll('th[data-day]') as NodeListOf<HTMLElement>
-      const minLeft = dayHeaders.length > 0 ? dayHeaders[0].offsetLeft : 0
-      const table = scroller.querySelector('table') as HTMLElement | null
-      const next = {
-        center: Math.round((startX + endX) / 2),
-        top: above,
-        width: barRef.current?.offsetWidth ?? 0,
-        minLeft,
-        maxRight: table ? table.offsetWidth : scroller.scrollWidth,
-      }
-      setBarPos(prev => (prev && prev.center === next.center && prev.top === next.top && prev.width === next.width && prev.minLeft === next.minLeft && prev.maxRight === next.maxRight ? prev : next))
-    }, [barAnchor])
-    // Where the picked stay is on screen, so the booking form can grow out of it rather than
-    // appear from nowhere (the booking moments mock, Sebastian, 2026-10-16).
-    const rememberPick = () => {
-      const scroller = scrollRef.current
-      if (!barAnchor || !scroller) return
-      const cellAt = (iso: string) => scroller.querySelector('[data-unit="' + barAnchor.unitId + '"][data-day="' + iso + '"]') as HTMLTableCellElement | null
-      const a = cellAt(barAnchor.iso)
-      if (!a) return
-      const b = barAnchor.outIso ? cellAt(barAnchor.outIso) : null
-      const ra = a.getBoundingClientRect()
-      const rb = b ? b.getBoundingClientRect() : null
-      const left = ra.left + (a.colSpan > 1 ? ra.width / 2 : 0)
-      const right = b && rb ? rb.left + (b.colSpan > 1 ? rb.width / 2 : rb.width) : ra.right
-      rememberFormOrigin({ x: left, y: ra.top, w: Math.max(8, right - left), h: ra.height })
-    }
-    // After every render, before the screen is painted: the bar's own width is only known
-    // once it is on screen, and it changes when it goes from one day to a range. Nothing
-    // is set when nothing moved, so this settles at once.
-    React.useLayoutEffect(() => { placeBar() })
-    React.useEffect(() => {
-      const scroller = scrollRef.current
-      if (!scroller) return
-      scroller.addEventListener('scroll', placeBar)
-      window.addEventListener('resize', placeBar)
-      return () => { scroller.removeEventListener('scroll', placeBar); window.removeEventListener('resize', placeBar) }
-    }, [placeBar])
 
     // The window is rebuilt from today on every month change (card k154), so the
     // left edge — the day the desk is working on — must never stay scrolled off.
@@ -336,114 +465,9 @@ export const TimelineGrid = React.memo(
         {/* The action bar lives INSIDE the scroller, pinned just under the cell the
             desk picked, so it is beside both the room and the date and it travels
             with the grid. */}
-        {barAnchor && barPos && (() => {
-          const ranges = groupSelection ? Object.entries(groupSelection) : []
-          const hasRange = ranges.length > 0
-          const first = hasRange ? ranges[0][1] : null
-          const from = first ? first.checkIn : timelineSelection?.checkIn
-          const to = first ? first.checkOut : null
-          const nights = from && to ? Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000)) : 0
-          const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-          // A finished range has no single picked cell, so its name comes from the range.
-          const rangeUnit = ranges.length === 1 ? ranges[0][0] : ''
-          const barName = selectionName || (ranges.length > 1
-            ? ranges.length + ' units'
-            : rangeUnit
-              ? (rooms.find(r => r.id === rangeUnit) ? roomDisplayName(rooms.find(r => r.id === rangeUnit)) : venues.find(v => v.id === rangeUnit)?.name || '')
-              : '')
-          // Centred on the dates, kept between the room names and the end of the grid.
-          const left = Math.min(
-            Math.max(barPos.center - barPos.width / 2, barPos.minLeft),
-            Math.max(barPos.minLeft, barPos.maxRight - barPos.width),
-          )
-          return (
-            <div ref={barRef} style={{ '--bar-left': left + 'px', '--bar-top': barPos.top + 'px' } as React.CSSProperties}
-              className="absolute z-40 w-max [left:var(--bar-left)] [top:var(--bar-top)] bg-card border border-gold-400 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg flex items-center gap-2 text-[13px] font-semibold text-main fd-bar">
-              {/* `w-max`: the bar is always as wide as what is in it. Left to the browser, an
-                  absolute box sitting far to the right of the visible grid is squeezed to
-                  the little room that is left, and the buttons ended up ON the dates
-                  (Sebastian, 2026-10-06). */}
-              <span className="flex min-w-0 items-baseline gap-1" title={barName}>
-                <span className="truncate max-w-[170px] font-display font-bold text-brand-text">{barName}</span>
-                <span className="shrink-0 text-muted">· {from ? fmt(from) : ''}{to && nights > 0 ? ' → ' + fmt(to) : ''}</span>
-              </span>
-              {/* How many nights, popping to its new figure as the pick grows (the booking
-                  moments mock, 2026-10-16). */}
-              {hasRange && nights > 0 && (
-                <span key={nights} className="bp-up shrink-0 h-5 px-2 rounded-full bg-ink-900 text-white text-[12px] font-bold leading-5 tabular-nums">
-                  {nights} {nights === 1 ? 'night' : 'nights'}
-                </span>
-              )}
-
-              {hasRange ? (
-                <>
-                  <button type="button" onClick={() => { rememberPick(); onNewBooking() }}
-                    className="shrink-0 inline-flex items-center gap-1 h-7 px-3.5 rounded-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold transition-colors active:scale-[0.98] cursor-pointer">
-                    <Plus className="w-3.5 h-3.5" /> New booking
-                  </button>
-                </>
-              ) : (
-                /* ONE DAY: the short-stay hours straightaway (the owner's ask) —
-                   the old single `Short stay` button just opened the form, which
-                   then asked the same question again. 22 hours is left out on
-                   purpose: it IS the room's own price, so it is an ordinary
-                   overnight stay and the desk gets it by picking a date range.
-                   The buttons carry the HOURS ONLY (the owner's ruling, 2026-09):
-                   the price of the hours is on the room and in the tooltip, so the
-                   bar stays short. */
-                barRoom ? (
-                  SHORT_STAY_HOURS.map(h => {
-                    const price = h === 3 ? barRoom.hour3_price : h === 6 ? barRoom.hour6_price : barRoom.hour12_price
-                    const sellable = !!price && Number(price) > 0
-                    return (
-                      <button key={h} type="button" disabled={!sellable} onClick={() => onNewShortStay(h)}
-                        title={sellable
-                          ? 'A ' + h + '-hour stay — ₱' + Number(price).toLocaleString() + ' — takes ' + roomDisplayName(barRoom) + ' for this whole day'
-                          : 'This room is not sold for ' + h + ' hours — set it in Settings → Rooms & prices'}
-                        className="shrink-0 inline-flex items-center gap-1 h-7 px-3 rounded-full border border-soft text-[13px] font-bold text-brand-text hover:bg-gold-100 hover:border-gold-400 transition-colors active:scale-[0.98] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-soft">
-                        {sellable ? h + 'h' : h + 'h · —'}
-                      </button>
-                    )
-                  })
-                ) : (
-                  /* A venue is never sold for hours — only a room is. */
-                  <span className="shrink-0 text-[12px] font-medium text-muted">Tap the check-out day for a normal stay</span>
-                )
-              )}
-
-              {/* Block the dates that are picked — ONE icon, the same on a single day
-                  and on a range (the owner's ruling, 2026-09: the words were noise).
-                  It opens a small pane that only asks why; the room and dates come
-                  from the pick. Blocking is no longer a mode of the booking form. */}
-              <button type="button" onClick={onBlockDates}
-                title="Block these dates — cleaning, maintenance or owner use"
-                aria-label="Block these dates"
-                className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full border border-gold-400 text-brand-text hover:bg-gold-100 transition-colors active:scale-95 cursor-pointer">
-                <Ban className="w-3.5 h-3.5" />
-              </button>
-
-              {/* Log old booking — **now its only entrance** (the owner, 2026-09-29:
-                  the toolbar's copy was removed as a duplicate). It is offered by the
-                  same pick that fills its dates in, beside the other things the desk
-                  can do with those dates. */}
-              <button type="button" onClick={onLogOldBooking}
-                title="Log an old paper booking for these dates"
-                aria-label="Log old booking"
-                className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full border border-soft text-muted hover:text-main hover:border-gold-400 transition-colors active:scale-95 cursor-pointer">
-                <FilePlus className="w-3.5 h-3.5" />
-              </button>
-
-              {/* Clears whatever was picked — a single day AND a finished range,
-                  which is why it goes through the caller: the first version only
-                  cleared the single day, so Cancel did nothing on a range. */}
-              <button type="button" onClick={onClearSelection}
-                title="Clear the selection"
-                className="shrink-0 h-7 px-3 rounded-full text-[13px] font-semibold text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer">
-                Cancel
-              </button>
-            </div>
-          )
-        })()}
+        <SelectionBar scrollRef={scrollRef} barAnchor={barAnchor} timelineSelection={timelineSelection} groupSelection={groupSelection}
+          selectionName={selectionName} rooms={rooms} venues={venues} barRoom={barRoom} onNewBooking={onNewBooking}
+          onBlockDates={onBlockDates} onLogOldBooking={onLogOldBooking} onNewShortStay={onNewShortStay} onClearSelection={onClearSelection} />
 
         {/* Every cell draws its own rules (`border-separate`). In a collapsed table the
             rules belong to the table, and the pinned header and room column — which
