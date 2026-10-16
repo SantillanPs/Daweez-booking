@@ -123,8 +123,9 @@ export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, boo
   if (embedded) return doc
 
   return createPortal(
-    <div className="fixed inset-0 z-50 p-3 sm:p-4 bg-slate-900/50 print:bg-white print:p-0 print:static overflow-y-auto">
-      {doc}
+    <div className="fixed inset-0 z-50 p-3 sm:p-4 bg-slate-900/50 print:bg-white print:p-0 print:static overflow-y-auto bw-dim print:animate-none">
+      {/* The bill comes up out of the printer (the tools mock, 2026-10-16). */}
+      <div className="bw-eject print:animate-none">{doc}</div>
     </div>,
     document.body
   )

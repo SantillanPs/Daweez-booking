@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import { NumInput } from '../NumInput'
 import { PAYMENT_METHODS, methodNeedsReference, paymentKind, paymentMethodChoice } from '../../utils/paymentMethod'
 
@@ -29,34 +31,76 @@ interface ReceiveMoneyProps {
   tried: boolean
   /** False when another step is the loud one (a stay billed to an agency). */
   loud?: boolean
-  onReceive: () => void
+  /** Opened from "Receive a payment": the ways to pay show at once. */
+  startOpen?: boolean
+  /** Takes the money. A way to pay that needs no reference is handed straight in. */
+  onReceive: (method?: string) => void
 }
+
+const BTN = 'min-h-[54px] px-4 rounded-xl text-[16px] font-bold transition-[background-color,transform] duration-200 active:scale-[0.98] cursor-pointer '
+const LOUD = 'bg-gold-400 hover:bg-gold-600 text-ink-900'
+const QUIET = 'bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100'
+const BACK = 'min-h-[54px] rounded-xl border border-soft bg-card text-muted hover:text-main grid place-items-center cursor-pointer bw-x'
 
 /**
  * Where money is written down — the one place on the booking panel (the owner's ruling:
  * *"money is taken in one place"*), rebuilt after the staff's feedback of 2026-10-04:
  * with the guest's money in hand they could not tell where to record it.
  *
- * It reads top to bottom as the desk does it: what the money is for (only asked when
- * there is a choice), then how the guest paid beside one button carrying the amount. How
- * they paid starts empty — a silent `Cash` is how a GCash guest once got a Cash receipt.
+ * **It opens one step at a time** (the booking window mock, Sebastian, 2026-10-16: "what
+ * would it look like with progressive disclosure?"). At first it is one button, Receive —
+ * the amount is the big figure right above it, so the button does not say it again.
+ * Pressed, it opens into the ways to pay. Cash or Check is the payment itself; GCash or a
+ * bank transfer asks for its reference number first. How they paid is still never
+ * assumed — a silent `Cash` is how a GCash guest once got a Cash receipt.
  */
 export function ReceiveMoney({
   choices, payFor, onPayFor, otherAmount, onOtherAmount, method, onMethod,
-  reference, onReference, onReferenceCommit, tried, loud = true, onReceive,
+  reference, onReference, onReferenceCommit, tried, loud = true, startOpen = false, onReceive,
 }: ReceiveMoneyProps) {
+  const [open, setOpen] = useState(startOpen)
+  const amountBox = useRef<HTMLLabelElement>(null)
+  const refBox = useRef<HTMLLabelElement>(null)
   const other = payFor === 'other'
   const amount = other ? otherAmount : (choices.find(c => c.key === payFor) || choices[0])?.amount || 0
+  // The figure above already says the first amount; any other one is said here.
+  const differs = other || payFor !== choices[0]?.key
+  const sum = differs ? (amount > 0 ? fmtPeso(amount) + ' · ' : '') : ''
   const chosen = paymentMethodChoice(method)
   const needsRef = methodNeedsReference(method)
   const isGcash = paymentKind(method) === 'gcash'
-  const refLabel = isGcash ? 'GCash reference no.' : 'Reference no.'
+
+  // What is missing glows gold and shakes, and gets the cursor (the booking form's `bk-want`).
+  const want = (el: HTMLElement | null) => {
+    if (!el) return
+    // Taken off and put back after a reflow, so a second miss shakes again.
+    el.classList.remove('bw-want', 'bw-nope'); el.getBoundingClientRect(); el.classList.add('bw-want', 'bw-nope')
+    el.querySelector('input')?.focus()
+  }
+  const pay = (m: string) => {
+    if (other && !(otherAmount > 0)) { want(amountBox.current); return }
+    if (methodNeedsReference(m)) { onMethod(m); return }
+    onReceive(m)
+  }
+  const receive = () => {
+    if (other && !(otherAmount > 0)) { want(amountBox.current); return }
+    if (!reference.trim()) { want(refBox.current); return }
+    onReceive()
+  }
 
   const missing = !tried ? ''
     : other && !(otherAmount > 0) ? 'Enter the amount received.'
       : !chosen ? 'Choose how the guest paid.'
         : needsRef && !reference.trim() ? (isGcash ? 'Enter the GCash reference number.' : 'Enter the reference number.')
           : ''
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className={'w-full ' + BTN + (loud ? LOUD + ' bw-shine' : QUIET)}>
+        {differs && amount > 0 ? 'Receive ' + fmtPeso(amount) : 'Receive'}
+      </button>
+    )
+  }
 
   return (
     <div className="space-y-2">
@@ -76,40 +120,53 @@ export function ReceiveMoney({
       )}
 
       {other && (
-        <label className="block">
+        <label ref={amountBox} className="block rounded-lg bw-unfold">
           <span className="block text-[12px] font-semibold text-muted">Amount received (₱)</span>
           <NumInput value={otherAmount} onChange={onOtherAmount} aria-label="Amount received"
             className="mt-1 w-full h-11 bg-card border border-soft text-main px-3 rounded-lg text-[16px] focus:outline-none focus:border-gold-500" />
         </label>
       )}
 
-      {/* How they paid sits beside the button that takes the money, so the two are read
-          as one act. It starts empty — never a silent Cash. */}
-      <div className="grid grid-cols-[minmax(0,7.5rem)_1fr] gap-2">
-        <select value={chosen} onChange={e => onMethod(e.target.value)} aria-label="How the guest paid"
-          className={'min-h-[54px] w-full pl-3 pr-2 rounded-xl border bg-card text-[14px] font-bold cursor-pointer focus:outline-none focus:border-gold-500 ' +
-            (tried && !chosen ? 'border-danger-400 text-danger-600' : chosen ? 'border-soft text-main' : 'border-soft text-muted')}>
-          <option value="" disabled>Paid by…</option>
-          {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <button type="button" onClick={onReceive}
-          className={'min-h-[54px] px-4 rounded-xl text-[16px] font-bold transition-[background-color,transform] duration-200 active:scale-[0.98] cursor-pointer ' +
-            (loud ? 'bg-gold-400 hover:bg-gold-600 text-ink-900' : 'bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100')}>
-          {amount > 0 ? 'Receive ' + fmtPeso(amount) : 'Receive money'}
-        </button>
-      </div>
-
-      {needsRef && (
-        <label className="block">
-          <span className="block text-[12px] font-semibold text-muted">{refLabel}</span>
-          <input
-            value={reference}
-            onChange={e => onReference(e.target.value)}
-            onBlur={onReferenceCommit}
-            placeholder="From the guest's phone"
-            className="mt-1 w-full h-11 bg-card border border-soft text-main px-3 rounded-lg text-[16px] font-mono focus:outline-none focus:border-gold-500"
-          />
-        </label>
+      {needsRef ? (
+        // GCash or a bank transfer: its reference number, then Receive.
+        <>
+          <p className="text-[12px] font-bold text-muted bw-rise">{sum}By {chosen === 'Bank transfer' ? 'bank transfer' : chosen}</p>
+          <label ref={refBox} className="block rounded-lg bw-unfold">
+            <span className="sr-only">{isGcash ? 'GCash reference no.' : 'Reference no.'}</span>
+            <input
+              autoFocus
+              value={reference}
+              onChange={e => onReference(e.target.value)}
+              onBlur={onReferenceCommit}
+              placeholder={isGcash ? 'GCash reference no.' : 'Reference no.'}
+              className="w-full h-11 bg-card border border-soft text-main px-3 rounded-lg text-[16px] font-mono focus:outline-none focus:border-gold-500"
+            />
+          </label>
+          <div className="grid grid-cols-[1fr_54px] gap-1.5">
+            <button type="button" onClick={receive} className={BTN + LOUD + ' bw-in'}>
+              {differs && amount > 0 ? 'Receive ' + fmtPeso(amount) : 'Receive'}
+            </button>
+            <button type="button" onClick={() => onMethod('')} aria-label="Back to the ways to pay" className={BACK + ' bw-in [--i:1]'}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-[12px] font-bold text-muted bw-rise">{sum}Paid by</p>
+          <div role="group" aria-label="How the guest paid" className="grid grid-cols-[repeat(4,minmax(0,1fr))_44px] gap-1.5">
+            {PAYMENT_METHODS.map((m, i) => (
+              <button key={m} type="button" onClick={() => pay(m)} style={{ '--i': i } as React.CSSProperties}
+                className={'bw-in min-h-[54px] px-1 rounded-xl bg-gold-400 hover:bg-gold-600 text-ink-900 text-[14px] font-bold transition-[background-color,transform] duration-200 active:scale-95 cursor-pointer'}>
+                {m === 'Bank transfer' ? 'Bank' : m}
+              </button>
+            ))}
+            <button type="button" onClick={() => { setOpen(false); onPayFor(choices[0]?.key || 'all') }} aria-label="Close the ways to pay"
+              className={BACK + ' bw-in [--i:4]'}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </>
       )}
 
       {missing && <p className="text-[12px] font-semibold text-danger-600">{missing}</p>}

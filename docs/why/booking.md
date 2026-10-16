@@ -74,7 +74,7 @@
 - From the hotel's printed rate board. Each room has its own price per hours; a blank price means the room is not sold for those hours.
 - **22 hours is just the room's normal night price**, so it is an ordinary booking.
 - **A short stay blocks the whole day**, because housekeeping cleans the room afterwards and it is never resold the same day.
-- **The clock starts at the Check in press.** The app shows the *time* the room is free (`out 1:12 PM`), never a countdown. When time is up the block turns red and the booking's panel opens by itself — one at a time, never reopened once closed. The app only tells the desk; it adds no money on its own.
+- **The clock starts at the Check in press.** The app shows the *time* the room is free (`out 1:12 PM`), never a countdown. When time is up the block turns red and the booking's panel opens by itself — one at a time, never reopened once closed. The app only tells the desk; it adds no money on its own. Once time is up the panel says `Time up · out by 1:00 PM` and how long it is past (`+18 min`) — the design he kept from the mock (2026-10-16); that time is still not charged.
 - **No early or late charge on a short stay.** A 10am arrival for three hours is not "four hours early".
 - **Extending a short stay turns it into a normal stay priced by nights** (ruled 2026-10-03).
 - Everywhere a short stay is shown it reads `Sep 25 · 3 hours`, never `Sep 25 → Sep 26`.
@@ -109,9 +109,13 @@
 - **No stack of closed sections.** The owner, 2026-10-04: *"it looks so badly designed… it looks so lazy just stacking accordions."* The panel had become a money box over three closed sections that were there whether or not they held anything. Now a thing appears when the stay reaches it: receipts once there is one, the order slips once the guest is checked in, and extending is a quiet action in the bottom row beside Print and Cancel.
 - **Money is taken in one place.** A part-payment is "A different amount" there; the second payment form that sat under Payment receipts is gone.
 - **With the guest's money in hand, nobody could tell where to record it, what came after, or where the booking stood** (the staff and Sebastian, 2026-10-04). Sebastian: *"it's not directing my eyes on where I'm supposed to look at after receiving money."* The staff also could not tell whether a booking was checked in or checked out.
-- **The title is the room and the guest** (`Room 7 · Noel Bautista`). Under it the panel says three things in words: the payment, the check-in, the check-out.
+- **The title is the room and the guest** (`Room 7 · Noel Bautista`). Under it the panel says what is owed in big figures, then where the stay is in words: the check-in, the check-out.
 - The panel is **as wide as its contents**, never a fixed width, and one column.
 - Recording the first payment confirms the booking and prints the receipt.
+- **Nothing is said twice** (Sebastian, 2026-10-16, on the booking window mock: *"make sure to check for redundancies"*). The money step under the figure went (the figure already says it, and it read "Part paid" with nothing paid), the dates left the line under the name (the In and Out steps carry them), and Receive no longer repeats the amount above it.
+- **It opens one step at a time** (same mock: *"what would it look like with progressive disclosure?"*). Receive is one button; pressed, it opens into the four ways to pay, and Cash or Check is the payment itself — GCash and a bank transfer ask for their reference first. The guest's phone and the rest fold in with the bill.
+- **A door asks where its button was**, not in a pop-up: Check in, Check out, Undo and Cancel each put their question in place, with Back.
+- **The tools stay open along the bottom** — he tried them behind a "More" and said *"remove this. just keep it open"*. **There is no Take orders on a booking** (*"these should never have take orders"*): an order starts with a table on the Restaurant screen.
 
 ## Other rules
 

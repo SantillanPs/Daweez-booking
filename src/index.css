@@ -344,11 +344,120 @@
 .bk-rise { animation: bk-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: var(--d, 0s); }
 .bk-hand { animation: bk-hand 0.6s 1.2s cubic-bezier(0.34, 1.3, 0.64, 1) both; }
 
+/* ── The booking window (`ExtendStayModal`, the booking window mock Sebastian approved, 2026-10-16) ──
+   A step that is done fills with its colour from the left and its tick draws itself; the line to
+   the next step draws after it. A change made behind a seal waits for the seal (1.05 s). */
+@keyframes bw-sweep { from { transform: scaleX(0); } }
+@keyframes bw-pop { from { opacity: 0; transform: scale(0.5); } }
+@keyframes bw-unpop { 30% { transform: scale(0.85); } 60% { transform: scale(1.05); } }
+@keyframes bw-breathe { 50% { box-shadow: 0 0 0 4px rgb(208 171 96 / 0.25); } }
+@keyframes bw-up { from { opacity: 0; transform: translateY(8px); } }
+@keyframes bw-arrive { from { opacity: 0; transform: scale(0.92) translateY(6px); } }
+@keyframes bw-shine { 0%, 70% { left: -50%; } 100% { left: 130%; } }
+@keyframes bw-nope { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+@keyframes bw-unfold { from { opacity: 0; clip-path: inset(0 0 100% 0 round 12px); } }
+@keyframes bw-nudge { 0%, 86%, 100% { transform: none; } 89% { transform: rotate(-14deg) scale(1.1); } 92% { transform: rotate(12deg) scale(1.1); } 95% { transform: rotate(-6deg); } }
+@keyframes bw-drift { to { background-position: 22.6px 0; } }
+@keyframes bw-wiggle { 25% { transform: rotate(-12deg); } 75% { transform: rotate(10deg); } }
+@keyframes bw-swap { 50% { transform: translateX(3px) scaleX(-1); } }
+@keyframes bw-spin { to { transform: rotate(-360deg); } }
+@keyframes bw-hopicon { 40% { transform: translateY(-3px); } }
+.bw-chip { position: relative; isolation: isolate; overflow: hidden; }
+.bw-chip::before { content: ""; position: absolute; inset: 0; z-index: -1; transform-origin: left; transform: scaleX(0); }
+.bw-chip[data-tone="done"]::before { transform: none; background: #ECFDF5; }
+.bw-chip[data-tone="out"]::before { transform: none; background: #1C1C1C; }
+.bw-chip[data-tone="next"] { animation: bw-breathe 2.4s ease-in-out infinite; }
+.bw-chip.bw-just::before { animation: bw-sweep 0.6s 1.05s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.bw-chip.bw-just { animation: bw-pop 0.45s 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.bw-chip.bw-just svg path { stroke-dasharray: 24; animation: bp-tick 0.4s 1.4s cubic-bezier(0.16, 1, 0.3, 1) both; stroke-dashoffset: 24; }
+.bw-chip.bw-back { animation: bw-unpop 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
+.bw-line { position: relative; }
+.bw-line::after { content: ""; position: absolute; inset: -0.75px 0; border-radius: 2px; background: #059669; transform-origin: left; transform: scaleX(0); }
+.bw-line[data-done]::after { transform: none; background: #1C1C1C; }
+.bw-line.bw-just::after { animation: bw-sweep 0.5s 1.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+/* "Paid in full" rises word by word, and a green rule draws under it. */
+.bw-word { display: inline-block; animation: bw-up 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--wait, 0s) + var(--i) * 70ms); }
+.bw-full { position: relative; display: inline-block; }
+.bw-full::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 3px; border-radius: 3px; background: #059669; transform-origin: left; animation: bw-sweep 0.6s calc(var(--wait, 0s) + 0.35s) cubic-bezier(0.16, 1, 0.3, 1) both; }
+/* The one button to press: a light passes across it now and then. */
+.bw-shine { position: relative; overflow: hidden; }
+.bw-shine::after { content: ""; position: absolute; top: 0; bottom: 0; left: -50%; width: 40%; pointer-events: none; background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.38), transparent); animation: bw-shine 3.8s 1.2s ease-in-out infinite; }
+.bw-arrive { animation: bw-arrive 0.5s var(--wait, 0s) cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.bw-nope { animation: bw-nope 0.4s; }
+.bw-want { border-color: #D0AB60 !important; box-shadow: 0 0 0 3px rgb(208 171 96 / 0.3); animation: bk-breathe 1.1s cubic-bezier(0.16, 1, 0.3, 1); }
+.bw-unfold { animation: bw-unfold 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.bw-in { animation: bw-arrive 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--i, 0) * 55ms); }
+.bw-rise { animation: bw-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i, 0) * 55ms); }
+/* The short-stay clock: a ring that empties as the hours go, and nudges once they have. */
+@property --bw-p { syntax: "<number>"; inherits: false; initial-value: 0; }
+.bw-ring { width: 22px; height: 22px; flex: none; border-radius: 9999px; background: conic-gradient(currentColor calc(var(--bw-p) * 1turn), rgb(0 0 0 / 0.08) 0);
+  -webkit-mask: radial-gradient(circle, transparent 6px, #000 6.5px); mask: radial-gradient(circle, transparent 6px, #000 6.5px); }
+.bw-ring[data-up] { --bw-p: 1; animation: bw-nudge 4s infinite; }
+/* A block's stripes drift slowly. */
+.bw-hatch { height: 10px; background: repeating-linear-gradient(135deg, #EDE9E1 0 8px, #F7F5F0 8px 16px); background-size: 22.6px 22.6px; animation: bw-drift 1.6s linear infinite; }
+/* The tools (the tools mock Sebastian approved, 2026-10-16: "apply it completely"). A tool squashes
+   under the finger and its icon answers a tap as well as the pointer, since the desk is often a
+   tablet. One gold bar sits under the open tool and slides between Extend and Move; Extend's +
+   turns into ×, Move's arrows turn round, Print pushes its paper out before the bill rises. */
+@keyframes bw-paper { 45% { transform: translateY(3px); } }
+@keyframes bw-feed { 40% { transform: translateY(4px); } 100% { transform: translateY(-14px); opacity: 0; } }
+@keyframes bw-sink { to { opacity: 0; transform: translateY(10px); } }
+@keyframes bw-eject { from { opacity: 0; transform: translateY(90px) scale(0.5); } 70% { opacity: 1; } }
+@keyframes bw-fade { from { opacity: 0; } }
+@keyframes bw-formin { from { opacity: 0; transform: translateY(-4px); } }
+.bw-tool { position: relative; transition: color 0.2s, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bw-tool:active { transform: scale(0.9); }
+.bw-tool svg * { transform-box: fill-box; transform-origin: center; }
+.bw-tool:is(:hover, :active) [data-i="cal"] { animation: bw-hopicon 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bw-tool [data-i="cal"] path:is(:nth-child(1), :nth-child(3)) { transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bw-tool[aria-expanded="true"] [data-i="cal"] path:is(:nth-child(1), :nth-child(3)) { transform: rotate(45deg) scale(1.15); }
+.bw-tool [data-i="swap"] { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.bw-tool [data-i="swap"] path { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bw-tool:is(:hover, :active) [data-i="swap"] path:is(:nth-child(1), :nth-child(2)) { transform: translateX(3px); }
+.bw-tool:is(:hover, :active) [data-i="swap"] path:is(:nth-child(3), :nth-child(4)) { transform: translateX(-3px); }
+.bw-tool[aria-expanded="true"] [data-i="swap"] { transform: rotate(180deg); }
+.bw-tool:is(:hover, :active) [data-i="print"] rect { animation: bw-paper 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bw-tool[data-printing] [data-i="print"] rect { animation: bw-feed 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.bw-tool:is(:hover, :active) [data-i="undo"] { animation: bw-spin 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+.bw-tool [data-i="x"] path, .bw-x svg { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bw-tool:is(:hover, :active) [data-i="x"] path, .bw-x:hover svg { transform: rotate(90deg); }
+.bw-bar { position: absolute; bottom: 7px; left: 0; width: 0; height: 2px; border-radius: 2px; background: #D0AB60; opacity: 0; pointer-events: none;
+  transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s; }
+.bw-bar[data-on] { opacity: 1; }
+/* The question takes the tools' place: the tools sink, the question rises (never a slide from the
+   side — Sebastian dislikes it), and Keep brings the tools back one after another. */
+.bw-sink { animation: bw-sink 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.bw-ask { animation: bw-up 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.bw-ask button { animation: bw-up 0.35s 0.06s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.bw-ask button + button { animation-delay: 0.12s; }
+.bw-tools-back > .bw-tool { animation: bw-up 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.bw-tools-back > .bw-tool:nth-child(2) { animation-delay: 45ms; }
+.bw-tools-back > .bw-tool:nth-child(3) { animation-delay: 90ms; }
+.bw-tools-back > .bw-tool:nth-child(4) { animation-delay: 135ms; }
+.bw-tools-back > .bw-tool:nth-child(5) { animation-delay: 180ms; }
+/* A form or the bill opens by the window growing to fit it (`layout` in ExtendStayModal); the
+   content only fades in as the space opens, so there is no second wipe on top of the resize. */
+[data-resizing] .overflow-y-auto { overflow-y: hidden; }
+.bw-formin { animation: bw-formin 0.28s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.bw-billin li, .bw-billin p { animation: bw-up 0.3s 0.06s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.bw-billin li:nth-child(2) { animation-delay: 0.1s; }
+.bw-billin li:nth-child(3) { animation-delay: 0.14s; }
+.bw-billin li:nth-child(n+4) { animation-delay: 0.18s; }
+.bw-billin p { animation-delay: 0.2s; }
+.bw-billin p + p { animation-delay: 0.24s; }
+.bw-eject { animation: bw-eject 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.bw-dim { animation: bw-fade 0.25s ease-out both; }
+.bw-pen:hover svg { animation: bw-wiggle 0.45s; }
+.bw-door { display: inline-block; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
+
 @media (prefers-reduced-motion: reduce) {
   [data-mark-ready] > .fd-mark, .fd-tab svg, .fd-sub, .fd-sub::after, .fd-gear svg, .fd-step svg, .bk-thumb { transition: none; }
   .fd-ping::after, .fd-wiggle:hover svg:first-child, .fd-pop, .fd-free:hover::after, .fd-pick, .fd-bar, .fd-bar > *, .fd-roll, .fd-away, .fd-drain,
   .bk-seal circle, .bk-wake::after, .bk-hop, .bk-pop, .bk-thumb, .bk-want, .bk-list, .bk-row, .bk-chip, .bk-ring, .bk-bit, .bk-rise, .bk-hand, .bk-big-seal circle { animation: none; }
-  .bk-tick path, .bk-big-seal path { animation: none; stroke-dashoffset: 0; }
+  .bk-tick path, .bk-big-seal path, .bw-chip.bw-just svg path { animation: none; stroke-dashoffset: 0; }
+  .bw-tool, .bw-tool svg, .bw-tool svg *, .bw-bar { transition: none; }
+  .bw-tool svg, .bw-tool svg *, .bw-sink, .bw-ask, .bw-ask button, .bw-tools-back > .bw-tool, .bw-formin, .bw-billin li, .bw-billin p, .bw-eject, .bw-dim { animation: none; }
   .bk-go::before { transition: none; }
   .bk-hi { transition: none; }
   .bk-seal path { stroke-dashoffset: 0; }

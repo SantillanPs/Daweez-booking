@@ -23,6 +23,23 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-16c',
+    changes: [
+      {
+        where: 'Front desk → Calendar → a booking',
+        what: [
+          'A booking opens out of its block on the calendar, and ✕ puts it back there.',
+          'Receive is one button. Press it, then tap how they paid: Cash or Check is done at once, and GCash or a bank transfer asks for the reference number first.',
+          'Check in, Check out, Undo and Cancel now ask right where you pressed them, with a Back button.',
+          'The phone number and the guest’s other details are inside “Bill & details”.',
+          'Take orders is no longer on a booking. Start every order from a table on the Restaurant screen.',
+          'A short stay shows a ring that empties as the hours pass. When time is up, it says how many minutes past.',
+          'The window grows and shrinks smoothly as the bill, Extend stay or Move opens, and a gold line marks the one that is open.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-16b',
     changes: [
       {
