@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { X, Check, Coffee, Plus } from 'lucide-react'
+import { X, Check, Coffee, Plus, House } from 'lucide-react'
 import { NationalityInput } from '../NationalityInput'
 import { NumInput } from '../NumInput'
 import { Booking, Room, Venue, Companion, EventAddons } from '../../types/booking'
@@ -386,27 +386,30 @@ export function LogOldBookingModal({ rooms, venues, bookings, createManualBookin
                   const kindsOf = venueTypes(venue)
                   return (
                     <div key={id} data-unit className="space-y-2">
-                    <div className="grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 p-2.5 rounded-xl bg-paper-50">
-                      <span className={'w-11 h-11 rounded-[11px] grid place-items-center font-display font-bold ' + (room ? 'bg-ink-900 text-white text-[17px]' : 'bg-gold-400 text-ink-900 text-[11px] px-1 text-center leading-tight')}>
-                        {room ? room.room_number : nameOf(id, s).split(' ')[0]}
+                    {/* Name and price on one line, the dates under them in one row — the dates
+                        squeezed beside the price wrapped onto two lines, and a venue's tile held
+                        its name cut down to one word (Sebastian, 2026-10-17: "it looks broken"). */}
+                    <div className="grid grid-cols-[44px_minmax(0,1fr)] gap-x-3 gap-y-2 p-3 rounded-xl bg-paper-50">
+                      <span className={'w-11 h-11 rounded-[11px] grid place-items-center font-display font-bold ' + (room ? 'bg-ink-900 text-white text-[17px]' : 'bg-gold-400 text-ink-900')}>
+                        {room ? room.room_number : <House className="w-5 h-5" aria-hidden="true" />}
                       </span>
-                      <span className="min-w-0">
-                        <b className="block text-[15px] text-main truncate">{room ? room.name : nameOf(id, s)}</b>
-                        <span className="flex flex-wrap items-center gap-1.5 mt-1">
-                          <input type="date" value={s.checkIn} onChange={e => setUnit(id, { checkIn: e.target.value })} aria-label={'Arrival, ' + nameOf(id, s)} className={DATE} />
-                          <span className="text-muted">→</span>
-                          <input type="date" value={s.checkOut} onChange={e => setUnit(id, { checkOut: e.target.value })} aria-label={'Departure, ' + nameOf(id, s)} className={DATE} />
+                      <span className="min-w-0 flex items-start justify-between gap-2">
+                        <b className="min-w-0 text-[15px] leading-5 text-main pt-0.5">{room ? room.name : nameOf(id, s)}</b>
+                        <span className="flex items-start gap-1 shrink-0">
+                          <span className="text-right text-[13px] leading-4 text-muted tabular-nums">
+                            <b className="block text-[17px] leading-6 text-main">{p ? fmtPeso(p.grandTotal - p.breakfastTotal) : '—'}</b>
+                            {p ? p.stayQuantity + (s.type === 'venue' ? ' day' : ' night') + (p.stayQuantity !== 1 ? 's' : '') : ''}
+                          </span>
+                          {entries.length > 1 && (
+                            <button type="button" onClick={e => removeUnit(id, (e.currentTarget as HTMLElement).closest('[data-unit]'))} aria-label={'Take ' + nameOf(id, s) + ' off'}
+                              className="w-9 h-9 -mr-1 rounded-full grid place-items-center text-muted hover:text-danger-600 cursor-pointer bw-x"><X className="w-4 h-4" /></button>
+                          )}
                         </span>
                       </span>
-                      <span className="flex items-center gap-1">
-                        <span className="text-right text-[13px] text-muted tabular-nums">
-                          <b className="block text-[17px] text-main">{p ? fmtPeso(p.grandTotal - p.breakfastTotal) : '—'}</b>
-                          {p ? p.stayQuantity + (s.type === 'venue' ? ' day' : ' night') + (p.stayQuantity !== 1 ? 's' : '') : ''}
-                        </span>
-                        {entries.length > 1 && (
-                          <button type="button" onClick={e => removeUnit(id, (e.currentTarget as HTMLElement).closest('[data-unit]'))} aria-label={'Take ' + nameOf(id, s) + ' off'}
-                            className="w-9 h-9 rounded-full grid place-items-center text-muted hover:text-danger-600 cursor-pointer bw-x"><X className="w-4 h-4" /></button>
-                        )}
+                      <span className="col-start-2 flex items-center gap-1.5 min-w-0">
+                        <input type="date" value={s.checkIn} onChange={e => setUnit(id, { checkIn: e.target.value })} aria-label={'Arrival, ' + nameOf(id, s)} className={DATE + ' flex-1 min-w-0'} />
+                        <span className="text-muted shrink-0">→</span>
+                        <input type="date" value={s.checkOut} onChange={e => setUnit(id, { checkOut: e.target.value })} aria-label={'Departure, ' + nameOf(id, s)} className={DATE + ' flex-1 min-w-0'} />
                       </span>
                     </div>
                     {/* A venue that comes in kinds asks which was taken — the kind IS the day's
