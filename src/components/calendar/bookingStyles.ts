@@ -37,7 +37,10 @@ export const getBookingStyle = (b: Booking): string => {
   // The pill itself stays white: its green is a wash laid inside it (`TimelineCell`), so
   // it can cross the pill from the left as the guest checks in and drain off as they leave.
   if (stage === 'in') return 'bg-card text-ink-900 border-emerald-600'
-  return 'bg-card text-main border-paper-400'
+  // **A booking still to come is soft gold** (the Reserved pills mock, option A, Sebastian,
+  // 2026-10-17: the staff said the white pills were "a bit hard to see"). White on the
+  // white grid with a thin beige edge, a booked day looked almost like a free one.
+  return 'bg-gold-100 text-main border-gold-400'
 }
 
 /** The two letters a stay wears on its last morning, where half a day is too narrow for a

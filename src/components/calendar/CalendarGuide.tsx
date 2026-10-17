@@ -28,8 +28,8 @@ export function CalendarGuide() {
           </div>
 
           <Section title="On the booking">
-            <Row sign={<Pill className="bg-card border-paper-400" />}>Booked, not here yet</Row>
-            <Row sign={<Pill className="bg-card border-paper-400 border-l-[5px] border-l-emerald-700" />}>Arrives today</Row>
+            <Row sign={<Pill className="bg-gold-100 border-gold-400" />}>Booked, not here yet</Row>
+            <Row sign={<Pill className="bg-gold-100 border-gold-400 border-l-[5px] border-l-emerald-700" />}>Arrives today</Row>
             <Row sign={<Pill className="bg-emerald-50 border-emerald-600" />}>In the room</Row>
             <Row sign={<Pill className="bg-emerald-50 border-emerald-600 border-r-[5px] border-r-ink-900" />}>Leaves today</Row>
             <Row sign={<Pill className="bg-ink-100 border-ink-200 text-white"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-ink-600"><Check className="w-2 h-2" strokeWidth={3} /></span></Pill>}>Has left</Row>

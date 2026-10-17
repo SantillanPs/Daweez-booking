@@ -31,6 +31,7 @@ export const UPDATES: Update[] = [
           'When you pick more than one room, the New booking bar moves to the last room you picked, so it stays where you are working.',
           'After you make a booking and press Done, you go straight back to the calendar. The booking no longer opens by itself.',
           'Tap the arrive or leave number under a date to light up those bookings. Tap anywhere else to let go.',
+          'Reserved bookings are now soft gold, so they are easier to see.',
         ],
       },
       {
