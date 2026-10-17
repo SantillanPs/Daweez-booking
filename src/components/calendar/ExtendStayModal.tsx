@@ -879,14 +879,15 @@ export function ExtendStayModal({
                     slipLabel={payingSlip ? 'order slip ' + slipNumber(payingSlip.tab) : undefined}
                     method={receiptMethod}
                     // Back from GCash or a bank transfer clears the choice here only; nothing is saved.
-                    onMethod={m => { if (m) pickMethod(m); else { setReceiptMethod(''); setReceiptRef('') } }}
+                    onMethod={m => layout(() => { if (m) pickMethod(m); else { setReceiptMethod(''); setReceiptRef('') } })}
                     reference={receiptRef}
                     onReference={setReceiptRef}
                     onReferenceCommit={() => { if (receiptRef.trim()) void savePaymentMethod(receiptMethod, receiptRef) }}
                     loud={step === 'payment'}
                     open={receiveOpen}
-                    onOpen={() => setReceiveOpen(true)}
-                    onClose={() => { setReceiveOpen(false); setReceiptAmount(null); setReceiptMethod(''); setReceiptRef('') }}
+                    // The window grows to the amount and the ways to pay, and shrinks back, instead of snapping (Sebastian, 2026-10-17).
+                    onOpen={() => layout(() => setReceiveOpen(true))}
+                    onClose={() => layout(() => { setReceiveOpen(false); setReceiptAmount(null); setReceiptMethod(''); setReceiptRef('') })}
                     onReceive={() => void handleAddReceipt()}
                   />
                   </div>
@@ -912,7 +913,7 @@ export function ExtendStayModal({
                   </button>
                 ))}
                 {!isBlock && due > 0 && step !== 'payment' && !receiveOpen && (
-                  <button type="button" onClick={() => setReceiveOpen(true)} className={QUIET_LINK}>
+                  <button type="button" onClick={() => layout(() => setReceiveOpen(true))} className={QUIET_LINK}>
                     Receive a payment
                   </button>
                 )}
