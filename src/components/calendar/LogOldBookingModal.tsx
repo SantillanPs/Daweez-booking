@@ -12,6 +12,9 @@ import { getRateConfig } from '../../utils/rateConfig'
 import { breakfastSellable } from '../../utils/breakfast'
 import { PAYMENT_METHODS } from '../../utils/paymentMethod'
 import { lastReceptionist, rememberReceptionist, staffNamesOf } from '../../utils/receptionists'
+import { PriceBox } from '../PriceBox'
+import { useDashboardData } from '../DashboardContext'
+import { showToast } from '../../utils/toast'
 
 type CreateManual = (p: {
   roomId?: string; venueId?: string; guestName: string; guestEmail: string; guestPhone: string
@@ -91,6 +94,49 @@ function Circled({ on, onClick, className, children }: { on: boolean; onClick: (
   )
 }
 
+/**
+ * Breakfast for one room, as a strip along the bottom of its ticket with a switch (the
+ * breakfast mock, design A, Sebastian, 2026-10-17) — the way the Vacation House's kinds sit
+ * on theirs, instead of a row of ticks apart from the rooms. On, it turns the breakfast brown
+ * of the calendar and the cup hops. A room never priced asks for its price right here, as the
+ * New booking form does; the price is saved on the room and breakfast goes on.
+ */
+function BreakfastStrip({ room, on, perNight, onToggle }: { room: Room; on: boolean; perNight: boolean; onToggle: () => void }) {
+  const [pricing, setPricing] = useState(false)
+  const { updateRoomBreakfastPrice } = useDashboardData()
+  const price = Number(room.breakfast_price || 0)
+  const base = 'w-full flex items-center gap-2.5 min-h-12 px-3 border-t-[1.5px] border-dashed border-paper-200 text-left text-[14px] font-bold transition-colors duration-300 '
+  if (!breakfastSellable(room)) return (
+    <div className={base + 'bg-paper-50 text-gold-800'}>
+      <Coffee aria-hidden="true" className="w-4 h-4 shrink-0" />
+      <span className="flex-1">Breakfast</span>
+      {pricing ? (
+        <PriceBox className="h-9 text-[14px]" label={null} onBack={() => setPricing(false)}
+          onSave={p => {
+            setPricing(false)
+            updateRoomBreakfastPrice?.(room.id, p)
+              .catch(() => showToast('The breakfast price for Room ' + room.room_number + ' was not saved. Try again.', 'error'))
+            onToggle()
+          }} />
+      ) : (
+        <button type="button" onClick={() => setPricing(true)} aria-label={'Breakfast for Room ' + room.room_number + ', no price yet — set it'}
+          className="h-8 px-2.5 rounded-lg border border-dashed border-gold-500 text-[13px] hover:bg-gold-100 cursor-pointer transition-[background-color,transform] active:scale-95">Set price</button>
+      )}
+    </div>
+  )
+  return (
+    <button type="button" role="switch" aria-checked={on} onClick={onToggle}
+      aria-label={'Breakfast for Room ' + room.room_number + ', ' + fmtPeso(price) + (perNight ? ' a night' : '')}
+      className={base + 'cursor-pointer ' + (on ? 'bg-gold-100 text-gold-800' : 'bg-paper-50 text-main hover:bg-gold-100/60')}>
+      <Coffee aria-hidden="true" className={'w-4 h-4 shrink-0 ' + (on ? 'bk-hop' : 'text-muted')} />
+      <span className="flex-1">Breakfast <span className="text-[12px] font-semibold text-muted tabular-nums">· {fmtPeso(price)}{perNight ? ' a night' : ''}</span></span>
+      <span aria-hidden="true" className={'relative w-10 h-6 shrink-0 rounded-full transition-colors duration-300 ' + (on ? 'bg-gold-800' : 'bg-paper-300')}>
+        <span className={'absolute top-[3px] left-[3px] w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.3,1.4,0.5,1)] ' + (on ? 'translate-x-4' : '')} />
+      </span>
+    </button>
+  )
+}
+
 /** A heading on the paper, with a rule running out to the edge. */
 const Section = ({ children }: { children: React.ReactNode }) => (
   <h4 className="flex items-center gap-2.5 font-display text-[15px] font-bold text-main after:content-[''] after:flex-1 after:h-px after:bg-paper-200">{children}</h4>
@@ -161,7 +207,6 @@ export function LogOldBookingModal({ rooms, venues, bookings, createManualBookin
   const total = priced.reduce((a, u) => a + u.total, 0)
   const paidNow = paid ?? total
   const balance = Math.max(0, total - paidNow)
-  const bfRooms = list.filter(([id, s]) => s.type === 'room' && breakfastSellable(rooms.find(r => r.id === id)!))
 
   const want = (el: HTMLElement | null) => {
     if (!el) return
@@ -374,6 +419,12 @@ export function LogOldBookingModal({ rooms, venues, bookings, createManualBookin
                     )
                   })}
                 </div>
+                {/* A short stay has no ticket, so its one breakfast is a strip of its own. */}
+                {rooms.find(r => r.id === first[0]) && (
+                  <div className="mt-3 rounded-2xl border-[1.5px] border-paper-200 overflow-hidden [&>*]:border-t-0">
+                    <BreakfastStrip room={rooms.find(r => r.id === first[0])!} on={breakfast.includes(first[0])} perNight={false} onToggle={() => toggleBreakfast(first[0])} />
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
@@ -418,6 +469,7 @@ export function LogOldBookingModal({ rooms, venues, bookings, createManualBookin
                         <span className="shrink-0 text-right text-[13px] leading-4 text-muted tabular-nums">
                           <b className="block text-[17px] leading-6 text-main">{p ? fmtPeso(p.grandTotal - p.breakfastTotal) : '—'}</b>
                           {p ? p.stayQuantity + (s.type === 'venue' ? ' day' : ' night') + (p.stayQuantity !== 1 ? 's' : '') : 'check the days'}
+                          {p && p.breakfastTotal > 0 && <span className="block text-[12px] font-bold text-gold-800 bw-rise">+ {fmtPeso(p.breakfastTotal)} breakfast</span>}
                         </span>
                         {entries.length > 1 && (
                           <button type="button" onClick={e => removeUnit(id, (e.currentTarget as HTMLElement).closest('[data-unit]'))} aria-label={'Take ' + nameOf(id, s) + ' off'}
@@ -438,6 +490,7 @@ export function LogOldBookingModal({ rooms, venues, bookings, createManualBookin
                           ))}
                         </div>
                       )}
+                      {room && <BreakfastStrip room={room} on={breakfast.includes(id)} perNight onToggle={() => toggleBreakfast(id)} />}
                     </div>
                   )
                 })}
@@ -453,23 +506,6 @@ export function LogOldBookingModal({ rooms, venues, bookings, createManualBookin
               </div>
             )}
 
-            {/* Breakfast: one tick a room, only for rooms that sell it. */}
-            {bfRooms.length > 0 && (
-              <div>
-                <span className={LABEL}>Breakfast</span>
-                <div className="flex flex-wrap gap-x-5">
-                  {bfRooms.map(([id, s]) => {
-                    const price = Number(rooms.find(r => r.id === id)?.breakfast_price || 0)
-                    return (
-                      <Tick key={id} on={breakfast.includes(id)} onClick={() => toggleBreakfast(id)}>
-                        <Coffee aria-hidden="true" className={'w-4 h-4 ' + (breakfast.includes(id) ? 'bk-hop text-gold-800' : 'text-muted')} />
-                        {nameOf(id, s)} <span className="text-[13px] font-semibold text-muted tabular-nums">{fmtPeso(price)}{isShort ? '' : ' a night'}</span>
-                      </Tick>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* The receptionist: the names used before written out, the one on duty circled by
