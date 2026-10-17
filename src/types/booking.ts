@@ -5,7 +5,7 @@ export interface Room {
   base_price: number // Regular price (PHP)
   promo_price?: number | null // Promo price when a sale is active
   /**
-   * What this room charges for breakfast — one charge for the stay, typed by the
+   * What this room charges for breakfast — once a night, typed by the
    * desk in Settings (card k140). `null`/absent means the room does not sell
    * breakfast yet, and the booking form says so instead of charging ₱0.
    */
@@ -97,7 +97,7 @@ export interface BreakfastRecord {
 }
 
 // What a room chose for breakfast on one morning (asked daily, the owner 2026-10-04).
-// A record for the kitchen — NOT a charge: breakfast is one price for the stay.
+// A record for the kitchen — NOT a charge: breakfast is charged once a night.
 export interface BreakfastChoice {
   date: string // YYYY-MM-DD the breakfast is for
   items: { name: string; qty: number }[] // empty = asked, and the guest wanted nothing

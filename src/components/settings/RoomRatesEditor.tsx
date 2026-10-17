@@ -22,7 +22,7 @@ interface RoomRatesEditorProps {
  * space is left empty — which is what the earlier card grid got wrong when one open
  * card stretched its whole row.
  *
- * Each room's prices: the night, breakfast (one charge for the stay, card k140) and the
+ * Each room's prices: the night, breakfast (once a night, 2026-10-17) and the
  * three short-stay hours off the printed board. **22 hours IS the night price**, so it is
  * stated rather than offered as a fourth box. A short stay the room is not sold for is 0,
  * and an empty box says so itself ("Not sold") instead of a footnote explaining it. A room
@@ -102,7 +102,7 @@ export function RoomRatesEditor({ rooms, edits, onEdit, loading = false }: RoomR
             <SubHead>Overnight</SubHead>
             <FieldGrid>
               <Figure label="A night" value={draft.price} onChange={v => onEdit(selected.id, { price: v })} />
-              <Figure label="Breakfast, once for the stay" placeholder="None" value={draft.breakfast} onChange={v => onEdit(selected.id, { breakfast: v })} />
+              <Figure label="Breakfast, a night" placeholder="None" value={draft.breakfast} onChange={v => onEdit(selected.id, { breakfast: v })} />
             </FieldGrid>
           </div>
 

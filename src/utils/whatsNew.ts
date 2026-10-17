@@ -23,6 +23,17 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-17b',
+    changes: [
+      {
+        where: 'Front desk → New booking',
+        what: [
+          'Breakfast is now charged for every night. Two nights with ₱300 breakfast is ₱600. The bill shows it as 2 × night.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-17',
     changes: [
       {

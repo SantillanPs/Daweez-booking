@@ -276,7 +276,7 @@ export function useBookings() {
         bookingsList: bookings, rateMultiplier,
         contractRateOverride, venueExcessHours,
         rooms, venues,
-        // Breakfast is the ROOM's own charge, once for the stay (card k140), and the
+        // Breakfast is the ROOM's own charge, once a night (2026-10-17), and the
         // booking stores that flag — so the price it is SAVED with has to carry it too.
         // Leaving it out priced every new booking as the room alone: GRF-2026-09-0014
         // (Room 6, breakfast ₱600) was stored owing ₱1,800 on a ₱2,400 stay, while the
@@ -483,7 +483,7 @@ export function useBookings() {
     }
   })
 
-  // 10b2. Mutation: Update a room's breakfast price (card k140) — one charge for the stay.
+  // 10b2. Mutation: Update a room's breakfast price (card k140) — charged once a night.
   const updateRoomBreakfastMutation = useMutation({
     mutationFn: async (params: { roomId: string; price: number }) => {
       return await syncEngine.updateRoomBreakfastPrice(params.roomId, params.price)

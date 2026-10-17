@@ -75,7 +75,7 @@ export interface DashboardDataContextValue {
   updateBooking: (booking: Booking) => Promise<void>
   updateFeedUrls: (updatedFeeds: SyncFeed[]) => Promise<SyncFeed[]>
   updateRoomRate: (roomId: string, basePrice: number, promoPrice?: number | null) => Promise<Room | null>
-  /** What a room charges for breakfast — one charge for the stay (k140). */
+  /** What a room charges for breakfast — once a night (2026-10-17). */
   updateRoomBreakfastPrice: (roomId: string, price: number) => Promise<void>
   /** Short-stay prices from the printed board: 3, 6 and 12 hours. Zero = not sold short. */
   updateRoomHourPrices: (roomId: string, hour3: number, hour6: number, hour12: number) => Promise<void>

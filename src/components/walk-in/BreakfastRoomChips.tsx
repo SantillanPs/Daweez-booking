@@ -30,7 +30,7 @@ interface BreakfastRoomChipsProps {
  * the words `Room 3 ₱300`, which on a booking of one room read as the room and its price
  * rather than as breakfast to add. Now OFF is an empty square and ON a ticked one on gold,
  * so it still says its state without relying on colour (the owner could not tell that a
- * brown chip meant "on"). With one room the box says what it adds — `₱300 for the stay`;
+ * brown chip meant "on"). With one room the box says what it adds — `₱300 a night`;
  * the room is already in the form's title. With several, each box is named by its room.
  *
  * A room the desk has never priced never charges ₱0: its chip is dashed and reads "Set price",
@@ -99,7 +99,7 @@ export function BreakfastRoomChips({ rooms, chosen, onToggle, onAll }: Breakfast
               role="checkbox"
               disabled={!sellable}
               aria-checked={on}
-              aria-label={'Breakfast for Room ' + room.room_number + (sellable ? ', ' + price + ' for the stay' : ', no price')}
+              aria-label={'Breakfast for Room ' + room.room_number + (sellable ? ', ' + price + ' a night' : ', no price')}
               onClick={() => onToggle(room.id)}
               title={sellable ? undefined : 'No breakfast price for this room yet — set it in Settings, under Rooms & prices'}
               className={'flex items-center gap-2 h-9 text-[14px] font-semibold rounded-md pl-2.5 pr-3 border transition-colors duration-150 ' +
@@ -120,7 +120,7 @@ export function BreakfastRoomChips({ rooms, chosen, onToggle, onAll }: Breakfast
               {sellable && <Coffee aria-hidden="true" className={'w-4 h-4 shrink-0 ' + (on ? 'bk-hop' : 'text-muted')} />}
               {!alone && <span>Room {room.room_number}</span>}
               <span className={'tabular-nums ' + (on || alone ? '' : 'text-muted')}>
-                {sellable ? (alone ? price + ' for the stay' : price) : 'no price'}
+                {sellable ? (alone ? price + ' a night' : price) : 'no price'}
               </span>
             </button>
           )

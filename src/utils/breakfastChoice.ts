@@ -3,7 +3,7 @@ import { supabase, isSupabaseConfigured } from './supabaseClient'
 
 // BREAKFAST, EVERY MORNING (the owner, 2026-10-04): a guest who booked breakfast is
 // asked each morning what they want. This records the answer for the kitchen and for
-// the record. It is not a charge — breakfast is one price for the stay.
+// the record. It is not a charge — breakfast is charged once a night.
 
 /** A guest the desk should ask today: in the hotel, in a room that has breakfast. */
 export function wantsBreakfastToday(b: Booking): boolean {

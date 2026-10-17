@@ -187,16 +187,16 @@ export function bookingLines(b: Booking, o: {
     })
   }
 
-  // Breakfast is ONE charge at the room's own price (card k140) and prints as one line
-  // under the Breakfast band — `Room 6 · Breakfast` — never per guest and never per day.
+  // Breakfast is the room's own price once a night (2026-10-17) and prints as one line
+  // under the Breakfast band — `Room 6 · Breakfast`, 2 × NIGHT — never per guest.
   if (isRoom && pricing.breakfastTotal > 0) {
     items.push({
       key: b.id + '-breakfast',
       band: 'breakfast',
       description: unitName(b, rooms, venues) + ' · Breakfast',
-      qty: '1',
-      unit: 'PC',
-      price: Math.round(pricing.breakfastTotal),
+      qty: String(pricing.breakfastNights || 1),
+      unit: pricing.breakfastNights ? 'NIGHT' : 'PC',
+      price: Math.round(pricing.breakfastTotal / (pricing.breakfastNights || 1)),
       discount: 0,
       amount: Math.round(pricing.breakfastTotal),
     })

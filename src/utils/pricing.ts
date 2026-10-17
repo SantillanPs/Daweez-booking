@@ -158,9 +158,12 @@ export function calculatePricing(params: {
   const earlyLateTotal = earlyCharge + lateCharge
 
   let breakfastTotal = 0
+  // How many breakfasts the bill counts: one a night. 0 for a legacy record booking.
+  let breakfastNights = 0
   const brkRecords = breakfastRecords || []
-  // Breakfast for a room is **ONE charge for the whole stay, at the room's own
-  // `breakfast_price`** (owner's rule, card k140) — never per person and never per day.
+  // Breakfast for a room is **the room's own `breakfast_price` once a night** (Sebastian,
+  // 2026-10-17: "it's supposed to be charged per night" — 2 nights at ₱300 is ₱600; card
+  // k140 had it once for the whole stay). Never per person. A short stay is one breakfast.
   // The desk types that figure per room in Settings, and **a room without one sells no
   // breakfast at all** (the owner's ruling, 2026-09-29).
   //
@@ -178,13 +181,12 @@ export function calculatePricing(params: {
     breakfastTotal = brkRecords.reduce((sum, r) => sum + ((r.price || 0) * (r.quantity || 0)), 0)
   } else if (roomId && roomBreakfastPrice > 0) {
     // Breakfast is the ROOM's choice (card k140): on only for the rooms the desk
-    // ticked, and charged at the room's OWN breakfast price — one charge for the
-    // stay. `breakfastEnabled` is the caller's explicit answer (the booking form,
+    // ticked, and charged at the room's OWN breakfast price for each night. `breakfastEnabled` is the caller's explicit answer (the booking form,
     // the guest portal); `breakfastIncluded` is what the saved booking holds.
     const wantsBreakfast = breakfastEnabled !== undefined
       ? breakfastEnabled
       : breakfastIncluded === true
-    if (wantsBreakfast) breakfastTotal = roomBreakfastPrice
+    if (wantsBreakfast) { breakfastNights = Math.max(1, nights); breakfastTotal = roomBreakfastPrice * breakfastNights }
   }
   // **A room with no breakfast price sells NO breakfast** (the owner's ruling, 2026-09-29:
   // *"if a room has no breakfast price, then breakfast should be unavailable. remove every
@@ -244,6 +246,7 @@ export function calculatePricing(params: {
     discountPercent,
     hasLoyalty: false,
     breakfastTotal,
+    breakfastNights,
     rentalsTotal,
     addonsTotal,
     securityDeposit,

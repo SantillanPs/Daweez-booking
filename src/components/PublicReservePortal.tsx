@@ -691,7 +691,7 @@ export function PublicReservePortal() {
                         Add breakfast for this room
                         {Number((selectedUnit as Room).breakfast_price || 0) > 0 ? (
                           <span className="block text-[10.5px] text-muted font-medium">
-                            ₱{Number((selectedUnit as Room).breakfast_price).toLocaleString()} for the stay — added to your total.
+                            ₱{Number((selectedUnit as Room).breakfast_price).toLocaleString()} a night — added to your total.
                           </span>
                         ) : (
                           <span className="block text-[10.5px] text-muted font-medium">Ask us at the desk for this room's breakfast.</span>
