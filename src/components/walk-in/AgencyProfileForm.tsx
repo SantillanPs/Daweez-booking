@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
 import { Building2 } from 'lucide-react'
+import { BOX, FIELD, PRIMARY_BUTTON, QUIET_BUTTON } from './formStyles'
 import { PartnerDeal, Room } from '../../types/booking'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { generateUUID } from '../../utils/helpers'
 import { useDashboardData } from '../DashboardContext'
 
-const field = 'input input-bordered input-sm w-full text-sm'
-const lab = 'text-[10px] font-bold text-base-content/60 uppercase tracking-wider'
+const field = FIELD
+const lab = 'text-[10px] font-bold text-muted uppercase tracking-wider'
 const money = (n: number) => '₱' + Math.round(n || 0).toLocaleString()
 
 /**
@@ -81,12 +82,12 @@ export function AgencyProfileForm({ deal, draftName, rooms, onSaved, onClose }: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/50 font-sans" onClick={onClose}>
       <form onSubmit={save} onClick={e => e.stopPropagation()}
-        className="w-full max-w-2xl bg-base-100 rounded-xl border border-base-300 shadow-xl flex flex-col max-h-[90vh] overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-base-300 shrink-0">
-          <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        className="w-full max-w-2xl bg-card rounded-xl border border-soft shadow-xl flex flex-col max-h-[90vh] overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-soft shrink-0">
+          <span className="w-5 h-5 rounded-full bg-gold-100 text-brand-text flex items-center justify-center shrink-0">
             <Building2 className="w-3 h-3" />
           </span>
-          <h3 className="text-sm font-bold text-base-content">{deal ? 'Edit agency' : 'New agency'}</h3>
+          <h3 className="text-sm font-bold text-main">{deal ? 'Edit agency' : 'New agency'}</h3>
           <button type="button" onClick={onClose}
             className="ml-auto text-[11px] font-bold text-muted hover:text-main cursor-pointer">Cancel</button>
         </div>
@@ -105,7 +106,7 @@ export function AgencyProfileForm({ deal, draftName, rooms, onSaved, onClose }: 
 
           <div>
             <p className={lab + ' text-brand-text'}>What this agency pays per room</p>
-            <p className="text-[10.5px] text-base-content/60 mt-0.5">
+            <p className="text-[10.5px] text-muted mt-0.5">
               The grey figure is the price on the board — a hint, never charged to them. Leave a box empty and that room stays at the board price.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 mt-2">
@@ -116,11 +117,11 @@ export function AgencyProfileForm({ deal, draftName, rooms, onSaved, onClose }: 
                     <span className="flex-1 text-[11.5px] font-semibold text-main truncate">
                       Room {room.room_number} <span className="text-muted font-normal">· {room.name}</span>
                     </span>
-                    <span className="font-mono text-[10.5px] text-base-content/50 w-14 text-right">{money(board)}</span>
+                    <span className="font-mono text-[10.5px] text-muted w-14 text-right">{money(board)}</span>
                     <input type="text" inputMode="decimal" value={rates[room.id] ?? ''}
                       onChange={e => setRates(r => ({ ...r, [room.id]: e.target.value.replace(/[^0-9.]/g, '') }))}
                       placeholder="—"
-                      className="input input-bordered input-sm w-24 text-right font-mono" />
+                      className={BOX + ' w-24 border-soft text-right font-mono'} />
                   </label>
                 )
               })}
@@ -128,10 +129,10 @@ export function AgencyProfileForm({ deal, draftName, rooms, onSaved, onClose }: 
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-base-300 shrink-0">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-soft shrink-0">
           {!name.trim() && <span className="text-[11px] text-danger-600 font-semibold mr-auto">Give the agency a name.</span>}
-          <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
-          <button type="submit" disabled={busy || !name.trim()} className="btn btn-primary">
+          <button type="button" onClick={onClose} className={QUIET_BUTTON}>Cancel</button>
+          <button type="submit" disabled={busy || !name.trim()} className={PRIMARY_BUTTON}>
             {busy ? 'Saving…' : 'Save agency'}
           </button>
         </div>

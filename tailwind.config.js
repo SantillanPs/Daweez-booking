@@ -50,8 +50,7 @@ export default {
           muted: "#9A9A9A",
           accent: "#D0AB60"
         },
-        // Semantic "needs attention" ramp. Named `danger` (not `error`) so it
-        // cannot collide with daisyUI's own theme `error` colour.
+        // Semantic "needs attention" ramp.
         danger: {
           50: "#FBEDEA",
           100: "#F7DCD6",
@@ -113,39 +112,5 @@ export default {
       }
     }
   },
-  plugins: [require("tailwindcss-animate"), require("daisyui")],
-  daisyui: {
-    themes: [
-      {
-        daweez: {
-          // Gold fill + CHARCOAL label: white on #D0AB60 is only 2.2:1 and
-          // would be unreadable. Charcoal on gold is 7.9:1.
-          primary: "#D0AB60",
-          "primary-content": "#1C1C1C",
-          secondary: "#1C1C1C",
-          "secondary-content": "#F5F2EC",
-          accent: "#A9812F",
-          "accent-content": "#FFFFFF",
-          neutral: "#2E2E2E",
-          "neutral-content": "#F5F2EC",
-          "base-100": "#FFFFFF",
-          "base-200": "#F8F5EF",
-          "base-300": "#E6DFD0",
-          "base-content": "#1F1F1F",
-          info: "#57606A",
-          "info-content": "#FFFFFF",
-          success: "#059669",
-          "success-content": "#FFFFFF",
-          warning: "#B45309",
-          "warning-content": "#FFFFFF",
-          error: "#BE3A2B",
-          "error-content": "#FFFFFF",
-          "--rounded-box": "1rem",
-          "--rounded-btn": "0.75rem",
-          "--rounded-badge": "0.5rem",
-          "--rounded-field": "0.75rem"
-        }
-      }
-    ]
-  }
+  plugins: [require("tailwindcss-animate")]
 }

@@ -1,4 +1,5 @@
 import { CheckCircle2 } from 'lucide-react'
+import { FIELD } from './formStyles'
 
 /**
  * What the guest card shows instead of itself when the form is in **Block** mode.
@@ -13,13 +14,13 @@ export function BlockReasonFields({ notes, setNotes }: {
   setNotes: (val: string) => void
 }) {
   return (
-    <div className="bg-base-200 border border-base-300 rounded-lg px-2.5 py-2 space-y-1.5">
-      <p className="text-[10px] font-bold text-base-content flex items-center gap-1.5">
-        <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Block — just blocks the calendar (no charge).
+    <div className="bg-page border border-soft rounded-lg px-2.5 py-2 space-y-1.5">
+      <p className="text-[10px] font-bold text-main flex items-center gap-1.5">
+        <CheckCircle2 className="w-3.5 h-3.5 text-brand-text" /> Block — just blocks the calendar (no charge).
       </p>
-      <label className="text-[10px] text-base-content/60 font-bold block">Block reason (maintenance / cleaning)</label>
+      <label className="text-[10px] text-muted font-bold block">Block reason (maintenance / cleaning)</label>
       <input value={notes} onChange={e => setNotes(e.target.value.toUpperCase())} placeholder="e.g. Room maintenance"
-        className="input input-sm input-bordered w-full" />
+        className={FIELD} />
     </div>
   )
 }

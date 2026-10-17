@@ -26,7 +26,7 @@
  *     line pressable (`OPTION_LIST` / `OPTION_ROW`);
  *   - the payment, in a column of its own beside the guest on a wide screen.
  */
-const BOX = 'h-11 rounded-md border bg-card px-3 text-[15px] font-medium text-main placeholder:font-normal placeholder:text-muted outline-none transition-[border-color,box-shadow] duration-200 focus:border-gold-500 focus:ring-2 focus:ring-gold-400/30'
+export const BOX = 'h-11 rounded-md border bg-card px-3 text-[15px] font-medium text-main placeholder:font-normal placeholder:text-muted outline-none transition-[border-color,box-shadow] duration-200 focus:border-gold-500 focus:ring-2 focus:ring-gold-400/30'
 export const FIELD = BOX + ' w-full border-soft'
 /** The same box when it shares a row and must take what is left of it. */
 export const FIELD_IN_ROW = BOX + ' flex-1 min-w-0 border-soft'
@@ -64,3 +64,7 @@ export const ICON_BUTTON = 'w-11 h-11 shrink-0 inline-flex items-center justify-
 
 /** What opens under a row: it settles in rather than snapping. */
 export const REVEAL = 'animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none'
+
+/** A window's main button and its quiet Cancel — they were daisyUI's `btn`s until it was removed (2026-10-18). */
+export const PRIMARY_BUTTON = 'h-11 px-5 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-sm font-bold transition-[background-color,transform] duration-150 active:scale-95 cursor-pointer disabled:opacity-60'
+export const QUIET_BUTTON = 'h-11 px-4 rounded-lg text-sm font-semibold text-main hover:bg-page transition-[background-color,transform] duration-150 active:scale-95 cursor-pointer'

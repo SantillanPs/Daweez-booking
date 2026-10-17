@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { CalendarOff } from 'lucide-react'
+import { FIELD, PRIMARY_BUTTON, QUIET_BUTTON } from '../walk-in/formStyles'
 
 /** The reasons the desk blocks dates for (the owner's list, 2026-09). */
 const REASONS = ['Cleaning', 'Maintenance', 'Owner use', 'Other'] as const
@@ -53,12 +54,12 @@ export function BlockDatesPane({ unitLabel, checkIn, checkOut, fmt, onSubmit, on
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/50 font-sans" onClick={onClose}>
       <form onSubmit={submit} onClick={e => e.stopPropagation()}
-        className="w-full max-w-md bg-base-100 rounded-xl border border-base-300 shadow-xl p-4 space-y-3 text-left">
+        className="w-full max-w-md bg-card rounded-xl border border-soft shadow-xl p-4 space-y-3 text-left">
         <div className="flex items-center gap-2">
-          <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <span className="w-5 h-5 rounded-full bg-gold-100 text-brand-text flex items-center justify-center shrink-0">
             <CalendarOff className="w-3 h-3" />
           </span>
-          <h3 className="text-sm font-bold text-base-content">Block these dates</h3>
+          <h3 className="text-sm font-bold text-main">Block these dates</h3>
           <button type="button" onClick={onClose}
             className="ml-auto text-[11px] font-bold text-muted hover:text-main cursor-pointer">Cancel</button>
         </div>
@@ -80,7 +81,7 @@ export function BlockDatesPane({ unitLabel, checkIn, checkOut, fmt, onSubmit, on
         </div>
 
         <div>
-          <p className="text-[10px] font-bold text-base-content/60 uppercase tracking-wider mb-1.5">Why</p>
+          <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Why</p>
           <div className="flex flex-wrap gap-1.5">
             {REASONS.map(r => (
               <button key={r} type="button" onClick={() => setReason(r)} className={chip(reason === r)}>{r}</button>
@@ -89,21 +90,21 @@ export function BlockDatesPane({ unitLabel, checkIn, checkOut, fmt, onSubmit, on
           {missing && <p className="text-[11px] text-danger-600 font-semibold mt-1.5">Pick a reason for the block.</p>}
           {reason === 'Owner use' && (
             <label className="mt-2.5 flex items-center gap-2 text-[12px] font-semibold text-main cursor-pointer">
-              <input type="checkbox" checked={noEnd} onChange={e => setNoEnd(e.target.checked)} className="checkbox checkbox-sm checkbox-primary" />
+              <input type="checkbox" checked={noEnd} onChange={e => setNoEnd(e.target.checked)} className="w-4 h-4 accent-gold-500 cursor-pointer" />
               No end date yet
             </label>
           )}
         </div>
 
         <label className="block">
-          <span className="text-[10px] font-bold text-base-content/60 uppercase tracking-wider">Note (optional)</span>
+          <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Note (optional)</span>
           <input value={note} onChange={e => setNote(e.target.value)} placeholder="What is being done"
-            className="input input-bordered w-full text-sm mt-1" />
+            className={FIELD + ' mt-1'} />
         </label>
 
         <div className="flex justify-end items-center gap-2 pt-1">
-          <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
-          <button type="submit" disabled={busy} className="btn btn-primary">
+          <button type="button" onClick={onClose} className={QUIET_BUTTON}>Cancel</button>
+          <button type="submit" disabled={busy} className={PRIMARY_BUTTON}>
             {busy ? 'Blocking…' : 'Create block'}
           </button>
         </div>
