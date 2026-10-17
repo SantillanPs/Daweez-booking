@@ -1,276 +1,465 @@
-import React, { useState } from 'react'
-import { X, Users, Plus } from 'lucide-react'
+import React, { useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
+import { X, Check, Coffee, Plus } from 'lucide-react'
 import { NationalityInput } from '../NationalityInput'
+import { NumInput } from '../NumInput'
 import { Booking, Room, Venue, Companion } from '../../types/booking'
-import { dateToString } from '../../utils/helpers'
-import { getEffectiveNightlyPrice } from '../../utils/promoMode'
-import { OldBookingUnitPicker, OldBookingUnitSel } from './OldBookingUnitPicker'
-import { OldBookingPayment } from './OldBookingPayment'
+import { dateToString, generateUUID } from '../../utils/helpers'
+import { calculatePricing } from '../../utils/pricing'
+import { getRateConfig } from '../../utils/rateConfig'
+import { breakfastSellable } from '../../utils/breakfast'
+import { PAYMENT_METHODS } from '../../utils/paymentMethod'
 
-interface LogOldBookingInput {
+type CreateManual = (p: {
   roomId?: string; venueId?: string; guestName: string; guestEmail: string; guestPhone: string
   guestAddress?: string; guestNationality?: string; companions?: Companion[]
   checkIn: string; checkOut: string; source: 'manual'; status: 'confirmed'
   referenceNumber?: string; registeredOn?: string
   paymentMethod?: string; downpaymentPaid?: number; balanceDue?: number
   paymentStatus?: 'unpaid' | 'downpayment' | 'paid'; paymentRecords?: Booking['payment_records']
-  preparedBy?: string
-}
+  preparedBy?: string; breakfastIncluded?: boolean; stayHours?: number; groupId?: string
+}) => Promise<Booking>
+
+interface Sel { checkIn: string; checkOut: string; type: 'room' | 'venue' }
 
 interface LogOldBookingModalProps {
   rooms: Room[]
   venues: Venue[]
-  createManualBooking: (p: LogOldBookingInput) => Promise<Booking>
+  createManualBooking: CreateManual
   onClose: () => void
   // Calendar selection (room/venue + dates) to pre-fill, like the other booking forms.
-  initialSelections?: Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
+  initialSelections?: Record<string, Sel>
 }
 
-// Logs a historical paper booking into the system: guest + room + dates + what
-// was paid, plus the original paper log number/date so it stays findable.
+const HOURS = [3, 6, 12, 22] as const
+const EASE = 'cubic-bezier(0.16, 1, 0.3, 1)'
+const fmtPeso = (n: number) => '₱' + Math.round(n).toLocaleString()
+const nextDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return dateToString(new Date(y, m - 1, d + 1)) }
+const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const newReceiptId = () => 'rcpt-' + Date.now()
+
+// A slot that changes what it holds grows or shrinks to it, so what sits below it glides
+// instead of jumping (the Log old booking mock, Sebastian, 2026-10-17: "it snaps when you hide").
+function swap(change: () => void, ...slots: (HTMLElement | null)[]) {
+  const live = slots.filter((s): s is HTMLElement => !!s)
+  const from = live.map(s => s.offsetHeight)
+  flushSync(change)
+  if (reduced()) return
+  live.forEach((s, i) => {
+    const to = s.offsetHeight
+    if (to === from[i]) return
+    s.style.overflow = 'hidden'
+    s.animate([{ height: from[i] + 'px' }, { height: to + 'px' }], { duration: 340, easing: EASE }).onfinish = () => { s.style.overflow = '' }
+  })
+}
+
+/** A box ticked on the paper: the tick draws itself in (`lo-tick` in index.css). */
+function Tick({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" role="checkbox" aria-checked={on} onClick={onClick}
+      className="lo-tick inline-flex items-center gap-2 min-h-11 text-[15px] font-bold text-main cursor-pointer active:scale-[0.97] transition-transform">
+      <span className="w-6 h-6 rounded-[6px] border-2 border-ink-900 grid place-items-center shrink-0">
+        <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+      </span>
+      {children}
+    </button>
+  )
+}
+
+/**
+ * Copies a paper registration into the system — design B of the Log old booking mock
+ * (Sebastian, 2026-10-17): laid out like the paper the desk copies from, with the payment as
+ * its torn-off stub. It logs a short stay (3, 6, 12 or 22 hours, one room) and each room's
+ * breakfast, and every figure comes from `calculatePricing` — the form used to work out its
+ * own nights × price, so a paper booking with breakfast or for a few hours was logged at the
+ * wrong figure.
+ */
 export function LogOldBookingModal({ rooms, venues, createManualBooking, onClose, initialSelections }: LogOldBookingModalProps) {
+  const [regNo, setRegNo] = useState('')
+  const [regOn, setRegOn] = useState('')
   const [guestName, setGuestName] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
-  const [guestAddress, setGuestAddress] = useState('')
-  const [guestNationality, setGuestNationality] = useState('')
+  const [nationality, setNationality] = useState('')
+  const [address, setAddress] = useState('')
   const [companions, setCompanions] = useState<Companion[]>([])
-  const [referenceNumber, setReferenceNumber] = useState('')
-  const [registeredOn, setRegisteredOn] = useState('')
-  // Every room/venue picked on the calendar, in the order they were selected.
-  const [unitSelections, setUnitSelections] = useState<Record<string, OldBookingUnitSel>>(() => {
-    const s: Record<string, OldBookingUnitSel> = {}
-    if (initialSelections) Object.entries(initialSelections).forEach(([id, sel]) => { s[id] = { checkIn: sel.checkIn, checkOut: sel.checkOut, type: sel.type } })
-    return s
-  })
-  const [payMode, setPayMode] = useState('Cash')
-  const [deposit, setDeposit] = useState('')
-  const [fullyPaid, setFullyPaid] = useState(false)
-  const [payDate, setPayDate] = useState(() => dateToString(new Date()))
+  const [more, setMore] = useState(false)
+  const [units, setUnits] = useState<Record<string, Sel>>(() => ({ ...initialSelections }))
+  const [short, setShort] = useState(false)
+  const [hours, setHours] = useState<number>(3)
+  const [breakfast, setBreakfast] = useState<string[]>([])
+  const [paid, setPaid] = useState<number | null>(null)
+  const [method, setMethod] = useState('')
+  const [payDate, setPayDate] = useState<string | null>(null)
   const [preparedBy, setPreparedBy] = useState('')
   const [error, setError] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
-  const [touched, setTouched] = useState<Record<string, boolean>>({})
-  const [trySave, setTrySave] = useState(false)
+  const [logged, setLogged] = useState(false)
 
-  const cleanNum = (v: string) => {
-    let s = v.replace(/[^0-9.]/g, '')
-    const i = s.indexOf('.')
-    if (i !== -1) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '')
-    return s
-  }
-  const depositNum = parseFloat(deposit) || 0
-  const unitEntries = Object.entries(unitSelections)
-  const unitNights = (sel: OldBookingUnitSel) => sel.checkIn && sel.checkOut ? Math.max(1, Math.ceil((new Date(sel.checkOut).getTime() - new Date(sel.checkIn).getTime()) / 86400000)) : 0
-  // ONE PRICE: there is no longer a "board today" versus "the older regular figure" to choose between —
-  // `promo_price` IS the price and `base_price` duplicates it, so this reads the one figure. The tick-box
-  // that used to sit here went with the second price (the owner's ruling, 2026-09-29, option A).
-  const unitTotal = (id: string, sel: OldBookingUnitSel) => {
-    const unit = sel.type === 'room' ? rooms.find(r => r.id === id) : venues.find(v => v.id === id)
-    return unit ? Math.round(getEffectiveNightlyPrice(unit.base_price, unit.promo_price) * unitNights(sel)) : 0
-  }
-  const unitTotals = unitEntries.map(([id, sel]) => unitTotal(id, sel))
-  const totalNum = unitTotals.reduce((a, b) => a + b, 0)
-  const totalNights = unitEntries.reduce((a, [, sel]) => a + unitNights(sel), 0)
-  const totalLabel = totalNights > 0
-    ? ` · ${totalNights} ${unitEntries.length === 1 && unitEntries[0][1].type === 'venue' ? 'day' : 'night'}${totalNights !== 1 ? 's' : ''}${unitEntries.length > 1 ? ` · ${unitEntries.length} units` : ''}`
-    : ''
-  const effectivePaid = fullyPaid ? totalNum : depositNum
-  const balance = Math.max(0, totalNum - effectivePaid)
-  const hasInvalidDates = unitEntries.some(([, sel]) => !sel.checkIn || !sel.checkOut || sel.checkOut <= sel.checkIn)
-  const fieldErrors = {
-    guestName: guestName.trim() ? '' : 'Guest name is required.',
-    units: unitEntries.length === 0 ? 'Pick at least one room or venue.' : (hasInvalidDates ? 'Check that every room/venue has a valid check-in and check-out.' : ''),
-  }
-  const showErr = (f: keyof typeof fieldErrors) => (touched[f] || trySave) ? fieldErrors[f] : ''
-  const isInvalid = (f: keyof typeof fieldErrors) => Boolean(showErr(f))
-  const markTouched = (f: keyof typeof fieldErrors) => () => setTouched(t => ({ ...t, [f]: true }))
-  const addCompanion = () => setCompanions(prev => [...prev, { name: '' }])
-  const updateCompanion = (i: number, patch: Partial<Companion>) => setCompanions(prev => prev.map((c, idx) => idx === i ? { ...c, ...patch } : c))
-  const removeCompanion = (i: number) => setCompanions(prev => prev.filter((_, j) => j !== i))
+  const staySlot = useRef<HTMLDivElement>(null)
+  const moreSlot = useRef<HTMLDivElement>(null)
+  const lineSlot = useRef<HTMLDivElement>(null)
+  const nameBox = useRef<HTMLLabelElement>(null)
+  const methodBox = useRef<HTMLDivElement>(null)
 
-  const baseField = 'w-full bg-page border text-main px-3 py-2 rounded-lg text-sm focus:outline-none'
-  const field = baseField + ' border-soft focus:border-gold-500'
-  const fieldErr = baseField + ' border-danger-400 focus:border-danger-500'
-  const label = 'text-[10px] text-muted font-bold block mb-1'
+  const entries = Object.entries(units)
+  const first = entries[0]
+  // A short stay is one room for one day; the other rooms are kept, not lost, in case
+  // the desk ticks Overnight again.
+  const canShort = first?.[1].type === 'room'
+  const isShort = short && canShort
+  const list: [string, Sel][] = isShort ? [[first[0], { ...first[1], checkOut: nextDay(first[1].checkIn) }]] : entries
+  const valid = (s: Sel) => !!s.checkIn && !!s.checkOut && s.checkOut > s.checkIn
+  const nameOf = (id: string, s: Sel) => s.type === 'room'
+    ? 'Room ' + (rooms.find(r => r.id === id)?.room_number ?? '')
+    : venues.find(v => v.id === id)?.name ?? id
+
+  // ONE pricing rule: the same figures the booking is saved with.
+  const priced = list.map(([id, s]) => {
+    const p = valid(s) ? calculatePricing({
+      roomId: s.type === 'room' ? id : undefined, venueId: s.type === 'venue' ? id : undefined,
+      checkIn: s.checkIn, checkOut: s.checkOut, guestEmail: '', rooms, venues,
+      breakfastIncluded: breakfast.includes(id), shortStayHours: isShort ? hours : undefined, rates: getRateConfig(),
+    }) : null
+    return { id, s, p, total: p?.grandTotal ?? 0 }
+  })
+  const total = priced.reduce((a, u) => a + u.total, 0)
+  const paidNow = paid ?? total
+  const balance = Math.max(0, total - paidNow)
+  const bfRooms = list.filter(([id, s]) => s.type === 'room' && breakfastSellable(rooms.find(r => r.id === id)!))
+
+  const want = (el: HTMLElement | null) => {
+    if (!el) return
+    el.classList.remove('bw-want', 'bw-nope'); el.getBoundingClientRect(); el.classList.add('bw-want', 'bw-nope')
+    el.querySelector('input')?.focus()
+  }
+
+  const setUnit = (id: string, patch: Partial<Sel>) => { setUnits(u => ({ ...u, [id]: { ...u[id], ...patch } })); setPaid(null) }
+  const addUnit = (id: string) => {
+    if (!id || units[id]) return
+    const type = rooms.some(r => r.id === id) ? 'room' : 'venue'
+    const today = dateToString(new Date())
+    const dates = first ? { checkIn: first[1].checkIn, checkOut: first[1].checkOut } : { checkIn: today, checkOut: nextDay(today) }
+    swap(() => { setUnits(u => ({ ...u, [id]: { ...dates, type } })); setPaid(null) }, staySlot.current, lineSlot.current)
+  }
+  // The row folds shut first, so the rooms under it slide up rather than jump.
+  const removeUnit = (id: string, row: HTMLElement | null) => {
+    const go = () => swap(() => {
+      setUnits(u => { const n = { ...u }; delete n[id]; return n })
+      setBreakfast(b => b.filter(x => x !== id)); setPaid(null)
+    }, lineSlot.current)
+    if (!row || reduced()) { go(); return }
+    row.style.overflow = 'hidden'
+    row.animate([{ height: row.offsetHeight + 'px', opacity: 1 }, { height: '0px', opacity: 0, transform: 'translateX(-12px)' }], { duration: 280, easing: EASE }).onfinish = go
+  }
+  const toggleBreakfast = (id: string) => swap(() => {
+    setBreakfast(b => b.includes(id) ? b.filter(x => x !== id) : [...b, id]); setPaid(null)
+  }, lineSlot.current)
+
+  const reset = () => {
+    // The receptionist on duty stays: the next paper is usually from the same shift.
+    setRegNo(''); setRegOn(''); setGuestName(''); setGuestPhone(''); setNationality(''); setAddress('')
+    setCompanions([]); setMore(false); setUnits({}); setShort(false); setHours(3); setBreakfast([])
+    setPaid(null); setMethod(''); setPayDate(null); setError(''); setLogged(false)
+  }
 
   const handleSave = async () => {
-    if (Object.values(fieldErrors).some(v => v)) { setTrySave(true); return }
-    setError(''); setIsSaving(true)
+    if (!guestName.trim()) { want(nameBox.current); return }
+    if (list.length === 0 || list.some(([, s]) => !valid(s))) { want(staySlot.current); return }
+    if (paidNow > 0 && !method) { want(methodBox.current); return }
+    // The seal shows at once and the rows are saved behind it; a failure takes it back.
+    setError(''); setLogged(true)
     try {
+      const n = priced.length
+      // The one amount paid is split across the rooms in proportion to each room's bill.
+      const raw = priced.map(u => total > 0 ? Math.floor(paidNow * u.total / total) : 0)
+      let diff = paidNow - raw.reduce((a, b) => a + b, 0)
+      for (let i = 0; i < n && diff > 0; i++) { const add = Math.min(priced[i].total - raw[i], diff); raw[i] += add; diff -= add }
+      const paidAt = new Date((payDate ?? list[0][1].checkIn) + 'T12:00:00').toISOString()
+      // ONE receipt, on EVERY room it paid for, with each room's own slice as `share`
+      // (the owner's ruling, 2026-09-30). No `receipt_number`: `receiptNumberFor` derives a
+      // stable one for a payment from the paper days.
+      const receiptId = newReceiptId()
+      const groupId = n > 1 ? 'grp-' + generateUUID() : undefined
       const cleaned = companions.filter(c => c.name.trim())
-      const paid = effectivePaid
-      const n = unitEntries.length
-      // Split the single "Amount paid" across units in proportion to each unit's total.
-      const allocs: number[] = []
-      if (totalNum > 0 && n > 0) {
-        const raw = unitTotals.map(ut => Math.floor(paid * ut / totalNum))
-        let diff = paid - raw.reduce((a, b) => a + b, 0)
-        for (let i = 0; i < n && diff !== 0; i++) {
-          const cap = unitTotals[i] - raw[i]
-          const add = Math.min(cap, diff)
-          raw[i] += add
-          diff -= add
-        }
-        allocs.push(...raw)
-      } else {
-        unitTotals.forEach(() => allocs.push(0))
-      }
-      const paidAt = payDate ? new Date(payDate + 'T12:00:00').toISOString() : new Date().toISOString()
-      // ONE receipt, written onto EVERY room the paper log paid for (the owner's ruling, 2026-09-30 — the
-      // same rule `bookingPayment.recordBookingPayment` follows). It used to land on the first booking only,
-      // which left every other room holding money with nothing to show for it. One object, so the copies share
-      // an id and the daily report adds the payment up **once** rather than once per room. It carries no
-      // `receipt_number` on purpose: a paper log was paid months ago, and `receiptNumberFor` derives a stable
-      // one for payments recorded before numbering existed.
-      const rec = paid > 0
-        ? [{ id: 'rcpt-' + Date.now(), amount: paid, method: payMode, paid_at: paidAt }]
-        : undefined
       for (let i = 0; i < n; i++) {
-        const [id, sel] = unitEntries[i]
-        const down = allocs[i]
-        const bal = Math.max(0, unitTotals[i] - down)
-        const status: Booking['payment_status'] = bal <= 0 ? 'paid' : 'downpayment'
+        const { id, s, total: own } = priced[i]
+        const down = raw[i]
+        const bal = Math.max(0, own - down)
         await createManualBooking({
-          roomId: sel.type === 'room' ? id : undefined,
-          venueId: sel.type === 'venue' ? id : undefined,
+          roomId: s.type === 'room' ? id : undefined,
+          venueId: s.type === 'venue' ? id : undefined,
+          groupId,
           guestName: guestName.trim(),
           guestEmail: 'admin@daweez-booking.vercel.app',
           guestPhone: guestPhone.trim() || 'None',
-          guestAddress: guestAddress.trim() || undefined,
-          guestNationality: guestNationality.trim() || undefined,
+          guestAddress: address.trim() || undefined,
+          guestNationality: nationality.trim() || undefined,
           companions: cleaned.length > 0 ? cleaned : undefined,
-          checkIn: sel.checkIn, checkOut: sel.checkOut, source: 'manual', status: 'confirmed',
-          referenceNumber: referenceNumber.trim() || undefined,
-          registeredOn: registeredOn || undefined,
-          paymentMethod: payMode,
+          checkIn: s.checkIn, checkOut: s.checkOut, source: 'manual', status: 'confirmed',
+          referenceNumber: regNo.trim() || undefined,
+          registeredOn: regOn || undefined,
+          breakfastIncluded: breakfast.includes(id),
+          stayHours: isShort ? hours : undefined,
+          paymentMethod: method || undefined,
           downpaymentPaid: down,
           balanceDue: bal,
-          paymentStatus: status,
-          paymentRecords: rec,
+          paymentStatus: bal <= 0 ? 'paid' : down > 0 ? 'downpayment' : 'unpaid',
+          paymentRecords: paidNow > 0
+            ? [{ id: receiptId, amount: paidNow, method, paid_at: paidAt, ...(n > 1 ? { share: down } : {}) }]
+            : undefined,
           preparedBy: preparedBy.trim() || undefined,
         })
       }
-      onClose()
     } catch (err) {
+      setLogged(false)
       setError(err instanceof Error ? err.message : 'Could not save the booking. Please try again.')
-    } finally {
-      setIsSaving(false)
     }
   }
 
-  const modal = (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50">
-      <div className="w-full max-w-lg bg-card rounded-xl shadow-softLg overflow-hidden flex flex-col max-h-[92vh]">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-soft bg-gold-100 shrink-0">
-          <div>
-            <h3 className="font-display font-bold text-main">Log old booking</h3>
-            <p className="text-[11px] text-muted">Copy a past paper booking into the system.</p>
-          </div>
-          <button onClick={onClose} className="text-muted hover:text-main transition-colors p-1.5 cursor-pointer" aria-label="Close">
-            <X className="w-5 h-5" />
+  const LABEL = 'block text-[10px] font-bold tracking-[0.12em] uppercase text-muted'
+  const LINE = 'w-full bg-transparent border-0 border-b-[1.5px] border-paper-200 py-2 text-[16px] text-main placeholder:text-ink-400 focus:outline-none focus:border-gold-400 transition-colors'
+  const DATE = 'h-10 px-2 rounded-lg border border-soft bg-card text-[15px] text-main focus:outline-none focus:border-gold-400'
+  const free = (id: string) => !units[id]
+
+  if (logged) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50">
+        <div className="w-full max-w-md bg-card rounded-xl shadow-softLg p-8 grid justify-items-center gap-3 text-center bw-arrive">
+          <span className="w-[72px] h-[72px] rounded-full bg-emerald-50 grid place-items-center bk-pop">
+            <Check className="w-9 h-9 text-emerald-600" strokeWidth={3} />
+          </span>
+          <h3 className="font-display font-bold text-[20px] text-main">Logged</h3>
+          <p className="text-[14px] text-muted">
+            {guestName.trim()} · {list.map(([id, s]) => nameOf(id, s)).join(', ')}{isShort ? ' · ' + hours + ' hours' : ''} · {paidNow > 0 ? fmtPeso(paidNow) + ' ' + method : 'nothing paid'}
+          </p>
+          <button type="button" onClick={reset}
+            className="w-full max-w-xs min-h-[54px] mt-2 rounded-xl bg-gold-400 hover:bg-gold-600 text-ink-900 text-[16px] font-bold cursor-pointer active:scale-[0.98] transition-[background-color,transform] bw-shine">
+            Log another
           </button>
+          <button type="button" onClick={onClose} className="min-h-11 px-4 text-[14px] font-bold text-muted hover:text-main cursor-pointer">Done</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50">
+      <div className="relative w-full max-w-4xl bg-card rounded-xl shadow-softLg overflow-y-auto max-h-[92vh] grid md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] bw-arrive">
+        <button type="button" onClick={onClose} aria-label="Close"
+          className="absolute top-3 right-3 z-10 w-10 h-10 rounded-full grid place-items-center text-muted hover:text-main cursor-pointer bw-x">
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* The paper */}
+        <div className="p-6 space-y-5 min-w-0">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-ink-900 pb-3">
+            <div>
+              <h3 className="font-display font-bold text-[18px] text-main">Log old booking</h3>
+              <p className="text-[12px] text-muted">Copied from the paper</p>
+            </div>
+            <div className="grid justify-items-end gap-1 font-mono text-[13px] text-main">
+              <label className="flex items-baseline gap-1.5">No.
+                <input value={regNo} onChange={e => setRegNo(e.target.value)} placeholder="2549-09-0023" aria-label="Registration No. on the paper"
+                  className="w-36 bg-transparent border-0 border-b-[1.5px] border-ink-900 text-right font-mono text-[15px] py-0.5 focus:outline-none focus:border-gold-400" />
+              </label>
+              <input type="date" value={regOn} onChange={e => setRegOn(e.target.value)} aria-label="Date on the paper"
+                className="bg-transparent border-0 border-b-[1.5px] border-paper-200 text-right text-[13px] focus:outline-none focus:border-gold-400" />
+            </div>
+          </div>
+
+          <label ref={nameBox} className="block rounded-md">
+            <span className={LABEL}>Name of guest</span>
+            <input value={guestName} onChange={e => setGuestName(e.target.value.toUpperCase())} placeholder="FULL NAME" className={LINE} />
+          </label>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <label className="block"><span className={LABEL}>Contact no.</span>
+              <input value={guestPhone} onChange={e => setGuestPhone(e.target.value)} inputMode="tel" placeholder="09xx xxx xxxx" className={LINE} />
+            </label>
+            <label className="block"><span className={LABEL}>Nationality</span>
+              <NationalityInput value={nationality} onChange={setNationality} placeholder="Filipino" className={LINE} />
+            </label>
+          </div>
+
+          {/* Address and companions are rarely on the paper, so they wait behind a link. */}
+          <div ref={moreSlot}>
+            {more ? (
+              <div className="space-y-3">
+                <label className="block"><span className={LABEL}>Address</span>
+                  <input value={address} onChange={e => setAddress(e.target.value.toUpperCase())} className={LINE} />
+                </label>
+                {companions.map((c, i) => (
+                  <div key={i} className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1fr)_auto] gap-2 items-end bw-rise">
+                    <input value={c.name} onChange={e => setCompanions(cs => cs.map((x, j) => j === i ? { ...x, name: e.target.value.toUpperCase() } : x))} placeholder="COMPANION" aria-label="Companion's name" className={LINE} />
+                    <NationalityInput value={c.nationality || ''} onChange={v => setCompanions(cs => cs.map((x, j) => j === i ? { ...x, nationality: v } : x))} placeholder="Nationality" className={LINE} />
+                    <select value={c.sex || ''} onChange={e => setCompanions(cs => cs.map((x, j) => j === i ? { ...x, sex: e.target.value || undefined } : x))} aria-label="Sex" className={LINE}>
+                      <option value="">Sex</option><option value="Male">Male</option><option value="Female">Female</option>
+                    </select>
+                    <button type="button" onClick={() => setCompanions(cs => cs.filter((_, j) => j !== i))} aria-label="Remove companion"
+                      className="w-9 h-9 grid place-items-center text-muted hover:text-danger-600 cursor-pointer"><X className="w-4 h-4" /></button>
+                  </div>
+                ))}
+                <div className="flex justify-between gap-3">
+                  <button type="button" onClick={() => swap(() => setCompanions(cs => [...cs, { name: '' }]), moreSlot.current)}
+                    className="min-h-9 text-[13px] font-bold text-gold-800 hover:underline cursor-pointer inline-flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Companion</button>
+                  <button type="button" onClick={() => swap(() => setMore(false), moreSlot.current)}
+                    className="min-h-9 text-[13px] font-bold text-muted hover:text-main cursor-pointer">Hide ⌃</button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" onClick={() => swap(() => setMore(true), moreSlot.current)}
+                className="min-h-9 text-[13px] font-bold text-gold-800 hover:underline cursor-pointer">
+                + Address, companions{companions.some(c => c.name.trim()) || address ? ' ·  filled in' : ''}
+              </button>
+            )}
+          </div>
+
+          {/* The stay */}
+          <div ref={staySlot} className="space-y-4 rounded-md">
+            {canShort && (
+              <div className="flex flex-wrap gap-x-5">
+                <Tick on={!isShort} onClick={() => swap(() => { setShort(false); setPaid(null) }, staySlot.current, lineSlot.current)}>Overnight</Tick>
+                <Tick on={isShort} onClick={() => swap(() => { setShort(true); setPaid(null) }, staySlot.current, lineSlot.current)}>Short stay</Tick>
+              </div>
+            )}
+
+            {isShort ? (
+              <div className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <label className="block"><span className={LABEL}>Room</span>
+                    <select value={first[0]} aria-label="Room"
+                      onChange={e => { const id = e.target.value; setUnits(({ [first[0]]: s, ...rest }) => ({ [id]: s, ...rest })); setBreakfast([]); setPaid(null) }}
+                      className={LINE + ' cursor-pointer'}>
+                      {rooms.filter(r => r.id === first[0] || free(r.id)).map(r => <option key={r.id} value={r.id}>Room {r.room_number} · {r.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="block"><span className={LABEL}>Date</span>
+                    <input type="date" value={first[1].checkIn} onChange={e => setUnit(first[0], { checkIn: e.target.value })} className={LINE} />
+                  </label>
+                </div>
+                <div>
+                  <span className={LABEL}>Hours</span>
+                  <div className="flex flex-wrap gap-2.5 mt-1">
+                    {HOURS.map(h => {
+                      const price = calculatePricing({ roomId: first[0], checkIn: first[1].checkIn, checkOut: nextDay(first[1].checkIn), guestEmail: '', rooms, venues, shortStayHours: h, rates: getRateConfig() }).stayTotal
+                      return (
+                        <button key={h} type="button" aria-pressed={hours === h} onClick={() => { setHours(h); setPaid(null) }}
+                          className="lo-circ relative min-w-[72px] min-h-[52px] px-3.5 py-2 text-center leading-tight cursor-pointer active:scale-[0.96] transition-transform">
+                          <svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true" className="absolute -inset-[3px] w-[calc(100%+6px)] h-[calc(100%+6px)] overflow-visible text-gold-400" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M52 3C82 2 98 15 97 31C96 49 70 58 46 57C19 56 2 46 3 29C4 12 28 4 62 6" />
+                          </svg>
+                          <span className="block text-[17px] font-bold text-main">{h}</span>
+                          <span className="block text-[12px] font-semibold text-muted tabular-nums">{fmtPeso(price)}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <span className={LABEL}>Room · arrival → departure</span>
+                {entries.length === 0 && <p className="py-3 text-[14px] text-muted">No room yet.</p>}
+                {entries.map(([id, s]) => (
+                  <div key={id} data-unit className="flex flex-wrap items-center gap-x-2.5 gap-y-1 py-2.5 border-b border-dotted border-paper-200">
+                    <span className="flex-1 min-w-[150px] text-[15px] font-bold text-main">{nameOf(id, s)}
+                      {s.type === 'room' && <span className="font-normal text-muted"> · {rooms.find(r => r.id === id)?.name}</span>}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <input type="date" value={s.checkIn} onChange={e => setUnit(id, { checkIn: e.target.value })} aria-label={'Arrival, ' + nameOf(id, s)} className={DATE} />
+                      <span className="text-muted">→</span>
+                      <input type="date" value={s.checkOut} onChange={e => setUnit(id, { checkOut: e.target.value })} aria-label={'Departure, ' + nameOf(id, s)} className={DATE} />
+                    </span>
+                    {entries.length > 1 ? (
+                      <button type="button" onClick={e => removeUnit(id, (e.currentTarget as HTMLElement).closest('[data-unit]'))} aria-label={'Take ' + nameOf(id, s) + ' off'}
+                        className="w-9 h-9 rounded-full grid place-items-center text-muted hover:text-danger-600 cursor-pointer bw-x"><X className="w-4 h-4" /></button>
+                    ) : <span className="w-9" />}
+                  </div>
+                ))}
+                {/* One list of what is free — the Room/Venue switch and Add button it replaces said the same thing twice. */}
+                <label className="relative inline-flex items-center gap-1 min-h-9 mt-1 text-[13px] font-bold text-gold-800 hover:underline cursor-pointer">
+                  <Plus className="w-3.5 h-3.5" /> Room or venue
+                  <select value="" onChange={e => addUnit(e.target.value)} aria-label="Add a room or venue" className="absolute inset-0 opacity-0 cursor-pointer">
+                    <option value="" />
+                    <optgroup label="Rooms">{rooms.filter(r => free(r.id)).map(r => <option key={r.id} value={r.id}>Room {r.room_number} · {r.name}</option>)}</optgroup>
+                    <optgroup label="Venues">{venues.filter(v => free(v.id)).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</optgroup>
+                  </select>
+                </label>
+              </div>
+            )}
+
+            {/* Breakfast: one tick a room, only for rooms that sell it. */}
+            {bfRooms.length > 0 && (
+              <div>
+                <span className={LABEL}>Breakfast</span>
+                <div className="flex flex-wrap gap-x-5">
+                  {bfRooms.map(([id, s]) => {
+                    const price = Number(rooms.find(r => r.id === id)?.breakfast_price || 0)
+                    return (
+                      <Tick key={id} on={breakfast.includes(id)} onClick={() => toggleBreakfast(id)}>
+                        <Coffee aria-hidden="true" className={'w-4 h-4 ' + (breakfast.includes(id) ? 'bk-hop text-gold-800' : 'text-muted')} />
+                        {nameOf(id, s)} <span className="text-[13px] font-semibold text-muted tabular-nums">{fmtPeso(price)}{isShort ? '' : ' a night'}</span>
+                      </Tick>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <label className="block"><span className={LABEL}>Receptionist on duty</span>
+            <input value={preparedBy} onChange={e => setPreparedBy(e.target.value.toUpperCase())} placeholder="STAFF NAME" className={LINE} />
+          </label>
         </div>
 
-        <div className="p-5 space-y-4 overflow-y-auto">
-            {/* Reference */}
-            <div className="grid grid-cols-2 gap-3">
-              <label className={label}>Original registration No. (on the paper)
-                <input value={referenceNumber} onChange={e => setReferenceNumber(e.target.value)} placeholder="e.g. 2549-09-0023" className={field + ' mt-1'} />
-              </label>
-              <label className={label}>Date on the paper log
-                <input type="date" value={registeredOn} onChange={e => setRegisteredOn(e.target.value)} className={field + ' mt-1'} />
-              </label>
-            </div>
-
-            {/* Guest */}
-            <div className="grid grid-cols-2 gap-3">
-              <label className={label}>Guest name *
-                <input value={guestName} onChange={e => setGuestName(e.target.value.toUpperCase())} onBlur={markTouched('guestName')} placeholder="Full name" className={(isInvalid('guestName') ? fieldErr : field) + ' mt-1'} />
-                {showErr('guestName') && <p className="text-[10px] text-danger-600 mt-1">{showErr('guestName')}</p>}
-              </label>
-              <label className={label}>Contact no.
-                <input value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="09xx xxx xxxx" className={field + ' mt-1'} />
-              </label>
-              <label className={label}>Address
-                <input value={guestAddress} onChange={e => setGuestAddress(e.target.value.toUpperCase())} className={field + ' mt-1'} />
-              </label>
-              <label className={label}>Nationality
-                <NationalityInput value={guestNationality} onChange={setGuestNationality} placeholder="e.g. Filipino" className={field + ' mt-1'} />
-              </label>
-            </div>
-
-            {/* Companions */}
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-bold text-muted uppercase tracking-wider flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-gold-600" /> Companions
-              </p>
-              {companions.map((c, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="flex-1 grid grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1.2fr)] gap-2">
-                    <input value={c.name} onChange={e => updateCompanion(i, { name: e.target.value.toUpperCase() })} placeholder="Name" className={field} />
-                    <NationalityInput value={c.nationality || ''} onChange={v => updateCompanion(i, { nationality: v })} placeholder="Nationality" className={field} />
-                    <select value={c.sex || ''} onChange={e => updateCompanion(i, { sex: e.target.value || undefined })} aria-label="Sex" className={field}>
-                      <option value="">Sex</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </select>
-                  </div>
-                  <button type="button" onClick={() => removeCompanion(i)} className="text-muted hover:text-danger-600 p-1.5 cursor-pointer" aria-label="Remove companion">
-                    <X className="w-4 h-4" />
-                  </button>
+        {/* The stub: what was charged and what was paid */}
+        <div className="p-6 pt-14 md:pt-6 space-y-3.5 bg-paper-50 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-paper-200 min-w-0">
+          <span className={LABEL}>Payment</span>
+          <div ref={lineSlot} className="space-y-2">
+            {priced.map(({ id, s, p }) => (
+              <React.Fragment key={id}>
+                <div className="flex justify-between gap-3 text-[15px] text-main tabular-nums">
+                  <span>{nameOf(id, s)} · {isShort ? hours + ' hours' : p ? p.stayQuantity + (s.type === 'venue' ? ' day' : ' night') + (p.stayQuantity !== 1 ? 's' : '') : 'check the dates'}</span>
+                  <b>{p ? fmtPeso(p.grandTotal - p.breakfastTotal) : '—'}</b>
                 </div>
-              ))}
-              <button type="button" onClick={addCompanion} className="text-[11px] font-bold text-gold-700 bg-gold-100 border border-gold-200 hover:bg-gold-100 rounded-md px-2.5 py-1 transition-colors cursor-pointer inline-flex items-center gap-1">
-                <Plus className="w-3.5 h-3.5" /> Add companion
-              </button>
-            </div>
-
-            {/* Units (rooms / venues) */}
-            <div className="space-y-1">
-              <OldBookingUnitPicker
-                rooms={rooms}
-                venues={venues}
-                unitSelections={unitSelections}
-                onChange={next => setUnitSelections(next)}
-              />
-              {showErr('units') && <p className="text-[10px] text-danger-600 mt-1">{showErr('units')}</p>}
-            </div>
-
-            {/* Receptionist on duty */}
-            <div>
-              <label className={label}>Receptionist on duty
-                <input value={preparedBy} onChange={e => setPreparedBy(e.target.value.toUpperCase())} placeholder="Staff name" className={field + ' mt-1'} />
-              </label>
-            </div>
-
-            {/* Payment */}
-            <OldBookingPayment
-              payMode={payMode}
-              setPayMode={setPayMode}
-              payDate={payDate}
-              setPayDate={setPayDate}
-              deposit={deposit}
-              setDeposit={setDeposit}
-              fullyPaid={fullyPaid}
-              setFullyPaid={setFullyPaid}
-              totalLabel={totalLabel}
-              totalNum={totalNum}
-              balance={balance}
-              cleanNum={cleanNum}
-            />
-
-            {error && <div className="p-2.5 bg-danger-50 border border-danger-200 text-danger-600 text-xs rounded-lg">{error}</div>}
-
-            <div className="flex gap-2 pt-1">
-              <button type="button" onClick={onClose} className="flex-1 border border-soft text-main text-sm font-semibold py-2.5 rounded-lg hover:bg-paper-50 transition-colors cursor-pointer">Cancel</button>
-              <button type="button" onClick={handleSave} disabled={isSaving} className="flex-1 bg-gold-400 hover:bg-gold-600 disabled:bg-gold-200 text-ink-900 text-sm font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm">
-                {isSaving ? 'Saving…' : 'Log booking'}
-              </button>
-            </div>
+                {p && p.breakfastTotal > 0 && (
+                  <div className="flex justify-between gap-3 text-[15px] text-main tabular-nums bw-rise">
+                    <span>Breakfast · {nameOf(id, s)}{isShort ? '' : ' · ' + p.breakfastNights + ' × ' + fmtPeso(p.breakfastTotal / p.breakfastNights)}</span>
+                    <b>{fmtPeso(p.breakfastTotal)}</b>
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
           </div>
+          <div className="flex justify-between items-center gap-3 text-[15px] text-main">
+            <span>Paid</span>
+            <label className="flex items-center gap-1.5 w-40 h-11 px-2.5 rounded-lg border-[1.5px] border-soft bg-card focus-within:border-gold-400 transition-colors">
+              <span className="text-muted font-bold">₱</span>
+              <NumInput value={paidNow} onChange={n => setPaid(n)} aria-label="Amount paid"
+                className="flex-1 min-w-0 bg-transparent text-right text-[16px] font-bold tabular-nums focus:outline-none" />
+            </label>
+          </div>
+          <div className="flex justify-between gap-3 pt-2.5 border-t-[1.5px] border-ink-900 text-[18px] font-bold tabular-nums">
+            <span className="text-main">Balance</span>
+            <span className={balance > 0 ? 'text-danger-600' : 'text-emerald-600'}>{fmtPeso(balance)}</span>
+          </div>
+          {paidNow > 0 && (
+            <>
+              <div ref={methodBox} role="group" aria-label="How the guest paid" className="flex flex-wrap gap-x-4 rounded-md">
+                {PAYMENT_METHODS.map(m => (
+                  <Tick key={m} on={method === m} onClick={() => setMethod(m)}>{m === 'Bank transfer' ? 'Bank' : m}</Tick>
+                ))}
+              </div>
+              <label className="block bw-unfold"><span className={LABEL}>Date paid</span>
+                <input type="date" value={payDate ?? list[0]?.[1].checkIn ?? ''} onChange={e => setPayDate(e.target.value)} className={LINE} />
+              </label>
+            </>
+          )}
+          {error && <p className="p-2.5 bg-danger-50 border border-danger-200 text-danger-600 text-[13px] rounded-lg bw-nope">{error}</p>}
+          <button type="button" onClick={handleSave}
+            className="w-full min-h-[54px] mt-2 rounded-xl bg-gold-400 hover:bg-gold-600 text-ink-900 text-[16px] font-bold cursor-pointer active:scale-[0.98] transition-[background-color,transform] bw-shine">
+            Log booking
+          </button>
+        </div>
       </div>
     </div>
   )
-
-  return modal
 }

@@ -123,6 +123,8 @@
 - **A walk-in starts unpaid ("On hold") and only recording money confirms it.** It still blocks the room and never expires.
 - **Double booking:** every create or move checks for a clash; the database is the real gate. A save that changes neither room nor dates must *not* check — that check once made every paid booking collide with itself.
 - **Log old booking** exists to enter past paper bookings. It keeps the paper log's own number and date so staff can find the physical page.
+  - **It logs short stays and breakfast** (Sebastian, 2026-10-17: *"make sure that it supports short stay"*, *"should also include if the reservations had breakfast"*). Before, a 3-hour room was logged as a whole night, and a paper booking with breakfast lost it.
+  - **It is laid out like the paper** (he picked design B of the mock): tick the stay, circle the hours, and the payment is the torn-off stub. The width was his call too: *"no need to keep the old booking form look so thin"*.
 - **No browser pop-ups anywhere** (`alert`, `confirm`). A problem is shown under the box or button it belongs to; everything else is a toast. Destructive actions ask through the app's own confirm dialog.
 - **No guest's name is written on the calendar** (the owner, 2026-10-09). A pill says "Reserved" until the guest checks in, "Occupied" while they are in, and the guest's name once they have checked out; who it is stays on the hover card and in the booking's panel. An agency's name and a block's reason are still shown, and a half-day pill keeps its initials.
 - **A cooked breakfast comes back to the desk** (the owner, 2026-10-09: "after the kitchen finishes cooking, where does it go next?"). The room's cup returns in green; the desk taps it once the breakfast is served.

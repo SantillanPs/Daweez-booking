@@ -23,6 +23,20 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-17c',
+    changes: [
+      {
+        where: 'Front desk → Log old booking',
+        what: [
+          'The form now looks like the paper you copy from, with the payment on the right.',
+          'Tick Short stay to log a room taken for 3, 6, 12 or 22 hours.',
+          'Tick Breakfast for each room that had it. It is charged for every night.',
+          'After you log one, press Log another to copy the next paper. The receptionist stays filled in.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-17b',
     changes: [
       {

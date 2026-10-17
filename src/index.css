@@ -451,6 +451,13 @@
 .bw-door { display: inline-block; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 
+/* ── Log old booking: the paper's own marks ── a tick draws itself into its box, and the
+   hours taken are circled by hand (design B of the mock, 2026-10-17). */
+.lo-tick path { stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+.lo-tick[aria-checked="true"] path { stroke-dashoffset: 0; }
+.lo-circ path { stroke-dasharray: 260; stroke-dashoffset: 260; transition: stroke-dashoffset 0.5s ease-out; }
+.lo-circ[aria-pressed="true"] path { stroke-dashoffset: 0; }
+
 @media (prefers-reduced-motion: reduce) {
   [data-mark-ready] > .fd-mark, .fd-tab svg, .fd-sub, .fd-sub::after, .fd-gear svg, .fd-step svg, .bk-thumb { transition: none; }
   .fd-ping::after, .fd-wiggle:hover svg:first-child, .fd-pop, .fd-free:hover::after, .fd-pick, .fd-bar, .fd-bar > *, .fd-roll, .fd-away, .fd-drain,
@@ -461,6 +468,7 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
   .bk-go::before { transition: none; }
   .bk-hi { transition: none; }
   .bk-seal path { stroke-dashoffset: 0; }
+  .lo-tick path, .lo-circ path { transition: none; }
 }
 
 /* ── The Restaurant's Orders screen ─────────────────────────────────────────
