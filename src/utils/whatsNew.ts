@@ -39,7 +39,7 @@ export const UPDATES: Update[] = [
       {
         where: 'Front desk → Booking',
         what: [
-          'Receiving money: the amount is already filled in with what is owed. Type over it for any other amount.',
+          'Press Receive: the amount is already filled in with what is owed. Type over it for any other amount.',
           'Pick Cash, GCash, Bank or Check, then press the gold Receive button. It shows the amount and the way to pay before you save.',
         ],
       },
