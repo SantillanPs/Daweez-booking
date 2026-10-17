@@ -28,19 +28,10 @@ import { Field } from './walk-in/Field'
 import { GROUP, GROUP_TITLE, OPTION_LIST } from './walk-in/formStyles'
 import { stayLines } from './walk-in/stayLine'
 
-/**
- * The receptionist named on the last booking made on THIS computer (the design review,
- * 2026-10-04). The box used to open empty on every booking and was easy to miss, so
- * bills and receipts went out with nobody's name on them. Now it opens already filled
- * and the desk only retypes it when the person on duty changes.
- */
-const RECEPTIONIST_KEY = 'daweez_pms_receptionist'
-const lastReceptionist = () => {
-  try { return localStorage.getItem(RECEPTIONIST_KEY) || '' } catch { return '' }
-}
-const rememberReceptionist = (name: string) => {
-  try { localStorage.setItem(RECEPTIONIST_KEY, name.trim()) } catch { /* storage is off: nothing to remember */ }
-}
+// The receptionist named on the last booking made on THIS computer (the design review,
+// 2026-10-04). The box used to open empty on every booking and was easy to miss, so bills
+// and receipts went out with nobody's name on them.
+import { lastReceptionist, rememberReceptionist, staffNamesOf } from '../utils/receptionists'
 
 interface WalkInBookingFormProps {
   rooms: Room[]
@@ -563,14 +554,7 @@ export function WalkInBookingForm({
 
   // The receptionists as chips: the names on the bookings, most used first, at most six, so
   // a name typed once by mistake does not stay on the form for ever.
-  const staffNames = useMemo(() => {
-    const count = new Map<string, number>()
-    for (const b of bookings || []) {
-      const n = (b.prepared_by || '').trim().toUpperCase()
-      if (n) count.set(n, (count.get(n) || 0) + 1)
-    }
-    return [...count].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([n]) => n)
-  }, [bookings])
+  const staffNames = useMemo(() => staffNamesOf(bookings), [bookings])
 
   // The picked rooms, in calendar order — what the breakfast chips offer.
   const pickedRooms = useMemo(

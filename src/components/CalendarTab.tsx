@@ -53,6 +53,7 @@ export function CalendarTab() {
   /** The booking whose breakfast for today is being written down. */
   const [breakfastForId, setBreakfastForId] = useState<string | null>(null)
   const [logOldSelections, setLogOldSelections] = useState<Record<string, UnitSel>>({})
+  const [logOldShort, setLogOldShort] = useState(false)
   /** The dates the block pane is holding — one day or a range, plus which units. */
   const [blockTarget, setBlockTarget] = useState<{
     units: { id: string; type: 'room' | 'venue' }[]
@@ -437,6 +438,9 @@ export function CalendarTab() {
       const next = new Date(picked.checkIn); next.setDate(next.getDate() + 1)
       serialized[roomId] = { checkIn: dateToString(picked.checkIn), checkOut: dateToString(next), type: 'room' }
     }
+    // ONE day picked is how a short stay starts (its bar offers 3h · 6h · 12h), so the paper
+    // opens as a short stay; it opened on Overnight for one night.
+    setLogOldShort(!groupSelection && !!(picked && roomId))
     setLogOldSelections(serialized)
     setGroupSelection(null)
     setTimelineSelection(null)
@@ -573,8 +577,10 @@ export function CalendarTab() {
           <LogOldBookingModal
             rooms={rooms}
             venues={venues}
+            bookings={allBookings}
             createManualBooking={createManualBooking}
             initialSelections={logOldSelections}
+            shortStay={logOldShort}
             onClose={() => setShowLogOld(false)}
           />
         </React.Suspense>
