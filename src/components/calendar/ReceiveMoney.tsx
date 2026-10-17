@@ -23,8 +23,10 @@ interface ReceiveMoneyProps {
   onReferenceCommit: () => void
   /** False when another step is the loud one (a stay billed to an agency). */
   loud?: boolean
-  /** Opened from "Receive a payment": it can be put away again. */
-  onClose?: () => void
+  /** Shut, it is one Receive button; pressed, it opens into the amount and the ways to pay. */
+  open: boolean
+  onOpen: () => void
+  onClose: () => void
   onReceive: () => void
 }
 
@@ -44,7 +46,7 @@ const QUIET = 'bg-card border border-soft text-main hover:border-gold-400 hover:
  */
 export function ReceiveMoney({
   owed, amount, onAmount, slipLabel, method, onMethod, reference, onReference, onReferenceCommit,
-  loud = true, onClose, onReceive,
+  loud = true, open, onOpen, onClose, onReceive,
 }: ReceiveMoneyProps) {
   const amountBox = useRef<HTMLLabelElement>(null)
   const seg = useRef<HTMLDivElement>(null)
@@ -73,6 +75,18 @@ export function ReceiveMoney({
     : amount > owed ? fmtPeso(amount - owed) + ' more than what is owed'
       : amount > 0 && amount < owed ? fmtPeso(owed - amount) + ' left after this'
         : ''
+
+  // It opens one step at a time (the booking window mock, 2026-10-16): at first one button,
+  // Receive — the amount is the big figure right above it (Sebastian, 2026-10-17: the box
+  // "is only supposed to show when they click on the receive button first").
+  if (!open) {
+    return (
+      <button type="button" onClick={onOpen}
+        className={'w-full min-h-[54px] px-4 rounded-xl text-[16px] font-bold transition-[background-color,transform] duration-200 active:scale-[0.98] cursor-pointer ' + (loud ? LOUD + ' bw-shine' : QUIET)}>
+        Receive
+      </button>
+    )
+  }
 
   return (
     <div className="space-y-2.5">
@@ -117,17 +131,15 @@ export function ReceiveMoney({
         </label>
       )}
 
-      <div className={onClose ? 'grid grid-cols-[1fr_54px] gap-1.5' : ''}>
+      <div className="grid grid-cols-[1fr_54px] gap-1.5">
         <button type="button" onClick={receive}
           className={'w-full min-h-[54px] px-4 rounded-xl text-[16px] font-bold transition-[background-color,transform] duration-200 active:scale-[0.98] cursor-pointer bw-rise [--i:2] ' + (loud ? LOUD + ' bw-shine' : QUIET)}>
           Receive {amount > 0 && <CountPeso value={amount} />}{chosen && ' · ' + (chosen === 'Bank transfer' ? 'Bank' : chosen)}
         </button>
-        {onClose && (
-          <button type="button" onClick={onClose} aria-label="Put the payment away"
-            className="min-h-[54px] rounded-xl border border-soft bg-card text-muted hover:text-main grid place-items-center cursor-pointer bw-x bw-rise [--i:2]">
-            <X className="w-4 h-4" />
-          </button>
-        )}
+        <button type="button" onClick={onClose} aria-label="Put the payment away"
+          className="min-h-[54px] rounded-xl border border-soft bg-card text-muted hover:text-main grid place-items-center cursor-pointer bw-x bw-rise [--i:2]">
+          <X className="w-4 h-4" />
+        </button>
       </div>
     </div>
   )

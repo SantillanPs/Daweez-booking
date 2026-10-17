@@ -824,7 +824,7 @@ export function ExtendStayModal({
                 {totalCharge > 0 && due > 0 && !billedToAgency && (
                   <div aria-hidden="true" className={'relative h-1.5 rounded-full overflow-hidden ' + (paidSoFar > 0 ? 'bg-danger-200' : 'bg-paper-300')}>
                     {/* The money in the Receive box, striped ahead of the fill: what the bar will be once it is saved. */}
-                    {receiveShown && receiveAmount > 0 && (
+                    {receiveOpen && receiveAmount > 0 && (
                       <div style={{ '--will': Math.min(1, (paidSoFar + receiveAmount) / totalCharge) } as React.CSSProperties}
                         className="absolute inset-0 rounded-full origin-left [transform:scaleX(var(--will))] transition-transform duration-500 ease-out opacity-50 bg-[repeating-linear-gradient(-45deg,#059669_0_4px,#6EE7B7_4px_8px)]" />
                     )}
@@ -884,7 +884,9 @@ export function ExtendStayModal({
                     onReference={setReceiptRef}
                     onReferenceCommit={() => { if (receiptRef.trim()) void savePaymentMethod(receiptMethod, receiptRef) }}
                     loud={step === 'payment'}
-                    onClose={step === 'payment' ? undefined : () => { setReceiveOpen(false); setReceiptAmount(null); setReceiptMethod(''); setReceiptRef('') }}
+                    open={receiveOpen}
+                    onOpen={() => setReceiveOpen(true)}
+                    onClose={() => { setReceiveOpen(false); setReceiptAmount(null); setReceiptMethod(''); setReceiptRef('') }}
                     onReceive={() => void handleAddReceipt()}
                   />
                   </div>
