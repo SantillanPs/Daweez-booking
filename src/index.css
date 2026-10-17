@@ -41,6 +41,12 @@
     font-feature-settings: "cv02","cv03","cv04","cv11";
   }
 
+  /* Kept from daisyUI's base when it was removed (2026-10-18): no grey flash on a tap, and
+     quiet scrollbars that darken under the pointer. */
+  html { -webkit-tap-highlight-color: transparent; }
+  * { scrollbar-color: color-mix(in oklch, currentColor 35%, transparent) transparent; }
+  *:hover { scrollbar-color: color-mix(in oklch, currentColor 60%, transparent) transparent; }
+
   /* Soft card */
   .card-soft {
     @apply bg-card border border-soft rounded-xl shadow-[0_4px_24px_rgba(28,28,28,0.06)] ;
@@ -533,20 +539,34 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 /* The copy of a slip made for the printer (`billing/useSlipPage`): never on screen, and
    on paper as wide as the printer's own page — 48 mm on the hotel's roll — but never
    wider than the roll when it is printed on a bigger sheet. */
+/* One sturdy face for every slip, on screen and on the roll (2026-10-18). DM Sans, Sora and the
+   mono face have thin strokes that break up at the XP-58H's 203 dpi; Tahoma was drawn for low
+   resolution, has even strokes and a real bold, and is narrow enough for 48 mm. Its figures are
+   all one width, so amounts still line up without a mono face. */
+.print-slip, .print-slip * {
+  font-family: Tahoma, Verdana, "Segoe UI", sans-serif !important;
+  font-variant-numeric: tabular-nums;
+}
 .print-root { display: none; }
 .print-root .print-slip {
   width: 100% !important;
   max-width: 58mm !important;
   margin: 0 !important;
-  /* 5 mm each side: the roll is 58 mm but the head prints the middle 48 mm of it. At
-     1 mm the start of every line was cut off ("EST" for GUEST, the owner's photo,
-     2026-10-12). */
-  padding: 0 5mm !important;
+  /* 2 mm left, 4 mm right. It was 5 mm each side for a driver that named the whole 58 mm
+     roll as its page while the head prints only the middle 48 mm (at 1 mm the start of every
+     line was cut off — "EST" for GUEST, the owner's photo, 2026-10-12). The XP-58H's driver
+     names the 48 mm itself, so 5 mm left wide blank sides; at 2 mm each side its head lost
+     the last ~2 mm of every right-aligned value (the owner's photo, 2026-10-18). */
+  padding: 0 4mm 0 2mm !important;
   box-shadow: none !important;
   border-radius: 0 !important;
 }
 
 @media print {
+  /* White paper behind everything (2026-10-18, the XP-58 on its 3276 mm roll): the receipt
+     printer stops at the last row with ink on it, so the app's beige page colour — printed when
+     "Background graphics" is ticked — ran faint dots down the whole 3.2 m page. */
+  html, body { background: #fff !important; }
   body * { visibility: hidden !important; }
   .print-root, .print-root *,
   .print-page, .print-page * { visibility: visible !important; }

@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-18',
+    changes: [
+      {
+        where: 'Payment receipt',
+        what: [
+          'The receipt fits the 58 mm printer: nothing cut off on the right, and the amount prints in full.',
+          'Clearer letters and shorter: each fact is said once.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-17e',
     changes: [
       {

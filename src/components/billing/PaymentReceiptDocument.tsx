@@ -4,7 +4,7 @@ import { Booking, PaymentRecord, Room, Venue } from '../../types/booking'
 import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
 import { receiptNumberFor, paymentBreakdown } from '../../utils/receiptNumber'
 import { formatRoomNumbers } from '../../utils/roomNumbers'
-import { fmtDateTime, fmtDay, money } from './receiptText'
+import { fmtDay, money } from './receiptText'
 import { guestEmailOf } from '../../utils/emailDocument'
 import { EmailBar, EmailButton } from './EmailBar'
 
@@ -34,7 +34,7 @@ function SlipRow({ label, value, mono = false }: { label: string; value?: string
   const shown = (value ?? '').trim()
   if (!shown) return null
   return (
-    <div className="flex items-baseline justify-between gap-2 text-[10px]">
+    <div className="flex items-baseline justify-between gap-2 text-[9px]">
       <span className="shrink-0">{label}</span>
       <span className={'font-bold text-right break-words min-w-0 ' + (mono ? 'font-mono' : '')}>{shown}</span>
     </div>
@@ -66,11 +66,15 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
   const venueNames = set.filter(b => b.venue_id)
     .map(b => venues.find(v => v.id === b.venue_id)?.name || '')
     .filter(Boolean)
+  // The label names the kind once and the value is only the numbers. It printed "Room · Room 3"
+  // (the receipt trim, 2026-10-18), and a venue was labelled "Room".
+  const allRooms = roomNumbers.length === set.length
+  const unitTitle = multi ? (allRooms ? 'Rooms' : 'Booked') : isRoom ? 'Room' : 'Venue'
   const unitLabel = multi
-    ? (roomNumbers.length === set.length
-        ? formatRoomNumbers(roomNumbers)
+    ? (allRooms
+        ? formatRoomNumbers(roomNumbers).replace(/^Rooms? /, '')
         : [...roomNumbers.map(n => 'Room ' + n), ...venueNames].join(', '))
-    : isRoom ? 'Room ' + (room?.room_number ?? '') : (venue?.name || '')
+    : isRoom ? String(room?.room_number ?? '') : (venue?.name || '')
 
   const receiptNo = receiptNumberFor(booking, record)
   // The deposit captured at booking lives in downpayment_paid, not in the
@@ -84,12 +88,11 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
   const remainingAfter = Math.max(0, totalCharge - (paidBefore + amountPaid))
   const previousBalance = Math.max(0, totalCharge - paidBefore)
 
-  const isFirstPay = paidBefore === 0
-  // A payment taken for order slips alone says so, by their numbers.
-  const paymentFor = record.slips && record.slips.length > 0 ? 'Order Slip ' + record.slips.join(', ')
-    : remainingAfter <= 0 ? (isRoom ? 'Room Accommodation' : 'Event Venue Reservation')
-    : isFirstPay ? 'Reservation'
-    : 'Partial Payment'
+  // Only a payment for order slips says what it was for, by their numbers. "Room Accommodation" /
+  // "Partial Payment" repeated what Paid in full or Still to pay already says (the receipt trim, 2026-10-18).
+  const slipNumbers = record.slips && record.slips.length > 0 ? record.slips.join(', ') : ''
+  // No year: it has to share a line with the receipt number on the 42 mm the roll prints.
+  const paidAt = record.paid_at ? new Date(record.paid_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''
 
   const rawMethod = (record.method || '').trim()
   const kind = paymentKind(rawMethod)
@@ -101,46 +104,45 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
   const slip = useRef<HTMLDivElement>(null)
   const [emailing, setEmailing] = useState(false)
 
-  // The 58 mm slip — the same in the window and on the Booked card. Printed width comes from
-  // the @page box the modal sets, so in print it simply fills that page instead of a fixed 58 mm.
+  // The slip — the same in the window and on the Booked card. **On screen it is the paper's own
+  // size**: the XP-58H prints 48 mm, less the 2 mm / 4 mm sides the print copy gets in `index.css`.
+  // At the old 58 mm the window had room the roll did not, so lines that fit on screen wrapped on
+  // paper (the receipt number, the owner's photo, 2026-10-18).
   const paper = (
-      <div ref={slip} className={((embedded ? 'my-0 ' : 'my-2 ') + 'print-slip w-[58mm] max-w-full bg-white text-black font-sans leading-snug px-2.5 py-3 ' +
+      <div ref={slip} className={((embedded ? 'my-0 ' : 'my-2 ') + 'print-slip w-[48mm] max-w-full bg-white text-black font-sans leading-snug pl-[2mm] pr-[4mm] py-3 ' +
         'print:w-auto print:max-w-none print:px-0 print:py-0 print:my-0 print:shadow-none print:rounded-none')}>
         <div className="text-center">
-          <h1 className="font-display font-extrabold text-[13px] uppercase leading-[1.15]">Daweez<br />Pension House</h1>
+          <h1 className="font-display font-extrabold text-[12px] uppercase leading-[1.15]">Daweez<br />Pension House</h1>
           <p className="text-[8.5px] mt-1">San Agustin Sur, Tandag City</p>
           <p className="text-[8.5px]">0910-7163830</p>
         </div>
 
         <div className="border-t-2 border-black my-2" />
 
-        <div className="flex items-baseline justify-between gap-1.5">
-          <span className={lab}>Payment receipt</span>
-          <span className="font-mono text-[10.5px] font-bold">{receiptNo}</span>
+        {/* "Payment receipt" up here and "Received" in the box said the same thing; the box
+            now says it once (the receipt trim, 2026-10-18). */}
+        <div className="flex items-baseline justify-between gap-1 whitespace-nowrap">
+          <span className="font-mono text-[9px] font-bold">{receiptNo}</span>
+          <span className="text-[8.5px]">{paidAt}</span>
         </div>
-        <p className="text-[8.5px] text-right">{fmtDateTime(record.paid_at)}</p>
 
-        {/* THE AMOUNT, first and largest, white on black (the owner's pick from the drawings,
-            2026-10-13). **The black is a border, not a background**: a browser throws
-            backgrounds away when it prints, and a slip is deliberately left out of
-            `print-color-adjust` (see `index.css`), so a black background would come off the
-            roll as white paper with white figures on it — an empty receipt. A border always
-            prints. */}
-        <div className="relative my-2">
-          <div className="border-t-[46px] border-black" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-            <span className={lab}>Received</span>
-            <span className="font-display text-[25px] font-extrabold leading-none mt-1">{money(amountPaid)}</span>
-          </div>
+        {/* THE AMOUNT, first and largest, in a heavy black frame. It was white on solid black
+            (the owner's pick, 2026-10-13), but the XP-58H could not hold it: a thermal head
+            streaks a large black block and fills in the thin white strokes, so ₱1,000 came out
+            as the tops of its digits (the owner's photo, 2026-10-18). Black figures on white
+            print sharp. The frame is a border because a browser drops backgrounds in print. */}
+        <div className="my-2 border-[3px] border-black py-1.5 flex flex-col items-center">
+          <span className={lab}>Payment received</span>
+          <span className="font-display text-[22px] font-extrabold leading-none mt-1">{money(amountPaid)}</span>
         </div>
 
         <div className="space-y-[3px]">
           <SlipRow label="From" value={booking.guest_name} />
-          <SlipRow label={multi ? 'Rooms' : 'Room'} value={unitLabel} />
+          <SlipRow label={unitTitle} value={unitLabel} />
           {/* A short stay says WHICH day and HOW LONG, so the slip the guest keeps proves
               what was bought — "Room Accommodation" alone could be 3 hours or a night. */}
           {booking.stay_hours ? <SlipRow label="Stay" value={fmtDay(booking.check_in) + ' · ' + booking.stay_hours + ' hours'} /> : null}
-          <SlipRow label="For" value={paymentFor} />
+          <SlipRow label="Order slip" value={slipNumbers} />
           <SlipRow label="Paid by" value={methodLabel} />
           {showRef ? <SlipRow label={kind === 'gcash' ? 'GCash ref no.' : 'Bank ref no.'} value={record.reference || ''} mono /> : null}
           <SlipRow label="Bill no." value={booking.invoice_number} mono />
@@ -149,14 +151,13 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
         {/* A settled stay says so once, in a box; a stay with money left shows the sum in plain
             words. The amount is no longer printed twice. */}
         {remainingAfter <= 0 ? (
-          <p className="my-2 border-2 border-black py-1.5 text-center font-display text-[13px] font-extrabold uppercase tracking-[0.12em]">Paid in full</p>
+          <p className="my-2 border-2 border-black py-1.5 text-center font-display text-[12px] font-extrabold uppercase tracking-[0.12em]">Paid in full</p>
         ) : (
           <>
             <div className="border-t border-dashed border-black my-2" />
             <div className="space-y-[3px]">
               <SlipRow label="Bill before" value={money(previousBalance)} mono />
-              <SlipRow label="This payment" value={'−' + money(amountPaid)} mono />
-              <div className="flex items-baseline justify-between gap-2 border-t-2 border-black pt-1 mt-1 text-[12.5px] font-extrabold">
+              <div className="flex items-baseline justify-between gap-2 border-t-2 border-black pt-1 mt-1 text-[11.5px] font-extrabold">
                 <span>Still to pay</span>
                 <span className="font-mono">{money(remainingAfter)}</span>
               </div>
@@ -167,10 +168,10 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
 
         {/* No guest signature on the slip (his ruling, 2026-10-13). */}
         <p className={lab}>Received by</p>
-        <p className="text-[10.5px] font-bold min-h-[13px]">{record.prepared_by || booking.prepared_by || ''}</p>
+        <p className="text-[9.5px] font-bold min-h-[13px]">{record.prepared_by || booking.prepared_by || ''}</p>
 
+        {/* No "Guest copy": only one copy is ever printed (the receipt trim, 2026-10-18). */}
         <p className="text-center text-[8.5px] mt-2.5">Thank you for staying with us.</p>
-        <p className="text-center text-[8.5px]">Guest copy</p>
       </div>
   )
 
