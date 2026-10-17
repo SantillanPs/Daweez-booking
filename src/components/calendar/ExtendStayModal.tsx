@@ -20,7 +20,7 @@ import { markSlipsPaid, slipNumber, unpaidSlips, unpaySlipsOfReceipt } from '../
 import { undoBookingCheck } from '../../utils/db'
 import { BookingStageLine } from './BookingStageLine'
 import { nextStep } from './bookingStep'
-import { PayChoice, ReceiveMoney } from './ReceiveMoney'
+import { ReceiveMoney } from './ReceiveMoney'
 import { BookingOrderSlips } from './BookingOrderSlips'
 import { ShortStayClock } from './ShortStayClock'
 import { CountPeso } from '../CountPeso'
@@ -67,6 +67,7 @@ const BTN_GOLD = BTN + 'bg-gold-400 hover:bg-gold-600 text-ink-900 shadow-sm'
 const BTN_GREEN = BTN + 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
 // The step that is not the next one: a size down, so the lead reads first.
 const BTN_QUIET = 'w-full min-h-11 px-4 rounded-xl text-[14px] font-bold transition-[background-color,border-color,transform] duration-200 active:scale-[0.98] cursor-pointer bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100'
+const newReceiptId = () => 'rcpt-' + Date.now()
 const QUIET_LINK = 'block mx-auto min-h-11 px-3 text-[13px] font-semibold text-muted hover:text-main underline decoration-paper-300 underline-offset-4 transition-colors cursor-pointer'
 // The bottom row: the smallest, lightest words on the panel, still finger-sized.
 const TOOL = 'bw-tool min-h-11 inline-flex items-center gap-1.5 px-2.5 text-[12px] font-semibold text-muted hover:text-main cursor-pointer'
@@ -143,8 +144,8 @@ export function ExtendStayModal({
   const [closeAfterPayment, setCloseAfterPayment] = useState(false)
   // What the money is for: everything owed (`all`), one order slip (its id), or an
   // amount the desk types (`other`).
-  const [payFor, setPayFor] = useState('all')
-  const [receiptAmount, setReceiptAmount] = useState(0)
+  // `null` until the desk types: the box then shows what is owed now.
+  const [receiptAmount, setReceiptAmount] = useState<number | null>(null)
   const [extendOpen, setExtendOpen] = useState(false)
   // "Change room or dates" opens in the same place as Extend stay; only one is open at a time.
   const [moveOpen, setMoveOpen] = useState(false)
@@ -192,7 +193,6 @@ export function ExtendStayModal({
   // defaulting to 'Cash' is what once printed a Cash receipt for a GCash guest.
   const [receiptMethod, setReceiptMethod] = useState('')
   const [receiptRef, setReceiptRef] = useState('')
-  const [tryPayment, setTryPayment] = useState(false)
   const [receiptFor, setReceiptFor] = useState<PaymentRecord | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -333,17 +333,15 @@ export function ExtendStayModal({
   const hasPhone = !!booking.guest_phone && booking.guest_phone.trim() !== 'None'
 
   // ── What the money can be for ───────────────────────────────────────────────
-  // Everything owed, or one order slip on its own: a room guest may pay for their food
-  // before check-out while the rest of the bill stays open (the owner, 2026-10-04). A
-  // slip is only offered apart when something else is owed besides it. The deposit is
-  // agreed on the STAY alone, so the food is taken out of it (`amountToPayNow`).
+  // What is owed now fills the box; any other amount is typed over it. A room guest may
+  // pay for their food before check-out while the rest of the bill stays open (the owner,
+  // 2026-10-04): an amount that is exactly one order slip's total pays that slip, and the
+  // box says so. The deposit is agreed on the STAY alone, so the food is taken out of it
+  // (`amountToPayNow`).
   const dueNow = amountToPayNow(localBooking, tabAmount)
   const unpaid = unpaidSlips(slips)
-  const choices: PayChoice[] = [
-    { key: 'all', label: dueNow < due ? 'Deposit' : 'Everything owed', amount: dueNow },
-    ...unpaid.filter(s => s.total < due).map(s => ({ key: s.tab.id, label: 'Order slip ' + slipNumber(s.tab), amount: s.total })),
-  ]
-  const payingSlip = unpaid.find(s => s.tab.id === payFor && s.total < due)
+  const receiveAmount = receiptAmount ?? dueNow
+  const payingSlip = unpaid.find(s => s.total === receiveAmount && s.total < due)
 
   // Inline required-field validation for the extend-stay form (mirrors LogOldBookingModal).
   const fieldErrors = {
@@ -568,14 +566,11 @@ export function ExtendStayModal({
   }
 
   // Record a payment: creates a receipt (date + time) only when the guest pays.
-  // `picked`: a way to pay tapped that needs no reference (Cash, Check) is the payment itself.
-  const handleAddReceipt = async (picked?: string) => {
-    const method = picked || receiptMethod
+  // What is missing is shown on the Receive box itself; these only guard the save.
+  const handleAddReceipt = async () => {
+    const method = receiptMethod
     const reference = methodNeedsReference(method) ? receiptRef.trim() : ''
-    const other = payFor === 'other'
-    const amount = Number(other ? receiptAmount : payingSlip ? payingSlip.total : dueNow) || 0
-    setTryPayment(true)
-    // What is missing is said on the form itself, under the part that needs filling.
+    const amount = Number(receiveAmount) || 0
     if (amount <= 0) return
     // The method is the guest's own choice, so it is never assumed: no method, no receipt.
     if (!method.trim()) return
@@ -583,7 +578,7 @@ export function ExtendStayModal({
     const newPaid = paidSoFar + amount
     const remaining = Math.max(0, totalCharge - newPaid)
     const rec: PaymentRecord = {
-      id: 'rcpt-' + Date.now(),
+      id: newReceiptId(),
       amount,
       method,
       reference: reference || undefined,
@@ -608,7 +603,7 @@ export function ExtendStayModal({
     }
     setLocalBooking(updated)
     setActionNotice('')
-    setReceiptAmount(0); setPayFor('all'); setTryPayment(false); setReceiptMethod(''); setReceiptRef(''); setReceiveOpen(false)
+    setReceiptAmount(null); setReceiptMethod(''); setReceiptRef(''); setReceiveOpen(false)
     // The money is marked at once; then the seal fades, the green bar fills where it can be
     // seen, and only then does the receipt rise in. It once opened at 1.05 s, over the seal's
     // sparks, while the bar filled unseen behind it (the owner, 2026-10-15: "weird or broken").
@@ -827,12 +822,17 @@ export function ExtendStayModal({
                 )}
                 {/* How much of the bill is in: green for what is paid, and it fills as money is received. */}
                 {totalCharge > 0 && due > 0 && !billedToAgency && (
-                  <div aria-hidden="true" className={'h-1.5 rounded-full overflow-hidden ' + (paidSoFar > 0 ? 'bg-danger-200' : 'bg-paper-300')}>
+                  <div aria-hidden="true" className={'relative h-1.5 rounded-full overflow-hidden ' + (paidSoFar > 0 ? 'bg-danger-200' : 'bg-paper-300')}>
+                    {/* The money in the Receive box, striped ahead of the fill: what the bar will be once it is saved. */}
+                    {receiveShown && receiveAmount > 0 && (
+                      <div style={{ '--will': Math.min(1, (paidSoFar + receiveAmount) / totalCharge) } as React.CSSProperties}
+                        className="absolute inset-0 rounded-full origin-left [transform:scaleX(var(--will))] transition-transform duration-500 ease-out opacity-50 bg-[repeating-linear-gradient(-45deg,#059669_0_4px,#6EE7B7_4px_8px)]" />
+                    )}
                     {/* While a seal is up the fill waits for it to fade, so the money going in is seen. */}
                     {/* 1300 ms is SEAL_MS. Spelled as a property: `delay-[1300ms]` is claimed by both
                         Tailwind and tailwindcss-animate, so it is never generated. */}
                     <div style={{ '--paid': Math.min(1, paidSoFar / totalCharge) } as React.CSSProperties}
-                      className={'h-full rounded-full bg-emerald-600 origin-left [transform:scaleX(var(--paid))] transition-transform duration-700 ease-out ' + (seal && !sealLeaving ? '[transition-delay:1300ms]' : '')} />
+                      className={'relative h-full rounded-full bg-emerald-600 origin-left [transform:scaleX(var(--paid))] transition-transform duration-700 ease-out ' + (seal && !sealLeaving ? '[transition-delay:1300ms]' : '')} />
                   </div>
                 )}
                 <div className="pt-1">
@@ -873,23 +873,19 @@ export function ExtendStayModal({
                 {receiveShown && (
                   <div ref={receiveBox} className="rounded-xl">
                   <ReceiveMoney
-                    // A fresh start after each payment: the next one begins at Receive again.
-                    key={receiptRecords.length}
-                    choices={choices}
-                    payFor={payFor}
-                    onPayFor={key => { setPayFor(key); setReceiptAmount(0); setTryPayment(false) }}
-                    otherAmount={receiptAmount}
-                    onOtherAmount={setReceiptAmount}
+                    owed={dueNow}
+                    amount={receiveAmount}
+                    onAmount={setReceiptAmount}
+                    slipLabel={payingSlip ? 'order slip ' + slipNumber(payingSlip.tab) : undefined}
                     method={receiptMethod}
                     // Back from GCash or a bank transfer clears the choice here only; nothing is saved.
                     onMethod={m => { if (m) pickMethod(m); else { setReceiptMethod(''); setReceiptRef('') } }}
                     reference={receiptRef}
                     onReference={setReceiptRef}
                     onReferenceCommit={() => { if (receiptRef.trim()) void savePaymentMethod(receiptMethod, receiptRef) }}
-                    tried={tryPayment}
                     loud={step === 'payment'}
-                    startOpen={receiveOpen}
-                    onReceive={m => void handleAddReceipt(m)}
+                    onClose={step === 'payment' ? undefined : () => { setReceiveOpen(false); setReceiptAmount(null); setReceiptMethod(''); setReceiptRef('') }}
+                    onReceive={() => void handleAddReceipt()}
                   />
                   </div>
                 )}

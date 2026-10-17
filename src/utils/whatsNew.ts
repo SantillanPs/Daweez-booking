@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-17',
+    changes: [
+      {
+        where: 'Front desk → Booking',
+        what: [
+          'Receiving money: the amount is already filled in with what is owed. Type over it for any other amount.',
+          'Pick Cash, GCash, Bank or Check, then press the gold Receive button. It shows the amount and the way to pay before you save.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-16d',
     changes: [
       {
