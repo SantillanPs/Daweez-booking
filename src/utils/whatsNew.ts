@@ -29,6 +29,7 @@ export const UPDATES: Update[] = [
         where: 'Front desk → Calendar',
         what: [
           'When you pick more than one room, the New booking bar moves to the last room you picked, so it stays where you are working.',
+          'After you make a booking and press Done, you go straight back to the calendar. The booking no longer opens by itself.',
         ],
       },
     ],

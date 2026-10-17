@@ -721,9 +721,11 @@ export function WalkInBookingForm({
         receipt={createdReceipt}
         from={fromRect}
         editing={!!editingBookings && editingBookings.length > 0}
-        /* Closing the paper opens the booking that was just made in the quick view
-           (card k134). */
-        onClose={() => { focusBookingAfterCreate(createdBookingList[0]?.id); onClose() }}
+        /* Closing the paper after an EDIT goes back to the booking's panel, where the edit
+           began (card k134). A NEW reservation is finished there: its panel popping up
+           after it was in the way (Sebastian, 2026-10-17: "this should not pop up after
+           successfully making a reservation"). */
+        onClose={() => { if (editingBookings?.length) focusBookingAfterCreate(createdBookingList[0]?.id); onClose() }}
       />,
       document.body
     )

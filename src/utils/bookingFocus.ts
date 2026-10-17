@@ -1,8 +1,8 @@
 // Which booking the calendar should open once the form is finished (card k134).
 //
-// The owner's flow ends with the guest holding a printed billing statement, and
-// asks for the booking they just made to open itself in the quick view when that
-// statement is closed — so nobody has to go hunting for it on the calendar. A
+// After an edit, closing the printed statement opens the booking's quick view again,
+// where the edit began. A NEW booking no longer does (Sebastian, 2026-10-17: the panel
+// popping up after a reservation was made was in the way). A
 // plain module singleton, the same shape as `restaurantFocus.ts`: no provider and
 // no prop drilled through the calendar, the form and the statement panel.
 let focusedBookingId: string | null = null

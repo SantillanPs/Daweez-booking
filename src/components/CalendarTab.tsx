@@ -535,8 +535,8 @@ export function CalendarTab() {
             initialStayHours={formStayHours ?? undefined}
             onClose={() => {
               setShowManualForm(false); setEditingBooking(null); setEditingGroup(null); setFormSelections({}); setFormStayHours(null)
-              // Once the billing statement is closed, the booking just made opens
-              // itself in the quick view (card k134).
+              // Once the billing statement of an edit is closed, the booking opens again
+              // in the quick view (card k134). A new booking does not ask for this.
               const created = takeFocusedBooking()
               const booking = created ? bookings.find(b => b.id === created) : undefined
               if (booking) setSelectedExtendBooking(booking)
