@@ -12,7 +12,8 @@ import { AnalyticsVisualsView } from './analytics/AnalyticsVisualsView'
 type Timeframe = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
 
 export function AnalyticsTab() {
-  const { bookings, rooms, venues, expenses, isLoading } = useDashboardData()
+  // Every booking, cancelled ones too: the money a cancelled booking kept is still income.
+  const { allBookings: bookings, rooms, venues, expenses, isLoading } = useDashboardData()
 
   // Food and bar money comes from the tabs, not the bookings (k69, part E), so
   // the report reads every tab line once — a stay's tab and a walk-in diner's.

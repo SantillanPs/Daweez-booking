@@ -16,6 +16,7 @@
 ## Payments and receipts
 
 - **One payment, one numbered receipt** (`PR-YYYYMM-NNN`). The number is stored on the payment — never worked out from its position, because removing one payment would renumber the rest, and staff quote these numbers to guests.
+- **Cancelling a booking keeps the money it received** (Sebastian, 2026-10-17: *"make sure it stays"*). Today's money and the Earnings report both count it, on the day it was paid. In the Earnings report it adds no night.
 - **Every payment carries its own method.** A guest may pay the deposit in cash and the rest by GCash; each receipt names its own.
 - **One payment for several rooms is written onto every room it paid for.** The owner: *"if there are more than one rooms booked at the same time, the staff would need to find the room that holds the payment receipt."* Each room also keeps its own share. A reprint from any room shows the money actually handed over.
 - **A receipt number belongs to one payment across the whole hotel.** Numbers were once counted per booking, so two fresh bookings both got `…-001`. Walk-in restaurant receipts had the same fault until 2026-10-03; they now look at every order slip and every booking.

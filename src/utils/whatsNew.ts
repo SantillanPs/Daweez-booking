@@ -32,6 +32,12 @@ export const UPDATES: Update[] = [
           'After you make a booking and press Done, you go straight back to the calendar. The booking no longer opens by itself.',
         ],
       },
+      {
+        where: 'Cash Flow → Earnings report',
+        what: [
+          'Money received for a booking that was later cancelled now stays in the report, on the day it was paid.',
+        ],
+      },
     ],
   },
   {

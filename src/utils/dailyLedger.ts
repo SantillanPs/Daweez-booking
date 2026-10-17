@@ -75,9 +75,18 @@ export function buildLedger(params: {
 
   const statuses = includePending ? ['confirmed', 'pending'] : ['confirmed']
   for (const b of bookings) {
-    if (!statuses.includes(b.status) || !b.check_in || !b.check_out) continue
     const id = b.room_id || (b.venue_id ? venueKey(b.venue_id) : undefined)
     if (!id) continue
+    // Money kept from a cancelled booking is income on the day it came in, with no night
+    // used — the same rule as the report's totals (`useAnalyticsCalculations`).
+    if (b.status === 'cancelled') {
+      for (const r of Array.isArray(b.payment_records) ? b.payment_records : []) {
+        const amount = r.share ?? r.amount ?? 0
+        if (amount) add(money, id, dateToString(new Date(r.paid_at)), amount)
+      }
+      continue
+    }
+    if (!statuses.includes(b.status) || !b.check_in || !b.check_out) continue
     const nights: string[] = []
     for (let d = b.check_in.slice(0, 10); d < b.check_out.slice(0, 10); d = addDays(d, 1)) nights.push(d)
     if (!nights.length) continue
