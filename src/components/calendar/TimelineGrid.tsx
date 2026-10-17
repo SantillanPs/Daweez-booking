@@ -79,13 +79,20 @@ const UNIT_CELL = UNIT_CELL_BASE + ' bg-card pl-3.5'
 // the place of 5px of the padding, so the room numbers stay in one line down the column.
 const UNIT_CELL_OCCUPIED = UNIT_CELL_BASE + ' bg-paper-50 pl-[9px] border-l-[5px] border-l-emerald-600'
 
-function DayCount({ n, title, className, children }: { n: number; title: string; className: string; children: React.ReactNode }) {
+/** Which day's arrivals or departures are lit up on the grid. */
+type Spot = { k: 'arrive' | 'leave'; iso: string }
+
+function DayCount({ n, title, className, on, onTap, children }: { n: number; title: string; className: string; on: boolean; onTap: () => void; children: React.ReactNode }) {
   // The number rolls in when it changes — a check-in takes one off — never on first draw.
   const [first] = React.useState(n)
+  if (n === 0) return <span className={'flex h-5 ' + className} />
+  // A tap lights up the stays it counts (the arrive/leave mock, design A, Sebastian,
+  // 2026-10-17: "click on this and immediately find which reservation it's referring to").
   return (
-    <span title={n + ' ' + title} className={'flex h-5 items-center justify-center gap-0.5 ' + className}>
-      {n > 0 && <>{children}<span key={n} className={n !== first ? 'fd-roll' : ''}>{n}</span></>}
-    </span>
+    <button type="button" data-daycount title={n + ' ' + title} aria-pressed={on} onClick={onTap}
+      className={'flex h-5 items-center justify-center gap-0.5 cursor-pointer transition-[background-color,color,transform] duration-200 active:scale-90 hover:bg-gold-100 ' + className}>
+      {children}<span key={n} className={n !== first ? 'fd-roll' : ''}>{n}</span>
+    </button>
   )
 }
 
@@ -432,20 +439,44 @@ export const TimelineGrid = React.memo(
     const todayIso = dateToString(new Date())
     const { occupied, counts } = React.useMemo(() => {
       const occupied: Record<string, boolean> = {}
-      const counts: Record<string, { arrive: number; leave: number }> = {}
+      // Each count keeps the stays it counts, so a tap on it can light them up.
+      const counts: Record<string, { arrive: string[]; leave: string[] }> = {}
       const seen: Record<string, boolean> = {}
-      const at = (iso: string) => counts[iso] || (counts[iso] = { arrive: 0, leave: 0 })
+      const at = (iso: string) => counts[iso] || (counts[iso] = { arrive: [], leave: [] })
       Object.entries(halves).forEach(([unitId, row]) => row.forEach(b => {
         if (!b || b.status === 'blocked' || seen[b.id]) return
         seen[b.id] = true
         if (b.actual_check_in && !b.actual_check_out) occupied[unitId] = true
         // A guest who is late is still to come, or still to go: they count under today.
         const leaves = b.stay_hours ? b.check_in : b.check_out
-        if (!b.actual_check_in) at(b.check_in < todayIso ? todayIso : b.check_in).arrive++
-        if (!b.actual_check_out) at(leaves < todayIso ? todayIso : leaves).leave++
+        if (!b.actual_check_in) at(b.check_in < todayIso ? todayIso : b.check_in).arrive.push(b.id)
+        if (!b.actual_check_out) at(leaves < todayIso ? todayIso : leaves).leave.push(b.id)
       }))
       return { occupied, counts }
     }, [halves, todayIso])
+
+    // THE LIT STAYS. Marked straight on the pills (`data-lit`) rather than through React, so
+    // a tap does not redraw every cell of the grid; the rest fade (`[data-spot]` in index.css).
+    // A second tap, Escape, or a tap anywhere else lets go.
+    const [spot, setSpot] = React.useState<Spot | null>(null)
+    const tapCount = (k: Spot['k'], iso: string) => setSpot(s => (s && s.k === k && s.iso === iso ? null : { k, iso }))
+    React.useEffect(() => {
+      const scroller = scrollRef.current
+      if (!scroller) return
+      scroller.querySelectorAll('[data-lit]').forEach(el => { el.removeAttribute('data-lit'); (el as HTMLElement).style.removeProperty('--i') })
+      const ids = spot ? counts[spot.iso]?.[spot.k] || [] : []
+      if (ids.length === 0) { scroller.removeAttribute('data-spot'); return }
+      scroller.setAttribute('data-spot', '')
+      const lit = ids.map(id => scroller.querySelector('[data-pill="' + id + '"]') as HTMLElement | null).filter((el): el is HTMLElement => !!el)
+      lit.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)
+        .forEach((el, i) => { el.style.setProperty('--i', String(i)); el.setAttribute('data-lit', '') })
+      lit[0]?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+      const away = (e: PointerEvent) => { if (!(e.target as Element).closest('[data-daycount]')) setSpot(null) }
+      const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setSpot(null) }
+      document.addEventListener('pointerdown', away)
+      document.addEventListener('keydown', esc)
+      return () => { document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', esc) }
+    }, [spot, counts])
 
     const agencyNameOf = (b: Booking) =>
       isBilledToAgency(b) ? ((b.company_name || '').trim() || agencyNames[b.partner_deal_id || ''] || '') : ''
@@ -544,8 +575,12 @@ export const TimelineGrid = React.memo(
                       pills, and the arriving arrow is turned round so the two mirror each
                       other. A zero is left blank. */}
                   <div className="mt-1 grid grid-cols-2 border-t border-soft text-[12px] font-bold leading-none tabular-nums">
-                    <DayCount n={counts[dayInfo.isoStr]?.leave || 0} title="will leave" className="border-r border-dashed border-soft text-ink-900"><LogOut className="w-3 h-3" /></DayCount>
-                    <DayCount n={counts[dayInfo.isoStr]?.arrive || 0} title="will arrive" className="text-emerald-700"><LogIn className="w-3 h-3 -scale-x-100" /></DayCount>
+                    <DayCount n={counts[dayInfo.isoStr]?.leave.length || 0} title="will leave" on={spot?.k === 'leave' && spot.iso === dayInfo.isoStr}
+                      onTap={() => tapCount('leave', dayInfo.isoStr)}
+                      className="border-r border-dashed border-soft text-ink-900 aria-pressed:bg-ink-900 aria-pressed:text-white"><LogOut className="w-3 h-3" /></DayCount>
+                    <DayCount n={counts[dayInfo.isoStr]?.arrive.length || 0} title="will arrive" on={spot?.k === 'arrive' && spot.iso === dayInfo.isoStr}
+                      onTap={() => tapCount('arrive', dayInfo.isoStr)}
+                      className="text-emerald-700 aria-pressed:bg-emerald-600 aria-pressed:text-white"><LogIn className="w-3 h-3 -scale-x-100" /></DayCount>
                   </div>
                 </th>
               ))}

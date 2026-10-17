@@ -451,6 +451,13 @@
 .bw-door { display: inline-block; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 
+/* ── A day's arrive/leave count, tapped: the stays it counts lift and glow, one after
+   another, and the rest of the calendar fades back (the mock, design A, 2026-10-17). */
+[data-spot] [data-pill]:not([data-lit]) { opacity: 0.25; filter: grayscale(1); }
+[data-lit] { z-index: 3; box-shadow: 0 0 0 2px #D0AB60, 0 0 0 5px #F5EAD1, 0 8px 18px -8px rgb(208 171 96 / 0.9);
+  animation: day-lit 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes day-lit { 35% { transform: scale(1.06) translateY(-2px); } }
+
 /* ── Log old booking: the paper's own marks ── a tick draws itself into its box, and the
    hours taken are circled by hand (design B of the mock, 2026-10-17). */
 .lo-tick path { stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -469,6 +476,7 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
   .bk-hi { transition: none; }
   .bk-seal path { stroke-dashoffset: 0; }
   .lo-tick path, .lo-circ path { transition: none; }
+  [data-lit] { animation: none; }
 }
 
 /* ── The Restaurant's Orders screen ─────────────────────────────────────────

@@ -46,8 +46,8 @@ export function CalendarGuide() {
           </Section>
 
           <Section title="Under the date">
-            <Row sign={<span className="inline-flex items-center gap-0.5 text-[12px] font-bold text-emerald-700"><LogIn className="w-3 h-3 -scale-x-100" />2</span>}>How many will arrive that day</Row>
-            <Row sign={<span className="inline-flex items-center gap-0.5 text-[12px] font-bold text-ink-900"><LogOut className="w-3 h-3" />6</span>}>How many will leave that day</Row>
+            <Row sign={<span className="inline-flex items-center gap-0.5 text-[12px] font-bold text-emerald-700"><LogIn className="w-3 h-3 -scale-x-100" />2</span>}>How many will arrive that day. Tap it to light them up</Row>
+            <Row sign={<span className="inline-flex items-center gap-0.5 text-[12px] font-bold text-ink-900"><LogOut className="w-3 h-3" />6</span>}>How many will leave that day. Tap it to light them up</Row>
           </Section>
         </div>
       </>)}
