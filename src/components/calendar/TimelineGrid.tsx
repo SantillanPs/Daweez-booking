@@ -177,6 +177,14 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
   // once it is on screen, and it changes when it goes from one day to a range. Nothing
   // is set when nothing moved, so this settles at once.
   React.useLayoutEffect(() => { placeBar() })
+  // The bar glides to a new pick, but only once it has arrived: its first width is
+  // measured after it is on screen, and gliding that correction looked like a slide-in.
+  const shown = barPos !== null
+  React.useEffect(() => {
+    if (!shown) return
+    const id = requestAnimationFrame(() => barRef.current?.setAttribute('data-glide', ''))
+    return () => cancelAnimationFrame(id)
+  }, [shown])
   React.useEffect(() => {
     const scroller = scrollRef.current
     if (!scroller) return
@@ -207,7 +215,7 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
   )
   return (
     <div ref={barRef} style={{ '--bar-left': left + 'px', '--bar-top': barPos.top + 'px' } as React.CSSProperties}
-      className="absolute z-40 w-max [left:var(--bar-left)] [top:var(--bar-top)] bg-card border border-gold-400 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg flex items-center gap-2 text-[13px] font-semibold text-main fd-bar">
+      className="absolute z-40 w-max [left:var(--bar-left)] [top:var(--bar-top)] data-[glide]:transition-[left,top] duration-[450ms] ease-[cubic-bezier(0.3,1.25,0.4,1)] motion-reduce:transition-none bg-card border border-gold-400 rounded-full pl-4 pr-1.5 py-1.5 shadow-softLg flex items-center gap-2 text-[13px] font-semibold text-main fd-bar">
       {/* `w-max`: the bar is always as wide as what is in it. Left to the browser, an
           absolute box sitting far to the right of the visible grid is squeezed to
           the little room that is left, and the buttons ended up ON the dates
@@ -352,8 +360,12 @@ export const TimelineGrid = React.memo(
         const unitId = timelineSelection.roomId || timelineSelection.venueId
         return unitId ? { unitId, iso: dateToString(timelineSelection.checkIn), outIso: '' } : null
       }
-      const first = groupSelection ? Object.entries(groupSelection)[0] : null
-      return first ? { unitId: first[0], iso: dateToString(first[1].checkIn), outIso: dateToString(first[1].checkOut) } : null
+      // It hangs off the NEWEST room picked, so it follows the desk down the grid as rooms
+      // are added (the selection bar mock, Sebastian, 2026-10-17: "this should follow the
+      // last cells selected"). It stayed on the first, far from where they were working.
+      const picked = groupSelection ? Object.entries(groupSelection) : []
+      const last = picked[picked.length - 1]
+      return last ? { unitId: last[0], iso: dateToString(last[1].checkIn), outIso: dateToString(last[1].checkOut) } : null
     }, [timelineSelection, groupSelection])
 
     // The window is rebuilt from today on every month change (card k154), so the

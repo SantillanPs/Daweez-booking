@@ -23,6 +23,17 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-17d',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'When you pick more than one room, the New booking bar moves to the last room you picked, so it stays where you are working.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-17c',
     changes: [
       {
