@@ -23,6 +23,17 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-18c',
+    changes: [
+      {
+        where: 'Booking panel',
+        what: [
+          'While you take a payment, "Check in, pay later" steps aside. Close Receive to see it again.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-18b',
     changes: [
       {

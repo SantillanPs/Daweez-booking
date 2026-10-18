@@ -980,7 +980,9 @@ export function ExtendStayModal({
                 {!isBlock && !localBooking.actual_check_in && (ask === 'in' ? (
                   <DoorAsk title={checkInAsk.title} message={checkInAsk.message} yes={checkInAsk.yes} tone="green"
                     onYes={() => void handleCheckIn()} onBack={() => setAsk(null)} />
-                ) : besideReceive ? null : (
+                  // "Pay later" goes while the money is being taken (Sebastian, 2026-10-18): it is
+                  // the other way round from what the desk is doing right then.
+                ) : besideReceive || (receiveOpen && step !== 'checkIn') ? null : (
                   <button type="button" onClick={() => setAsk('in')} style={step !== openedStep ? wait : undefined}
                     className={step === 'checkIn' ? BTN_GREEN + ' bw-shine' + glowIn + (step !== openedStep ? ' bw-arrive' : '') : QUIET_LINK}>
                     {step === 'checkIn' ? <><LogIn aria-hidden="true" className="w-4 h-4 -mt-0.5 mr-1.5 inline-block" />Check in</> : 'Check in, pay later'}
@@ -989,7 +991,7 @@ export function ExtendStayModal({
                 {!isBlock && isIn && (ask === 'out' ? (
                   <DoorAsk title={checkOutAsk.title} message={checkOutAsk.message} yes={checkOutAsk.yes} tone="ink"
                     onYes={() => void handleCheckOut()} onBack={() => setAsk(null)} />
-                ) : besideReceive ? null : (
+                ) : besideReceive || (receiveOpen && owesAtDoor) ? null : (
                   <button ref={checkOutBtn} type="button" onClick={tryCheckOut} style={step !== openedStep ? wait : undefined}
                     className={(step === 'checkOut' && checkOutDue ? BTN_GOLD + ' bw-shine' + glowOut : BTN_QUIET) + (step !== openedStep ? ' bw-arrive' : '')}>
                     {owesAtDoor ? 'Check out, pay later' : 'Check out'} <DoorOpen aria-hidden="true" className="bw-door w-4 h-4 -mt-0.5 ml-0.5" />
