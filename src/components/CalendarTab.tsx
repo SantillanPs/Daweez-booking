@@ -16,6 +16,7 @@ import { halvesByUnit } from './calendar/timelineHalves'
 import { BlockDatesPane } from './calendar/BlockDatesPane'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { TodayStrip } from './calendar/TodayStrip'
+import { todaysDoors } from '../utils/doors'
 import { setDeskBusy, useReadingWhatsNew } from '../utils/deskState'
 import { BreakfastPicker } from './calendar/BreakfastPicker'
 import { roomDisplayName } from './calendar/bookingStyles'
@@ -167,6 +168,20 @@ export function CalendarTab() {
   const liveExtendBooking = selectedExtendBooking
     ? bookings.find(b => b.id === selectedExtendBooking.id) || selectedExtendBooking
     : null
+
+  // **Today's doors** (the check-in loop mocks, 2026-10-18): the check-ins and check-outs
+  // still to do today. Their pills ripple. A pop-up card per guest was tried and taken off
+  // (Sebastian, 2026-10-18: it felt annoying) — the ripple alone is the reminder.
+  // A minute clock moves the doors on at midnight on a calendar left open.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60000)
+    return () => window.clearInterval(id)
+  }, [])
+  const doors = useMemo(() => todaysDoors(bookings, now), [bookings, now])
+  // The same Map until a door is done, so the grid is not redrawn every minute.
+  const doorKey = doors.map(d => d.booking.id + ' ' + d.kind).sort().join(',')
+  const openDoors = useMemo(() => new Map(doorKey ? doorKey.split(',').map(e => e.split(' ') as [string, 'in' | 'out']) : []), [doorKey])
 
   const breakfastFor = breakfastForId ? bookings.find(b => b.id === breakfastForId) || null : null
 
@@ -483,6 +498,7 @@ export function CalendarTab() {
           groupSelection={groupSelection}
           handleCellClick={handleCellClick}
           setSelectedExtendBooking={setSelectedExtendBooking}
+          openDoors={openDoors}
           setExtendCheckoutDate={setExtendCheckoutDate}
           setExtendError={setExtendError}
           onNewBooking={confirmGroup}

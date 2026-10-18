@@ -23,6 +23,26 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-18b',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'A guest to check in or out now ripples on the calendar: green to check in, black to check out. Check-outs start at 12 PM and check-ins at 2 PM. A guest left from an earlier day ripples all day.',
+          'Open the booking and its Check in or Check out button ripples too.',
+          'The words on every booking sit in the middle.',
+        ],
+      },
+      {
+        where: 'Booking panel',
+        what: [
+          'A guest can check out before paying, just like check-in. The panel asks first and the amount stays on the bill.',
+          'Checking a guest in or out gets a small celebration.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-18',
     changes: [
       {

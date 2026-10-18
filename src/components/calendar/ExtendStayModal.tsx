@@ -1,12 +1,12 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal, flushSync } from 'react-dom'
-import { X, Printer, Edit3, CalendarPlus, Undo2, ArrowRightLeft, Banknote, Check, Coffee, DoorOpen, KeyRound, ChevronDown, XCircle } from 'lucide-react'
+import { X, Printer, Edit3, CalendarPlus, Undo2, ArrowRightLeft, Banknote, Check, Coffee, DoorOpen, KeyRound, ChevronDown, XCircle, LogIn } from 'lucide-react'
 import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
 import { computeCheckInOutHours } from '../../utils/checkInOut'
 import { getRateConfig } from '../../utils/rateConfig'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
-import { roomDisplayName, roomOptionLabel } from './bookingStyles'
+import { greetName, pillInitials, roomDisplayName, roomOptionLabel } from './bookingStyles'
 import { statusAfterPayment } from '../../utils/bookingStatus'
 import { hasOutstandingBalance, amountToPayNow, isBilledToAgency } from '../../utils/bookingMoney'
 import { methodNeedsReference } from '../../utils/paymentMethod'
@@ -38,6 +38,8 @@ import { canMoveBooking } from '../../utils/bookingMove'
 import { venueTypeOf } from '../../utils/venueTypes'
 import { showToast } from '../../utils/toast'
 import { askConfirm } from '../../utils/confirm'
+import { confettiCannon } from '../../utils/confetti'
+import { todaysDoors } from '../../utils/doors'
 
 interface ExtendStayModalProps {
   booking: Booking
@@ -68,6 +70,11 @@ const BTN_GREEN = BTN + 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-s
 // The step that is not the next one: a size down, so the lead reads first.
 const BTN_QUIET = 'w-full min-h-11 px-4 rounded-xl text-[14px] font-bold transition-[background-color,border-color,transform] duration-200 active:scale-[0.98] cursor-pointer bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100'
 const newReceiptId = () => 'rcpt-' + Date.now()
+// The door beside Receive while money is owed (the check-in loop mock, 2026-10-18): a real
+// button in the door's own colour, not the grey link it used to be.
+const DOOR_BESIDE = 'w-full min-h-[54px] px-3 rounded-xl border-2 bg-card text-[16px] font-bold inline-flex items-center justify-center gap-1 transition-[background-color,transform] duration-200 active:scale-[0.98] cursor-pointer bw-rise '
+const DOOR_BESIDE_IN = DOOR_BESIDE + 'border-emerald-600 text-emerald-700 hover:bg-emerald-50'
+const DOOR_BESIDE_OUT = DOOR_BESIDE + 'border-ink-900 text-main hover:bg-paper-100'
 const QUIET_LINK = 'block mx-auto min-h-11 px-3 text-[13px] font-semibold text-muted hover:text-main underline decoration-paper-300 underline-offset-4 transition-colors cursor-pointer'
 // The bottom row: the smallest, lightest words on the panel, still finger-sized.
 const TOOL = 'bw-tool min-h-11 inline-flex items-center gap-1.5 px-2.5 text-[12px] font-semibold text-muted hover:text-main cursor-pointer'
@@ -218,6 +225,35 @@ export function ExtendStayModal({
   }
   const clock = () => new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
+  // ── THE REWARD for a check-in or check-out (the check-in loop mocks, Sebastian, 2026-10-18,
+  // "cannons + fly home"). The staff forgot the doors, and doing one was not rewarding: a
+  // small seal said "Checked in" and that was all. Now the panel floods green (in) or
+  // charcoal (out) from below, the guest's initials spin in with a welcome, confetti fires
+  // from the panel's two bottom corners, then the panel flies home into its pill, which lands
+  // with a ring and a last burst. **Paid or owing, the reward is the same** (his words: "as
+  // long as the staff enters a guest checking in or checking out, that's good for the
+  // hotel"); what is still owed is one small line on it.
+  const [party, setParty] = useState<{ kind: 'in' | 'out'; owed: number; leaving?: boolean } | null>(null)
+  const PARTY_MS = 1900
+  // `stay`: the bill grew at this check-out (late or early hours), so the panel does not fly
+  // home — the party clears and the desk is left on the money to take. It used to skip the
+  // reward altogether, so a check-out past the check-out time was never rewarded (Sebastian,
+  // 2026-10-18: "the effects aren't working past the check in and checkout date").
+  const celebrate = (kind: 'in' | 'out', owed: number, stay = false) => {
+    setParty({ kind, owed })
+    const r = card.current?.getBoundingClientRect()
+    if (r) {
+      confettiCannon(r.left + 8, r.bottom - 8, 60); confettiCannon(r.right - 8, r.bottom - 8, 120)
+      window.setTimeout(() => { confettiCannon(r.left + 8, r.bottom - 8, 70, 22); confettiCannon(r.right - 8, r.bottom - 8, 110, 22) }, 260)
+    }
+    window.setTimeout(() => {
+      if (!stay) { close(kind); return }
+      setParty(p => p && { ...p, leaving: true })
+      window.setTimeout(() => { setParty(null); setShowPrintModal(true) }, 300)
+    }, reduced() ? 900 : PARTY_MS)
+  }
+  const firstName = greetName(booking.guest_name)
+
   // ── In out of its pill, back into it (the booking window mock, 2026-10-16) ──────────
   // The panel grows out of the booking's pill on the calendar, and ✕ shrinks it back into it,
   // where the pill lands with a gold ring. A booking off the dates on screen just fades.
@@ -250,24 +286,31 @@ export function ExtendStayModal({
     // Once, on opening: the pill is where the panel came from.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  const close = () => {
+  // `home` is the door just done: the panel flies home a little slower, and the pill lands with
+  // a ring in the door's own colour and a small burst of confetti (the reward, below).
+  const close = (home?: 'in' | 'out') => {
     const el = card.current
     if (closing) return
     if (!el || reduced()) { onClose(); return }
     setClosing(true)
     const pill = pillRect()
     if (pill) {
+      const fly = home ? 480 : 280
+      const ring = home === 'in' ? '5 150 105' : home === 'out' ? '28 28 28' : '208 171 96'
       el.animate([{ transformOrigin: '0 0', transform: 'none', opacity: 1 }, { transformOrigin: '0 0', opacity: 1, offset: 0.7 }, { transformOrigin: '0 0', transform: toPill(el.getBoundingClientRect(), pill), opacity: 0 }],
-        { duration: 280, easing: 'cubic-bezier(0.45, 0, 0.85, 0.5)', fill: 'forwards' })
+        { duration: fly, easing: 'cubic-bezier(0.45, 0, 0.85, 0.5)', fill: 'forwards' })
       window.setTimeout(() => {
-        document.querySelector<HTMLElement>('[data-pill="' + booking.id + '"]')?.animate([
-          { transform: 'scale(1.15)', boxShadow: '0 0 0 0 rgb(208 171 96 / 0.75)' },
-          { boxShadow: '0 0 0 12px rgb(208 171 96 / 0)', offset: 0.7 },
-          { transform: 'none', boxShadow: '0 0 0 0 rgb(208 171 96 / 0)' },
+        const landed = document.querySelector<HTMLElement>('[data-pill="' + booking.id + '"]')
+        landed?.animate([
+          { transform: 'scale(1.15)', boxShadow: '0 0 0 0 rgb(' + ring + ' / 0.75)' },
+          { boxShadow: '0 0 0 14px rgb(' + ring + ' / 0)', offset: 0.7 },
+          { transform: 'none', boxShadow: '0 0 0 0 rgb(' + ring + ' / 0)' },
         ], { duration: 600, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' })
-      }, 250)
+        const r = landed?.getBoundingClientRect()
+        if (home && r) confettiCannon(r.left + r.width / 2, r.top, 90, 16)
+      }, fly - 30)
       // Faster back into the pill than out of it (Sebastian, 2026-10-16: "a bit faster").
-      window.setTimeout(onClose, 290)
+      window.setTimeout(onClose, fly + 10)
     } else {
       el.animate([{ opacity: 1 }, { opacity: 0, transform: 'scale(0.96)' }], { duration: 220, easing: 'ease-in', fill: 'forwards' })
       window.setTimeout(onClose, 230)
@@ -444,7 +487,7 @@ export function ExtendStayModal({
   // The money is still asked for first (Receive leads), but a guest who has not paid
   // in full may be let in: the desk's choice, said plainly before it happens
   // (Sebastian, 2026-10-15: "let it be an option"). What is owed stays on the bill and
-  // check-out still waits for it. **Asked in the panel, where the button was** (the booking
+  // so does check-out now (below). **Asked in the panel, where the button was** (the booking
   // window mock, 2026-10-16), not in a pop-up over it.
   const owesAtDoor = owes && !billedToAgency
   const checkInAsk = {
@@ -452,7 +495,7 @@ export function ExtendStayModal({
       ? 'Check in ' + booking.guest_name + ' with ' + fmtPeso(due) + ' still to pay?'
       : 'Check in ' + booking.guest_name + ' to ' + place + '?',
     message: ((localBooking.check_in > todayKey ? 'This booking starts on ' + fmtShort(localBooking.check_in) + '. ' : '') +
-      (owesAtDoor ? 'The ' + fmtPeso(due) + ' stays on their bill. They pay it before they check out.' : '')).trim(),
+      (owesAtDoor ? 'The ' + fmtPeso(due) + ' stays on their bill.' : '')).trim(),
     yes: owesAtDoor ? 'Check in anyway' : 'Check in',
   }
   const handleCheckIn = async () => {
@@ -470,7 +513,7 @@ export function ExtendStayModal({
       })
     const updated: Booking = { ...localBooking, actual_check_in: actualCheckIn, early_check_in_hours: earlyHours, status: 'confirmed' }
     setLocalBooking(updated)
-    mark({ title: 'Checked in', sub: place + ' · ' + clock(), icon: 'in' })
+    celebrate('in', owesAtDoor ? due : 0)
     if (earlyHours > 0) {
       const hours = earlyHours + ' hour' + (earlyHours > 1 ? 's' : '')
       const why = earlyHours > rates.lateEarlyCapHours
@@ -481,23 +524,19 @@ export function ExtendStayModal({
     try { await onUpdateBooking?.(updated) } catch { showToast('Could not check in. Please try again.', 'error') }
   }
 
+  // **Check-out works like check-in without paying** (Sebastian, 2026-10-18: *"make the checkout
+  // function the same as the check in without paying"*). It used to refuse while money was owed;
+  // now Receive still leads, and Check out asks once, naming the amount. What is owed stays on
+  // the bill, on the pill ("₱… to pay") and in the owed lists until it is received.
   const checkOutAsk = {
-    title: 'Check out ' + booking.guest_name + ' from ' + place + '?',
-    message: !localBooking.stay_hours && localBooking.check_out > todayKey ? 'Their stay runs until ' + fmtShort(localBooking.check_out) + '.' : '',
+    title: owesAtDoor
+      ? 'Check out ' + booking.guest_name + ' with ' + fmtPeso(due) + ' still to pay?'
+      : 'Check out ' + booking.guest_name + ' from ' + place + '?',
+    message: ((!localBooking.stay_hours && localBooking.check_out > todayKey ? 'Their stay runs until ' + fmtShort(localBooking.check_out) + '. ' : '') +
+      (owesAtDoor ? 'The ' + fmtPeso(due) + ' stays on their bill.' : '')).trim(),
+    yes: owesAtDoor ? 'Check out anyway' : 'Check out',
   }
-  // A guest never leaves with an unpaid bill; a stay billed to an agency is the exception —
-  // the agency pays later. Pressed while money is owed, it says how much in a few words,
-  // shakes, and the Receive above it glows (the booking window mock, 2026-10-16).
-  const tryCheckOut = () => {
-    if (owesAtDoor) {
-      setActionNotice(fmtPeso(due) + ' still to pay')
-      checkOutBtn.current?.animate([{ transform: 'none' }, { transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'none' }], { duration: 400 })
-      const box = receiveBox.current?.firstElementChild as HTMLElement | null
-      box?.animate([{ boxShadow: '0 0 0 0 rgb(208 171 96 / 0.7)' }, { boxShadow: '0 0 0 9px rgb(208 171 96 / 0)' }], { duration: 1100, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' })
-      return
-    }
-    setAsk('out')
-  }
+  const tryCheckOut = () => setAsk('out')
   const handleCheckOut = async () => {
     setAsk(null)
     setActionNotice('')
@@ -512,8 +551,11 @@ export function ExtendStayModal({
       })
     const updated = withRecomputedBalance(localBooking, { actual_check_out: actualCheckOut, late_check_out_hours: lateHours })
     setLocalBooking(updated)
-    // A stay that grew at check-out still has money to take: that is said, not sealed.
-    if (!hasOutstandingBalance(updated) || billedToAgency) mark({ title: 'Checked out', sub: place + ' is free · ' + clock(), icon: 'out' })
+    // A stay that GREW at check-out (early or late hours) has money the desk was not asked
+    // about: that is said, not sealed. One that already owed was checked out knowingly.
+    const after = Number(updated.balance_due || 0)
+    const grewHere = after > due && !billedToAgency
+    celebrate('out', owesAtDoor || grewHere ? after : 0, grewHere)
     try {
       await onUpdateBooking?.(updated)
       // The guest has left, so nothing more is ordered on this stay: its open slip is
@@ -530,8 +572,8 @@ export function ExtendStayModal({
     // on arrival (the owner's rule: early check-in goes on the bill at check-out, never
     // in the desk's face at the door). That money must be settled before the guest
     // leaves, and the notice names what grew rather than blaming it all on lateness.
-    if (hasOutstandingBalance(updated) && !billedToAgency) {
-      const owed = fmtPeso(Number(updated.balance_due || 0))
+    if (grewHere) {
+      const owed = fmtPeso(after)
       const grew = []
       if (Number(updated.early_check_in_hours || 0) > 0) grew.push('early check-in')
       if (lateHours > 0) grew.push('late check-out')
@@ -539,7 +581,7 @@ export function ExtendStayModal({
         (grew.length ? 'Added for ' + grew.join(' and ') + '. ' : 'This stay still owes ' + owed + '. ') +
         'Receive ' + owed + ' before the guest leaves.'
       )
-      if (!showPrintModal) setShowPrintModal(true)
+      // The bill opens once the party has cleared (`celebrate`).
     }
   }
 
@@ -708,6 +750,16 @@ export function ExtendStayModal({
   // The receive step is the loud one whenever the guest must pay before the next door
   // opens. On a stay billed to an agency it is folded behind a quiet line instead.
   const receiveShown = !isBlock && due > 0 && (step === 'payment' || receiveOpen)
+  // The door that is next — and while Receive is shut and nothing is being asked, it sits
+  // beside Receive instead of as a link under it.
+  const doorKind: 'in' | 'out' | null = isBlock ? null : !localBooking.actual_check_in ? 'in' : isIn ? 'out' : null
+  const besideReceive = receiveShown && !receiveOpen && !!doorKind && ask === null
+  // **The door button glows like its pill** (the panel mock, option A, Sebastian, 2026-10-18:
+  // "it's supposed to reflect what the cell is doing"). When the calendar is glowing this
+  // stay's pill for a check-in or check-out, the button that does it pulses and hops the same.
+  const dueDoor = todaysDoors([localBooking], new Date())[0]?.kind
+  const glowIn = dueDoor === 'in' ? ' door-glow-btn-in' : ''
+  const glowOut = dueDoor === 'out' ? ' door-glow-btn-out' : ''
   // Checking out before the last day is allowed, but it is not the expected next step.
   const checkOutDue = isShortStay || localBooking.check_out <= todayKey
 
@@ -754,6 +806,24 @@ export function ExtendStayModal({
           </div>
         )}
 
+        {party && (() => {
+          const words = party.kind === 'in' ? 'Welcome, ' + firstName + '!' : 'See you again!'
+          return (
+            <div role="status" className={(party.leaving ? 'opacity-0 ' : '') + 'transition-opacity duration-300 bw-party absolute inset-0 z-20 grid place-content-center justify-items-center gap-2 text-center text-white px-6 ' + (party.kind === 'in' ? 'bg-emerald-600' : 'bg-ink-900')}>
+              <span aria-hidden="true" className={'bw-party-av w-16 h-16 grid place-items-center rounded-full bg-white font-display text-[22px] font-bold shadow-[0_0_0_6px_rgb(255_255_255_/_0.2)] ' + (party.kind === 'in' ? 'text-emerald-700' : 'text-main')}>
+                {pillInitials(booking.guest_name)}
+              </span>
+              <b className="font-display text-[32px] font-bold tracking-tight leading-tight" aria-label={words}>
+                {words.split('').map((c, i) => (
+                  <span key={i} aria-hidden="true" className="bw-party-lt inline-block" style={{ animationDelay: 200 + i * 35 + 'ms' }}>{c === ' ' ? '\u00a0' : c}</span>
+                ))}
+              </b>
+              <span className="text-[14px] font-semibold text-white/90">{party.kind === 'in' ? place + ' · checked in ' + clock() : place + ' is free'}</span>
+              {party.owed > 0 && <span className="text-[12px] font-semibold bg-white/15 rounded-full px-2.5 py-0.5">{fmtPeso(party.owed)} stays on the bill</span>}
+            </div>
+          )
+        })()}
+
         {/* THE VISUAL HIERARCHY (the owner's choice, 2026-10-15): four levels, each a step
             down in size, weight and colour — 1 what is owed and where the stay is, 2 the
             one thing to press, 3 the bill, folded until opened, 4 the tools along the bottom. */}
@@ -776,7 +846,7 @@ export function ExtendStayModal({
                 <Edit3 className="w-4 h-4" />
               </button>
             )}
-            <button type="button" onClick={close} aria-label="Close" title="Close"
+            <button type="button" onClick={() => close()} aria-label="Close" title="Close"
               className="bw-x w-11 h-11 flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer">
               <X className="w-5 h-5" />
             </button>
@@ -870,8 +940,13 @@ export function ExtendStayModal({
                   </p>
                 )}
 
+                {/* **Receive leads, the door beside it** (the check-in loop mock, Sebastian, 2026-10-18).
+                    The staff did not know a guest who owes could be checked in: the door was a grey
+                    "pay later" link under Receive. Paying stays the big button; Check in or Check out
+                    sits beside it as a real button, and asks once, naming the amount. */}
                 {receiveShown && (
-                  <div ref={receiveBox} className="rounded-xl">
+                  <div className={besideReceive ? 'grid grid-cols-[1.6fr_1fr] gap-2' : ''}>
+                  <div ref={receiveBox} className="rounded-xl min-w-0">
                   <ReceiveMoney
                     owed={dueNow}
                     amount={receiveAmount}
@@ -891,25 +966,33 @@ export function ExtendStayModal({
                     onReceive={() => void handleAddReceipt()}
                   />
                   </div>
+                  {besideReceive && (doorKind === 'in' ? (
+                    <button type="button" onClick={() => setAsk('in')} className={DOOR_BESIDE_IN + glowIn}>Check in</button>
+                  ) : (
+                    <button ref={checkOutBtn} type="button" onClick={tryCheckOut} className={DOOR_BESIDE_OUT + glowOut}>
+                      Check out <DoorOpen aria-hidden="true" className="bw-door w-4 h-4 -mt-0.5" />
+                    </button>
+                  ))}
+                  </div>
                 )}
                 {/* Check in leads once it is the next step; while money is owed it is a quiet
                     word under Receive — the desk may still let the guest in, and pay later. */}
                 {!isBlock && !localBooking.actual_check_in && (ask === 'in' ? (
                   <DoorAsk title={checkInAsk.title} message={checkInAsk.message} yes={checkInAsk.yes} tone="green"
                     onYes={() => void handleCheckIn()} onBack={() => setAsk(null)} />
-                ) : (
+                ) : besideReceive ? null : (
                   <button type="button" onClick={() => setAsk('in')} style={step !== openedStep ? wait : undefined}
-                    className={step === 'checkIn' ? BTN_GREEN + ' bw-shine' + (step !== openedStep ? ' bw-arrive' : '') : QUIET_LINK}>
-                    {step === 'checkIn' ? 'Check in' : 'Check in, pay later'}
+                    className={step === 'checkIn' ? BTN_GREEN + ' bw-shine' + glowIn + (step !== openedStep ? ' bw-arrive' : '') : QUIET_LINK}>
+                    {step === 'checkIn' ? <><LogIn aria-hidden="true" className="w-4 h-4 -mt-0.5 mr-1.5 inline-block" />Check in</> : 'Check in, pay later'}
                   </button>
                 ))}
                 {!isBlock && isIn && (ask === 'out' ? (
-                  <DoorAsk title={checkOutAsk.title} message={checkOutAsk.message} yes="Check out" tone="ink"
+                  <DoorAsk title={checkOutAsk.title} message={checkOutAsk.message} yes={checkOutAsk.yes} tone="ink"
                     onYes={() => void handleCheckOut()} onBack={() => setAsk(null)} />
-                ) : (
+                ) : besideReceive ? null : (
                   <button ref={checkOutBtn} type="button" onClick={tryCheckOut} style={step !== openedStep ? wait : undefined}
-                    className={(step === 'checkOut' && checkOutDue ? BTN_GOLD + ' bw-shine' : BTN_QUIET) + (step !== openedStep ? ' bw-arrive' : '')}>
-                    Check out <DoorOpen aria-hidden="true" className="bw-door w-4 h-4 -mt-0.5 ml-0.5" />
+                    className={(step === 'checkOut' && checkOutDue ? BTN_GOLD + ' bw-shine' + glowOut : BTN_QUIET) + (step !== openedStep ? ' bw-arrive' : '')}>
+                    {owesAtDoor ? 'Check out, pay later' : 'Check out'} <DoorOpen aria-hidden="true" className="bw-door w-4 h-4 -mt-0.5 ml-0.5" />
                   </button>
                 ))}
                 {!isBlock && due > 0 && step !== 'payment' && !receiveOpen && (

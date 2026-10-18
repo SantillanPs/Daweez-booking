@@ -34,6 +34,8 @@ export function CalendarGuide() {
             <Row sign={<Pill className="bg-emerald-50 border-emerald-600 border-r-[5px] border-r-ink-900" />}>Leaves today</Row>
             <Row sign={<Pill className="bg-ink-100 border-ink-200 text-white"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-ink-600"><Check className="w-2 h-2" strokeWidth={3} /></span></Pill>}>Has left</Row>
             <Row sign={<Pill className="bg-paper-200/60 border-paper-300" />}>Blocked</Row>
+            <Row sign={<Pill className="bg-gold-100 door-glow-in" />}>Rippling green: check in today</Row>
+            <Row sign={<Pill className="bg-emerald-50 door-glow-out" />}>Rippling black: check out today</Row>
             <Row sign={<Building2 className="w-4 h-4" />}>Agency reservation</Row>
             <Row sign={<span className="font-display text-[13px] font-bold text-blue-700">AB</span>}>Blue initials: no deposit</Row>
             <Row sign={<span className="font-display font-bold"><span className="text-danger-600">₱</span> <span className="text-emerald-700">₱</span></span>}>Red to pay, green paid</Row>
@@ -77,3 +79,4 @@ function Row({ sign, children }: { sign: React.ReactNode; children: React.ReactN
 function Pill({ className, children }: { className: string; children?: React.ReactNode }) {
   return <span className={'relative flex h-5 w-[30px] items-center justify-center overflow-hidden rounded border ' + className}>{children}</span>
 }
+

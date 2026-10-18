@@ -50,6 +50,16 @@ export const pillInitials = (name: string): string => {
   return ((words[0]?.[0] || '') + (words[1]?.[0] || '')).toUpperCase()
 }
 
+// Titles the desk writes before a name, with or without a full stop ("Pastor is arriving" was the second try).
+const TITLES = new Set(['pastor', 'ptr', 'fr', 'father', 'sis', 'sister', 'bro', 'brother', 'engr', 'atty', 'dr', 'hon', 'mr', 'mrs', 'ms', 'sir', 'maam', 'rev', 'capt', 'gen', 'col', 'sgt', 'prof'])
+/** The name a guest is greeted by: the first word, or the first two when the first is a title
+ *  like `Fr.`, `Engr.` or `Pastor` — "Welcome, FR.!" was the first try (the reward, 2026-10-18). */
+export const greetName = (name: string): string => {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  const title = !!words[1] && (words[0].endsWith('.') || TITLES.has(words[0].toLowerCase().replace(/[^a-z]/g, '')))
+  return (title ? words[0] + ' ' + words[1] : words[0]) || name
+}
+
 /** What the desk still has to do with a stay today: check the guest in, or check them out.
  *  A day that has already passed still counts — the guest is late, not gone. A short stay
  *  leaves on the day it came. */

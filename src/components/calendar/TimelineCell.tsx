@@ -43,6 +43,8 @@ export interface TimelineCellProps {
   /** The desk still has to check this guest in, or out, today — the pill's edge says so:
    *  green on the left for an arrival, charcoal on the right for a departure. */
   due?: 'in' | 'out' | null
+  /** The door still to do on this stay today, when there is one — the pill glows. */
+  door?: 'in' | 'out'
   /** Where today lies under this stay: the half it starts at, counted from the stay's own
    *  left edge (-1 when the stay is not on today), and how many halves of it. */
   todayFrom?: number
@@ -224,6 +226,7 @@ export const TimelineCell = React.memo(
     isShortStayDue,
     agencyName,
     due,
+    door,
     todayFrom = -1,
     todayHalves = 0,
     getBookingStyle,
@@ -315,9 +318,13 @@ export const TimelineCell = React.memo(
               setExtendError('')
             }}
             className={'relative overflow-hidden mx-0.5 h-10 rounded-md border cursor-pointer select-none transition-[filter,transform,border-color,background-color,color,box-shadow,opacity] duration-300 hover:brightness-95 hover:-translate-y-0.5 hover:shadow-soft active:translate-y-0 active:shadow-none active:scale-[0.98] flex flex-col justify-center animate-in fade-in zoom-in-95 motion-reduce:animate-none ' +
-              (narrow ? 'items-center px-0 ' : 'px-2 ') +
+              // The words sit in the middle of the pill (Sebastian, on the ripple mock, 2026-10-18).
+              'text-center ' + (narrow ? 'items-center px-0 ' : 'px-2 ') +
               (isShortStayDue ? 'bg-danger-100 border-danger-400 text-danger-600' : getBookingStyle(booking)) +
-              (due === 'in' ? ' border-l-[5px] border-l-emerald-700' : due === 'out' ? ' border-r-[5px] border-r-ink-900' : '')}
+              // **A door ripples once it is time** (`todaysDoors`). It is a reminder only — the door
+              // is pressed in the booking panel. Before the time the pill is quiet: the thin edge
+              // that used to mark a door today is gone (design A, "quiet until time").
+              (door === 'in' ? ' door-glow-in' : door === 'out' ? ' door-glow-out' : '')}
           >
             {/* THE GREEN OF A GUEST WHO IS IN. It is a wash inside the pill, not the pill's
                 own colour, so checking in is seen: it crosses from the left. Checking out
@@ -346,7 +353,7 @@ export const TimelineCell = React.memo(
                 reads the calendar without opening a booking. A block has one line — why
                 the dates are closed. 13px and 12px: the pills are what the desk reads all
                 day, and at 11px they were the smallest words on the screen. */}
-            <span className="relative flex items-center gap-1 min-w-0 text-[13px] font-bold leading-4">
+            <span className="relative flex items-center justify-center gap-1 min-w-0 text-[13px] font-bold leading-4">
               {agencyName && !isBlock && <Building2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
               <span className="min-w-0 truncate">
                 {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
@@ -447,6 +454,7 @@ export const TimelineCell = React.memo(
       prevProps.isShortStayDue === nextProps.isShortStayDue &&
       prevProps.agencyName === nextProps.agencyName &&
       prevProps.due === nextProps.due &&
+      prevProps.door === nextProps.door &&
       prevProps.todayFrom === nextProps.todayFrom &&
       prevProps.todayHalves === nextProps.todayHalves &&
       prevProps.span === nextProps.span &&

@@ -31,6 +31,8 @@ interface TimelineGridProps {
   groupSelection?: Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null
   handleCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
   setSelectedExtendBooking: (booking: Booking) => void
+  /** The door still to do today on each booking (see `utils/doors`) — its pill glows. */
+  openDoors?: Map<string, 'in' | 'out'>
   setExtendCheckoutDate: (date: string) => void
   setExtendError: (err: string) => void
   /**
@@ -339,6 +341,7 @@ export const TimelineGrid = React.memo(
     groupSelection,
     handleCellClick,
     setSelectedExtendBooking,
+    openDoors,
     setExtendCheckoutDate,
     setExtendError,
     onNewBooking,
@@ -501,7 +504,7 @@ export const TimelineGrid = React.memo(
           const todayFrom = Math.max(k, todayAt * 2)
           const todayTo = todayAt < 0 ? 0 : Math.min(k + span, todayAt * 2 + 2)
           cells.push(
-            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} agencyName={agencyNameOf(booking)} due={dueToday(booking, todayIso)} todayFrom={todayTo > todayFrom ? todayFrom - k : -1} todayHalves={Math.max(0, todayTo - todayFrom)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} agencyName={agencyNameOf(booking)} due={dueToday(booking, todayIso)} door={openDoors?.get(booking.id)} todayFrom={todayTo > todayFrom ? todayFrom - k : -1} todayHalves={Math.max(0, todayTo - todayFrom)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           k += span
           continue
