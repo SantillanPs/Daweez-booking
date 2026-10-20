@@ -12,6 +12,9 @@ export interface TimelineCellProps {
   id: string
   type: 'room' | 'venue'
   booking: Booking | null
+  /** The booking's money as its bill sees it (`asBill`): a room booked with others shows the
+   *  whole bill's words and figure. The booking itself when it is alone. */
+  bill?: Booking | null
   /** How many HALF days wide the cell is — a day has two halves, the morning and the
    *  afternoon (see `timelineHalves`). A stay is as wide as the halves it fills. */
   span: number
@@ -96,8 +99,10 @@ function MoneyWords({ text, className }: { text: string; className: string }) {
  * **It grows up out of the pill** (animation A in the mock): the card scales from the
  * pill's edge, its parts arrive in turn, the nights fill left to right, the bar runs out.
  */
-function HoverCard({ booking, pillName, agencyName, isBlock, openEnded, money, freeAt, due, inHotel, left, below }: {
+function HoverCard({ booking, bill, pillName, agencyName, isBlock, openEnded, money, freeAt, due, inHotel, left, below }: {
   booking: Booking
+  /** Its bill's money (`asBill`): what the paid bar fills from. */
+  bill: Booking
   pillName: string
   agencyName?: string
   isBlock: boolean
@@ -114,8 +119,8 @@ function HoverCard({ booking, pillName, agencyName, isBlock, openEnded, money, f
   const today = at(dateToString(new Date()))
   // Tonight's place in the stay: 0 is the first night. Before arrival it is below 0.
   const tonight = Math.round((today - at(booking.check_in)) / 86400000)
-  const paid = Number(booking.downpayment_paid || 0)
-  const owed = Number(booking.balance_due || 0)
+  const paid = Number(bill.downpayment_paid || 0)
+  const owed = Number(bill.balance_due || 0)
   const phone = booking.guest_phone && booking.guest_phone.trim() !== 'None' ? booking.guest_phone : ''
   const sub = agencyName ? 'for ' + booking.guest_name : phone
   const circle = isBlock || left ? 'bg-ink-200 text-ink-600'
@@ -208,6 +213,7 @@ export const TimelineCell = React.memo(
     id,
     type,
     booking,
+    bill,
     span,
     halfOf,
     closesDay,
@@ -263,7 +269,7 @@ export const TimelineCell = React.memo(
       // An agency's name and a block's reason are not a guest's name, so they are still
       // shown, and a half-day pill keeps its initials — how the desk tells who is leaving.
       const pillWords = isBlock || agencyName || left ? pillName : booking.actual_check_in ? 'Occupied' : 'Reserved'
-      const money = pillMoney(booking)
+      const money = pillMoney(bill || booking)
       const inHotel = !isBlock && !isShortStayDue && !!booking.actual_check_in && !booking.actual_check_out
       // A short stay whose guest is in the room shows THE TIME THE ROOM IS FREE — never
       // a countdown (the owner's ruling) — unless money is still owed, which comes first.
@@ -369,7 +375,7 @@ export const TimelineCell = React.memo(
             </>)}
           </div>
           {showTooltip && (
-            <HoverCard booking={booking} pillName={pillName} agencyName={isBlock ? undefined : agencyName} isBlock={isBlock}
+            <HoverCard booking={booking} bill={bill || booking} pillName={pillName} agencyName={isBlock ? undefined : agencyName} isBlock={isBlock}
               openEnded={openEnded} money={money} freeAt={freeAt} due={due} inHotel={inHotel} left={left} below={tipBelow} />
           )}
         </td>
@@ -468,6 +474,10 @@ export const TimelineCell = React.memo(
       prevProps.booking?.stay_hours === nextProps.booking?.stay_hours &&
       prevProps.booking?.downpayment_paid === nextProps.booking?.downpayment_paid &&
       prevProps.booking?.balance_due === nextProps.booking?.balance_due &&
+      // The bill's money changes when another room of it is paid.
+      prevProps.bill?.balance_due === nextProps.bill?.balance_due &&
+      prevProps.bill?.downpayment_paid === nextProps.bill?.downpayment_paid &&
+      (prevProps.bill?.payment_records?.length || 0) === (nextProps.bill?.payment_records?.length || 0) &&
       (prevProps.booking?.payment_records?.length || 0) === (nextProps.booking?.payment_records?.length || 0)
     )
   }

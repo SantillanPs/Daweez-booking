@@ -16,6 +16,9 @@ export interface BillDeskActions {
   onPay: (p: { amount: number; method: string; reference: string; date: string }) => void
   onCharge: (name: string, amount: number) => void
   onRemove: (line: StatementLineItem) => void
+  /** Whether a line (by its key) is this booking's own: on a bill of several rooms, another
+   *  room's charge is taken off from that room's panel. */
+  owns?: (key: string) => boolean
   /** A charge just taken off, which Undo puts back. */
   removed: { label: string } | null
   onUndo: () => void

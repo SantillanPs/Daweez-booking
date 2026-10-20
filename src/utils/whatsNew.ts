@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-20e',
+    changes: [
+      {
+        where: 'Front desk → calendar and the booking window',
+        what: [
+          'Rooms booked together on one bill now show the same amount: every one of them shows what the whole bill still owes, not its own part.',
+          'Tap the “rooms” tag beside “Left to pay” to see the bill’s rooms and jump to another one.',
+          'Receive on any of them opens the bill, and the payment is shared out across all its rooms on one receipt.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-20d',
     changes: [
       {

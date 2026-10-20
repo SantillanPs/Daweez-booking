@@ -33,3 +33,24 @@ export function groupOf(booking: Booking, list: Booking[]): Booking[] {
 export function isGrouped(booking: Booking, list: Booking[]): boolean {
   return groupOf(booking, list).length > 1
 }
+
+/**
+ * **The booking as its bill sees its money** (Sebastian, 2026-10-20: *"if a group of
+ * reservations share a single guest billing, then it should share amount due … every single
+ * reservation in the calendar related to the guest billing should have"* the bill's figure).
+ *
+ * Each room still stores its own balance and its own share of every payment, which is what
+ * the reports add up. What a pill, its hover card and the booking panel SHOW is the whole
+ * bill's: what is owed and what was paid on every room of it. Only for showing — a booking
+ * built here is never saved.
+ */
+export function asBill(booking: Booking, list: Booking[]): Booking {
+  const rows = groupOf(booking, list)
+  if (rows.length < 2) return booking
+  const owed = rows.reduce((t, b) => t + Number(b.balance_due || 0), 0)
+  const paid = rows.reduce((t, b) => t + Number(b.downpayment_paid || 0), 0)
+  // One payment for several rooms sits on each of them: listed once.
+  const records = rows.flatMap(b => b.payment_records || [])
+    .filter((r, i, all) => !r.receipt_number || all.findIndex(x => x.receipt_number === r.receipt_number) === i)
+  return { ...booking, balance_due: owed, downpayment_paid: paid, payment_status: owed <= 0 ? 'paid' : paid > 0 ? 'downpayment' : 'unpaid', payment_records: records }
+}

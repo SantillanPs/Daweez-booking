@@ -6,6 +6,7 @@ import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { dueToday, getBookingStyle, roomDisplayName } from './bookingStyles'
 import { dateToString } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
+import { asBill } from '../../utils/bookingGroup'
 import { TimelineDayInfo } from './timelineDays'
 import { rememberFormOrigin } from '../../utils/bookingFocus'
 import { useDashboardData } from '../DashboardContext'
@@ -373,6 +374,8 @@ export const TimelineGrid = React.memo(
     onBreakfastServed
   }: TimelineGridProps) {
     const scrollRef = React.useRef<HTMLDivElement>(null)
+    // Every stay, so a room booked with others can show its whole bill's money (`asBill`).
+    const { bookings } = useDashboardData()
 
     // ── the action bar, pinned to the cell that was picked ────────────────────
     // The owner's complaint about the first build: it lined up with the DATE but sat
@@ -520,7 +523,7 @@ export const TimelineGrid = React.memo(
           const todayFrom = Math.max(k, todayAt * 2)
           const todayTo = todayAt < 0 ? 0 : Math.min(k + span, todayAt * 2 + 2)
           cells.push(
-            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} agencyName={agencyNameOf(booking)} due={dueToday(booking, todayIso)} door={openDoors?.get(booking.id)} todayFrom={todayTo > todayFrom ? todayFrom - k : -1} todayHalves={Math.max(0, todayTo - todayFrom)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} bill={asBill(booking, bookings)} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} agencyName={agencyNameOf(booking)} due={dueToday(booking, todayIso)} door={openDoors?.get(booking.id)} todayFrom={todayTo > todayFrom ? todayFrom - k : -1} todayHalves={Math.max(0, todayTo - todayFrom)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           k += span
           continue

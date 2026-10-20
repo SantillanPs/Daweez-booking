@@ -82,7 +82,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
 
       {/* No name over the table: he found a lone `Charges` *"out of place … taking so much
           space for itself"* (2026-10-13). Its column names say what it is. */}
-      <StatementChargesTable items={statement.lineItems} onRemove={desk?.onRemove} isNew={isNew}>
+      <StatementChargesTable items={statement.lineItems} onRemove={desk?.onRemove} canRemove={desk?.owns} isNew={isNew}>
         {desk?.removed && (
           <tr data-screen key={desk.removed.label} className="print:hidden">
             <td colSpan={6} className="pt-1 text-[10.5px] font-semibold text-muted bw-rise">

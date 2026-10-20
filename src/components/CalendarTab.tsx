@@ -533,6 +533,7 @@ export function CalendarTab() {
           onUpdateBooking={updateBooking}
           onEditBooking={() => { setEditingBooking(liveExtendBooking); setEditingGroup(groupOf(liveExtendBooking, bookings)); setFormStayHours(liveExtendBooking.stay_hours || null); setShowManualForm(true); setSelectedExtendBooking(null) }}
           shortStayDue={dueShortStayIds.indexOf(liveExtendBooking.id) !== -1}
+          onOpenBooking={b => setSelectedExtendBooking(b)}
         />
       )}
 

@@ -43,11 +43,12 @@ const BAND_ORDER: StatementBand[] = ['room', 'breakfast', 'extras', 'food', 'dis
  * bill says its dates once, in its Stay block (the owner, 2026-10-15: *"make sure to check for
  * redundancies"*). A group whose rooms have different dates then shows only the first room's.
  */
-export function StatementChargesTable({ items, dates = true, onRemove, isNew, children }: {
+export function StatementChargesTable({ items, dates = true, onRemove, canRemove, isNew, children }: {
   items: StatementLineItem[]
   dates?: boolean
   /** On a bill the desk is working on: an × that takes a charge it added off (never printed). */
   onRemove?: (it: StatementLineItem) => void
+  canRemove?: (key: string) => boolean
   /** Rows written since the bill opened, which settle in like ink. */
   isNew?: (key: string) => boolean
   /** Rows under the charges — the desk's "Add a charge". */
@@ -92,7 +93,7 @@ export function StatementChargesTable({ items, dates = true, onRemove, isNew, ch
                   <td className={cell + ' pl-0 text-left' + (it.status ? '' : ' whitespace-normal')}>
                     {it.description}
                     {it.status && <span className="ml-1.5 border border-ink-900 px-1 text-[8.5px] font-bold uppercase tracking-wide">{it.status}</span>}
-                    {onRemove && it.remove && (
+                    {onRemove && it.remove && (!canRemove || canRemove(it.key)) && (
                       <button type="button" data-screen onClick={() => onRemove(it)} aria-label={'Take ' + it.description + ' off the bill'}
                         className="print:hidden -my-1 ml-0.5 p-1 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer">
                         <X className="w-3 h-3" />

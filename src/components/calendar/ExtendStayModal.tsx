@@ -17,7 +17,7 @@ import { logRemovedPayment } from '../../utils/removedPayments'
 import { recomputeBalance, pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
 import { useBookingSlips } from '../../hooks/useBookingSlips'
 import { closeTab, getOpenTabForBooking } from '../../utils/tabs'
-import { markSlipsPaid, slipNumber, unpaidSlips, unpaySlipsOfReceipt } from '../../utils/orderSlips'
+import { getSlipsByBooking, markSlipsPaid, slipNumber, unpaidSlips, unpaySlipsOfReceipt } from '../../utils/orderSlips'
 import { undoBookingCheck } from '../../utils/db'
 import { BookingStageLine } from './BookingStageLine'
 import { nextStep } from './bookingStep'
@@ -31,7 +31,10 @@ import { BreakfastPicker } from './BreakfastPicker'
 import { wantsBreakfastToday, breakfastOn, breakfastSummary, breakfastAskOpen } from '../../utils/breakfastChoice'
 import { dateToString } from '../../utils/helpers'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
-import { groupOf } from '../../utils/bookingGroup'
+import { asBill, groupOf } from '../../utils/bookingGroup'
+import { BillRooms } from './BillRooms'
+import { allocatePayment } from '../walk-in/bookingPayment'
+import { paymentStatusFromMoney } from '../../utils/bookingMoney'
 import { formatRoomNumbers } from '../../utils/roomNumbers'
 import { BookingReceipts } from './BookingReceipts'
 import { ExtendStayForm } from './ExtendStayForm'
@@ -61,6 +64,8 @@ interface ExtendStayModalProps {
   onEditBooking?: () => void
   /** A short stay whose hours have run out — the panel turns its clock red. */
   shortStayDue?: boolean
+  /** Opens another booking's panel in place of this one (a room on the same bill). */
+  onOpenBooking?: (b: Booking) => void
 }
 
 const fmtShort = (d: string) => (d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—')
@@ -128,7 +133,8 @@ export function ExtendStayModal({
   onCancelBooking,
   onUpdateBooking,
   onEditBooking,
-  shortStayDue = false
+  shortStayDue = false,
+  onOpenBooking,
 }: ExtendStayModalProps) {
   const [showPrintModal, setShowPrintModal] = useState(false)
   // A door about to open asks in the panel itself (the booking window mock, 2026-10-16):
@@ -367,6 +373,14 @@ export function ExtendStayModal({
   const due = Number(localBooking.balance_due || 0)
   const paidSoFar = Number(localBooking.downpayment_paid || 0)
   const totalCharge = paidSoFar + due
+  // **Rooms on one bill share one figure** (Sebastian, 2026-10-20: every reservation of the
+  // guest billing shows the bill's amount due). What this room stores is still its own; what the
+  // panel says is the bill's (`asBill`). A room booked alone is its own bill.
+  const billRows = groupOf(localBooking, bookings)
+  const billView = asBill(localBooking, bookings)
+  const billDue = Number(billView.balance_due || 0)
+  const billPaid = Number(billView.downpayment_paid || 0)
+  const billTotal = billDue + billPaid
   // Early check-in money that is recorded but deliberately NOT billed yet (the owner:
   // *"just add it to their bill for when they checkout"*). Shown as its own pending line
   // so the desk can see what the guest will owe without the money word flipping and
@@ -490,6 +504,54 @@ export function ExtendStayModal({
       showToast('Could not remove ' + line.description + '. Please try again.', 'error')
     }
   }
+  // **One payment on a bill of several rooms** (the owner's ruling, 2026-09-30, as the booking
+  // form already does it — `recordBookingPayment`): the same receipt on every room, each room
+  // keeping its share of it, shared out by what each still owes. Every room's figure is the
+  // bill's, so they all go down together.
+  const payBill = async (w: { amount: number; method: string; reference: string; date: string }) => {
+    const before = localBooking
+    const owed = billRows.map(b => Math.max(0, Number(b.balance_due || 0)))
+    const amount = Math.min(w.amount, owed.reduce((a, b) => a + b, 0)) || w.amount
+    const shares = allocatePayment(owed, amount)
+    const number = nextReceiptNumber(localBooking, allBookings || bookings)
+    const paidAt = w.date !== todayKey ? new Date(w.date + 'T12:00:00').toISOString() : new Date().toISOString()
+    const id = newReceiptId()
+    const reference = methodNeedsReference(w.method) ? w.reference.trim() : ''
+    const updated = billRows.map((b, i): Booking => {
+      const paid = Number(b.downpayment_paid || 0) + shares[i]
+      const balance = Math.max(0, owed[i] - shares[i])
+      const rec: PaymentRecord = {
+        id: id + '-' + i, amount, method: w.method, reference: reference || undefined, paid_at: paidAt,
+        prepared_by: b.prepared_by, receipt_number: number, share: shares[i],
+      }
+      return {
+        ...b, payment_records: [...(b.payment_records || []), rec], downpayment_paid: paid, balance_due: balance,
+        payment_status: paymentStatusFromMoney(paid, balance), status: statusAfterPayment(b.status),
+        payment_method: w.method, payment_reference: reference || b.payment_reference,
+      }
+    })
+    const mine = updated.find(b => b.id === localBooking.id)
+    if (mine) setLocalBooking(mine)
+    try {
+      for (const b of updated) await onUpdateBooking?.(b)
+    } catch {
+      setLocalBooking(before)
+      showToast('Could not record the payment. Please try again.', 'error')
+      return
+    }
+    // Nothing left on the bill: every room's order slips are paid by it.
+    if (updated.every(b => Number(b.balance_due || 0) <= 0)) {
+      try {
+        const map = await getSlipsByBooking(updated.map(b => b.id))
+        const open = unpaidSlips(Object.values(map).flat())
+        if (open.length > 0) await markSlipsPaid(open.map(s => s.tab.id), number)
+        await reloadSlips()
+      } catch {
+        showToast('The payment is recorded, but the order slips were not marked as paid.', 'error')
+      }
+    }
+  }
+
   // **A charge written on the bill** (Sebastian, 2026-10-20: "DINNER - 300 pesos"), saved behind.
   const addCharge = async (name: string, amount: number) => {
     const before = localBooking
@@ -536,10 +598,10 @@ export function ExtendStayModal({
   const owesAtDoor = owes && !billedToAgency
   const checkInAsk = {
     title: owesAtDoor
-      ? 'Check in ' + booking.guest_name + ' with ' + fmtPeso(due) + ' still to pay?'
+      ? 'Check in ' + booking.guest_name + ' with ' + fmtPeso(billDue) + ' still to pay?'
       : 'Check in ' + booking.guest_name + ' to ' + place + '?',
     message: ((localBooking.check_in > todayKey ? 'This booking starts on ' + fmtShort(localBooking.check_in) + '. ' : '') +
-      (owesAtDoor ? 'The ' + fmtPeso(due) + ' stays on their bill.' : '')).trim(),
+      (owesAtDoor ? 'The ' + fmtPeso(billDue) + ' stays on their bill.' : '')).trim(),
     yes: owesAtDoor ? 'Check in anyway' : 'Check in',
   }
   // Early or late hours the desk says at the door (`DoorHours`); 0 — on time — unless it does.
@@ -572,7 +634,7 @@ export function ExtendStayModal({
     const actualCheckIn = localBooking.stay_hours ? new Date().toISOString() : doorTime('in', doorStandard('in'), earlyHours)
     const updated: Booking = { ...localBooking, actual_check_in: actualCheckIn, early_check_in_hours: earlyHours, status: 'confirmed' }
     setLocalBooking(updated)
-    celebrate('in', owesAtDoor ? due : 0)
+    celebrate('in', owesAtDoor ? billDue : 0)
     if (earlyHours > 0) {
       const hours = earlyHours + ' hour' + (earlyHours > 1 ? 's' : '')
       const why = earlyHours > rates.lateEarlyCapHours
@@ -589,10 +651,10 @@ export function ExtendStayModal({
   // the bill, on the pill ("₱… to pay") and in the owed lists until it is received.
   const checkOutAsk = {
     title: owesAtDoor
-      ? 'Check out ' + booking.guest_name + ' with ' + fmtPeso(due) + ' still to pay?'
+      ? 'Check out ' + booking.guest_name + ' with ' + fmtPeso(billDue) + ' still to pay?'
       : 'Check out ' + booking.guest_name + ' from ' + place + '?',
     message: ((!localBooking.stay_hours && localBooking.check_out > todayKey ? 'Their stay runs until ' + fmtShort(localBooking.check_out) + '. ' : '') +
-      (owesAtDoor ? 'The ' + fmtPeso(due) + ' stays on their bill.' : '')).trim(),
+      (owesAtDoor ? 'The ' + fmtPeso(billDue) + ' stays on their bill.' : '')).trim(),
     yes: owesAtDoor ? 'Check out anyway' : 'Check out',
   }
   const tryCheckOut = () => setAsk('out')
@@ -665,6 +727,7 @@ export function ExtendStayModal({
   // `written` is a payment written on the bill (`BillDesk`): it carries its own amount, way and
   // day, and its receipt is printed from its line there, not pushed up over the bill.
   const handleAddReceipt = async (written?: { amount: number; method: string; reference: string; date: string }) => {
+    if (written && billRows.length > 1) { await payBill(written); return }
     const method = written ? written.method : receiptMethod
     const reference = methodNeedsReference(method) ? (written ? written.reference : receiptRef).trim() : ''
     const amount = Number(written ? written.amount : receiveAmount) || 0
@@ -781,9 +844,9 @@ export function ExtendStayModal({
   const breakfastToday = breakfastOn(booking, todayKey)
   // **Receive opens the bill** (Sebastian, 2026-10-20: the staff are used to working payments on
   // the guest billing paper): the payment is written on the statement. A stay billed to an
-  // agency, and a bill of several rooms, keep the Receive box — a payment there is split
-  // between rooms, which the bill's one blank line does not do.
-  const billDesk = !!onUpdateBooking && !billedToAgency && bookedTogether.length === 1
+  // agency keeps the Receive box. On a bill of several rooms the payment is shared out across
+  // them (`payBill`).
+  const billDesk = !!onUpdateBooking && !billedToAgency
   const openReceive = () => billDesk ? setShowPrintModal(true) : layout(() => setReceiveOpen(true))
 
   const who = isBlock ? blockReason(localBooking) : booking.guest_name
@@ -816,7 +879,7 @@ export function ExtendStayModal({
   const datesAlwaysShown = isBlock && !openEnded
   // The receive step is the loud one whenever the guest must pay before the next door
   // opens. On a stay billed to an agency it is folded behind a quiet line instead.
-  const receiveShown = !isBlock && due > 0 && (step === 'payment' || receiveOpen)
+  const receiveShown = !isBlock && billDue > 0 && (step === 'payment' || receiveOpen)
   // The door that is next — and while Receive is shut and nothing is being asked, it sits
   // beside Receive instead of as a link under it.
   const doorKind: 'in' | 'out' | null = isBlock ? null : !localBooking.actual_check_in ? 'in' : isIn ? 'out' : null
@@ -835,6 +898,8 @@ export function ExtendStayModal({
   // The biggest thing on the panel: what is owed, or that nothing is.
   const figure: { label: string; value: number | null; tone: string } | null =
     billedToAgency && due > 0 ? { label: 'Agency owes', value: due, tone: 'text-blue-700' }
+      : billRows.length > 1 ? (billDue > 0 ? { label: 'Left to pay', value: billDue, tone: 'text-danger-600' }
+        : billTotal > 0 ? { label: 'Total ' + fmtPeso(billTotal), value: null, tone: 'text-emerald-700' } : null)
       : due > 0 ? (dueNow < due
         ? { label: 'Deposit · of ' + fmtPeso(totalCharge), value: dueNow, tone: 'text-danger-600' }
         : { label: 'Left to pay', value: due, tone: 'text-danger-600' })
@@ -951,7 +1016,12 @@ export function ExtendStayModal({
               <div className="space-y-2">
                 {figure && (
                   <>
-                    <p className="text-[13px] font-bold text-muted">{figure.label}</p>
+                    <p className="text-[13px] font-bold text-muted flex items-center gap-1.5">
+                      {figure.label}
+                      {billRows.length > 1 && !billedToAgency && (
+                        <BillRooms rows={billRows} current={localBooking.id} rooms={rooms} venues={venues} onOpen={onOpenBooking} />
+                      )}
+                    </p>
                     <p className={'font-display font-bold text-[40px] leading-none tracking-tight ' + figure.tone}>
                       {figure.value === null ? (
                         <span className="bw-full" style={openedPaid ? undefined : wait}>
@@ -964,17 +1034,17 @@ export function ExtendStayModal({
                   </>
                 )}
                 {/* How much of the bill is in: green for what is paid, and it fills as money is received. */}
-                {totalCharge > 0 && due > 0 && !billedToAgency && (
-                  <div aria-hidden="true" className={'relative h-1.5 rounded-full overflow-hidden ' + (paidSoFar > 0 ? 'bg-danger-200' : 'bg-paper-300')}>
+                {billTotal > 0 && billDue > 0 && !billedToAgency && (
+                  <div aria-hidden="true" className={'relative h-1.5 rounded-full overflow-hidden ' + (billPaid > 0 ? 'bg-danger-200' : 'bg-paper-300')}>
                     {/* The money in the Receive box, striped ahead of the fill: what the bar will be once it is saved. */}
                     {receiveOpen && receiveAmount > 0 && (
-                      <div style={{ '--will': Math.min(1, (paidSoFar + receiveAmount) / totalCharge) } as React.CSSProperties}
+                      <div style={{ '--will': Math.min(1, (billPaid + receiveAmount) / billTotal) } as React.CSSProperties}
                         className="absolute inset-0 rounded-full origin-left [transform:scaleX(var(--will))] transition-transform duration-500 ease-out opacity-50 bg-[repeating-linear-gradient(-45deg,#059669_0_4px,#6EE7B7_4px_8px)]" />
                     )}
                     {/* While a seal is up the fill waits for it to fade, so the money going in is seen. */}
                     {/* 1300 ms is SEAL_MS. Spelled as a property: `delay-[1300ms]` is claimed by both
                         Tailwind and tailwindcss-animate, so it is never generated. */}
-                    <div style={{ '--paid': Math.min(1, paidSoFar / totalCharge) } as React.CSSProperties}
+                    <div style={{ '--paid': Math.min(1, billPaid / billTotal) } as React.CSSProperties}
                       className={'relative h-full rounded-full bg-emerald-600 origin-left [transform:scaleX(var(--paid))] transition-transform duration-700 ease-out ' + (seal && !sealLeaving ? '[transition-delay:1300ms]' : '')} />
                   </div>
                 )}
@@ -1080,7 +1150,7 @@ export function ExtendStayModal({
                     {owesAtDoor ? 'Check out, pay later' : 'Check out'} <DoorOpen aria-hidden="true" className="bw-door w-4 h-4 -mt-0.5 ml-0.5" />
                   </button>
                 ))}
-                {!isBlock && due > 0 && step !== 'payment' && !receiveOpen && (
+                {!isBlock && billDue > 0 && step !== 'payment' && !receiveOpen && (
                   <button type="button" onClick={openReceive} className={QUIET_LINK}>
                     Receive a payment
                   </button>
@@ -1324,6 +1394,7 @@ export function ExtendStayModal({
             onPay: p => void handleAddReceipt(p),
             onCharge: (name, amount) => void addCharge(name, amount),
             onRemove: line => void removeCharge(line),
+            owns: key => key.startsWith(localBooking.id + '-'),
             removed,
             onUndo: () => void undoRemove(),
             onReceipt: number => {
