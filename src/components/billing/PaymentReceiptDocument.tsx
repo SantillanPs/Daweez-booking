@@ -142,6 +142,7 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
           {/* A short stay says WHICH day and HOW LONG, so the slip the guest keeps proves
               what was bought — "Room Accommodation" alone could be 3 hours or a night. */}
           {booking.stay_hours ? <SlipRow label="Stay" value={fmtDay(booking.check_in) + ' · ' + booking.stay_hours + ' hours'} /> : null}
+          <SlipRow label="For" value={record.purpose || ''} />
           <SlipRow label="Order slip" value={slipNumbers} />
           <SlipRow label="Paid by" value={methodLabel} />
           {showRef ? <SlipRow label={kind === 'gcash' ? 'GCash ref no.' : 'Bank ref no.'} value={record.reference || ''} mono /> : null}

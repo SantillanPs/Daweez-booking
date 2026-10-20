@@ -70,6 +70,8 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
   // What was on the bill when it opened: anything written after settles in like ink.
   const [opened] = useState(() => new Set([...statement.lineItems.map(i => i.key), ...statement.payments.map(p => p.key)]))
   const isNew = (key: string) => !!desk && !opened.has(key)
+  // A payment being written folds the ones above it into one line (the "what for" mock's 3).
+  const [writing, setWriting] = useState(false)
 
   return (
     <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}
@@ -141,10 +143,18 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           {(statement.payments.length > 0 || (desk && statement.amountDue > 0)) && (
             <div>
               <p className={label}>Less: payments received</p>
+              {writing && statement.payments.length > 0 && (
+                <button type="button" data-screen onClick={() => setWriting(false)}
+                  className="print:hidden w-full flex justify-between items-baseline gap-2.5 py-0.5 border-b border-dashed border-ink-200 text-left cursor-pointer bw-unfold">
+                  <span className={label}>{statement.payments.length} payment{statement.payments.length === 1 ? '' : 's'} received</span>
+                  <span className={figure + ' shrink-0'}>−{money(statement.payments.reduce((s, p) => s + p.amount, 0))}</span>
+                </button>
+              )}
               {statement.payments.map(p => (
-                <div key={p.key} className={'flex justify-between items-baseline gap-2.5 ' + (isNew(p.key) ? 'bill-ink' : '')}>
+                <div key={p.key} className={'flex justify-between items-baseline gap-2.5 ' + (isNew(p.key) ? 'bill-ink' : '') + (writing ? ' hidden print:flex' : '')}>
                   <span className={label + ' min-w-0'}>
                     {shortDay(p.paidAt)} · {paymentMethodLabel(p.method)}
+                  {p.purpose && <> · <span className="font-bold text-ink-900">{p.purpose}</span></>}
                     {p.receipt && <span className="whitespace-nowrap"> · {p.receipt}</span>}
                     {desk && p.receipt && (
                       <button type="button" data-screen onClick={() => desk.onReceipt(p.receipt)}
@@ -157,7 +167,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
               {/* The blank line the payment is written on (the mock's "Blank line"). */}
               {desk && statement.amountDue > 0 && (
                 <div data-screen className="print:hidden">
-                  <WritePayment key={statement.payments.length} due={statement.amountDue} onPay={desk.onPay} again={statement.payments.length > 0} />
+                  <WritePayment key={statement.payments.length} open={writing} onOpen={setWriting} onPay={desk.onPay} again={statement.payments.length > 0} />
                 </div>
               )}
             </div>

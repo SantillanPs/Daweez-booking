@@ -457,7 +457,7 @@ export function ExtendStayModal({
   // form already does it — `recordBookingPayment`): the same receipt on every room, each room
   // keeping its share of it, shared out by what each still owes. Every room's figure is the
   // bill's, so they all go down together.
-  const payBill = async (w: { amount: number; method: string; reference: string; date: string }) => {
+  const payBill = async (w: { amount: number; method: string; reference: string; date: string; purpose?: string }) => {
     const before = localBooking
     const owed = billRows.map(b => Math.max(0, Number(b.balance_due || 0)))
     const amount = Math.min(w.amount, owed.reduce((a, b) => a + b, 0)) || w.amount
@@ -472,6 +472,7 @@ export function ExtendStayModal({
       const rec: PaymentRecord = {
         id: id + '-' + i, amount, method: w.method, reference: reference || undefined, paid_at: paidAt,
         prepared_by: b.prepared_by, receipt_number: number, share: shares[i],
+        ...(w.purpose ? { purpose: w.purpose } : {}),
       }
       return {
         ...b, payment_records: [...(b.payment_records || []), rec], downpayment_paid: paid, balance_due: balance,
@@ -535,7 +536,7 @@ export function ExtendStayModal({
   // What is missing is shown on the Receive box itself; these only guard the save.
   // `written` is a payment written on the bill (`BillDesk`): it carries its own amount, way and
   // day, and its receipt is printed from its line there, not pushed up over the bill.
-  const handleAddReceipt = async (written?: { amount: number; method: string; reference: string; date: string }) => {
+  const handleAddReceipt = async (written?: { amount: number; method: string; reference: string; date: string; purpose?: string }) => {
     if (written && billRows.length > 1) { await payBill(written); return }
     const method = written ? written.method : receiptMethod
     const reference = methodNeedsReference(method) ? (written ? written.reference : receiptRef).trim() : ''
@@ -562,6 +563,7 @@ export function ExtendStayModal({
       // already used this month — the payment's own records alone always start a fresh booking at 001.
       receipt_number: nextReceiptNumber(localBooking, allBookings || bookings),
       ...(paying ? { slips: [slipNumber(paying.tab)] } : {}),
+      ...(written?.purpose ? { purpose: written.purpose } : {}),
     }
     const status = remaining <= 0 ? 'paid' as const : localBooking.payment_status === 'paid' ? 'paid' as const : 'downpayment' as const
     const updated = {

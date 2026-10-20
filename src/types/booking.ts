@@ -178,6 +178,9 @@ export interface PaymentRecord {
   // their food before check-out. Their numbers (`OS-0007`), so the receipt and the
   // payments list say what was paid for.
   slips?: string[]
+  // What the payment was for, in the desk's own words ("Deposit", "Dinner"), typed on the bill's
+  // payment line (Sebastian, 2026-10-20). Printed on the bill's payments list and on the receipt.
+  purpose?: string
 }
 
 export interface Companion {

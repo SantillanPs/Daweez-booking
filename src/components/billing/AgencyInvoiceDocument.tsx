@@ -61,6 +61,8 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
   // What was on the bill when it opened: anything written after settles in like ink.
   const [opened] = useState(() => new Set([...statement.lineItems.map(i => i.key), ...statement.payments.map(p => p.key)]))
   const isNew = (key: string) => !!desk && !opened.has(key)
+  // A payment being written folds the ones above it into one line (the "what for" mock's 3).
+  const [writing, setWriting] = useState(false)
   const paidUp = statement.amountDue === 0 && statement.payments.length > 0
 
   return (
@@ -114,10 +116,18 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
         {desk && (
           <div data-screen className="print:hidden flex flex-col gap-0.5">
             {statement.payments.length > 0 && <p className={label}>Received</p>}
+            {writing && statement.payments.length > 0 && (
+              <button type="button" data-screen onClick={() => setWriting(false)}
+                className="print:hidden w-full flex justify-between items-baseline gap-2.5 py-0.5 border-b border-dashed border-ink-200 text-left cursor-pointer bw-unfold">
+                <span className={label}>{statement.payments.length} payment{statement.payments.length === 1 ? '' : 's'} received</span>
+                <span className={figure + ' shrink-0'}>−{money(statement.payments.reduce((s, p) => s + p.amount, 0))}</span>
+              </button>
+            )}
             {statement.payments.map(p => (
-              <div key={p.key} className={'flex justify-between items-baseline gap-2.5 ' + (isNew(p.key) ? 'bill-ink' : '')}>
+              <div key={p.key} className={'flex justify-between items-baseline gap-2.5 ' + (isNew(p.key) ? 'bill-ink' : '') + (writing ? ' hidden print:flex' : '')}>
                 <span className={label + ' min-w-0'}>
                   {shortDay(p.paidAt)} · {paymentMethodLabel(p.method)}
+                  {p.purpose && <> · <span className="font-bold text-ink-900">{p.purpose}</span></>}
                   {p.receipt && <span className="whitespace-nowrap"> · {p.receipt}</span>}
                   {p.receipt && <button type="button" onClick={() => desk.onReceipt(p.receipt)}
                     className="ml-1.5 font-semibold text-gold-800 underline underline-offset-2 cursor-pointer">Receipt</button>}
@@ -126,7 +136,7 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
               </div>
             ))}
             {statement.amountDue > 0 && (
-              <WritePayment key={statement.payments.length} due={statement.amountDue} onPay={desk.onPay} again={statement.payments.length > 0} />
+              <WritePayment key={statement.payments.length} open={writing} onOpen={setWriting} onPay={desk.onPay} again={statement.payments.length > 0} />
             )}
             <div className={'mt-1 flex items-center justify-between gap-2.5 font-bold transition-colors duration-500 ' + (paidUp ? 'text-emerald-700' : 'text-blue-700')}>
               <span className="text-[10px] uppercase tracking-[0.1em]">{paidUp ? 'Paid in full' : 'Agency owes'}</span>

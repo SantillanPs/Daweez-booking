@@ -1,10 +1,9 @@
-import { useRef, useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import React, { useRef, useState } from 'react'
+import { Check, Plus, X } from 'lucide-react'
 import { PAYMENT_METHODS, methodNeedsReference } from '../../utils/paymentMethod'
 import { dateToString } from '../../utils/helpers'
 import { StatementLineItem } from '../../utils/statementLines'
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 const digits = (v: string) => Number(v.replace(/[^0-9]/g, '')) || 0
 
 /**
@@ -13,7 +12,7 @@ const digits = (v: string) => Number(v.replace(/[^0-9]/g, '')) || 0
  * from a booking the desk can change; a bill opened to print has none of it.
  */
 export interface BillDeskActions {
-  onPay: (p: { amount: number; method: string; reference: string; date: string }) => void
+  onPay: (p: { amount: number; method: string; reference: string; date: string; purpose: string }) => void
   onCharge: (name: string, amount: number) => void
   onRemove: (line: StatementLineItem) => void
   /** Whether a line (by its key) is this booking's own: on a bill of several rooms, another
@@ -38,76 +37,82 @@ const SHUT = 'rounded-md bg-card text-muted hover:text-main px-2 grid place-item
 const BLANK = 'bill-blank w-full flex items-center gap-1.5 px-1.5 py-1 rounded-md border-[1.5px] border-dashed text-[11px] cursor-pointer transition-colors'
 
 /**
- * **The blank line under the payments** (the mock's "Blank line", his pick): the payment is
- * written where the paper lists them — the day, the amount, how they paid — then Record.
- * The amount starts at what is due and is typed over for any other figure; the day is today
- * unless the desk is catching up on a payment taken earlier.
+ * **The blank line under the payments** (the mock's "Blank line", his pick), in two rows (the
+ * "what for" mock's C, Sebastian, 2026-10-20): what it was for and how much, then how they paid
+ * and Record. The words are asked every time and print on the bill and the receipt. The amount
+ * starts at 0, and the day is always today: there is no day to pick.
+ * `open` is the bill's, so the payments above can fold away while one is written.
  */
-export function WritePayment({ due, onPay, again }: { due: number; onPay: BillDeskActions['onPay']; again: boolean }) {
-  const today = dateToString(new Date())
-  const [open, setOpen] = useState(false)
-  const [amount, setAmount] = useState(due)
+export function WritePayment({ open, onOpen, onPay, again }: { open: boolean; onOpen: (open: boolean) => void; onPay: BillDeskActions['onPay']; again: boolean }) {
+  const [purpose, setPurpose] = useState('')
+  const [amount, setAmount] = useState(0)
   const [method, setMethod] = useState('')
   const [reference, setReference] = useState('')
-  const [date, setDate] = useState(today)
+  const [miss, setMiss] = useState('')
+  const forBox = useRef<HTMLInputElement>(null)
   const amountBox = useRef<HTMLInputElement>(null)
   const ways = useRef<HTMLDivElement>(null)
   const refBox = useRef<HTMLInputElement>(null)
   const needsRef = methodNeedsReference(method)
   const short = (m: string) => (m === 'Bank transfer' ? 'Bank' : m)
+  const picked = PAYMENT_METHODS.findIndex(m => m === method)
 
   if (!open) return (
-    <button type="button" onClick={() => { setAmount(due); setOpen(true) }}
+    <button type="button" onClick={() => onOpen(true)}
       className={BLANK + ' my-0.5 border-gold-400 bg-paper-50 text-gold-800 font-bold hover:bg-gold-100'}>
       <Plus aria-hidden="true" className="w-3.5 h-3.5" />{again ? 'Another payment' : 'Write a payment'}
     </button>
   )
+  const stop = (why: string, el: HTMLElement | null) => { setMiss(why); want(el) }
   const record = () => {
-    if (!(amount > 0)) { want(amountBox.current); return }
-    if (!method) { want(ways.current); return }
-    if (needsRef && !reference.trim()) { want(refBox.current); return }
-    onPay({ amount, method, reference: needsRef ? reference.trim() : '', date })
-    setOpen(false); setMethod(''); setReference(''); setDate(today)
+    if (!purpose.trim()) return stop('Write what it was for', forBox.current)
+    if (!(amount > 0)) return stop('Type the amount received', amountBox.current)
+    if (!method) return stop('Pick how they paid', ways.current)
+    if (needsRef && !reference.trim()) return stop('Type the ' + short(method) + ' ref. no.', refBox.current)
+    onPay({ amount, method, reference: needsRef ? reference.trim() : '', date: dateToString(new Date()), purpose: purpose.trim() })
+    onOpen(false); setPurpose(''); setAmount(0); setMethod(''); setReference(''); setMiss('')
   }
-  const dayWord = date === today ? 'Today' : new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   return (
-    <div className="my-0.5 -mx-1.5 p-1.5 rounded-md bg-gold-100 flex flex-col gap-1 bw-unfold">
-      <div className="flex items-baseline gap-1">
-        {/* The day: today, or the day the guest really paid when it is written in later. */}
-        <label className="relative cursor-pointer">
-          <span className={SLOT + ' inline-block'}>{dayWord} ▾</span>
-          <input type="date" value={date} max={today} onChange={e => e.target.value && setDate(e.target.value)}
-            aria-label="Day it was paid" className="absolute inset-0 opacity-0 cursor-pointer" />
+    <form onSubmit={e => { e.preventDefault(); record() }} className="my-0.5 -mx-1.5 p-1.5 rounded-lg bg-gold-100 flex flex-col gap-1.5 bw-unfold">
+      <div className="grid grid-cols-[minmax(0,1fr)_84px] gap-2 items-end">
+        <input ref={forBox} autoFocus value={purpose} onChange={e => { setPurpose(e.target.value); setMiss('') }}
+          placeholder="What for" aria-label="What the payment was for" className={SLOT + ' w-full text-[12.5px] font-semibold'} />
+        <label className="flex items-baseline gap-0.5 border-b-2 border-ink-900 focus-within:border-gold-400 transition-colors">
+          <span className="font-display text-[11px] font-extrabold text-muted">₱</span>
+          <input ref={amountBox} inputMode="numeric" placeholder="0" aria-label="Amount received"
+            value={amount ? amount.toLocaleString() : ''} onChange={e => { setAmount(digits(e.target.value)); setMiss('') }}
+            className="min-w-0 w-full bg-transparent border-0 p-0 text-right font-display text-[16px] font-extrabold text-ink-900 placeholder:text-paper-400 focus:outline-none" />
         </label>
-        <span className="ml-auto text-[10px] text-muted">−₱</span>
-        <input ref={amountBox} autoFocus inputMode="numeric" aria-label="Amount received"
-          value={amount ? amount.toLocaleString() : ''} onChange={e => setAmount(digits(e.target.value))}
-          onFocus={e => e.target.select()}
-          className={SLOT + ' w-16 text-right font-mono text-[13px]'} />
       </div>
-      <div ref={ways} role="group" aria-label="How the guest paid" className="grid grid-cols-4 gap-0.5 rounded-md">
-        {PAYMENT_METHODS.map(m => (
-          <button key={m} type="button" aria-pressed={method === m} onClick={() => { setMethod(m); if (!methodNeedsReference(m)) setReference('') }}
-            className={'min-h-7 rounded-[5px] border-[1.5px] border-ink-900 text-[10.5px] font-bold transition-[background-color,color,transform] active:scale-90 cursor-pointer ' +
-              (method === m ? 'bg-ink-900 text-white' : 'bg-card text-ink-900')}>
-            {short(m)}
-          </button>
-        ))}
-      </div>
-      {needsRef && (
-        <input ref={refBox} autoFocus value={reference} onChange={e => setReference(e.target.value)}
-          placeholder={method === 'GCash' ? 'GCash ref. no.' : 'Ref. no.'} aria-label="Reference no."
-          className={SLOT + ' font-mono text-[11px] bw-unfold'} />
-      )}
-      <div className="flex gap-1">
-        <button type="button" onClick={record} className={GO + ' flex-1'}>
-          Record {fmtPeso(amount)}{method && ' · ' + short(method)}
+      <div className="grid grid-cols-[minmax(0,1fr)_30px_22px] gap-1">
+        {/* How they paid: the dark thumb slides to the one picked. */}
+        <div ref={ways} role="group" aria-label="How the guest paid" className="relative grid grid-cols-4 p-0.5 rounded-lg bg-card shadow-[inset_0_0_0_1.5px_#1C1C1C]">
+          <span aria-hidden="true" style={{ '--i': Math.max(picked, 0) } as React.CSSProperties}
+            className={'absolute top-0.5 bottom-0.5 left-0.5 w-[calc((100%-4px)/4)] rounded-md bg-ink-900 translate-x-[calc(var(--i)*100%)] transition-[transform,opacity] duration-[380ms] ease-[cubic-bezier(.34,1.4,.64,1)] ' + (picked < 0 ? 'opacity-0 scale-75' : '')} />
+          {PAYMENT_METHODS.map(m => (
+            <button key={m} type="button" aria-pressed={method === m}
+              onClick={() => { setMethod(m); setMiss(''); if (!methodNeedsReference(m)) setReference('') }}
+              className={'relative min-h-7 rounded-md text-[10.5px] font-bold transition-[color,transform] active:scale-90 cursor-pointer ' + (method === m ? 'text-white' : 'text-ink-900')}>
+              {short(m)}
+            </button>
+          ))}
+        </div>
+        <button type="submit" aria-label="Record the payment"
+          className="grid place-items-center rounded-lg bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer">
+          <Check className="w-3.5 h-3.5" strokeWidth={3} />
         </button>
-        <button type="button" onClick={() => setOpen(false)} aria-label="Not now" className={SHUT}>
+        <button type="button" onClick={() => { onOpen(false); setMiss('') }} aria-label="Not now"
+          className="grid place-items-center rounded-md text-gold-800 hover:bg-white/60 active:scale-90 transition-transform cursor-pointer">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
-    </div>
+      {needsRef && (
+        <input ref={refBox} autoFocus value={reference} onChange={e => { setReference(e.target.value); setMiss('') }}
+          placeholder={short(method) + ' ref. no.'} aria-label="Reference no."
+          className={SLOT + ' font-mono text-[11px] bw-unfold'} />
+      )}
+      {miss && <span role="alert" className="text-[10px] font-semibold text-red-700">{miss}</span>}
+    </form>
   )
 }
 
