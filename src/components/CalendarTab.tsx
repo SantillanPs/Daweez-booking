@@ -7,7 +7,6 @@ import { breakfastOn, wantsBreakfastToday, saveBreakfastChoices, breakfastAskOpe
 import { useQueryClient } from '@tanstack/react-query'
 import { extendStay } from '../utils/bookingBalance'
 import { clearStayHours } from '../utils/db'
-import { shortStayEnd, stayHoursOf } from '../utils/shortStay'
 import { takeFocusedBooking } from '../utils/bookingFocus'
 import { ExtendStayModal } from './calendar/ExtendStayModal'
 import { TimelineGrid } from './calendar/TimelineGrid'
@@ -16,8 +15,7 @@ import { halvesByUnit } from './calendar/timelineHalves'
 import { BlockDatesPane } from './calendar/BlockDatesPane'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { TodayStrip } from './calendar/TodayStrip'
-import { todaysDoors } from '../utils/doors'
-import { setDeskBusy, useReadingWhatsNew } from '../utils/deskState'
+import { setDeskBusy } from '../utils/deskState'
 import { BreakfastPicker } from './calendar/BreakfastPicker'
 import { roomDisplayName } from './calendar/bookingStyles'
 import { showToast } from '../utils/toast'
@@ -75,19 +73,10 @@ export function CalendarTab() {
     return () => window.clearTimeout(id)
   }, [])
 
-  // ── The short-stay clock (the owner's ruling) ────────────────────────────────
-  // No countdown is ever printed: the calendar block shows the TIME the room is free,
-  // and when that time arrives the booking's panel opens BY ITSELF so the desk can
-  // check the guest out. It waits while the desk is mid-task (another panel or form
-  // open) — the block simply stays red — and due rooms are opened ONE AFTER ANOTHER,
-  // because only one panel is ever on screen.
-  const [dueShortStayIds, setDueShortStayIds] = useState<string[]>([])
-  const poppedDueRef = useRef<Set<string>>(new Set())
+  // The desk is mid-task (a panel or form open): "What's new" is told, so it never opens by
+  // itself over a panel. (A short stay's panel used to open by itself when its hours ran out;
+  // the app no longer does anything on its own — Sebastian, 2026-10-20.)
   const deskBusy = showManualForm || showLogOld || !!selectedExtendBooking || !!blockTarget
-  // "What's new" (in the top bar) is on screen: the short-stay panel waits for it, as it
-  // waits for the rest — and "What's new" is told when the desk is busy, so it never opens
-  // by itself over a panel.
-  const readingWhatsNew = useReadingWhatsNew()
   React.useEffect(() => {
     setDeskBusy(deskBusy)
     return () => setDeskBusy(false)
@@ -123,31 +112,6 @@ export function CalendarTab() {
     })
   }, [])
 
-  // The scan: which short stays are past their hours, and popping the panel for the
-  // first one nobody has dealt with yet. A closed panel is never reopened — the desk
-  // said "not now" — the block just stays red until they tap it.
-  React.useEffect(() => {
-    const scan = () => {
-      const now = Date.now()
-      const due = bookings.filter(b => {
-        const end = shortStayEnd(b.actual_check_in, stayHoursOf(b))
-        return !!end && end.getTime() <= now && !b.actual_check_out && b.status !== 'blocked'
-      })
-      setDueShortStayIds(prev => {
-        const ids = due.map(b => b.id)
-        return prev.length === ids.length && prev.every((found, i) => found === ids[i]) ? prev : ids
-      })
-      if (deskBusy || readingWhatsNew) return
-      const next = due.find(b => !poppedDueRef.current.has(b.id))
-      if (!next) return
-      poppedDueRef.current.add(next.id)
-      setSelectedExtendBooking(next)
-    }
-    scan()
-    const timer = window.setInterval(scan, 15000)
-    return () => window.clearInterval(timer)
-  }, [bookings, deskBusy, readingWhatsNew])
-
   // Today's own key: the list is rebuilt if the app is left open past midnight.
   const todayKey = dateToString(new Date())
   const daysList = useMemo<TimelineDayInfo[]>(
@@ -169,19 +133,6 @@ export function CalendarTab() {
     ? bookings.find(b => b.id === selectedExtendBooking.id) || selectedExtendBooking
     : null
 
-  // **Today's doors** (the check-in loop mocks, 2026-10-18): the check-ins and check-outs
-  // still to do today. Their pills ripple. A pop-up card per guest was tried and taken off
-  // (Sebastian, 2026-10-18: it felt annoying) — the ripple alone is the reminder.
-  // A minute clock moves the doors on at midnight on a calendar left open.
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 60000)
-    return () => window.clearInterval(id)
-  }, [])
-  const doors = useMemo(() => todaysDoors(bookings, now), [bookings, now])
-  // The same Map until a door is done, so the grid is not redrawn every minute.
-  const doorKey = doors.map(d => d.booking.id + ' ' + d.kind).sort().join(',')
-  const openDoors = useMemo(() => new Map(doorKey ? doorKey.split(',').map(e => e.split(' ') as [string, 'in' | 'out']) : []), [doorKey])
 
   const breakfastFor = breakfastForId ? bookings.find(b => b.id === breakfastForId) || null : null
 
@@ -499,7 +450,6 @@ export function CalendarTab() {
           groupSelection={groupSelection}
           handleCellClick={handleCellClick}
           setSelectedExtendBooking={setSelectedExtendBooking}
-          openDoors={openDoors}
           setExtendCheckoutDate={setExtendCheckoutDate}
           setExtendError={setExtendError}
           onNewBooking={confirmGroup}
@@ -507,7 +457,6 @@ export function CalendarTab() {
           onLogOldBooking={openLogOldBooking}
           onNewShortStay={confirmShortStay}
           onClearSelection={clearSelection}
-          dueShortStayIds={dueShortStayIds}
           loading={isLoading}
           breakfastToAsk={breakfastToAsk}
           onBreakfast={askBreakfast}
@@ -532,7 +481,6 @@ export function CalendarTab() {
           onCancelBooking={cancelBooking}
           onUpdateBooking={updateBooking}
           onEditBooking={() => { setEditingBooking(liveExtendBooking); setEditingGroup(groupOf(liveExtendBooking, bookings)); setFormStayHours(liveExtendBooking.stay_hours || null); setShowManualForm(true); setSelectedExtendBooking(null) }}
-          shortStayDue={dueShortStayIds.indexOf(liveExtendBooking.id) !== -1}
           onOpenBooking={b => setSelectedExtendBooking(b)}
         />
       )}

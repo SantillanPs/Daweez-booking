@@ -23,6 +23,25 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-20f',
+    changes: [
+      {
+        where: 'Front desk → calendar',
+        what: [
+          'No more Check in and Check out. A booking shows Reserved before its dates, Occupied during them, and the guest’s name once they are over, all by itself from the dates.',
+          'A guest who came early or left late: add it as a charge on their billing statement.',
+          'A guest who never came: Cancel booking, as on paper.',
+        ],
+      },
+      {
+        where: 'Front desk → booking window',
+        what: [
+          'Receive on an agency’s stay now opens its billing statement too: write the money the agency sent under Total, or add a charge under the rooms.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-20e',
     changes: [
       {

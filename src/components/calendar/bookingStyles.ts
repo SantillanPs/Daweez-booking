@@ -1,5 +1,7 @@
 import { Booking, Room } from '../../types/booking'
 import { getPaymentView, hasPaymentRecorded, PaymentTone } from '../../utils/bookingMoney'
+import { stayStage } from '../../utils/stayStage'
+import { dateToString } from '../../utils/helpers'
 
 // Show the real room name (e.g. "Full Double Deluxe") instead of a bare
 // number, with "Room N" as the fallback when no name is set.
@@ -11,11 +13,12 @@ export const roomDisplayName = (room?: Room): string =>
 export const roomOptionLabel = (room: Room): string =>
   room.name ? 'Room ' + room.room_number + ' · ' + room.name : 'Room ' + room.room_number
 
-/** Where a stay stands: nobody has arrived, the guest is in the hotel, or they have left. */
+/** Where a stay stands: still to come, in its dates, or over — read from the dates, never
+ *  from a check-in (`stayStage`; the desk no longer checks guests in or out, 2026-10-20). */
 export type BookingStage = 'booked' | 'in' | 'out'
 
-export const bookingStage = (b: Booking): BookingStage =>
-  b.actual_check_out ? 'out' : b.actual_check_in ? 'in' : 'booked'
+export const bookingStage = (b: Booking, todayIso = dateToString(new Date())): BookingStage =>
+  ({ before: 'booked', during: 'in', after: 'out' } as const)[stayStage(b, todayIso)]
 
 // **The pill's colour is the stage** (the staff's feedback, 2026-10-04: they could not
 // tell from the calendar which rooms were checked in and which had checked out). It used
@@ -60,13 +63,11 @@ export const greetName = (name: string): string => {
   return (title ? words[0] + ' ' + words[1] : words[0]) || name
 }
 
-/** What the desk still has to do with a stay today: check the guest in, or check them out.
- *  A day that has already passed still counts — the guest is late, not gone. A short stay
- *  leaves on the day it came. */
+/** Whether a stay arrives or leaves today, from its dates. A short stay leaves on the day it came. */
 export const dueToday = (b: Booking, todayIso: string): 'in' | 'out' | null => {
-  if (b.status === 'blocked' || b.actual_check_out) return null
-  if (!b.actual_check_in) return b.check_in <= todayIso ? 'in' : null
-  return (b.stay_hours ? b.check_in : b.check_out) <= todayIso ? 'out' : null
+  if (b.status === 'blocked') return null
+  if ((b.stay_hours ? b.check_in : b.check_out) === todayIso) return 'out'
+  return b.check_in === todayIso ? 'in' : null
 }
 
 // The money on the pill, in words (the staff: they want to look at the calendar and know

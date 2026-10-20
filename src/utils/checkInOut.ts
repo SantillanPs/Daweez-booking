@@ -21,28 +21,3 @@ export function chargeableEarlyHours(b: { early_check_in_hours?: number; actual_
   if (b.stay_hours) return 0
   return b.actual_check_out ? Number(b.early_check_in_hours || 0) : 0
 }
-
-/** A day's standard door time ('HH:MM') as a local Date. */
-export const standardDoor = (date: string, time: string): Date => new Date(date + 'T' + time + ':00')
-
-/**
- * The time a check-in or check-out is recorded at (Sebastian, 2026-10-20). The staff are
- * rarely at the desk — they are with the guests — and press the door when they get back,
- * so the moment of the press is not when it happened, and it must never charge anyone.
- * The desk says the early or late hours itself (`hours`, usually 0 — it rarely happens);
- * with none, the guest is taken to have come or gone on time.
- *
- * - Check-out on time: the standard time, or the press itself when that is earlier
- *   (a guest who left before noon left when the desk says).
- * - Check-in on time: the press — any time on or after the standard is on time.
- * - With hours: that many hours after (out) or before (in) the standard time.
- */
-export function doorTime(kind: 'in' | 'out', standard: Date, hours: number, now = new Date()): string {
-  const h = 3600000
-  if (kind === 'out') return new Date(hours > 0 ? standard.getTime() + hours * h : Math.min(now.getTime(), standard.getTime())).toISOString()
-  return new Date(hours > 0 ? standard.getTime() - hours * h : now.getTime()).toISOString()
-}
-
-/** How many hours late a check-out pressed now could be: none before the standard time. */
-export const hoursPast = (standard: Date, now = new Date()): number =>
-  Math.max(0, Math.ceil((now.getTime() - standard.getTime()) / 3600000))

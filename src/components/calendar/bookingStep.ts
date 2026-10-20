@@ -1,18 +1,14 @@
 import { Booking } from '../../types/booking'
 
 /** What the desk does next on a booking — the one step the panel puts in front of them. */
-export type BookingStep = 'payment' | 'checkIn' | 'checkOut' | 'done'
+export type BookingStep = 'payment' | 'done'
 
 /**
- * The single next step for a stay.
- *
- * Money comes first whenever the guest owes it: check-in and check-out are both refused
- * while money is owed (`docs/why/booking.md`). A stay billed to an agency is the
- * exception — the agency pays months later, so the door is not held shut on it.
+ * The single next step for a stay: taking the money while the guest owes it. There is no
+ * check-in or check-out step any more (Sebastian, 2026-10-20) — the desk only records the
+ * booking, the guest and the money, as on paper. A stay billed to an agency is not chased:
+ * the agency pays later, so its Receive waits behind a quiet link.
  */
-export function nextStep(booking: Booking, owes: boolean, billedToAgency: boolean): BookingStep {
-  const mustPayFirst = owes && !billedToAgency
-  if (!booking.actual_check_in) return mustPayFirst ? 'payment' : 'checkIn'
-  if (!booking.actual_check_out) return mustPayFirst ? 'payment' : 'checkOut'
-  return owes ? 'payment' : 'done'
+export function nextStep(_booking: Booking, owes: boolean, billedToAgency: boolean): BookingStep {
+  return owes && !billedToAgency ? 'payment' : 'done'
 }

@@ -1,4 +1,6 @@
 import { Booking } from '../types/booking'
+import { stayStage } from './stayStage'
+import { dateToString } from './helpers'
 
 export type PaymentTone = 'paid' | 'partial' | 'owes' | 'reserved' | 'billed'
 
@@ -37,11 +39,11 @@ export function isReservation(booking: Booking): boolean {
  *
  * This is the one distinction the whole feature turns on: **before arrival a reservation
  * is a promise, not a debt.** It stays out of "Who owes right now" and never wears a red
- * badge. The moment the guest checks in it becomes an ordinary owing stay — the money is
- * due at the door, and the usual check-in gate collects it.
+ * badge. From its first day (`stayStage` — there is no check-in any more) it is an ordinary
+ * owing stay.
  */
 export function isReservationAwaitingArrival(booking: Booking): boolean {
-  return isReservation(booking) && !booking.actual_check_in
+  return isReservation(booking) && stayStage(booking, dateToString(new Date())) === 'before'
 }
 
 /**

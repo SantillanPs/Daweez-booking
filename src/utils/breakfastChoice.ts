@@ -12,13 +12,12 @@ export function breakfastAskOpen(now: Date = new Date()): boolean {
   return now.getHours() < BREAKFAST_ASK_UNTIL
 }
 
-/** A guest the desk should ask today: in the hotel, in a room that has breakfast. "In the
- *  hotel" is the Check in press OR a night already slept there (check-in before today, not
- *  yet checked out) — the staff are often too busy to press Check in, and the cup never
- *  showed for those rooms (Sebastian, 2026-10-20). */
+/** A guest the desk should ask today: in a room that has breakfast, with a night already
+ *  slept there (arrived before today, leaving today or later) — read from the dates, since
+ *  there is no check-in any more (Sebastian, 2026-10-20). */
 export function wantsBreakfastToday(b: Booking, today: string): boolean {
-  const inHotel = !!b.actual_check_in || (b.check_in < today && today <= b.check_out)
-  return !!b.room_id && b.breakfast_included === true && inHotel && !b.actual_check_out &&
+  const inHotel = b.check_in < today && today <= b.check_out
+  return !!b.room_id && b.breakfast_included === true && inHotel &&
     !b.stay_hours && b.status !== 'blocked' && b.status !== 'cancelled'
 }
 

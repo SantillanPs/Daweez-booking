@@ -124,25 +124,6 @@
   animation: hop 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
-/* A pill with a door today (`TimelineCell`): one wide, slow ripple leaves the whole pill — a
-   job waiting on the desk. Green to check in, charcoal to check out. Sebastian picked the soft
-   ripple (2026-10-18) after a quick pulse and hop felt like noise and a glow alone did not say
-   "do this"; the ripple comes off the whole reservation, not the day's half of it. */
-@keyframes door-glow-in { 0% { box-shadow: 0 0 0 0 rgb(5 150 105 / 0.4); } 70%, 100% { box-shadow: 0 0 0 16px rgb(5 150 105 / 0); } }
-@keyframes door-glow-out { 0% { box-shadow: 0 0 0 0 rgb(28 28 28 / 0.33); } 70%, 100% { box-shadow: 0 0 0 16px rgb(28 28 28 / 0); } }
-.door-glow-in { border: 2px solid #059669 !important; animation: door-glow-in 3.4s ease-out infinite; }
-.door-glow-out { border: 2px solid #1C1C1C !important; animation: door-glow-out 3.4s ease-out infinite; }
-/* The same ripple on the booking panel's check-in / check-out button, without the border. */
-.door-glow-btn-in { animation: door-glow-in 3.4s ease-out infinite; }
-.door-glow-btn-out { animation: door-glow-out 3.4s ease-out infinite; }
-/* The check-in / check-out reward (`ExtendStayModal`): the colour floods up from the panel's
-   foot, the initials spin in, the words hop up one letter at a time. */
-@keyframes bw-party { from { clip-path: circle(0 at 50% 85%); } to { clip-path: circle(150% at 50% 85%); } }
-@keyframes bw-party-av { from { transform: scale(0) rotate(-30deg); } }
-@keyframes bw-party-lt { from { opacity: 0; transform: translateY(24px) scale(0.4); } }
-.bw-party { animation: bw-party 0.5s cubic-bezier(0.3, 0, 0.2, 1) both; }
-.bw-party-av { animation: bw-party-av 0.6s 0.1s cubic-bezier(0.3, 1.8, 0.5, 1) both; }
-.bw-party-lt { animation: bw-party-lt 0.55s cubic-bezier(0.3, 1.8, 0.5, 1) both; }
 
 /* ── The breakfast window's moves (`BreakfastPicker`) ───────────────────────
    Everything in that window answers a tap (the owner's rule: once it works, how it feels

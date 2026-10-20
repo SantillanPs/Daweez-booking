@@ -2,8 +2,8 @@ import React from 'react'
 import { Building2, Check, LogIn, LogOut } from 'lucide-react'
 import { dateToString } from '../../utils/helpers'
 import { Booking } from '../../types/booking'
-import { pillInitials, pillMoney } from './bookingStyles'
-import { clockLabel, shortStayEnd } from '../../utils/shortStay'
+import { bookingStage, pillInitials, pillMoney } from './bookingStyles'
+import { clockLabel } from '../../utils/shortStay'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 
 export interface TimelineCellProps {
@@ -36,17 +36,12 @@ export interface TimelineCellProps {
   isContinuation?: boolean
   isWeekend: boolean
   isToday: boolean
-  /** A short stay whose bought hours have run out — the block goes red, because the
-   *  room is due for cleaning and the panel pops itself open (the owner's ruling). */
-  isShortStayDue?: boolean
   /** The agency that is paying for the stay, when there is one. The pill carries its name
    *  where the guest's would be (Sebastian, 2026-10-06). */
   agencyName?: string
   /** The desk still has to check this guest in, or out, today — the pill's edge says so:
    *  green on the left for an arrival, charcoal on the right for a departure. */
   due?: 'in' | 'out' | null
-  /** The door still to do on this stay today, when there is one — the pill glows. */
-  door?: 'in' | 'out'
   /** Where today lies under this stay: the half it starts at, counted from the stay's own
    *  left edge (-1 when the stay is not on today), and how many halves of it. */
   todayFrom?: number
@@ -146,7 +141,7 @@ function HoverCard({ booking, bill, pillName, agencyName, isBlock, openEnded, mo
         {due && !isBlock && (
           <div className={'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-bold ' + (due === 'in' ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-main')}>
             {due === 'in' ? <LogIn className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /> : <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
-            {due === 'in' ? 'Check in today, from 2 PM' : 'Check out today, by 12 PM'}
+            {due === 'in' ? 'Arrives today, from 2 PM' : 'Leaves today, by 12 PM'}
           </div>
         )}
         <div className="grid gap-1.5">
@@ -223,10 +218,8 @@ export const TimelineCell = React.memo(
     isContinuation,
     isWeekend,
     isToday,
-    isShortStayDue,
     agencyName,
     due,
-    door,
     todayFrom = -1,
     todayHalves = 0,
     getBookingStyle,
@@ -262,19 +255,20 @@ export const TimelineCell = React.memo(
       // An agency booking is read by whose bill it is: the agency's name, not the name of
       // the person who made the reservation (they are on the hover card and in the panel).
       const pillName = isBlock ? blockReason(booking) + (openEnded ? ' · until further notice' : '') : (agencyName || booking.guest_name)
-      const left = !!booking.actual_check_out
+      // **The stage comes from the dates** (Sebastian, 2026-10-20: the desk no longer checks
+      // guests in or out, and the app changes nothing by itself — `stayStage`).
+      const stage = bookingStage(booking)
+      const left = stage === 'out'
       // **A pill says where the stay is, not who it is** (Sebastian, 2026-10-09): "Reserved"
-      // until the guest checks in, "Occupied" while they are in the room, and the guest's
-      // name only once they have left. Who it is stays on the hover card and in the panel.
+      // before its dates, "Occupied" during them, and the guest's name once they are over. Who it is stays on the hover card and in the panel.
       // An agency's name and a block's reason are not a guest's name, so they are still
       // shown, and a half-day pill keeps its initials — how the desk tells who is leaving.
-      const pillWords = isBlock || agencyName || left ? pillName : booking.actual_check_in ? 'Occupied' : 'Reserved'
+      const pillWords = isBlock || agencyName || left ? pillName : stage === 'in' ? 'Occupied' : 'Reserved'
       const money = pillMoney(bill || booking)
-      const inHotel = !isBlock && !isShortStayDue && !!booking.actual_check_in && !booking.actual_check_out
-      // A short stay whose guest is in the room shows THE TIME THE ROOM IS FREE — never
-      // a countdown (the owner's ruling) — unless money is still owed, which comes first.
-      const freeAt = shortStayEnd(booking.actual_check_in, Number(booking.stay_hours || 0))
-      const showClock = !!freeAt && !booking.actual_check_out && money.text === 'Paid'
+      const inHotel = !isBlock && stage === 'in'
+      // A short stay has no start time any more (it started on Check in), so it shows its
+      // hours, not the time the room is free.
+      const freeAt = null
       const narrow = span < 2
       return (
         <td
@@ -320,11 +314,7 @@ export const TimelineCell = React.memo(
             className={'relative overflow-hidden mx-0.5 h-10 rounded-md border cursor-pointer select-none transition-[filter,transform,border-color,background-color,color,box-shadow,opacity] duration-300 hover:brightness-95 hover:-translate-y-0.5 hover:shadow-soft active:translate-y-0 active:shadow-none active:scale-[0.98] flex flex-col justify-center animate-in fade-in zoom-in-95 motion-reduce:animate-none ' +
               // The words sit in the middle of the pill (Sebastian, on the ripple mock, 2026-10-18).
               'text-center ' + (narrow ? 'items-center px-0 ' : 'px-2 ') +
-              (isShortStayDue ? 'bg-danger-100 border-danger-400 text-danger-600' : getBookingStyle(booking)) +
-              // **A door ripples once it is time** (`todaysDoors`). It is a reminder only — the door
-              // is pressed in the booking panel. Before the time the pill is quiet: the thin edge
-              // that used to mark a door today is gone (design A, "quiet until time").
-              (door === 'in' ? ' door-glow-in' : door === 'out' ? ' door-glow-out' : '')}
+              getBookingStyle(booking)}
           >
             {/* THE GREEN OF A GUEST WHO IS IN. It is a wash inside the pill, not the pill's
                 own colour, so checking in is seen: it crosses from the left. Checking out
@@ -363,11 +353,9 @@ export const TimelineCell = React.memo(
                   guest who has left keeps a tick beside the name. */}
               {left && !isBlock && <LeftTick className="shrink-0" />}
             </span>
-            {!isBlock && (isShortStayDue || showClock || (booking.stay_hours && !booking.actual_check_in) ? (
-              <span className={'relative text-[12px] font-semibold truncate leading-4 ' + (isShortStayDue ? '' : showClock ? 'text-ink-700' : money.className)}>
-                {isShortStayDue && freeAt ? 'time up ' + clockLabel(freeAt)
-                  : showClock && freeAt ? 'out ' + clockLabel(freeAt)
-                    : booking.stay_hours + ' hrs · ' + money.pill}
+            {!isBlock && (booking.stay_hours ? (
+              <span className={'relative text-[12px] font-semibold truncate leading-4 ' + money.className}>
+                {booking.stay_hours + ' hrs · ' + money.pill}
               </span>
             ) : (
               <MoneyWords text={money.pill} className={money.className} />
@@ -451,10 +439,8 @@ export const TimelineCell = React.memo(
       prevProps.isContinuation === nextProps.isContinuation &&
       prevProps.isWeekend === nextProps.isWeekend &&
       prevProps.isToday === nextProps.isToday &&
-      prevProps.isShortStayDue === nextProps.isShortStayDue &&
       prevProps.agencyName === nextProps.agencyName &&
       prevProps.due === nextProps.due &&
-      prevProps.door === nextProps.door &&
       prevProps.todayFrom === nextProps.todayFrom &&
       prevProps.todayHalves === nextProps.todayHalves &&
       prevProps.span === nextProps.span &&
@@ -462,10 +448,8 @@ export const TimelineCell = React.memo(
       prevProps.booking?.status === nextProps.booking?.status &&
       prevProps.booking?.payment_status === nextProps.booking?.payment_status &&
       // `payment_plan` decides whether the pill says "Reserved" (and which colour its dot
-      // is), so it MUST be compared — the same trap as `actual_check_in` below.
+      // is), so it MUST be compared.
       prevProps.booking?.payment_plan === nextProps.booking?.payment_plan &&
-      prevProps.booking?.actual_check_in === nextProps.booking?.actual_check_in &&
-      prevProps.booking?.actual_check_out === nextProps.booking?.actual_check_out &&
       prevProps.booking?.check_in === nextProps.booking?.check_in &&
       prevProps.booking?.check_out === nextProps.booking?.check_out &&
       prevProps.booking?.guest_name === nextProps.booking?.guest_name &&

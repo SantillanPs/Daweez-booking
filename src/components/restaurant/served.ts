@@ -1,5 +1,7 @@
 import { Booking, Room, Venue } from '../../types/booking'
 import { Tab } from '../../types/tab'
+import { stayStage } from '../../utils/stayStage'
+import { dateToString } from '../../utils/helpers'
 
 /** One person the desk is serving: a guest in a room, or a diner with no room. */
 export interface Served {
@@ -15,17 +17,19 @@ export interface Served {
 }
 
 /**
- * A guest who is in the hotel right now: checked in and not yet checked out.
+ * A guest who is in the hotel right now: today is in their stay's dates (`stayStage` — the
+ * desk no longer checks guests in or out, Sebastian 2026-10-20).
  *
- * Food can only be charged after check-in (the owner's rule — people order when
+ * Food is only charged to a room whose guest is here (the owner's rule — people order when
  * they are here), so this is exactly the list the restaurant may charge to. In the
  * Restaurant screen this list IS the strip across the top, together with the
  * diners who have no room behind their tab.
  */
 export function inHouseGuests(bookings: Booking[]): Booking[] {
+  const today = dateToString(new Date())
   return bookings
-    .filter(b => !!b.actual_check_in && !b.actual_check_out)
-    .sort((a, b) => (a.actual_check_in || '').localeCompare(b.actual_check_in || ''))
+    .filter(b => b.status !== 'blocked' && stayStage(b, today) === 'during')
+    .sort((a, b) => a.check_in.localeCompare(b.check_in))
 }
 
 /**

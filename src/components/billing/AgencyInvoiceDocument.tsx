@@ -1,13 +1,15 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { Statement } from '../../utils/statement'
 import { getPaymentAccounts } from '../../utils/paymentAccounts'
 import { getRateConfig } from '../../utils/rateConfig'
-import { shortBankName } from '../../utils/paymentMethod'
+import { paymentMethodLabel, shortBankName } from '../../utils/paymentMethod'
 import { guestEmailOf } from '../../utils/emailDocument'
 import { StatementChargesTable } from './StatementChargesTable'
 import { StatementGuestStay } from './StatementGuestStay'
 import { StatementShell, BrandHeader, SectionName } from './StatementShell'
+import { AddCharge, BillDeskActions, WritePayment } from './BillDesk'
+import { CountPeso } from '../CountPeso'
 
 const money = (n: number) => '₱' + n.toLocaleString()
 
@@ -26,8 +28,13 @@ const money = (n: number) => '₱' + n.toLocaleString()
  *
  * Each fact is said once (the owner, 2026-10-15): the dates in Stay, not on every row; the
  * rooms in the table, not in Stay.
+ *
+ * **The desk works on it like the guest bill** (Sebastian, 2026-10-20: Receive on an agency's
+ * stay still opened the old box, "not updated to the current work flow"): a charge is added
+ * under the rows, and the money the agency sends is written under Total. Both are the
+ * screen's only — the office's paper is still Total and nothing else.
  */
-export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement, onClose, onPrint, embedded = false }: {
+export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement, onClose, onPrint, embedded = false, desk }: {
   primaryBooking: Booking
   rooms: Room[]
   venues: Venue[]
@@ -35,6 +42,7 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
   onClose: () => void
   onPrint: () => void
   embedded?: boolean
+  desk?: BillDeskActions
 }) {
   const acct = getPaymentAccounts()
   const b = primaryBooking
@@ -48,6 +56,12 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
   ]
 
   const label = 'text-[10px] text-muted'
+  const figure = 'font-mono text-[11.5px] font-bold text-ink-900'
+  const shortDay = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  // What was on the bill when it opened: anything written after settles in like ink.
+  const [opened] = useState(() => new Set([...statement.lineItems.map(i => i.key), ...statement.payments.map(p => p.key)]))
+  const isNew = (key: string) => !!desk && !opened.has(key)
+  const paidUp = statement.amountDue === 0 && statement.payments.length > 0
 
   return (
     <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}
@@ -64,7 +78,17 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
           ],
         }} />
 
-      <StatementChargesTable items={statement.lineItems} dates={false} />
+      <StatementChargesTable items={statement.lineItems} dates={false} onRemove={desk?.onRemove} canRemove={desk?.owns} isNew={isNew}>
+        {desk?.removed && (
+          <tr data-screen key={desk.removed.label} className="print:hidden">
+            <td colSpan={4} className="pt-1 text-[10.5px] font-semibold text-muted bw-rise">
+              {desk.removed.label} taken off · <button type="button" onClick={desk.onUndo}
+                className="font-bold text-gold-800 underline underline-offset-2 cursor-pointer">Undo</button>
+            </td>
+          </tr>
+        )}
+        {desk && <AddCharge onCharge={desk.onCharge} cols={4} />}
+      </StatementChargesTable>
 
       <div className="grid grid-cols-[1fr_200px] gap-6 items-start">
         <div>
@@ -81,9 +105,35 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
 
         {/* TOTAL — the whole stay, the one figure the office pays. `print-color-adjust` keeps
             the band black on paper. */}
-        <div className="mt-[18px] px-3 py-2 flex items-center justify-between gap-2.5 bg-ink-900 text-white [print-color-adjust:exact] [-webkit-print-color-adjust:exact]">
+        <div className="mt-[18px] flex flex-col gap-2">
+        <div className="px-3 py-2 flex items-center justify-between gap-2.5 bg-ink-900 text-white [print-color-adjust:exact] [-webkit-print-color-adjust:exact]">
           <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">Total</span>
           <span className="font-display text-[22px] font-extrabold leading-none">{money(statement.subTotal)}</span>
+        </div>
+        {/* What the agency has sent and what it still owes: the desk's, never on paper. */}
+        {desk && (
+          <div data-screen className="print:hidden flex flex-col gap-0.5">
+            {statement.payments.length > 0 && <p className={label}>Received</p>}
+            {statement.payments.map(p => (
+              <div key={p.key} className={'flex justify-between items-baseline gap-2.5 ' + (isNew(p.key) ? 'bill-ink' : '')}>
+                <span className={label + ' min-w-0'}>
+                  {shortDay(p.paidAt)} · {paymentMethodLabel(p.method)}
+                  {p.receipt && <span className="whitespace-nowrap"> · {p.receipt}</span>}
+                  {p.receipt && <button type="button" onClick={() => desk.onReceipt(p.receipt)}
+                    className="ml-1.5 font-semibold text-gold-800 underline underline-offset-2 cursor-pointer">Receipt</button>}
+                </span>
+                <span className={figure + ' shrink-0'}>−{money(p.amount)}</span>
+              </div>
+            ))}
+            {statement.amountDue > 0 && (
+              <WritePayment key={statement.payments.length} due={statement.amountDue} onPay={desk.onPay} again={statement.payments.length > 0} />
+            )}
+            <div className={'mt-1 flex items-center justify-between gap-2.5 font-bold transition-colors duration-500 ' + (paidUp ? 'text-emerald-700' : 'text-blue-700')}>
+              <span className="text-[10px] uppercase tracking-[0.1em]">{paidUp ? 'Paid in full' : 'Agency owes'}</span>
+              <span className="font-display text-[18px] font-extrabold leading-none"><CountPeso value={statement.amountDue} /></span>
+            </div>
+          </div>
+        )}
         </div>
       </div>
 

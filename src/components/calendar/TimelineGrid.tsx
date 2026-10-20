@@ -7,6 +7,7 @@ import { dueToday, getBookingStyle, roomDisplayName } from './bookingStyles'
 import { dateToString } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
 import { asBill } from '../../utils/bookingGroup'
+import { stayStage } from '../../utils/stayStage'
 import { TimelineDayInfo } from './timelineDays'
 import { rememberFormOrigin } from '../../utils/bookingFocus'
 import { useDashboardData } from '../DashboardContext'
@@ -34,8 +35,6 @@ interface TimelineGridProps {
   groupSelection?: Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null
   handleCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
   setSelectedExtendBooking: (booking: Booking) => void
-  /** The door still to do today on each booking (see `utils/doors`) — its pill glows. */
-  openDoors?: Map<string, 'in' | 'out'>
   setExtendCheckoutDate: (date: string) => void
   setExtendError: (err: string) => void
   /**
@@ -54,8 +53,6 @@ interface TimelineGridProps {
   onNewShortStay: (hours: number) => void
   /** Clears whatever is picked — a single day AND a finished range. */
   onClearSelection: () => void
-  /** Ids of short stays whose bought hours have run out — their blocks go red. */
-  dueShortStayIds?: string[]
   /** The rooms have not arrived from the database yet. */
   loading?: boolean
   /** The guest to ask about breakfast this morning, per room id — only the rooms that have
@@ -358,7 +355,6 @@ export const TimelineGrid = React.memo(
     groupSelection,
     handleCellClick,
     setSelectedExtendBooking,
-    openDoors,
     setExtendCheckoutDate,
     setExtendError,
     onNewBooking,
@@ -366,7 +362,6 @@ export const TimelineGrid = React.memo(
     onLogOldBooking,
     onNewShortStay,
     onClearSelection,
-    dueShortStayIds,
     loading = false,
     breakfastToAsk,
     onBreakfast,
@@ -455,9 +450,9 @@ export const TimelineGrid = React.memo(
       return names
     }, [partnerDeals])
     // Read off the rows already on screen: every stay that touches a day shown is in one.
-    // `occupied` is the rooms and venues with a guest in them now; the counts are, per day,
-    // how many are STILL to arrive and still to leave — they go down as the desk checks
-    // guests in and out (Sebastian, 2026-10-08: "will arrive", "will leave").
+    // `occupied` is the rooms and venues whose stay is in its dates today; the counts are, per
+    // day, how many arrive and how many leave (Sebastian, 2026-10-08: "will arrive", "will
+    // leave") — read from the dates, since the desk no longer checks guests in or out.
     const todayIso = dateToString(new Date())
     const { occupied, counts } = React.useMemo(() => {
       const occupied: Record<string, boolean> = {}
@@ -468,11 +463,9 @@ export const TimelineGrid = React.memo(
       Object.entries(halves).forEach(([unitId, row]) => row.forEach(b => {
         if (!b || b.status === 'blocked' || seen[b.id]) return
         seen[b.id] = true
-        if (b.actual_check_in && !b.actual_check_out) occupied[unitId] = true
-        // A guest who is late is still to come, or still to go: they count under today.
-        const leaves = b.stay_hours ? b.check_in : b.check_out
-        if (!b.actual_check_in) at(b.check_in < todayIso ? todayIso : b.check_in).arrive.push(b.id)
-        if (!b.actual_check_out) at(leaves < todayIso ? todayIso : leaves).leave.push(b.id)
+        if (stayStage(b, todayIso) === 'during') occupied[unitId] = true
+        at(b.check_in).arrive.push(b.id)
+        at(b.stay_hours ? b.check_in : b.check_out).leave.push(b.id)
       }))
       return { occupied, counts }
     }, [halves, todayIso])
@@ -523,7 +516,7 @@ export const TimelineGrid = React.memo(
           const todayFrom = Math.max(k, todayAt * 2)
           const todayTo = todayAt < 0 ? 0 : Math.min(k + span, todayAt * 2 + 2)
           cells.push(
-            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} bill={asBill(booking, bookings)} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} isShortStayDue={!!dueShortStayIds && dueShortStayIds.indexOf(booking.id) !== -1} agencyName={agencyNameOf(booking)} due={dueToday(booking, todayIso)} door={openDoors?.get(booking.id)} todayFrom={todayTo > todayFrom ? todayFrom - k : -1} todayHalves={Math.max(0, todayTo - todayFrom)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} bill={asBill(booking, bookings)} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} agencyName={agencyNameOf(booking)} due={dueToday(booking, todayIso)} todayFrom={todayTo > todayFrom ? todayFrom - k : -1} todayHalves={Math.max(0, todayTo - todayFrom)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           k += span
           continue

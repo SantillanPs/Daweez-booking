@@ -110,6 +110,7 @@ export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, boo
       onClose={onClose}
       onPrint={handlePrint}
       embedded={embedded}
+      desk={desk}
     />
   ) : (
     <InvoiceDocument

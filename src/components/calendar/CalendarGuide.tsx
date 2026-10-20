@@ -28,21 +28,17 @@ export function CalendarGuide() {
           </div>
 
           <Section title="On the booking">
-            <Row sign={<Pill className="bg-gold-100 border-gold-400" />}>Booked, not here yet</Row>
-            <Row sign={<Pill className="bg-gold-100 border-gold-400 border-l-[5px] border-l-emerald-700" />}>Arrives today</Row>
-            <Row sign={<Pill className="bg-emerald-50 border-emerald-600" />}>In the room</Row>
-            <Row sign={<Pill className="bg-emerald-50 border-emerald-600 border-r-[5px] border-r-ink-900" />}>Leaves today</Row>
-            <Row sign={<Pill className="bg-ink-100 border-ink-200 text-white"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-ink-600"><Check className="w-2 h-2" strokeWidth={3} /></span></Pill>}>Has left</Row>
+            <Row sign={<Pill className="bg-gold-100 border-gold-400" />}>Reserved: its dates are still to come</Row>
+            <Row sign={<Pill className="bg-emerald-50 border-emerald-600" />}>Occupied: today is in its dates</Row>
+            <Row sign={<Pill className="bg-ink-100 border-ink-200 text-white"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-ink-600"><Check className="w-2 h-2" strokeWidth={3} /></span></Pill>}>Its dates are over</Row>
             <Row sign={<Pill className="bg-paper-200/60 border-paper-300" />}>Blocked</Row>
-            <Row sign={<Pill className="bg-gold-100 door-glow-in" />}>Rippling green: check in today</Row>
-            <Row sign={<Pill className="bg-emerald-50 door-glow-out" />}>Rippling black: check out today</Row>
             <Row sign={<Building2 className="w-4 h-4" />}>Agency reservation</Row>
             <Row sign={<span className="font-display text-[13px] font-bold text-blue-700">AB</span>}>Blue initials: no deposit</Row>
             <Row sign={<span className="font-display font-bold"><span className="text-danger-600">₱</span> <span className="text-emerald-700">₱</span></span>}>Red to pay, green paid · hover for how much</Row>
           </Section>
 
           <Section title="On the room">
-            <Row sign={<span className="h-5 w-[5px] rounded-sm bg-emerald-600" />}>A guest is in this room</Row>
+            <Row sign={<span className="h-5 w-[5px] rounded-sm bg-emerald-600" />}>This room is occupied today</Row>
             <Row sign={<Coffee className="w-5 h-5 animate-hop" />}>Tap to ask this room about breakfast (until 11 AM)</Row>
             <Row sign={<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gold-800 text-white"><Coffee className="w-4 h-4" /></span>}>Breakfast is ready. Tap once it is served</Row>
           </Section>

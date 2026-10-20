@@ -1,6 +1,8 @@
 import { Booking, PartnerDeal, Room, Venue } from '../types/booking'
 import { recomputeBalance } from './bookingBalance'
 import { breakfastSellable } from './breakfast'
+import { stayStage } from './stayStage'
+import { dateToString } from './helpers'
 
 // MOVING A BOOKING to another room or other dates (Sebastian, 2026-10-06: an agency
 // wanted to reschedule and change rooms, and the only way was to cancel the booking and
@@ -16,12 +18,12 @@ export interface MoveTarget {
 }
 
 /**
- * A booking can be moved until the guest has arrived. After that the stay is happening
- * (extend it, or check them out); a short stay takes a whole day and is rebooked, not
+ * A booking can be moved until its first day (`stayStage`). After that the stay is happening
+ * (extend it); a short stay takes a whole day and is rebooked, not
  * moved; a block has its own dates pane.
  */
 export function canMoveBooking(b: Booking): boolean {
-  return b.status !== 'blocked' && b.status !== 'cancelled' && !b.actual_check_in && !b.stay_hours
+  return b.status !== 'blocked' && b.status !== 'cancelled' && stayStage(b, dateToString(new Date())) === 'before' && !b.stay_hours
 }
 
 /**
