@@ -90,6 +90,7 @@ export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel =
           <SectionName>Bill to</SectionName>
           <p className={big}>{billTo.name}</p>
           <p className={info + ' mt-0.5'}><span className={label}>c/o</span> {b.guest_name}</p>
+          {text(b.institution) && <p className={info}><span className={label}>Institution</span> {b.institution}</p>}
           {billTo.lines.filter(Boolean).map(line => <p key={line} className={info + ' break-words'}>{line}</p>)}
         </div>
       ) : (
@@ -97,6 +98,7 @@ export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel =
         <SectionName>Guest</SectionName>
         <p className={big}>{b.guest_name}</p>
         <div className="mt-0.5">
+          {text(b.institution) && <p className={info}><span className={label}>Institution</span> {b.institution}</p>}
           {guestLines.map(line => <p key={line} className={info + ' break-words'}>{line}</p>)}
           {text(b.birthdate) && <p className={info}><span className={label}>Birth date</span> {b.birthdate}</p>}
           {text(b.vehicle_plate) && <p className={info}><span className={label}>Plate no.</span> {b.vehicle_plate}</p>}

@@ -53,6 +53,7 @@
 - **No room is ever selected for the desk.** Auto-ticking every contracted room was the "automatic booking" he rejected.
 - A new agency is created only from the "No saved agency" line. "Change" only swaps which agency is named, so it can never overwrite one.
 - There is no separate corporate form any more — one entrance, not two.
+- **An institution sits next to the agency** (the owner's note, 2026-10-20: *"add institution to the booking form, optional and hidden like the agency"*, beside "Add agency?"). Sebastian picked a saved list like the agencies' over a typed name. Unlike an agency it changes no price and bills nobody: its name is kept on the booking and printed under the guest on the bill.
 
 ## The calendar
 

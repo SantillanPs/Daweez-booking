@@ -235,6 +235,8 @@ export interface Booking {
   expires_at: string | null // ISO date-time for 30-min website locks
   partner_deal_id?: string
   company_name?: string
+  /** The guest's institution (school, office…), printed on the bill. Bills nobody, changes no price. */
+  institution?: string
   vehicle_plate?: string
   invoice_number?: string
   invoice_type?: 'folio' | 'billing'

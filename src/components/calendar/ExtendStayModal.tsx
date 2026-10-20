@@ -786,7 +786,7 @@ export function ExtendStayModal({
   const breakfastUnasked = breakfastWanted && !breakfastToday && breakfastAskOpen()
   const breakfastAsked = breakfastWanted && !breakfastUnasked
   const details = !isBlock && (hasPhone || hasEmail || (booking.companions?.length || 0) > 0 ||
-    !!(booking.reference_number || booking.registered_on || booking.vehicle_plate || booking.company_name || togetherLabel))
+    !!(booking.reference_number || booking.registered_on || booking.vehicle_plate || booking.company_name || booking.institution || togetherLabel))
 
   const modalContent = (
     <div className={'fixed inset-0 z-50 flex items-center justify-center p-4 ' + (closing ? 'pointer-events-none' : '')}>
@@ -1069,6 +1069,7 @@ export function ExtendStayModal({
                               {booking.registered_on && <span>Logged <strong className="text-main">{booking.registered_on}</strong></span>}
                               {booking.vehicle_plate && <span>Plate <strong className="text-main uppercase">{booking.vehicle_plate}</strong></span>}
                               {booking.company_name && <span>Company <strong className="text-main">{booking.company_name}</strong></span>}
+                              {booking.institution && <span>Institution <strong className="text-main">{booking.institution}</strong></span>}
                               {togetherLabel && <span>Booked together <strong className="text-main">{togetherLabel}</strong></span>}
                             </p>
                           </div>

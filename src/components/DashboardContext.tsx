@@ -37,6 +37,7 @@ export interface DashboardDataContextValue {
     companions?: Companion[]
     partnerDealId?: string
     companyName?: string
+    institution?: string
     vehiclePlate?: string
     breakfastIncluded?: boolean
     contractRateOverride?: number

@@ -140,6 +140,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         companions,
         partnerDealId: p.formPartnerDealId || undefined,
         companyName: p.formCompanyName || undefined,
+        institution: p.formInstitution || undefined,
         vehiclePlate: p.formVehiclePlate || undefined,
         // Breakfast belongs to the ROOM (card k140): the row is marked when the desk
         // tapped that room's chip, and the charge is ₱150 × the room's beds.
@@ -203,6 +204,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         companions,
         partnerDealId: p.formPartnerDealId || undefined,
         companyName: p.formCompanyName || undefined,
+        institution: p.formInstitution || undefined,
         vehiclePlate: p.formVehiclePlate || undefined,
         contractRateOverride: contractedPrice || (existingBooking && !existingBooking.partner_deal_id ? existingBooking.contract_rate_override : undefined),
         paymentMethod: p.formPaymentMethod || undefined,

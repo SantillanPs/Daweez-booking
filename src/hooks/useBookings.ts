@@ -236,7 +236,7 @@ export function useBookings() {
     source: BookingSource; status: 'confirmed' | 'blocked' | 'pending'
     breakfastOrders?: BreakfastOrder[]; equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons; rateMultiplier?: number; companions?: Companion[]
-    partnerDealId?: string; companyName?: string; vehiclePlate?: string
+    partnerDealId?: string; companyName?: string; institution?: string; vehiclePlate?: string
     paymentMethod?: string; paymentReference?: string; paymentPlan?: 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'; venueExcessHours?: number
     paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
     downpaymentPaid?: number; balanceDue?: number; securityDeposit?: number
@@ -257,7 +257,7 @@ export function useBookings() {
       const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, guestGender, guestNationality, guestAddress, birthdate, checkIn, checkOut,
         source, status, breakfastOrders, equipmentRentals, eventAddons,
         rateMultiplier, companions,
-        partnerDealId, companyName, vehiclePlate, breakfastIncluded, contractRateOverride,
+        partnerDealId, companyName, institution, vehiclePlate, breakfastIncluded, contractRateOverride,
         paymentMethod, paymentReference, paymentPlan, venueExcessHours = 0,
         paymentStatus, downpaymentPaid, balanceDue, securityDeposit,
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, notes, preparedBy, breakfastDays,
@@ -325,6 +325,7 @@ export function useBookings() {
         expires_at: null,
         partner_deal_id: partnerDealId,
         company_name: companyName,
+        institution,
         vehicle_plate: vehiclePlate,
         invoice_number: invoiceNumber,
         breakfast_included: !!breakfastIncluded,

@@ -37,6 +37,7 @@ export interface ManualBookingInput {
   companions?: Companion[]
   partnerDealId?: string
   companyName?: string
+  institution?: string
   vehiclePlate?: string
   breakfastOrders?: BreakfastOrder[]
   breakfastIncluded?: boolean
@@ -79,6 +80,7 @@ export interface BookingSubmitParams {
   formBirthdate: string
   formPreparedBy: string
   formCompanyName: string
+  formInstitution: string
   formVehiclePlate: string
   formInvoiceNumber: string
   formSource: BookingSource

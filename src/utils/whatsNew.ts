@@ -33,6 +33,13 @@ export const UPDATES: Update[] = [
           'Logging an old booking whose stay is already over no longer leaves a reservation. It is saved as checked in and out.',
         ],
       },
+      {
+        where: 'Front desk → New booking',
+        what: [
+          'You can add the guest’s institution (a school or an office). Press ⋯ beside Guest, then Add institution?',
+          'Type to find a saved one. A new one is saved the first time you add it. It prints on the guest’s bill.',
+        ],
+      },
     ],
   },
   {

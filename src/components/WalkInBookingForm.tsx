@@ -22,6 +22,7 @@ import { computeBookingEstimate } from './walk-in/bookingEstimate'
 import { submitBookingForm } from './walk-in/bookingSubmit'
 import { AgencyFields } from './walk-in/AgencyFields'
 import { AgencyProfileForm } from './walk-in/AgencyProfileForm'
+import { InstitutionFields } from './walk-in/InstitutionFields'
 import { BookingCreatedPanel } from './walk-in/BookingCreatedPanel'
 import { BookingWizardHeader } from './walk-in/BookingWizardHeader'
 import { Field } from './walk-in/Field'
@@ -126,6 +127,10 @@ export function WalkInBookingForm({
   const { partnerDeals } = useDashboardData()
   const [formPartnerDealId, setFormPartnerDealId] = useState('')
   const [formCompanyName, setFormCompanyName] = useState('')
+  /** The guest's institution (2026-10-20): a name printed on the bill, nothing more. */
+  const [formInstitution, setFormInstitution] = useState('')
+  const [institutionOn, setInstitutionOn] = useState(false)
+  const [institutionPicking, setInstitutionPicking] = useState(false)
   const [formVehiclePlate, setFormVehiclePlate] = useState('')
   const [formTIN, setFormTIN] = useState('')
   const [formAddress, setFormAddress] = useState('')
@@ -326,6 +331,10 @@ export function WalkInBookingForm({
         setFormPartnerDealId(b.partner_deal_id || '')
         setFormCompanyName(b.company_name || '')
         setFormVehiclePlate(b.vehicle_plate || '')
+      }
+      if (b.institution) {
+        setInstitutionOn(true)
+        setFormInstitution(b.institution)
       }
 
       setFormCompanions(b.companions || [])
@@ -576,6 +585,7 @@ export function WalkInBookingForm({
 
   /** An agency booking cannot be confirmed until the bill has an addressee. */
   const agencyMissing = agencyOn && formStatus === 'confirmed' && !formCompanyName.trim()
+  const removeInstitution = () => { setFormInstitution(''); setInstitutionOn(false); setInstitutionPicking(false) }
   const removeAgency = () => { handleSelectPartnerDeal(null); setAgencyOn(false); setAgencyPicking(false); setFormPaymentPlan(p => p === 'agency' ? 'custom' : p) }
   /** The one box the form is waiting on wears gold (`bk-want`), in the same order as the
    *  line beside Confirm — the booking form mock, 2026-10-16. */
@@ -656,7 +666,7 @@ export function WalkInBookingForm({
       activeBookings: activeBookingsContext, allBookings,
       partnerDeals, formPartnerDealId, bookingType, formStatus, formGuestName,
       formGuestEmail, formGuestPhone, formGuestGender, formGuestNationality, formGuestAddress,
-      formBirthdate, formPreparedBy, formCompanyName, formVehiclePlate, formInvoiceNumber,
+      formBirthdate, formPreparedBy, formCompanyName, formInstitution, formVehiclePlate, formInvoiceNumber,
       formSource, formBreakfastRoomIds, formCompanions,
       formExtraFoam, formExtraPillow, formExtraBlanket, formExtraTowel,
       formChairs, formEventTable, formEventTent, formVenueExcessHours, formVenueTypes,
@@ -808,6 +818,20 @@ export function WalkInBookingForm({
                         }}
                         onOpenProfile={openAgencyProfile}
                         onRemove={removeAgency}
+                      />
+                    ) : null}
+                    institutionOn={institutionOn}
+                    institutionKey={formInstitution}
+                    institutionPicking={institutionPicking}
+                    onAddInstitution={() => { setInstitutionOn(true); setInstitutionPicking(true) }}
+                    onRemoveInstitution={removeInstitution}
+                    institutionSlot={institutionOn ? (
+                      <InstitutionFields
+                        value={formInstitution}
+                        picking={institutionPicking}
+                        setPicking={setInstitutionPicking}
+                        onChange={setFormInstitution}
+                        onRemove={removeInstitution}
                       />
                     ) : null}
                   />

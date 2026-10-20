@@ -1,6 +1,6 @@
 import React from 'react'
 import { Companion, PartnerDeal } from '../../types/booking'
-import { Building2, ChevronDown } from 'lucide-react'
+import { Building2, ChevronDown, Landmark } from 'lucide-react'
 import { CompanionFields } from './CompanionFields'
 import { BlockReasonFields } from './BlockReasonFields'
 import { BirthDateInput } from './BirthDateInput'
@@ -58,6 +58,14 @@ interface RoomDetailsFormProps {
   onRemoveAgency: () => void
   /** The bill-to line / picker, built by the form (see AgencyFields). */
   agencySlot?: React.ReactNode
+  /** The guest's institution — the second line of the ⋯, under Add agency? (2026-10-20). */
+  institutionOn: boolean
+  /** What the institution line shows, for the memo (as `agencyKey`). */
+  institutionKey: string
+  institutionPicking: boolean
+  onAddInstitution: () => void
+  onRemoveInstitution: () => void
+  institutionSlot?: React.ReactNode
 }
 
 export const RoomDetailsForm = React.memo(
@@ -90,7 +98,11 @@ export const RoomDetailsForm = React.memo(
     formCompanyName,
     onAddAgency,
     onRemoveAgency,
-    agencySlot
+    agencySlot,
+    institutionOn,
+    onAddInstitution,
+    onRemoveInstitution,
+    institutionSlot
   }: RoomDetailsFormProps) => {
     /** The ⋯ menu: the only way into the agency feature the owner asked for. */
     const [menuOpen, setMenuOpen] = React.useState(false)
@@ -152,6 +164,16 @@ export const RoomDetailsForm = React.memo(
                   <button type="button" onClick={() => { setMenuOpen(false); onRemoveAgency() }}
                     className="w-full text-left px-3 h-11 text-[14px] font-semibold text-danger-600 hover:bg-gold-100 cursor-pointer">Remove agency</button>
                 )}
+                {/* The institution sits next to the agency, the owner's note (2026-10-20). */}
+                {!institutionOn ? (
+                  <button type="button" onClick={() => { setMenuOpen(false); onAddInstitution() }}
+                    className="w-full text-left px-3 h-11 text-[14px] font-semibold text-main hover:bg-gold-100 flex items-center gap-2 cursor-pointer border-t border-soft">
+                    <Landmark className="w-4 h-4 text-brand-text" /> Add institution?
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => { setMenuOpen(false); onRemoveInstitution() }}
+                    className="w-full text-left px-3 h-11 text-[14px] font-semibold text-danger-600 hover:bg-gold-100 cursor-pointer border-t border-soft">Remove institution</button>
+                )}
               </div>
             )}
           </div>
@@ -160,6 +182,7 @@ export const RoomDetailsForm = React.memo(
         {/* The agency line (BILL TO …) sits ABOVE the guest's name — the paper's own order,
             COMPANY over NAME OF GUEST. */}
         {agencySlot}
+        {institutionSlot}
 
         {/* Name and Contact No. come first (the owner's design, 2026-09-28) — the two
             things the desk always types. Everything else waits behind "More details"
@@ -288,6 +311,9 @@ export const RoomDetailsForm = React.memo(
       prevProps.agencyOn === nextProps.agencyOn &&
       prevProps.agencyKey === nextProps.agencyKey &&
       prevProps.agencyPicking === nextProps.agencyPicking &&
+      prevProps.institutionOn === nextProps.institutionOn &&
+      prevProps.institutionKey === nextProps.institutionKey &&
+      prevProps.institutionPicking === nextProps.institutionPicking &&
 
       prevProps.hasRooms === nextProps.hasRooms &&
       compsEqual

@@ -47,6 +47,7 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     expires_at: (b.expires_at as string) || null,
     partner_deal_id: (b.partner_deal_id as string) || undefined,
     company_name: (b.company_name as string) || undefined,
+    institution: (b.institution as string) || undefined,
     vehicle_plate: (b.vehicle_plate as string) || undefined,
     invoice_number: (b.invoice_number as string) || undefined,
     invoice_type: (b.invoice_type as Booking['invoice_type']) || undefined,
