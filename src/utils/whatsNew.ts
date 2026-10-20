@@ -34,6 +34,12 @@ export const UPDATES: Update[] = [
         ],
       },
       {
+        where: 'Front desk → Booking panel',
+        what: [
+          'You can take a charge off a booking: open Bill and press ✕ beside it (breakfast, extra foam, late checkout…). Press Undo if it was a mistake.',
+        ],
+      },
+      {
         where: 'Front desk → New booking',
         what: [
           'You can add the guest’s institution (a school or an office). Press ⋯ beside Guest, then Add institution?',

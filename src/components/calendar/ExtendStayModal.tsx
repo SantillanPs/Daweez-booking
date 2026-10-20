@@ -40,6 +40,7 @@ import { showToast } from '../../utils/toast'
 import { askConfirm } from '../../utils/confirm'
 import { confettiCannon } from '../../utils/confetti'
 import { todaysDoors } from '../../utils/doors'
+import { bookingLines, StatementLineItem } from '../../utils/statementLines'
 
 interface ExtendStayModalProps {
   booking: Booking
@@ -468,6 +469,33 @@ export function ExtendStayModal({
   const withRecomputedBalance = (base: Booking, patch: Partial<Booking>): Booking =>
     recomputeBalance({ ...base, ...patch }, { rooms, venues, tabTotal: tabAmount })
 
+  // **A charge can be taken off** (the owner's note, 2026-10-20). It goes at once and is
+  // saved behind; Undo puts the booking back as it was for five seconds (the plan he approved).
+  const [removed, setRemoved] = useState<{ label: string; amount: number; before: Booking } | null>(null)
+  const removedTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(removedTimer.current), [])
+  const removeCharge = async (line: StatementLineItem) => {
+    if (!line.remove) return
+    const before = localBooking
+    const updated = withRecomputedBalance(localBooking, line.remove)
+    layout(() => { setLocalBooking(updated); setRemoved({ label: line.description, amount: line.amount, before }) })
+    window.clearTimeout(removedTimer.current)
+    removedTimer.current = window.setTimeout(() => setRemoved(null), 5000)
+    try {
+      await onUpdateBooking?.(updated)
+    } catch {
+      layout(() => { setLocalBooking(before); setRemoved(null) })
+      showToast('Could not remove ' + line.description + '. Please try again.', 'error')
+    }
+  }
+  const undoRemove = async () => {
+    if (!removed) return
+    window.clearTimeout(removedTimer.current)
+    const { before } = removed
+    layout(() => { setLocalBooking(before); setRemoved(null) })
+    try { await onUpdateBooking?.(before) } catch { showToast('Could not put the charge back. Please try again.', 'error') }
+  }
+
   const billedToAgency = isBilledToAgency(localBooking)
   const owes = hasOutstandingBalance(localBooking)
   const isBlock = localBooking.status === 'blocked'
@@ -780,7 +808,12 @@ export function ExtendStayModal({
     ? 'Short stay · ' + stayHoursOf(localBooking) + ' hours'
     : (booking.room_id ? 'Room' : 'Venue') + ' · ' + nights + (booking.room_id ? (nights === 1 ? ' night' : ' nights') : (nights === 1 ? ' day' : ' days'))
   const hasBill = !isBlock && (totalCharge > 0 || receiptRecords.length > 0 || slips.length > 0)
-  const billLines = 1 + slips.length + receiptRecords.length
+  // The bill's own rows, as the paper prints them (no food: the slips are listed below).
+  // Only once the room's prices are in — without them the rows would be priced from samples.
+  const charges = (booking.room_id ? room : venue)
+    ? bookingLines(localBooking, { rooms, venues, bookingsList: bookings }).items
+    : []
+  const billLines = Math.max(1, charges.length) + slips.length + receiptRecords.length
   const breakfastWanted = wantsBreakfastToday(localBooking, todayKey)
   // After 11 AM an unasked morning is not asked any more — it reads as nothing today.
   const breakfastUnasked = breakfastWanted && !breakfastToday && breakfastAskOpen()
@@ -926,11 +959,21 @@ export function ExtendStayModal({
                 {/* Recorded early check-in, not billed yet: one line saying what the guest
                     will owe and when it lands, so the money never moves in silence. */}
                 {pendingEarly > 0 && (
-                  <p className="text-[12px] font-semibold text-brand-text leading-snug">
-                    Early check-in {earlyHoursRecorded} hour{earlyHoursRecorded > 1 ? 's' : ''}
-                    {earlyHoursRecorded > getRateConfig().lateEarlyCapHours ? ' (past the ' + getRateConfig().lateEarlyCapHours + '-hour cap)' : ''}
-                    {' — '}{fmtPeso(pendingEarly)} goes on the bill at check-out.
-                  </p>
+                  <div className="flex items-center gap-1">
+                    <p className="flex-1 text-[12px] font-semibold text-brand-text leading-snug">
+                      Early check-in {earlyHoursRecorded} hour{earlyHoursRecorded > 1 ? 's' : ''}
+                      {earlyHoursRecorded > getRateConfig().lateEarlyCapHours ? ' (past the ' + getRateConfig().lateEarlyCapHours + '-hour cap)' : ''}
+                      {' — '}{fmtPeso(pendingEarly)} goes on the bill at check-out.
+                    </p>
+                    {/* Not on the bill yet, so it is taken off here (2026-10-20). */}
+                    {onUpdateBooking && (
+                      <button type="button" aria-label="Remove the early check-in charge" title="Remove the early check-in charge"
+                        onClick={() => void removeCharge({ key: 'early-pending', band: 'extras', description: 'Early check-in', qty: '', unit: 'HR', price: pendingEarly, discount: 0, amount: pendingEarly, remove: { early_check_in_hours: 0 } })}
+                        className="w-10 h-10 -mr-2 shrink-0 flex items-center justify-center rounded-lg text-muted hover:text-danger-600 hover:bg-danger-50 active:scale-90 transition cursor-pointer">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 {/* Why the action just pressed did not go through — on the page, beside
@@ -1019,14 +1062,40 @@ export function ExtendStayModal({
                       <span>{hasBill ? (details ? 'Bill & details · ' : 'Bill · ') + billLines + (billLines === 1 ? ' line' : ' lines') : 'Details'}</span>
                       <ChevronDown className={'w-4 h-4 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ' + (billOpen ? 'rotate-180' : '')} />
                     </button>
+                    {removed && (
+                      <div role="status" key={removed.label} className="bw-arrive relative overflow-hidden flex items-center gap-2 h-11 my-1.5 rounded-lg bg-ink-900 text-white pl-3 pr-1.5 text-[13px] font-semibold">
+                        <span className="flex-1 min-w-0 truncate">{removed.label} removed · {fmtPeso(Math.abs(removed.amount))}</span>
+                        <button type="button" onClick={() => void undoRemove()}
+                          className="h-8 px-3.5 rounded-md bg-gold-400 text-ink-900 text-[13px] font-bold cursor-pointer active:scale-95 transition-transform">Undo</button>
+                        <span aria-hidden="true" style={{ '--ms': '5000ms' } as React.CSSProperties} className="fd-drain absolute left-0 bottom-0 h-[3px] w-full bg-gold-400" />
+                      </div>
+                    )}
                     {billOpen && (
                       <div className="bw-billin">
                         {hasBill && (
                           <ul>
-                            <li className="flex items-center justify-between gap-3 min-h-10 border-b border-dashed border-paper-300 last:border-0 text-[12px]">
-                              <span className="font-semibold text-main">{stayCharge}</span>
-                              <span className="font-semibold text-main tabular-nums">{fmtPeso(totalCharge - tabAmount)}</span>
-                            </li>
+                            {charges.length === 0 ? (
+                              <li className="flex items-center justify-between gap-3 min-h-10 border-b border-dashed border-paper-300 last:border-0 text-[12px]">
+                                <span className="font-semibold text-main">{stayCharge}</span>
+                                <span className="font-semibold text-main tabular-nums">{fmtPeso(totalCharge - tabAmount)}</span>
+                              </li>
+                            ) : charges.map(line => (
+                              <li key={line.key} className="flex items-center justify-between gap-2 min-h-10 border-b border-dashed border-paper-300 last:border-0 text-[12px]">
+                                <span className="font-semibold text-main min-w-0">{line.band === 'room' ? stayCharge : line.description}</span>
+                                <span className="flex items-center shrink-0">
+                                  <span className={'font-semibold tabular-nums ' + (line.amount < 0 ? 'text-emerald-700' : 'text-main')}>
+                                    {line.amount < 0 ? '−' + fmtPeso(-line.amount) : fmtPeso(line.amount)}
+                                  </span>
+                                  {line.remove && onUpdateBooking && (
+                                    <button type="button" onClick={() => void removeCharge(line)}
+                                      aria-label={'Remove ' + line.description} title={'Remove ' + line.description}
+                                      className="w-10 h-10 -mr-2 flex items-center justify-center rounded-lg text-muted hover:text-danger-600 hover:bg-danger-50 active:scale-90 transition cursor-pointer">
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </span>
+                              </li>
+                            ))}
                             <BookingOrderSlips
                               slips={slips}
                               who={localBooking.guest_name || 'Guest'}

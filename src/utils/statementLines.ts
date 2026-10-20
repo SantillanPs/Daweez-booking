@@ -38,6 +38,12 @@ export interface StatementLineItem {
   nights?: number
   /** Order slip rows only: `Paid` or `Not paid`, printed beside the slip's number. */
   status?: string
+  /**
+   * What taking this charge off the booking writes (the owner's note, 2026-10-20: "be able
+   * to remove charges in reservations"). Only on charges the desk added; the stay itself is
+   * changed by its dates, and an order slip belongs to the restaurant.
+   */
+  remove?: Partial<Booking>
 }
 
 /**
@@ -184,6 +190,8 @@ export function bookingLines(b: Booking, o: {
       price: -Math.round(pricing.appliedDiscountAmount),
       discount: 0,
       amount: -Math.round(pricing.appliedDiscountAmount),
+      // A value of 0, not null: `update_booking` keeps the stored discount when sent null.
+      remove: { applied_discount: { type: 'flat', value: 0 } },
     })
   }
 
@@ -199,23 +207,30 @@ export function bookingLines(b: Booking, o: {
       price: Math.round(pricing.breakfastTotal / (pricing.breakfastNights || 1)),
       discount: 0,
       amount: Math.round(pricing.breakfastTotal),
+      remove: { breakfast_included: false },
     })
   }
 
-  // Early check-in / late checkout.
-  if (pricing.earlyLateTotal > 0) {
-    const hrs = (b.early_check_in_hours || 0) + (b.late_check_out_hours || 0)
+  // Early check-in and late checkout, a row each so either can be taken off on its own
+  // (Sebastian, 2026-10-20: "include the charges from late checkin and checkout").
+  const earlyLate: Array<[string, string, number, number, Partial<Booking>]> = [
+    ['early', 'Early check-in', chargeableEarlyHours(b), pricing.earlyCharge, { early_check_in_hours: 0 }],
+    ['late', 'Late checkout', Number(b.late_check_out_hours || 0), pricing.lateCharge, { late_check_out_hours: 0 }],
+  ]
+  earlyLate.forEach(([k, label, hrs, charge, remove]) => {
+    if (!(charge > 0)) return
     items.push({
-      key: b.id + '-earlylate',
+      key: b.id + '-' + k,
       band: 'extras',
-      description: 'Early check-in / late checkout',
+      description: label + ' · ' + hrs + (hrs === 1 ? ' hr' : ' hrs'),
       qty: String(hrs),
       unit: 'HR',
-      price: hrs > 0 ? Math.round(pricing.earlyLateTotal / hrs) : Math.round(pricing.earlyLateTotal),
+      price: hrs > 0 ? Math.round(charge / hrs) : Math.round(charge),
       discount: 0,
-      amount: Math.round(pricing.earlyLateTotal),
+      amount: Math.round(charge),
+      remove,
     })
-  }
+  })
 
   // Breakfast recorded against a VENUE booking keeps its own rows (there is no room
   // price to fold it into).
@@ -232,6 +247,7 @@ export function bookingLines(b: Booking, o: {
         price: Math.round(r.price || 0),
         discount: 0,
         amount: Math.round((r.price || 0) * (r.quantity || 0)),
+        remove: { breakfast_records: (b.breakfast_records || []).filter(x => x.id !== r.id) },
       })
     })
   }
@@ -245,22 +261,22 @@ export function bookingLines(b: Booking, o: {
   // Extra linen / amenities for rooms (per night) and event rental equipment.
   const er = b.equipment_rentals
   if (er) {
-    // [label, count, unit, per-night?, rate]
-    const rentals: Array<[string, number, string, boolean, number]> = []
+    // [label, count, unit, per-night?, rate, field]
+    const rentals: Array<[string, number, string, boolean, number, keyof typeof er]> = []
     if (isRoom) {
-      if (er.extraFoamCount) rentals.push(['Extra foam', er.extraFoamCount, 'PC', true, 200])
-      if (er.extraPillowCount) rentals.push(['Extra pillow', er.extraPillowCount, 'PC', true, 50])
-      if (er.extraBlanketCount) rentals.push(['Extra blanket', er.extraBlanketCount, 'PC', true, 50])
-      if (er.extraTowelCount) rentals.push(['Extra towel', er.extraTowelCount, 'PC', true, 50])
+      if (er.extraFoamCount) rentals.push(['Extra foam', er.extraFoamCount, 'PC', true, 200, 'extraFoamCount'])
+      if (er.extraPillowCount) rentals.push(['Extra pillow', er.extraPillowCount, 'PC', true, 50, 'extraPillowCount'])
+      if (er.extraBlanketCount) rentals.push(['Extra blanket', er.extraBlanketCount, 'PC', true, 50, 'extraBlanketCount'])
+      if (er.extraTowelCount) rentals.push(['Extra towel', er.extraTowelCount, 'PC', true, 50, 'extraTowelCount'])
     } else {
-      if (er.bigTableCount) rentals.push(['Big table', er.bigTableCount, 'PC', false, 150])
-      if (er.smallTableCount) rentals.push(['Small table', er.smallTableCount, 'PC', false, 100])
-      if (er.chairCount) rentals.push(['Chairs', er.chairCount, 'PC', false, 15])
-      if (er.mineralWaterCount) rentals.push(['Mineral water', er.mineralWaterCount, 'PC', false, 35])
-      if (er.tableCount) rentals.push(['Extra table', er.tableCount, 'PC', false, 150])
-      if (er.tentCount) rentals.push(['Extra tent', er.tentCount, 'PC', false, 500])
+      if (er.bigTableCount) rentals.push(['Big table', er.bigTableCount, 'PC', false, 150, 'bigTableCount'])
+      if (er.smallTableCount) rentals.push(['Small table', er.smallTableCount, 'PC', false, 100, 'smallTableCount'])
+      if (er.chairCount) rentals.push(['Chairs', er.chairCount, 'PC', false, 15, 'chairCount'])
+      if (er.mineralWaterCount) rentals.push(['Mineral water', er.mineralWaterCount, 'PC', false, 35, 'mineralWaterCount'])
+      if (er.tableCount) rentals.push(['Extra table', er.tableCount, 'PC', false, 150, 'tableCount'])
+      if (er.tentCount) rentals.push(['Extra tent', er.tentCount, 'PC', false, 500, 'tentCount'])
     }
-    rentals.forEach(([label, count, unit, perNight, rate]) => {
+    rentals.forEach(([label, count, unit, perNight, rate, field]) => {
       items.push({
         key: b.id + '-' + label,
         band: 'extras',
@@ -270,6 +286,7 @@ export function bookingLines(b: Booking, o: {
         price: rate,
         discount: 0,
         amount: (perNight ? count * nights : count) * rate,
+        remove: { equipment_rentals: { ...er, [field]: 0 } },
       })
     })
   }
@@ -284,17 +301,18 @@ export function bookingLines(b: Booking, o: {
       price: 500,
       discount: 0,
       amount: b.venue_excess_hours * 500,
+      remove: { venue_excess_hours: 0 },
     })
   }
 
   const ea = b.event_addons
   if (ea) {
-    const addons: Array<[string, number]> = []
-    if (ea.fullBandAndLights) addons.push(['Full band & lights', 2000])
-    if (ea.stage) addons.push(['Stage', 2000])
-    if (ea.ledWall) addons.push(['LED wall', 5000])
-    addons.forEach(([label, rate]) => {
-      items.push({ key: b.id + '-addon-' + label, band: 'extras', description: label, qty: '1', unit: 'PC', price: rate, discount: 0, amount: rate })
+    const addons: Array<[string, number, keyof typeof ea]> = []
+    if (ea.fullBandAndLights) addons.push(['Full band & lights', 2000, 'fullBandAndLights'])
+    if (ea.stage) addons.push(['Stage', 2000, 'stage'])
+    if (ea.ledWall) addons.push(['LED wall', 5000, 'ledWall'])
+    addons.forEach(([label, rate, field]) => {
+      items.push({ key: b.id + '-addon-' + label, band: 'extras', description: label, qty: '1', unit: 'PC', price: rate, discount: 0, amount: rate, remove: { event_addons: { ...ea, [field]: false } } })
     })
   }
 

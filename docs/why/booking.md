@@ -119,6 +119,7 @@
 - **It opens one step at a time** (same mock: *"what would it look like with progressive disclosure?"*). Receive is one button; pressed, it opens into the four ways to pay, and Cash or Check is the payment itself — GCash and a bank transfer ask for their reference first. The guest's phone and the rest fold in with the bill.
 - **A door asks where its button was**, not in a pop-up: Check in, Check out, Undo and Cancel each put their question in place, with Back.
 - **The tools stay open along the bottom** — he tried them behind a "More" and said *"remove this. just keep it open"*. **There is no Take orders on a booking** (*"these should never have take orders"*): an order starts with a table on the Restaurant screen.
+- **A charge can be taken off** (the owner's note, 2026-10-20: *"be able to remove charges in reservations"*; Sebastian approved the plan from a mock). The folded bill lists the paper's own rows, and each charge the desk added (breakfast, early or late hours, extra linen, venue equipment, stage and band, a discount) has a ✕. It goes at once, the amount counts down, and Undo stays for five seconds. The stay itself has no ✕ (change the dates or cancel), nor has an order slip (the restaurant's). Removing breakfast also stops the morning breakfast question. Nothing records that a charge was removed.
 
 ## Other rules
 
