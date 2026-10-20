@@ -30,6 +30,7 @@ export const UPDATES: Update[] = [
         what: [
           'The Gazebo and the Garden are now booked by the hour, like a room’s short stay. Tap one day on the Gazebo for 6h or 4h w/ aircon, or on the Garden for 6h.',
           'The first time an hour has no price, the calendar asks you for it.',
+          'The bookings on the calendar no longer show an amount, only Paid, Not paid, Part paid or Deposit paid. Point at one to see how much.',
         ],
       },
       {

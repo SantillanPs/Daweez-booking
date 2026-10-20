@@ -83,19 +83,23 @@ export const dueToday = (b: Booking, todayIso: string): 'in' | 'out' | null => {
 // says the same. For a few hours on 2026-10-08 the words were a blue corner instead;
 // Sebastian had the words back the same day — the corner on a rounded pill looked like a
 // skullcap — so `noDeposit` now only tells a half-day pill to turn its initials blue.
-export const pillMoney = (b: Booking): { text: string; className: string; noDeposit?: boolean } => {
+//
+// **The pill shows no amount** (Sebastian, 2026-10-20: "remove amount due in reservation
+// pills"). `pill` is the words alone, its colour still red or green; `text` keeps the figure
+// for the hover card, which is where the desk looks for how much.
+export const pillMoney = (b: Booking): { text: string; pill: string; className: string; noDeposit?: boolean } => {
   const view = getPaymentView(b)
   const due = Number(b.balance_due || 0)
   const peso = '₱' + due.toLocaleString()
-  if (view.tone === 'paid') return { text: 'Paid', className: PILL_MONEY.paid }
+  if (view.tone === 'paid') return { text: 'Paid', pill: 'Paid', className: PILL_MONEY.paid }
   if (view.tone === 'reserved') {
-    if (!hasPaymentRecorded(b)) return { text: 'No deposit', className: PILL_NO_DEPOSIT, noDeposit: true }
-    return { text: due > 0 ? peso + ' reserved' : 'Reserved', className: PILL_MONEY.reserved }
+    if (!hasPaymentRecorded(b)) return { text: 'No deposit', pill: 'No deposit', className: PILL_NO_DEPOSIT, noDeposit: true }
+    return { text: due > 0 ? peso + ' reserved' : 'Reserved', pill: 'Deposit paid', className: PILL_MONEY.reserved }
   }
   if (view.tone === 'billed') return hasPaymentRecorded(b)
-    ? { text: peso + ' agency', className: PILL_MONEY.billed }
-    : { text: 'No deposit', className: PILL_NO_DEPOSIT, noDeposit: true }
-  return { text: due > 0 ? peso + ' to pay' : 'Not paid', className: PILL_MONEY.owes }
+    ? { text: peso + ' agency', pill: 'Agency pays', className: PILL_MONEY.billed }
+    : { text: 'No deposit', pill: 'No deposit', className: PILL_NO_DEPOSIT, noDeposit: true }
+  return { text: due > 0 ? peso + ' to pay' : 'Not paid', pill: view.tone === 'partial' ? 'Part paid' : 'Not paid', className: PILL_MONEY.owes }
 }
 
 /** Blue is the colour of "no deposit" and of nothing else on the calendar — red is money owed,

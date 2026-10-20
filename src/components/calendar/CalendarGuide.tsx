@@ -38,7 +38,7 @@ export function CalendarGuide() {
             <Row sign={<Pill className="bg-emerald-50 door-glow-out" />}>Rippling black: check out today</Row>
             <Row sign={<Building2 className="w-4 h-4" />}>Agency reservation</Row>
             <Row sign={<span className="font-display text-[13px] font-bold text-blue-700">AB</span>}>Blue initials: no deposit</Row>
-            <Row sign={<span className="font-display font-bold"><span className="text-danger-600">₱</span> <span className="text-emerald-700">₱</span></span>}>Red to pay, green paid</Row>
+            <Row sign={<span className="font-display font-bold"><span className="text-danger-600">₱</span> <span className="text-emerald-700">₱</span></span>}>Red to pay, green paid · hover for how much</Row>
           </Section>
 
           <Section title="On the room">

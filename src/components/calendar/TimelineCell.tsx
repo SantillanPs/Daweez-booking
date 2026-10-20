@@ -4,7 +4,6 @@ import { dateToString } from '../../utils/helpers'
 import { Booking } from '../../types/booking'
 import { pillInitials, pillMoney } from './bookingStyles'
 import { clockLabel, shortStayEnd } from '../../utils/shortStay'
-import { CountPeso } from '../CountPeso'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 
 export interface TimelineCellProps {
@@ -73,20 +72,15 @@ const nightsWord = (from: string, to: string): string => {
 
 /**
  * The money line of a pill. **It answers a payment where the desk is looking** (Sebastian,
- * 2026-10-09): an amount counts down to its new figure, and when the words change kind —
- * "₱2,800 to pay" to "Paid" — the new words come up from under the line. Nothing moves
- * when the calendar first opens: the words it was first given are simply there.
+ * 2026-10-09): when the words change — "Not paid" to "Paid" — the new words come up from
+ * under the line. Nothing moves when the calendar first opens. It shows no amount since
+ * 2026-10-20 (`pillMoney`), so there is no figure to count any more.
  */
-function MoneyWords({ text, amount, className }: { text: string; amount: number; className: string }) {
+function MoneyWords({ text, className }: { text: string; className: string }) {
   const [first] = React.useState(text)
-  // `₱2,800 to pay`, `₱500 agency`: the figure counts, the words after it stay.
-  const tail = text.startsWith('₱') ? text.slice(text.indexOf(' ')) : ''
-  const kind = tail || text
   return (
     <span className={'relative text-[12px] font-semibold truncate leading-4 ' + className}>
-      <span key={kind} className={kind === (first.startsWith('₱') ? first.slice(first.indexOf(' ')) : first) ? '' : 'bp-up'}>
-        {tail ? <><CountPeso value={amount} />{tail}</> : text}
-      </span>
+      <span key={text} className={text === first ? '' : 'bp-up'}>{text}</span>
     </span>
   )
 }
@@ -367,10 +361,10 @@ export const TimelineCell = React.memo(
               <span className={'relative text-[12px] font-semibold truncate leading-4 ' + (isShortStayDue ? '' : showClock ? 'text-ink-700' : money.className)}>
                 {isShortStayDue && freeAt ? 'time up ' + clockLabel(freeAt)
                   : showClock && freeAt ? 'out ' + clockLabel(freeAt)
-                    : booking.stay_hours + ' hrs · ' + money.text}
+                    : booking.stay_hours + ' hrs · ' + money.pill}
               </span>
             ) : (
-              <MoneyWords text={money.text} amount={Number(booking.balance_due || 0)} className={money.className} />
+              <MoneyWords text={money.pill} className={money.className} />
             ))}
             </>)}
           </div>
