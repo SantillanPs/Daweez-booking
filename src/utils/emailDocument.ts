@@ -70,6 +70,9 @@ export async function paperToPdf(paper: HTMLElement, size: Paper): Promise<strin
         row.style.backgroundColor = 'transparent'
         Array.from(row.children).forEach(cell => { (cell as HTMLElement).style.backgroundColor = fill })
       })
+      // The paper as it prints: what is kept for paper shows, what is only for the screen goes.
+      copy.querySelectorAll('[data-paper]').forEach(el => el.classList.remove('hidden'))
+      copy.querySelectorAll('[data-screen]').forEach(el => el.remove())
       if (size === 'a5') {
         // The sheet as the printer lays it out, not as the preview pads it.
         copy.style.width = A5_WIDTH_PX + 'px'

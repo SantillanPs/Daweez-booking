@@ -1,4 +1,5 @@
 import React from 'react'
+import { X } from 'lucide-react'
 import { StatementBand, StatementLineItem } from '../../utils/statement'
 
 const money = (n: number) => (n < 0 ? '−₱' + Math.abs(n).toLocaleString() : '₱' + n.toLocaleString())
@@ -42,7 +43,16 @@ const BAND_ORDER: StatementBand[] = ['room', 'breakfast', 'extras', 'food', 'dis
  * bill says its dates once, in its Stay block (the owner, 2026-10-15: *"make sure to check for
  * redundancies"*). A group whose rooms have different dates then shows only the first room's.
  */
-export function StatementChargesTable({ items, dates = true }: { items: StatementLineItem[]; dates?: boolean }) {
+export function StatementChargesTable({ items, dates = true, onRemove, isNew, children }: {
+  items: StatementLineItem[]
+  dates?: boolean
+  /** On a bill the desk is working on: an × that takes a charge it added off (never printed). */
+  onRemove?: (it: StatementLineItem) => void
+  /** Rows written since the bill opened, which settle in like ink. */
+  isNew?: (key: string) => boolean
+  /** Rows under the charges — the desk's "Add a charge". */
+  children?: React.ReactNode
+}) {
   const bands = BAND_ORDER
     .map(band => ({ band, rows: items.filter(i => i.band === band) }))
     .filter(b => b.rows.length > 0)
@@ -77,11 +87,17 @@ export function StatementChargesTable({ items, dates = true }: { items: Statemen
                 <td colSpan={dates ? 6 : 4} className="pt-1 text-[10px] font-medium text-muted">{BAND_LABEL[band]}</td>
               </tr>
               {rows.map(it => (
-                <tr key={it.key}>
+                <tr key={it.key} className={isNew?.(it.key) ? 'bill-ink' : undefined}>
                   {/* An order slip says whether it is paid, beside its number — on one line. */}
                   <td className={cell + ' pl-0 text-left' + (it.status ? '' : ' whitespace-normal')}>
                     {it.description}
                     {it.status && <span className="ml-1.5 border border-ink-900 px-1 text-[8.5px] font-bold uppercase tracking-wide">{it.status}</span>}
+                    {onRemove && it.remove && (
+                      <button type="button" data-screen onClick={() => onRemove(it)} aria-label={'Take ' + it.description + ' off the bill'}
+                        className="print:hidden -my-1 ml-0.5 p-1 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                   </td>
                   <td className={cell + ' text-right font-mono'}>{it.price ? money(it.price) : '—'}</td>
                   {dates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>}
@@ -97,6 +113,7 @@ export function StatementChargesTable({ items, dates = true }: { items: Statemen
               ))}
             </React.Fragment>
           ))}
+          {children}
         </tbody>
       </table>
     </div>

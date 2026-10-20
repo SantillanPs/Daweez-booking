@@ -244,6 +244,8 @@ export function calculatePricing(params: {
     if (eventAddons.fullBandAndLights) addonsTotal += 2000
     if (eventAddons.stage) addonsTotal += 2000
     if (eventAddons.ledWall) addonsTotal += 5000
+    // What the desk wrote on the bill (`BillCharge`) — at the figure it typed.
+    for (const c of eventAddons.charges || []) addonsTotal += Number(c.amount || 0)
   }
 
   const securityDeposit = 0

@@ -274,7 +274,9 @@ export function useBookings() {
 
       const pricing = syncEngine.calculatePricing({
         roomId, venueId, checkIn, checkOut, guestEmail,
-        equipmentRentals, eventAddons,
+        // A room's form sends no add-ons, and the saved ones are kept (below) — so they are
+        // priced too, or a correction drops the charges written on the bill from the balance.
+        equipmentRentals, eventAddons: eventAddons ?? (id ? allBookings.find(b => b.id === id)?.event_addons : undefined),
         bookingsList: bookings, rateMultiplier,
         contractRateOverride, venueExcessHours,
         rooms, venues,

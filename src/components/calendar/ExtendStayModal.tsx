@@ -490,6 +490,20 @@ export function ExtendStayModal({
       showToast('Could not remove ' + line.description + '. Please try again.', 'error')
     }
   }
+  // **A charge written on the bill** (Sebastian, 2026-10-20: "DINNER - 300 pesos"), saved behind.
+  const addCharge = async (name: string, amount: number) => {
+    const before = localBooking
+    const ea = localBooking.event_addons || {}
+    const charge = { id: newReceiptId(), name, amount, date: todayKey }
+    const updated = withRecomputedBalance(localBooking, { event_addons: { ...ea, charges: [...(ea.charges || []), charge] } })
+    setLocalBooking(updated)
+    try {
+      await onUpdateBooking?.(updated)
+    } catch {
+      setLocalBooking(before)
+      showToast('Could not add ' + name + '. Please try again.', 'error')
+    }
+  }
   const undoRemove = async () => {
     if (!removed) return
     window.clearTimeout(removedTimer.current)
@@ -648,10 +662,16 @@ export function ExtendStayModal({
 
   // Record a payment: creates a receipt (date + time) only when the guest pays.
   // What is missing is shown on the Receive box itself; these only guard the save.
-  const handleAddReceipt = async () => {
-    const method = receiptMethod
-    const reference = methodNeedsReference(method) ? receiptRef.trim() : ''
-    const amount = Number(receiveAmount) || 0
+  // `written` is a payment written on the bill (`BillDesk`): it carries its own amount, way and
+  // day, and its receipt is printed from its line there, not pushed up over the bill.
+  const handleAddReceipt = async (written?: { amount: number; method: string; reference: string; date: string }) => {
+    const method = written ? written.method : receiptMethod
+    const reference = methodNeedsReference(method) ? (written ? written.reference : receiptRef).trim() : ''
+    const amount = Number(written ? written.amount : receiveAmount) || 0
+    const paying = written ? unpaid.find(s => s.total === amount && s.total < due) : payingSlip
+    // A payment written in later keeps the day the guest paid (the desk catches up — they are
+    // rarely at the desk when it happens); today's is stamped now.
+    const paidAt = written && written.date !== todayKey ? new Date(written.date + 'T12:00:00').toISOString() : new Date().toISOString()
     if (amount <= 0) return
     // The method is the guest's own choice, so it is never assumed: no method, no receipt.
     if (!method.trim()) return
@@ -663,13 +683,13 @@ export function ExtendStayModal({
       amount,
       method,
       reference: reference || undefined,
-      paid_at: new Date().toISOString(),
+      paid_at: paidAt,
       prepared_by: localBooking.prepared_by,
       // Stored, not derived: the receipt keeps this number even if another
       // payment is later removed. Handed the whole list so it cannot take a number another booking
       // already used this month — the payment's own records alone always start a fresh booking at 001.
       receipt_number: nextReceiptNumber(localBooking, allBookings || bookings),
-      ...(payingSlip ? { slips: [slipNumber(payingSlip.tab)] } : {}),
+      ...(paying ? { slips: [slipNumber(paying.tab)] } : {}),
     }
     const status = remaining <= 0 ? 'paid' as const : localBooking.payment_status === 'paid' ? 'paid' as const : 'downpayment' as const
     const updated = {
@@ -692,15 +712,17 @@ export function ExtendStayModal({
     const sealSeen = new Promise(resolve => window.setTimeout(resolve, SEAL_MS + FILL_MS))
     try {
       await onUpdateBooking?.(updated)
-      await sealSeen
-      setReceiptFor(rec)
-      setShowReceipt(true)
-      // Dismissing the receipt closes this whole panel **only when the guest has already
-      // been checked in** and this was the **first money recorded**: there the payment was
-      // the last errand. Before arrival it never closes — the booking is paid, the guest is
-      // standing at the desk, and closing would take Check in away with it (the owner's
-      // correction, 2026-09).
-      setCloseAfterPayment(paidSoFar <= 0 && !!localBooking.actual_check_in)
+      if (!written) {
+        await sealSeen
+        setReceiptFor(rec)
+        setShowReceipt(true)
+        // Dismissing the receipt closes this whole panel **only when the guest has already
+        // been checked in** and this was the **first money recorded**: there the payment was
+        // the last errand. Before arrival it never closes — the booking is paid, the guest is
+        // standing at the desk, and closing would take Check in away with it (the owner's
+        // correction, 2026-09).
+        setCloseAfterPayment(paidSoFar <= 0 && !!localBooking.actual_check_in)
+      }
     } catch {
       showToast('Could not record the payment. Please try again.', 'error')
       return
@@ -708,7 +730,7 @@ export function ExtendStayModal({
     // Which order slips this money paid: the one it was taken for, or all of them once
     // nothing is left to pay. A paid slip is closed, so the next order starts a new one.
     try {
-      const paidSlips = payingSlip ? [payingSlip] : remaining <= 0 ? unpaid : []
+      const paidSlips = paying ? [paying] : remaining <= 0 ? unpaid : []
       if (paidSlips.length > 0) await markSlipsPaid(paidSlips.map(s => s.tab.id), rec.receipt_number)
       await reloadSlips()
     } catch {
@@ -757,6 +779,12 @@ export function ExtendStayModal({
     }
   }
   const breakfastToday = breakfastOn(booking, todayKey)
+  // **Receive opens the bill** (Sebastian, 2026-10-20: the staff are used to working payments on
+  // the guest billing paper): the payment is written on the statement. A stay billed to an
+  // agency, and a bill of several rooms, keep the Receive box — a payment there is split
+  // between rooms, which the bill's one blank line does not do.
+  const billDesk = !!onUpdateBooking && !billedToAgency && bookedTogether.length === 1
+  const openReceive = () => billDesk ? setShowPrintModal(true) : layout(() => setReceiveOpen(true))
 
   const who = isBlock ? blockReason(localBooking) : booking.guest_name
   // Under the title: a room's own name, or which kind of venue it is (Ground, Exclusive).
@@ -1016,7 +1044,7 @@ export function ExtendStayModal({
                     loud={step === 'payment'}
                     open={receiveOpen}
                     // The window grows to the amount and the ways to pay, and shrinks back, instead of snapping (Sebastian, 2026-10-17).
-                    onOpen={() => layout(() => setReceiveOpen(true))}
+                    onOpen={openReceive}
                     onClose={() => layout(() => { setReceiveOpen(false); setReceiptAmount(null); setReceiptMethod(''); setReceiptRef('') })}
                     onReceive={() => void handleAddReceipt()}
                   />
@@ -1053,7 +1081,7 @@ export function ExtendStayModal({
                   </button>
                 ))}
                 {!isBlock && due > 0 && step !== 'payment' && !receiveOpen && (
-                  <button type="button" onClick={() => layout(() => setReceiveOpen(true))} className={QUIET_LINK}>
+                  <button type="button" onClick={openReceive} className={QUIET_LINK}>
                     Receive a payment
                   </button>
                 )}
@@ -1292,6 +1320,17 @@ export function ExtendStayModal({
           venues={venues}
           bookingsList={bookings}
           onClose={() => setShowPrintModal(false)}
+          desk={billDesk ? {
+            onPay: p => void handleAddReceipt(p),
+            onCharge: (name, amount) => void addCharge(name, amount),
+            onRemove: line => void removeCharge(line),
+            removed,
+            onUndo: () => void undoRemove(),
+            onReceipt: number => {
+              const rec = receiptRecords.find(x => x.receipt_number === number)
+              if (rec) { setReceiptFor(rec); setShowReceipt(true) }
+            },
+          } : undefined}
         />
       )}
       {showReceipt && receiptFor && (

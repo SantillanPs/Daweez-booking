@@ -315,6 +315,14 @@ export function bookingLines(b: Booking, o: {
     addons.forEach(([label, rate, field]) => {
       items.push({ key: b.id + '-addon-' + label, band: 'extras', description: label, qty: '1', unit: 'PC', price: rate, discount: 0, amount: rate, remove: { event_addons: { ...ea, [field]: false } } })
     })
+    // Charges the desk wrote on the bill, under Extras with the day they were put on.
+    ;(ea.charges || []).forEach(c => {
+      items.push({
+        key: b.id + '-charge-' + c.id, band: 'extras', description: c.name, qty: '1', unit: 'PC',
+        price: c.amount, discount: 0, amount: c.amount, checkIn: c.date,
+        remove: { event_addons: { ...ea, charges: (ea.charges || []).filter(x => x.id !== c.id) } },
+      })
+    })
   }
 
   // The guest's food and bar — its own band, and only when there is food: nothing is

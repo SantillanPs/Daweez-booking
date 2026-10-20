@@ -414,6 +414,14 @@
 .bw-unfold { animation: bw-unfold 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .bw-in { animation: bw-arrive 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--i, 0) * 55ms); }
 .bw-rise { animation: bw-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i, 0) * 55ms); }
+/* The bill as the desk's paper (the pay-on-the-bill mock, Sebastian, 2026-10-20): a line just
+   written settles from gold into ink, left to right, and a bill paid in full is stamped. */
+@keyframes bill-ink { 0% { color: #D0AB60; background: #F5EAD1; clip-path: inset(0 100% 0 0); } 60% { clip-path: inset(0 0 0 0); background: #F5EAD1; } 100% { background: transparent; } }
+@keyframes bill-stamp { from { opacity: 0; transform: rotate(-12deg) scale(2.4); } }
+@keyframes bill-breathe { 50% { border-color: #E8D3A6; } }
+.bill-ink, .bill-ink > td { animation: bill-ink 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.bill-stamp { transform: rotate(-12deg); animation: bill-stamp 0.45s 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bill-blank { animation: bill-breathe 2.4s ease-in-out infinite; }
 /* The short-stay clock: a ring that empties as the hours go, and nudges once they have. */
 @property --bw-p { syntax: "<number>"; inherits: false; initial-value: 0; }
 .bw-ring { width: 22px; height: 22px; flex: none; border-radius: 9999px; background: conic-gradient(currentColor calc(var(--bw-p) * 1turn), rgb(0 0 0 / 0.08) 0);

@@ -134,6 +134,21 @@ export interface EventAddons {
    * exists and every writer already carries it; no key means the plain venue.
    */
   venue_type?: string
+  /**
+   * Charges the desk writes on the bill itself — `Dinner · ₱300` (Sebastian, 2026-10-20: the
+   * staff work on the billing statement, so they add to it there). In this JSON for the same
+   * reason as `venue_type`: the column exists and every writer already carries it.
+   */
+  charges?: BillCharge[]
+}
+
+/** One charge written on the bill by the desk: what for, how much, and the day it was put on. */
+export interface BillCharge {
+  id: string
+  name: string
+  amount: number
+  /** `YYYY-MM-DD`, the day it was added. */
+  date: string
 }
 
 // Staff-applied discount. 'percent' takes a % (20% or 10%) off the stay;

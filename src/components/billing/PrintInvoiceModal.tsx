@@ -8,6 +8,7 @@ import { OrderSlip, getSlipsByBooking } from '../../utils/orderSlips'
 import { showToast } from '../../utils/toast'
 import { useDashboardData } from '../DashboardContext'
 import { groupOf } from '../../utils/bookingGroup'
+import { BillDeskActions } from './BillDesk'
 
 interface PrintInvoiceModalProps {
   booking?: Booking
@@ -17,6 +18,8 @@ interface PrintInvoiceModalProps {
   bookingsList: Booking[]
   onClose: () => void
   embedded?: boolean
+  /** Opened from the booking to work on: payments and charges are written on the bill. */
+  desk?: BillDeskActions
 }
 
 // Controller for the printable "Guest Billing Statement": computes the
@@ -26,7 +29,7 @@ interface PrintInvoiceModalProps {
 // The guest's food and bar tab (k69) is read first and folded into the statement,
 // because the balance the screen shows already includes it — a bill printed
 // without it would disagree with what the guest actually owes.
-export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, bookingsList, onClose, embedded = false }: PrintInvoiceModalProps) {
+export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, bookingsList, onClose, embedded = false, desk }: PrintInvoiceModalProps) {
   const asked = booking || (bookingsToPrint && bookingsToPrint[0])
   // The agency that is paying, if any: its address, contact and TIN print on the bill
   // straight from the profile, so no booking column is needed for them.
@@ -117,6 +120,7 @@ export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, boo
       onClose={onClose}
       onPrint={handlePrint}
       embedded={embedded}
+      desk={desk}
     />
   )
 

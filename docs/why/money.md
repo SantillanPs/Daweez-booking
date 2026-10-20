@@ -22,6 +22,7 @@
 - **A receipt number belongs to one payment across the whole hotel.** Numbers were once counted per booking, so two fresh bookings both got `…-001`. Walk-in restaurant receipts had the same fault until 2026-10-03; they now look at every order slip and every booking.
 - **Staff labels read like plain speech:** big green "Paid", amber "Partial · ₱X left", red "Owes ₱X". The most important number ("Who owes right now") sits at the top of money lists.
 - **Profit should feel like a reward** — bold, vibrant green, not a flat theme colour.
+- **Payments are written on the billing statement** (Sebastian, 2026-10-20: *"most of the time the staff likes to work on payments on the guest billing paper. that's what they are used to"*). Receive opens the statement; the payment goes on a blank line under the payments received — the day, the amount, how they paid — the way the paper is filled in. The day can be an earlier one, for money taken while nobody was at the desk. He picked the "Blank line" design from three (a pad under the paper, ticking the paper's Payment boxes). The payment details, policies and signatures are for the paper only: *"This should only show up when printed."* A stay billed to an agency, and a bill of several rooms, keep the Receive box, since a payment there is shared between rooms.
 
 ## Breakfast
 
@@ -38,6 +39,7 @@
 - **The bill has one `Discount` row, however many rooms were given one** (Sebastian, 2026-10-06: *"just use 1 row for the discount and just show the total of the discount for all"*), and it says `Discount`, not `Staff discount`. Each room still carries its own share in its booking; the rows are joined when the bill is made (`mergeDiscountRows`), and keep the percentage in their words only when every room had the same one.
 - The gap between a room's night price and its hours price is **never** printed as a discount.
 - Extras (foam, pillow, blanket, towel, tables, chairs, tent) are entered once for a group and go on the first room or first venue only.
+- **The desk can add a charge on the bill itself** (Sebastian, 2026-10-20: *"staff should also be able to add a bill in the billing statement. for example: DINNER - 300 pesos"*): what it is for and how much, under Extras. It is kept in `event_addons.charges` and priced with everything else. A charge put on by mistake comes off with its × (he asked, *"how do I remove a charge I just added?"*), with Undo for five seconds.
 
 ## Lessons that cost real money
 

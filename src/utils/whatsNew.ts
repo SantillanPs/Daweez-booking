@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-20d',
+    changes: [
+      {
+        where: 'Front desk → the booking window → Receive',
+        what: [
+          'Receive now opens the billing statement. Tap “Write a payment” under the payments, pick Cash, GCash, Bank or Check, then Record. Change the day if the guest paid earlier.',
+          'Tap “Add a charge” under the bill’s lines to put something on it, like Dinner ₱300. The × beside it takes it off again.',
+          'On screen the statement leaves out the payment details, the policies and the signatures. They still print.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-20c',
     changes: [
       {
