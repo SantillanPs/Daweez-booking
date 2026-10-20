@@ -26,7 +26,7 @@ import { ShortStayClock } from './ShortStayClock'
 import { CountPeso } from '../CountPeso'
 import { stayHoursOf } from '../../utils/shortStay'
 import { BreakfastPicker } from './BreakfastPicker'
-import { wantsBreakfastToday, breakfastOn, breakfastSummary } from '../../utils/breakfastChoice'
+import { wantsBreakfastToday, breakfastOn, breakfastSummary, breakfastAskOpen } from '../../utils/breakfastChoice'
 import { dateToString } from '../../utils/helpers'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 import { groupOf } from '../../utils/bookingGroup'
@@ -781,9 +781,10 @@ export function ExtendStayModal({
     : (booking.room_id ? 'Room' : 'Venue') + ' · ' + nights + (booking.room_id ? (nights === 1 ? ' night' : ' nights') : (nights === 1 ? ' day' : ' days'))
   const hasBill = !isBlock && (totalCharge > 0 || receiptRecords.length > 0 || slips.length > 0)
   const billLines = 1 + slips.length + receiptRecords.length
-  const breakfastWanted = wantsBreakfastToday(localBooking)
-  const breakfastUnasked = breakfastWanted && !breakfastToday
-  const breakfastAsked = breakfastWanted && !!breakfastToday
+  const breakfastWanted = wantsBreakfastToday(localBooking, todayKey)
+  // After 11 AM an unasked morning is not asked any more — it reads as nothing today.
+  const breakfastUnasked = breakfastWanted && !breakfastToday && breakfastAskOpen()
+  const breakfastAsked = breakfastWanted && !breakfastUnasked
   const details = !isBlock && (hasPhone || hasEmail || (booking.companions?.length || 0) > 0 ||
     !!(booking.reference_number || booking.registered_on || booking.vehicle_plate || booking.company_name || togetherLabel))
 
@@ -1080,11 +1081,11 @@ export function ExtendStayModal({
                 {/* Breakfast is asked every morning (the owner, 2026-10-04). Unasked, it is the
                     red line at the top; answered, it is a quiet line here. The choices are read
                     from the LIVE booking — they are saved by their own writer. */}
-                {breakfastAsked && breakfastToday && (
+                {breakfastAsked && (
                   <button type="button" onClick={() => setBreakfastOpen(true)}
                     className="w-full min-h-10 flex items-center justify-between gap-3 border-t border-soft text-[12px] text-left hover:text-main transition-colors cursor-pointer">
                     <span className="font-bold text-muted shrink-0">Breakfast today</span>
-                    <span className="text-muted truncate">{breakfastSummary(breakfastToday)}</span>
+                    <span className="text-muted truncate">{breakfastToday ? breakfastSummary(breakfastToday) : 'Nothing today'}</span>
                   </button>
                 )}
               </div>

@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-20',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'The breakfast cup now shows on every room with breakfast, even if the guest was never checked in.',
+          'Breakfast is asked until 11 AM. After that, a room nobody asked counts as no breakfast that day.',
+          'Logging an old booking whose stay is already over no longer leaves a reservation. It is saved as checked in and out.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-18c',
     changes: [
       {

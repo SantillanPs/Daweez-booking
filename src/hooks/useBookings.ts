@@ -250,6 +250,8 @@ export function useBookings() {
     stayHours?: number
     /** Ties the rooms of one booking together — the same value on each of them. */
     groupId?: string
+    /** A paper booking whose stay is already over arrives checked in and out. */
+    actualCheckIn?: string; actualCheckOut?: string
   }, MutationContext>({
     mutationFn: async (params) => {
       const { id, invoiceNumber, roomId, venueId, guestName, guestEmail, guestPhone, guestGender, guestNationality, guestAddress, birthdate, checkIn, checkOut,
@@ -259,7 +261,7 @@ export function useBookings() {
         paymentMethod, paymentReference, paymentPlan, venueExcessHours = 0,
         paymentStatus, downpaymentPaid, balanceDue, securityDeposit,
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, notes, preparedBy, breakfastDays,
-        referenceNumber, registeredOn, paymentRecords, agreedDeposit, stayHours, groupId } = params
+        referenceNumber, registeredOn, paymentRecords, agreedDeposit, stayHours, groupId, actualCheckIn, actualCheckOut } = params
 
       if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings, id)) {
         throw new Error('The room is already booked or blocked for these dates.')
@@ -340,6 +342,8 @@ export function useBookings() {
         agreed_deposit: agreedDeposit,
         stay_hours: stayHours,
         group_id: groupId,
+        actual_check_in: actualCheckIn,
+        actual_check_out: actualCheckOut,
       }
 
       if (id) {

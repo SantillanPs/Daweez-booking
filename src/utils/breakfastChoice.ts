@@ -5,9 +5,20 @@ import { supabase, isSupabaseConfigured } from './supabaseClient'
 // asked each morning what they want. This records the answer for the kitchen and for
 // the record. It is not a charge — breakfast is charged once a night.
 
-/** A guest the desk should ask today: in the hotel, in a room that has breakfast. */
-export function wantsBreakfastToday(b: Booking): boolean {
-  return !!b.room_id && b.breakfast_included === true && !!b.actual_check_in && !b.actual_check_out &&
+/** Breakfast is asked until 11 AM. After that an unasked morning counts as nothing for that
+ *  day (Sebastian, 2026-10-20: it was still asking after 11). */
+export const BREAKFAST_ASK_UNTIL = 11
+export function breakfastAskOpen(now: Date = new Date()): boolean {
+  return now.getHours() < BREAKFAST_ASK_UNTIL
+}
+
+/** A guest the desk should ask today: in the hotel, in a room that has breakfast. "In the
+ *  hotel" is the Check in press OR a night already slept there (check-in before today, not
+ *  yet checked out) — the staff are often too busy to press Check in, and the cup never
+ *  showed for those rooms (Sebastian, 2026-10-20). */
+export function wantsBreakfastToday(b: Booking, today: string): boolean {
+  const inHotel = !!b.actual_check_in || (b.check_in < today && today <= b.check_out)
+  return !!b.room_id && b.breakfast_included === true && inHotel && !b.actual_check_out &&
     !b.stay_hours && b.status !== 'blocked' && b.status !== 'cancelled'
 }
 

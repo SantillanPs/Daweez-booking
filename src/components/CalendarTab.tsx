@@ -3,7 +3,7 @@ import { useDashboardData } from './DashboardContext'
 import { Booking } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { dateToString } from '../utils/helpers'
-import { breakfastOn, wantsBreakfastToday, saveBreakfastChoices } from '../utils/breakfastChoice'
+import { breakfastOn, wantsBreakfastToday, saveBreakfastChoices, breakfastAskOpen, BREAKFAST_ASK_UNTIL } from '../utils/breakfastChoice'
 import { useQueryClient } from '@tanstack/react-query'
 import { extendStay } from '../utils/bookingBalance'
 import { clearStayHours } from '../utils/db'
@@ -189,20 +189,20 @@ export function CalendarTab() {
   const halves = useMemo(() => halvesByUnit(bookings, daysList), [bookings, daysList])
   // The rooms still to be asked about breakfast this morning. Read off every booking, not
   // off the grid: a guest who has overstayed has no pill on it but is still in the room.
-  // **Only in the morning** (Sebastian, 2026-10-14): breakfast is not asked after 12 PM, so the cup is gone
-  // then. A timer flips it at noon, so a calendar left open all morning does not keep it.
-  const [morning, setMorning] = useState(() => new Date().getHours() < 12)
+  // **Only in the morning** (Sebastian, 2026-10-14; 11 AM since 2026-10-20): breakfast is not asked
+  // after 11, so the cup is gone then. A timer flips it at 11, so a calendar left open all morning does not keep it.
+  const [morning, setMorning] = useState(() => breakfastAskOpen())
   useEffect(() => {
     if (!morning) return
     const noon = new Date()
-    noon.setHours(12, 0, 0, 0)
+    noon.setHours(BREAKFAST_ASK_UNTIL, 0, 0, 0)
     const id = setTimeout(() => setMorning(false), noon.getTime() - new Date().getTime())
     return () => clearTimeout(id)
   }, [morning])
   const breakfastToAsk = useMemo(() => {
     const ask: Record<string, Booking> = {}
     if (!morning) return ask
-    bookings.forEach(b => { if (b.room_id && wantsBreakfastToday(b) && !breakfastOn(b, todayKey)) ask[b.room_id] = b })
+    bookings.forEach(b => { if (b.room_id && wantsBreakfastToday(b, todayKey) && !breakfastOn(b, todayKey)) ask[b.room_id] = b })
     return ask
   }, [bookings, todayKey, morning])
 

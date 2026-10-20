@@ -61,6 +61,8 @@ export interface DashboardDataContextValue {
     agreedDeposit?: number
     stayHours?: number
     groupId?: string
+    actualCheckIn?: string
+    actualCheckOut?: string
     guestGender?: string
     guestNationality?: string
     guestAddress?: string

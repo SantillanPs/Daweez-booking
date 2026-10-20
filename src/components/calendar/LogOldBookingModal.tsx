@@ -24,7 +24,7 @@ type CreateManual = (p: {
   paymentMethod?: string; downpaymentPaid?: number; balanceDue?: number
   paymentStatus?: 'unpaid' | 'downpayment' | 'paid'; paymentRecords?: Booking['payment_records']
   preparedBy?: string; breakfastIncluded?: boolean; stayHours?: number; groupId?: string
-  eventAddons?: EventAddons
+  eventAddons?: EventAddons; actualCheckIn?: string; actualCheckOut?: string
 }) => Promise<Booking>
 
 interface Sel { checkIn: string; checkOut: string; type: 'room' | 'venue' }
@@ -264,6 +264,11 @@ export function LogOldBookingModal({ rooms, venues, bookings, createManualBookin
       const receiptId = newReceiptId()
       const groupId = n > 1 ? 'grp-' + generateUUID() : undefined
       const cleaned = companions.filter(c => c.name.trim())
+      // **A stay that is already over is logged as over** (Sebastian, 2026-10-20): it was saved
+      // as a fresh reservation — "Reserved" on the calendar and a check-in left to do. It is
+      // checked in and out at the standard times instead (in 2 PM; out 12 PM, or after its hours).
+      const today = dateToString(new Date())
+      const at = (iso: string, h: number) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d, h).toISOString() }
       for (let i = 0; i < n; i++) {
         const { id, s, total: own } = priced[i]
         const down = raw[i]
@@ -292,6 +297,10 @@ export function LogOldBookingModal({ rooms, venues, bookings, createManualBookin
             ? [{ id: receiptId, amount: paidNow, method, paid_at: paidAt, ...(n > 1 ? { share: down } : {}) }]
             : undefined,
           preparedBy: preparedBy.trim() || undefined,
+          ...((isShort ? s.checkIn < today : s.checkOut < today) ? {
+            actualCheckIn: at(s.checkIn, 14),
+            actualCheckOut: isShort ? at(s.checkIn, 14 + hours) : at(s.checkOut, 12),
+          } : {}),
         })
       }
     } catch (err) {
