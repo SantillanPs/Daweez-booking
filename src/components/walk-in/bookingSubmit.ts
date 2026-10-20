@@ -211,7 +211,9 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         paymentReference: p.formPaymentReference || undefined,
         paymentPlan: p.bookingStatus === 'blocked' ? undefined : p.formPaymentPlan,
         venueExcessHours: p.formVenueExcessHours,
-        ...editedMoney(p, existingBooking)
+        ...editedMoney(p, existingBooking),
+        // The Gazebo and the Garden are sold by the hour too (2026-10-20).
+        stayHours: p.stay_hours || undefined
       })
       createdBookings.push(b)
     }

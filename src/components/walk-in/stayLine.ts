@@ -1,5 +1,6 @@
 import { Room, Venue } from '../../types/booking'
 import { roomDisplayName } from '../calendar/bookingStyles'
+import { airconWords } from '../../utils/venueHours'
 
 type UnitSelections = Record<string, { checkIn: string; checkOut: string; type: 'room' | 'venue' }>
 
@@ -50,7 +51,7 @@ export function stayLines(selections: UnitSelections, rooms: Room[], venues: Ven
       // In the order of the calendar's rows, so a group reads the way it is laid out.
       const names = [...g.rooms].sort((a, b) => a.room_number - b.room_number).map(roomDisplayName)
       const units = listOf([...names, ...g.venueNames])
-      if (shortStayHours) return units + ' · ' + short(g.checkIn) + ' · ' + shortStayHours + '-hour stay'
+      if (shortStayHours) return units + ' · ' + short(g.checkIn) + ' · ' + shortStayHours + '-hour stay' + airconWords(Object.keys(selections).find(id => selections[id].type === 'venue'), shortStayHours)
       const nights = Math.max(1, Math.round((dayOf(g.checkOut).getTime() - dayOf(g.checkIn).getTime()) / 86400000))
       return units + ' · ' + short(g.checkIn) + ' → ' + short(g.checkOut) + ' · ' + nights + (nights === 1 ? ' night' : ' nights')
     })

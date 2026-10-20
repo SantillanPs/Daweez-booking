@@ -59,8 +59,11 @@ export function OtherCharges({ rates, onRate, pay, onPay }: OtherChargesProps) {
         <Section title="Venues">
           <FieldGrid>
             <Figure label="Vacation House, per hour" value={rates.venueHourlyRate} onChange={v => onRate({ venueHourlyRate: v })} />
-            <Figure label="Gazebo / Garden block, hours" unit="hrs" value={rates.venueDayBlockHours} onChange={v => onRate({ venueDayBlockHours: v })} />
-            <Figure label="Gazebo / Garden, per block" placeholder="Venue's own price" value={rates.dayBlockRate} onChange={v => onRate({ dayBlockRate: v })} />
+            {/* The hours the calendar bar sells them for (Sebastian, 2026-10-20). They replaced
+                the 6-hour "day block" figures; an empty box falls back to the venue's price. */}
+            <Figure label="Gazebo, 6 hours" placeholder="Venue's own price" value={rates.gazebo6Price} onChange={v => onRate({ gazebo6Price: v })} />
+            <Figure label="Gazebo, 4 hours w/ aircon" placeholder="Not set" value={rates.gazeboAirconPrice} onChange={v => onRate({ gazeboAirconPrice: v })} />
+            <Figure label="Garden Area, 6 hours" placeholder="Venue's own price" value={rates.garden6Price} onChange={v => onRate({ garden6Price: v })} />
           </FieldGrid>
         </Section>
 

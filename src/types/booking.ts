@@ -300,6 +300,11 @@ export interface RateConfig {
   venueHourlyRate: number    // ₱500/hour (vacation house late/early + venue excess hours)
   venueDayBlockHours: number // 6 hours per day block for Gazebo & Garden
   dayBlockRate: number       // price for one 6-hour day block (default = venue base_price)
+  // The hours the Gazebo and the Garden are sold for (`utils/venueHours.ts`). 0 = not set:
+  // a 6-hour stay falls back to the venue's own price, the aircon stay asks on the bar.
+  gazebo6Price: number
+  gazeboAirconPrice: number  // the Gazebo for 4 hours w/ aircon
+  garden6Price: number
   securityDeposit: number    // ₱500
   standardCheckInTime: string  // 'HH:MM' local, default '14:00' (2 PM)
   standardCheckOutTime: string // 'HH:MM' local, default '12:00' (noon)

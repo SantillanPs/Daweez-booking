@@ -1,6 +1,7 @@
 import { Booking, EquipmentRental, EventAddons, BookingSource, Room, Venue, AppliedDiscount, RateConfig, BreakfastRecord } from '../types/booking'
 import { normalizeVenueId } from './helpers'
 import { venueTypePrice } from './venueTypes'
+import { venueHoursOf } from './venueHours'
 import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 import { DEFAULT_RATE_CONFIG } from './rateConfig'
 
@@ -109,8 +110,19 @@ export function calculatePricing(params: {
       stayQuantity = nights
       stayUnit = 'NIGHT'
     }
-  } else if (venueId) {    if (isDayBlockVenue) {
-      const perBlock = rates.dayBlockRate > 0 ? rates.dayBlockRate : (venue ? venue.base_price : 0)
+  } else if (venueId) {
+    const hourly = venueHoursOf(venue, rates)
+    const bought = shortStayHours ? hourly.find(o => o.hours === shortStayHours) : undefined
+    if (bought) {
+      // SHORT STAY at a venue (Sebastian, 2026-10-20): ONE charge for the hours, like a room's.
+      basePrice = undiscountedBasePrice = bought.price
+      nights = 1
+      stayQuantity = 1
+      stayUnit = shortStayHours + ' HOURS'
+    } else if (isDayBlockVenue) {
+      // Several days, or a booking made before the hours: each day (or old block) is
+      // charged at the 6-hour price.
+      const perBlock = hourly[0]?.price ?? (venue ? venue.base_price : 0)
       undiscountedBasePrice = perBlock
       let blocks = venueDayBlocks ?? Math.max(1, diffDays(checkIn, checkOut))
       if (blocks < 1) blocks = 1

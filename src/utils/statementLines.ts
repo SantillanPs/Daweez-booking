@@ -6,6 +6,7 @@ import { chargeableEarlyHours } from './checkInOut'
 import { roomDisplayName } from '../components/calendar/bookingStyles'
 import { OrderSlip, slipNumber, slipsTotal } from './orderSlips'
 import { venueTypeOf, venueTypeTitle } from './venueTypes'
+import { airconWords } from './venueHours'
 
 /**
  * The rows of the printed Guest Billing Statement, one per charge.
@@ -163,7 +164,7 @@ export function bookingLines(b: Booking, o: {
   items.push({
     key: b.id + '-stay',
     band: 'room',
-    description: (kindTitle || unitName(b, rooms, venues)) + (isShortStay ? ' · ' + stayHours + ' hours' : '') + rateLabel,
+    description: (kindTitle || unitName(b, rooms, venues)) + (isShortStay ? ' · ' + stayHours + ' hours' + airconWords(b.venue_id, stayHours) : '') + rateLabel,
     // A short stay is ONE charge, but the column must read the hours bought (`12 hrs`):
     // the charge count printed `1 hrs` on every short stay, whatever its length.
     qty: isShortStay ? String(stayHours) : String(stayQty),

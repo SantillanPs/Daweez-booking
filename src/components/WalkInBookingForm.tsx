@@ -294,7 +294,9 @@ export function WalkInBookingForm({
   const [formPaymentNote, setFormPaymentNote] = useState('')
   const [discountType, setDiscountType] = useState<DiscountType>('none')
   const [discountValue, setDiscountValue] = useState(0)
-  const [venueDayBlocks, setVenueDayBlocks] = useState(1)
+  // The Day blocks counter is gone (Sebastian, 2026-10-20: the Gazebo and Garden are sold by
+  // the hour from the calendar bar). Only a booking made with blocks still carries them.
+  const [venueDayBlocks, setVenueDayBlocks] = useState<number | undefined>(undefined)
   
   // ── Manual Financial Overrides (for Edit Mode) ──
   // Kept only to re-derive the status when editing — it is never typed by hand.
@@ -388,7 +390,7 @@ export function WalkInBookingForm({
           ? editingBookings.reduce((sum, eb) => sum + (eb.applied_discount?.type === 'flat' ? Number(eb.applied_discount.value || 0) : 0), 0)
           : discounted.value)
       }
-      setVenueDayBlocks(b.venue_day_blocks || 1)
+      setVenueDayBlocks(b.venue_day_blocks || undefined)
       // Sum financials across all bookings in the group
       let totalDown = 0
       let totalBalance = 0
@@ -441,10 +443,6 @@ export function WalkInBookingForm({
     () => Array.from(formVenueIds).map(id => venues.find(v => v.id === id)).filter((v): v is Venue => !!v && venueTypes(v).length > 0),
     [formVenueIds, venues],
   )
-  const hasDayBlock = useMemo(() =>
-    Object.entries(unitSelections).some(([id, sel]) => sel.type === 'venue' && ['Gazebo', 'Garden Area'].includes(venues.find(v => v.id === id)?.name || '')),
-  [unitSelections, venues])
-
   const isValidDates = useMemo(() => {
     const entries = Object.values(unitSelections)
     if (entries.length === 0) return false
@@ -888,13 +886,10 @@ export function WalkInBookingForm({
                         setFormVenueExcessHours={setFormVenueExcessHours}
                       />
                       <DiscountPricingControls
-                        isDayBlock={hasDayBlock}
                         discountType={discountType}
                         setDiscountType={setDiscountType}
                         discountValue={discountValue}
                         setDiscountValue={setDiscountValue}
-                        venueDayBlocks={venueDayBlocks}
-                        setVenueDayBlocks={setVenueDayBlocks}
                       />
                     </ul>
                   </section>

@@ -99,7 +99,7 @@ export interface BookingSubmitParams {
   discountValue: number
   /** The kind chosen for each venue (`VenueType.key`, by venue id). */
   formVenueTypes: Record<string, string>
-  venueDayBlocks: number
+  venueDayBlocks?: number
   editingBookings?: Booking[]
   formPaymentMethod: string
   formPaymentReference: string

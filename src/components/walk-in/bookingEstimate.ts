@@ -26,7 +26,7 @@ export interface BookingEstimateParams {
   discountValue: number
   /** The kind chosen for each venue (`VenueType.key`, by venue id) — it sets the day's price. */
   formVenueTypes: Record<string, string>
-  venueDayBlocks: number
+  venueDayBlocks?: number
   bookingType: 'individual' | 'partner'
   /**
    * Short stay: the hours the room is being sold for (3/6/12/22). The price is the
@@ -100,7 +100,7 @@ export function computeBookingEstimate(p: BookingEstimateParams): BookingEstimat
       eventAddons: !isRoom && p.formVenueTypes[id] ? { venue_type: p.formVenueTypes[id] } : undefined,
       appliedDiscount: discounts[id],
       venueDayBlocks: p.venueDayBlocks,
-      shortStayHours: isRoom ? (p.shortStayHours ?? undefined) : undefined,
+      shortStayHours: p.shortStayHours ?? undefined,
       rooms: p.rooms,
       venues: p.venues,
       rates,

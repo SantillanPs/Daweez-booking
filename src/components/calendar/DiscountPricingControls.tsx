@@ -1,9 +1,9 @@
 import React from 'react'
-import { ChevronDown, Minus, Plus } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { NumInput } from '../NumInput'
 import { SegmentedControl, SegmentOption } from '../SegmentedControl'
 import { Field } from '../walk-in/Field'
-import { FIELD, ICON_BUTTON, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL } from '../walk-in/formStyles'
+import { FIELD, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL } from '../walk-in/formStyles'
 
 export type DiscountType = 'none' | 'percent' | 'flat'
 
@@ -18,16 +18,12 @@ type DiscountKey = 'none' | 'p20' | 'p10' | 'flat'
 // A booking that has a discount opens with the choices, and the line says what it is.
 // Early/late check-in-out is NOT set here — it is auto-computed at the actual check-in.
 export function DiscountPricingControls({
-  isDayBlock, discountType, setDiscountType, discountValue, setDiscountValue,
-  venueDayBlocks, setVenueDayBlocks
+  discountType, setDiscountType, discountValue, setDiscountValue,
 }: {
-  isDayBlock: boolean
   discountType: DiscountType
   setDiscountType: (t: DiscountType) => void
   discountValue: number
   setDiscountValue: (v: number) => void
-  venueDayBlocks: number
-  setVenueDayBlocks: (v: number) => void
 }) {
   const value: DiscountKey = discountType === 'none' ? 'none' : discountType === 'flat' ? 'flat' : discountValue === 10 ? 'p10' : 'p20'
   const options: SegmentOption<DiscountKey>[] = [
@@ -80,25 +76,6 @@ export function DiscountPricingControls({
         )}
       </li>
 
-      {isDayBlock && (
-        <li className="min-h-12 flex items-center justify-between gap-4" title="A venue is booked in blocks of six hours.">
-          <span className={OPTION_NAME}>
-            Day blocks
-            <span className="ml-2 text-[13px] font-normal text-muted">6 hours each</span>
-          </span>
-          <div className="flex items-center select-none">
-            <button type="button" onClick={() => setVenueDayBlocks(Math.max(1, venueDayBlocks - 1))} disabled={venueDayBlocks <= 1}
-              aria-label="One block fewer" className={ICON_BUTTON + ' disabled:opacity-30 disabled:hover:bg-transparent'}>
-              <Minus className="w-4 h-4" />
-            </button>
-            <span className="w-7 text-center text-[15px] font-semibold tabular-nums text-main">{venueDayBlocks}</span>
-            <button type="button" onClick={() => setVenueDayBlocks(Math.min(8, venueDayBlocks + 1))} disabled={venueDayBlocks >= 8}
-              aria-label="One block more" className={ICON_BUTTON + ' disabled:opacity-30 disabled:hover:bg-transparent'}>
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-        </li>
-      )}
     </>
   )
 }

@@ -25,6 +25,7 @@ import { BookingOrderSlips } from './BookingOrderSlips'
 import { ShortStayClock } from './ShortStayClock'
 import { CountPeso } from '../CountPeso'
 import { stayHoursOf } from '../../utils/shortStay'
+import { airconWords } from '../../utils/venueHours'
 import { BreakfastPicker } from './BreakfastPicker'
 import { wantsBreakfastToday, breakfastOn, breakfastSummary, breakfastAskOpen } from '../../utils/breakfastChoice'
 import { dateToString } from '../../utils/helpers'
@@ -755,7 +756,7 @@ export function ExtendStayModal({
     // No dates for a stay: they are on its In and Out steps just below (the booking window
     // mock, 2026-10-16: "make sure to check for redundancies").
     : stayHoursOf(booking) > 0
-      ? stayHoursOf(booking) + '-hour stay'
+      ? stayHoursOf(booking) + '-hour stay' + airconWords(booking.venue_id, stayHoursOf(booking))
       : nights + (booking.room_id ? (nights === 1 ? ' night' : ' nights') : (nights === 1 ? ' day' : ' days'))
   const extendLabel = isBlock ? 'Change the dates' : isShortStay ? 'Stay longer' : 'Extend stay'
   // A stay that has ended has nothing left to extend; its dates are corrected with the pencil.
@@ -805,7 +806,7 @@ export function ExtendStayModal({
   // Something done behind a seal shows once the seal has faded.
   const wait = { '--wait': '1.1s' } as React.CSSProperties
   const stayCharge = isShortStay
-    ? 'Short stay · ' + stayHoursOf(localBooking) + ' hours'
+    ? 'Short stay · ' + stayHoursOf(localBooking) + ' hours' + airconWords(localBooking.venue_id, stayHoursOf(localBooking))
     : (booking.room_id ? 'Room' : 'Venue') + ' · ' + nights + (booking.room_id ? (nights === 1 ? ' night' : ' nights') : (nights === 1 ? ' day' : ' days'))
   const hasBill = !isBlock && (totalCharge > 0 || receiptRecords.length > 0 || slips.length > 0)
   // The bill's own rows, as the paper prints them (no food: the slips are listed below).

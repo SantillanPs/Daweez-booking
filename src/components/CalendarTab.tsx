@@ -304,8 +304,9 @@ export function CalendarTab() {
   /** Short stay: the SAME flow as New booking — pick on the grid first, then press the button — except a short stay needs ONE day rather than a range, because the room is taken for that whole day. Check-out is filled in as the next day for the desk, and the hours tapped on the bar (3, 6 or 12) travel into the form already chosen. */
   const confirmShortStay = useCallback((hours: number) => {
     const picked = timelineSelectionRef.current
-    const roomId = picked?.roomId
-    if (!roomId) return
+    // A room, or since 2026-10-20 the Gazebo or the Garden (sold by the hour too).
+    const unitId = picked?.roomId || picked?.venueId
+    if (!picked || !unitId) return
     const checkIn = new Date(picked.checkIn)
     const checkOut = new Date(picked.checkIn)
     checkOut.setDate(checkOut.getDate() + 1)
@@ -314,7 +315,7 @@ export function CalendarTab() {
     setEditingBooking(null); setEditingGroup(null)
     setManualBookingType('individual')
     setFormStayHours(hours)
-    setFormSelections({ [roomId]: { checkIn: dateToString(checkIn), checkOut: dateToString(checkOut), type: 'room' } })
+    setFormSelections({ [unitId]: { checkIn: dateToString(checkIn), checkOut: dateToString(checkOut), type: picked.roomId ? 'room' : 'venue' } })
     setShowManualForm(true)
   }, [])
 

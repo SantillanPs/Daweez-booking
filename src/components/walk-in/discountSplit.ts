@@ -34,7 +34,7 @@ export interface DiscountUnit {
 export function splitDiscount(
   discount: AppliedDiscount | undefined,
   units: DiscountUnit[],
-  o: { rooms: Room[]; venues: Venue[]; venueDayBlocks: number; shortStayHours?: number | null },
+  o: { rooms: Room[]; venues: Venue[]; venueDayBlocks?: number; shortStayHours?: number | null },
 ): Record<string, AppliedDiscount | undefined> {
   const out: Record<string, AppliedDiscount | undefined> = {}
   const sharedOut = !!discount && discount.type === 'flat' && discount.value > 0 && units.length > 1
@@ -52,7 +52,7 @@ export function splitDiscount(
     contractRateOverride: u.contractRate,
     eventAddons: u.venueType ? { venue_type: u.venueType } : undefined,
     venueDayBlocks: o.venueDayBlocks,
-    shortStayHours: u.type === 'room' ? (o.shortStayHours ?? undefined) : undefined,
+    shortStayHours: o.shortStayHours ?? undefined,
     rooms: o.rooms,
     venues: o.venues,
     rates: getRateConfig(),

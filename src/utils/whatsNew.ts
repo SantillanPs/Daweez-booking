@@ -23,6 +23,24 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-20b',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'The Gazebo and the Garden are now booked by the hour, like a room’s short stay. Tap one day on the Gazebo for 6h or 4h w/ aircon, or on the Garden for 6h.',
+          'The first time an hour has no price, the calendar asks you for it.',
+        ],
+      },
+      {
+        where: 'Settings → Other charges',
+        what: [
+          'Set the Gazebo’s and the Garden’s prices for their hours under Venues.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-20',
     changes: [
       {

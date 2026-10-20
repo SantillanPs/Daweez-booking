@@ -11,6 +11,8 @@ import { rememberFormOrigin } from '../../utils/bookingFocus'
 import { useDashboardData } from '../DashboardContext'
 import { PriceBox } from '../PriceBox'
 import { showToast } from '../../utils/toast'
+import { venueHoursOf } from '../../utils/venueHours'
+import { getRateConfig, saveRateConfig } from '../../utils/rateConfig'
 
 export type { TimelineDayInfo }
 
@@ -217,6 +219,23 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
     : rangeUnit
       ? (rooms.find(r => r.id === rangeUnit) ? roomDisplayName(rooms.find(r => r.id === rangeUnit)) : venues.find(v => v.id === rangeUnit)?.name || '')
       : '')
+  // ONE DAY's short-stay hours: a room's 3h · 6h · 12h, or the Gazebo's and Garden's own
+  // (Sebastian, 2026-10-20: the Gazebo is 6 hours or 4 hours w/ aircon, the Garden 6 hours).
+  const barVenue = !barRoom && !hasRange && timelineSelection?.venueId ? venues.find(v => v.id === timelineSelection.venueId) : undefined
+  const chips: { h: number; label: string; price: number; unitName: string; save: (p: number) => Promise<void> }[] = barRoom
+    ? SHORT_STAY_HOURS.map(h => {
+        const now = (n?: number | null) => Number(n || 0)
+        return {
+          h, label: h + 'h', unitName: roomDisplayName(barRoom),
+          price: now(h === 3 ? barRoom.hour3_price : h === 6 ? barRoom.hour6_price : barRoom.hour12_price),
+          save: (p: number) => updateRoomHourPrices?.(barRoom.id,
+            h === 3 ? p : now(barRoom.hour3_price), h === 6 ? p : now(barRoom.hour6_price), h === 12 ? p : now(barRoom.hour12_price)) ?? Promise.resolve(),
+        }
+      })
+    : venueHoursOf(barVenue, getRateConfig()).map(o => ({
+        h: o.hours, label: o.hours + 'h' + (o.aircon ? ' w/ aircon' : ''), price: o.price, unitName: barVenue?.name || '',
+        save: (p: number) => saveRateConfig({ ...getRateConfig(), [o.key]: p }),
+      }))
   // Centred on the dates, kept between the room names and the end of the grid.
   const left = Math.min(
     Math.max(barPos.center - barPos.width / 2, barPos.minLeft),
@@ -257,22 +276,19 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
            The buttons carry the HOURS ONLY (the owner's ruling, 2026-09):
            the price of the hours is on the room and in the tooltip, so the
            bar stays short. */
-        barRoom ? (
-          SHORT_STAY_HOURS.map(h => {
-            const price = h === 3 ? barRoom.hour3_price : h === 6 ? barRoom.hour6_price : barRoom.hour12_price
-            const sellable = !!price && Number(price) > 0
-            // A room with no price for these hours asks for it right here instead of being
-            // greyed out (Sebastian, 2026-10-16: "ask the staff to enter a price for that room
-            // on the spot"). The price is saved on the room and the short stay opens at once.
+        chips.length > 0 ? (
+          chips.map(({ h, label, price, unitName, save }) => {
+            const sellable = price > 0
+            // A room or venue with no price for these hours asks for it right here instead of
+            // being greyed out (Sebastian, 2026-10-16: "ask the staff to enter a price for that
+            // room on the spot"). The price is kept, as if typed in Settings, and the short stay
+            // opens at once.
             if (pricing?.h === h && pricing.pick === pick) return (
-              <PriceBox key={h} label={h + 'h'} className="h-8 text-[13px]"
+              <PriceBox key={h} label={label} className="h-8 text-[13px]"
                 onBack={() => setPricing(null)}
                 onSave={p => {
                   setPricing(null)
-                  const now = (n?: number | null) => Number(n || 0)
-                  updateRoomHourPrices?.(barRoom.id,
-                    h === 3 ? p : now(barRoom.hour3_price), h === 6 ? p : now(barRoom.hour6_price), h === 12 ? p : now(barRoom.hour12_price))
-                    .catch(() => showToast('The ' + h + '-hour price for ' + roomDisplayName(barRoom) + ' was not saved. Try again.', 'error'))
+                  save(p).catch(() => showToast('The ' + label + ' price for ' + unitName + ' was not saved. Try again.', 'error'))
                   rememberPick()
                   onNewShortStay(h)
                 }} />
@@ -281,16 +297,16 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
               <button key={h} type="button"
                 onClick={() => { if (sellable) { rememberPick(); onNewShortStay(h) } else setPricing({ h, pick }) }}
                 title={sellable
-                  ? 'A ' + h + '-hour stay — ₱' + Number(price).toLocaleString() + ' — takes ' + roomDisplayName(barRoom) + ' for this whole day'
-                  : 'No ' + h + '-hour price for this room yet — tap to set it'}
+                  ? 'A ' + h + '-hour stay — ₱' + price.toLocaleString() + ' — takes ' + unitName + ' for this whole day'
+                  : 'No ' + label + ' price for ' + unitName + ' yet — tap to set it'}
                 className={'shrink-0 inline-flex items-center gap-1 h-7 px-3 rounded-full border text-[13px] font-bold text-brand-text hover:bg-gold-100 hover:border-gold-400 transition-[background-color,border-color,transform] duration-200 active:scale-90 cursor-pointer ' +
                   (sellable ? 'border-soft' : 'border-dashed border-gold-400')}>
-                {h}h{!sellable && <span className="font-semibold text-muted">· ₱?</span>}
+                {label}{!sellable && <span className="font-semibold text-muted">· ₱?</span>}
               </button>
             )
           })
         ) : (
-          /* A venue is never sold for hours — only a room is. */
+          /* The Vacation House and the Exclusive are never sold for hours. */
           <span className="shrink-0 text-[12px] font-medium text-muted">Tap the check-out day for a normal stay</span>
         )
       )}

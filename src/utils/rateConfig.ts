@@ -24,6 +24,9 @@ export const DEFAULT_RATE_CONFIG: RateConfig = {
   venueHourlyRate: 500,    // ₱500/hour (vacation house late/early + venue excess hours)
   venueDayBlockHours: 6,   // Gazebo & Garden are booked in 6-hour day blocks
   dayBlockRate: 0,         // 0 = fall back to each venue's own base_price per block
+  gazebo6Price: 0,         // 0 = the venue's own price (Sebastian, 2026-10-20: the staff set these)
+  gazeboAirconPrice: 0,    // 0 = asked for on the calendar bar the first time
+  garden6Price: 0,
   securityDeposit: 500,    // ₱500 flat
   standardCheckInTime: '14:00',  // standard check-in at 2 PM
   standardCheckOutTime: '12:00', // standard check-out at 12 PM (noon)
@@ -64,11 +67,21 @@ export function getRateConfig(): RateConfig {
   return cache ? { ...cache } : { ...DEFAULT_RATE_CONFIG }
 }
 
-/** Saves the shared rates to the database. Throws when it refuses. */
+/**
+ * Saves the shared rates to the database. Throws when it refuses. The new figures are used
+ * at once and put back if the save fails: a price typed on the calendar bar opens the
+ * booking form straight away, which must already charge it.
+ */
 export async function saveRateConfig(config: RateConfig): Promise<void> {
   const clean = { ...config }
-  await writeAppSetting(RATES_KEY, clean)
+  const before = cache
   cache = clean
+  try {
+    await writeAppSetting(RATES_KEY, clean)
+  } catch (e) {
+    cache = before
+    throw e
+  }
 }
 
 // The current staff-editable breakfast menu (empty entries are filtered out so
