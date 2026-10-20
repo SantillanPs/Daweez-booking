@@ -265,6 +265,8 @@ export function calculatePricing(params: {
     stayTotal: Math.round(stayTotal),
     appliedDiscountAmount: Math.round(appliedDiscountAmount),
     earlyLateTotal: Math.round(earlyLateTotal),
+    earlyCharge: Math.round(earlyCharge),
+    lateCharge: Math.round(lateCharge),
     stayQuantity,
     stayUnit,
     grandTotal: calculatedGrand,
