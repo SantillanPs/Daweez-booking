@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-20c',
+    changes: [
+      {
+        where: 'Front desk → the booking window',
+        what: [
+          'Check in and Check out no longer go by the time you press them. Press them whenever you are back at the desk: the guest is counted as on time.',
+          'If a guest really came early or left late, tap “Came early?” or “Left late?” under the button and tap the hours.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-20b',
     changes: [
       {

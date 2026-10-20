@@ -2,7 +2,8 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import { X, Printer, Edit3, CalendarPlus, Undo2, ArrowRightLeft, Banknote, Check, Coffee, DoorOpen, KeyRound, ChevronDown, XCircle, LogIn } from 'lucide-react'
 import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
-import { computeCheckInOutHours } from '../../utils/checkInOut'
+import { doorTime, hoursPast, standardDoor } from '../../utils/checkInOut'
+import { DoorHours } from './DoorHours'
 import { getRateConfig } from '../../utils/rateConfig'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
@@ -527,19 +528,34 @@ export function ExtendStayModal({
       (owesAtDoor ? 'The ' + fmtPeso(due) + ' stays on their bill.' : '')).trim(),
     yes: owesAtDoor ? 'Check in anyway' : 'Check in',
   }
+  // Early or late hours the desk says at the door (`DoorHours`); 0 — on time — unless it does.
+  // Kept with the question it was said for, so a new question starts back at on time.
+  const [doorSaid, setDoorSaid] = useState<{ ask: typeof ask; hours: number }>({ ask: null, hours: 0 })
+  const doorHours = doorSaid.ask === ask ? doorSaid.hours : 0
+  const setDoorHours = (hours: number) => setDoorSaid({ ask, hours })
+  const doorStandard = (kind: 'in' | 'out') => {
+    const rates = getRateConfig()
+    return kind === 'in' ? standardDoor(localBooking.check_in, rates.standardCheckInTime) : standardDoor(localBooking.check_out, rates.standardCheckOutTime)
+  }
+  const doorYes = (word: string) => doorHours > 0 ? ' · ' + doorHours + (doorHours === 1 ? ' hr ' : ' hrs ') + word : ''
+  const doorHoursPicker = (kind: 'in' | 'out') => {
+    if (localBooking.stay_hours) return null
+    const rates = getRateConfig()
+    const hourlyOnly = !booking.room_id
+    const most = rates.lateEarlyCapHours + 1
+    return <DoorHours kind={kind} standard={doorStandard(kind)} hours={doorHours} onHours={setDoorHours}
+      maxHours={kind === 'in' ? most : Math.min(most, hoursPast(doorStandard('out')))}
+      rate={hourlyOnly ? rates.venueHourlyRate : rates.lateEarlyRatePesos} cap={rates.lateEarlyCapHours} hourlyOnly={hourlyOnly} />
+  }
   const handleCheckIn = async () => {
     setAsk(null)
     setActionNotice('')
-    const actualCheckIn = new Date().toISOString()
     const rates = getRateConfig()
     // A short stay has no early/late hours at all: the room was sold for a few
     // hours at its own board price, so a 10am arrival is not "four hours early".
-    const { earlyHours } = localBooking.stay_hours
-      ? { earlyHours: 0 }
-      : computeCheckInOutHours({
-        checkIn: localBooking.check_in, checkOut: localBooking.check_out, actualCheckIn,
-        standardCheckInTime: rates.standardCheckInTime, standardCheckOutTime: rates.standardCheckOutTime,
-      })
+    // Otherwise the hours are the ones the desk said (`doorHours`), never the press time.
+    const earlyHours = localBooking.stay_hours ? 0 : doorHours
+    const actualCheckIn = localBooking.stay_hours ? new Date().toISOString() : doorTime('in', doorStandard('in'), earlyHours)
     const updated: Booking = { ...localBooking, actual_check_in: actualCheckIn, early_check_in_hours: earlyHours, status: 'confirmed' }
     setLocalBooking(updated)
     celebrate('in', owesAtDoor ? due : 0)
@@ -569,15 +585,9 @@ export function ExtendStayModal({
   const handleCheckOut = async () => {
     setAsk(null)
     setActionNotice('')
-    const actualCheckOut = new Date().toISOString()
-    const rates = getRateConfig()
     // Same rule as check-in: a short stay carries no late-checkout hours.
-    const { lateHours } = localBooking.stay_hours
-      ? { lateHours: 0 }
-      : computeCheckInOutHours({
-        checkIn: booking.check_in, checkOut: booking.check_out, actualCheckOut,
-        standardCheckInTime: rates.standardCheckInTime, standardCheckOutTime: rates.standardCheckOutTime,
-      })
+    const lateHours = localBooking.stay_hours ? 0 : doorHours
+    const actualCheckOut = localBooking.stay_hours ? new Date().toISOString() : doorTime('out', doorStandard('out'), lateHours)
     const updated = withRecomputedBalance(localBooking, { actual_check_out: actualCheckOut, late_check_out_hours: lateHours })
     setLocalBooking(updated)
     // A stay that GREW at check-out (early or late hours) has money the desk was not asked
@@ -1023,8 +1033,8 @@ export function ExtendStayModal({
                 {/* Check in leads once it is the next step; while money is owed it is a quiet
                     word under Receive — the desk may still let the guest in, and pay later. */}
                 {!isBlock && !localBooking.actual_check_in && (ask === 'in' ? (
-                  <DoorAsk title={checkInAsk.title} message={checkInAsk.message} yes={checkInAsk.yes} tone="green"
-                    onYes={() => void handleCheckIn()} onBack={() => setAsk(null)} />
+                  <DoorAsk title={checkInAsk.title} message={checkInAsk.message} yes={checkInAsk.yes + doorYes('early')} tone="green"
+                    onYes={() => void handleCheckIn()} onBack={() => setAsk(null)}>{doorHoursPicker('in')}</DoorAsk>
                   // "Pay later" goes while the money is being taken (Sebastian, 2026-10-18): it is
                   // the other way round from what the desk is doing right then.
                 ) : besideReceive || (receiveOpen && step !== 'checkIn') ? null : (
@@ -1034,8 +1044,8 @@ export function ExtendStayModal({
                   </button>
                 ))}
                 {!isBlock && isIn && (ask === 'out' ? (
-                  <DoorAsk title={checkOutAsk.title} message={checkOutAsk.message} yes={checkOutAsk.yes} tone="ink"
-                    onYes={() => void handleCheckOut()} onBack={() => setAsk(null)} />
+                  <DoorAsk title={checkOutAsk.title} message={checkOutAsk.message} yes={checkOutAsk.yes + doorYes('late')} tone="ink"
+                    onYes={() => void handleCheckOut()} onBack={() => setAsk(null)}>{doorHoursPicker('out')}</DoorAsk>
                 ) : besideReceive || (receiveOpen && owesAtDoor) ? null : (
                   <button ref={checkOutBtn} type="button" onClick={tryCheckOut} style={step !== openedStep ? wait : undefined}
                     className={(step === 'checkOut' && checkOutDue ? BTN_GOLD + ' bw-shine' + glowOut : BTN_QUIET) + (step !== openedStep ? ' bw-arrive' : '')}>
@@ -1313,13 +1323,14 @@ export function ExtendStayModal({
  * 2026-10-16) — it used to be a pop-up over the whole panel. The question names the guest and
  * the room, the second line says what follows, and Back puts the button back.
  */
-function DoorAsk({ title, message, yes, tone, onYes, onBack }: {
+function DoorAsk({ title, message, yes, tone, onYes, onBack, children }: {
   title: string
   message?: string
   yes: string
   tone: 'green' | 'ink'
   onYes: () => void
   onBack: () => void
+  children?: React.ReactNode
 }) {
   return (
     <div role="group" aria-label={title} className="rounded-xl bg-gold-100 p-3 flex flex-col gap-2.5 bw-arrive">
@@ -1337,6 +1348,8 @@ function DoorAsk({ title, message, yes, tone, onYes, onBack }: {
           Back
         </button>
       </div>
+      {/* The rare case, under the answer: early or late hours (`DoorHours`). */}
+      {children}
     </div>
   )
 }
