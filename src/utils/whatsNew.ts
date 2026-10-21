@@ -23,6 +23,17 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-21c',
+    changes: [
+      {
+        where: 'Front desk → new booking',
+        what: [
+          'A short stay can now be given a discount: the Gazebo, the Garden, and a room booked by the hour.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-21b',
     changes: [
       {
@@ -30,12 +41,6 @@ export const UPDATES: Update[] = [
         what: [
           'Reschedule a booking that has not started yet: press Reschedule on the booking, then tap its new first day on the calendar, in any room. The nights come along, and the bar shows if the price changes.',
           'The Gazebo and the Garden can be rescheduled to another day too.',
-        ],
-      },
-      {
-        where: 'Front desk → new booking',
-        what: [
-          'A short stay can now be given a discount: the Gazebo, the Garden, and a room booked by the hour.',
         ],
       },
     ],
