@@ -932,7 +932,7 @@ export function WalkInBookingForm({
                     {...depositFieldProps}
                     want={want}
                   />
-                  <Field group label="Receptionist" className="pt-1">
+                  <Field group label="Receptionist" className="pt-3">
                     <ReceptionistChips names={staffNames} value={formPreparedBy} onChange={setFormPreparedBy} />
                   </Field>
                 </section>

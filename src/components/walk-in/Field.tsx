@@ -15,7 +15,7 @@ import { LABEL } from './formStyles'
  */
 export function Field({ label, required = false, error = '', group = false, className = '', children }: {
   label: string
-  /** The red star: a box the form cannot finish without. */
+  /** The gold dot: a box the form is still waiting on. Pass it only while the box is empty, so the dot goes when it is filled. */
   required?: boolean
   error?: string
   group?: boolean
@@ -23,8 +23,8 @@ export function Field({ label, required = false, error = '', group = false, clas
   children: React.ReactNode
 }) {
   const words = (
-    <span className={LABEL + ' mb-1.5'}>
-      {label}{required && <span className="text-danger-600"> *</span>}
+    <span className={LABEL + ' mb-1.5 flex items-center gap-2'}>
+      {label}{required && <span aria-label="needed" className="bk-need w-[7px] h-[7px] rounded-full bg-gold-400" />}
     </span>
   )
   const problem = error

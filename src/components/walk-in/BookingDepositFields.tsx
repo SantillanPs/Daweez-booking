@@ -148,13 +148,18 @@ export function BookingDepositFields({
   return (
     <div className="space-y-4">
       {/* The figure follows the stay as it is changed, so the desk sees it move. */}
-      <div>
-        <p className={LABEL}>{shortStay ? 'To pay now' : 'Total'}</p>
-        <p className="mt-1 font-display text-[34px] leading-none font-extrabold tracking-tight tabular-nums text-main">
-          <AnimatedNumber value={total} duration={350} prefix="₱" />
+      {/* One line, label left and figure right, with the peso sign stepped back in deep gold
+          (the visual design mock, 2026-10-21). */}
+      <div className="flex items-baseline justify-between gap-3 pb-4 border-b border-soft">
+        <p className={LABEL}>
+          {shortStay ? 'To pay now' : 'Total'}
           {breakfast > 0 && (
-            <span className="bp-up ml-2 align-middle text-[13px] font-bold tracking-normal text-gold-800">+₱{breakfast.toLocaleString()} breakfast</span>
+            <span className="bp-up block mt-0.5 text-[13px] font-bold text-gold-800">+₱{breakfast.toLocaleString()} breakfast</span>
           )}
+        </p>
+        <p className="font-display text-[40px] leading-none font-bold tracking-[-0.03em] tabular-nums text-main">
+          <span className="mr-0.5 align-[6px] text-[22px] font-semibold text-gold-800">₱</span>
+          <AnimatedNumber value={total} duration={350} />
         </p>
       </div>
 
@@ -190,7 +195,7 @@ export function BookingDepositFields({
 
       {/* ── How the guest pays — the row that takes the money (2026-09-29) ── */}
       {asksForMoney && (
-        <Field group label="Paid by" required={methodRequired}>
+        <Field group label="Paid by" required={methodRequired && !method}>
           <div className={'rounded-md' + wants('method')}>
             <SegmentedControl options={methodOptions} value={method} onChange={setMethod} label="How the guest pays" />
           </div>
@@ -199,7 +204,7 @@ export function BookingDepositFields({
 
       {/* GCash and bank transfers only, and only once one of them is picked. */}
       {asksForMoney && needsRef && (
-        <Field label={refLabel} required={methodRequired} className={REVEAL}>
+        <Field label={refLabel} required={methodRequired && !reference.trim()} className={REVEAL}>
           <input
             value={reference}
             onChange={e => setReference(e.target.value)}

@@ -85,8 +85,10 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
 
   return (
     <div ref={row} role="radiogroup" aria-label={label} aria-invalid={invalid || undefined}
-      className={'group/seg relative flex flex-wrap w-full min-w-0 gap-px border rounded-md overflow-hidden ' +
-        (invalid ? 'border-danger-400 bg-danger-200' : 'border-soft bg-soft')}>
+      /* A soft track with the choices sitting in it, no lines between them (the payment
+         block's visual design mock, Sebastian, 2026-10-21: "ship A"). Still 44px in all. */
+      className={'group/seg relative flex flex-wrap w-full min-w-0 gap-1 p-1 rounded-lg overflow-hidden ' +
+        (invalid ? 'bg-danger-200 ring-1 ring-inset ring-danger-400' : 'bg-softbg')}>
       {options.map((o, i) => (
         <button key={o.key} type="button" role="radio" title={o.hint} aria-checked={value === o.key}
           ref={el => { cells.current[i] = el }}
@@ -94,9 +96,9 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
           onClick={() => onChange(o.key)}
           onKeyDown={e => onKeyDown(e, i)}
           /* The focus ring is drawn INSIDE the cell: the group clips whatever leaves it. */
-          className={'grow px-2 text-[14px] font-semibold whitespace-nowrap cursor-pointer transition-colors duration-150 focus-visible:-outline-offset-2 focus-visible:rounded-none ' +
-            (twoLines ? 'min-h-[52px] py-1.5 ' : 'h-11 ') +
-            (value === o.key ? 'bg-gold-400 text-ink-900' : 'bg-card text-main hover:bg-gold-100 active:bg-gold-200')}>
+          className={'grow px-2 rounded-[9px] text-[14px] font-semibold whitespace-nowrap cursor-pointer transition-[background-color,color,transform] duration-150 active:scale-[0.96] focus-visible:-outline-offset-2 ' +
+            (twoLines ? 'min-h-[48px] py-1.5 ' : 'h-9 ') +
+            (value === o.key ? 'bg-gold-400 text-ink-900' : 'text-ink-600 hover:bg-card')}>
           {twoLines ? (
             <>
               <span className="block leading-5">{o.label}</span>
@@ -107,7 +109,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
       ))}
       {thumb && chosen && (
         <span aria-hidden="true" style={{ '--x': thumb.x + 'px', '--y': thumb.y + 'px', '--w': thumb.w + 'px', '--h': thumb.h + 'px' } as React.CSSProperties}
-          className="bk-thumb absolute left-0 top-0 [transform:translate(var(--x),var(--y))] w-[var(--w)] h-[var(--h)] pointer-events-none group-has-[:focus-visible]/seg:outline group-has-[:focus-visible]/seg:outline-2 group-has-[:focus-visible]/seg:-outline-offset-2 group-has-[:focus-visible]/seg:outline-[var(--brand-ring)] bg-gold-400 text-ink-900 text-[14px] font-semibold whitespace-nowrap flex flex-col items-center justify-center">
+          className="bk-thumb absolute left-0 top-0 rounded-[9px] [transform:translate(var(--x),var(--y))] w-[var(--w)] h-[var(--h)] pointer-events-none group-has-[:focus-visible]/seg:outline group-has-[:focus-visible]/seg:outline-2 group-has-[:focus-visible]/seg:-outline-offset-2 group-has-[:focus-visible]/seg:outline-[var(--brand-ring)] bg-gold-400 text-ink-900 text-[14px] font-semibold whitespace-nowrap flex flex-col items-center justify-center">
           {twoLines ? (
             <>
               <span className="block leading-5">{chosen.label}</span>

@@ -190,7 +190,7 @@ export const RoomDetailsForm = React.memo(
             red star); "(optional)" on three of the rest made the other four read as
             required. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-          <Field label="Name" required error={guestNameError}>
+          <Field label="Name" required={!formGuestName.trim()} error={guestNameError}>
             <input
               type="text"
               autoComplete="off"

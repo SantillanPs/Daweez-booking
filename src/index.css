@@ -325,6 +325,10 @@
 .bk-hop { animation: bk-hop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .bk-pop { animation: bp-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 /* The chosen cell of a toggle row slides to the new choice (`SegmentedControl`). */
+/* A box the form still waits on carries a gold dot that breathes, not a red star (the
+   payment block's visual design mock, Sebastian, 2026-10-21: "ship A"). It goes when the box is filled. */
+@keyframes bk-need { 0% { box-shadow: 0 0 0 0 rgb(208 171 96 / 0.7); } 70%, 100% { box-shadow: 0 0 0 7px rgb(208 171 96 / 0); } }
+.bk-need { animation: bk-need 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
 .bk-thumb { transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1), width 0.35s cubic-bezier(0.34, 1.4, 0.64, 1); animation: bp-dim 0.2s both; }
 /* The box the form is waiting on wears gold, and breathes once when its turn comes (the booking form mock). */
 @keyframes bk-breathe { from { box-shadow: 0 0 0 0 rgb(208 171 96 / 0.7); } 60% { box-shadow: 0 0 0 9px rgb(208 171 96 / 0); } }
@@ -499,7 +503,7 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 @media (prefers-reduced-motion: reduce) {
   [data-mark-ready] > .fd-mark, .fd-tab svg, .fd-sub, .fd-sub::after, .fd-gear svg, .fd-step svg, .bk-thumb { transition: none; }
   .fd-ping::after, .fd-wiggle:hover svg:first-child, .fd-pop, .fd-free:hover::after, .fd-pick, .fd-bar, .fd-bar > *, .fd-roll, .fd-away, .fd-drain,
-  .bk-seal circle, .bk-wake::after, .bk-hop, .bk-pop, .bk-thumb, .bk-want, .bk-list, .bk-row, .bk-chip, .bk-ring, .bk-bit, .bk-rise, .bk-hand, .bk-big-seal circle { animation: none; }
+  .bk-seal circle, .bk-wake::after, .bk-hop, .bk-pop, .bk-thumb, .bk-need, .bk-want, .bk-list, .bk-row, .bk-chip, .bk-ring, .bk-bit, .bk-rise, .bk-hand, .bk-big-seal circle { animation: none; }
   .bk-tick path, .bk-big-seal path, .bw-chip.bw-just svg path { animation: none; stroke-dashoffset: 0; }
   .bw-tool, .bw-tool svg, .bw-tool svg *, .bw-bar { transition: none; }
   .bw-tool svg, .bw-tool svg *, .bw-sink, .bw-ask, .bw-ask button, .bw-tools-back > .bw-tool, .bw-formin, .bw-billin li, .bw-billin p, .bw-eject, .bw-dim { animation: none; }
