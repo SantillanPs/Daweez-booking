@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FIELD, FIELD_ERROR } from './formStyles'
+import { FILL, FILL_ERROR } from './formStyles'
 
 const two = (n: number) => String(n).padStart(2, '0')
 
@@ -61,7 +61,7 @@ export function BirthDateInput({ value, onChange }: {
           setTyped(e.target.value); setLeft(false); setSent(iso); onChange(iso)
         }}
         onBlur={() => { setLeft(true); if (toIso(typed)) setTyped(toTyped(toIso(typed))) }}
-        className={wrong ? FIELD_ERROR : FIELD}
+        className={wrong ? FILL_ERROR : FILL}
       />
       {wrong && <p className="text-xs text-danger-600 mt-1">Type the date like 06/15/1990.</p>}
     </>

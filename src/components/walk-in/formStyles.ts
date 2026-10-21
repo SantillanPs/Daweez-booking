@@ -26,12 +26,23 @@
  *     line pressable (`OPTION_LIST` / `OPTION_ROW`);
  *   - the payment, in a column of its own beside the guest on a wide screen.
  */
-export const BOX = 'h-11 rounded-md border bg-card px-3 text-[15px] font-medium text-main placeholder:font-normal placeholder:text-muted outline-none transition-[border-color,box-shadow] duration-200 focus:border-gold-500 focus:ring-2 focus:ring-gold-400/30'
+export const BOX = 'h-11 rounded-md border bg-card px-3 text-[15px] font-medium text-main placeholder:font-normal placeholder:text-muted outline-none focus-visible:outline-none transition-[border-color,box-shadow] duration-200 focus:border-gold-500 focus:ring-2 focus:ring-gold-400/30'
 export const FIELD = BOX + ' w-full border-soft'
 /** The same box when it shares a row and must take what is left of it. */
 export const FIELD_IN_ROW = BOX + ' flex-1 min-w-0 border-soft'
 export const FIELD_ERROR = BOX + ' w-full border-danger-400'
 export const SELECT = BOX + ' w-full border-soft cursor-pointer'
+
+/**
+ * **The booking form's boxes are softly filled** (the Guest and Stay mock, Sebastian,
+ * 2026-10-21: "I like it. apply it"): a cream fill and no outline, turning white with a gold
+ * edge while typed in. The outlined `BOX` above stays for every other screen.
+ */
+export const FILL_BOX = 'h-11 rounded-[10px] border-[1.5px] border-transparent bg-softbg px-3 text-[15px] font-semibold text-main placeholder:font-medium placeholder:text-muted outline-none focus-visible:outline-none transition-[background-color,border-color,box-shadow] duration-200 focus:bg-card focus:border-gold-500 focus:ring-[3px] focus:ring-gold-400/20'
+export const FILL = FILL_BOX + ' w-full'
+export const FILL_IN_ROW = FILL_BOX + ' flex-1 min-w-0'
+export const FILL_ERROR = FILL_BOX + ' w-full !bg-card !border-danger-400'
+export const FILL_SELECT = FILL_BOX + ' w-full cursor-pointer'
 
 /** The words above a box or a row of choices. */
 export const LABEL = 'block text-[13px] font-medium text-muted'
@@ -46,12 +57,29 @@ export const GROUP_TITLE = 'font-display text-[17px] font-bold tracking-tight te
 
 /** The ruled list of optional extras. */
 export const OPTION_LIST = 'border-y border-soft divide-y divide-soft'
-/** One extra: its name at the left end, what it holds at the right. */
-export const OPTION_ROW = 'w-full min-h-12 flex items-center justify-between gap-4 text-left'
+/*
+ * **One shape for every extra, quiet until it holds something** (the Guest and Stay mock,
+ * Sebastian, 2026-10-21): a small icon tile, the name, what it holds in bold, and a gold +
+ * that turns to × while the line is open. An empty extra is grey; once it holds something
+ * its name darkens and its tile turns gold, so what was added is what the eye finds.
+ */
+/** One extra: the tile, the name, what it holds, the +. */
+export const OPTION_ROW = 'group/opt w-full min-h-[52px] flex items-center gap-3 text-left'
+/** The icon tile at the start of the line. */
+export const optionIcon = (on: boolean) =>
+  'w-[30px] h-[30px] shrink-0 rounded-lg grid place-items-center transition-colors duration-200 [&>svg]:w-4 [&>svg]:h-4 ' +
+  (on ? 'bg-gold-400 text-ink-900' : 'bg-softbg text-gold-800')
 /** An extra's name. */
-export const OPTION_NAME = 'text-[15px] font-medium text-main shrink-0'
-/** What an extra holds, or the word that opens it. */
-export const OPTION_VALUE = 'inline-flex items-center gap-1.5 min-w-0 text-[14px] font-semibold text-brand-text'
+export const optionName = (on: boolean) =>
+  'flex-1 min-w-0 text-[15px] transition-colors duration-200 ' + (on ? 'font-semibold text-main' : 'font-medium text-ink-600')
+/** What an extra holds, at the end of its line. */
+export const OPTION_VALUE = 'bp-up min-w-0 truncate text-[14px] font-bold text-main tabular-nums'
+/** The gold + that opens the line, turned to × while it is open. */
+export const optionPlus = (open: boolean) =>
+  'w-8 h-8 shrink-0 rounded-[9px] grid place-items-center text-gold-800 transition-[background-color,transform] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover/opt:bg-gold-100 [&>svg]:w-4 [&>svg]:h-4 ' +
+  (open ? 'rotate-45 bg-gold-100' : '')
+/** What opens under a line, set in to the name's edge on a wide screen. */
+export const OPTION_BODY = 'sm:pl-[42px]'
 
 /** The correction block's own heading. */
 export const SECTION = 'space-y-3'

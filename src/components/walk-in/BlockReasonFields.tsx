@@ -1,5 +1,5 @@
 import { CheckCircle2 } from 'lucide-react'
-import { FIELD } from './formStyles'
+import { FILL } from './formStyles'
 
 /**
  * What the guest card shows instead of itself when the form is in **Block** mode.
@@ -20,7 +20,7 @@ export function BlockReasonFields({ notes, setNotes }: {
       </p>
       <label className="text-[10px] text-muted font-bold block">Block reason (maintenance / cleaning)</label>
       <input value={notes} onChange={e => setNotes(e.target.value.toUpperCase())} placeholder="e.g. Room maintenance"
-        className={FIELD} />
+        className={FILL} />
     </div>
   )
 }

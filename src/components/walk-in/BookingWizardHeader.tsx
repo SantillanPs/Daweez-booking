@@ -49,9 +49,24 @@ export function BookingWizardHeader({
           <p className="font-display text-[18px] leading-snug font-bold tracking-tight text-main">
             {formStatus === 'blocked' ? 'Correcting a block' : 'No room or venue picked'}
           </p>
-        ) : stay.map(line => (
-          <p key={line} className="font-display text-[18px] leading-snug font-bold tracking-tight text-main">{line}</p>
-        ))}
+        ) : stay.map(line => {
+          // The room leads in large type, and its dates sit in a pill beside it with the
+          // nights in gold (the Guest and Stay mock, Sebastian, 2026-10-21).
+          const [units, when, length] = line.split(' · ')
+          const [from, to] = (when || '').split(' → ')
+          return (
+            <div key={line} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <p className="font-display text-[22px] leading-tight font-extrabold tracking-[-0.03em] text-main">{units}</p>
+              {when && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-softbg py-1 pl-3 pr-1 text-[13px] font-semibold text-main tabular-nums">
+                  {from}
+                  {to && <><span aria-label="to" className="text-gold-800">→</span>{to}</>}
+                  {length && <span className="rounded-full bg-gold-400 px-2.5 py-0.5 text-[12px] font-bold text-ink-900">{length}</span>}
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         {/* Only while correcting a block: the only way back to a booking. */}

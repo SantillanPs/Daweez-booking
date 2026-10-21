@@ -1,5 +1,5 @@
 import { Field } from './Field'
-import { FIELD, SECTION, SECTION_TITLE } from './formStyles'
+import { FILL, SECTION, SECTION_TITLE } from './formStyles'
 
 /**
  * The figures a correction may change — only ever shown while CORRECTING a saved
@@ -30,21 +30,21 @@ export function BookingCorrectionFields({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
         <Field label="Already received (₱)">
           <input type="text" inputMode="decimal" value={formDownpaymentPaid || ''}
-            onChange={e => setFormDownpaymentPaid(parseFloat(e.target.value) || 0)} className={FIELD + ' tabular-nums'} />
+            onChange={e => setFormDownpaymentPaid(parseFloat(e.target.value) || 0)} placeholder="0" className={FILL + ' tabular-nums'} />
         </Field>
         <Field label="Balance due (₱)">
           <input type="text" inputMode="decimal" value={formBalanceDue ?? ''}
             onChange={e => setFormBalanceDue(e.target.value ? parseFloat(e.target.value) : null)}
-            placeholder="Worked out from the stay" className={FIELD + ' tabular-nums'} />
+            placeholder="Worked out from the stay" className={FILL + ' tabular-nums'} />
         </Field>
         <Field label="Security deposit (₱)">
           <input type="text" inputMode="decimal" value={formSecurityDeposit ?? ''}
             onChange={e => setFormSecurityDeposit(e.target.value ? parseFloat(e.target.value) : null)}
-            placeholder="Optional" className={FIELD + ' tabular-nums'} />
+            placeholder="Optional" className={FILL + ' tabular-nums'} />
         </Field>
         <Field label="Invoice number">
           <input value={formInvoiceNumber} onChange={e => setFormInvoiceNumber(e.target.value)}
-            placeholder="Given one if left empty" className={FIELD} />
+            placeholder="Given one if left empty" className={FILL} />
         </Field>
       </div>
     </section>

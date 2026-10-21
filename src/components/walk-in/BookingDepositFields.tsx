@@ -2,7 +2,7 @@ import { NumInput } from '../NumInput'
 import { SegmentedControl, SegmentOption } from '../SegmentedControl'
 import { AnimatedNumber } from '../AnimatedNumber'
 import { Field } from './Field'
-import { FIELD, LABEL, REVEAL } from './formStyles'
+import { FILL, LABEL, REVEAL } from './formStyles'
 import { PAYMENT_METHODS, methodNeedsReference, paymentKind } from '../../utils/paymentMethod'
 
 export type PayPlan = 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'
@@ -177,15 +177,16 @@ export function BookingDepositFields({
               <span className="relative block">
                 <NumInput value={agreedDeposit} aria-label="Deposit the guest pays now"
                   onChange={v => { setPlan('custom'); setAgreedDeposit(v) }}
-                  className={'peer ' + FIELD + ' text-right text-[17px] font-bold tabular-nums' + wants('amount')} />
+                  className={'peer ' + FILL + ' text-right text-[17px] font-bold tabular-nums' + wants('amount')} />
                 <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-medium text-muted">₱</span>
               </span>
               <Field label="Notes">
                 <input
                   value={note}
                   onChange={e => setNote(e.target.value)}
+                  placeholder="e.g. Agreed by phone"
                   autoComplete="off"
-                  className={FIELD}
+                  className={FILL}
                 />
               </Field>
             </div>
@@ -210,7 +211,7 @@ export function BookingDepositFields({
             onChange={e => setReference(e.target.value)}
             placeholder="From the guest's phone"
             autoComplete="off"
-            className={FIELD + ' tabular-nums' + wants('ref')}
+            className={FILL + ' tabular-nums' + wants('ref')}
           />
         </Field>
       )}

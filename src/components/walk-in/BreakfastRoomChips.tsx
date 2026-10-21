@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Check, Coffee } from 'lucide-react'
 import { Room } from '../../types/booking'
 import { breakfastSellable } from '../../utils/breakfast'
-import { OPTION_NAME } from './formStyles'
+import { OPTION_ROW, optionIcon, optionName } from './formStyles'
 import { PriceBox } from '../PriceBox'
 import { useDashboardData } from '../DashboardContext'
 import { showToast } from '../../utils/toast'
@@ -54,8 +54,11 @@ export function BreakfastRoomChips({ rooms, chosen, onToggle, onAll }: Breakfast
   const alone = rooms.length === 1
 
   return (
-    <li className="min-h-12 py-1.5 flex items-center justify-between gap-4">
-      <span className={OPTION_NAME}>Breakfast</span>
+    <li className={OPTION_ROW + ' py-1.5'}>
+      {/* The cup lives in the line's tile and hops as breakfast goes on (the Guest and Stay
+          mock, Sebastian, 2026-10-21; before that it hopped inside the chip). */}
+      <span className={optionIcon(chosen.length > 0)}><Coffee key={chosen.length > 0 ? 'on' : 'off'} aria-hidden="true" className={chosen.length > 0 ? 'bk-hop' : ''} /></span>
+      <span className={optionName(chosen.length > 0)}>Breakfast</span>
       <div className="flex items-center justify-end gap-1.5 flex-wrap min-w-0">
         {priced.length > 1 && (
           <button
@@ -83,7 +86,7 @@ export function BreakfastRoomChips({ rooms, chosen, onToggle, onAll }: Breakfast
           if (!sellable) return (
             <button key={room.id} type="button" onClick={() => setPricing(room.id)}
               aria-label={'Breakfast for Room ' + room.room_number + ', no price yet — set it'}
-              className="flex items-center gap-2 h-9 text-[14px] font-semibold rounded-md px-3 border border-dashed border-gold-400 text-gold-800 hover:bg-gold-100 cursor-pointer transition-[background-color,transform] duration-200 active:scale-[0.95]">
+              className="flex items-center gap-2 h-9 text-[14px] font-semibold rounded-full px-3 border-[1.5px] border-dashed border-gold-400 text-gold-800 hover:bg-gold-100 cursor-pointer transition-[background-color,transform] duration-200 active:scale-[0.95]">
               <Coffee aria-hidden="true" className="w-4 h-4 shrink-0" />
               {!alone && <span>Room {room.room_number}</span>}
               <span>Set price</span>
@@ -102,22 +105,18 @@ export function BreakfastRoomChips({ rooms, chosen, onToggle, onAll }: Breakfast
               aria-label={'Breakfast for Room ' + room.room_number + (sellable ? ', ' + price + ' a night' : ', no price')}
               onClick={() => onToggle(room.id)}
               title={sellable ? undefined : 'No breakfast price for this room yet — set it in Settings, under Rooms & prices'}
-              className={'flex items-center gap-2 h-9 text-[14px] font-semibold rounded-md pl-2.5 pr-3 border transition-colors duration-150 ' +
+              className={'flex items-center gap-2 h-9 text-[14px] font-bold rounded-full pl-2.5 pr-3 border-[1.5px] transition-[background-color,border-color,color,transform] duration-150 ' +
                 (!sellable
                   ? 'bg-softbg text-muted border-soft cursor-not-allowed'
                   : on
                     ? 'bg-gold-400 text-ink-900 border-gold-400 cursor-pointer active:scale-[0.97]'
-                    : 'bg-card text-main border-soft cursor-pointer hover:border-gold-400 active:scale-[0.97]')}
+                    : 'bg-card text-ink-600 border-soft cursor-pointer hover:border-gold-400 active:scale-[0.95]')}
             >
               <span aria-hidden="true"
-                // `rounded`, not `rounded-sm`: this project's `sm` is 8px, which drew the box
-                // as the very circle it replaces.
-                className={'w-4 h-4 shrink-0 inline-flex items-center justify-center rounded border-2 ' +
+                className={'w-4 h-4 shrink-0 inline-flex items-center justify-center rounded-full border-2 transition-colors duration-150 ' +
                   (on ? 'bg-ink-900 border-ink-900 text-gold-100' : 'border-ink-300')}>
-                {on && <Check className="w-3 h-3 bk-pop" strokeWidth={4} />}
+                {on && <Check className="w-2.5 h-2.5 bk-pop" strokeWidth={4} />}
               </span>
-              {/* The cup hops once as breakfast goes on (the booking moments mock, 2026-10-16). */}
-              {sellable && <Coffee aria-hidden="true" className={'w-4 h-4 shrink-0 ' + (on ? 'bk-hop' : 'text-muted')} />}
               {!alone && <span>Room {room.room_number}</span>}
               <span className={'tabular-nums ' + (on || alone ? '' : 'text-muted')}>
                 {sellable ? (alone ? price + ' a night' : price) : 'no price'}

@@ -1,13 +1,13 @@
 import React from 'react'
 import { Companion, PartnerDeal } from '../../types/booking'
-import { Building2, ChevronDown, Landmark } from 'lucide-react'
+import { Building2, IdCard, Landmark, Plus } from 'lucide-react'
 import { CompanionFields } from './CompanionFields'
 import { BlockReasonFields } from './BlockReasonFields'
 import { BirthDateInput } from './BirthDateInput'
 import { NationalityInput } from '../NationalityInput'
 import { Field } from './Field'
 import { Seal } from './Seal'
-import { FIELD, FIELD_ERROR, SELECT, GROUP, GROUP_TITLE, OPTION_LIST, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL } from './formStyles'
+import { FILL, FILL_ERROR, FILL_SELECT, GROUP, GROUP_TITLE, OPTION_BODY, OPTION_LIST, OPTION_ROW, optionIcon, optionName, optionPlus, REVEAL } from './formStyles'
 
 interface RoomDetailsFormProps {
   formStatus: 'confirmed' | 'blocked'
@@ -189,16 +189,24 @@ export const RoomDetailsForm = React.memo(
             below, and shows itself the moment it holds a value. Only Name is marked (the
             red star); "(optional)" on three of the rest made the other four read as
             required. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-          <Field label="Name" required={!formGuestName.trim()} error={guestNameError}>
+        {/* The name is the one box the form needs, so it is the biggest, and it wears a gold
+            ring until it is filled (the Guest and Stay mock, Sebastian, 2026-10-21). */}
+        {/* The name's error is said UNDER the row, not inside the name's column: inside, it
+            lifted the name box above the contact box beside it (Sebastian, 2026-10-21). */}
+        <div>
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] sm:items-end gap-x-3 gap-y-3">
+          <Field label="Name" required={!formGuestName.trim()}>
             <input
               type="text"
               autoComplete="off"
+              placeholder="e.g. JUAN DELA CRUZ"
+              aria-describedby={guestNameError ? 'guest-name-error' : undefined}
               value={formGuestName}
               onChange={e => setFormGuestName(e.target.value.toUpperCase())}
               onBlur={onGuestNameBlur}
               aria-invalid={guestNameError ? true : undefined}
-              className={guestNameError ? FIELD_ERROR : FIELD + (nameWanted ? ' bk-want' : '')}
+              className={(guestNameError ? FILL_ERROR + ' ring-4 ring-danger-400/15' : FILL + (nameWanted ? ' bk-want' : '')) + ' !h-[52px] !text-[18px] font-bold tracking-[0.01em] placeholder:!text-[16px]' +
+                (formGuestName.trim() || guestNameError ? '' : ' !bg-card !border-gold-400 ring-4 ring-gold-400/20')}
             />
           </Field>
           <Field label="Contact no.">
@@ -208,9 +216,12 @@ export const RoomDetailsForm = React.memo(
               autoComplete="off"
               value={formGuestPhone}
               onChange={e => setFormGuestPhone(e.target.value)}
-              className={FIELD}
+              placeholder="09XX XXX XXXX"
+              className={FILL}
             />
           </Field>
+        </div>
+        {guestNameError && <p id="guest-name-error" role="alert" className="bp-up mt-1.5 text-[13px] font-medium text-danger-600">{guestNameError}</p>}
         </div>
 
         {/* The optional extras, as lines in one ruled list. The whole line is the button. */}
@@ -221,29 +232,26 @@ export const RoomDetailsForm = React.memo(
               under what it had opened. Once any of them holds something they stay on
               screen, so there is nothing left for the line to open or close and it goes. */}
           <li>
-            {!hasMoreDetails && (
-              <button type="button" onClick={() => setShowMore(o => !o)} aria-expanded={showExtra}
-                className={OPTION_ROW + ' cursor-pointer'}>
-                <span className={OPTION_NAME}>More details</span>
-                <span className={OPTION_VALUE}>
-                  {showExtra
-                    ? <span>Hide</span>
-                    : <span className="truncate font-normal text-muted">Nationality, address, email, plate no., birth date, sex</span>}
-                  <ChevronDown className={'w-4 h-4 shrink-0 transition-transform duration-200 ' + (showExtra ? 'rotate-180' : '')} />
-                </span>
-              </button>
-            )}
+            {/* Once a box holds something they stay open, so the line has nothing left to
+                open or close: it keeps its gold tile and loses its +. */}
+            <button type="button" onClick={() => { if (!hasMoreDetails) setShowMore(o => !o) }} aria-expanded={showExtra}
+              className={OPTION_ROW + (hasMoreDetails ? ' cursor-default' : ' cursor-pointer')}>
+              <span className={optionIcon(hasMoreDetails)}><IdCard /></span>
+              <span className={optionName(hasMoreDetails)}>More details</span>
+              {!hasMoreDetails && <span className={optionPlus(showExtra)}><Plus /></span>}
+            </button>
             {showExtra && (
-              <div className={'grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pb-4 ' + (hasMoreDetails ? 'pt-4' : 'pt-1')}>
+              <div className={'grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 pt-1 pb-4 ' + OPTION_BODY}>
                 <Field label="Nationality" className={REVEAL}>
-                  <NationalityInput value={formGuestNationality || ''} onChange={setFormGuestNationality} className={FIELD} />
+                  <NationalityInput value={formGuestNationality || ''} onChange={setFormGuestNationality} placeholder="e.g. Filipino" className={FILL} />
                 </Field>
                 <Field label="Address" className={REVEAL}>
                   <input
                     type="text"
                     value={formGuestAddress || ''}
                     onChange={e => setFormGuestAddress(e.target.value.toUpperCase())}
-                    className={FIELD}
+                    placeholder="e.g. TANDAG CITY"
+                    className={FILL}
                   />
                 </Field>
                 <Field label="Email" className={REVEAL}>
@@ -251,7 +259,8 @@ export const RoomDetailsForm = React.memo(
                     type="email"
                     value={formGuestEmail}
                     onChange={e => setFormGuestEmail(e.target.value)}
-                    className={FIELD}
+                    placeholder="name@email.com"
+                    className={FILL}
                   />
                 </Field>
                 <Field label="Plate no." className={REVEAL}>
@@ -259,7 +268,8 @@ export const RoomDetailsForm = React.memo(
                     type="text"
                     value={formVehiclePlate || ''}
                     onChange={e => setFormVehiclePlate(e.target.value.toUpperCase())}
-                    className={FIELD}
+                    placeholder="e.g. ABC 1234"
+                    className={FILL}
                   />
                 </Field>
                 {/* A plain block, not a `Field`: the date box carries its own label for
@@ -272,7 +282,7 @@ export const RoomDetailsForm = React.memo(
                   <select
                     value={formGuestGender || ''}
                     onChange={e => setFormGuestGender(e.target.value)}
-                    className={SELECT}
+                    className={FILL_SELECT}
                   >
                     <option value="">Not stated</option>
                     <option value="Male">Male</option>

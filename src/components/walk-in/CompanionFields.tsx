@@ -1,7 +1,7 @@
 import { Companion } from '../../types/booking'
-import { Trash2, Plus } from 'lucide-react'
+import { Trash2, Plus, Users } from 'lucide-react'
 import { NationalityInput } from '../NationalityInput'
-import { FIELD_IN_ROW, ICON_BUTTON, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL, SELECT } from './formStyles'
+import { FILL_IN_ROW, ICON_BUTTON, OPTION_BODY, OPTION_ROW, optionIcon, optionName, optionPlus, REVEAL, FILL_SELECT } from './formStyles'
 
 /**
  * The companions — one line in the guest's list of extras, and a row for each
@@ -35,16 +35,17 @@ export function CompanionFields({ companions, setCompanions }: {
     <li>
       <button type="button" onClick={() => setCompanions([...companions, { name: '' }])}
         className={OPTION_ROW + ' cursor-pointer'}>
-        <span className={OPTION_NAME}>
+        <span className={optionIcon(companions.length > 0)}><Users /></span>
+        <span className={optionName(companions.length > 0)}>
           Companions
           {/* The count pops each time it changes (the booking form mock, 2026-10-16). */}
-          {companions.length > 0 && <span key={companions.length} className="bk-pop inline-block ml-2 text-muted font-normal">{companions.length}</span>}
+          {companions.length > 0 && <span key={companions.length} className="bk-pop inline-block ml-1.5 font-semibold text-muted">{companions.length}</span>}
         </span>
-        <span className={OPTION_VALUE}><Plus className="w-4 h-4" /> Add companion</span>
+        <span aria-label="Add companion" className={optionPlus(false)}><Plus /></span>
       </button>
 
       {companions.length > 0 && (
-        <div className="space-y-2 pb-3">
+        <div className={'space-y-2 pb-4 ' + OPTION_BODY}>
           {companions.map((comp, idx) => (
             <div key={idx} className={'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] sm:grid-cols-[minmax(0,1fr)_10.5rem_7.5rem_2.75rem] items-center gap-2 ' + REVEAL}>
               <input
@@ -54,21 +55,21 @@ export function CompanionFields({ companions, setCompanions }: {
                 aria-label={'Companion ' + (idx + 1) + ' name'}
                 value={comp.name}
                 onChange={e => change(idx, { name: e.target.value.toUpperCase() })}
-                className={FIELD_IN_ROW + ' col-span-3 sm:col-span-1'}
+                className={FILL_IN_ROW + ' col-span-3 sm:col-span-1'}
               />
               <NationalityInput
                 placeholder="Nationality"
                 aria-label={'Companion ' + (idx + 1) + ' nationality'}
                 value={comp.nationality || ''}
                 onChange={v => change(idx, { nationality: v })}
-                className={FIELD_IN_ROW}
+                className={FILL_IN_ROW}
               />
               {/* Empty, it reads "Sex" in the grey the other two boxes use for theirs. */}
               <select
                 aria-label={'Companion ' + (idx + 1) + ' sex'}
                 value={comp.sex || ''}
                 onChange={e => change(idx, { sex: e.target.value || undefined })}
-                className={SELECT + (comp.sex ? '' : ' font-normal text-muted')}
+                className={FILL_SELECT + (comp.sex ? '' : ' font-normal text-muted')}
               >
                 <option value="">Sex</option>
                 <option value="Male">Male</option>

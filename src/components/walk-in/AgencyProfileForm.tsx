@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
 import { Building2 } from 'lucide-react'
-import { BOX, FIELD, PRIMARY_BUTTON, QUIET_BUTTON } from './formStyles'
+import { BOX, FILL, PRIMARY_BUTTON, QUIET_BUTTON } from './formStyles'
 import { PartnerDeal, Room } from '../../types/booking'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { generateUUID } from '../../utils/helpers'
 import { useDashboardData } from '../DashboardContext'
 
-const field = FIELD
+const field = FILL
 const lab = 'text-[10px] font-bold text-muted uppercase tracking-wider'
 const money = (n: number) => '₱' + Math.round(n || 0).toLocaleString()
 

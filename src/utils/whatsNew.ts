@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-21f',
+    changes: [
+      {
+        where: 'Front desk → new booking',
+        what: [
+          'The guest side has a fresh look. The room and its dates sit at the top, and the Name box is the biggest box, so you know where to start.',
+          'Every box now shows an example of what goes in it.',
+          'More details, Companions, Breakfast, Add-ons and Discount stay grey until you add something. Then they turn gold and show what was added, like “+₱50” or “20% off”.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-21e',
     changes: [
       {

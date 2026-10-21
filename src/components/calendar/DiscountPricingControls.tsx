@@ -1,9 +1,9 @@
 import React from 'react'
-import { ChevronDown } from 'lucide-react'
+import { Plus, Tag } from 'lucide-react'
 import { NumInput } from '../NumInput'
 import { SegmentedControl, SegmentOption } from '../SegmentedControl'
 import { Field } from '../walk-in/Field'
-import { FIELD, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL } from '../walk-in/formStyles'
+import { FILL, OPTION_BODY, OPTION_ROW, OPTION_VALUE, optionIcon, optionName, optionPlus, REVEAL } from '../walk-in/formStyles'
 
 export type DiscountType = 'none' | 'percent' | 'flat'
 
@@ -55,21 +55,20 @@ export function DiscountPricingControls({
       <li>
         <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
           className={OPTION_ROW + ' cursor-pointer'}>
-          <span className={OPTION_NAME}>Discount</span>
-          <span className={OPTION_VALUE}>
-            {given ? <span key={given} className="bp-up text-main tabular-nums">{given}</span> : !open && <span>Add</span>}
-            <ChevronDown className={'w-4 h-4 shrink-0 transition-transform duration-200 ' + (open ? 'rotate-180' : '')} />
-          </span>
+          <span className={optionIcon(!!given)}><Tag /></span>
+          <span className={optionName(!!given)}>Discount</span>
+          {given && <span key={given} className={OPTION_VALUE}>{given}</span>}
+          <span className={optionPlus(open)}><Plus /></span>
         </button>
 
         {open && (
-          <div className={'space-y-3 pb-3 ' + REVEAL}>
+          <div className={'space-y-3 pb-4 ' + OPTION_BODY + ' ' + REVEAL}>
             <SegmentedControl options={options} value={value} onChange={pick} label="Discount" />
             {/* A custom price is a figure the desk types, so it takes the row below. */}
             {discountType === 'flat' && (
               <Field label="Amount off (₱)">
                 <NumInput value={discountValue} onChange={setDiscountValue} aria-label="Amount off"
-                  className={FIELD + ' text-right tabular-nums'} />
+                  className={FILL + ' text-right tabular-nums'} />
               </Field>
             )}
           </div>

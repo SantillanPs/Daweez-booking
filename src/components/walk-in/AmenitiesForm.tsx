@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { ChevronDown, Minus, Plus } from 'lucide-react'
-import { ICON_BUTTON, LABEL, OPTION_ROW, OPTION_NAME, OPTION_VALUE, REVEAL } from './formStyles'
+import { BedDouble, Minus, Plus } from 'lucide-react'
+import { ICON_BUTTON, LABEL, OPTION_BODY, OPTION_ROW, OPTION_VALUE, optionIcon, optionName, optionPlus, REVEAL } from './formStyles'
 import { getRateConfig } from '../../utils/rateConfig'
 
 interface AmenitiesFormProps {
@@ -38,14 +38,14 @@ interface Extra {
 /** One fewer, the count, one more. */
 function Counter({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   return (
-    <div className="flex items-center select-none">
+    <div className="flex items-center select-none rounded-[10px] bg-softbg">
       <button type="button" onClick={() => onChange(Math.max(0, value - 1))} disabled={value <= 0}
-        aria-label={'One fewer ' + label} className={ICON_BUTTON + ' disabled:opacity-30 disabled:hover:bg-transparent'}>
+        aria-label={'One fewer ' + label} className={ICON_BUTTON + ' !text-gold-800 hover:!bg-gold-100 disabled:opacity-30 disabled:hover:!bg-transparent'}>
         <Minus className="w-4 h-4" />
       </button>
       {/* The figure pops as it changes (the booking form mock, 2026-10-16). */}
-      <span className="w-7 text-center"><span key={value} className="bk-pop inline-block text-[15px] font-semibold tabular-nums text-main">{value}</span></span>
-      <button type="button" onClick={() => onChange(value + 1)} aria-label={'One more ' + label} className={ICON_BUTTON}>
+      <span className="w-7 text-center"><span key={value} className="bk-pop inline-block text-[15px] font-bold tabular-nums text-main">{value}</span></span>
+      <button type="button" onClick={() => onChange(value + 1)} aria-label={'One more ' + label} className={ICON_BUTTON + ' !text-gold-800 hover:!bg-gold-100'}>
         <Plus className="w-4 h-4" />
       </button>
     </div>
@@ -134,20 +134,16 @@ export const AmenitiesForm = React.memo(
       <li>
         <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
           className={OPTION_ROW + ' cursor-pointer'}>
-          <span className={OPTION_NAME}>Add-ons</span>
-          <span className={OPTION_VALUE}>
-            {added ? (
-              <span key={added} className="bp-up truncate text-main">
-                {added}
-                <span className="ml-2 tabular-nums">+₱{(estRentals + estAddons).toLocaleString()}</span>
-              </span>
-            ) : !open && <span>Add</span>}
-            <ChevronDown className={'w-4 h-4 shrink-0 transition-transform duration-200 ' + (open ? 'rotate-180' : '')} />
-          </span>
+          <span className={optionIcon(!!added)}><BedDouble /></span>
+          <span className={optionName(!!added)}>Add-ons</span>
+          {added && (
+            <span key={added} title={added} className={OPTION_VALUE}>+₱{(estRentals + estAddons).toLocaleString()}</span>
+          )}
+          <span className={optionPlus(open)}><Plus /></span>
         </button>
 
         {open && (
-          <div className={'space-y-3 pb-3 ' + REVEAL}>
+          <div className={'space-y-3 pb-4 ' + OPTION_BODY + ' ' + REVEAL}>
             {hasRooms && <ExtraList title="Room extras, per night" items={roomExtras} />}
             {hasVenues && <ExtraList title="Venue rentals, one-time" items={venueExtras} />}
           </div>
