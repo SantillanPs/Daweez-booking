@@ -79,6 +79,7 @@
 - **The clock starts at the Check in press.** The app shows the *time* the room is free (`out 1:12 PM`), never a countdown. When time is up the block turns red and the booking's panel opens by itself — one at a time, never reopened once closed. The app only tells the desk; it adds no money on its own. Once time is up the panel says `Time up · out by 1:00 PM` and how long it is past (`+18 min`) — the design he kept from the mock (2026-10-16); that time is still not charged.
 - **A room with no price for those hours asks for it on the spot** (the owner, 2026-10-16: *"if a room has no price, then it should just ask the staff to enter a price for that room on the spot"*). The dashed hour opens into a ₱ box in the calendar bar; the price is saved on the room, as if typed in Settings, and the short stay opens.
 - **No early or late charge on a short stay.** A 10am arrival for three hours is not "four hours early".
+- **Every short stay can be given a discount** (Sebastian, 2026-10-21: *"can you check the gazebo and the other venues if they have a discount for short stay? because they all should"*). The booking form had hidden the whole Stay part for a short stay, Discount with it; Discount now shows for the Gazebo, the Garden and a room by the hour, while breakfast and add-ons still step aside.
 - **Extending a short stay turns it into a normal stay priced by nights** (ruled 2026-10-03).
 - Everywhere a short stay is shown it reads `Sep 25 · 3 hours`, never `Sep 25 → Sep 26`.
 

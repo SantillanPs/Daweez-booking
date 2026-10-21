@@ -32,6 +32,12 @@ export const UPDATES: Update[] = [
           'The Gazebo and the Garden can be rescheduled to another day too.',
         ],
       },
+      {
+        where: 'Front desk → new booking',
+        what: [
+          'A short stay can now be given a discount: the Gazebo, the Garden, and a room booked by the hour.',
+        ],
+      },
     ],
   },
   {

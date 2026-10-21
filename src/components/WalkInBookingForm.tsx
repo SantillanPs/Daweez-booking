@@ -839,16 +839,17 @@ export function WalkInBookingForm({
                     instruction): the bar that pops up on the day the desk picked carries
                     the hours at the room's own board prices, and they arrive in this form
                     already settled. A SHORT STAY takes the room for the whole day and is
-                    paid in full at the counter, so breakfast, add-ons and discount simply
-                    step out of the way. Breakfast is a ROOM's choice, not a guest's
-                    (card k140). */}
-                {!shortStayHours && (
+                    paid in full at the counter, so breakfast and add-ons simply step out of
+                    the way. Breakfast is a ROOM's choice, not a guest's (card k140). The
+                    DISCOUNT stays: every short stay can be given one (Sebastian, 2026-10-21:
+                    the Gazebo, the Garden and a room by the hour "all should"). */}
+                {(
                   <section className={GROUP + ' font-sans delay-75 animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-both motion-reduce:animate-none'}>
                     <h4 className={GROUP_TITLE}>Stay</h4>
                     {/* WHICH KIND OF VENUE (the Vacation House: Regular, Ground, Exclusive) sets
                         the day's price, so it is chosen here, above the optional extras — it
                         is not one of them (Sebastian, 2026-10-06). */}
-                    {typedVenues.length > 0 && (
+                    {!shortStayHours && typedVenues.length > 0 && (
                       <VenueTypeFields
                         venues={typedVenues}
                         chosen={formVenueTypes}
@@ -856,6 +857,7 @@ export function WalkInBookingForm({
                       />
                     )}
                     <ul className={OPTION_LIST}>
+                      {!shortStayHours && <>
                       <BreakfastRoomChips
                         rooms={pickedRooms}
                         chosen={formBreakfastRoomIds}
@@ -885,6 +887,7 @@ export function WalkInBookingForm({
                         formVenueExcessHours={formVenueExcessHours}
                         setFormVenueExcessHours={setFormVenueExcessHours}
                       />
+                      </>}
                       <DiscountPricingControls
                         discountType={discountType}
                         setDiscountType={setDiscountType}
