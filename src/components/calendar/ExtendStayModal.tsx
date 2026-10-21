@@ -5,7 +5,7 @@ import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
 import { getRateConfig } from '../../utils/rateConfig'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
-import { roomDisplayName, roomOptionLabel } from './bookingStyles'
+import { roomDisplayName } from './bookingStyles'
 import { statusAfterPayment } from '../../utils/bookingStatus'
 import { hasOutstandingBalance, amountToPayNow, isBilledToAgency } from '../../utils/bookingMoney'
 import { methodNeedsReference } from '../../utils/paymentMethod'
@@ -35,7 +35,6 @@ import { paymentStatusFromMoney } from '../../utils/bookingMoney'
 import { formatRoomNumbers } from '../../utils/roomNumbers'
 import { BookingReceipts } from './BookingReceipts'
 import { ExtendStayForm } from './ExtendStayForm'
-import { MoveBookingForm } from './MoveBookingForm'
 import { canMoveBooking } from '../../utils/bookingMove'
 import { venueTypeOf } from '../../utils/venueTypes'
 import { showToast } from '../../utils/toast'
@@ -59,6 +58,9 @@ interface ExtendStayModalProps {
   onEditBooking?: () => void
   /** Opens another booking's panel in place of this one (a room on the same bill). */
   onOpenBooking?: (b: Booking) => void
+  /** Reschedule: the panel closes and the calendar is where the new days and room are picked
+   *  (the reschedule mock, "F · Back to the calendar", Sebastian, 2026-10-21). */
+  onReschedule?: (b: Booking, tabTotal: number) => void
 }
 
 const fmtShort = (d: string) => (d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—')
@@ -120,6 +122,7 @@ export function ExtendStayModal({
   onUpdateBooking,
   onEditBooking,
   onOpenBooking,
+  onReschedule,
 }: ExtendStayModalProps) {
   const [showPrintModal, setShowPrintModal] = useState(false)
   // `toolAsk` replaces the tool row with its question.
@@ -145,8 +148,6 @@ export function ExtendStayModal({
   // `null` until the desk types: the box then shows what is owed now.
   const [receiptAmount, setReceiptAmount] = useState<number | null>(null)
   const [extendOpen, setExtendOpen] = useState(false)
-  // "Change room or dates" opens in the same place as Extend stay; only one is open at a time.
-  const [moveOpen, setMoveOpen] = useState(false)
   // A stay billed to an agency keeps its receive step folded away until it is wanted.
   const [receiveOpen, setReceiveOpen] = useState(false)
   // The bill's lines wait behind "Bill · N lines" until opened (the owner, 2026-10-15).
@@ -179,14 +180,14 @@ export function ExtendStayModal({
     setToolsSinking(true)
     setTimeout(() => layout(() => { setToolsSinking(false); setToolAsk(which) }), 170)
   }
-  // The one gold bar slides to whichever of Extend and Move is open, and fades where it was.
+  // The one gold bar slides to Extend while it is open, and fades where it was.
   useLayoutEffect(() => {
     const bar = toolBar.current
     if (!bar) return
     const open = toolsRow.current?.querySelector<HTMLElement>('[aria-expanded="true"]')
     if (open) { bar.style.left = open.offsetLeft + 10 + 'px'; bar.style.width = open.offsetWidth - 20 + 'px' }
     bar.toggleAttribute('data-on', !!open)
-  }, [extendOpen, moveOpen, toolAsk])
+  }, [extendOpen, toolAsk])
   // Nothing is preselected: how the guest paid is asked for every payment, because
   // defaulting to 'Cash' is what once printed a Cash receipt for a GCash guest.
   const [receiptMethod, setReceiptMethod] = useState('')
@@ -688,18 +689,8 @@ export function ExtendStayModal({
   const extendLabel = isBlock ? 'Change the dates' : isShortStay ? 'Stay longer' : 'Extend stay'
   // A stay that has ended has nothing left to extend; its dates are corrected with the pencil.
   const canExtend = stayStage(localBooking, todayKey) !== 'after'
-  // A booking is moved until the guest arrives (`canMoveBooking`).
-  const canMove = !!onUpdateBooking && canMoveBooking(localBooking)
-  const handleMove = async (moved: Booking) => {
-    await onUpdateBooking?.(moved)
-    // The number goes with the name: three rooms are called "Full Double".
-    const movedRoom = moved.room_id ? rooms.find(r => r.id === moved.room_id) : undefined
-    const where = movedRoom
-      ? roomOptionLabel(movedRoom)
-      : (venues.find(v => v.id === moved.venue_id)?.name || 'the venue')
-    showToast('Moved to ' + where + ' · ' + fmtShort(moved.check_in) + ' → ' + fmtShort(moved.check_out), 'success')
-    onClose()
-  }
+  // A booking is rescheduled until the guest arrives (`canMoveBooking`), on the calendar itself.
+  const canMove = !!onReschedule && canMoveBooking(localBooking)
   // A block's dates are all it has, so they are simply on screen — no button to open
   // them. The exception is a block with no end date yet, whose one job is "They have left".
   const datesAlwaysShown = isBlock && !openEnded
@@ -1050,19 +1041,6 @@ export function ExtendStayModal({
               </section>
             )}
 
-            {moveOpen && canMove && (
-              <section ref={showSection} className="bw-formin">
-                <h4 className="text-[13px] font-bold text-main mb-1.5">Change room or dates</h4>
-                <MoveBookingForm
-                  booking={localBooking}
-                  rooms={rooms}
-                  venues={venues}
-                  bookings={bookings}
-                  tabTotal={tabAmount}
-                  onMove={handleMove}
-                />
-              </section>
-            )}
           </div>
         </div>
 
@@ -1093,15 +1071,15 @@ export function ExtendStayModal({
         ) : (
           <div ref={toolsRow} className={'relative border-t border-soft px-1.5 py-0.5 flex flex-wrap items-center justify-center shrink-0' + (toolsSinking ? ' bw-sink' : '') + (toolsBack ? ' bw-tools-back' : '')}>
             {canExtend && !datesAlwaysShown && (
-              <button type="button" onClick={() => layout(() => { setExtendOpen(o => !o); setMoveOpen(false) })} aria-expanded={extendOpen} className={TOOL + (extendOpen ? ' !text-main' : '')}>
+              <button type="button" onClick={() => layout(() => setExtendOpen(o => !o))} aria-expanded={extendOpen} className={TOOL + (extendOpen ? ' !text-main' : '')}>
                 <CalendarPlus data-i="cal" className="w-3.5 h-3.5" />
                 {extendLabel}
               </button>
             )}
             {canMove && (
-              <button type="button" onClick={() => layout(() => { setMoveOpen(o => !o); setExtendOpen(false) })} aria-expanded={moveOpen} className={TOOL + (moveOpen ? ' !text-main' : '')}>
+              <button type="button" onClick={() => { onReschedule?.(localBooking, tabAmount); onClose() }} className={TOOL}>
                 <ArrowRightLeft data-i="swap" className="w-3.5 h-3.5" />
-                Move
+                Reschedule
               </button>
             )}
             {!isBlock && (

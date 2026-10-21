@@ -105,7 +105,9 @@
 - It is the same booking in a new place, so the guest, the agency, the payments, the receipts, the notes and the invoice number stay on it. Only the bill is worked out again, and it is shown before it is saved.
 - **The agency's rate belongs to a room**, so it does not follow the booking: the new room gets the agency's rate for *it*, or the room's ordinary price when the agency has none. Breakfast is dropped when the new room sells none.
 - **A guest who has paid more than the new stay costs** is told so in a line (`They have paid ₱1,900 more than this stay costs.`). The money stays recorded on the booking; the app does not refund anything.
-- A booking moves as its own room — others booked with it stay where they are. Not offered once the guest has checked in, for a short stay, or for a block (those have Extend stay, a rebooking and the block's own dates).
+- A booking moves as its own room — others booked with it stay where they are. Not offered once its dates have begun, or for a block (those have Extend stay and the block's own dates).
+- **Rescheduling is done on the calendar** (Sebastian, 2026-10-21, the reschedule mock: *"How about when rescheduling it goes back to the calendar to choose what date and or what room to move the reservation"*; he picked it over a day strip, a month, two dials, ready answers and dragging the pill, then *"apply it and ship"*). **Reschedule** on the booking panel closes it; the calendar's top line says whose stay is being moved, the stay leaves the grid and a dashed outline marks where it was. A tap is the new first day in any room, and the nights come along when they fit; otherwise the next tap in that room is the check-out day, as when booking. The action bar says what it does to the price and saves it. A room moves among rooms, a venue among venues. It replaced the **Change room or dates** form.
+- **A short stay can be rescheduled too**, to another day with its hours — the Gazebo and the Garden are sold by the hour and their events move.
 - A room that is taken on the chosen dates says `booked` in the list, and a clash is refused with the reason.
 
 ## The quick view (the panel that opens on a booking)

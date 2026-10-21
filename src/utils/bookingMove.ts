@@ -18,12 +18,13 @@ export interface MoveTarget {
 }
 
 /**
- * A booking can be moved until its first day (`stayStage`). After that the stay is happening
- * (extend it); a short stay takes a whole day and is rebooked, not
- * moved; a block has its own dates pane.
+ * A booking can be rescheduled until its first day (`stayStage`). After that the stay is
+ * happening (extend it); a block has its own dates pane. A short stay moves to another day
+ * with its hours (the reschedule mock, Sebastian, 2026-10-21: the Gazebo and the Garden are
+ * sold by the hour and get rescheduled too).
  */
 export function canMoveBooking(b: Booking): boolean {
-  return b.status !== 'blocked' && b.status !== 'cancelled' && stayStage(b, dateToString(new Date())) === 'before' && !b.stay_hours
+  return b.status !== 'blocked' && b.status !== 'cancelled' && stayStage(b, dateToString(new Date())) === 'before'
 }
 
 /**

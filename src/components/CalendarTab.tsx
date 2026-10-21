@@ -9,7 +9,7 @@ import { extendStay } from '../utils/bookingBalance'
 import { clearStayHours } from '../utils/db'
 import { takeFocusedBooking } from '../utils/bookingFocus'
 import { ExtendStayModal } from './calendar/ExtendStayModal'
-import { TimelineGrid } from './calendar/TimelineGrid'
+import { TimelineGrid, MoveBar } from './calendar/TimelineGrid'
 import { TimelineDayInfo, buildTimelineDays, timelineHeader, sameMonth } from './calendar/timelineDays'
 import { halvesByUnit } from './calendar/timelineHalves'
 import { BlockDatesPane } from './calendar/BlockDatesPane'
@@ -21,6 +21,8 @@ import { roomDisplayName } from './calendar/bookingStyles'
 import { showToast } from '../utils/toast'
 import { OPEN_END, isOpenEnded } from '../utils/openBlock'
 import { groupOf } from '../utils/bookingGroup'
+import { moveBooking, stayTotalAfterMove } from '../utils/bookingMove'
+import { normalizeVenueId } from '../utils/helpers'
 
 // The booking form and the old-booking window are only fetched when needed, so the calendar
 // itself loads faster. Both are fetched a moment after the calendar opens, so the first
@@ -33,6 +35,15 @@ const LogOldBookingModal = React.lazy(() => loadLogOld().then(m => ({ default: m
 type Selection = { roomId?: string; venueId?: string; checkIn: Date }
 type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }>
 type UnitSel = { checkIn: string; checkOut: string; type: 'room' | 'venue' }
+/** Where a rescheduled stay is going: its new first day, and its nights once they fit (`null`
+ *  while only the first day is picked). A short stay keeps its hours and has no nights. */
+type MovePick = { unitId: string; type: 'room' | 'venue'; start: string; nights: number | null }
+
+const isoDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d) }
+const addDays = (iso: string, n: number) => { const d = isoDay(iso); d.setDate(d.getDate() + n); return dateToString(d) }
+const nightsOf = (b: Booking) => Math.max(1, Math.round((isoDay(b.check_out).getTime() - isoDay(b.check_in).getTime()) / 86400000))
+const peso = (n: number) => '₱' + Math.round(n).toLocaleString()
+const fmtDay = (iso: string) => isoDay(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
 export function CalendarTab() {
   const { rooms, venues, bookings, allBookings, partnerDeals, isLoading, createManualBooking, cancelBooking, deleteBooking, updateBooking } = useDashboardData()
@@ -61,6 +72,14 @@ export function CalendarTab() {
     checkOut: string
   } | null>(null)
   const [extendCheckoutDate, setExtendCheckoutDate] = useState(''); const [extendError, setExtendError] = useState('')
+  // **Reschedule goes back to the calendar** (the reschedule mock, "F · Back to the calendar",
+  // Sebastian, 2026-10-21: "when rescheduling it goes back to the calendar to choose what date
+  // and or what room"). The panel closes, the stay leaves the grid and a dashed outline marks
+  // where it was; the desk taps the new first day in any room, its nights come along, and the
+  // action bar saves it. It is the same booking (`moveBooking`): guest, payments, receipts and
+  // invoice number stay on it.
+  const [moving, setMoving] = useState<{ booking: Booking; tabTotal: number } | null>(null)
+  const [movePick, setMovePick] = useState<MovePick | null>(null)
 
   // ── Full wizard (editing + advanced) ──
   // The rooms being corrected together, fixed when Edit is pressed: a list rebuilt on
@@ -76,7 +95,7 @@ export function CalendarTab() {
   // The desk is mid-task (a panel or form open): "What's new" is told, so it never opens by
   // itself over a panel. (A short stay's panel used to open by itself when its hours ran out;
   // the app no longer does anything on its own — Sebastian, 2026-10-20.)
-  const deskBusy = showManualForm || showLogOld || !!selectedExtendBooking || !!blockTarget
+  const deskBusy = showManualForm || showLogOld || !!selectedExtendBooking || !!blockTarget || !!moving
   React.useEffect(() => {
     setDeskBusy(deskBusy)
     return () => setDeskBusy(false)
@@ -89,8 +108,11 @@ export function CalendarTab() {
   const bookingsRef = useRef(bookings)
   const roomsRef = useRef(rooms)
   const venuesRef = useRef(venues)
+  const movingRef = useRef(moving)
+  const movePickRef = useRef(movePick)
   React.useEffect(() => {
     timelineSelectionRef.current = timelineSelection; groupSelectionRef.current = groupSelection; bookingsRef.current = bookings; roomsRef.current = rooms; venuesRef.current = venues
+    movingRef.current = moving; movePickRef.current = movePick
   })
 
   // A booking opened from the Bookings list lands here: the calendar moves to the
@@ -137,7 +159,8 @@ export function CalendarTab() {
   const breakfastFor = breakfastForId ? bookings.find(b => b.id === breakfastForId) || null : null
 
   // Who fills each half of each day, per room and venue (see `timelineHalves`).
-  const halves = useMemo(() => halvesByUnit(bookings, daysList), [bookings, daysList])
+  // The stay being rescheduled is off the grid meanwhile, so its own days can be picked again.
+  const halves = useMemo(() => halvesByUnit(moving ? bookings.filter(b => b.id !== moving.booking.id) : bookings, daysList), [bookings, daysList, moving])
   // The rooms still to be asked about breakfast this morning. Read off every booking, not
   // off the grid: a guest who has overstayed has no pill on it but is still in the room.
   // **Only in the morning** (Sebastian, 2026-10-14; 11 AM since 2026-10-20): breakfast is not asked
@@ -178,7 +201,106 @@ export function CalendarTab() {
     catch { queryClient.setQueryData(['bookings'], before); showToast('Could not mark the breakfast served. Please try again.', 'error') }
   }, [queryClient, todayKey])
 
+  /** A tap on the calendar while a stay is being rescheduled. A tap is its new first day and its
+   *  nights come along when they fit; otherwise, as when booking, the next tap in that room is
+   *  the check-out day. A short stay takes the day tapped. */
+  const pickNewPlace = useCallback((id: string, type: 'room' | 'venue', date: Date) => {
+    const mv = movingRef.current?.booking
+    if (!mv || type !== (mv.room_id ? 'room' : 'venue')) return
+    const day = dateToString(date)
+    if (day < dateToString(new Date())) return
+    const free = (from: string, to: string) => type === 'room'
+      ? syncEngine.isRoomAvailable(id, from, to, bookingsRef.current, mv.id)
+      : syncEngine.isVenueRangeAvailable(id, from, to, bookingsRef.current, mv.id)
+    const name = type === 'room' ? 'Room ' + (roomsRef.current.find(r => r.id === id)?.room_number ?? '') : (venuesRef.current.find(v => v.id === id)?.name ?? 'The venue')
+    const p = movePickRef.current
+    if (mv.stay_hours) {
+      if (!free(day, addDays(day, 1))) showToast(name + ' is already booked that day.', 'error')
+      else setMovePick({ unitId: id, type, start: day, nights: 0 })
+      return
+    }
+    if (p && p.unitId === id && day > p.start) {
+      if (!free(p.start, day)) showToast(name + ' is already booked on some of those dates.', 'error')
+      else setMovePick({ ...p, nights: Math.round((date.getTime() - isoDay(p.start).getTime()) / 86400000) })
+      return
+    }
+    if (p && p.unitId === id && day === p.start) { setMovePick(null); return }
+    if (!free(day, addDays(day, 1))) { showToast(name + ' is already booked that night.', 'error'); return }
+    const n = nightsOf(mv)
+    setMovePick({ unitId: id, type, start: day, nights: free(day, addDays(day, n)) ? n : null })
+  }, [])
+
+  const startReschedule = useCallback((booking: Booking, tabTotal: number) => {
+    setTimelineSelection(null); setGroupSelection(null); setMovePick(null)
+    setMoving({ booking, tabTotal })
+  }, [])
+  const endReschedule = useCallback(() => { setMoving(null); setMovePick(null) }, [])
+  React.useEffect(() => {
+    if (!moving) return
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') endReschedule() }
+    document.addEventListener('keydown', esc)
+    return () => document.removeEventListener('keydown', esc)
+  }, [moving, endReschedule])
+
+  // While rescheduling, a pill is a place that is taken, not a booking to open.
+  const openBooking = useCallback((b: Booking) => {
+    if (movingRef.current) {
+      const room = b.room_id ? roomsRef.current.find(r => r.id === b.room_id) : undefined
+      showToast((room ? 'Room ' + room.room_number : venuesRef.current.find(v => v.id === normalizeVenueId(b.venue_id))?.name || 'That venue') + ' is already booked then.', 'error')
+      return
+    }
+    setSelectedExtendBooking(b)
+  }, [])
+
+  // The booking at its new place, priced by the one rule, once a whole stay is picked.
+  const moved = useMemo(() => {
+    if (!moving || !movePick || (movePick.nights === null && !moving.booking.stay_hours)) return null
+    const b = moving.booking
+    const checkOut = addDays(movePick.start, b.stay_hours ? 1 : movePick.nights || 1)
+    return moveBooking(b, { unitId: movePick.unitId, type: movePick.type, checkIn: movePick.start, checkOut }, { rooms, venues, deals: partnerDeals, tabTotal: moving.tabTotal })
+  }, [moving, movePick, rooms, venues, partnerDeals])
+
+  const confirmMove = useCallback(() => {
+    if (!moving || !moved) return
+    const over = Math.max(0, Number(moved.downpayment_paid || 0) - stayTotalAfterMove(moved, { rooms, venues, tabTotal: moving.tabTotal }))
+    const room = moved.room_id ? rooms.find(r => r.id === moved.room_id) : undefined
+    const where = room ? 'Room ' + room.room_number : venues.find(v => v.id === normalizeVenueId(moved.venue_id))?.name || 'the venue'
+    endReschedule()
+    // The pill lands at once (the save is optimistic) and goes back if the database says no.
+    updateBooking(moved)
+      .then(() => showToast('Rescheduled to ' + where + ' · ' + fmtDay(moved.check_in) + (moved.stay_hours ? '' : ' → ' + fmtDay(moved.check_out)) + (over > 0 ? '. They have paid ' + peso(over) + ' more than this stay costs.' : ''), over > 0 ? 'info' : 'success'))
+      .catch(err => showToast(err instanceof Error ? err.message : 'Could not reschedule the booking. Please try again.', 'error'))
+  }, [moving, moved, rooms, venues, updateBooking, endReschedule])
+
+  // What the grid draws while rescheduling: the pick (its "In", or the whole stay), the bar's
+  // words, the old place and which rows can take it.
+  const moveView = useMemo(() => {
+    if (!moving) return null
+    const b = moving.booking
+    const p = movePick
+    const key = p?.type === 'room' ? 'roomId' : 'venueId'
+    const selection: Selection | null = p && (p.nights === null || b.stay_hours) ? { [key]: p.unitId, checkIn: isoDay(p.start) } : null
+    const group: GroupSel | null = p && p.nights !== null && !b.stay_hours ? { [p.unitId]: { checkIn: isoDay(p.start), checkOut: isoDay(addDays(p.start, p.nights)), type: p.type } } : null
+    const unitId = b.room_id || normalizeVenueId(b.venue_id) || ''
+    const same = !!moved && moved.check_in === b.check_in && moved.check_out === b.check_out && (moved.room_id || normalizeVenueId(moved.venue_id)) === unitId
+    const opts = { rooms, venues, tabTotal: moving.tabTotal }
+    const diff = moved && !same ? stayTotalAfterMove(moved, opts) - stayTotalAfterMove(b, opts) : 0
+    const bar: MoveBar | null = p ? {
+      chip: b.stay_hours ? b.stay_hours + ' hrs' : undefined,
+      note: !moved ? 'Tap the check-out day' : same ? 'Where it is now' : diff === 0 ? 'Same price' : peso(Math.abs(diff)) + (diff > 0 ? ' more' : ' less'),
+      tone: diff > 0 ? 'more' : diff < 0 ? 'less' : undefined,
+      onConfirm: moved && !same ? confirmMove : undefined,
+      onCancel: endReschedule,
+    } : null
+    return {
+      selection, group, bar,
+      was: { unitId, start: isoDay(b.check_in).getTime(), end: isoDay(b.check_out).getTime(), short: !!b.stay_hours },
+      onlyType: (b.room_id ? 'room' : 'venue') as 'room' | 'venue',
+    }
+  }, [moving, movePick, moved, rooms, venues, confirmMove, endReschedule])
+
   const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date) => {
+    if (movingRef.current) { pickNewPlace(id, type, date); return }
     const curTimeline = timelineSelectionRef.current
     const curGroup = groupSelectionRef.current
 
@@ -231,7 +353,7 @@ export function CalendarTab() {
       setGroupSelection(prev => ({ ...(prev || {}), [id]: { checkIn: curTimeline.checkIn, checkOut: date, type } }))
       setTimelineSelection(null)
     }
-  }, [])
+  }, [pickNewPlace])
 
   const handleExtendStaySubmit = async (e: React.FormEvent, tabTotal: number) => {
     e.preventDefault(); setExtendError('')
@@ -429,6 +551,21 @@ export function CalendarTab() {
           gaps; they are three lines of one surface, parted by rules, and the height the gaps
           took goes to the rooms. */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-card border border-soft rounded-xl">
+        {/* While a stay is being rescheduled, the top line says whose it is and where it is now. */}
+        {moving && (
+          <div className="fd-drop shrink-0 flex items-center gap-2.5 min-h-[52px] bg-ink-900 text-white pl-4 pr-2 py-2 text-[13px] font-semibold">
+            <span className="min-w-0 truncate">
+              Rescheduling <b className="font-display text-gold-400">{moving.booking.guest_name}</b>
+              {' · ' + (moving.booking.room_id ? 'Room ' + (rooms.find(r => r.id === moving.booking.room_id)?.room_number ?? '') : venues.find(v => v.id === normalizeVenueId(moving.booking.venue_id))?.name || '')}
+              {' · ' + fmtDay(moving.booking.check_in) + (moving.booking.stay_hours ? ' · ' + moving.booking.stay_hours + ' hrs' : ' → ' + fmtDay(moving.booking.check_out))}
+            </span>
+            <span className="hidden sm:inline shrink-0 text-white/60">{moving.booking.stay_hours ? 'Tap the new day' : 'Tap the new first day'}</span>
+            <button type="button" onClick={endReschedule}
+              className="ml-auto shrink-0 h-8 px-3.5 rounded-full bg-white/10 hover:bg-white/20 text-[12.5px] font-bold transition-colors active:scale-95 cursor-pointer">
+              Cancel
+            </button>
+          </div>
+        )}
         <CalendarToolbar
           monthHeader={monthHeader}
           startsToday={startsToday}
@@ -446,10 +583,10 @@ export function CalendarTab() {
           daysList={daysList}
           halves={halves}
           partnerDeals={partnerDeals}
-          timelineSelection={timelineSelection}
-          groupSelection={groupSelection}
+          timelineSelection={moveView ? moveView.selection : timelineSelection}
+          groupSelection={moveView ? moveView.group : groupSelection}
           handleCellClick={handleCellClick}
-          setSelectedExtendBooking={setSelectedExtendBooking}
+          setSelectedExtendBooking={openBooking}
           setExtendCheckoutDate={setExtendCheckoutDate}
           setExtendError={setExtendError}
           onNewBooking={confirmGroup}
@@ -462,6 +599,9 @@ export function CalendarTab() {
           onBreakfast={askBreakfast}
           breakfastReady={breakfastReady}
           onBreakfastServed={serveBreakfast}
+          move={moveView?.bar}
+          was={moveView?.was}
+          onlyType={moveView?.onlyType}
         />
       </div>
 
@@ -482,6 +622,7 @@ export function CalendarTab() {
           onUpdateBooking={updateBooking}
           onEditBooking={() => { setEditingBooking(liveExtendBooking); setEditingGroup(groupOf(liveExtendBooking, bookings)); setFormStayHours(liveExtendBooking.stay_hours || null); setShowManualForm(true); setSelectedExtendBooking(null) }}
           onOpenBooking={b => setSelectedExtendBooking(b)}
+          onReschedule={startReschedule}
         />
       )}
 

@@ -32,6 +32,9 @@ export interface TimelineCellProps {
   /** The highlighted day's place in the pick (0 is the check-in day), so the pick sweeps
    *  across night by night. */
   pickAt?: number
+  /** Where a stay being rescheduled is now: a dashed outline on its first day (from the
+   *  afternoon), the days between, its last day (until the morning), or a short stay's whole day. */
+  was?: 'start' | 'mid' | 'end' | 'day' | null
   /** The stay began before the first day on screen (the grid opens at today,
    *  card k154), so the pill is cut off at the left edge and says so. */
   isContinuation?: boolean
@@ -224,6 +227,7 @@ export const TimelineCell = React.memo(
     closesDay,
     isCheckIn,
     highlight,
+    was,
     pickAt = 0,
     isContinuation,
     isWeekend,
@@ -414,6 +418,11 @@ export const TimelineCell = React.memo(
       )
     }
 
+    // The old place of a stay being rescheduled: a dashed outline, so the desk sees where it was.
+    const wasPlace = !was ? '' : was === 'day' ? 'inset-x-0.5 rounded-md border-x'
+      : whole && was === 'start' ? 'left-1/2 right-0 rounded-l-md border-l'
+        : whole && was === 'end' ? 'left-0 right-1/2 rounded-r-md border-r'
+          : was === 'start' ? 'inset-x-0 rounded-l-md border-l' : was === 'end' ? 'inset-x-0 rounded-r-md border-r' : 'inset-x-0'
     return (
       <td
         data-unit={id}
@@ -424,6 +433,7 @@ export const TimelineCell = React.memo(
       >
         {/* Nothing is drawn where a guest left: the end of their pill says it. The arrow and
             the word "out" that used to stand here were taken off (Sebastian, 2026-10-06). */}
+        {was && <div aria-hidden="true" className={'absolute inset-y-1 border-y-[1.5px] border-dashed border-paper-400 pointer-events-none ' + wasPlace} />}
       </td>
     )
   },
@@ -444,6 +454,7 @@ export const TimelineCell = React.memo(
       prevProps.isCheckIn === nextProps.isCheckIn &&
       prevProps.highlight === nextProps.highlight &&
       prevProps.pickAt === nextProps.pickAt &&
+      prevProps.was === nextProps.was &&
       prevProps.halfOf === nextProps.halfOf &&
       prevProps.closesDay === nextProps.closesDay &&
       prevProps.isContinuation === nextProps.isContinuation &&

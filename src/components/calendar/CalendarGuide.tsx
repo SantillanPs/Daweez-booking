@@ -32,6 +32,7 @@ export function CalendarGuide() {
             <Row sign={<Pill className="bg-emerald-50 border-emerald-600" />}>Occupied: today is in its dates</Row>
             <Row sign={<Pill className="bg-ink-100 border-ink-200 text-white"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-ink-600"><Check className="w-2 h-2" strokeWidth={3} /></span></Pill>}>Its dates are over</Row>
             <Row sign={<Pill className="bg-paper-200/60 border-paper-300" />}>Blocked</Row>
+            <Row sign={<Pill className="bg-transparent border-dashed border-paper-400" />}>While rescheduling: where the booking is now</Row>
             <Row sign={<Building2 className="w-4 h-4" />}>Agency reservation</Row>
             <Row sign={<span className="font-display text-[13px] font-bold text-blue-700">AB</span>}>Blue initials: no deposit</Row>
             <Row sign={<span className="font-display font-bold"><span className="text-danger-600">₱</span> <span className="text-emerald-700">₱</span></span>}>Red to pay, green paid · hover for how much</Row>

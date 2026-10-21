@@ -299,6 +299,9 @@
 .fd-bar > :nth-child(4) { animation-delay: 0.12s; }
 .fd-bar > :nth-child(5) { animation-delay: 0.16s; }
 .fd-bar > :nth-child(n+6) { animation-delay: 0.2s; }
+/* Rescheduling: the calendar's top line says whose stay is being moved, dropping in over the toolbar. */
+@keyframes fd-drop { from { opacity: 0; translate: 0 -100%; } }
+.fd-drop { animation: fd-drop 0.4s cubic-bezier(0.34, 1.4, 0.64, 1); }
 /* A day's arrive / leave count rolls to its new number (never on first draw). */
 @keyframes fd-roll { from { opacity: 0; translate: 0 8px; } }
 .fd-roll { display: inline-block; animation: fd-roll 0.3s cubic-bezier(0.34, 1.4, 0.64, 1); }
