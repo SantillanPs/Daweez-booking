@@ -20,6 +20,8 @@
 ## Payment plans
 
 **The form's `Payment` is one choice of three: Custom, Full pay or No deposit** — a toggle, the same on every booking, an agency's included (Sebastian, 2026-10-06). It is called Payment, not Deposit: *"in the form, don't call it 'deposit', use Payment."*
+- **Custom is called Deposit** (Sebastian, 2026-10-21: *"rename all the custom buttons that are for payments into Deposit"*). The choice is still named Payment; only its first button changed, and the bill reads `Deposit · ₱1,000 now`. The discount's Custom is not a payment and keeps its name.
+- **The Gazebo and the Garden pay like any booking** (Sebastian, the same day: *"the payment options aren't in the venues"*). Sold by the hour, they had been treated like a room by the hour, paid in full at the counter with no Payment choice. They are events booked ahead, so they get Deposit, Full pay and No deposit; only a room by the hour is still paid in full on the spot.
 
 - **None of the three is chosen when the form opens**, and the form waits for one: *"don't default to custom. let it be unselected between the 3."* The same reason nothing is chosen on `Paid by` — a payment the form picked itself is one nobody agreed. Until one is chosen there is no amount, no note and no `Paid by`.
 - **Custom opens the amount with half the stay already in it**, and the desk types over it when the guest agrees to something else. *"custom should have automatic 50% filled, full pay and no deposit should just be a toggle, no need to show the amount input field."* Until it is typed over, it follows the stay.

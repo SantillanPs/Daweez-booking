@@ -129,7 +129,8 @@ export function BookingDepositFields({
   // `''` is "none chosen yet" — a real state, the same as on the `Paid by` row.
   const picked: DepositChoice | '' = chosen ? choice : ''
   const choices: SegmentOption<DepositChoice | ''>[] = [
-    { key: 'custom', label: 'Custom', hint: 'The guest pays an amount now. Half the stay is filled in; change it if they agree to something else.' },
+    // Named "Deposit" (Sebastian, 2026-10-21: "rename all the custom buttons that are for payments into Deposit"); it is still `custom` underneath.
+    { key: 'custom', label: 'Deposit', hint: 'The guest pays an amount now. Half the stay is filled in; change it if they agree to something else.' },
     { key: 'full', label: 'Full pay', hint: 'The whole stay is paid now. Nothing left at check-out.' },
     { key: 'reservation', label: 'No deposit', hint: 'Nothing is paid now. The room is held, and the guest pays when they arrive to check in.' },
   ]

@@ -49,9 +49,9 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
 
   // The guest's own choice at booking, printed so the statement can never look
   // like it is asking for the whole stay when only a deposit was agreed. A CUSTOM plan
-  // names the figure itself — `Custom · ₱1,000 now` — because the word alone says nothing.
+  // names the figure itself — `Deposit · ₱1,000 now` (it was `Custom` until 2026-10-21) — because the word alone says nothing.
   const planLabel = statement.paymentPlan === 'custom'
-    ? 'Custom · ' + money(statement.downpaymentPaid > 0 ? statement.downpaymentPaid : statement.amountDue) + ' now'
+    ? 'Deposit · ' + money(statement.downpaymentPaid > 0 ? statement.downpaymentPaid : statement.amountDue) + ' now'
     : paymentPlanLabel(statement.paymentPlan || undefined)
   // Money received with no numbered receipt behind it (old and imported bookings).
   const earlierPaid = Math.max(0, statement.downpaymentPaid - statement.payments.reduce((sum, p) => sum + p.amount, 0))

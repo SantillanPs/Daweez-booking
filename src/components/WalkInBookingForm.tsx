@@ -438,6 +438,11 @@ export function WalkInBookingForm({
 
   const hasRooms = formRoomIds.size > 0
   const hasVenues = formVenueIds.size > 0
+  // **Paid in full at the counter** is a room by the hour only. The Gazebo and the Garden are
+  // sold by the hour too, but they are events booked ahead, so they pay like any booking:
+  // Deposit, Full pay or No deposit (Sebastian, 2026-10-21: "the payment options aren't in
+  // the venues").
+  const paidAtCounter = !!shortStayHours && !hasVenues
   // The venues being booked that come in kinds (the Vacation House) — the type choice is shown for them.
   const typedVenues = useMemo(
     () => Array.from(formVenueIds).map(id => venues.find(v => v.id === id)).filter((v): v is Venue => !!v && venueTypes(v).length > 0),
@@ -505,15 +510,15 @@ export function WalkInBookingForm({
    * underneath, in exactly the shape the agency gate already uses, rather than failing on
    * the press. A **Reservation** pays nothing, so it is asked nothing.
    */
-  const paysSomething = shortStayHours ? true : (formPaymentPlan !== 'reservation' && formPaymentPlan !== 'agency')
+  const paysSomething = paidAtCounter ? true : (formPaymentPlan !== 'reservation' && formPaymentPlan !== 'agency')
   // Correcting a booking takes no money, so it never waits on a method.
   const methodRequired = !editingBookings && paysSomething && agreedDeposit > 0
   // A new booking says what the payment is before anything else about the money: one of
   // the three, and for Custom a figure. Nothing is chosen for the desk, so a payment nobody
   // agreed can never be printed on a receipt.
-  const depositRequired = !editingBookings && !shortStayHours
+  const depositRequired = !editingBookings && !paidAtCounter
   const depositPrompt = !depositRequired ? ''
-    : !planChosen ? 'Choose Custom, Full pay or No deposit.'
+    : !planChosen ? 'Choose Deposit, Full pay or No deposit.'
     : formPaymentPlan === 'custom' && agreedDeposit <= 0
       ? 'Type the amount, or choose No deposit.'
       : agreedDeposit > Math.round(estTotal) ? 'The payment is more than the stay comes to.'
@@ -555,7 +560,7 @@ export function WalkInBookingForm({
   }
 
   /** What the guest hands over in this form — the figure beside the Confirm button. */
-  const paysNow = Math.max(0, Math.round(shortStayHours ? estTotal : agreedDeposit))
+  const paysNow = Math.max(0, Math.round(paidAtCounter ? estTotal : agreedDeposit))
   /** Something that actually went wrong: a refused save, or a box Confirm found empty. */
   const footerProblem = formError || (trySave ? (Object.values(fieldErrors).find(Boolean) || '') : '')
 
@@ -621,9 +626,9 @@ export function WalkInBookingForm({
     // writes both down. So every plan except **Reservation** must name a way to pay, and
     // GCash / bank must carry the reference the guest is reading out — the form will not
     // finish without it. A Reservation pays nothing and is exempt by definition.
-    const paidNow = shortStayHours ? estTotal : agreedDeposit
+    const paidNow = paidAtCounter ? estTotal : agreedDeposit
     // A Reservation and a stay billed to its agency both take nothing at the desk.
-    const isReservation = !shortStayHours && (formPaymentPlan === 'reservation' || formPaymentPlan === 'agency')
+    const isReservation = !paidAtCounter && (formPaymentPlan === 'reservation' || formPaymentPlan === 'agency')
     if (depositPrompt) {
       setFormError(depositPrompt)
       return
@@ -672,18 +677,18 @@ export function WalkInBookingForm({
       // way of paying has no note, so one typed and then abandoned is not saved.
       formBlockNotes: formStatus === 'blocked'
         ? formBlockNotes
-        : (!shortStayHours && (formPaymentPlan === 'custom' || formPaymentPlan === 'deposit') ? formPaymentNote : ''),
+        : (!paidAtCounter && (formPaymentPlan === 'custom' || formPaymentPlan === 'deposit') ? formPaymentNote : ''),
       discountType, discountValue, venueDayBlocks, editingBookings,
       formPaymentMethod, formPaymentReference, derivedPaymentStatus, formDownpaymentPaid,
-      formBalanceDue, formSecurityDeposit, formAgreedDeposit: shortStayHours ? estTotal : agreedDeposit, createManualBooking, cancelBooking, deleteBooking,
-      // A short stay is paid in full at the counter, so its plan is the whole amount.
-      formPaymentPlan: shortStayHours ? 'full' : formPaymentPlan,
+      formBalanceDue, formSecurityDeposit, formAgreedDeposit: paidAtCounter ? estTotal : agreedDeposit, createManualBooking, cancelBooking, deleteBooking,
+      // A room by the hour is paid in full at the counter, so its plan is the whole amount.
+      formPaymentPlan: paidAtCounter ? 'full' : formPaymentPlan,
       stay_hours: shortStayHours ?? undefined,
       // **What the guest hands over in this form.** A short stay is paid in full, a
       // Reservation hands over nothing, and everything else is the agreed figure — the same
       // number the `Pays now` row is showing, so the form can never take a different amount
       // from the one the desk read out.
-      receivedAmount: shortStayHours ? estTotal : isReservation ? 0 : paidNow,
+      receivedAmount: paidAtCounter ? estTotal : isReservation ? 0 : paidNow,
       updateBooking,
     })
     if (!result.ok) { setFormError(result.error); setIsSubmitting(false); return }
@@ -898,9 +903,9 @@ export function WalkInBookingForm({
                   </section>
                 )}
 
-                {/* Only while correcting a saved booking — and never a short stay,
+                {/* Only while correcting a saved booking — and never a room by the hour,
                     which is paid in full and has no figures to correct. */}
-                {editingBookings && !shortStayHours && (
+                {editingBookings && !paidAtCounter && (
                   <BookingCorrectionFields
                     formInvoiceNumber={formInvoiceNumber}
                     setFormInvoiceNumber={setFormInvoiceNumber}
@@ -920,10 +925,10 @@ export function WalkInBookingForm({
                 <section className={GROUP + ' font-sans delay-150 animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-both motion-reduce:animate-none'}>
                   <h4 className={GROUP_TITLE + ' flex items-center gap-1.5'}>
                     Payment
-                    {!editingBookings && !paymentPrompt && (shortStayHours ? !!formPaymentMethod : planChosen) && <Seal />}
+                    {!editingBookings && !paymentPrompt && (paidAtCounter ? !!formPaymentMethod : planChosen) && <Seal />}
                   </h4>
                   <BookingDepositFields
-                    shortStay={!!shortStayHours}
+                    shortStay={paidAtCounter}
                     {...depositFieldProps}
                     want={want}
                   />

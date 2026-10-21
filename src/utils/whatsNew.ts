@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-21d',
+    changes: [
+      {
+        where: 'Front desk → new booking',
+        what: [
+          'The “Custom” payment button is now called “Deposit”. It works the same: half the stay is filled in, and you can change it. The bill says “Deposit” too.',
+          'The Gazebo and the Garden now ask how the guest pays, like any booking: Deposit, Full pay or No deposit. A room booked by the hour is still paid in full.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-21c',
     changes: [
       {

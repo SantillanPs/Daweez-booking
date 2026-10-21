@@ -157,7 +157,7 @@ export function paymentStatusWord(booking: Booking): string {
 
 
 // Plain label for the agreed payment plan, or '' when nothing was agreed.
-// `custom` names the figure on the paper instead — `Custom · ₱1,000 now` — because a
+// `custom` names the figure on the paper instead — `Deposit · ₱1,000 now` — because a
 // custom amount means nothing without the number beside it (the statement composes it).
 // `reservation` is just **`Reservation`** (the owner, 2026-09-29: *"remove the text after
 // the payment plan type … the additional text after the text is redundant"*) — the word
@@ -167,7 +167,7 @@ export function paymentStatusWord(booking: Booking): string {
 export function paymentPlanLabel(plan?: Booking['payment_plan']): string {
   if (plan === 'full') return 'Full payment'
   if (plan === 'deposit') return 'Deposit (50%)'
-  if (plan === 'custom') return 'Custom'
+  if (plan === 'custom') return 'Deposit'
   if (plan === 'reservation') return 'Reservation'
   if (plan === 'agency') return 'Billed to agency'
   return ''
