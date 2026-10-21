@@ -124,6 +124,15 @@
   animation: hop 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
+/* A check-in or check-out time (`BookingStageLine`): the tick box pops when it is ticked, and
+   the time rolls up or down as it is stepped. */
+@keyframes pop { 50% { transform: scale(1.35); } }
+@keyframes time-up { from { opacity: 0; transform: translateY(100%); } }
+@keyframes time-down { from { opacity: 0; transform: translateY(-100%); } }
+.animate-pop { animation: pop 0.4s cubic-bezier(0.34, 1.6, 0.64, 1); }
+.animate-time-up { animation: time-up 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.animate-time-down { animation: time-down 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+
 
 /* ── The breakfast window's moves (`BreakfastPicker`) ───────────────────────
    Everything in that window answers a tap (the owner's rule: once it works, how it feels

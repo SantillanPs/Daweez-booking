@@ -2,6 +2,7 @@ import React from 'react'
 import { Building2, Check, LogIn, LogOut } from 'lucide-react'
 import { dateToString } from '../../utils/helpers'
 import { Booking } from '../../types/booking'
+import { doorTime, minutesLabel } from '../../utils/doorTimes'
 import { bookingStage, pillInitials, pillMoney } from './bookingStyles'
 import { clockLabel } from '../../utils/shortStay'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
@@ -114,6 +115,8 @@ function HoverCard({ booking, bill, pillName, agencyName, isBlock, openEnded, mo
   const today = at(dateToString(new Date()))
   // Tonight's place in the stay: 0 is the first night. Before arrival it is below 0.
   const tonight = Math.round((today - at(booking.check_in)) / 86400000)
+  const doorIn = doorTime(booking, 'in', dateToString(new Date()))
+  const doorOut = doorTime(booking, 'out', dateToString(new Date()))
   const paid = Number(bill.downpayment_paid || 0)
   const owed = Number(bill.balance_due || 0)
   const phone = booking.guest_phone && booking.guest_phone.trim() !== 'None' ? booking.guest_phone : ''
@@ -162,6 +165,13 @@ function HoverCard({ booking, bill, pillName, agencyName, isBlock, openEnded, mo
             <span className="font-medium text-muted">{middle}</span>
             {!openEnded && !booking.stay_hours && <span>{niceDay(booking.check_out)}</span>}
           </div>
+          {/* The times the desk ticked, or the usual ones once the day has gone by (`doorTimes`). */}
+          {!isBlock && (doorIn || doorOut) && (
+            <div className="flex items-baseline justify-between gap-2 text-[11.5px] text-muted tabular-nums">
+              <span>{doorIn && <>In <b className={doorIn.usual ? 'font-semibold' : 'font-bold text-main'}>{minutesLabel(doorIn.minutes)}</b></>}</span>
+              <span>{doorOut && <>Out <b className={doorOut.usual ? 'font-semibold' : 'font-bold text-main'}>{minutesLabel(doorOut.minutes)}</b></>}</span>
+            </div>
+          )}
         </div>
         {!isBlock && (
           <div className="grid gap-1.5">
@@ -456,6 +466,9 @@ export const TimelineCell = React.memo(
       // A block's pill reads its reason.
       prevProps.booking?.notes === nextProps.booking?.notes &&
       prevProps.booking?.stay_hours === nextProps.booking?.stay_hours &&
+      // The hover card shows the check-in and check-out times the desk ticked.
+      prevProps.booking?.actual_check_in === nextProps.booking?.actual_check_in &&
+      prevProps.booking?.actual_check_out === nextProps.booking?.actual_check_out &&
       prevProps.booking?.downpayment_paid === nextProps.booking?.downpayment_paid &&
       prevProps.booking?.balance_due === nextProps.booking?.balance_due &&
       // The bill's money changes when another room of it is paid.

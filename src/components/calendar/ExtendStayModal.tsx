@@ -18,6 +18,7 @@ import { getSlipsByBooking, markSlipsPaid, slipNumber, unpaidSlips, unpaySlipsOf
 import { BookingStageLine } from './BookingStageLine'
 import { nextStep } from './bookingStep'
 import { stayStage } from '../../utils/stayStage'
+import { undoBookingCheck } from '../../utils/db'
 import { ReceiveMoney } from './ReceiveMoney'
 import { BookingOrderSlips } from './BookingOrderSlips'
 import { CountPeso } from '../CountPeso'
@@ -516,6 +517,23 @@ export function ExtendStayModal({
       showToast('Could not add ' + name + '. Please try again.', 'error')
     }
   }
+  // **A check-in or check-out time, noted** (the door times mock, Sebastian, 2026-10-21): saved
+  // behind. It moves no stay; the balance is worked out again only because an older booking's
+  // early hours go on the bill once it is checked out (`chargeableEarlyHours`).
+  const noteDoor = async (k: 'in' | 'out', at: string | undefined) => {
+    const before = localBooking
+    const updated = withRecomputedBalance(localBooking, k === 'in' ? { actual_check_in: at } : { actual_check_out: at })
+    setLocalBooking(updated)
+    try {
+      // `update_booking` keeps the old time when it is sent blank, so a time taken off is
+      // cleared first; it clears the hours with it, and the save after it writes them back.
+      if (!at) await undoBookingCheck(localBooking.id, k === 'in' ? 'check_in' : 'check_out')
+      await onUpdateBooking?.(updated)
+    } catch {
+      setLocalBooking(before)
+      showToast('Could not save the time. Please try again.', 'error')
+    }
+  }
   const undoRemove = async () => {
     if (!removed) return
     window.clearTimeout(removedTimer.current)
@@ -825,7 +843,7 @@ export function ExtendStayModal({
                   </div>
                 )}
                 <div className="pt-1">
-                  <BookingStageLine booking={localBooking} todayKey={todayKey} />
+                  <BookingStageLine booking={localBooking} todayKey={todayKey} onDoor={onUpdateBooking ? (k, at) => void noteDoor(k, at) : undefined} />
                 </div>
               </div>
             )}

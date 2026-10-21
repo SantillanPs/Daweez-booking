@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-21',
+    changes: [
+      {
+        where: 'Front desk → booking',
+        what: [
+          'You can tick “Checked in?” and “Checked out?” on a booking and set the time. It is only a note: nothing changes if you skip it.',
+          'If nobody ticks it, the next day it shows the usual 2 PM in and 12 PM out.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-20g',
     changes: [
       {
