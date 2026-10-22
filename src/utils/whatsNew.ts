@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-22',
+    changes: [
+      {
+        where: 'Front desk → calendar',
+        what: [
+          'The breakfast cup beside a room is gone for now. You no longer need to ask rooms about breakfast each morning.',
+          'Breakfast can still be added to a booking, and it is still on the bill.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-21f',
     changes: [
       {
