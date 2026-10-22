@@ -12,10 +12,16 @@ export function breakfastAskOpen(now: Date = new Date()): boolean {
   return now.getHours() < BREAKFAST_ASK_UNTIL
 }
 
+/** Asking rooms about breakfast each morning is switched off for now (Sebastian, 2026-10-22).
+ *  Breakfast on a booking is still added and charged; only the morning ask is gone — the cup
+ *  on the calendar and the breakfast lines in the booking panel. Set to true to bring it back. */
+export const BREAKFAST_ASK_ON = false
+
 /** A guest the desk should ask today: in a room that has breakfast, with a night already
  *  slept there (arrived before today, leaving today or later) — read from the dates, since
  *  there is no check-in any more (Sebastian, 2026-10-20). */
 export function wantsBreakfastToday(b: Booking, today: string): boolean {
+  if (!BREAKFAST_ASK_ON) return false
   const inHotel = b.check_in < today && today <= b.check_out
   return !!b.room_id && b.breakfast_included === true && inHotel &&
     !b.stay_hours && b.status !== 'blocked' && b.status !== 'cancelled'
