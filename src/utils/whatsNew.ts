@@ -23,6 +23,25 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-22b',
+    changes: [
+      {
+        where: 'Settings → Front desk',
+        what: [
+          'Choose where a booking is rescheduled: on the calendar, as now, or on the bill.',
+        ],
+      },
+      {
+        where: 'Front desk → booking → Reschedule (when “On the bill” is chosen)',
+        what: [
+          'Reschedule opens the bill. Tap Check in or Check out to pick a new day. Days another guest has are crossed out.',
+          'Tap the room’s line in the charges to see the other free rooms and their prices, then tap one to move there.',
+          'Each change is saved at once. Press Undo under the charges to take it back.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-22',
     changes: [
       {

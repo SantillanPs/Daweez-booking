@@ -23,6 +23,31 @@ export interface BillDeskActions {
   onUndo: () => void
   /** Prints the 58 mm receipt of the payment with this number. */
   onReceipt: (receipt: string) => void
+  /** Rescheduling on the bill, when Settings → Front desk says so and the stay can still move. */
+  move?: BillMove
+}
+
+/**
+ * **The stay moved on the bill itself** (Sebastian, 2026-10-22, the reschedule mock: the staff
+ * want it on the billing statement — "A · Tap a date" for the dates, "C · On the charge line"
+ * for the room). The panel works the figures out; the bill only shows them and says where.
+ */
+export interface BillMove {
+  /** The stay's own line in the charges (`<booking id>-stay`). */
+  lineKey: string
+  unitId: string
+  checkIn: string
+  checkOut: string
+  /** Whether the stay fits there, leaving itself out. */
+  free: (unitId: string, checkIn: string, checkOut: string) => boolean
+  /** The other rooms (or venues) of its kind, in board order. */
+  units: { id: string; label: string }[]
+  /** That place's own line on the bill, and what the whole bill changes by. */
+  quote: (unitId: string) => { rate: number; amount: number; diff: number }
+  onMove: (unitId: string, checkIn: string, checkOut: string) => void
+  /** The move just made, which Undo takes back. */
+  moved: { label: string } | null
+  onUndo: () => void
 }
 
 // What is missing glows gold and shakes, and gets the cursor (the Receive box's `want`).

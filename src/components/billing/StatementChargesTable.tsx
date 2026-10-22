@@ -1,6 +1,7 @@
-import React from 'react'
-import { X } from 'lucide-react'
+import React, { useState } from 'react'
+import { ChevronDown, X } from 'lucide-react'
 import { StatementBand, StatementLineItem } from '../../utils/statement'
+import { BillMove } from './BillDesk'
 
 const money = (n: number) => (n < 0 ? '−₱' + Math.abs(n).toLocaleString() : '₱' + n.toLocaleString())
 
@@ -43,8 +44,10 @@ const BAND_ORDER: StatementBand[] = ['room', 'breakfast', 'extras', 'food', 'dis
  * bill says its dates once, in its Stay block (the owner, 2026-10-15: *"make sure to check for
  * redundancies"*). A group whose rooms have different dates then shows only the first room's.
  */
-export function StatementChargesTable({ items, dates = true, onRemove, canRemove, isNew, children }: {
+export function StatementChargesTable({ items, dates = true, onRemove, canRemove, isNew, move, children }: {
   items: StatementLineItem[]
+  /** Rescheduling on the bill: the stay's own line opens the other free rooms under it. */
+  move?: BillMove
   dates?: boolean
   /** On a bill the desk is working on: an × that takes a charge it added off (never printed). */
   onRemove?: (it: StatementLineItem) => void
@@ -87,7 +90,9 @@ export function StatementChargesTable({ items, dates = true, onRemove, canRemove
               <tr>
                 <td colSpan={dates ? 6 : 4} className="pt-1 text-[10px] font-medium text-muted">{BAND_LABEL[band]}</td>
               </tr>
-              {rows.map(it => (
+              {rows.map(it => move && it.key === move.lineKey ? (
+                <MovableLine key={it.key} it={it} move={move} dates={dates} cell={cell} />
+              ) : (
                 <tr key={it.key} className={isNew?.(it.key) ? 'bill-ink' : undefined}>
                   {/* An order slip says whether it is paid, beside its number — on one line. */}
                   <td className={cell + ' pl-0 text-left' + (it.status ? '' : ' whitespace-normal')}>
@@ -118,5 +123,70 @@ export function StatementChargesTable({ items, dates = true, onRemove, canRemove
         </tbody>
       </table>
     </div>
+  )
+}
+
+const peso = (n: number) => '₱' + n.toLocaleString()
+
+/**
+ * **The stay's line is where its room is changed** (the reschedule mock's "C · On the charge
+ * line", Sebastian, 2026-10-22). Its name is written on a dashed gold line; tapped, the other
+ * rooms free on those nights open under it as lines of the bill — their own rate and total,
+ * and what the whole bill changes by — closest price first. Tapping one moves the stay there;
+ * the rooms that are taken are named once, quietly, at the bottom.
+ */
+function MovableLine({ it, move, dates, cell }: { it: StatementLineItem; move: BillMove; dates: boolean; cell: string }) {
+  const [open, setOpen] = useState(false)
+  const cols = dates ? 6 : 4
+  const options = move.units
+    .filter(u => u.id !== move.unitId)
+    .map(u => ({ ...u, taken: !move.free(u.id, move.checkIn, move.checkOut), ...move.quote(u.id) }))
+  const free = options.filter(o => !o.taken).sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff))
+  const taken = options.filter(o => o.taken)
+  const opt = 'py-[5px] pl-2 border-b border-card bg-paper-50 text-[11px] font-semibold text-ink-700 whitespace-nowrap transition-colors group-hover:bg-gold-100 group-focus-visible:bg-gold-100'
+  return (
+    <>
+      {/* A move lands like ink, the same as a charge just written. */}
+      <tr key={move.unitId + move.checkIn + move.checkOut} className={move.moved ? 'bill-ink' : undefined}>
+        <td className={cell + ' pl-0 text-left whitespace-normal'}>
+          <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
+            className={'inline-flex items-center gap-1 -ml-0.5 px-0.5 rounded-sm border-b-[1.5px] border-dashed border-gold-400 print:border-0 hover:bg-gold-100 transition-colors cursor-pointer ' + (open ? 'bg-gold-100' : '')}>
+            {it.description}
+            <ChevronDown aria-hidden="true" className={'print:hidden w-3 h-3 text-gold-600 transition-transform duration-300 ' + (open ? 'rotate-180' : '')} />
+          </button>
+        </td>
+        <td className={cell + ' text-right font-mono'}>{it.price ? money(it.price) : '—'}</td>
+        {dates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>}
+        {dates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>}
+        <td className={cell + ' text-right font-mono'}>{it.qty}</td>
+        <td className={cell + ' text-right font-mono font-bold'}>{money(it.amount)}</td>
+      </tr>
+      {open && free.map((o, i) => (
+        <tr key={o.id} data-screen tabIndex={0} role="button" aria-label={'Move to ' + o.label}
+          onClick={() => { setOpen(false); move.onMove(o.id, move.checkIn, move.checkOut) }}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(false); move.onMove(o.id, move.checkIn, move.checkOut) } }}
+          style={{ '--i': i } as React.CSSProperties}
+          className="group print:hidden cursor-pointer outline-none bw-rise">
+          <td className={opt + ' pl-2.5 text-left'}>
+            {o.label}
+            <span className={'ml-1.5 px-1.5 py-px rounded text-[9.5px] font-bold ' + (o.diff > 0 ? 'bg-gold-100 text-gold-800 group-hover:bg-card' : o.diff < 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-ink-100 text-muted')}>
+              {o.diff === 0 ? 'Same price' : (o.diff > 0 ? '+' : '−') + peso(Math.abs(o.diff))}
+            </span>
+          </td>
+          <td className={opt + ' text-right font-mono'}>{money(o.rate)}</td>
+          {dates && <td className={opt + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>}
+          {dates && <td className={opt + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>}
+          <td className={opt + ' text-right font-mono'}>{it.qty}</td>
+          <td className={opt + ' pr-2 text-right font-mono'}>{money(o.amount)}</td>
+        </tr>
+      ))}
+      {open && (
+        <tr data-screen className="print:hidden">
+          <td colSpan={cols} style={{ '--i': free.length } as React.CSSProperties} className="py-1.5 px-2.5 bg-paper-50 text-[10px] text-muted bw-rise">
+            {free.length === 0 ? 'No other room is free those nights.' : taken.length > 0 ? 'Taken those nights: ' + taken.map(t => t.label.split(' · ')[0]).join(', ') : 'Every room is free those nights.'}
+          </td>
+        </tr>
+      )}
+    </>
   )
 }

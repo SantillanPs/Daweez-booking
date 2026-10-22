@@ -26,7 +26,7 @@ import { stayHoursOf } from '../../utils/shortStay'
 import { airconWords } from '../../utils/venueHours'
 import { BreakfastPicker } from './BreakfastPicker'
 import { wantsBreakfastToday, breakfastOn, breakfastSummary, breakfastAskOpen } from '../../utils/breakfastChoice'
-import { dateToString } from '../../utils/helpers'
+import { dateToString, normalizeVenueId } from '../../utils/helpers'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 import { asBill, groupOf } from '../../utils/bookingGroup'
 import { BillRooms } from './BillRooms'
@@ -35,7 +35,12 @@ import { paymentStatusFromMoney } from '../../utils/bookingMoney'
 import { formatRoomNumbers } from '../../utils/roomNumbers'
 import { BookingReceipts } from './BookingReceipts'
 import { ExtendStayForm } from './ExtendStayForm'
-import { canMoveBooking } from '../../utils/bookingMove'
+import { canMoveBooking, moveBooking, stayTotalAfterMove } from '../../utils/bookingMove'
+import { getFrontDesk, hydrateFrontDesk } from '../../utils/frontDesk'
+import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
+import { bookingPricing } from '../../utils/statementLines'
+import { BillMove } from '../billing/BillDesk'
+import { useDashboardData } from '../DashboardContext'
 import { venueTypeOf } from '../../utils/venueTypes'
 import { showToast } from '../../utils/toast'
 import { askConfirm } from '../../utils/confirm'
@@ -542,6 +547,69 @@ export function ExtendStayModal({
     layout(() => { setLocalBooking(before); setRemoved(null) })
     try { await onUpdateBooking?.(before) } catch { showToast('Could not put the charge back. Please try again.', 'error') }
   }
+
+  // **Rescheduling on the bill** (Settings → Front desk, Sebastian 2026-10-22: the staff want it
+  // on the billing statement, he keeps the calendar as the other choice). The same move the
+  // calendar makes (`moveBooking`), saved at once with Undo under the charges for five seconds;
+  // the database still refuses a double booking. One room of a bill of several, and a short
+  // stay, are still moved on the calendar.
+  const { partnerDeals } = useDashboardData()
+  // Read again on opening: the choice may have been changed on another PC since this page loaded.
+  const [onBill, setOnBill] = useState(() => getFrontDesk().reschedule === 'bill')
+  useEffect(() => {
+    hydrateFrontDesk().then(() => setOnBill(getFrontDesk().reschedule === 'bill')).catch(() => {})
+  }, [])
+  const [movedOnBill, setMovedOnBill] = useState<{ label: string; before: Booking } | null>(null)
+  const movedTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(movedTimer.current), [])
+  const moveUnitId = localBooking.room_id || normalizeVenueId(localBooking.venue_id || '')
+  const moveType: 'room' | 'venue' = localBooking.room_id ? 'room' : 'venue'
+  const moveOpts = { rooms, venues, deals: partnerDeals, tabTotal: tabAmount }
+  const moveOnBill = async (unitId: string, checkIn: string, checkOut: string) => {
+    const before = localBooking
+    const moved = moveBooking(before, { unitId, type: moveType, checkIn, checkOut }, moveOpts)
+    const where = moveType === 'room' ? 'Room ' + (rooms.find(r => r.id === unitId)?.room_number ?? '') : venues.find(v => v.id === unitId)?.name || 'the venue'
+    const label = unitId !== moveUnitId ? 'Moved to ' + where : 'Moved to ' + fmtShort(checkIn) + ' → ' + fmtShort(checkOut)
+    layout(() => { setLocalBooking(moved); setMovedOnBill({ label, before }) })
+    window.clearTimeout(movedTimer.current)
+    movedTimer.current = window.setTimeout(() => setMovedOnBill(null), 5000)
+    try {
+      await onUpdateBooking?.(moved)
+    } catch (err) {
+      layout(() => { setLocalBooking(before); setMovedOnBill(null) })
+      showToast(err instanceof Error ? err.message : 'Could not reschedule the booking. Please try again.', 'error')
+    }
+  }
+  const undoMove = async () => {
+    if (!movedOnBill) return
+    window.clearTimeout(movedTimer.current)
+    const { before } = movedOnBill
+    layout(() => { setLocalBooking(before); setMovedOnBill(null) })
+    try { await onUpdateBooking?.(before) } catch { showToast('Could not move the booking back. Please try again.', 'error') }
+  }
+  const billMove: BillMove | undefined = !!onUpdateBooking && onBill && canMoveBooking(localBooking)
+    && !localBooking.stay_hours && !!moveUnitId && groupOf(localBooking, bookings).length === 1 ? {
+      lineKey: localBooking.id + '-stay',
+      unitId: moveUnitId,
+      checkIn: localBooking.check_in,
+      checkOut: localBooking.check_out,
+      free: (id, from, to) => moveType === 'room'
+        ? isRoomAvailable(id, from, to, bookings, localBooking.id)
+        : isVenueRangeAvailable(id, from, to, bookings, localBooking.id),
+      units: moveType === 'room'
+        ? [...rooms].sort((a, b) => a.room_number - b.room_number).map(r => ({ id: r.id, label: 'Room ' + r.room_number + ' · ' + roomDisplayName(r) }))
+        : venues.map(v => ({ id: v.id, label: v.name })),
+      quote: id => {
+        const at = moveBooking(localBooking, { unitId: id, type: moveType, checkIn: localBooking.check_in, checkOut: localBooking.check_out }, moveOpts)
+        const p = bookingPricing(at, { rooms, venues, bookingsList: bookings })
+        const qty = p.stayQuantity > 0 ? p.stayQuantity : 1
+        const totals = { rooms, venues, tabTotal: tabAmount }
+        return { rate: Math.round(p.subtotal / qty), amount: Math.round(p.subtotal), diff: stayTotalAfterMove(at, totals) - stayTotalAfterMove(localBooking, totals) }
+      },
+      onMove: (id, from, to) => void moveOnBill(id, from, to),
+      moved: movedOnBill ? { label: movedOnBill.label } : null,
+      onUndo: () => void undoMove(),
+    } : undefined
 
   const billedToAgency = isBilledToAgency(localBooking)
   const owes = hasOutstandingBalance(localBooking)
@@ -1077,7 +1145,11 @@ export function ExtendStayModal({
               </button>
             )}
             {canMove && (
-              <button type="button" onClick={() => { onReschedule?.(localBooking, tabAmount); onClose() }} className={TOOL}>
+              <button type="button" onClick={() => {
+                // Settings → Front desk: on the bill, Reschedule opens the bill to tap a date or the room line.
+                if (billMove) { setShowPrintModal(true); return }
+                onReschedule?.(localBooking, tabAmount); onClose()
+              }} className={TOOL}>
                 <ArrowRightLeft data-i="swap" className="w-3.5 h-3.5" />
                 Reschedule
               </button>
@@ -1131,6 +1203,7 @@ export function ExtendStayModal({
               const rec = receiptRecords.find(x => x.receipt_number === number)
               if (rec) { setReceiptFor(rec); setShowReceipt(true) }
             },
+            move: billMove,
           } : undefined}
         />
       )}

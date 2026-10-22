@@ -80,15 +80,23 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
 
       {/* GUEST beside STAY, the companions with the guest. Everything about their arrangement
           lives in `StatementGuestStay`. */}
-      <StatementGuestStay booking={b} rooms={rooms} venues={venues} rates={rates} roomsLabel={statement.roomsLabel} />
+      <StatementGuestStay booking={b} rooms={rooms} venues={venues} rates={rates} roomsLabel={statement.roomsLabel} move={desk?.move} />
 
       {/* No name over the table: he found a lone `Charges` *"out of place … taking so much
           space for itself"* (2026-10-13). Its column names say what it is. */}
-      <StatementChargesTable items={statement.lineItems} onRemove={desk?.onRemove} canRemove={desk?.owns} isNew={isNew}>
+      <StatementChargesTable items={statement.lineItems} onRemove={desk?.onRemove} canRemove={desk?.owns} isNew={isNew} move={desk?.move}>
         {desk?.removed && (
           <tr data-screen key={desk.removed.label} className="print:hidden">
             <td colSpan={6} className="pt-1 text-[10.5px] font-semibold text-muted bw-rise">
               {desk.removed.label} taken off · <button type="button" onClick={desk.onUndo}
+                className="font-bold text-gold-800 underline underline-offset-2 cursor-pointer">Undo</button>
+            </td>
+          </tr>
+        )}
+        {desk?.move?.moved && (
+          <tr data-screen key={desk.move.moved.label} className="print:hidden">
+            <td colSpan={6} className="pt-1 text-[10.5px] font-semibold text-muted bw-rise">
+              {desk.move.moved.label} · <button type="button" onClick={desk.move.onUndo}
                 className="font-bold text-gold-800 underline underline-offset-2 cursor-pointer">Undo</button>
             </td>
           </tr>
