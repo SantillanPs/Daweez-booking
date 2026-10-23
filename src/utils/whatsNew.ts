@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-24a',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'The black search button at the top of the calendar finds a billing statement, a receipt or a booking. Type part of the number, the guest’s name or the room. You can also press / to open it.',
+          'Tap a booking to open it on the calendar. Tap a billing statement or a receipt to open it, ready to print or email.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-24',
     changes: [
       {

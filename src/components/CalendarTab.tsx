@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { getFrontDesk } from '../utils/frontDesk'
-import { Booking } from '../types/booking'
+import { Booking, PaymentRecord } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { dateToString } from '../utils/helpers'
 import { breakfastOn, wantsBreakfastToday, saveBreakfastChoices, breakfastAskOpen, BREAKFAST_ASK_UNTIL } from '../utils/breakfastChoice'
@@ -16,6 +16,9 @@ import { halvesByUnit } from './calendar/timelineHalves'
 import { BlockDatesPane } from './calendar/BlockDatesPane'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { TodayStrip } from './calendar/TodayStrip'
+import { CalendarSearch } from './calendar/CalendarSearch'
+import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
+import { PrintPaymentReceiptModal } from './billing/PrintPaymentReceiptModal'
 import { setDeskBusy } from '../utils/deskState'
 import { BreakfastPicker } from './calendar/BreakfastPicker'
 import { roomDisplayName } from './calendar/bookingStyles'
@@ -64,6 +67,9 @@ export function CalendarTab() {
 
   // ── Booking detail / extension modal ──
   const [selectedExtendBooking, setSelectedExtendBooking] = useState<Booking | null>(null)
+  // What the calendar search opened: a billing statement or a receipt (`CalendarSearch`).
+  const [foundBill, setFoundBill] = useState<Booking | null>(null)
+  const [foundReceipt, setFoundReceipt] = useState<{ booking: Booking; record: PaymentRecord; covered: Booking[] } | null>(null)
   const [showLogOld, setShowLogOld] = useState(false)
   /** The booking whose breakfast for today is being written down. */
   const [breakfastForId, setBreakfastForId] = useState<string | null>(null)
@@ -540,6 +546,26 @@ export function CalendarTab() {
     setTimelineSelection(null)
     setShowLogOld(true)
   }, [])
+  // A booking found by the search: the calendar moves to its dates when they are off screen,
+  // its pill pulses so the desk sees where it is, then its panel opens.
+  const openFound = (b: Booking) => {
+    const [y, m, d] = b.check_in.split('-').map(Number)
+    const start = new Date(y, m - 1, d)
+    const last = new Date(monthAnchor); last.setDate(last.getDate() + 30)
+    if (start < monthAnchor || start > last) setMonthAnchor(start)
+    setTimeout(() => {
+      const pill = document.querySelector<HTMLElement>('[data-pill="' + b.id + '"]')
+      if (pill) {
+        pill.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+        pill.classList.remove('cs-found'); void pill.offsetWidth; pill.classList.add('cs-found')
+      }
+    }, 60)
+    setTimeout(() => {
+      setExtendError('')
+      setExtendCheckoutDate(isOpenEnded(b) ? '' : b.check_out)
+      setSelectedExtendBooking(b)
+    }, 450)
+  }
   const clearSelection = useCallback(() => { setTimelineSelection(null); setGroupSelection(null) }, [])
   const askBreakfast = useCallback((b: Booking) => setBreakfastForId(b.id), [])
 
@@ -589,6 +615,8 @@ export function CalendarTab() {
           onJumpToDate={jumpToDay}
           onToday={() => setMonthAnchor(todayStart())}
         >
+          <CalendarSearch allBookings={allBookings} rooms={rooms} venues={venues}
+            onBooking={openFound} onBill={setFoundBill} onReceipt={(booking, record, covered) => setFoundReceipt({ booking, record, covered })} />
           <TodayStrip />
         </CalendarToolbar>
         <TimelineGrid
@@ -619,6 +647,13 @@ export function CalendarTab() {
         />
       </div>
 
+      {foundBill && (
+        <PrintInvoiceModal booking={foundBill} rooms={rooms} venues={venues} bookingsList={allBookings} onClose={() => setFoundBill(null)} />
+      )}
+      {foundReceipt && (
+        <PrintPaymentReceiptModal booking={foundReceipt.booking} record={foundReceipt.record} rooms={rooms} venues={venues}
+          covered={foundReceipt.covered.length > 1 ? foundReceipt.covered : undefined} onClose={() => setFoundReceipt(null)} />
+      )}
       {liveExtendBooking && (
         <ExtendStayModal
           key={liveExtendBooking.id}

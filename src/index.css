@@ -636,3 +636,13 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
     border-radius: 0 !important;
   }
 }
+
+/* The calendar search (the calendar search mock, 2026-10-24): the field grows out of its
+   button across the top line, and what it finds drops in under it. */
+@keyframes cs-open { from { opacity: 0; clip-path: inset(0 0 0 calc(100% - 44px) round 11px); } }
+@keyframes cs-list { from { opacity: 0; transform: translateY(-6px); } }
+.cs-open { animation: cs-open 0.38s cubic-bezier(0.16, 1, 0.3, 1); }
+.cs-list { animation: cs-list 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes cs-found { 0% { box-shadow: 0 0 0 0 rgba(28, 28, 28, 0.55); } 100% { box-shadow: 0 0 0 10px rgba(28, 28, 28, 0); } }
+.cs-found { animation: cs-found 1.1s cubic-bezier(0.16, 1, 0.3, 1) 2; }
+@media (prefers-reduced-motion: reduce) { .cs-open, .cs-list, .cs-found { animation: none; } }

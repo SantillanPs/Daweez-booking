@@ -41,7 +41,7 @@ export function CalendarToolbar({ monthHeader, startsToday, datePickerValue, onP
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5 min-h-12 border-b border-soft flex-shrink-0">
+    <div className="relative flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5 min-h-12 border-b border-soft flex-shrink-0">
       <h2 className="flex items-baseline gap-2.5 font-display font-bold text-[19px] text-main tracking-tight">
         {monthHeader}
         {startsToday && <span className="font-sans text-[13px] font-medium tracking-normal text-muted">from today</span>}
