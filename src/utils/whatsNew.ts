@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-24b',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'A guest arriving today whose check-in you have not noted shows a green question mark at the start of their booking. Once you note it, it goes away.',
+          'On the booking, Checked in shows the same green question mark while it is waiting for a time.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-24a',
     changes: [
       {

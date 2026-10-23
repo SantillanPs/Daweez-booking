@@ -71,7 +71,7 @@ export function BookingStageLine({ booking, todayKey, onDoor }: {
         className={'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-bold whitespace-nowrap ' + PRESS +
           (t ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-card text-main shadow-[inset_0_0_0_1.5px_#D9D2C3] hover:shadow-[inset_0_0_0_1.5px_#1C1C1C]')}>
         {!t && (
-          <span aria-hidden="true" className="ask-mark w-4 h-4 rounded-full grid place-items-center bg-ink-900 text-white font-display text-[11px] font-extrabold leading-none">?</span>
+          <span aria-hidden="true" className={'ask-mark w-4 h-4 rounded-full grid place-items-center text-white ' + (k === 'in' ? 'bg-emerald-600' : 'bg-ink-900') + ' font-display text-[11px] font-extrabold leading-none'}>?</span>
         )}
         {word(k)}
         {t && <span key={t.minutes} className={'inline-block ' + (t.usual ? 'font-semibold text-muted' : 'text-main') + (just === k && !t.usual ? ' animate-pop' : '')}>{minutesLabel(t.minutes)}</span>}

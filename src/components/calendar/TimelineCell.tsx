@@ -198,10 +198,13 @@ function HoverCard({ booking, bill, pillName, agencyName, isBlock, openEnded, mo
 
 /** A guest leaving today whose check-out the desk has not noted: a question mark in a small
  *  black circle. Once it is noted, or the day has gone by, nothing — the grey pill already
- *  says the stay is over (Sebastian, 2026-10-24: it used to be a tick on every finished stay). */
-function AskOut({ className }: { className: string }) {
+ *  says the stay is over (Sebastian, 2026-10-24: it used to be a tick on every finished stay).
+ *  A guest arriving today whose check-in is not noted asks the same in green, at the start
+ *  of the pill (Sebastian, 2026-10-24, the question-mark mock). */
+function AskDoor({ k, className }: { k: 'in' | 'out'; className: string }) {
   return (
-    <span className={'ask-mark inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-ink-900 text-white font-display text-[10px] font-extrabold leading-none ' + className} aria-label="Check-out not noted yet">
+    <span className={'ask-mark inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-white font-display text-[10px] font-extrabold leading-none ' + (k === 'in' ? 'bg-emerald-600 ' : 'bg-ink-900 ') + className}
+      aria-label={k === 'in' ? 'Check-in not noted yet' : 'Check-out not noted yet'}>
       ?
     </span>
   )
@@ -276,6 +279,7 @@ export const TimelineCell = React.memo(
       const stage = bookingStage(booking)
       const left = stage === 'out'
       const askOut = left && !isBlock && !booking.actual_check_out && doorDay(booking, 'out') === dateToString(new Date())
+      const askIn = !isBlock && !booking.actual_check_in && doorDay(booking, 'in') === dateToString(new Date())
       // **A pill says where the stay is, not who it is** (Sebastian, 2026-10-09): "Reserved"
       // before its dates, "Occupied" during them, and the guest's name once they are over. Who it is stays on the hover card and in the panel.
       // An agency's name and a block's reason are not a guest's name, so they are still
@@ -352,7 +356,8 @@ export const TimelineCell = React.memo(
             {narrow ? (
               <span className={'relative font-display text-[13px] font-bold leading-4' + (money.noDeposit && !isBlock ? ' text-blue-700' : '')}>
                 {isBlock ? '' : pillInitials(pillName)}
-                {askOut && <AskOut className="absolute -right-2.5 -bottom-1.5" />}
+                {askIn && <AskDoor k="in" className="absolute -left-2.5 -top-2" />}
+                {askOut && <AskDoor k="out" className="absolute -right-2.5 -top-2" />}
               </span>
             ) : (<>
             {/* TWO LINES, both in words (the staff's feedback, 2026-10-04): who is in the
@@ -361,6 +366,7 @@ export const TimelineCell = React.memo(
                 the dates are closed. 13px and 12px: the pills are what the desk reads all
                 day, and at 11px they were the smallest words on the screen. */}
             <span className="relative flex items-center justify-center gap-1 min-w-0 text-[13px] font-bold leading-4">
+              {askIn && <AskDoor k="in" className="shrink-0" />}
               {agencyName && !isBlock && <Building2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
               <span className="min-w-0 truncate">
                 {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
@@ -368,7 +374,7 @@ export const TimelineCell = React.memo(
               </span>
               {/* No IN tag any more: the green pill and the green bar on the room say it. A
                   guest leaving today whose check-out is not noted has a question mark. */}
-              {askOut && <AskOut className="shrink-0" />}
+              {askOut && <AskDoor k="out" className="shrink-0" />}
             </span>
             {!isBlock && (booking.stay_hours ? (
               <span className={'relative text-[12px] font-semibold truncate leading-4 ' + money.className}>
