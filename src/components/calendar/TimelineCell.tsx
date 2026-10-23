@@ -1,8 +1,8 @@
 import React from 'react'
-import { Building2, Check, LogIn, LogOut } from 'lucide-react'
+import { Building2, LogIn, LogOut } from 'lucide-react'
 import { dateToString } from '../../utils/helpers'
 import { Booking } from '../../types/booking'
-import { doorTime, minutesLabel } from '../../utils/doorTimes'
+import { doorDay, doorTime, minutesLabel } from '../../utils/doorTimes'
 import { bookingStage, pillInitials, pillMoney } from './bookingStyles'
 import { clockLabel } from '../../utils/shortStay'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
@@ -196,11 +196,13 @@ function HoverCard({ booking, bill, pillName, agencyName, isBlock, openEnded, mo
   )
 }
 
-/** The mark of a guest who has checked out: a tick in a small charcoal circle. */
-function LeftTick({ className }: { className: string }) {
+/** A guest leaving today whose check-out the desk has not noted: a question mark in a small
+ *  black circle. Once it is noted, or the day has gone by, nothing — the grey pill already
+ *  says the stay is over (Sebastian, 2026-10-24: it used to be a tick on every finished stay). */
+function AskOut({ className }: { className: string }) {
   return (
-    <span className={'inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-ink-600 text-white ' + className} aria-hidden="true">
-      <Check className="w-2.5 h-2.5" strokeWidth={3} />
+    <span className={'ask-mark inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-ink-900 text-white font-display text-[10px] font-extrabold leading-none ' + className} aria-label="Check-out not noted yet">
+      ?
     </span>
   )
 }
@@ -273,6 +275,7 @@ export const TimelineCell = React.memo(
       // guests in or out, and the app changes nothing by itself — `stayStage`).
       const stage = bookingStage(booking)
       const left = stage === 'out'
+      const askOut = left && !isBlock && !booking.actual_check_out && doorDay(booking, 'out') === dateToString(new Date())
       // **A pill says where the stay is, not who it is** (Sebastian, 2026-10-09): "Reserved"
       // before its dates, "Occupied" during them, and the guest's name once they are over. Who it is stays on the hover card and in the panel.
       // An agency's name and a block's reason are not a guest's name, so they are still
@@ -349,7 +352,7 @@ export const TimelineCell = React.memo(
             {narrow ? (
               <span className={'relative font-display text-[13px] font-bold leading-4' + (money.noDeposit && !isBlock ? ' text-blue-700' : '')}>
                 {isBlock ? '' : pillInitials(pillName)}
-                {left && !isBlock && <LeftTick className="absolute -right-2.5 -bottom-1.5" />}
+                {askOut && <AskOut className="absolute -right-2.5 -bottom-1.5" />}
               </span>
             ) : (<>
             {/* TWO LINES, both in words (the staff's feedback, 2026-10-04): who is in the
@@ -364,8 +367,8 @@ export const TimelineCell = React.memo(
                 {pillWords}
               </span>
               {/* No IN tag any more: the green pill and the green bar on the room say it. A
-                  guest who has left keeps a tick beside the name. */}
-              {left && !isBlock && <LeftTick className="shrink-0" />}
+                  guest leaving today whose check-out is not noted has a question mark. */}
+              {askOut && <AskOut className="shrink-0" />}
             </span>
             {!isBlock && (booking.stay_hours ? (
               <span className={'relative text-[12px] font-semibold truncate leading-4 ' + money.className}>

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Building2, Check, Coffee, LogIn, LogOut } from 'lucide-react'
+import { Building2, Coffee, LogIn, LogOut } from 'lucide-react'
 import { BREAKFAST_ASK_ON } from '../../utils/breakfastChoice'
 
 // The key to the calendar: **every sign on it, and what it means, in one place** (Sebastian,
@@ -31,7 +31,8 @@ export function CalendarGuide() {
           <Section title="On the booking">
             <Row sign={<Pill className="bg-gold-100 border-gold-400" />}>Reserved: its dates are still to come</Row>
             <Row sign={<Pill className="bg-emerald-50 border-emerald-600" />}>Occupied: today is in its dates</Row>
-            <Row sign={<Pill className="bg-ink-100 border-ink-200 text-white"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-ink-600"><Check className="w-2 h-2" strokeWidth={3} /></span></Pill>}>Its dates are over</Row>
+            <Row sign={<Pill className="bg-ink-100 border-ink-200" />}>Its dates are over</Row>
+            <Row sign={<Pill className="bg-ink-100 border-ink-200 text-white"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-ink-900 font-display text-[9px] font-extrabold leading-none">?</span></Pill>}>Left today: check-out not noted yet</Row>
             <Row sign={<Pill className="bg-paper-200/60 border-paper-300" />}>Blocked</Row>
             <Row sign={<Pill className="bg-transparent border-dashed border-paper-400" />}>While rescheduling: where the booking is now</Row>
             <Row sign={<Building2 className="w-4 h-4" />}>Agency reservation</Row>

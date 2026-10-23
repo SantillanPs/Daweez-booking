@@ -20,8 +20,9 @@ const PRESS = 'active:scale-[0.92] transition-[background-color,color,box-shadow
  * 2026-10-04). Read from the dates, not from a check-in (Sebastian, 2026-10-20; `stayStage`):
  * green with a tick once the stay has begun, charcoal once it is over, grey for a day still to come.
  *
- * **From its day on, each end is a tick box** (the door times mock, "F · Tick box", Sebastian,
- * 2026-10-21): "Checked in?" / "Checked out?" opens a time — stepped by 15 minutes, never typed
+ * **From its day on, each end asks** (the door times mock, "F · Tick box", Sebastian,
+ * 2026-10-21; since 2026-10-24 a black question mark while it asks, and no tick once it is
+ * answered): "Checked in" / "Checked out" opens a time — stepped by 15 minutes, never typed
  * (*"I don't like the other text field"*), with the usual time and Now one tap away — and saving
  * it only notes the time (`utils/doorTimes`). A day gone by with nothing ticked shows the usual
  * time in grey.
@@ -69,12 +70,11 @@ export function BookingStageLine({ booking, todayKey, onDoor }: {
       <button type="button" onClick={() => open(k)} aria-expanded={editing === k}
         className={'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-bold whitespace-nowrap ' + PRESS +
           (t ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-card text-main shadow-[inset_0_0_0_1.5px_#D9D2C3] hover:shadow-[inset_0_0_0_1.5px_#1C1C1C]')}>
-        <span aria-hidden="true" key={t && !t.usual ? 'on' : 'off'}
-          className={'w-3.5 h-3.5 rounded grid place-items-center border-[1.5px] transition-colors ' +
-            (t ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-ink-900') + (just === k && t ? ' animate-pop' : '')}>
-          {t && <Check className="w-2.5 h-2.5" strokeWidth={3.5} />}
-        </span>
-        {t ? <>{word(k)} <span className={t.usual ? 'font-semibold text-muted' : 'text-main'}>{minutesLabel(t.minutes)}</span></> : word(k) + '?'}
+        {!t && (
+          <span aria-hidden="true" className="ask-mark w-4 h-4 rounded-full grid place-items-center bg-ink-900 text-white font-display text-[11px] font-extrabold leading-none">?</span>
+        )}
+        {word(k)}
+        {t && <span key={t.minutes} className={'inline-block ' + (t.usual ? 'font-semibold text-muted' : 'text-main') + (just === k && !t.usual ? ' animate-pop' : '')}>{minutesLabel(t.minutes)}</span>}
       </button>
     )
   }

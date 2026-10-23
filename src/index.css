@@ -428,6 +428,9 @@
 .bw-ring { width: 22px; height: 22px; flex: none; border-radius: 9999px; background: conic-gradient(currentColor calc(var(--bw-p) * 1turn), rgb(0 0 0 / 0.08) 0);
   -webkit-mask: radial-gradient(circle, transparent 6px, #000 6.5px); mask: radial-gradient(circle, transparent 6px, #000 6.5px); }
 .bw-ring[data-up] { --bw-p: 1; animation: bw-nudge 4s infinite; }
+/* A question still waiting (the check-out not noted): it gives a small shake every few seconds. */
+.ask-mark { animation: bw-nudge 4s infinite; }
+@media (prefers-reduced-motion: reduce) { .ask-mark { animation: none; } }
 /* A block's stripes drift slowly. */
 .bw-hatch { height: 10px; background: repeating-linear-gradient(135deg, #EDE9E1 0 8px, #F7F5F0 8px 16px); background-size: 22.6px 22.6px; animation: bw-drift 1.6s linear infinite; }
 /* The tools (the tools mock Sebastian approved, 2026-10-16: "apply it completely"). A tool squashes
