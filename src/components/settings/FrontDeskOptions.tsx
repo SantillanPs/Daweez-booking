@@ -18,7 +18,7 @@ const LOG_OLD: Choice<'logOld'>[] = [
 
 const NEW_BOOKING: Choice<'newBooking'>[] = [
   { key: 'form', title: 'On the form', line: 'The booking form, payment beside the guest', Icon: ClipboardCheck },
-  { key: 'bill', title: 'On the bill', line: 'Fill in a blank billing statement', Icon: FileText },
+  { key: 'bill', title: 'On the bill', line: 'A blank billing statement; the pencil opens it too', Icon: FileText },
 ]
 
 /**

@@ -3,7 +3,10 @@ import { createPortal } from 'react-dom'
 import { Building2, Coffee, Plus, X } from 'lucide-react'
 import { Booking, BillCharge, Companion, EquipmentRental, EventAddons, PaymentRecord, Room, Venue } from '../../types/booking'
 import { buildStatement, StatementLineItem } from '../../utils/statement'
-import { dateToString, randomUUID } from '../../utils/helpers'
+import { dateToString, normalizeVenueId, randomUUID } from '../../utils/helpers'
+import { recomputeBalance } from '../../utils/bookingBalance'
+import { readBookingFoodTotal } from '../../utils/orderSlips'
+import { focusBookingAfterCreate } from '../../utils/bookingFocus'
 import { breakfastSellable, roomBreakfastPrice } from '../../utils/breakfast'
 import { venueTypes } from '../../utils/venueTypes'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
@@ -56,7 +59,7 @@ interface Discount { pct: boolean; v: number }
  * the booking form's own `submitBookingForm`, so the rooms, prices, receipt and rollback are the
  * form's; nothing is saved until Book.
  */
-export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, onClose }: {
+export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, editing, onClose }: {
   rooms: Room[]; venues: Venue[]; bookings: Booking[]; allBookings: Booking[]
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>
   updateBooking: (b: Booking) => Promise<void>
@@ -64,29 +67,51 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   deleteBooking: (id: string) => Promise<void>
   initialSelections?: Record<string, Sel>
   initialStayHours?: number
+  /**
+   * A booking being corrected (its whole group): the same bill, filled in from what is saved
+   * (Sebastian, 2026-10-23: "if it's on the bill, then editing should also be on the bill").
+   * Its payments are shown, not taken — more money is received on the booking panel.
+   */
+  editing?: Booking[]
   onClose: () => void
 }) {
+  const ed = editing?.[0]
+  const unitIdOf = (b: Booking) => b.room_id || normalizeVenueId(b.venue_id) || ''
   const { updateRoomBreakfastPrice, partnerDeals } = useDashboardData()
   const [pricing, setPricing] = useState<string | null>(null)
-  const [guestName, setGuestName] = useState('')
-  const [guestPhone, setGuestPhone] = useState('')
-  const [nationality, setNationality] = useState('')
-  const [address, setAddress] = useState('')
-  const [companions, setCompanions] = useState<Companion[]>([])
-  const [more, setMore] = useState(false)
-  const [hours, setHours] = useState<number>(initialStayHours || 3)
-  const [breakfast, setBreakfast] = useState<string[]>([])
-  const [extras, setExtras] = useState<Extras>(NO_EXTRAS)
-  const [charges, setCharges] = useState<BillCharge[]>([])
-  const [kinds, setKinds] = useState<Record<string, string>>({})
-  const [disc, setDisc] = useState<Discount | null>(null)
+  const [guestName, setGuestName] = useState(ed?.guest_name || '')
+  const [guestPhone, setGuestPhone] = useState(ed?.guest_phone && ed.guest_phone !== 'None' ? ed.guest_phone : '')
+  const [nationality, setNationality] = useState(ed?.guest_nationality || '')
+  const [address, setAddress] = useState(ed?.guest_address || '')
+  const [companions, setCompanions] = useState<Companion[]>(ed?.companions || [])
+  const [more, setMore] = useState(!!ed?.guest_address || !!ed?.companions?.length)
+  const [hours, setHours] = useState<number>(initialStayHours || ed?.stay_hours || 3)
+  const [breakfast, setBreakfast] = useState<string[]>(() => (editing || []).filter(b => b.room_id && b.breakfast_included).map(unitIdOf))
+  const [extras, setExtras] = useState<Extras>(() => {
+    const r = editing?.find(b => b.room_id && b.equipment_rentals)?.equipment_rentals
+    return r ? { extraFoamCount: r.extraFoamCount || 0, extraPillowCount: r.extraPillowCount || 0, extraBlanketCount: r.extraBlanketCount || 0, extraTowelCount: r.extraTowelCount || 0 } : NO_EXTRAS
+  })
+  // Every charge of the booking, wherever it was written — saved back onto the first unit.
+  const [charges, setCharges] = useState<BillCharge[]>(() => (editing || []).flatMap(b => b.event_addons?.charges || []))
+  const [kinds, setKinds] = useState<Record<string, string>>(() =>
+    Object.fromEntries((editing || []).filter(b => b.venue_id && b.event_addons?.venue_type).map(b => [unitIdOf(b), b.event_addons!.venue_type!])))
+  // As the form reads it back: a flat amount is what the rooms' shares add up to.
+  const [disc, setDisc] = useState<Discount | null>(() => {
+    const d = editing?.find(b => (b.applied_discount?.value || 0) > 0)?.applied_discount
+    if (!d) return null
+    return d.type === 'flat'
+      ? { pct: false, v: editing!.reduce((a, b) => a + (b.applied_discount?.type === 'flat' ? Number(b.applied_discount.value || 0) : 0), 0) }
+      : { pct: true, v: d.value }
+  })
   const [removed, setRemoved] = useState<{ label: string; breakfast: string[]; extras: Extras; charges: BillCharge[]; disc: Discount | null } | null>(null)
-  const [to, setTo] = useState<BillTo | null>(null)
+  const [to, setTo] = useState<BillTo | null>(() =>
+    ed?.partner_deal_id || ed?.company_name ? { name: ed.company_name || '', dealId: ed.partner_deal_id || undefined }
+      : ed?.institution ? { name: ed.institution } : null)
   const [picking, setPicking] = useState(false)
   const [institutions, setInstitutions] = useState<string[]>([])
   const [paid, setPaid] = useState<Paid | null>(null)
   const [writing, setWriting] = useState(false)
-  const [preparedBy, setPreparedBy] = useState(lastReceptionist)
+  const [preparedBy, setPreparedBy] = useState(() => ed ? ed.prepared_by || '' : lastReceptionist())
   const [staffNames, setStaffNames] = useState(() => staffNamesOf(bookings))
   const [typingStaff, setTypingStaff] = useState(false)
   const [error, setError] = useState('')
@@ -97,8 +122,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
 
   useEffect(() => { getInstitutions().then(l => setInstitutions(l.map(i => i.name))).catch(() => {}) }, [])
 
-  const entries = Object.entries(initialSelections || {})
-  const isShort = !!initialStayHours && entries[0]?.[1].type === 'room'
+  // Rooms before venues, the order they are saved in, so the charges sit on the same unit here and there.
+  const entries = (editing
+    ? editing.map((b): [string, Sel] => [unitIdOf(b), { checkIn: b.check_in, checkOut: b.check_out, type: b.room_id ? 'room' : 'venue' }])
+    : Object.entries(initialSelections || {})
+  ).sort((a, b) => (a[1].type === 'room' ? 0 : 1) - (b[1].type === 'room' ? 0 : 1))
+  const isShort = !!(initialStayHours || ed?.stay_hours) && entries[0]?.[1].type === 'room'
   const list: [string, Sel][] = isShort ? [[entries[0][0], { ...entries[0][1], checkOut: nextDay(entries[0][1].checkIn) }]] : entries
   const first = list[0]?.[1]
   const firstRoomId = list.find(([, s]) => s.type === 'room')?.[0]
@@ -113,11 +142,14 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     if (i === 0 && charges.length > 0) ea.charges = charges
     const rentals: EquipmentRental | undefined = id === firstRoomId && !to
       ? { bigTableCount: 0, smallTableCount: 0, chairCount: 0, mineralWaterCount: 0, ...extras } : undefined
+    // A correction starts from the saved row, so its payments, breakfasts and hours stay on the bill.
+    const saved = editing?.find(b => unitIdOf(b) === id)
     return {
       security_deposit: 0, created_at: '', expires_at: null,
+      ...saved,
       id: 'draft-' + id, room_id: s.type === 'room' ? id : undefined, venue_id: s.type === 'venue' ? id : undefined,
       guest_name: guestName, guest_email: '', guest_phone: '', check_in: s.checkIn, check_out: s.checkOut,
-      source: 'manual', status: 'confirmed', payment_records: [], downpayment_paid: 0, balance_due: 0,
+      source: 'manual', status: 'confirmed', payment_records: saved?.payment_records || [], downpayment_paid: saved?.downpayment_paid || 0, balance_due: 0,
       breakfast_included: breakfast.includes(id) || (s.type === 'room' && deal?.breakfast_default === 'with'),
       stay_hours: isShort ? hours : undefined,
       event_addons: Object.keys(ea).length > 0 ? ea : undefined,
@@ -131,8 +163,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     ? buildStatement({ primaryBooking: drafts[0], relatedBookings: drafts, rooms, venues, bookingsList: bookings })
     : null
   const total = statement?.subTotal ?? 0
-  const due = Math.max(0, total - (paid?.amount ?? 0))
-  const paidUp = !!paid && due === 0
+  const received = editing ? (statement?.payments || []).reduce((a, x) => a + x.amount, 0) : paid?.amount ?? 0
+  const due = Math.max(0, total - received)
+  const paidUp = received > 0 && due === 0
 
   const snapshot = (label: string) => setRemoved({ label, breakfast, extras, charges, disc })
   const unitOf = (key: string) => list.find(([id]) => key.startsWith('draft-' + id + '-'))?.[0]
@@ -170,38 +203,64 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     if (list.length === 0) { setError('Pick the room and the dates on the calendar first.'); return }
     setError(''); setSaving(true)
     const at = sheet.current?.getBoundingClientRect()
-    const plan = !paid ? 'reservation' : paid.amount >= total ? 'full' : 'custom'
+    const plan = ed ? ed.payment_plan || 'reservation' : !paid ? 'reservation' : paid.amount >= total ? 'full' : 'custom'
+    const sum = (f: (b: Booking) => number) => (editing || []).reduce((a, b) => a + f(b), 0)
+    const venueKit = editing?.find(b => b.venue_id && b.equipment_rentals)?.equipment_rentals
     const result = await submitBookingForm({
       unitSelections: Object.fromEntries(list),
       formRoomIds: new Set(list.filter(([, s]) => s.type === 'room').map(([id]) => id)),
       formVenueIds: new Set(list.filter(([, s]) => s.type === 'venue').map(([id]) => id)),
-      rooms, venues, activeBookings: bookings, allBookings, partnerDeals,
+      rooms, venues, allBookings, partnerDeals,
+      activeBookings: editing ? bookings.filter(b => !editing.some(e => e.id === b.id)) : bookings,
       formPartnerDealId: deal?.id || '',
       bookingType: to ? 'partner' : 'individual',
       formStatus: 'confirmed',
       // As the form: an agency's stay is confirmed by its contract, a guest's by the money.
-      bookingStatus: to ? 'confirmed' : 'pending',
-      formAgreedDeposit: paid?.amount || 0,
-      formGuestName: guestName.trim(), formGuestEmail: deal?.email || '', formGuestPhone: guestPhone.trim(),
-      formGuestGender: '', formGuestNationality: nationality.trim(), formGuestAddress: address.trim(), formBirthdate: '',
+      // A correction keeps the status the booking already had (the form's rule).
+      bookingStatus: to || (ed && ed.status !== 'pending') ? 'confirmed' : 'pending',
+      formAgreedDeposit: ed ? ed.agreed_deposit ?? 0 : paid?.amount || 0,
+      formGuestName: guestName.trim(), formGuestEmail: ed?.guest_email || deal?.email || '', formGuestPhone: guestPhone.trim(),
+      formGuestGender: ed?.guest_gender || '', formGuestNationality: nationality.trim(), formGuestAddress: address.trim(), formBirthdate: ed?.birthdate || '',
       formPreparedBy: preparedBy.trim(),
-      formCompanyName: to?.name || '', formInstitution: to && !to.dealId ? to.name : '',
-      formVehiclePlate: deal?.vehicle_plate || '', formInvoiceNumber: '', formSource: 'manual',
+      formCompanyName: to?.name || '', formInstitution: to && !to.dealId ? to.name : ed?.institution || '',
+      formVehiclePlate: ed?.vehicle_plate || deal?.vehicle_plate || '', formInvoiceNumber: ed?.invoice_number || '', formSource: ed?.source || 'manual',
       formBreakfastRoomIds: breakfast, formCompanions: companions.filter(c => c.name.trim()),
       ...extrasOf(to ? NO_EXTRAS : extras),
-      formChairs: 0, formEventTable: 0, formEventTent: 0, formVenueExcessHours: 0, formBlockNotes: '',
+      // What the bill does not show is sent back as saved, or the save would blank it.
+      formChairs: venueKit?.chairCount || 0, formEventTable: venueKit?.tableCount || 0, formEventTent: venueKit?.tentCount || 0,
+      formVenueExcessHours: ed?.venue_excess_hours || 0, formBlockNotes: ed?.notes || '', venueDayBlocks: ed?.venue_day_blocks || undefined,
       discountType: !disc || !disc.v || to ? 'none' : disc.pct ? 'percent' : 'flat', discountValue: disc?.v || 0,
       formVenueTypes: kinds,
-      formPaymentMethod: paid?.method || '', formPaymentReference: paid?.reference || '',
+      formPaymentMethod: ed ? ed.payment_method || '' : paid?.method || '', formPaymentReference: ed ? ed.payment_reference || '' : paid?.reference || '',
       formPaymentPlan: plan, formPaymentPurpose: paid?.purpose,
       formCharges: charges,
       stay_hours: isShort ? hours : undefined,
-      derivedPaymentStatus: 'unpaid', formDownpaymentPaid: 0, formBalanceDue: null, formSecurityDeposit: null,
+      editingBookings: editing,
+      // Each room keeps its own money; the balance is worked out again below.
+      derivedPaymentStatus: ed ? ed.payment_status || 'unpaid' : 'unpaid',
+      formDownpaymentPaid: sum(b => Number(b.downpayment_paid || 0)),
+      formBalanceDue: ed ? sum(b => Number(b.balance_due || 0)) : null,
+      formSecurityDeposit: ed ? sum(b => Number(b.security_deposit || 0)) : null,
       receivedAmount: paid?.amount || 0,
       createManualBooking, updateBooking, cancelBooking, deleteBooking,
     })
+    if (!result.ok) { setSaving(false); setError(result.error); return }
+    if (editing) {
+      // The form keeps the balance it was handed; a charge taken off here has to come off
+      // what is owed too, so each room is priced again: stay + food − money received.
+      try {
+        for (const b of result.bookings) {
+          const priced = recomputeBalance(b, { rooms, venues, tabTotal: await readBookingFoodTotal(b.id) })
+          if (priced.balance_due !== b.balance_due || priced.payment_status !== b.payment_status) await updateBooking(priced)
+        }
+      } catch {
+        showToast('The changes are saved, but the balance was not worked out again. Open the booking and try again.', 'error')
+      }
+      focusBookingAfterCreate(result.bookings[0]?.id)
+      onClose()
+      return
+    }
     setSaving(false)
-    if (!result.ok) { setError(result.error); return }
     if (preparedBy.trim()) rememberReceptionist(preparedBy)
     setCreated({ list: result.bookings, receipt: result.receipt ?? null, from: at ? { x: at.left, y: at.top, w: at.width, h: at.height } : null })
   }
@@ -225,15 +284,17 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const nights = first ? Math.round((new Date(first.checkOut).getTime() - new Date(first.checkIn).getTime()) / 86400000) : 0
   const noBreakfast = list.filter(([id, s]) => s.type === 'room' && !!rooms.find(r => r.id === id) && !breakfast.includes(id) && !(to && deal?.breakfast_default === 'with'))
   const today = new Date()
-  const book = to ? 'Agency pays' : !paid ? 'No deposit' : paidUp ? 'Paid in full' : money(paid.amount) + ' deposit'
+  const book = ed ? '' : to ? 'Agency pays' : !paid ? 'No deposit' : paidUp ? 'Paid in full' : money(paid.amount) + ' deposit'
 
   return createPortal(
     <div className="fixed inset-0 z-[60] p-3 sm:p-4 bg-slate-900/50 overflow-y-auto bw-dim">
       <div ref={sheet} className="bw-eject">
-        <StatementShell label={to ? 'New booking · agency' : 'New booking'} invoiceNumber="numbered when booked" onClose={onClose}>
+        <StatementShell label={(ed ? 'Edit booking' : 'New booking') + (to ? ' · agency' : '')} invoiceNumber={ed?.invoice_number || 'numbered when booked'} onClose={onClose}>
           <BrandHeader dateIssued={today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}>
             <span className={label + ' row-start-1'}>Bill no.</span>
-            <span className="row-start-1 font-mono text-[13px] font-bold text-paper-400">GRF-{today.getFullYear()}-{String(today.getMonth() + 1).padStart(2, '0')}-…</span>
+            {ed?.invoice_number
+              ? <span className="row-start-1 font-mono text-[13px] font-bold text-ink-900">{ed.invoice_number}</span>
+              : <span className="row-start-1 font-mono text-[13px] font-bold text-paper-400">GRF-{today.getFullYear()}-{String(today.getMonth() + 1).padStart(2, '0')}-…</span>}
           </BrandHeader>
 
           <div className="grid grid-cols-2 gap-6 items-start">
@@ -387,6 +448,14 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                     <button type="button" onClick={() => setDisc({ pct: true, v: 0 })} className="self-start text-[10.5px] font-bold text-gold-800 hover:underline cursor-pointer">+ Discount</button>
                   )}
                   <p className={label}>Less: payments received</p>
+                  {editing && statement?.payments.map(x => (
+                    <div key={x.key} className="flex justify-between items-baseline gap-2.5">
+                      <span className={label + ' min-w-0'}>
+                        {new Date(x.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {paymentMethodLabel(x.method)}{x.purpose && <> · <span className="font-bold text-ink-900">{x.purpose}</span></>}
+                      </span>
+                      <span className={figure + ' shrink-0'}>−{money(x.amount)}</span>
+                    </div>
+                  ))}
                   {paid && (
                     <div className="flex justify-between items-baseline gap-2.5 bill-ink">
                       <span className={label + ' min-w-0'}>
@@ -398,7 +467,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                     </div>
                   )}
                   {/* One payment at booking — what the guest hands over now; more is taken on the panel. */}
-                  {!paid && total > 0 && (
+                  {!editing && !paid && total > 0 && (
                     <WritePayment open={writing} onOpen={setWriting} again={false}
                       fills={[{ label: 'Deposit', amount: Math.round(total / 2) }, { label: 'Full pay', amount: total }]}
                       onPay={p => setPaid({ amount: p.amount, method: p.method, reference: p.reference, purpose: p.purpose })} />
@@ -408,12 +477,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               <div className={'mt-1 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 text-white transition-colors duration-500 ' + (paidUp ? 'bg-emerald-700' : 'bg-ink-900')}>
                 <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">
                   {to ? 'Total' : 'Amount due'}
-                  {(paidUp || paid) && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px">{paidUp ? 'Paid in full' : 'Remaining balance'}</span>}
+                  {received > 0 && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px">{paidUp ? 'Paid in full' : 'Remaining balance'}</span>}
                 </span>
                 <span className="font-display text-[24px] font-extrabold leading-none"><CountPeso value={to ? total : due} /></span>
               </div>
               {/* Nothing written and nobody else paying: said once, in blue, like the calendar's pill. */}
-              {!to && !paid && !writing && <p className="mt-0.5 text-right text-[11px] font-bold text-sky-700 bw-rise">No deposit</p>}
+              {!to && received === 0 && !writing && <p className="mt-0.5 text-right text-[11px] font-bold text-sky-700 bw-rise">No deposit</p>}
               {paidUp && (
                 <span aria-hidden="true"
                   className="bill-stamp pointer-events-none absolute right-full mr-8 top-4 px-3 py-0.5 rounded-lg border-[3px] border-emerald-700 text-emerald-700 font-display text-[26px] font-extrabold tracking-[0.12em] opacity-85 mix-blend-multiply">
@@ -455,7 +524,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           {error && <p className="p-2.5 bg-danger-50 border border-danger-200 text-danger-600 text-[13px] rounded-lg bw-nope">{error}</p>}
           <button type="button" onClick={() => { if (!saving) handleBook() }}
             className="w-full min-h-[54px] rounded-xl bg-gold-400 hover:bg-gold-600 text-ink-900 text-[16px] font-bold cursor-pointer active:scale-[0.98] transition-[background-color,transform] bw-shine">
-            Book <span key={book} className="text-[13px] font-semibold opacity-75 inline-block bw-rise">· {book}</span>
+            {ed ? 'Save changes' : <>Book <span key={book} className="text-[13px] font-semibold opacity-75 inline-block bw-rise">· {book}</span></>}
           </button>
         </StatementShell>
       </div>

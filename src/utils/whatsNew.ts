@@ -38,6 +38,7 @@ export const UPDATES: Update[] = [
           'Tap Deposit or Full pay on the payment line to fill it in. With no payment written, it is booked with No deposit.',
           'Add a charge offers Foam, Pillow, Blanket and Towel. Tap one again for one more.',
           'Tap “Agency or institution” above the name to bill an agency or an institution. The bill becomes theirs.',
+          'The pencil on a booking opens its bill too, filled in. Change what you need and tap Save changes.',
         ],
       },
     ],

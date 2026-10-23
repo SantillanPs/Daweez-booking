@@ -548,6 +548,15 @@ export function CalendarTab() {
     return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
+  const closeManualForm = () => {
+    setShowManualForm(false); setEditingBooking(null); setEditingGroup(null); setFormSelections({}); setFormStayHours(null)
+    // Once the billing statement of an edit is closed, the booking opens again
+    // in the quick view (card k134). A new booking does not ask for this.
+    const created = takeFocusedBooking()
+    const booking = created ? bookings.find(b => b.id === created) : undefined
+    if (booking) setSelectedExtendBooking(booking)
+  }
+
   return (
     <div className="font-sans flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* ONE sheet (the design pass, 2026-10-04; the owner's taste: *"I don't like the boxes
@@ -631,12 +640,12 @@ export function CalendarTab() {
         />
       )}
 
-      {/* A new booking on the bill, as Settings → Front desk says (2026-10-23); a correction
-          is always the form. */}
-      {showManualForm && !editingBooking && getFrontDesk().newBooking === 'bill' && (
+      {/* A new booking on the bill, as Settings → Front desk says (2026-10-23) — and its
+          correction on the bill too. */}
+      {showManualForm && getFrontDesk().newBooking === 'bill' && (
         <React.Suspense fallback={null}>
           <NewBookingBill
-            key={Object.keys(formSelections).join(',') + (formStayHours ? '-h' + formStayHours : '')}
+            key={editingBooking ? 'edit-' + editingBooking.id : Object.keys(formSelections).join(',') + (formStayHours ? '-h' + formStayHours : '')}
             rooms={rooms}
             venues={venues}
             bookings={bookings}
@@ -646,13 +655,14 @@ export function CalendarTab() {
             cancelBooking={cancelBooking}
             deleteBooking={deleteBooking}
             initialSelections={formSelections}
-            initialStayHours={formStayHours ?? undefined}
-            onClose={() => { setShowManualForm(false); setFormSelections({}); setFormStayHours(null) }}
+            initialStayHours={editingBooking ? undefined : formStayHours ?? undefined}
+            editing={editingBooking ? (editingGroup || [editingBooking]) : undefined}
+            onClose={closeManualForm}
           />
         </React.Suspense>
       )}
 
-      {showManualForm && (editingBooking || getFrontDesk().newBooking !== 'bill') && (
+      {showManualForm && getFrontDesk().newBooking !== 'bill' && (
         <React.Suspense fallback={null}>
           <WalkInBookingForm
             key={editingBooking ? 'edit-' + editingBooking.id : Object.keys(formSelections).join(',') + (formStayHours ? '-h' + formStayHours : '')}
@@ -670,14 +680,7 @@ export function CalendarTab() {
             editingBookings={editingBooking ? (editingGroup || undefined) : undefined}
             initialBookingType={manualBookingType}
             initialStayHours={formStayHours ?? undefined}
-            onClose={() => {
-              setShowManualForm(false); setEditingBooking(null); setEditingGroup(null); setFormSelections({}); setFormStayHours(null)
-              // Once the billing statement of an edit is closed, the booking opens again
-              // in the quick view (card k134). A new booking does not ask for this.
-              const created = takeFocusedBooking()
-              const booking = created ? bookings.find(b => b.id === created) : undefined
-              if (booking) setSelectedExtendBooking(booking)
-            }}
+            onClose={closeManualForm}
           />
         </React.Suspense>
       )}

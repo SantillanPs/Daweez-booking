@@ -88,11 +88,15 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
       ? ((p.editingBookings?.length || 0) > 1 ? existing.invoice_number : (p.formInvoiceNumber || existing.invoice_number))
       : undefined
 
-  let chargesLeft = !!p.formCharges?.length
+  // Charges written on the bill go on the first unit. A correction from the bill sends
+  // every unit what it now holds — the first all of them, the rest none — or a charge
+  // taken off came back from the saved row.
+  let firstUnit = true
   const firstCharges = (): EventAddons | undefined => {
-    if (!chargesLeft) return undefined
-    chargesLeft = false
-    return { charges: p.formCharges }
+    if (!p.formCharges) return undefined
+    const mine = firstUnit ? p.formCharges : []
+    firstUnit = false
+    return mine.length > 0 || isEdit ? { charges: mine } : undefined
   }
 
   const createdBookings: Booking[] = []
@@ -152,7 +156,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         // Breakfast belongs to the ROOM (card k140): the row is marked when the desk
         // tapped that room's chip, and the charge is ₱150 × the room's beds.
         // Charges written on the bill go on the first unit, as on the bill itself.
-        eventAddons: firstCharges(),
+        eventAddons: (c => c && { ...existingBooking?.event_addons, ...c })(firstCharges()),
         breakfastOrders: undefined,
         breakfastIncluded: isBreakfastIncluded || p.formBreakfastRoomIds.includes(roomId),
         contractRateOverride: contractedPrice || (existingBooking && !existingBooking.partner_deal_id ? existingBooking.contract_rate_override : undefined),
