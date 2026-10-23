@@ -16,7 +16,7 @@ import { PriceBox } from '../PriceBox'
 import { useDashboardData } from '../DashboardContext'
 import { showToast } from '../../utils/toast'
 
-type CreateManual = (p: {
+export type CreateManual = (p: {
   roomId?: string; venueId?: string; guestName: string; guestEmail: string; guestPhone: string
   guestAddress?: string; guestNationality?: string; companions?: Companion[]
   checkIn: string; checkOut: string; source: 'manual'; status: 'confirmed'
@@ -27,7 +27,7 @@ type CreateManual = (p: {
   eventAddons?: EventAddons; actualCheckIn?: string; actualCheckOut?: string
 }) => Promise<Booking>
 
-interface Sel { checkIn: string; checkOut: string; type: 'room' | 'venue' }
+export interface Sel { checkIn: string; checkOut: string; type: 'room' | 'venue' }
 
 interface LogOldBookingModalProps {
   rooms: Room[]
@@ -82,7 +82,7 @@ function Tick({ on, onClick, boxed, children }: { on: boolean; onClick: () => vo
 }
 
 /** Circled by hand on the paper — the hours taken, the receptionist on duty (`lo-circ`). */
-function Circled({ on, onClick, className, children }: { on: boolean; onClick: () => void; className?: string; children: React.ReactNode }) {
+export function Circled({ on, onClick, className, children }: { on: boolean; onClick: () => void; className?: string; children: React.ReactNode }) {
   return (
     <button type="button" aria-pressed={on} onClick={onClick}
       className={'lo-circ relative min-h-11 px-3.5 py-2 text-center leading-tight cursor-pointer active:scale-[0.96] transition-transform ' + (className || '')}>

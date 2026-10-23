@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useDashboardData } from './DashboardContext'
+import { getFrontDesk } from '../utils/frontDesk'
 import { Booking } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { dateToString } from '../utils/helpers'
@@ -31,6 +32,8 @@ const loadForm = () => import('./WalkInBookingForm')
 const loadLogOld = () => import('./calendar/LogOldBookingModal')
 const WalkInBookingForm = React.lazy(() => loadForm().then(m => ({ default: m.WalkInBookingForm })))
 const LogOldBookingModal = React.lazy(() => loadLogOld().then(m => ({ default: m.LogOldBookingModal })))
+const loadLogOldBill = () => import('./calendar/LogOldBill')
+const LogOldBill = React.lazy(() => loadLogOldBill().then(m => ({ default: m.LogOldBill })))
 
 type Selection = { roomId?: string; venueId?: string; checkIn: Date }
 type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }>
@@ -88,7 +91,7 @@ export function CalendarTab() {
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null); const [showManualForm, setShowManualForm] = useState(false); const [formSelections, setFormSelections] = useState<Record<string, UnitSel>>({}); const [manualBookingType, setManualBookingType] = useState<'individual' | 'partner'>('individual'); const [formStayHours, setFormStayHours] = useState<number | null>(null)
 
   useEffect(() => {
-    const id = window.setTimeout(() => { void loadForm(); void loadLogOld() }, 1500)
+    const id = window.setTimeout(() => { void loadForm(); void loadLogOld(); void loadLogOldBill() }, 1500)
     return () => window.clearTimeout(id)
   }, [])
 
@@ -681,15 +684,16 @@ export function CalendarTab() {
 
       {showLogOld && (
         <React.Suspense fallback={null}>
-          <LogOldBookingModal
-            rooms={rooms}
-            venues={venues}
-            bookings={allBookings}
-            createManualBooking={createManualBooking}
-            initialSelections={logOldSelections}
-            shortStay={logOldShort}
-            onClose={() => setShowLogOld(false)}
-          />
+          {/* The paper form or the blank bill, as Settings → Front desk says (2026-10-23). */}
+          {React.createElement(getFrontDesk().logOld === 'bill' ? LogOldBill : LogOldBookingModal, {
+            rooms,
+            venues,
+            bookings: allBookings,
+            createManualBooking,
+            initialSelections: logOldSelections,
+            shortStay: logOldShort,
+            onClose: () => setShowLogOld(false),
+          })}
         </React.Suspense>
       )}
 

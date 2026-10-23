@@ -13,7 +13,8 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
   label: string
   invoiceNumber: string
   onClose: () => void
-  onPrint: () => void
+  /** No Print button without it: a bill still being written has nothing to print yet. */
+  onPrint?: () => void
   embedded?: boolean
   /** Who this bill can be emailed to. The Email button is drawn only when it is given. */
   email?: EmailTarget
@@ -32,10 +33,12 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
         </div>
         <div className="flex items-center gap-2">
           {email && <EmailButton tone="ink" onClick={() => setEmailing(open => !open)} />}
-          <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-ink-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
-            <Printer className="w-3.5 h-3.5" />
-            Print
-          </button>
+          {onPrint && (
+            <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-ink-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
+              <Printer className="w-3.5 h-3.5" />
+              Print
+            </button>
+          )}
           <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
@@ -65,7 +68,11 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
 }
 
 /** The hotel's own letterhead, identical on every piece of paper the office prints. */
-export function BrandHeader({ invoiceNumber, dateIssued, showDate = true, heading = 'Guest Billing Statement', dateLabel = 'Date Issued' }: { invoiceNumber?: string; dateIssued?: string; showDate?: boolean; heading?: string; dateLabel?: string }) {
+export function BrandHeader({ invoiceNumber, dateIssued, showDate = true, heading = 'Guest Billing Statement', dateLabel = 'Date Issued', children }: {
+  invoiceNumber?: string; dateIssued?: string; showDate?: boolean; heading?: string; dateLabel?: string
+  /** More label–figure pairs under the title: a logged paper's own No. and date. */
+  children?: React.ReactNode
+}) {
   // The owner's pick from the drawings, 2026-10-13. Still **always** two columns, never
   // `sm:flex-row` (card k144): A5 is 559px wide and `sm` starts at 640px, so a breakpoint
   // never fires on paper. The bill number sits alone under the title, larger than anything
@@ -96,6 +103,7 @@ export function BrandHeader({ invoiceNumber, dateIssued, showDate = true, headin
                 <span className="text-[11.5px] font-semibold text-ink-900">{dateIssued}</span>
               </>
             )}
+            {children}
           </div>
         </div>
       </div>

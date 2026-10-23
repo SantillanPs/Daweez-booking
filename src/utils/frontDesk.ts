@@ -10,6 +10,11 @@ import { readAppSetting, writeAppSetting } from './appSettings'
  *                (`billing/BillDates`), the room's charge line opens the other free rooms
  *                (`StatementChargesTable`).
  *
+ * **Where an old paper booking is logged** (Sebastian, 2026-10-23, the log-on-the-bill mock: keep both):
+ *
+ *   `form` — the paper form with its payment stub (`calendar/LogOldBookingModal`).
+ *   `bill` — a blank billing statement filled in like the paper bill (`calendar/LogOldBill`).
+ *
  * In the database (`app_settings`, key `front_desk`) so every PC at the desk works the same way.
  * Served from memory like the rates: `hydrateFrontDesk` fills it before any route renders, and the
  * booking panel reads it again each time it opens — the choice made on another PC or in another tab
@@ -18,13 +23,14 @@ import { readAppSetting, writeAppSetting } from './appSettings'
  */
 export interface FrontDeskSettings {
   reschedule: 'calendar' | 'bill'
+  logOld: 'form' | 'bill'
 }
 
-let current: FrontDeskSettings = { reschedule: 'calendar' }
+let current: FrontDeskSettings = { reschedule: 'calendar', logOld: 'form' }
 
-// Anything but an explicit `bill` is the calendar, the way it worked before the choice existed.
+// Anything but an explicit `bill` is the way it worked before the choice existed.
 const tidy = (v: Partial<FrontDeskSettings> | null | undefined): FrontDeskSettings =>
-  ({ reschedule: v?.reschedule === 'bill' ? 'bill' : 'calendar' })
+  ({ reschedule: v?.reschedule === 'bill' ? 'bill' : 'calendar', logOld: v?.logOld === 'bill' ? 'bill' : 'form' })
 
 export function getFrontDesk(): FrontDeskSettings {
   return current

@@ -23,6 +23,26 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-23',
+    changes: [
+      {
+        where: 'Settings → Front desk',
+        what: [
+          'Choose where an old booking is logged: on the paper form, as now, or on the bill.',
+        ],
+      },
+      {
+        where: 'Front desk → Log old booking (when “On the bill” is chosen)',
+        what: [
+          'Copy the paper onto a blank billing statement: the guest, the charges and the payments.',
+          'Each payment has a “Paid on” day. It starts on the check-in day; tap it to change it.',
+          'Tap Breakfast beside “Add a charge” to put it on the bill. A room with no breakfast price yet asks for it there.',
+          'Nothing is saved until you press Log booking.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-22b',
     changes: [
       {
