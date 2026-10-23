@@ -16,10 +16,15 @@ const LOG_OLD: Choice<'logOld'>[] = [
   { key: 'bill', title: 'On the bill', line: 'Fill in a blank billing statement', Icon: FileText },
 ]
 
+const NEW_BOOKING: Choice<'newBooking'>[] = [
+  { key: 'form', title: 'On the form', line: 'The booking form, payment beside the guest', Icon: ClipboardCheck },
+  { key: 'bill', title: 'On the bill', line: 'Fill in a blank billing statement', Icon: FileText },
+]
+
 /**
  * **How the front desk works** — each a choice between two places (Sebastian, 2026-10-22: the
  * staff want rescheduling on the billing statement, he likes the calendar; 2026-10-23: logging an
- * old booking on the bill, with the paper form kept). Saved the moment it is picked, like the
+ * old booking on the bill, with the paper form kept, and the same for a new booking). Saved the moment it is picked, like the
  * channel switches, and put back with a word if the database refuses.
  */
 export function FrontDeskOptions() {
@@ -37,6 +42,10 @@ export function FrontDeskOptions() {
   }
   return (
     <div className="space-y-8">
+      <Section title="Make a new booking">
+        <Choices label="Where a new booking is made" choices={NEW_BOOKING} value={desk.newBooking}
+          onPick={newBooking => newBooking !== desk.newBooking && pick({ newBooking })} />
+      </Section>
       <Section title="Reschedule a booking">
         <Choices label="Where a booking is rescheduled" choices={PLACES} value={desk.reschedule}
           onPick={reschedule => reschedule !== desk.reschedule && pick({ reschedule })} />

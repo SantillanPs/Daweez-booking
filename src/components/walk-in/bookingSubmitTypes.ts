@@ -1,6 +1,6 @@
 import {
   Booking, BookingSource, Room, Venue, PartnerDeal, Companion,
-  EquipmentRental, BreakfastOrder, AppliedDiscount, PaymentRecord, EventAddons,
+  EquipmentRental, BreakfastOrder, AppliedDiscount, PaymentRecord, EventAddons, BillCharge,
 } from '../../types/booking'
 import { DiscountType } from '../calendar/DiscountPricingControls'
 
@@ -123,6 +123,10 @@ export interface BookingSubmitParams {
    * Reservation**, which pays nothing and is left exactly as it was.
    */
   receivedAmount: number
+  /** What the payment was for — written on the bill's payment line (`NewBookingBill`). */
+  formPaymentPurpose?: string
+  /** Charges written on the bill ("Add a charge" → Something else), put on the first room or venue. */
+  formCharges?: BillCharge[]
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>
   updateBooking: (booking: Booking) => Promise<void>
   cancelBooking: (id: string) => Promise<void>

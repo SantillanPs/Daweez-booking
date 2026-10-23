@@ -15,6 +15,12 @@ import { readAppSetting, writeAppSetting } from './appSettings'
  *   `form` — the paper form with its payment stub (`calendar/LogOldBookingModal`).
  *   `bill` — a blank billing statement filled in like the paper bill (`calendar/LogOldBill`).
  *
+ * **Where a new booking is made** (Sebastian, 2026-10-23, the new-booking-on-the-bill mock: "make it
+ * toggle-able like old booking and reschedule"):
+ *
+ *   `form` — the booking form (`WalkInBookingForm`).
+ *   `bill` — a blank billing statement with the calendar's pick on it (`calendar/NewBookingBill`).
+ *
  * In the database (`app_settings`, key `front_desk`) so every PC at the desk works the same way.
  * Served from memory like the rates: `hydrateFrontDesk` fills it before any route renders, and the
  * booking panel reads it again each time it opens — the choice made on another PC or in another tab
@@ -24,13 +30,15 @@ import { readAppSetting, writeAppSetting } from './appSettings'
 export interface FrontDeskSettings {
   reschedule: 'calendar' | 'bill'
   logOld: 'form' | 'bill'
+  newBooking: 'form' | 'bill'
 }
 
-let current: FrontDeskSettings = { reschedule: 'calendar', logOld: 'form' }
+let current: FrontDeskSettings = { reschedule: 'calendar', logOld: 'form', newBooking: 'form' }
 
 // Anything but an explicit `bill` is the way it worked before the choice existed.
 const tidy = (v: Partial<FrontDeskSettings> | null | undefined): FrontDeskSettings =>
-  ({ reschedule: v?.reschedule === 'bill' ? 'bill' : 'calendar', logOld: v?.logOld === 'bill' ? 'bill' : 'form' })
+  ({ reschedule: v?.reschedule === 'bill' ? 'bill' : 'calendar', logOld: v?.logOld === 'bill' ? 'bill' : 'form',
+    newBooking: v?.newBooking === 'bill' ? 'bill' : 'form' })
 
 export function getFrontDesk(): FrontDeskSettings {
   return current

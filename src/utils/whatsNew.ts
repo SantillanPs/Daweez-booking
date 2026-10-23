@@ -23,6 +23,26 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-23a',
+    changes: [
+      {
+        where: 'Settings → Front desk',
+        what: [
+          'Choose where a new booking is made: on the booking form, as now, or on the bill.',
+        ],
+      },
+      {
+        where: 'Front desk → New booking (when “On the bill” is chosen)',
+        what: [
+          'Fill in a blank billing statement: the guest, the charges, a discount and the payment.',
+          'Tap Deposit or Full pay on the payment line to fill it in. With no payment written, it is booked with No deposit.',
+          'Add a charge offers Foam, Pillow, Blanket and Towel. Tap one again for one more.',
+          'Tap “Agency or institution” above the name to bill an agency or an institution. The bill becomes theirs.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-23',
     changes: [
       {

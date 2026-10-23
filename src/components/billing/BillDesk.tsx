@@ -65,8 +65,11 @@ const BLANK = 'bill-blank w-full flex items-center gap-1.5 px-1.5 py-1 rounded-m
  * starts at 0, and the day is always today: there is no day to pick.
  * `open` is the bill's, so the payments above can fold away while one is written.
  */
-export function WritePayment({ open, onOpen, onPay, again, paidOn }: {
+export function WritePayment({ open, onOpen, onPay, again, paidOn, fills }: {
   open: boolean; onOpen: (open: boolean) => void; onPay: BillDeskActions['onPay']; again: boolean
+  /** **Quick fills** — the booking form's deposit choices on a new booking's bill (Deposit, Full
+   *  pay): a tap writes what for and how much. */
+  fills?: { label: string; amount: number }[]
   /** **The day it was paid, as a chip** — only on a paper booking being logged, whose money was
    *  not taken today (the log-on-the-bill mock, Sebastian, 2026-10-23). Opens on this day. */
   paidOn?: string
@@ -102,6 +105,20 @@ export function WritePayment({ open, onOpen, onPay, again, paidOn }: {
   }
   return (
     <form onSubmit={e => { e.preventDefault(); record() }} className="my-0.5 -mx-1.5 p-1.5 rounded-lg bg-gold-100 flex flex-col gap-1.5 bw-unfold">
+      {fills && fills.length > 0 && (
+        <div className="flex gap-1">
+          {fills.map(f => {
+            const on = purpose === f.label && amount === f.amount
+            return (
+              <button key={f.label} type="button" aria-pressed={on} onClick={() => { setPurpose(f.label); setAmount(f.amount); setMiss('') }}
+                className={'flex-1 min-h-7 px-2 rounded-lg border-[1.5px] text-[10.5px] font-bold active:scale-95 transition-[border-color,background-color,color,transform] cursor-pointer ' +
+                  (on ? 'border-ink-900 bg-ink-900 text-white' : 'border-gold-400 bg-paper-50 text-ink-900 hover:bg-white')}>
+                {f.label} <span className="font-mono font-semibold opacity-70">₱{f.amount.toLocaleString()}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
       <div className="grid grid-cols-[minmax(0,1fr)_84px] gap-2 items-end">
         <input ref={forBox} autoFocus value={purpose} onChange={e => { setPurpose(e.target.value); setMiss('') }}
           placeholder="What for" aria-label="What the payment was for" className={SLOT + ' w-full text-[12.5px] font-semibold'} />
@@ -158,11 +175,15 @@ export function WritePayment({ open, onOpen, onPay, again, paidOn }: {
  * to add a bill in the billing statement. for example: DINNER - 300 pesos"*): what for and
  * how much, and it goes under Extras.
  */
-export function AddCharge({ onCharge, cols, beside }: {
+export function AddCharge({ onCharge, cols, beside, presets }: {
   onCharge: BillDeskActions['onCharge']; cols: number
   /** Blanks that sit to its left while it is shut — a logged paper's Breakfast. */
   beside?: React.ReactNode
+  /** Ready-priced extras offered as chips when it opens (a new booking's Foam, Pillow…); each tap
+   *  adds one more. "Something else" is the ordinary name and price. */
+  presets?: { label: string; price: number; onPick: () => void }[]
 }) {
+  const [other, setOther] = useState(false)
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [amount, setAmount] = useState(0)
@@ -172,7 +193,7 @@ export function AddCharge({ onCharge, cols, beside }: {
     if (!name.trim()) { want(nameBox.current); return }
     if (!(amount > 0)) { want(amountBox.current); return }
     onCharge(name.trim(), amount)
-    setOpen(false); setName(''); setAmount(0)
+    setOpen(false); setOther(false); setName(''); setAmount(0)
   }
   return (
     <tr data-screen className="print:hidden">
@@ -185,6 +206,20 @@ export function AddCharge({ onCharge, cols, beside }: {
               <Plus aria-hidden="true" className="w-3.5 h-3.5" />Add a charge
             </button>
           </div>
+        ) : presets && !other ? (
+          <div className="p-1.5 rounded-md bg-gold-100 flex flex-wrap items-center gap-1.5 bw-unfold">
+            {presets.map(p => (
+              <button key={p.label} type="button" onClick={p.onPick}
+                className="min-h-8 px-2.5 rounded-md border-[1.5px] border-gold-400 bg-paper-50 hover:bg-white text-[11px] font-bold text-ink-900 active:scale-90 transition-[background-color,transform] cursor-pointer">
+                {p.label} <span className="font-mono text-[10px] font-semibold text-muted">₱{p.price}</span>
+              </button>
+            ))}
+            <button type="button" onClick={() => setOther(true)}
+              className="min-h-8 px-2.5 rounded-md border-[1.5px] border-dashed border-gold-400 text-[11px] font-bold text-gold-800 hover:bg-white active:scale-95 transition-[background-color,transform] cursor-pointer">Something else…</button>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Not now" className={SHUT + ' ml-auto self-stretch'}>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         ) : (
           <form onSubmit={e => { e.preventDefault(); add() }} className="p-1.5 rounded-md bg-gold-100 flex items-center gap-1.5 bw-unfold">
             <input ref={nameBox} autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="What for · e.g. Dinner"
@@ -193,7 +228,7 @@ export function AddCharge({ onCharge, cols, beside }: {
             <input ref={amountBox} inputMode="numeric" aria-label="Amount" value={amount ? amount.toLocaleString() : ''}
               onChange={e => setAmount(digits(e.target.value))} className={SLOT + ' w-16 text-right font-mono text-[13px]'} />
             <button type="submit" className={GO}>Add</button>
-            <button type="button" onClick={() => { setOpen(false); setName(''); setAmount(0) }} aria-label="Not now" className={SHUT + ' self-stretch'}>
+            <button type="button" onClick={() => { setOpen(false); setOther(false); setName(''); setAmount(0) }} aria-label="Not now" className={SHUT + ' self-stretch'}>
               <X className="w-3.5 h-3.5" />
             </button>
           </form>

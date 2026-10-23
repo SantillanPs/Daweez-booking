@@ -88,6 +88,13 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
       ? ((p.editingBookings?.length || 0) > 1 ? existing.invoice_number : (p.formInvoiceNumber || existing.invoice_number))
       : undefined
 
+  let chargesLeft = !!p.formCharges?.length
+  const firstCharges = (): EventAddons | undefined => {
+    if (!chargesLeft) return undefined
+    chargesLeft = false
+    return { charges: p.formCharges }
+  }
+
   const createdBookings: Booking[] = []
   const processedBookingIds = new Set<string>()
 
@@ -144,6 +151,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         vehiclePlate: p.formVehiclePlate || undefined,
         // Breakfast belongs to the ROOM (card k140): the row is marked when the desk
         // tapped that room's chip, and the charge is ₱150 × the room's beds.
+        // Charges written on the bill go on the first unit, as on the bill itself.
+        eventAddons: firstCharges(),
         breakfastOrders: undefined,
         breakfastIncluded: isBreakfastIncluded || p.formBreakfastRoomIds.includes(roomId),
         contractRateOverride: contractedPrice || (existingBooking && !existingBooking.partner_deal_id ? existingBooking.contract_rate_override : undefined),
@@ -176,7 +185,9 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
 
       const deal = p.partnerDeals.find(d => d.id === p.formPartnerDealId)
       const contractedPrice = deal?.contracted_rates[venueId]
-      const eventAddons = withVenueType(existingBooking?.event_addons, p.formVenueTypes[venueId])
+      const kind = withVenueType(existingBooking?.event_addons, p.formVenueTypes[venueId])
+      const charges = firstCharges()
+      const eventAddons = charges ? { ...kind, ...charges } : kind
 
       const b = await p.createManualBooking({
         id: existingBooking?.id,
@@ -263,6 +274,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         method: p.formPaymentMethod,
         reference: p.formPaymentReference,
         plan: p.formPaymentPlan,
+        purpose: p.formPaymentPurpose,
         updateBooking: p.updateBooking,
       })
       finalBookings = recorded.bookings

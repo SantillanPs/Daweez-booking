@@ -34,6 +34,8 @@ const WalkInBookingForm = React.lazy(() => loadForm().then(m => ({ default: m.Wa
 const LogOldBookingModal = React.lazy(() => loadLogOld().then(m => ({ default: m.LogOldBookingModal })))
 const loadLogOldBill = () => import('./calendar/LogOldBill')
 const LogOldBill = React.lazy(() => loadLogOldBill().then(m => ({ default: m.LogOldBill })))
+const loadNewBill = () => import('./calendar/NewBookingBill')
+const NewBookingBill = React.lazy(() => loadNewBill().then(m => ({ default: m.NewBookingBill })))
 
 type Selection = { roomId?: string; venueId?: string; checkIn: Date }
 type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }>
@@ -629,7 +631,28 @@ export function CalendarTab() {
         />
       )}
 
-      {showManualForm && (
+      {/* A new booking on the bill, as Settings → Front desk says (2026-10-23); a correction
+          is always the form. */}
+      {showManualForm && !editingBooking && getFrontDesk().newBooking === 'bill' && (
+        <React.Suspense fallback={null}>
+          <NewBookingBill
+            key={Object.keys(formSelections).join(',') + (formStayHours ? '-h' + formStayHours : '')}
+            rooms={rooms}
+            venues={venues}
+            bookings={bookings}
+            allBookings={allBookings}
+            createManualBooking={createManualBooking}
+            updateBooking={updateBooking}
+            cancelBooking={cancelBooking}
+            deleteBooking={deleteBooking}
+            initialSelections={formSelections}
+            initialStayHours={formStayHours ?? undefined}
+            onClose={() => { setShowManualForm(false); setFormSelections({}); setFormStayHours(null) }}
+          />
+        </React.Suspense>
+      )}
+
+      {showManualForm && (editingBooking || getFrontDesk().newBooking !== 'bill') && (
         <React.Suspense fallback={null}>
           <WalkInBookingForm
             key={editingBooking ? 'edit-' + editingBooking.id : Object.keys(formSelections).join(',') + (formStayHours ? '-h' + formStayHours : '')}

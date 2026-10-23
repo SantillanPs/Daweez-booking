@@ -57,6 +57,8 @@ export interface RecordBookingPaymentParams {
   method: string
   reference: string
   plan: 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'
+  /** What it was for, as written on the bill's payment line (the new booking on the bill). */
+  purpose?: string
   updateBooking: (booking: Booking) => Promise<void>
 }
 
@@ -109,6 +111,7 @@ export async function recordBookingPayment(
       paid_at: paidAt,
       prepared_by: b.prepared_by,
       receipt_number: receiptNumber,
+      ...(p.purpose ? { purpose: p.purpose } : {}),
       // This room's slice of it — what removing the payment must take back off this room.
       share: p.bookings.length > 1 ? down : undefined,
     }
