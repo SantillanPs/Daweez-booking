@@ -87,7 +87,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
 
       {/* No name over the table: he found a lone `Charges` *"out of place … taking so much
           space for itself"* (2026-10-13). Its column names say what it is. */}
-      <StatementChargesTable items={statement.lineItems} onRemove={desk?.onRemove} canRemove={desk?.owns} isNew={isNew} move={desk?.move}>
+      <StatementChargesTable items={statement.lineItems} onRemove={desk?.onRemove} canRemove={desk?.owns} onPrice={desk?.onPrice} isNew={isNew} move={desk?.move}>
         {desk?.removed && (
           <tr data-screen key={desk.removed.label} className="print:hidden">
             <td colSpan={6} className="pt-1 text-[10.5px] font-semibold text-muted bw-rise">
@@ -185,10 +185,11 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
               {/* The blank line the payment is written on (the mock's "Blank line"). */}
               {desk && statement.amountDue > 0 && (
                 <div data-screen className="print:hidden">
-                  {/* Deposit only until money is in; Full pay is everything still owed. */}
+                  {/* Deposit only until money is in, and never on a short stay (Sebastian, 2026-10-24: "the
+                      short stay should just say full pay, and custom"); Full pay is everything still owed. */}
                   <WritePayment key={statement.payments.length} open={writing} onOpen={setWriting} onPay={desk.onPay} again={statement.payments.length > 0}
                     fills={[
-                      ...(statement.payments.length ? [] : [{ label: 'Deposit', amount: Math.round(statement.subTotal / 2) }]),
+                      ...(statement.payments.length || b.stay_hours ? [] : [{ label: 'Deposit', amount: Math.round(statement.subTotal / 2) }]),
                       { label: 'Full pay', amount: statement.amountDue + statement.balanceAfter },
                     ]} />
                 </div>

@@ -70,9 +70,10 @@ export function calculatePricing(params: {
     } else {
       basePrice = contractRateOverride
     }
-    nights = Math.max(1, diffDays(checkIn, checkOut))
+    // A short stay's price typed on the bill is still ONE charge for its hours (2026-10-24).
+    nights = shortStayHours ? 1 : Math.max(1, diffDays(checkIn, checkOut))
     stayQuantity = nights
-    stayUnit = roomId ? 'NIGHT' : 'DAY'
+    stayUnit = shortStayHours ? shortStayHours + ' HOURS' : roomId ? 'NIGHT' : 'DAY'
   } else if (roomId) {
     const room = roomList.find(r => r.id === roomId)
     const regular = room ? room.base_price : 0

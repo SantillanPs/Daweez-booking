@@ -82,7 +82,7 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
           ],
         }} move={desk?.move} />
 
-      <StatementChargesTable items={statement.lineItems} dates={false} onRemove={desk?.onRemove} canRemove={desk?.owns} isNew={isNew} move={desk?.move}>
+      <StatementChargesTable items={statement.lineItems} dates={false} onRemove={desk?.onRemove} canRemove={desk?.owns} onPrice={desk?.onPrice} isNew={isNew} move={desk?.move}>
         {desk?.removed && (
           <tr data-screen key={desk.removed.label} className="print:hidden">
             <td colSpan={4} className="pt-1 text-[10.5px] font-semibold text-muted bw-rise">

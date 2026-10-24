@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { ChevronDown, X } from 'lucide-react'
 import { StatementBand, StatementLineItem, shortDate } from '../../utils/statement'
 import { BillMove } from './BillDesk'
+import { NumInput } from '../NumInput'
 
 const money = (n: number) => (n < 0 ? '−₱' + Math.abs(n).toLocaleString() : '₱' + n.toLocaleString())
 
@@ -36,7 +37,7 @@ const BAND_ORDER: StatementBand[] = ['room', 'breakfast', 'extras', 'food', 'dis
  * bill says its dates once, in its Stay block (the owner, 2026-10-15: *"make sure to check for
  * redundancies"*). A group whose rooms have different dates then shows only the first room's.
  */
-export function StatementChargesTable({ items, dates = true, onRemove, canRemove, isNew, move, renderLine, children }: {
+export function StatementChargesTable({ items, dates = true, onRemove, canRemove, onPrice, isNew, move, renderLine, children }: {
   items: StatementLineItem[]
   /** A bill that draws some lines itself (the rooms on the new-booking bill): its row(s), `null` for none, `undefined` for the usual row. */
   renderLine?: (it: StatementLineItem, cell: string) => React.ReactNode | undefined
@@ -46,6 +47,8 @@ export function StatementChargesTable({ items, dates = true, onRemove, canRemove
   /** On a bill the desk is working on: an × that takes a charge it added off (never printed). */
   onRemove?: (it: StatementLineItem) => void
   canRemove?: (key: string) => boolean
+  /** On a bill the desk is working on: the room's own price, typed over (the stay's line, `-stay`). */
+  onPrice?: (it: StatementLineItem, price: number) => void
   /** Rows written since the bill opened, which settle in like ink. */
   isNew?: (key: string) => boolean
   /** Rows under the charges — the desk's "Add a charge". */
@@ -85,7 +88,7 @@ export function StatementChargesTable({ items, dates = true, onRemove, canRemove
                 <td colSpan={dates ? 6 : 4} className="pt-1 text-[10px] font-medium text-muted">{BAND_LABEL[band]}</td>
               </tr>
               {rows.map(it => renderLine?.(it, cell) !== undefined ? <React.Fragment key={it.key}>{renderLine(it, cell)}</React.Fragment> : move && it.key === move.lineKey ? (
-                <MovableLine key={it.key} it={it} move={move} dates={dates} cell={cell} />
+                <MovableLine key={it.key} it={it} move={move} dates={dates} cell={cell} onPrice={onPrice} />
               ) : (
                 <tr key={it.key} className={isNew?.(it.key) ? 'bill-ink' : undefined}>
                   {/* An order slip says whether it is paid, beside its number — on one line. */}
@@ -99,7 +102,9 @@ export function StatementChargesTable({ items, dates = true, onRemove, canRemove
                       </button>
                     )}
                   </td>
-                  <td className={cell + ' text-right font-mono'}>{it.price ? money(it.price) : '—'}</td>
+                  <td className={cell + ' text-right font-mono'}>
+                    {onPrice && it.key.endsWith('-stay') && (!canRemove || canRemove(it.key)) ? <RateBox it={it} onPrice={onPrice} /> : it.price ? money(it.price) : '—'}
+                  </td>
                   {dates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>}
                   {dates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>}
                   {/* The unit lives here when it is not a night: `3 hrs` for a short stay,
@@ -129,7 +134,7 @@ const peso = (n: number) => '₱' + n.toLocaleString()
  * and what the whole bill changes by — closest price first. Tapping one moves the stay there;
  * the rooms that are taken are named once, quietly, at the bottom.
  */
-function MovableLine({ it, move, dates, cell }: { it: StatementLineItem; move: BillMove; dates: boolean; cell: string }) {
+function MovableLine({ it, move, dates, cell, onPrice }: { it: StatementLineItem; move: BillMove; dates: boolean; cell: string; onPrice?: (it: StatementLineItem, price: number) => void }) {
   const [open, setOpen] = useState(false)
   const cols = dates ? 6 : 4
   const options = move.units
@@ -149,7 +154,7 @@ function MovableLine({ it, move, dates, cell }: { it: StatementLineItem; move: B
             <ChevronDown aria-hidden="true" className={'print:hidden w-3 h-3 text-gold-600 transition-transform duration-300 ' + (open ? 'rotate-180' : '')} />
           </button>
         </td>
-        <td className={cell + ' text-right font-mono'}>{it.price ? money(it.price) : '—'}</td>
+        <td className={cell + ' text-right font-mono'}>{onPrice ? <RateBox it={it} onPrice={onPrice} /> : it.price ? money(it.price) : '—'}</td>
         {dates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>}
         {dates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>}
         <td className={cell + ' text-right font-mono'}>{it.qty}</td>
@@ -181,6 +186,35 @@ function MovableLine({ it, move, dates, cell }: { it: StatementLineItem; move: B
           </td>
         </tr>
       )}
+    </>
+  )
+}
+
+/**
+ * **The room's price is typed on the bill** (Sebastian, 2026-10-24, on the "What the Bill
+ * Edits" mock: "the price of the rooms should be editable"). The rate is a gold box; what is
+ * typed is saved when the box is left or Enter is pressed, as the booking's own price, and the
+ * line's total and the bill follow. Escape puts the old price back. On paper it is the figure.
+ */
+function RateBox({ it, onPrice }: { it: StatementLineItem; onPrice: (it: StatementLineItem, price: number) => void }) {
+  const [price, setPrice] = useState(it.price)
+  const [was, setWas] = useState(it.price)
+  // The bill priced again from outside (a payment, a move): the box shows the new figure.
+  if (it.price !== was) { setWas(it.price); setPrice(it.price) }
+  const save = () => { if (price > 0 && price !== it.price) onPrice(it, price); else setPrice(it.price) }
+  return (
+    <>
+      <span className="hidden print:inline">{money(it.price)}</span>
+      <label data-screen className="print:hidden inline-flex items-baseline justify-end gap-px -my-0.5 px-1 rounded-t-sm border-b-2 border-ink-900 bg-gold-100 hover:bg-gold-200/70 focus-within:bg-card focus-within:border-gold-600 transition-colors cursor-text">
+        <span className="text-[9px] font-bold text-muted">₱</span>
+        <NumInput value={price} onChange={setPrice} allowDecimal={false} aria-label={'Price of ' + it.description}
+          onBlur={save}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+            if (e.key === 'Escape') { e.stopPropagation(); setPrice(it.price); setTimeout(() => (e.target as HTMLInputElement).blur()) }
+          }}
+          className="w-12 bg-transparent border-0 p-0 text-right font-mono text-[11px] font-bold text-ink-900 outline-none" />
+      </label>
     </>
   )
 }

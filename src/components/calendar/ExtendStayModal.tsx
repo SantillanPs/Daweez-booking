@@ -481,6 +481,20 @@ export function ExtendStayModal({
       showToast('Could not remove ' + line.description + '. Please try again.', 'error')
     }
   }
+  // **The room's price typed on the bill** (Sebastian, 2026-10-24): kept as the booking's own
+  // price (`contract_rate_override`, the field the booking form's typed rate already uses) and
+  // the bill priced again. On screen at once, saved behind, put back if the save fails.
+  const setPrice = async (line: StatementLineItem, price: number) => {
+    const before = localBooking
+    const updated = withRecomputedBalance(localBooking, { contract_rate_override: price })
+    layout(() => setLocalBooking(updated))
+    try {
+      await onUpdateBooking?.(updated)
+    } catch {
+      layout(() => setLocalBooking(before))
+      showToast('Could not change the price of ' + line.description + '. Please try again.', 'error')
+    }
+  }
   // **One payment on a bill of several rooms** (the owner's ruling, 2026-09-30, as the booking
   // form already does it — `recordBookingPayment`): the same receipt on every room, each room
   // keeping its share of it, shared out by what each still owes. Every room's figure is the
@@ -1218,6 +1232,7 @@ export function ExtendStayModal({
             onFix: (key, patch) => void fixPayment(key, patch),
             onCharge: (name, amount) => void addCharge(name, amount),
             onRemove: line => void removeCharge(line),
+            onPrice: (line, price) => void setPrice(line, price),
             owns: key => key.startsWith(localBooking.id + '-'),
             removed,
             onUndo: () => void undoRemove(),
