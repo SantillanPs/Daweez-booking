@@ -10,7 +10,7 @@ import { statusAfterPayment } from '../../utils/bookingStatus'
 import { hasOutstandingBalance, amountToPayNow, isBilledToAgency } from '../../utils/bookingMoney'
 import { methodNeedsReference } from '../../utils/paymentMethod'
 import { nextReceiptNumber } from '../../utils/receiptNumber'
-import { withoutPayment } from '../walk-in/bookingPayment'
+import { withoutPayment, withFixedPayment, PaymentPatch } from '../walk-in/bookingPayment'
 import { logRemovedPayment } from '../../utils/removedPayments'
 import { recomputeBalance, pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
 import { useBookingSlips } from '../../hooks/useBookingSlips'
@@ -432,6 +432,27 @@ export function ExtendStayModal({
       }).catch(() => {})
     } catch {
       showToast('Could not remove the payment. Please try again.', 'error')
+    }
+  }
+
+  // **A payment typed wrong, fixed on the bill** (Sebastian, 2026-10-24, the mock's B): on every room
+  // that holds it, at once, saved behind and put back if the save fails.
+  const fixPayment = async (key: string, patch: PaymentPatch) => {
+    const before = localBooking
+    const rows = [localBooking, ...billRows.filter(b => b.id !== localBooking.id)]
+    const rec = rows.flatMap(b => b.payment_records || []).find(r => r.id === key)
+    if (!rec) return
+    const holders = (rec.receipt_number ? [localBooking, ...(coveredBookings[rec.receipt_number] || []).filter(b => b.id !== localBooking.id)] : [localBooking])
+      .map(b => ({ booking: b, rec: (b.payment_records || []).find(r => (rec.receipt_number ? r.receipt_number === rec.receipt_number : r.id === rec.id)) }))
+      .filter((h): h is { booking: Booking; rec: PaymentRecord } => !!h.rec)
+    const updated = withFixedPayment(holders, patch, new Date().toISOString())
+    const mine = updated.find(b => b.id === localBooking.id)
+    if (mine) setLocalBooking(mine)
+    try {
+      for (const b of updated) await onUpdateBooking?.(b)
+    } catch {
+      setLocalBooking(before)
+      showToast('Could not fix the payment. Please try again.', 'error')
     }
   }
 
@@ -1194,6 +1215,7 @@ export function ExtendStayModal({
           onClose={() => setShowPrintModal(false)}
           desk={billDesk ? {
             onPay: p => void handleAddReceipt(p),
+            onFix: (key, patch) => void fixPayment(key, patch),
             onCharge: (name, amount) => void addCharge(name, amount),
             onRemove: line => void removeCharge(line),
             owns: key => key.startsWith(localBooking.id + '-'),

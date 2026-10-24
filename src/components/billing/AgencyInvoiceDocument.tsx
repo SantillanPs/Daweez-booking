@@ -9,6 +9,7 @@ import { StatementChargesTable } from './StatementChargesTable'
 import { StatementGuestStay } from './StatementGuestStay'
 import { StatementShell, BrandHeader, SectionName } from './StatementShell'
 import { AddCharge, BillDeskActions, WritePayment } from './BillDesk'
+import { FixPayment } from './FixPayment'
 import { CountPeso } from '../CountPeso'
 
 const money = (n: number) => '₱' + n.toLocaleString()
@@ -63,6 +64,7 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
   const isNew = (key: string) => !!desk && !opened.has(key)
   // A payment being written folds the ones above it into one line (the "what for" mock's 3).
   const [writing, setWriting] = useState(false)
+  const [column, setColumn] = useState<HTMLDivElement | null>(null)
   const paidUp = statement.amountDue === 0 && statement.payments.length > 0
 
   return (
@@ -122,7 +124,7 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
         </div>
         {/* What the agency has sent and what it still owes: the desk's, never on paper. */}
         {desk && (
-          <div data-screen className="print:hidden flex flex-col gap-0.5">
+          <div ref={setColumn} data-screen className="relative print:hidden flex flex-col gap-0.5">
             {statement.payments.length > 0 && <p className={label}>Received</p>}
             {writing && statement.payments.length > 0 && (
               <button type="button" data-screen onClick={() => setWriting(false)}
@@ -131,7 +133,11 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
                 <span className={figure + ' shrink-0'}>−{money(statement.payments.reduce((s, p) => s + p.amount, 0))}</span>
               </button>
             )}
-            {statement.payments.map(p => (
+            {statement.payments.map(p => desk.onFix ? (
+              <div key={p.key} className={(isNew(p.key) ? 'bill-ink' : '') + (writing ? ' hidden' : '')}>
+                <FixPayment p={p} sheet={column} onFix={patch => desk.onFix?.(p.key, patch)} onReceipt={desk.onReceipt} />
+              </div>
+            ) : (
               <div key={p.key} className={'flex justify-between items-baseline gap-2.5 ' + (isNew(p.key) ? 'bill-ink' : '') + (writing ? ' hidden print:flex' : '')}>
                 <span className={label + ' min-w-0'}>
                   {shortDay(p.paidAt)} · {paymentMethodLabel(p.method)}

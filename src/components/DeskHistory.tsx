@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { CalendarPlus, LogIn, LogOut, PhilippinePeso, Trash2, X } from 'lucide-react'
+import { CalendarPlus, LogIn, LogOut, PenLine, PhilippinePeso, Trash2, X } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { Booking, PaymentRecord } from '../types/booking'
 import { getTabs } from '../utils/tabs'
@@ -19,7 +19,7 @@ import { showToast } from '../utils/toast'
 // from what the desk already records — a payment's `paid_at`, a booking's `created_at`, `actual_check_in`,
 // `actual_check_out`, `cancelled_at` — plus `removed_payments`, the one trace a removed payment leaves.
 
-type Kind = 'pay' | 'book' | 'in' | 'out' | 'cancel' | 'removed'
+type Kind = 'pay' | 'book' | 'in' | 'out' | 'cancel' | 'removed' | 'fixed'
 type Filter = 'all' | 'pay' | 'book' | 'inout' | 'cancel' | 'owed'
 
 interface Event {
@@ -28,6 +28,8 @@ interface Event {
   kind: Kind
   title: string
   detail: string
+  /** A fixed payment: what it said before, struck through ahead of the title. */
+  was?: string
   amount?: number
   booking?: Booking
   /** A payment on bookings, so it can be removed: the record and every booking that holds it. */
@@ -47,6 +49,7 @@ const ICON: Record<Kind, { Icon: typeof LogIn; tone: string }> = {
   out: { Icon: LogOut, tone: 'bg-page text-main border border-soft' },
   cancel: { Icon: X, tone: 'bg-danger-50 text-danger-600' },
   removed: { Icon: Trash2, tone: 'bg-page text-muted border border-soft' },
+  fixed: { Icon: PenLine, tone: 'bg-gold-100 text-gold-800' },
 }
 const FILTERS: [Filter, string][] = [['all', 'All'], ['pay', 'Payments'], ['book', 'Bookings'], ['inout', 'Check-ins & outs'], ['cancel', 'Cancelled'], ['owed', 'Still to pay']]
 const PAGE = 14
@@ -112,6 +115,17 @@ export function DeskHistory() {
         detail: join(who(p.holders[0]), paymentMethodLabel(p.rec.method), p.rec.receipt_number, p.rec.prepared_by && 'by ' + p.rec.prepared_by),
         booking: p.holders[0], payment: p,
       })
+      // Each fix of a typed-wrong payment (the mock's B, 2026-10-24): what it said, then what it says.
+      const fixes = p.rec.fixes || []
+      fixes.forEach((f, i) => {
+        const now = fixes[i + 1] || p.rec
+        out.push({
+          key: 'fix-' + key + '-' + i, at: f.at, kind: 'fixed', booking: p.holders[0],
+          was: peso(f.amount) + ' ' + paymentMethodLabel(f.method) + (f.purpose ? ' ' + f.purpose : ''),
+          title: peso(Number(now.amount || 0)) + ' ' + paymentMethodLabel(now.method) + (now.purpose ? ' ' + now.purpose : ''),
+          detail: join('Payment fixed', who(p.holders[0]), p.rec.receipt_number, 'paid ' + shortDay(dateToString(new Date(p.rec.paid_at)))),
+        })
+      })
     }
     // A diner pays at the desk on the order slip itself; a room guest's slip is paid by a booking's receipt.
     for (const t of tabs) {
@@ -138,7 +152,7 @@ export function DeskHistory() {
 
   const q = query.trim().toLowerCase()
   const shown = events.filter(e =>
-    (filter === 'all' || (filter === 'inout' ? e.kind === 'in' || e.kind === 'out' : filter === 'pay' ? e.kind === 'pay' || e.kind === 'removed' : e.kind === filter)) &&
+    (filter === 'all' || (filter === 'inout' ? e.kind === 'in' || e.kind === 'out' : filter === 'pay' ? e.kind === 'pay' || e.kind === 'removed' || e.kind === 'fixed' : e.kind === filter)) &&
     (!q || (e.title + ' ' + e.detail).toLowerCase().includes(q)))
   const byDay = new Map<string, Event[]>()
   for (const e of shown) {
@@ -243,7 +257,7 @@ export function DeskHistory() {
                       <span className="hidden sm:block font-mono text-[12px] text-muted">{timeOf(e.at)}</span>
                       <span className={`w-8 h-8 rounded-full grid place-items-center ${tone}`}><Icon className="w-4 h-4" strokeWidth={2} /></span>
                       <span className={`min-w-0 flex flex-col ${gone ? 'line-through opacity-50' : ''}`}>
-                        <span className="text-[14px] text-main truncate">{e.title}{gone && e.kind !== 'removed' ? ' · Removed' : ''}</span>
+                        <span className="text-[14px] text-main truncate">{e.was && <><s className="text-muted">{e.was}</s> → </>}{e.title}{gone && e.kind !== 'removed' ? ' · Removed' : ''}</span>
                         <span className="text-[12.5px] text-muted truncate">{e.detail}</span>
                       </span>
                       <span className="flex items-center gap-1">

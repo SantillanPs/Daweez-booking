@@ -12,6 +12,7 @@ import { StatementGuestStay } from './StatementGuestStay'
 import { StatementShell, BrandHeader, SectionName } from './StatementShell'
 import { AddCharge, BillDeskActions, WritePayment } from './BillDesk'
 import { CountPeso } from '../CountPeso'
+import { FixPayment } from './FixPayment'
 
 interface InvoiceDocumentProps {
   primaryBooking: Booking
@@ -72,6 +73,8 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
   const isNew = (key: string) => !!desk && !opened.has(key)
   // A payment being written folds the ones above it into one line (the "what for" mock's 3).
   const [writing, setWriting] = useState(false)
+  // Where a payment's fix boxes float (`FixPayment`).
+  const [column, setColumn] = useState<HTMLDivElement | null>(null)
 
   return (
     <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}
@@ -143,7 +146,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           </div>
         </div>
 
-        <div className="relative col-start-2 flex flex-col gap-0.5">
+        <div ref={setColumn} className="relative col-start-2 flex flex-col gap-0.5">
           <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(statement.subTotal)}</span></div>
           {/* The bill lists the payments already received (the staff, 2026-10-04: it showed
               what was still to pay but not what had been paid). Money received before
@@ -159,7 +162,13 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
                 </button>
               )}
               {statement.payments.map(p => (
-                <div key={p.key} className={'flex justify-between items-baseline gap-2.5 ' + (isNew(p.key) ? 'bill-ink' : '') + (writing ? ' hidden print:flex' : '')}>
+                <React.Fragment key={p.key}>
+                {desk?.onFix && !writing && (
+                  <div className={isNew(p.key) ? 'bill-ink' : ''}>
+                    <FixPayment p={p} sheet={column} onFix={patch => desk.onFix?.(p.key, patch)} onReceipt={desk.onReceipt} />
+                  </div>
+                )}
+                <div className={'flex justify-between items-baseline gap-2.5 ' + (isNew(p.key) ? 'bill-ink' : '') + (writing || desk?.onFix ? ' hidden print:flex' : '')}>
                   <span className={label + ' min-w-0'}>
                     {shortDay(p.paidAt)} · {paymentMethodLabel(p.method)}
                   {p.purpose && <> · <span className="font-bold text-ink-900">{p.purpose}</span></>}
@@ -171,6 +180,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
                   </span>
                   <span className={figure + ' shrink-0'}>−{money(p.amount)}</span>
                 </div>
+                </React.Fragment>
               ))}
               {/* The blank line the payment is written on (the mock's "Blank line"). */}
               {desk && statement.amountDue > 0 && (

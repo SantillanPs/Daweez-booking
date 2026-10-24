@@ -4,6 +4,7 @@ import { PAYMENT_METHODS, methodNeedsReference } from '../../utils/paymentMethod
 import { dateToString } from '../../utils/helpers'
 import { StatementLineItem } from '../../utils/statementLines'
 import { want } from './want'
+import type { PaymentPatch } from '../walk-in/bookingPayment'
 
 const digits = (v: string) => Number(v.replace(/[^0-9]/g, '')) || 0
 /** `2026-09-14` → `Sep 14`, from the date's own parts. */
@@ -24,6 +25,8 @@ export interface BillDeskActions {
   /** A charge just taken off, which Undo puts back. */
   removed: { label: string } | null
   onUndo: () => void
+  /** Fixes a payment typed wrong (its `key` on the statement). */
+  onFix?: (key: string, patch: PaymentPatch) => void
   /** Prints the 58 mm receipt of the payment with this number. */
   onReceipt: (receipt: string) => void
   /** Rescheduling on the bill, when Settings → Front desk says so and the stay can still move. */

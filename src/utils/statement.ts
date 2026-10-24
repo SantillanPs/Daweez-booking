@@ -21,6 +21,7 @@ export interface StatementPayment {
   method: string
   /** What it was for, as the desk wrote it. */
   purpose?: string
+  reference?: string
   /** How much of it went to the rooms on THIS bill. */
   amount: number
 }
@@ -144,7 +145,7 @@ export function buildStatement(o: StatementInput): Statement {
       const amount = paymentShare(b, rec, shared)
       const listed = number ? payments.find(p => p.receipt === number) : undefined
       if (listed) listed.amount += amount
-      else payments.push({ key: rec.id, paidAt: rec.paid_at, receipt: number, method: rec.method, purpose: rec.purpose, amount })
+      else payments.push({ key: rec.id, paidAt: rec.paid_at, receipt: number, method: rec.method, purpose: rec.purpose, reference: rec.reference, amount })
     })
   })
   payments.sort((a, b) => (a.paidAt || '').localeCompare(b.paidAt || ''))
