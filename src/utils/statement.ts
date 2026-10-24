@@ -158,7 +158,7 @@ export function buildStatement(o: StatementInput): Statement {
   const roomsLabel = relatedBookings.length > 1 ? roomNumbers.join(', ') : ''
 
   const invoiceNumber = primaryBooking.invoice_number || (
-    'GRF-' + primaryBooking.check_in.substring(0, 7).replace('-', '') + '-PREVIEW'
+    primaryBooking.check_in.substring(0, 7).replace('-', '') + '-PREVIEW'
   )
 
   return {

@@ -23,6 +23,15 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-24l',
+    changes: [
+      {
+        where: 'Billing statement',
+        what: ['New bills have a new number: the year and month, then how many bookings so far this year and this month. 202610-137-12 is the 137th booking of 2026 and the 12th of October. Older bills keep their old numbers.'],
+      },
+    ],
+  },
+  {
     id: '2026-10-24k',
     changes: [
       {

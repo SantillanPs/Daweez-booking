@@ -654,7 +654,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             <span className={label + ' row-start-1'}>Bill no.</span>
             {ed?.invoice_number
               ? <span className="row-start-1 font-mono text-[13px] font-bold text-ink-900">{ed.invoice_number}</span>
-              : <span className="row-start-1 font-mono text-[13px] font-bold text-paper-400">GRF-{today.getFullYear()}-{String(today.getMonth() + 1).padStart(2, '0')}-…</span>}
+              : <span className="row-start-1 font-mono text-[13px] font-bold text-paper-400">{today.getFullYear()}{String(today.getMonth() + 1).padStart(2, '0')}-…</span>}
           </BrandHeader>
 
           <div className="grid grid-cols-2 gap-6 items-start">

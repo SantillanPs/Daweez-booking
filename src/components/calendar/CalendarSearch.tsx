@@ -25,7 +25,7 @@ const peso = (n: number) => '₱' + n.toLocaleString()
  * billing/receipt no.", the calendar search mock, 2026-10-24). A search button on the top line
  * opens a field over it; what matches drops under it in three groups. A booking opens its
  * panel on the calendar, a billing statement opens the statement, a receipt opens the slip.
- * Part of a number is enough ("148" finds GRF-2026-10-0148). Cancelled bookings are found too,
+ * Part of a number is enough ("137" finds 202610-137-12). Cancelled bookings are found too,
  * so an old receipt is never lost; they open their bill, since the calendar no longer shows them.
  */
 export function CalendarSearch({ allBookings, rooms, venues, onBooking, onBill, onReceipt }: {

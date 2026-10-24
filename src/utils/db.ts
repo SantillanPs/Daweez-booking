@@ -1,6 +1,7 @@
 import { Room, Venue, Booking, SyncFeed, BookingSource, BookingStatus } from '../types/booking'
 import { supabase, isSupabaseConfigured } from './supabaseClient'
 import { randomUUID, isValidUUID } from './helpers'
+import { billNumber } from './billNumber'
 import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 
 // The browser stores that used to sit here (`l_etoile_bookings_db`,
@@ -386,29 +387,8 @@ export async function undoBookingCheck(bookingId: string, which: 'check_in' | 'c
 // every other write failure now surface to the caller alike: nothing is parked in
 // the browser, so a booking that could not be saved must say so.
 
-// Compute the next sequential invoice number for a check-in month.
-async function nextInvoiceNumber(checkInDate: string): Promise<string> {
-  const allBookings = await getBookings()
-  const prefixYearMonth = checkInDate.substring(0, 7)
-  const prefixDocType = 'GRF'
-
-  const sameMonthBookings = allBookings.filter(b =>
-    b.invoice_number &&
-    b.invoice_number.startsWith(`${prefixDocType}-${prefixYearMonth}-`)
-  )
-
-  let nextSeq = 1
-  if (sameMonthBookings.length > 0) {
-    const seqs = sameMonthBookings.map(b => {
-      const parts = b.invoice_number!.split('-')
-      const lastPart = parts[parts.length - 1]
-      const num = parseInt(lastPart, 10)
-      return isNaN(num) ? 0 : num
-    })
-    nextSeq = Math.max(...seqs) + 1
-  }
-
-  return `${prefixDocType}-${prefixYearMonth}-${String(nextSeq).padStart(4, '0')}`
+async function nextInvoiceNumber(): Promise<string> {
+  return billNumber(await getBookings())
 }
 
 export async function saveBookings(bookings: Booking[]): Promise<void> {
@@ -440,7 +420,7 @@ export async function insertBooking(booking: Booking): Promise<Booking> {
 
   // Assign a sequential invoice number client-side (retried on conflict below).
   if (!withId.invoice_number && withId.status !== 'blocked') {
-    withId.invoice_number = await nextInvoiceNumber(withId.check_in)
+    withId.invoice_number = await nextInvoiceNumber()
   }
 
   const record = toBookingRecord(withId)
@@ -452,7 +432,7 @@ export async function insertBooking(booking: Booking): Promise<Booking> {
       const isInvoiceConflict = withId.invoice_number &&
         (error.code === '23505' || /duplicate key/i.test(String(error.message || '')))
       if (isInvoiceConflict) {
-        withId.invoice_number = await nextInvoiceNumber(withId.check_in)
+        withId.invoice_number = await nextInvoiceNumber()
         record.invoice_number = withId.invoice_number
         continue
       }
