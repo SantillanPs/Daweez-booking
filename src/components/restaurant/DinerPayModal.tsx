@@ -10,6 +10,7 @@ import { TabSettlePanel } from './TabSettlePanel'
 import { TabReceiptModal } from './TabReceiptModal'
 import { RunningTabSlip } from './RunningTabSlip'
 import { tableName } from './served'
+import { DiscountBox, Discount } from '../calendar/NewBookingBill'
 
 const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
@@ -37,6 +38,12 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
   const [changed, setChanged] = useState('')
   const [printing, setPrinting] = useState(false)
   const [busy, setBusy] = useState(false)
+  // **A discount on a diner's bill** (Sebastian, 2026-10-24: "when a bill is sent to the front desk
+  // from the restaurant, being able to add discounts is needed"). Taken off at the desk, the way the
+  // booking bill's "+ Discount" is; the slip's lines keep their prices and the receipt shows it.
+  const [disc, setDisc] = useState<Discount | null>(null)
+  const off = !disc ? 0 : Math.min(slip.total, disc.pct ? Math.round(slip.total * disc.v / 100) : disc.v)
+  const toPay = slip.total - off
   // **The money is sealed before the receipt opens** (the owner, 2026-10-15: animations
   // for the table payments). The same seal as the booking panel's (`mark` in
   // ExtendStayModal): it stamps over the slip, fades for its last 300 ms, then the receipt
@@ -88,7 +95,7 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
               <Banknote className="w-7 h-7" />
               <i /><i /><i /><i /><i /><i />
             </span>
-            <b className="font-display text-[19px] font-bold tracking-tight text-main">Paid {fmtPeso(slip.total)}</b>
+            <b className="font-display text-[19px] font-bold tracking-tight text-main">Paid {fmtPeso(toPay)}</b>
             <span className="text-[13px] text-muted">{[table || who, slipNumber(slip.tab)].filter(Boolean).join(' · ')}</span>
           </div>
         )}
@@ -115,15 +122,28 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
               </li>
             ))}
           </ul>
+          {disc && (
+            <div className="pt-2 border-t border-soft space-y-1">
+              <div className="flex items-baseline justify-between gap-2 text-[14px] text-muted"><span>Sub-total</span><span className="tabular-nums">{fmtPeso(slip.total)}</span></div>
+              <div className="flex items-center justify-between gap-3 text-[14px] text-muted">
+                <span>Discount</span>
+                <div className="w-40"><DiscountBox disc={disc} onChange={setDisc} /></div>
+              </div>
+            </div>
+          )}
           <div className="flex items-baseline justify-between gap-2 pt-3 border-t border-soft">
-            <span className="text-[14px] font-medium text-muted">Total</span>
-            <span className="font-display text-[26px] leading-none font-extrabold tracking-tight tabular-nums text-main">{fmtPeso(slip.total)}</span>
+            <span className="text-[14px] font-medium text-muted">{off > 0 ? 'To pay' : 'Total'}</span>
+            <span key={toPay} className="font-display text-[26px] leading-none font-extrabold tracking-tight tabular-nums text-main bw-rise">{fmtPeso(toPay)}</span>
           </div>
+          {!disc && (
+            <button type="button" onClick={() => setDisc({ pct: true, v: 0 })} className="mt-1 text-[13px] font-bold text-gold-800 hover:underline cursor-pointer">+ Discount</button>
+          )}
           {changed && <p role="alert" className="mt-2 text-[13px] font-semibold text-danger-600">{changed}</p>}
 
           <TabSettlePanel
             tab={slip.tab}
-            total={slip.total}
+            total={toPay}
+            discount={off || undefined}
             ready={stillTheSame}
             onSettled={record => {
               onChanged()

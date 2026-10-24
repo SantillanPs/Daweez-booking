@@ -49,7 +49,7 @@ const fmtDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); 
 interface Paid { amount: number; method: string; reference: string; purpose: string }
 /** Who the bill goes to instead of the guest: an agency (its deal) or an institution (a name). */
 interface BillTo { name: string; dealId?: string }
-interface Discount { pct: boolean; v: number }
+export interface Discount { pct: boolean; v: number }
 
 /**
  * **A new booking on the billing statement** (Sebastian, 2026-10-23: "what would it look like if we
@@ -770,7 +770,7 @@ const extrasOf = (e: Extras) => ({
 })
 
 /** "+ Discount" opened: % or ₱, the sign on the side it is read (the mock: % after, ₱ before). */
-function DiscountBox({ disc, onChange }: { disc: Discount; onChange: (d: Discount | null) => void }) {
+export function DiscountBox({ disc, onChange }: { disc: Discount; onChange: (d: Discount | null) => void }) {
   return (
     <div className="flex items-center gap-1.5 my-0.5 bw-unfold">
       <div role="group" aria-label="Discount by" className="relative grid grid-cols-2 p-0.5 rounded-md bg-card shadow-[inset_0_0_0_1.5px_#1C1C1C]">

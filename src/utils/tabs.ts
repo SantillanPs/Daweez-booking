@@ -320,6 +320,8 @@ export async function settleTab(input: {
   method: string
   reference?: string
   preparedBy?: string
+  /** Pesos taken off the slip at the desk; `amount` is already less it. */
+  discount?: number
 }): Promise<PaymentRecord> {
   if (!isSupabaseConfigured) {
     throw new Error('No database is connected, so this tab was not settled.')
@@ -332,6 +334,7 @@ export async function settleTab(input: {
     paid_at: new Date().toISOString(),
     prepared_by: input.preparedBy?.trim() || undefined,
     receipt_number: nextTabReceiptNumber(await usedReceiptNumbers()),
+    discount: input.discount ? money(input.discount) : undefined,
   }
   const records = [...(input.tab.payment_records || []), record]
   const closed_at = new Date().toISOString()

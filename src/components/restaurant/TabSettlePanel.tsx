@@ -25,6 +25,8 @@ interface TabSettlePanelProps {
    * while the desk was looking at it. Answering false stops the payment.
    */
   ready?: () => Promise<boolean>
+  /** Pesos the desk took off; `total` is already less it. */
+  discount?: number
 }
 
 // Paying a walk-in's order slip (k69, part C): the one place a diner with no room pays.
@@ -35,7 +37,7 @@ interface TabSettlePanelProps {
 // nothing to type and nothing to part-pay. The receipt prints straight away, because
 // the diner is standing at the desk. **Nothing is preselected** for how they paid:
 // a silent `Cash` is how a GCash guest once got a Cash receipt.
-export function TabSettlePanel({ tab, total, onSettled, quiet = false, ready }: TabSettlePanelProps) {
+export function TabSettlePanel({ tab, total, onSettled, quiet = false, ready, discount }: TabSettlePanelProps) {
   const [method, setMethod] = useState('')
   const [reference, setReference] = useState('')
   const [error, setError] = useState('')
@@ -50,7 +52,7 @@ export function TabSettlePanel({ tab, total, onSettled, quiet = false, ready }: 
     setError(''); setBusy(true)
     try {
       if (ready && !(await ready())) return
-      const receipt = await settleTab({ tab, amount: total, method, reference })
+      const receipt = await settleTab({ tab, amount: total, method, reference, discount })
       setReference('')
       showToast(fmtPeso(total) + ' received · ' + (slipNumber(tab) || 'order slip') + ' paid.', 'success')
       await onSettled(receipt)

@@ -41,7 +41,13 @@ export function TabReceiptModal({ tab, lines, record, onClose }: TabReceiptModal
         <Row key={l.id} label={l.qty > 1 ? l.qty + ' × ' + l.description : l.description} value={money(l.amount)} />
       ))}
       <Rule />
-      <Row label="TOTAL" value={money(total)} strong />
+      {record.discount ? (
+        <>
+          <Row label="Sub-total" value={money(total)} />
+          <Row label="Discount" value={'−' + money(record.discount)} />
+        </>
+      ) : null}
+      <Row label="TOTAL" value={money(total - (record.discount || 0))} strong />
       <Rule />
       <Block label="Paid by" value={paymentMethodLabel(record.method)} />
       <Block label="Reference" value={record.reference} />
