@@ -127,6 +127,11 @@ export interface BookingSubmitParams {
   formPaymentPurpose?: string
   /** Charges written on the bill ("Add a charge" → Something else), put on the first room or venue. */
   formCharges?: BillCharge[]
+  /**
+   * A rate typed on the bill for a room or venue (the rooms-on-the-bill mock, 2026-10-24). When sent,
+   * it is the whole truth: a unit missing from it is back on its own price, an older figure included.
+   */
+  formRates?: Record<string, number>
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>
   updateBooking: (booking: Booking) => Promise<void>
   cancelBooking: (id: string) => Promise<void>

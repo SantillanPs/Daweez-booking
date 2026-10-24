@@ -10,7 +10,7 @@ import { bookingLines, mergeDiscountRows, StatementLineItem, StatementBand } fro
 // paper's own table prints, plus the money the guest hands over.
 
 export type { StatementLineItem, StatementBand }
-export { nightsFor } from './statementLines'
+export { nightsFor, shortDate } from './statementLines'
 
 /** One payment already received, as the bill lists it. */
 export interface StatementPayment {

@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-24c',
+    changes: [
+      {
+        where: 'Front desk → New booking on the bill',
+        what: [
+          'Tap a room\'s name on the bill to swap it for another free room. Tap its price to type a different one, or its dates to pick new ones from a calendar.',
+          'Add a room or venue at the bottom of the rooms, or take one off with ×. Money already paid stays on the bill.',
+          'Breakfast is one line for all the rooms. Tap it to switch breakfast on or off for each room.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-24b',
     changes: [
       {

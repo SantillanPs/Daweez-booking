@@ -21,6 +21,14 @@ import { airconWords } from './venueHours'
  * It sits in its own module so `statement.ts` stays the assembler of totals and payments.
  */
 
+/** `2026-09-25` → `09/25/26`, the way the paper's own Date columns read. */
+export const shortDate = (iso?: string) => {
+  const v = (iso || '').trim()
+  if (!v.includes('-')) return v
+  const [y, m, d] = v.split('-')
+  return m + '/' + d + '/' + (y || '').slice(2)
+}
+
 export type StatementBand = 'room' | 'breakfast' | 'extras' | 'discount' | 'food'
 
 export interface StatementLineItem {
@@ -150,7 +158,7 @@ export function bookingLines(b: Booking, o: {
   const checkOut = b.check_out || ''
   // No "promo" wording on the printed paper (card k128): there is one price, so the room
   // line simply names the room. Only a partner's contracted rate is worth calling out.
-  const rateLabel = b.contract_rate_override != null ? ' · corporate' : ''
+  const rateLabel = b.contract_rate_override != null && b.partner_deal_id ? ' · corporate' : ''
   // The kind of venue that was booked is named on its row: `Vacation House & Ground`,
   // `Vacation House · Exclusive`.
   const bookedVenue = isRoom ? undefined : venues.find(v => v.id === normalizeVenueId(b.venue_id || ''))

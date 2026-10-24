@@ -1,17 +1,9 @@
 import React, { useState } from 'react'
 import { ChevronDown, X } from 'lucide-react'
-import { StatementBand, StatementLineItem } from '../../utils/statement'
+import { StatementBand, StatementLineItem, shortDate } from '../../utils/statement'
 import { BillMove } from './BillDesk'
 
 const money = (n: number) => (n < 0 ? '−₱' + Math.abs(n).toLocaleString() : '₱' + n.toLocaleString())
-
-/** `2026-09-25` → `09/25/26`, the way the paper's own Date columns read. */
-const shortDate = (iso?: string) => {
-  const v = (iso || '').trim()
-  if (!v.includes('-')) return v
-  const [y, m, d] = v.split('-')
-  return m + '/' + d + '/' + (y || '').slice(2)
-}
 
 /**
  * The charges table of the printed Guest Billing Statement — **the paper's own table**
@@ -44,8 +36,10 @@ const BAND_ORDER: StatementBand[] = ['room', 'breakfast', 'extras', 'food', 'dis
  * bill says its dates once, in its Stay block (the owner, 2026-10-15: *"make sure to check for
  * redundancies"*). A group whose rooms have different dates then shows only the first room's.
  */
-export function StatementChargesTable({ items, dates = true, onRemove, canRemove, isNew, move, children }: {
+export function StatementChargesTable({ items, dates = true, onRemove, canRemove, isNew, move, renderLine, children }: {
   items: StatementLineItem[]
+  /** A bill that draws some lines itself (the rooms on the new-booking bill): its row(s), `null` for none, `undefined` for the usual row. */
+  renderLine?: (it: StatementLineItem, cell: string) => React.ReactNode | undefined
   /** Rescheduling on the bill: the stay's own line opens the other free rooms under it. */
   move?: BillMove
   dates?: boolean
@@ -90,7 +84,7 @@ export function StatementChargesTable({ items, dates = true, onRemove, canRemove
               <tr>
                 <td colSpan={dates ? 6 : 4} className="pt-1 text-[10px] font-medium text-muted">{BAND_LABEL[band]}</td>
               </tr>
-              {rows.map(it => move && it.key === move.lineKey ? (
+              {rows.map(it => renderLine?.(it, cell) !== undefined ? <React.Fragment key={it.key}>{renderLine(it, cell)}</React.Fragment> : move && it.key === move.lineKey ? (
                 <MovableLine key={it.key} it={it} move={move} dates={dates} cell={cell} />
               ) : (
                 <tr key={it.key} className={isNew?.(it.key) ? 'bill-ink' : undefined}>

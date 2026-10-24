@@ -422,6 +422,13 @@
 /* The bill's rooms, in a bubble under the "4 rooms" tag. */
 @keyframes bill-pop { from { opacity: 0; transform: scale(0.6); } }
 .bill-pop { transform-origin: 20px -6px; animation: bill-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+/* Rooms on the bill (2026-10-24): a list or a month floats over the bill, which never makes room for it. */
+@keyframes br-float { from { opacity: 0; transform: translateY(-6px) scale(0.96); } }
+.br-float { animation: br-float 0.26s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.br-sw { flex: none; position: relative; width: 28px; height: 16px; border-radius: 999px; background: #E3DDD0; transition: background-color 0.2s; }
+.br-sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1); }
+[aria-checked="true"] > .br-sw { background: #1C1C1C; }
+[aria-checked="true"] > .br-sw::after { transform: translateX(12px); }
 .bill-pop::before { content: ""; position: absolute; top: -5px; left: 18px; width: 10px; height: 10px; background: #1C1C1C; transform: rotate(45deg); border-radius: 2px; }
 /* The short-stay clock: a ring that empties as the hours go, and nudges once they have. */
 @property --bw-p { syntax: "<number>"; inherits: false; initial-value: 0; }
@@ -506,7 +513,7 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 @media (prefers-reduced-motion: reduce) {
   [data-mark-ready] > .fd-mark, .fd-tab svg, .fd-sub, .fd-sub::after, .fd-gear svg, .fd-step svg, .bk-thumb { transition: none; }
   .fd-ping::after, .fd-wiggle:hover svg:first-child, .fd-pop, .fd-free:hover::after, .fd-pick, .fd-bar, .fd-bar > *, .fd-roll, .fd-away, .fd-drain,
-  .bk-seal circle, .bk-wake::after, .bk-hop, .bk-pop, .bk-thumb, .bk-need, .bk-want, .bk-list, .bk-row, .bk-chip, .bk-ring, .bk-bit, .bk-rise, .bk-hand, .bk-big-seal circle { animation: none; }
+  .br-float, .bk-seal circle, .bk-wake::after, .bk-hop, .bk-pop, .bk-thumb, .bk-need, .bk-want, .bk-list, .bk-row, .bk-chip, .bk-ring, .bk-bit, .bk-rise, .bk-hand, .bk-big-seal circle { animation: none; }
   .bk-tick path, .bk-big-seal path, .bw-chip.bw-just svg path { animation: none; stroke-dashoffset: 0; }
   .bw-tool, .bw-tool svg, .bw-tool svg *, .bw-bar { transition: none; }
   .bw-tool svg, .bw-tool svg *, .bw-sink, .bw-ask, .bw-ask button, .bw-tools-back > .bw-tool, .bw-formin, .bw-billin li, .bw-billin p, .bw-eject, .bw-dim { animation: none; }
