@@ -435,6 +435,36 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
         </tr>
       )
     }
+    // A room's price: tapped to type a new one, "custom ↺" back to its own. A short stay's line uses it too (2026-10-24).
+    const rateCell = (id: string, name: string, it: StatementLineItem) => (
+      <td className={cell + ' text-right font-mono'}>
+        {rates[id] != null && rateBox !== id && (
+          <button type="button" onClick={() => { unRate(id); setFresh(id) }} title="Back to its own price"
+            className="print:hidden mr-1.5 px-1 py-px rounded bg-gold-100 text-gold-800 font-sans text-[9px] font-bold active:scale-90 transition-transform cursor-pointer bw-rise">custom ↺</button>
+        )}
+        {rateBox === id ? (
+          <input autoFocus defaultValue={String(it.price)} inputMode="numeric" placeholder="950" aria-label={name + ' rate'}
+            onFocus={e => e.currentTarget.select()} onBlur={e => keepRate(id, e.currentTarget.value)}
+            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setRateBox(null) }}
+            className="w-16 bg-card border-0 border-b-[1.5px] border-ink-900 focus:border-gold-400 rounded-none px-0.5 text-right font-mono text-[11px] font-semibold text-ink-900 focus:outline-none bw-rise" />
+        ) : (
+          <button type="button" onClick={() => { setRateBox(id); setPop(null) }} className={VAL}>{money(it.price)}</button>
+        )}
+      </td>
+    )
+    if (isShort && it.key.endsWith('-stay')) {
+      const id = list[0][0]
+      return (
+        <tr key={id + it.amount} className={fresh === id ? 'bill-ink' : undefined}>
+          <td className={cell + ' pl-0 text-left whitespace-normal'}>{it.description}</td>
+          {rateCell(id, it.description, it)}
+          <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>
+          <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>
+          <td className={cell + ' text-right font-mono'}>{it.qty} hrs</td>
+          <td className={cell + ' text-right font-mono font-bold'}>{money(it.amount)}</td>
+        </tr>
+      )
+    }
     if (isShort || !it.key.endsWith('-stay')) return undefined
     const entry = list.find(([id]) => it.key === 'draft-' + id + '-stay')
     if (!entry) return undefined
@@ -463,20 +493,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               </button>
             )}
           </td>
-          <td className={cell + ' text-right font-mono'}>
-            {rates[id] != null && rateBox !== id && (
-              <button type="button" onClick={() => { unRate(id); setFresh(id) }} title="Back to its own price"
-                className="print:hidden mr-1.5 px-1 py-px rounded bg-gold-100 text-gold-800 font-sans text-[9px] font-bold active:scale-90 transition-transform cursor-pointer bw-rise">custom ↺</button>
-            )}
-            {rateBox === id ? (
-              <input autoFocus defaultValue={String(it.price)} inputMode="numeric" placeholder="950" aria-label={name + ' rate'}
-                onFocus={e => e.currentTarget.select()} onBlur={e => keepRate(id, e.currentTarget.value)}
-                onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setRateBox(null) }}
-                className="w-16 bg-card border-0 border-b-[1.5px] border-ink-900 focus:border-gold-400 rounded-none px-0.5 text-right font-mono text-[11px] font-semibold text-ink-900 focus:outline-none bw-rise" />
-            ) : (
-              <button type="button" onClick={() => { setRateBox(id); setPop(null) }} className={VAL}>{money(it.price)}</button>
-            )}
-          </td>
+          {rateCell(id, name, it)}
           <td className={cell + ' text-right font-mono'}>
             <button type="button" data-in={id} onClick={toggle('in', id)} aria-expanded={isOpen('in', id)} aria-label={name + ' check in'} className={VAL}>{shortDate(s.checkIn)}</button>
           </td>
@@ -649,9 +666,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           </div>
 
           {statement && (
-            <StatementChargesTable items={statement.lineItems} onRemove={removeLine} isNew={() => false} renderLine={renderLine}
-              // A short stay's line is the plain one: its price is typed the same way as a night's (2026-10-24).
-              onPrice={isShort ? (_it, price) => keepRate(list[0][0], String(price)) : undefined}>
+            <StatementChargesTable items={statement.lineItems} onRemove={removeLine} isNew={() => false} renderLine={renderLine}>
               {bfMenu && bfRooms.length > 0 && bfLines.length === 0 && (
                 <tr data-screen className="print:hidden">
                   <td colSpan={6} className="p-0">
