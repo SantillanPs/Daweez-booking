@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-24i',
+    changes: [
+      {
+        where: 'Front desk → billing statement',
+        what: [
+          'The “Custom” button is gone from writing a payment. For any other amount, just type it and what it was for.',
+          "Booking a short stay on a new bill, you can type its price on the room's line, the same as a night. Leave it and the room's usual price stays.",
+          'A short stay no longer offers breakfast.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-24h',
     changes: [
       {

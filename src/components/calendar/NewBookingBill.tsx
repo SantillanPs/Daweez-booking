@@ -170,7 +170,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       id: 'draft-' + id, room_id: s.type === 'room' ? id : undefined, venue_id: s.type === 'venue' ? id : undefined,
       guest_name: guestName, guest_email: '', guest_phone: '', check_in: s.checkIn, check_out: s.checkOut,
       source: 'manual', status: 'confirmed', payment_records: saved?.payment_records || [], downpayment_paid: saved?.downpayment_paid || 0, balance_due: 0,
-      breakfast_included: breakfast.includes(id) || (s.type === 'room' && deal?.breakfast_default === 'with'),
+      // A short stay has no breakfast (the owner, 2026-10-24: "they won't need it").
+      breakfast_included: !isShort && (breakfast.includes(id) || (s.type === 'room' && deal?.breakfast_default === 'with')),
       stay_hours: isShort ? hours : undefined,
       event_addons: Object.keys(ea).length > 0 ? ea : undefined,
       equipment_rentals: rentals,
@@ -287,7 +288,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const v = Number(raw.replace(/\D/g, ''))
     if (!v) return
     const kind = kindsOf(id).find(k => k.key === (kinds[id] || ''))
-    const own = deal?.contracted_rates[id] || kind?.price || priceOf(id)
+    // A short stay's own price is the room's board price for its hours.
+    const room = isShort ? rooms.find(r => r.id === id) : undefined
+    const hourly = hours === 3 ? room?.hour3_price : hours === 6 ? room?.hour6_price : hours === 12 ? room?.hour12_price : null
+    const own = deal?.contracted_rates[id] || kind?.price || hourly || priceOf(id)
     setRates(r => { const n = { ...r }; if (v === own) delete n[id]; else n[id] = v; return n })
     setFresh(id)
   }
@@ -318,7 +322,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       formPreparedBy: preparedBy.trim(),
       formCompanyName: to?.name || '', formInstitution: to && !to.dealId ? to.name : ed?.institution || '',
       formVehiclePlate: ed?.vehicle_plate || deal?.vehicle_plate || '', formInvoiceNumber: ed?.invoice_number || '', formSource: ed?.source || 'manual',
-      formBreakfastRoomIds: breakfast, formCompanions: companions.filter(c => c.name.trim()),
+      formBreakfastRoomIds: isShort ? [] : breakfast, formCompanions: companions.filter(c => c.name.trim()),
       ...extrasOf(to ? NO_EXTRAS : extras),
       // What the bill does not show is sent back as saved, or the save would blank it.
       formChairs: venueKit?.chairCount || 0, formEventTable: venueKit?.tableCount || 0, formEventTent: venueKit?.tentCount || 0,
@@ -394,7 +398,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
 
   // Breakfast is one line with a switch for each room; an agency that always includes it has none to flip.
   const bfMenu = !(to && deal?.breakfast_default === 'with')
-  const bfRooms = list.filter(([id, s]) => s.type === 'room' && rooms.some(r => r.id === id))
+  const bfRooms = isShort ? [] : list.filter(([id, s]) => s.type === 'room' && rooms.some(r => r.id === id))
   const bfLines = statement?.lineItems.filter(i => /^draft-.+-breakfast$/.test(i.key)) || []
   const lastRoomKey = 'draft-' + list[list.length - 1]?.[0] + '-stay'
   const isOpen = (kind: NonNullable<typeof pop>['kind'], id = '') => pop?.kind === kind && pop.id === id
@@ -645,7 +649,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           </div>
 
           {statement && (
-            <StatementChargesTable items={statement.lineItems} onRemove={removeLine} isNew={() => false} renderLine={renderLine}>
+            <StatementChargesTable items={statement.lineItems} onRemove={removeLine} isNew={() => false} renderLine={renderLine}
+              // A short stay's line is the plain one: its price is typed the same way as a night's (2026-10-24).
+              onPrice={isShort ? (_it, price) => keepRate(list[0][0], String(price)) : undefined}>
               {bfMenu && bfRooms.length > 0 && bfLines.length === 0 && (
                 <tr data-screen className="print:hidden">
                   <td colSpan={6} className="p-0">
