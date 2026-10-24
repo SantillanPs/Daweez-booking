@@ -202,11 +202,12 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           {statement.securityDeposit > 0 && (
             <div className="flex justify-between gap-2.5"><span className={label}>Add: security deposit</span><span className={figure}>{money(statement.securityDeposit)}</span></div>
           )}
-          {/* THE CONCLUSION: one solid band, the largest thing on the page. It reaches 12px
+          {/* THE CONCLUSION: one framed band, the largest thing on the page. It reaches 12px
               past the column on both sides so its words and its figure line up with the
               rows above and with the table's Total column (he called the first drawing's
-              band *"crooked"*). `print-color-adjust` keeps it black on paper. */}
-          <div className={'mt-1 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 text-white transition-colors duration-500 print:bg-ink-900 [print-color-adjust:exact] [-webkit-print-color-adjust:exact] ' + (desk && paidUp ? 'bg-emerald-700' : 'bg-ink-900')}>
+              band *"crooked"*). A frame, not a solid black band, so a bill does not spend
+              the ink (the owner, 2026-10-24: "make the total hollow"). */}
+          <div className={'mt-1 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] transition-colors duration-500 print:border-ink-900 print:text-ink-900 ' + (desk && paidUp ? 'border-emerald-700 text-emerald-700' : 'border-ink-900 text-ink-900')}>
             <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">
               Amount due
               {dueLabel && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px">{dueLabel}</span>}

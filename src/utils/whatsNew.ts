@@ -36,6 +36,7 @@ export const UPDATES: Update[] = [
         what: [
           'Every payment has a Receipt button. It opens the receipt to print or email again.',
           'A diner\'s receipt now looks the same as a room\'s: the amount paid first, then the dishes.',
+          'The total on a printed bill is a black frame now, not a solid black band, so it uses far less ink.',
         ],
       },
     ],

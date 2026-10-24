@@ -118,7 +118,8 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
         {/* TOTAL — the whole stay, the one figure the office pays. `print-color-adjust` keeps
             the band black on paper. */}
         <div className="mt-[18px] flex flex-col gap-2">
-        <div className="px-3 py-2 flex items-center justify-between gap-2.5 bg-ink-900 text-white [print-color-adjust:exact] [-webkit-print-color-adjust:exact]">
+        {/* A frame, not a solid black band, to save ink (the owner, 2026-10-24). */}
+        <div className="px-3 py-2 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
           <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">Total</span>
           <span className="font-display text-[22px] font-extrabold leading-none">{money(statement.subTotal)}</span>
         </div>
