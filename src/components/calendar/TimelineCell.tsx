@@ -4,7 +4,7 @@ import { dateToString } from '../../utils/helpers'
 import { Booking } from '../../types/booking'
 import { doorDay, doorTime, minutesLabel } from '../../utils/doorTimes'
 import { bookingStage, pillInitials, pillMoney } from './bookingStyles'
-import { clockLabel } from '../../utils/shortStay'
+import { clockLabel, shortStayOut } from '../../utils/shortStay'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 
 export interface TimelineCellProps {
@@ -46,6 +46,9 @@ export interface TimelineCellProps {
   /** The desk still has to check this guest in, or out, today — the pill's edge says so:
    *  green on the left for an arrival, charcoal on the right for a departure. */
   due?: 'in' | 'out' | null
+  /** A short stay whose time has run out with its check-out not noted (`shortStayTimeUp`,
+   *  worked out once a minute by the calendar so the cells do not each keep a clock). */
+  timeUp?: boolean
   /** Where today lies under this stay: the half it starts at, counted from the stay's own
    *  left edge (-1 when the stay is not on today), and how many halves of it. */
   todayFrom?: number
@@ -239,6 +242,7 @@ export const TimelineCell = React.memo(
     isToday,
     agencyName,
     due,
+    timeUp = false,
     todayFrom = -1,
     todayHalves = 0,
     getBookingStyle,
@@ -278,7 +282,7 @@ export const TimelineCell = React.memo(
       // guests in or out, and the app changes nothing by itself — `stayStage`).
       const stage = bookingStage(booking)
       const left = stage === 'out'
-      const askOut = left && !isBlock && !booking.actual_check_out && doorDay(booking, 'out') === dateToString(new Date())
+      const askOut = timeUp || (left && !isBlock && !booking.actual_check_out && doorDay(booking, 'out') === dateToString(new Date()))
       const askIn = !isBlock && !booking.actual_check_in && doorDay(booking, 'in') === dateToString(new Date())
       // **A pill says where the stay is, not who it is** (Sebastian, 2026-10-09): "Reserved"
       // before its dates, "Occupied" during them, and the guest's name once they are over. Who it is stays on the hover card and in the panel.
@@ -287,9 +291,9 @@ export const TimelineCell = React.memo(
       const pillWords = isBlock || agencyName || left ? pillName : stage === 'in' ? 'Occupied' : 'Reserved'
       const money = pillMoney(bill || booking)
       const inHotel = !isBlock && stage === 'in'
-      // A short stay has no start time any more (it started on Check in), so it shows its
-      // hours, not the time the room is free.
-      const freeAt = null
+      // A short stay's leave time is its noted check-in plus its hours (#7, 2026-10-24); until
+      // the check-in is noted it shows only its hours.
+      const freeAt = booking.stay_hours && !booking.actual_check_out ? shortStayOut(booking) : null
       const narrow = span < 2
       return (
         <td
@@ -378,7 +382,9 @@ export const TimelineCell = React.memo(
             </span>
             {!isBlock && (booking.stay_hours ? (
               <span className={'relative text-[12px] font-semibold truncate leading-4 ' + money.className}>
-                {booking.stay_hours + ' hrs · ' + money.pill}
+                {timeUp && freeAt
+                  ? <span key="up" className="inline-block animate-pop text-gold-800 font-bold">Time's up</span>
+                  : (freeAt ? 'Out ' + clockLabel(freeAt) : booking.stay_hours + ' hrs') + ' · ' + money.pill}
               </span>
             ) : (
               <MoneyWords text={money.pill} className={money.className} />
@@ -471,6 +477,7 @@ export const TimelineCell = React.memo(
       prevProps.isToday === nextProps.isToday &&
       prevProps.agencyName === nextProps.agencyName &&
       prevProps.due === nextProps.due &&
+      prevProps.timeUp === nextProps.timeUp &&
       prevProps.todayFrom === nextProps.todayFrom &&
       prevProps.todayHalves === nextProps.todayHalves &&
       prevProps.span === nextProps.span &&
@@ -486,6 +493,7 @@ export const TimelineCell = React.memo(
       // A block's pill reads its reason.
       prevProps.booking?.notes === nextProps.booking?.notes &&
       prevProps.booking?.stay_hours === nextProps.booking?.stay_hours &&
+      prevProps.booking?.late_check_out_hours === nextProps.booking?.late_check_out_hours &&
       // The hover card shows the check-in and check-out times the desk ticked.
       prevProps.booking?.actual_check_in === nextProps.booking?.actual_check_in &&
       prevProps.booking?.actual_check_out === nextProps.booking?.actual_check_out &&

@@ -62,6 +62,8 @@ interface TimelineGridProps {
   onBreakfast?: (booking: Booking) => void
   /** The guest whose breakfast the kitchen has cooked and the desk has not yet brought, per room id. */
   breakfastReady?: Record<string, Booking>
+  /** Short stays whose time has run out, by booking id — their pills ask for the check-out. */
+  timeUp?: Record<string, boolean>
   /** The desk has brought that breakfast to the room. */
   onBreakfastServed?: (booking: Booking) => void
   /** **Rescheduling** (the reschedule mock, "F · Back to the calendar", Sebastian, 2026-10-21):
@@ -404,6 +406,7 @@ export const TimelineGrid = React.memo(
     onBreakfast,
     breakfastReady,
     onBreakfastServed,
+    timeUp,
     move,
     was,
     onlyType
@@ -556,7 +559,7 @@ export const TimelineGrid = React.memo(
           const todayFrom = Math.max(k, todayAt * 2)
           const todayTo = todayAt < 0 ? 0 : Math.min(k + span, todayAt * 2 + 2)
           cells.push(
-            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} bill={asBill(booking, bookings)} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} agencyName={agencyNameOf(booking)} due={dueToday(booking, todayIso)} todayFrom={todayTo > todayFrom ? todayFrom - k : -1} todayHalves={Math.max(0, todayTo - todayFrom)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} bill={asBill(booking, bookings)} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} agencyName={agencyNameOf(booking)} due={dueToday(booking, todayIso)} timeUp={!!timeUp?.[booking.id]} todayFrom={todayTo > todayFrom ? todayFrom - k : -1} todayHalves={Math.max(0, todayTo - todayFrom)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           k += span
           continue

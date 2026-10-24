@@ -156,7 +156,7 @@ export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel =
           {stayHours > 0 ? (
             <div className="col-span-2">
               <p className={label}>Short stay</p>
-              <p className="text-[12.5px] font-bold text-ink-900 leading-tight">{shortStayLine(b.actual_check_in, stayHours)}</p>
+              <p className="text-[12.5px] font-bold text-ink-900 leading-tight">{shortStayLine(b.actual_check_in, stayHours, Number(b.late_check_out_hours || 0))}</p>
             </div>
           ) : (
             <>

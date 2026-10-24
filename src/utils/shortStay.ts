@@ -28,8 +28,24 @@ export function shortStayEnd(actualCheckIn: string | undefined, hours: number): 
 export const clockLabel = (d: Date) =>
   d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
-/** `3 hours from arrival` before the guest is in, `3 hours · ends 1:12 PM` after. */
-export function shortStayLine(actualCheckIn: string | undefined, hours: number): string {
-  const end = shortStayEnd(actualCheckIn, hours)
+/**
+ * **When a short stay should leave** (the owner's note #7, 2026-10-24, the "Short Stay Out"
+ * mock): the check-in the desk noted plus the hours bought plus any hour added since ("+1 hr"
+ * on the time's-up alert writes `late_check_out_hours`). `null` until the check-in is noted.
+ */
+export const shortStayOut = (b: { actual_check_in?: string; stay_hours?: number; late_check_out_hours?: number }): Date | null =>
+  shortStayEnd(b.actual_check_in, stayHoursOf(b) ? stayHoursOf(b) + Number(b.late_check_out_hours || 0) : 0)
+
+/** A short stay whose time has run out and whose check-out is not noted yet. */
+export const shortStayTimeUp = (b: { actual_check_in?: string; actual_check_out?: string; stay_hours?: number; late_check_out_hours?: number; status?: string }, now: number): boolean => {
+  if (b.actual_check_out || b.status === 'cancelled' || b.status === 'blocked') return false
+  const out = shortStayOut(b)
+  return !!out && out.getTime() <= now
+}
+
+/** `3 hours from arrival` before the guest is in, `3 hours · ends 1:12 PM` after. `extra` is
+ *  hours added since, which move the end and not the hours bought. */
+export function shortStayLine(actualCheckIn: string | undefined, hours: number, extra = 0): string {
+  const end = shortStayEnd(actualCheckIn, hours + extra)
   return hours + ' hour' + (hours === 1 ? '' : 's') + (end ? ' · ends ' + clockLabel(end) : ' from arrival')
 }

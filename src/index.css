@@ -653,3 +653,8 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 @keyframes cs-found { 0% { box-shadow: 0 0 0 0 rgba(28, 28, 28, 0.55); } 100% { box-shadow: 0 0 0 10px rgba(28, 28, 28, 0); } }
 .cs-found { animation: cs-found 1.1s cubic-bezier(0.16, 1, 0.3, 1) 2; }
 @media (prefers-reduced-motion: reduce) { .cs-open, .cs-list, .cs-found { animation: none; } }
+
+/* A short stay's time is up: the bell on its banner rings twice (`ShortStayAlerts`). */
+@keyframes ss-ring { 0%, 60%, 100% { rotate: 0deg; } 10% { rotate: 16deg; } 20% { rotate: -13deg; } 30% { rotate: 9deg; } 40% { rotate: -6deg; } }
+.ss-ring svg { animation: ss-ring 1.8s ease-in-out 0.3s 2; transform-origin: 50% 20%; }
+@media (prefers-reduced-motion: reduce) { .ss-ring svg { animation: none; } }

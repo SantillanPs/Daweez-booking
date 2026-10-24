@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-24f',
+    changes: [
+      {
+        where: 'Front desk → calendar',
+        what: [
+          'A short stay now says what time the guest should leave, worked out from when they checked in. You see it on the booking, on its bill and when you hover over it.',
+          "When the time is up, a bell rings and a dark bar drops in at the top. Press Checked out, or +1 hr to give them another hour (it adds ₱100 late checkout to the bill).",
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-24e',
     changes: [
       {

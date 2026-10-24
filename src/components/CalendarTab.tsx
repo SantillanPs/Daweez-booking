@@ -27,6 +27,10 @@ import { OPEN_END, isOpenEnded } from '../utils/openBlock'
 import { groupOf } from '../utils/bookingGroup'
 import { moveBooking, stayTotalAfterMove } from '../utils/bookingMove'
 import { normalizeVenueId } from '../utils/helpers'
+import { shortStayOut, shortStayTimeUp } from '../utils/shortStay'
+import { recomputeBalance } from '../utils/bookingBalance'
+import { readBookingFoodTotal } from '../utils/orderSlips'
+import { ShortStayAlerts } from './calendar/ShortStayAlerts'
 
 // The booking form and the old-booking window are only fetched when needed, so the calendar
 // itself loads faster. Both are fetched a moment after the calendar opens, so the first
@@ -202,6 +206,30 @@ export function CalendarTab() {
     })
     return ready
   }, [bookings, todayKey])
+  // **A short stay whose time is up** (#7, the "Short Stay Out" mock, 2026-10-24). The calendar
+  // keeps the one clock, a look every 20 seconds, and hands the cells a yes or no.
+  const [clock, setClock] = useState(() => Date.now())
+  useEffect(() => { const id = window.setInterval(() => setClock(Date.now()), 20000); return () => window.clearInterval(id) }, [])
+  // An answer hides its banner at once; the save goes on behind it. Keyed by the time it
+  // answered, so a stay given another hour asks again when that hour is up.
+  const [answered, setAnswered] = useState<Record<string, number>>({})
+  const timeUpKey = bookings.filter(b => b.stay_hours && shortStayTimeUp(b, clock)).map(b => b.id).join(',')
+  const timeUp = useMemo(() => Object.fromEntries(timeUpKey ? timeUpKey.split(',').map(id => [id, true]) : []), [timeUpKey])
+  const timeUpDue = useMemo(() => bookings.filter(b => timeUp[b.id] && answered[b.id] !== shortStayOut(b)?.getTime()), [bookings, timeUp, answered])
+  const answerTimeUp = useCallback(async (b: Booking, patch: Partial<Booking>, failed: string) => {
+    const at = shortStayOut(b)?.getTime() ?? 0
+    setAnswered(a => ({ ...a, [b.id]: at }))
+    try {
+      const tabTotal = await readBookingFoodTotal(b.id)
+      await updateBooking(recomputeBalance({ ...b, ...patch }, { rooms, venues, tabTotal }))
+    } catch {
+      setAnswered(a => { const rest = { ...a }; delete rest[b.id]; return rest })
+      showToast(failed, 'error')
+    }
+  }, [rooms, venues, updateBooking])
+  const timeUpOut = useCallback((b: Booking) => void answerTimeUp(b, { actual_check_out: new Date().toISOString() }, 'Could not note the check-out. Please try again.'), [answerTimeUp])
+  const timeUpMore = useCallback((b: Booking) => void answerTimeUp(b, { late_check_out_hours: Number(b.late_check_out_hours || 0) + 1 }, 'Could not add the hour. Please try again.'), [answerTimeUp])
+
   const queryClient = useQueryClient()
   const serveBreakfast = useCallback(async (booking: Booking) => {
     const choices = (booking.breakfast_choices || []).map(c => c.date === todayKey ? { ...c, served_at: new Date().toISOString() } : c)
@@ -641,11 +669,14 @@ export function CalendarTab() {
           onBreakfast={askBreakfast}
           breakfastReady={breakfastReady}
           onBreakfastServed={serveBreakfast}
+          timeUp={timeUp}
           move={moveView?.bar}
           was={moveView?.was}
           onlyType={moveView?.onlyType}
         />
       </div>
+
+      <ShortStayAlerts due={timeUpDue} rooms={rooms} venues={venues} onOut={timeUpOut} onMore={timeUpMore} />
 
       {foundBill && (
         <PrintInvoiceModal booking={foundBill} rooms={rooms} venues={venues} bookingsList={allBookings} onClose={() => setFoundBill(null)} />

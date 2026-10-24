@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { Booking } from '../../types/booking'
-import { stayHoursOf } from '../../utils/shortStay'
+import { clockLabel, shortStayOut, stayHoursOf } from '../../utils/shortStay'
 import { stayStage } from '../../utils/stayStage'
 import { Door, doorDay, doorIso, doorTime, minutesLabel, usualMinutes } from '../../utils/doorTimes'
 
@@ -48,8 +48,18 @@ export function BookingStageLine({ booking, todayKey, onDoor }: {
   const tick = <Check className="w-3 h-3" strokeWidth={3} aria-hidden="true" />
   const inTone = isIn ? 'done' : 'later'
   const outTone = isOut ? 'out' : 'later'
-  // A short stay is stored as leaving the next day; it is just its hours.
-  const outWord = hours ? hours + '-hour stay' : 'Out ' + dayWord(booking.check_out)
+  // A short stay is stored as leaving the next day; it is its hours until the check-in is
+  // noted, then the time it should leave (#7, the "Short Stay Out" mock, 2026-10-24).
+  const shortOut = hours && !booking.actual_check_out ? shortStayOut(booking) : null
+  const outWord = hours ? (shortOut ? 'Out by ' + clockLabel(shortOut) : hours + ' hrs from check-in') : 'Out ' + dayWord(booking.check_out)
+  // The panel may stay open past that time, so it looks at the clock while it waits for it.
+  const [now, setNow] = useState(() => Date.now())
+  const waiting = !!shortOut && shortOut.getTime() > now
+  useEffect(() => {
+    if (!waiting) return
+    const id = window.setInterval(() => setNow(Date.now()), 20000)
+    return () => window.clearInterval(id)
+  }, [waiting])
   const nowMins = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
   const word = (k: Door) => (k === 'in' ? 'Checked in' : 'Checked out')
 
@@ -66,14 +76,16 @@ export function BookingStageLine({ booking, todayKey, onDoor }: {
   const door = (k: Door, plain: React.ReactNode) => {
     if (!onDoor || todayKey < doorDay(booking, k)) return plain
     const t = doorTime(booking, k, todayKey)
+    // A short stay's end says when it should leave, and asks only once that time has come.
+    const shortWord = k === 'out' && hours && !t ? (!booking.actual_check_in ? outWord : waiting ? outWord : null) : null
     return (
       <button type="button" onClick={() => open(k)} aria-expanded={editing === k}
         className={'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-bold whitespace-nowrap ' + PRESS +
           (t ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-card text-main shadow-[inset_0_0_0_1.5px_#D9D2C3] hover:shadow-[inset_0_0_0_1.5px_#1C1C1C]')}>
-        {!t && (
+        {!t && !shortWord && (
           <span aria-hidden="true" className={'ask-mark w-4 h-4 rounded-full grid place-items-center text-white ' + (k === 'in' ? 'bg-emerald-600' : 'bg-ink-900') + ' font-display text-[11px] font-extrabold leading-none'}>?</span>
         )}
-        {word(k)}
+        {shortWord || word(k)}
         {t && <span key={t.minutes} className={'inline-block ' + (t.usual ? 'font-semibold text-muted' : 'text-main') + (just === k && !t.usual ? ' animate-pop' : '')}>{minutesLabel(t.minutes)}</span>}
       </button>
     )
