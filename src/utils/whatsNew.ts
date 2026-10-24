@@ -31,6 +31,12 @@ export const UPDATES: Update[] = [
           'Typed a payment wrong? Tap For, Paid by or Amount on the payment and fix it. The receipt keeps its number, and History shows what it said before.',
         ],
       },
+      {
+        where: 'Front desk → History',
+        what: [
+          'Every payment has a Receipt button. It opens the receipt to print or email again.',
+        ],
+      },
     ],
   },
   {

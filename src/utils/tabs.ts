@@ -279,6 +279,13 @@ export function tabTotal(lines: TabLine[]): number {
  * writes the figure into a booking's balance. `getTabLines` answers `[]` when the
  * read fails, and an empty answer there would take the guest's food off their bill.
  */
+export async function readTabLines(tabId: string): Promise<TabLine[]> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+  const { data, error } = await supabase.from('tab_lines').select('*').eq('tab_id', tabId).order('created_at', { ascending: true })
+  if (error) throw error
+  return (data || []) as TabLine[]
+}
+
 export async function readTabTotal(tabId: string): Promise<number> {
   if (!isSupabaseConfigured) throw new Error(NO_DB)
   const { data, error } = await supabase.from('tab_lines').select('amount').eq('tab_id', tabId)

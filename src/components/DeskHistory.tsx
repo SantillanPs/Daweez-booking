@@ -4,7 +4,10 @@ import { useNavigate } from '@tanstack/react-router'
 import { CalendarPlus, LogIn, LogOut, PenLine, PhilippinePeso, Trash2, X } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { Booking, PaymentRecord } from '../types/booking'
-import { getTabs } from '../utils/tabs'
+import { getTabs, readTabLines } from '../utils/tabs'
+import { Tab, TabLine } from '../types/tab'
+import { PrintPaymentReceiptModal } from './billing/PrintPaymentReceiptModal'
+import { TabReceiptModal } from './restaurant/TabReceiptModal'
 import { slipNumber } from '../utils/orderSlips'
 import { paymentMethodLabel } from '../utils/paymentMethod'
 import { getRemovedPayments, takeBackPayment } from '../utils/removedPayments'
@@ -34,6 +37,8 @@ interface Event {
   booking?: Booking
   /** A payment on bookings, so it can be removed: the record and every booking that holds it. */
   payment?: { rec: PaymentRecord; holders: Booking[] }
+  /** A diner's payment on an order slip, for its receipt. */
+  slip?: { tab: Tab; rec: PaymentRecord }
 }
 
 const peso = (n: number) => '₱' + Math.round(n).toLocaleString()
@@ -66,6 +71,9 @@ export function DeskHistory() {
   const [asking, setAsking] = useState<string | null>(null)
   // Struck through at once and saved behind it; put back if the save fails.
   const [removing, setRemoving] = useState<string[]>([])
+  // **A payment's receipt, opened from History** (the owner's note #6, 2026-10-24): the same 58 mm slip
+  // the desk printed, to print again or email.
+  const [receipt, setReceipt] = useState<{ rec: PaymentRecord; holders: Booking[] } | { rec: PaymentRecord; tab: Tab; lines: TabLine[] } | null>(null)
 
   const unit = (b: Booking) => {
     if (b.room_id) {
@@ -136,6 +144,7 @@ export function DeskHistory() {
           key: 'slip-' + key, at: rec.paid_at, kind: 'pay', amount: Number(rec.amount || 0),
           title: peso(Number(rec.amount || 0)) + ' received · ' + (slipNumber(t) || 'Order slip'),
           detail: join(t.label || t.table_label || 'Diner', paymentMethodLabel(rec.method), rec.receipt_number, rec.prepared_by && 'by ' + rec.prepared_by),
+          slip: { tab: t, rec },
         })
       }
     }
@@ -177,6 +186,16 @@ export function DeskHistory() {
     if (!b) return
     focusBookingAfterCreate(b.id)
     void navigate({ to: '/calendar' })
+  }
+
+  const showReceipt = async (e: Event) => {
+    if (e.payment) return setReceipt(e.payment)
+    if (!e.slip) return
+    try {
+      setReceipt({ ...e.slip, lines: await readTabLines(e.slip.tab.id) })
+    } catch {
+      showToast('Could not open the receipt. Please try again.', 'error')
+    }
   }
 
   const remove = async (e: Event) => {
@@ -261,6 +280,9 @@ export function DeskHistory() {
                         <span className="text-[12.5px] text-muted truncate">{e.detail}</span>
                       </span>
                       <span className="flex items-center gap-1">
+                        {(e.payment || e.slip) && !gone && !ask && (
+                          <button type="button" onClick={() => void showReceipt(e)} className={act}>Receipt</button>
+                        )}
                         {/* only a payment on a booking can be removed, and not while it is being removed */}
                         {e.payment && !gone && !ask && (
                           <button type="button" onClick={() => setAsking(e.key)} className={act + ' hover:!text-danger-600'}>Remove</button>
@@ -292,6 +314,10 @@ export function DeskHistory() {
           )}
         </>
       )}
+      {receipt && ('tab' in receipt
+        ? <TabReceiptModal tab={receipt.tab} lines={receipt.lines} record={receipt.rec} onClose={() => setReceipt(null)} />
+        : <PrintPaymentReceiptModal booking={receipt.holders[0]} record={receipt.rec} rooms={rooms} venues={venues}
+            covered={receipt.holders.length > 1 ? receipt.holders : undefined} onClose={() => setReceipt(null)} />)}
     </div>
   )
 }
