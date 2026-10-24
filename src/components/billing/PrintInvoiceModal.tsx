@@ -8,7 +8,7 @@ import { OrderSlip, getSlipsByBooking } from '../../utils/orderSlips'
 import { showToast } from '../../utils/toast'
 import { useDashboardData } from '../DashboardContext'
 import { groupOf } from '../../utils/bookingGroup'
-import { BillDeskActions } from './BillDesk'
+import { printA5 } from '../../utils/printA5'
 
 interface PrintInvoiceModalProps {
   booking?: Booking
@@ -18,8 +18,6 @@ interface PrintInvoiceModalProps {
   bookingsList: Booking[]
   onClose: () => void
   embedded?: boolean
-  /** Opened from the booking to work on: payments and charges are written on the bill. */
-  desk?: BillDeskActions
 }
 
 // Controller for the printable "Guest Billing Statement": computes the
@@ -29,7 +27,7 @@ interface PrintInvoiceModalProps {
 // The guest's food and bar tab (k69) is read first and folded into the statement,
 // because the balance the screen shows already includes it — a bill printed
 // without it would disagree with what the guest actually owes.
-export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, bookingsList, onClose, embedded = false, desk }: PrintInvoiceModalProps) {
+export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, bookingsList, onClose, embedded = false }: PrintInvoiceModalProps) {
   const asked = booking || (bookingsToPrint && bookingsToPrint[0])
   // The agency that is paying, if any: its address, contact and TIN print on the bill
   // straight from the profile, so no booking column is needed for them.
@@ -82,19 +80,7 @@ export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, boo
   // footer (the URL and page number) across the top and bottom of the bill — the paper
   // carries its own margins instead (see `StatementShell`). The style is injected for the
   // moment of printing only, the way the 58 mm receipt modal sets its own page box.
-  const handlePrint = () => {
-    const style = document.createElement('style')
-    style.textContent = '@page { size: A5; margin: 0; }'
-    document.head.appendChild(style)
-    const done = () => {
-      style.remove()
-      window.removeEventListener('afterprint', done)
-    }
-    window.addEventListener('afterprint', done)
-    window.print()
-    // Backstop: some browsers never fire afterprint.
-    window.setTimeout(done, 60000)
-  }
+  const handlePrint = printA5
 
   // WHICH BILL (the owner's design, 2026-09): an ordinary booking gets the usual Guest
   // Billing Statement; **an agency booking gets its own document**, read line by line from
@@ -110,7 +96,6 @@ export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, boo
       onClose={onClose}
       onPrint={handlePrint}
       embedded={embedded}
-      desk={desk}
     />
   ) : (
     <InvoiceDocument
@@ -121,7 +106,6 @@ export function PrintInvoiceModal({ booking, bookingsToPrint, rooms, venues, boo
       onClose={onClose}
       onPrint={handlePrint}
       embedded={embedded}
-      desk={desk}
     />
   )
 

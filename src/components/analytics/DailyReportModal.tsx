@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { printA5 } from '../../utils/printA5'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useDashboardData } from '../DashboardContext'
@@ -102,22 +103,4 @@ function prettyDate(iso: string): string {
   const [year, month, day] = iso.split('-').map(Number)
   if (!year || !month || !day) return iso
   return `${day} ${MONTHS[month - 1]} ${year}`
-}
-
-/**
- * Print on A5 with a zero page margin, exactly the way the two bills do it: the zero box is what stops the
- * browser printing its own date, title and URL across the top of the hotel's paper. Injected for the moment of
- * printing only, and removed when the dialog closes.
- */
-function printA5() {
-  const style = document.createElement('style')
-  style.textContent = '@page { size: A5; margin: 0; }'
-  document.head.appendChild(style)
-  const done = () => {
-    style.remove()
-    window.removeEventListener('afterprint', done)
-  }
-  window.addEventListener('afterprint', done)
-  window.print()
-  window.setTimeout(done, 60000)
 }

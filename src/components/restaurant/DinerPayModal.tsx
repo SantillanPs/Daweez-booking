@@ -127,13 +127,17 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
               <div className="flex items-baseline justify-between gap-2 text-[14px] text-muted"><span>Sub-total</span><span className="tabular-nums">{fmtPeso(slip.total)}</span></div>
               <div className="flex items-center justify-between gap-3 text-[14px] text-muted">
                 <span>Discount</span>
-                <div className="w-40"><DiscountBox disc={disc} onChange={setDisc} /></div>
+                <div className="w-56"><DiscountBox disc={disc} onChange={setDisc} off={off} /></div>
               </div>
             </div>
           )}
           <div className="flex items-baseline justify-between gap-2 pt-3 border-t border-soft">
             <span className="text-[14px] font-medium text-muted">{off > 0 ? 'To pay' : 'Total'}</span>
+            {/* The bill before the discount, struck through above what is paid (task #11). */}
+            <span className="flex items-baseline gap-2">
+            {off > 0 && <span className="font-mono text-[13px] text-muted line-through bw-rise">{fmtPeso(slip.total)}</span>}
             <span key={toPay} className="font-display text-[26px] leading-none font-extrabold tracking-tight tabular-nums text-main bw-rise">{fmtPeso(toPay)}</span>
+            </span>
           </div>
           {!disc && (
             <button type="button" onClick={() => setDisc({ pct: true, v: 0 })} className="mt-1 text-[13px] font-bold text-gold-800 hover:underline cursor-pointer">+ Discount</button>
@@ -179,6 +183,7 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
           place={slip.tab.table_label ? { label: 'Table', value: slip.tab.table_label } : undefined}
           lines={slip.lines}
           total={slip.total}
+          discount={off ? { label: disc?.pct ? disc.v + '%' : '', amount: off } : undefined}
           note="To be paid at the front desk."
           onClose={() => setPrinting(false)}
         />

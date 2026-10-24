@@ -61,3 +61,12 @@ Built to four rulings from the owner:
 ## One rule for everything on screen and paper
 
 **State facts; never explain them.** The owner: *"you have a bad habit of adding a lot of explanations in the UI."* A label that needs a sentence under it is the wrong label.
+
+## One bill, always open for work (2026-10-24)
+
+Sebastian: *"no more view billing or receive money. merge everything. like no more viewing. it should permanently be editing and receiving payment. all buttons that open the billing statement should do the same thing."* He approved the "One Bill" mock as drawn and set every open choice to merge:
+
+- there is no Save button; each change saves by itself and the top of the bill says so;
+- Extend stay, Reschedule on the calendar and the Settings → Front desk switches are gone, because the bill's dates and room line do the same work;
+- right after a booking is made, its bill opens ready for the money;
+- a cancelled booking's bill can still be read but not changed.

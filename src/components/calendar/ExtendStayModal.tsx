@@ -1,50 +1,36 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal, flushSync } from 'react-dom'
-import { X, Printer, Edit3, CalendarPlus, ArrowRightLeft, Banknote, Check, Coffee, DoorOpen, KeyRound, ChevronDown, XCircle } from 'lucide-react'
+import { X, Receipt, CalendarPlus, Banknote, Check, Coffee, DoorOpen, KeyRound, XCircle } from 'lucide-react'
 import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
 import { getRateConfig } from '../../utils/rateConfig'
-import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
 import { roomDisplayName } from './bookingStyles'
 import { statusAfterPayment } from '../../utils/bookingStatus'
-import { hasOutstandingBalance, amountToPayNow, isBilledToAgency } from '../../utils/bookingMoney'
+import { amountToPayNow, isBilledToAgency } from '../../utils/bookingMoney'
 import { methodNeedsReference } from '../../utils/paymentMethod'
 import { nextReceiptNumber } from '../../utils/receiptNumber'
-import { withoutPayment, withFixedPayment, PaymentPatch } from '../walk-in/bookingPayment'
-import { logRemovedPayment } from '../../utils/removedPayments'
+import { withFixedPayment, PaymentPatch } from '../walk-in/bookingPayment'
 import { recomputeBalance, pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
 import { useBookingSlips } from '../../hooks/useBookingSlips'
-import { getSlipsByBooking, markSlipsPaid, slipNumber, unpaidSlips, unpaySlipsOfReceipt } from '../../utils/orderSlips'
+import { getSlipsByBooking, markSlipsPaid, slipNumber, unpaidSlips } from '../../utils/orderSlips'
 import { BookingStageLine } from './BookingStageLine'
-import { nextStep } from './bookingStep'
 import { stayStage } from '../../utils/stayStage'
 import { undoBookingCheck } from '../../utils/db'
-import { ReceiveMoney } from './ReceiveMoney'
-import { BookingOrderSlips } from './BookingOrderSlips'
 import { CountPeso } from '../CountPeso'
 import { stayHoursOf } from '../../utils/shortStay'
 import { airconWords } from '../../utils/venueHours'
 import { BreakfastPicker } from './BreakfastPicker'
 import { wantsBreakfastToday, breakfastOn, breakfastSummary, breakfastAskOpen } from '../../utils/breakfastChoice'
-import { dateToString, normalizeVenueId } from '../../utils/helpers'
+import { dateToString } from '../../utils/helpers'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 import { asBill, groupOf } from '../../utils/bookingGroup'
 import { BillRooms } from './BillRooms'
 import { allocatePayment } from '../walk-in/bookingPayment'
 import { paymentStatusFromMoney } from '../../utils/bookingMoney'
-import { formatRoomNumbers } from '../../utils/roomNumbers'
-import { BookingReceipts } from './BookingReceipts'
 import { ExtendStayForm } from './ExtendStayForm'
-import { canMoveBooking, moveBooking, stayTotalAfterMove } from '../../utils/bookingMove'
-import { getFrontDesk, hydrateFrontDesk } from '../../utils/frontDesk'
-import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
-import { bookingPricing } from '../../utils/statementLines'
-import { BillMove } from '../billing/BillDesk'
-import { useDashboardData } from '../DashboardContext'
 import { venueTypeOf } from '../../utils/venueTypes'
 import { showToast } from '../../utils/toast'
-import { askConfirm } from '../../utils/confirm'
-import { bookingLines, StatementLineItem } from '../../utils/statementLines'
+import { StatementLineItem } from '../../utils/statementLines'
 
 interface ExtendStayModalProps {
   booking: Booking
@@ -60,12 +46,18 @@ interface ExtendStayModalProps {
   setExtendCheckoutDate: (date: string) => void
   onCancelBooking?: (id: string) => void
   onUpdateBooking?: (booking: Booking) => Promise<void>
-  onEditBooking?: () => void
+  /** Opens the one bill (`NewBookingBill`): changes, money, print — everything on it. */
+  onOpenBill?: () => void
+  /** Where this panel hands the bill its money handlers, which need the panel's own state. */
+  deskRef?: React.MutableRefObject<PanelDesk | null>
   /** Opens another booking's panel in place of this one (a room on the same bill). */
   onOpenBooking?: (b: Booking) => void
-  /** Reschedule: the panel closes and the calendar is where the new days and room are picked
-   *  (the reschedule mock, "F · Back to the calendar", Sebastian, 2026-10-21). */
-  onReschedule?: (b: Booking, tabTotal: number) => void
+}
+
+export interface PanelDesk {
+  onPay: (p: { amount: number; method: string; reference: string; date: string; purpose: string }) => Promise<void>
+  onFix: (key: string, patch: PaymentPatch) => Promise<void>
+  onReceipt: (receipt: string) => void
 }
 
 const fmtShort = (d: string) => (d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—')
@@ -76,7 +68,6 @@ const BTN = 'w-full min-h-[54px] px-4 rounded-xl text-[16px] font-bold transitio
 const BTN_GOLD = BTN + 'bg-gold-400 hover:bg-gold-600 text-ink-900 shadow-sm'
 // The step that is not the next one: a size down, so the lead reads first.
 const newReceiptId = () => 'rcpt-' + Date.now()
-const QUIET_LINK = 'block mx-auto min-h-11 px-3 text-[13px] font-semibold text-muted hover:text-main underline decoration-paper-300 underline-offset-4 transition-colors cursor-pointer'
 // The bottom row: the smallest, lightest words on the panel, still finger-sized.
 const TOOL = 'bw-tool min-h-11 inline-flex items-center gap-1.5 px-2.5 text-[12px] font-semibold text-muted hover:text-main cursor-pointer'
 // A form a tool opens may land below the fold of the scroll: once the window has finished growing
@@ -125,20 +116,17 @@ export function ExtendStayModal({
   setExtendCheckoutDate,
   onCancelBooking,
   onUpdateBooking,
-  onEditBooking,
+  onOpenBill,
+  deskRef,
   onOpenBooking,
-  onReschedule,
 }: ExtendStayModalProps) {
-  const [showPrintModal, setShowPrintModal] = useState(false)
   // `toolAsk` replaces the tool row with its question.
   const [toolAsk, setToolAsk] = useState<'cancel' | null>(null)
   const [toolsSinking, setToolsSinking] = useState(false)
   const [toolsBack, setToolsBack] = useState(false)
-  const [printing, setPrinting] = useState(false)
   const toolsRow = useRef<HTMLDivElement>(null)
   const toolBar = useRef<HTMLSpanElement>(null)
   const card = useRef<HTMLDivElement>(null)
-  const receiveBox = useRef<HTMLDivElement>(null)
   const [closing, setClosing] = useState(false)
   const [breakfastOpen, setBreakfastOpen] = useState(false)
   const [localBooking, setLocalBooking] = useState(booking)
@@ -155,8 +143,6 @@ export function ExtendStayModal({
   const [extendOpen, setExtendOpen] = useState(false)
   // A stay billed to an agency keeps its receive step folded away until it is wanted.
   const [receiveOpen, setReceiveOpen] = useState(false)
-  // The bill's lines wait behind "Bill · N lines" until opened (the owner, 2026-10-15).
-  const [billOpen, setBillOpen] = useState(false)
   // Layout animation (the tools mock Sebastian approved, 2026-10-16): when something opens or
   // closes inside the window, the window grows or shrinks to its new size instead of jumping.
   const layout = (change: () => void) => {
@@ -344,9 +330,6 @@ export function ExtendStayModal({
   const earlyHoursRecorded = Number(localBooking.early_check_in_hours || 0)
   const pendingEarly = pendingEarlyCharge(localBooking, { rooms, venues, tabTotal: tabAmount })
   const receiptRecords = localBooking.payment_records || []
-  const hasEmail = booking.guest_email && booking.guest_email !== 'admin@daweez-booking.vercel.app'
-  // "None" is the placeholder the bookings store writes when no phone was taken.
-  const hasPhone = !!booking.guest_phone && booking.guest_phone.trim() !== 'None'
 
   // ── What the money can be for ───────────────────────────────────────────────
   // What is owed now fills the box; any other amount is typed over it. A room guest may
@@ -373,67 +356,7 @@ export function ExtendStayModal({
     onExtendStaySubmit(e, tabAmount)
   }
 
-  // How the guest pays is theirs to choose — the printed bill carries the boxes they
-  // tick — so a tap writes it down at once, before any money moves: the bill can then
-  // show the right account to send it to. The reference saves when its box is left.
-  const savePaymentMethod = async (method: string, reference: string) => {
-    const updated: Booking = {
-      ...localBooking,
-      payment_method: method,
-      payment_reference: reference || localBooking.payment_reference,
-    }
-    setLocalBooking(updated)
-    try {
-      await onUpdateBooking?.(updated)
-    } catch {
-      showToast('Could not save the payment method. Please try again.', 'error')
-    }
-  }
-  const pickMethod = (m: string) => {
-    setReceiptMethod(m)
-    if (!methodNeedsReference(m)) setReceiptRef('')
-    void savePaymentMethod(m, '')
-  }
 
-  // Money can be corrected: removing a receipt that was logged by mistake puts
-  // the balance and the automatic payment status back where they belong.
-  const handleRemoveReceipt = async (rec: PaymentRecord) => {
-    // One payment for several rooms sits on every one of them (the owner's ruling), so
-    // withdrawing it has to take it off all of them — each room giving back only its
-    // own share — or the other rooms keep a receipt for money that was taken back.
-    const otherRooms = (rec.receipt_number ? coveredBookings[rec.receipt_number] || [] : [])
-      .filter(b => b.id !== localBooking.id)
-    const ok = await askConfirm({
-      title: 'Remove this ' + fmtPeso(rec.amount) + ' payment?',
-      message: otherRooms.length > 0
-        ? 'It paid for ' + (otherRooms.length + 1) + ' rooms. The receipt is withdrawn from all of them and each amount to pay goes back up.'
-        : 'The amount to pay goes back up and the receipt is withdrawn.',
-      confirmLabel: 'Remove',
-      tone: 'danger',
-    })
-    if (!ok) return
-    const updated = withoutPayment(localBooking, rec, otherRooms.length > 0)
-    setLocalBooking(updated)
-    try {
-      await onUpdateBooking?.(updated)
-      for (const other of otherRooms) {
-        const theirs = (other.payment_records || []).find(r => r.receipt_number === rec.receipt_number)
-        if (theirs) await onUpdateBooking?.(withoutPayment(other, theirs, true))
-      }
-      // The order slips that payment paid are unpaid again.
-      if (rec.receipt_number) await unpaySlipsOfReceipt(rec.receipt_number)
-      await reloadSlips()
-      // Kept so the Front desk's History can still show it, struck through.
-      void logRemovedPayment({
-        receipt_number: rec.receipt_number, amount: Number(rec.amount || 0), method: rec.method, paid_at: rec.paid_at,
-        prepared_by: rec.prepared_by, guest_name: localBooking.guest_name,
-        rooms: (rec.receipt_number && coveredRooms[rec.receipt_number] || []).map(n => 'Room ' + n).join(', '),
-        booking_ids: [localBooking.id, ...otherRooms.map(b => b.id)],
-      }).catch(() => {})
-    } catch {
-      showToast('Could not remove the payment. Please try again.', 'error')
-    }
-  }
 
   // **A payment typed wrong, fixed on the bill** (Sebastian, 2026-10-24, the mock's B): on every room
   // that holds it, at once, saved behind and put back if the save fails.
@@ -479,20 +402,6 @@ export function ExtendStayModal({
     } catch {
       layout(() => { setLocalBooking(before); setRemoved(null) })
       showToast('Could not remove ' + line.description + '. Please try again.', 'error')
-    }
-  }
-  // **The room's price typed on the bill** (Sebastian, 2026-10-24): kept as the booking's own
-  // price (`contract_rate_override`, the field the booking form's typed rate already uses) and
-  // the bill priced again. On screen at once, saved behind, put back if the save fails.
-  const setPrice = async (line: StatementLineItem, price: number) => {
-    const before = localBooking
-    const updated = withRecomputedBalance(localBooking, { contract_rate_override: price })
-    layout(() => setLocalBooking(updated))
-    try {
-      await onUpdateBooking?.(updated)
-    } catch {
-      layout(() => setLocalBooking(before))
-      showToast('Could not change the price of ' + line.description + '. Please try again.', 'error')
     }
   }
   // **One payment on a bill of several rooms** (the owner's ruling, 2026-09-30, as the booking
@@ -544,20 +453,6 @@ export function ExtendStayModal({
     }
   }
 
-  // **A charge written on the bill** (Sebastian, 2026-10-20: "DINNER - 300 pesos"), saved behind.
-  const addCharge = async (name: string, amount: number) => {
-    const before = localBooking
-    const ea = localBooking.event_addons || {}
-    const charge = { id: newReceiptId(), name, amount, date: todayKey }
-    const updated = withRecomputedBalance(localBooking, { event_addons: { ...ea, charges: [...(ea.charges || []), charge] } })
-    setLocalBooking(updated)
-    try {
-      await onUpdateBooking?.(updated)
-    } catch {
-      setLocalBooking(before)
-      showToast('Could not add ' + name + '. Please try again.', 'error')
-    }
-  }
   // **A check-in or check-out time, noted** (the door times mock, Sebastian, 2026-10-21): saved
   // behind. It moves no stay; the balance is worked out again only because an older booking's
   // early hours go on the bill once it is checked out (`chargeableEarlyHours`).
@@ -583,76 +478,11 @@ export function ExtendStayModal({
     try { await onUpdateBooking?.(before) } catch { showToast('Could not put the charge back. Please try again.', 'error') }
   }
 
-  // **Rescheduling on the bill** (Settings → Front desk, Sebastian 2026-10-22: the staff want it
-  // on the billing statement, he keeps the calendar as the other choice). The same move the
-  // calendar makes (`moveBooking`), saved at once with Undo under the charges for five seconds;
-  // the database still refuses a double booking. One room of a bill of several, and a short
-  // stay, are still moved on the calendar.
-  const { partnerDeals } = useDashboardData()
-  // Read again on opening: the choice may have been changed on another PC since this page loaded.
-  const [onBill, setOnBill] = useState(() => getFrontDesk().reschedule === 'bill')
-  useEffect(() => {
-    hydrateFrontDesk().then(() => setOnBill(getFrontDesk().reschedule === 'bill')).catch(() => {})
-  }, [])
-  const [movedOnBill, setMovedOnBill] = useState<{ label: string; before: Booking } | null>(null)
-  const movedTimer = useRef<number | undefined>(undefined)
-  useEffect(() => () => window.clearTimeout(movedTimer.current), [])
-  const moveUnitId = localBooking.room_id || normalizeVenueId(localBooking.venue_id || '')
-  const moveType: 'room' | 'venue' = localBooking.room_id ? 'room' : 'venue'
-  const moveOpts = { rooms, venues, deals: partnerDeals, tabTotal: tabAmount }
-  const moveOnBill = async (unitId: string, checkIn: string, checkOut: string) => {
-    const before = localBooking
-    const moved = moveBooking(before, { unitId, type: moveType, checkIn, checkOut }, moveOpts)
-    const where = moveType === 'room' ? 'Room ' + (rooms.find(r => r.id === unitId)?.room_number ?? '') : venues.find(v => v.id === unitId)?.name || 'the venue'
-    const label = unitId !== moveUnitId ? 'Moved to ' + where : 'Moved to ' + fmtShort(checkIn) + ' → ' + fmtShort(checkOut)
-    layout(() => { setLocalBooking(moved); setMovedOnBill({ label, before }) })
-    window.clearTimeout(movedTimer.current)
-    movedTimer.current = window.setTimeout(() => setMovedOnBill(null), 5000)
-    try {
-      await onUpdateBooking?.(moved)
-    } catch (err) {
-      layout(() => { setLocalBooking(before); setMovedOnBill(null) })
-      showToast(err instanceof Error ? err.message : 'Could not reschedule the booking. Please try again.', 'error')
-    }
-  }
-  const undoMove = async () => {
-    if (!movedOnBill) return
-    window.clearTimeout(movedTimer.current)
-    const { before } = movedOnBill
-    layout(() => { setLocalBooking(before); setMovedOnBill(null) })
-    try { await onUpdateBooking?.(before) } catch { showToast('Could not move the booking back. Please try again.', 'error') }
-  }
-  const billMove: BillMove | undefined = !!onUpdateBooking && onBill && canMoveBooking(localBooking)
-    && !localBooking.stay_hours && !!moveUnitId && groupOf(localBooking, bookings).length === 1 ? {
-      lineKey: localBooking.id + '-stay',
-      unitId: moveUnitId,
-      checkIn: localBooking.check_in,
-      checkOut: localBooking.check_out,
-      free: (id, from, to) => moveType === 'room'
-        ? isRoomAvailable(id, from, to, bookings, localBooking.id)
-        : isVenueRangeAvailable(id, from, to, bookings, localBooking.id),
-      units: moveType === 'room'
-        ? [...rooms].sort((a, b) => a.room_number - b.room_number).map(r => ({ id: r.id, label: 'Room ' + r.room_number + ' · ' + roomDisplayName(r) }))
-        : venues.map(v => ({ id: v.id, label: v.name })),
-      quote: id => {
-        const at = moveBooking(localBooking, { unitId: id, type: moveType, checkIn: localBooking.check_in, checkOut: localBooking.check_out }, moveOpts)
-        const p = bookingPricing(at, { rooms, venues, bookingsList: bookings })
-        const qty = p.stayQuantity > 0 ? p.stayQuantity : 1
-        const totals = { rooms, venues, tabTotal: tabAmount }
-        return { rate: Math.round(p.subtotal / qty), amount: Math.round(p.subtotal), diff: stayTotalAfterMove(at, totals) - stayTotalAfterMove(localBooking, totals) }
-      },
-      onMove: (id, from, to) => void moveOnBill(id, from, to),
-      moved: movedOnBill ? { label: movedOnBill.label } : null,
-      onUndo: () => void undoMove(),
-    } : undefined
-
   const billedToAgency = isBilledToAgency(localBooking)
-  const owes = hasOutstandingBalance(localBooking)
   const isBlock = localBooking.status === 'blocked'
   const openEnded = isOpenEnded(localBooking)
   const todayKey = dateToString(new Date())
   const place = booking.room_id ? (room ? 'Room ' + room.room_number : 'Room') : (venue?.name || 'Event Venue')
-  const step = isBlock ? 'done' : nextStep(localBooking, owes, billedToAgency)
 
   // Record a payment: creates a receipt (date + time) only when the guest pays.
   // What is missing is shown on the Receive box itself; these only guard the save.
@@ -750,15 +580,6 @@ export function ExtendStayModal({
     }
   })()
 
-  // The other rooms booked in the same sitting, named so the desk knows this is one of
-  // several — the bill and the edit form cover all of them.
-  const bookedTogether = groupOf(booking, bookings)
-  const togetherLabel = bookedTogether.length > 1
-    ? [
-        formatRoomNumbers(bookedTogether.map(b => rooms.find(r => r.id === b.room_id)?.room_number).filter((n): n is number => typeof n === 'number')),
-        ...bookedTogether.filter(b => b.venue_id).map(b => venues.find(v => v.id === b.venue_id)?.name || 'Venue'),
-      ].filter(Boolean).join(', ')
-    : ''
   // "They have left": the block ends today, so the room can be sold from tonight. A block
   // that has not started yet (or started today) is simply removed.
   const endOpenBlock = async () => {
@@ -772,12 +593,18 @@ export function ExtendStayModal({
     }
   }
   const breakfastToday = breakfastOn(booking, todayKey)
-  // **Receive opens the bill** (Sebastian, 2026-10-20: the staff are used to working payments on
-  // the guest billing paper): the payment is written on the statement — an agency's bill too
-  // (Sebastian, the same day). On a bill of several rooms the payment is shared out across
-  // them (`payBill`).
-  const billDesk = !!onUpdateBooking
-  const openReceive = () => billDesk ? setShowPrintModal(true) : layout(() => setReceiveOpen(true))
+  // The one bill takes its money through this panel, which knows the rooms, the slips and the receipts.
+  useEffect(() => {
+    if (!deskRef) return
+    deskRef.current = {
+      onPay: p => handleAddReceipt(p),
+      onFix: (key, patch) => fixPayment(key, patch),
+      onReceipt: number => {
+        const rec = receiptRecords.find(x => x.receipt_number === number)
+        if (rec) { setReceiptFor(rec); setShowReceipt(true) }
+      },
+    }
+  })
 
   const who = isBlock ? blockReason(localBooking) : booking.guest_name
   // Under the title: a room's own name, or which kind of venue it is (Ground, Exclusive).
@@ -792,14 +619,9 @@ export function ExtendStayModal({
   const extendLabel = isBlock ? 'Change the dates' : isShortStay ? 'Stay longer' : 'Extend stay'
   // A stay that has ended has nothing left to extend; its dates are corrected with the pencil.
   const canExtend = stayStage(localBooking, todayKey) !== 'after'
-  // A booking is rescheduled until the guest arrives (`canMoveBooking`), on the calendar itself.
-  const canMove = !!onReschedule && canMoveBooking(localBooking)
   // A block's dates are all it has, so they are simply on screen — no button to open
   // them. The exception is a block with no end date yet, whose one job is "They have left".
   const datesAlwaysShown = isBlock && !openEnded
-  // The receive step is the loud one whenever the guest owes. On a stay billed to an agency
-  // it is folded behind a quiet line instead.
-  const receiveShown = !isBlock && billDue > 0 && (step === 'payment' || receiveOpen)
 
   const badge = room ? String(room.room_number) : (venue?.name || unitName).charAt(0)
   const subLine = [booking.room_id ? roomType : [venue?.name, roomType].filter(Boolean).join(' · '), stayLine].filter(Boolean).join(' · ')
@@ -815,22 +637,10 @@ export function ExtendStayModal({
   const [openedPaid] = useState(figure?.value === null)
   // Something done behind a seal shows once the seal has faded.
   const wait = { '--wait': '1.1s' } as React.CSSProperties
-  const stayCharge = isShortStay
-    ? 'Short stay · ' + stayHoursOf(localBooking) + ' hours' + airconWords(localBooking.venue_id, stayHoursOf(localBooking))
-    : (booking.room_id ? 'Room' : 'Venue') + ' · ' + nights + (booking.room_id ? (nights === 1 ? ' night' : ' nights') : (nights === 1 ? ' day' : ' days'))
-  const hasBill = !isBlock && (totalCharge > 0 || receiptRecords.length > 0 || slips.length > 0)
-  // The bill's own rows, as the paper prints them (no food: the slips are listed below).
-  // Only once the room's prices are in — without them the rows would be priced from samples.
-  const charges = (booking.room_id ? room : venue)
-    ? bookingLines(localBooking, { rooms, venues, bookingsList: bookings }).items
-    : []
-  const billLines = Math.max(1, charges.length) + slips.length + receiptRecords.length
   const breakfastWanted = wantsBreakfastToday(localBooking, todayKey)
   // After 11 AM an unasked morning is not asked any more — it reads as nothing today.
   const breakfastUnasked = breakfastWanted && !breakfastToday && breakfastAskOpen()
   const breakfastAsked = breakfastWanted && !breakfastUnasked
-  const details = !isBlock && (hasPhone || hasEmail || (booking.companions?.length || 0) > 0 ||
-    !!(booking.reference_number || booking.registered_on || booking.vehicle_plate || booking.company_name || booking.institution || togetherLabel))
 
   const modalContent = (
     <div className={'fixed inset-0 z-50 flex items-center justify-center p-4 ' + (closing ? 'pointer-events-none' : '')}>
@@ -867,12 +677,6 @@ export function ExtendStayModal({
             <p className="text-[12px] text-muted mt-0.5">{subLine}</p>
           </div>
           <div className="flex items-center shrink-0 self-start">
-            {onEditBooking && !isBlock && (
-              <button type="button" onClick={onEditBooking} aria-label="Edit booking" title="Edit booking"
-                className="bw-pen w-11 h-11 flex items-center justify-center rounded-lg text-muted hover:text-gold-700 hover:bg-softbg transition-colors cursor-pointer">
-                <Edit3 className="w-4 h-4" />
-              </button>
-            )}
             <button type="button" onClick={() => close()} aria-label="Close" title="Close"
               className="bw-x w-11 h-11 flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer">
               <X className="w-5 h-5" />
@@ -946,7 +750,7 @@ export function ExtendStayModal({
                 Check in or Check out any more (Sebastian, 2026-10-20: on paper the desk never
                 recorded them — *"we're forcing them to do something they never did"*); where
                 the stay is comes from its dates (`stayStage`). */}
-            {(openEnded || receiveShown || (!isBlock && billDue > 0) || pendingEarly > 0 || !!actionNotice) && (
+            {(openEnded || pendingEarly > 0 || !!actionNotice) && (
               <div className="space-y-2">
                 {/* A block with no end date has one job left: being ended. */}
                 {openEnded && (
@@ -983,132 +787,34 @@ export function ExtendStayModal({
                   </p>
                 )}
 
-                {receiveShown && (
-                  <div ref={receiveBox} className="rounded-xl min-w-0">
-                  <ReceiveMoney
-                    owed={dueNow}
-                    amount={receiveAmount}
-                    onAmount={setReceiptAmount}
-                    slipLabel={payingSlip ? 'order slip ' + slipNumber(payingSlip.tab) : undefined}
-                    method={receiptMethod}
-                    // Back from GCash or a bank transfer clears the choice here only; nothing is saved.
-                    onMethod={m => layout(() => { if (m) pickMethod(m); else { setReceiptMethod(''); setReceiptRef('') } })}
-                    reference={receiptRef}
-                    onReference={setReceiptRef}
-                    onReferenceCommit={() => { if (receiptRef.trim()) void savePaymentMethod(receiptMethod, receiptRef) }}
-                    loud={step === 'payment'}
-                    open={receiveOpen}
-                    // The window grows to the amount and the ways to pay, and shrinks back, instead of snapping (Sebastian, 2026-10-17).
-                    onOpen={openReceive}
-                    onClose={() => layout(() => { setReceiveOpen(false); setReceiptAmount(null); setReceiptMethod(''); setReceiptRef('') })}
-                    onReceive={() => void handleAddReceipt()}
-                  />
-                  </div>
-                )}
-                {!isBlock && billDue > 0 && step !== 'payment' && !receiveOpen && (
-                  <button type="button" onClick={openReceive} className={QUIET_LINK}>
-                    Receive a payment
-                  </button>
-                )}
               </div>
+            )}
+
+            {/* **One bill** (Sebastian, 2026-10-24: "no more view billing or receive money. merge
+                everything"): the pencil, Receive, Print bill and the folded bill were four ways into
+                two bills. Now one button opens the one bill, where everything is changed, paid and
+                printed. Gold while money is owed; quiet once it is not. */}
+            {!isBlock && onOpenBill && (
+              <button type="button" onClick={onOpenBill}
+                className={billDue > 0 ? BTN_GOLD + ' bw-shine flex items-center justify-center gap-2' : BTN + 'border-[1.5px] border-soft text-main hover:bg-softbg flex items-center justify-center gap-2'}>
+                <Receipt aria-hidden="true" className="w-[18px] h-[18px]" />
+                Bill
+                {booking.invoice_number && <span className="font-mono text-[12px] font-semibold opacity-60">{booking.invoice_number}</span>}
+              </button>
             )}
 
             {/* LEVEL 3 — the bill, folded: the charge, the order slips, every payment with
                 its receipt. Small and grey; opened when the desk wants the detail. The guest's
                 details fold in with it (the booking window mock, 2026-10-16): one line to open,
                 not a block of small print under the bill. */}
-            {(hasBill || breakfastAsked || details) && (
+            {(removed || breakfastAsked) && (
               <div className="space-y-2">
-                {(hasBill || details) && (
-                  <div>
-                    <button type="button" onClick={() => layout(() => setBillOpen(o => !o))} aria-expanded={billOpen}
-                      className="w-full min-h-10 flex items-center justify-between text-[13px] font-bold text-muted hover:text-main transition-colors cursor-pointer">
-                      <span>{hasBill ? (details ? 'Bill & details · ' : 'Bill · ') + billLines + (billLines === 1 ? ' line' : ' lines') : 'Details'}</span>
-                      <ChevronDown className={'w-4 h-4 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ' + (billOpen ? 'rotate-180' : '')} />
-                    </button>
-                    {removed && (
-                      <div role="status" key={removed.label} className="bw-arrive relative overflow-hidden flex items-center gap-2 h-11 my-1.5 rounded-lg bg-ink-900 text-white pl-3 pr-1.5 text-[13px] font-semibold">
-                        <span className="flex-1 min-w-0 truncate">{removed.label} removed · {fmtPeso(Math.abs(removed.amount))}</span>
-                        <button type="button" onClick={() => void undoRemove()}
-                          className="h-8 px-3.5 rounded-md bg-gold-400 text-ink-900 text-[13px] font-bold cursor-pointer active:scale-95 transition-transform">Undo</button>
-                        <span aria-hidden="true" style={{ '--ms': '5000ms' } as React.CSSProperties} className="fd-drain absolute left-0 bottom-0 h-[3px] w-full bg-gold-400" />
-                      </div>
-                    )}
-                    {billOpen && (
-                      <div className="bw-billin">
-                        {hasBill && (
-                          <ul>
-                            {charges.length === 0 ? (
-                              <li className="flex items-center justify-between gap-3 min-h-10 border-b border-dashed border-paper-300 last:border-0 text-[12px]">
-                                <span className="font-semibold text-main">{stayCharge}</span>
-                                <span className="font-semibold text-main tabular-nums">{fmtPeso(totalCharge - tabAmount)}</span>
-                              </li>
-                            ) : charges.map(line => (
-                              <li key={line.key} className="flex items-center justify-between gap-2 min-h-10 border-b border-dashed border-paper-300 last:border-0 text-[12px]">
-                                <span className="font-semibold text-main min-w-0">{line.band === 'room' ? stayCharge : line.description}</span>
-                                <span className="flex items-center shrink-0">
-                                  <span className={'font-semibold tabular-nums ' + (line.amount < 0 ? 'text-emerald-700' : 'text-main')}>
-                                    {line.amount < 0 ? '−' + fmtPeso(-line.amount) : fmtPeso(line.amount)}
-                                  </span>
-                                  {line.remove && onUpdateBooking && (
-                                    <button type="button" onClick={() => void removeCharge(line)}
-                                      aria-label={'Remove ' + line.description} title={'Remove ' + line.description}
-                                      className="w-10 h-10 -mr-2 flex items-center justify-center rounded-lg text-muted hover:text-danger-600 hover:bg-danger-50 active:scale-90 transition cursor-pointer">
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                </span>
-                              </li>
-                            ))}
-                            <BookingOrderSlips
-                              slips={slips}
-                              who={localBooking.guest_name || 'Guest'}
-                              place={{ label: booking.room_id ? 'Room' : 'Venue', value: unitSub || unitName }}
-                            />
-                            <BookingReceipts
-                              records={receiptRecords}
-                              coveredRooms={coveredRooms}
-                              onRemove={handleRemoveReceipt}
-                              onPrint={r => { setReceiptFor(r); setShowReceipt(true) }}
-                            />
-                          </ul>
-                        )}
-                        {details && (
-                          <div className={'text-[12px] text-muted space-y-1.5 pb-1 ' + (hasBill ? 'pt-2.5 border-t border-dashed border-paper-300' : '')}>
-                            {/* The store writes the literal "None" when no phone was taken, so
-                                treat that (and a missing email) as nothing and skip the line
-                                rather than printing a row that says nothing. */}
-                            {(hasPhone || hasEmail) && (
-                              <p className="break-words">
-                                {hasPhone && <span>{booking.guest_phone}</span>}
-                                {hasPhone && hasEmail && <span> · </span>}
-                                {hasEmail && <span>{booking.guest_email}</span>}
-                              </p>
-                            )}
-                            {booking.companions && booking.companions.length > 0 && (
-                              <p>
-                                With{' '}
-                                {booking.companions.map((comp, idx) => (
-                                  <span key={idx}>
-                                    {idx > 0 ? ', ' : ''}
-                                    <strong className="text-main">{comp.name}</strong>
-                                    {(comp.nationality || comp.sex) ? <span className="capitalize"> ({[comp.nationality, comp.sex].filter(Boolean).join(', ').toLowerCase()})</span> : null}
-                                  </span>
-                                ))}
-                              </p>
-                            )}
-                            <p className="flex flex-wrap gap-x-4 gap-y-0.5 empty:hidden">
-                              {booking.reference_number && <span>Paper ref <strong className="text-main">{booking.reference_number}</strong></span>}
-                              {booking.registered_on && <span>Logged <strong className="text-main">{booking.registered_on}</strong></span>}
-                              {booking.vehicle_plate && <span>Plate <strong className="text-main uppercase">{booking.vehicle_plate}</strong></span>}
-                              {booking.company_name && <span>Company <strong className="text-main">{booking.company_name}</strong></span>}
-                              {booking.institution && <span>Institution <strong className="text-main">{booking.institution}</strong></span>}
-                              {togetherLabel && <span>Booked together <strong className="text-main">{togetherLabel}</strong></span>}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                {removed && (
+                  <div role="status" key={removed.label} className="bw-arrive relative overflow-hidden flex items-center gap-2 h-11 my-1.5 rounded-lg bg-ink-900 text-white pl-3 pr-1.5 text-[13px] font-semibold">
+                    <span className="flex-1 min-w-0 truncate">{removed.label} removed · {fmtPeso(Math.abs(removed.amount))}</span>
+                    <button type="button" onClick={() => void undoRemove()}
+                      className="h-8 px-3.5 rounded-md bg-gold-400 text-ink-900 text-[13px] font-bold cursor-pointer active:scale-95 transition-transform">Undo</button>
+                    <span aria-hidden="true" style={{ '--ms': '5000ms' } as React.CSSProperties} className="fd-drain absolute left-0 bottom-0 h-[3px] w-full bg-gold-400" />
                   </div>
                 )}
 
@@ -1173,27 +879,11 @@ export function ExtendStayModal({
           </div>
         ) : (
           <div ref={toolsRow} className={'relative border-t border-soft px-1.5 py-0.5 flex flex-wrap items-center justify-center shrink-0' + (toolsSinking ? ' bw-sink' : '') + (toolsBack ? ' bw-tools-back' : '')}>
-            {canExtend && !datesAlwaysShown && (
+            {/* A block's dates are changed here; a stay's are changed on its bill (the one-bill merge, 2026-10-24). */}
+            {isBlock && canExtend && !datesAlwaysShown && (
               <button type="button" onClick={() => layout(() => setExtendOpen(o => !o))} aria-expanded={extendOpen} className={TOOL + (extendOpen ? ' !text-main' : '')}>
                 <CalendarPlus data-i="cal" className="w-3.5 h-3.5" />
                 {extendLabel}
-              </button>
-            )}
-            {canMove && (
-              <button type="button" onClick={() => {
-                // Settings → Front desk: on the bill, Reschedule opens the bill to tap a date or the room line.
-                if (billMove) { setShowPrintModal(true); return }
-                onReschedule?.(localBooking, tabAmount); onClose()
-              }} className={TOOL}>
-                <ArrowRightLeft data-i="swap" className="w-3.5 h-3.5" />
-                Reschedule
-              </button>
-            )}
-            {!isBlock && (
-              <button type="button" data-printing={printing ? '' : undefined} className={TOOL}
-                onClick={() => { setPrinting(true); setTimeout(() => { setPrinting(false); setShowPrintModal(true) }, 260) }}>
-                <Printer data-i="print" className="w-3.5 h-3.5" />
-                Print bill
               </button>
             )}
             {/* No "Take orders" here (Sebastian, 2026-10-16: "these should never have take
@@ -1218,30 +908,6 @@ export function ExtendStayModal({
           date={todayKey}
           place={unitSub || unitName}
           onClose={() => setBreakfastOpen(false)}
-        />
-      )}
-      {showPrintModal && (
-        <PrintInvoiceModal
-          booking={localBooking}
-          rooms={rooms}
-          venues={venues}
-          bookingsList={bookings}
-          onClose={() => setShowPrintModal(false)}
-          desk={billDesk ? {
-            onPay: p => void handleAddReceipt(p),
-            onFix: (key, patch) => void fixPayment(key, patch),
-            onCharge: (name, amount) => void addCharge(name, amount),
-            onRemove: line => void removeCharge(line),
-            onPrice: (line, price) => void setPrice(line, price),
-            owns: key => key.startsWith(localBooking.id + '-'),
-            removed,
-            onUndo: () => void undoRemove(),
-            onReceipt: number => {
-              const rec = receiptRecords.find(x => x.receipt_number === number)
-              if (rec) { setReceiptFor(rec); setShowReceipt(true) }
-            },
-            move: billMove,
-          } : undefined}
         />
       )}
       {showReceipt && receiptFor && (

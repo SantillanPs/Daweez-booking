@@ -634,6 +634,10 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
      the panel around it decides its place (it printed blank on the narrow roll). */
   body:has(> .print-root) > * { display: none !important; }
   body > .print-root { display: block !important; position: static !important; }
+  /* The one bill prints its paper copy (`.bill-paper`, kept off screen), never its boxes —
+     unless a receipt is being printed over it. */
+  body:has(> .bill-paper):not(:has(> .print-root)) > * { display: none !important; }
+  body:not(:has(> .print-root)) > .bill-paper { display: block !important; position: static !important; }
   .print-page {
     position: static !important;
     width: 100% !important;

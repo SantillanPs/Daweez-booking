@@ -8,7 +8,7 @@ import { EmailBar, EmailButton } from './EmailBar'
  * and the A4 page itself, so the **normal** statement and the **agency** statement are the
  * same piece of paper with different contents on it (the owner's design, 2026-09).
  */
-export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedded = false, email, children }: {
+export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedded = false, email, paper, status, children }: {
   /** The little badge on the control bar — `Billing statement` on both. */
   label: string
   invoiceNumber: string
@@ -18,6 +18,10 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
   embedded?: boolean
   /** Who this bill can be emailed to. The Email button is drawn only when it is given. */
   email?: EmailTarget
+  /** What is emailed when it is not this sheet: the one bill sends its paper copy, not its boxes. */
+  paper?: () => HTMLElement | null
+  /** Beside the number: "Saving…" / "✓ Saved" on the one bill, which has no Save button. */
+  status?: React.ReactNode
   children: React.ReactNode
 }) {
   // The sheet itself — what is attached when the bill is emailed.
@@ -30,6 +34,7 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
         <div className="flex items-center gap-2">
           <span className="bg-white text-ink-800 text-[11px] font-bold px-2 py-0.5 rounded uppercase">{label}</span>
           <span className="text-xs font-mono text-white/70">{invoiceNumber}</span>
+          {status}
         </div>
         <div className="flex items-center gap-2">
           {email && <EmailButton tone="ink" onClick={() => setEmailing(open => !open)} />}
@@ -45,7 +50,7 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
         </div>
       </div>
       {email && emailing && (
-        <EmailBar target={email} paper={() => sheet.current} size="a5" onClose={() => setEmailing(false)}
+        <EmailBar target={email} paper={paper || (() => sheet.current)} size="a5" onClose={() => setEmailing(false)}
           className="px-5 py-3 border-b border-soft shrink-0" />
       )}
       {/* On paper the page box is zero-margin (set at print time in `PrintInvoiceModal`),
@@ -60,7 +65,7 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
           direct children too and take part in the same rhythm. The blocks therefore carry
           **no vertical padding of their own**; if one ever needs its own, this rhythm is
           gone and the page starts drifting again. */}
-      <div ref={sheet} className="p-6 md:p-10 overflow-y-auto print:px-8 print:py-4 print:overflow-visible flex-1 bg-card font-sans text-main leading-relaxed print:static space-y-2">
+      <div ref={sheet} data-sheet className="p-6 md:p-10 overflow-y-auto print:px-8 print:py-4 print:overflow-visible flex-1 bg-card font-sans text-main leading-relaxed print:static space-y-2">
         {children}
       </div>
     </div>

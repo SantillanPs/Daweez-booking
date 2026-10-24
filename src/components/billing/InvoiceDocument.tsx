@@ -1,4 +1,3 @@
-import React, { useState } from 'react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { Statement } from '../../utils/statement'
 import { getRateConfig } from '../../utils/rateConfig'
@@ -10,9 +9,6 @@ import { guestEmailOf } from '../../utils/emailDocument'
 import { StatementChargesTable } from './StatementChargesTable'
 import { StatementGuestStay } from './StatementGuestStay'
 import { StatementShell, BrandHeader, SectionName } from './StatementShell'
-import { AddCharge, BillDeskActions, WritePayment } from './BillDesk'
-import { CountPeso } from '../CountPeso'
-import { FixPayment } from './FixPayment'
 
 interface InvoiceDocumentProps {
   primaryBooking: Booking
@@ -22,8 +18,6 @@ interface InvoiceDocumentProps {
   onClose: () => void
   onPrint: () => void
   embedded?: boolean
-  /** The desk working on the bill: write a payment, add or take off a charge. */
-  desk?: BillDeskActions
 }
 
 const money = (n: number) => '₱' + n.toLocaleString()
@@ -34,7 +28,7 @@ const shortDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-U
 // (banded, one row per room) since the owner's 2026-09 ruling; everything else is
 // exactly as it has always been. **An agency booking does NOT use this document** — it
 // gets its own (see `AgencyInvoiceDocument`).
-export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onClose, onPrint, embedded = false, desk }: InvoiceDocumentProps) {
+export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onClose, onPrint, embedded = false }: InvoiceDocumentProps) {
   const rates = getRateConfig()
   const payAcct = getPaymentAccounts()
   const b = primaryBooking
@@ -57,9 +51,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
   // Money received with no numbered receipt behind it (old and imported bookings).
   const earlierPaid = Math.max(0, statement.downpaymentPaid - statement.payments.reduce((sum, p) => sum + p.amount, 0))
   // What the big "Amount Due" figure actually is, spelled out under its label.
-  const paidUp = statement.amountDue === 0 && statement.balanceAfter === 0 && statement.payments.length > 0
-  const dueLabel = desk && paidUp ? 'Paid in full' :
-    statement.paymentPlan === 'deposit' && statement.downpaymentPaid === 0 ? 'Deposit (50%)'
+  const dueLabel = statement.paymentPlan === 'deposit' && statement.downpaymentPaid === 0 ? 'Deposit (50%)'
     : statement.downpaymentPaid > 0 && statement.balanceAfter > 0 ? 'Remaining balance'
     : ''
 
@@ -68,13 +60,6 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
   const label = 'text-[10px] text-muted'
   const info = 'text-[11.5px] font-semibold text-ink-900'
   const figure = 'font-mono text-[11.5px] font-bold text-ink-900'
-  // What was on the bill when it opened: anything written after settles in like ink.
-  const [opened] = useState(() => new Set([...statement.lineItems.map(i => i.key), ...statement.payments.map(p => p.key)]))
-  const isNew = (key: string) => !!desk && !opened.has(key)
-  // A payment being written folds the ones above it into one line (the "what for" mock's 3).
-  const [writing, setWriting] = useState(false)
-  // Where a payment's fix boxes float (`FixPayment`).
-  const [column, setColumn] = useState<HTMLDivElement | null>(null)
 
   return (
     <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}
@@ -83,29 +68,11 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
 
       {/* GUEST beside STAY, the companions with the guest. Everything about their arrangement
           lives in `StatementGuestStay`. */}
-      <StatementGuestStay booking={b} rooms={rooms} venues={venues} rates={rates} roomsLabel={statement.roomsLabel} move={desk?.move} />
+      <StatementGuestStay booking={b} rooms={rooms} venues={venues} rates={rates} roomsLabel={statement.roomsLabel} />
 
       {/* No name over the table: he found a lone `Charges` *"out of place … taking so much
           space for itself"* (2026-10-13). Its column names say what it is. */}
-      <StatementChargesTable items={statement.lineItems} onRemove={desk?.onRemove} canRemove={desk?.owns} onPrice={desk?.onPrice} isNew={isNew} move={desk?.move}>
-        {desk?.removed && (
-          <tr data-screen key={desk.removed.label} className="print:hidden">
-            <td colSpan={6} className="pt-1 text-[10.5px] font-semibold text-muted bw-rise">
-              {desk.removed.label} taken off · <button type="button" onClick={desk.onUndo}
-                className="font-bold text-gold-800 underline underline-offset-2 cursor-pointer">Undo</button>
-            </td>
-          </tr>
-        )}
-        {desk?.move?.moved && (
-          <tr data-screen key={desk.move.moved.label} className="print:hidden">
-            <td colSpan={6} className="pt-1 text-[10.5px] font-semibold text-muted bw-rise">
-              {desk.move.moved.label} · <button type="button" onClick={desk.move.onUndo}
-                className="font-bold text-gold-800 underline underline-offset-2 cursor-pointer">Undo</button>
-            </td>
-          </tr>
-        )}
-        {desk && <AddCharge onCharge={desk.onCharge} cols={6} />}
-      </StatementChargesTable>
+      <StatementChargesTable items={statement.lineItems} />
 
       {/* PAYMENT beside the totals, always two columns (card k144: A5 never reaches `sm`).
           The page's one rule holds here too: a grey label, then the black information. */}
@@ -146,54 +113,24 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           </div>
         </div>
 
-        <div ref={setColumn} className="relative col-start-2 flex flex-col gap-0.5">
+        <div className="relative col-start-2 flex flex-col gap-0.5">
           <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(statement.subTotal)}</span></div>
           {/* The bill lists the payments already received (the staff, 2026-10-04: it showed
               what was still to pay but not what had been paid). Money received before
               receipts were numbered has no line of its own, so it keeps its single figure. */}
-          {(statement.payments.length > 0 || (desk && statement.amountDue > 0)) && (
+          {statement.payments.length > 0 && (
             <div>
               <p className={label}>Less: payments received</p>
-              {writing && statement.payments.length > 0 && (
-                <button type="button" data-screen onClick={() => setWriting(false)}
-                  className="print:hidden w-full flex justify-between items-baseline gap-2.5 py-0.5 border-b border-dashed border-ink-200 text-left cursor-pointer bw-unfold">
-                  <span className={label}>{statement.payments.length} payment{statement.payments.length === 1 ? '' : 's'} received</span>
-                  <span className={figure + ' shrink-0'}>−{money(statement.payments.reduce((s, p) => s + p.amount, 0))}</span>
-                </button>
-              )}
               {statement.payments.map(p => (
-                <React.Fragment key={p.key}>
-                {desk?.onFix && !writing && (
-                  <div className={isNew(p.key) ? 'bill-ink' : ''}>
-                    <FixPayment p={p} sheet={column} onFix={patch => desk.onFix?.(p.key, patch)} onReceipt={desk.onReceipt} />
-                  </div>
-                )}
-                <div className={'flex justify-between items-baseline gap-2.5 ' + (isNew(p.key) ? 'bill-ink' : '') + (writing || desk?.onFix ? ' hidden print:flex' : '')}>
+                <div key={p.key} className="flex justify-between items-baseline gap-2.5">
                   <span className={label + ' min-w-0'}>
                     {shortDay(p.paidAt)} · {paymentMethodLabel(p.method)}
                   {p.purpose && <> · <span className="font-bold text-ink-900">{p.purpose}</span></>}
                     {p.receipt && <span className="whitespace-nowrap"> · {p.receipt}</span>}
-                    {desk && p.receipt && (
-                      <button type="button" data-screen onClick={() => desk.onReceipt(p.receipt)}
-                        className="print:hidden ml-1.5 font-semibold text-gold-800 underline underline-offset-2 cursor-pointer">Receipt</button>
-                    )}
                   </span>
                   <span className={figure + ' shrink-0'}>−{money(p.amount)}</span>
                 </div>
-                </React.Fragment>
               ))}
-              {/* The blank line the payment is written on (the mock's "Blank line"). */}
-              {desk && statement.amountDue > 0 && (
-                <div data-screen className="print:hidden">
-                  {/* Deposit only until money is in, and never on a short stay (Sebastian, 2026-10-24: "the
-                      short stay should just say full pay, and custom"); Full pay is everything still owed. */}
-                  <WritePayment key={statement.payments.length} open={writing} onOpen={setWriting} onPay={desk.onPay} again={statement.payments.length > 0}
-                    fills={[
-                      ...(statement.payments.length || b.stay_hours ? [] : [{ label: 'Deposit', amount: Math.round(statement.subTotal / 2) }]),
-                      { label: 'Full pay', amount: statement.amountDue + statement.balanceAfter },
-                    ]} />
-                </div>
-              )}
             </div>
           )}
           {earlierPaid > 0 && (
@@ -213,20 +150,13 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
               rows above and with the table's Total column (he called the first drawing's
               band *"crooked"*). A frame, not a solid black band, so a bill does not spend
               the ink (the owner, 2026-10-24: "make the total hollow"). */}
-          <div className={'mt-1 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] transition-colors duration-500 print:border-ink-900 print:text-ink-900 ' + (desk && paidUp ? 'border-emerald-700 text-emerald-700' : 'border-ink-900 text-ink-900')}>
+          <div className={'mt-1 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900'}>
             <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">
               Amount due
               {dueLabel && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px">{dueLabel}</span>}
             </span>
-            <span className="font-display text-[24px] font-extrabold leading-none">{desk ? <CountPeso value={statement.amountDue} /> : money(statement.amountDue)}</span>
+            <span className="font-display text-[24px] font-extrabold leading-none">{money(statement.amountDue)}</span>
           </div>
-          {/* Paid in full, stamped on the screen's bill as the last payment goes on. */}
-          {desk && paidUp && (
-            <span data-screen aria-hidden="true"
-              className="bill-stamp print:hidden pointer-events-none absolute right-full mr-8 top-4 px-3 py-0.5 rounded-lg border-[3px] border-emerald-700 text-emerald-700 font-display text-[26px] font-extrabold tracking-[0.12em] opacity-85 mix-blend-multiply">
-              PAID
-            </span>
-          )}
         </div>
       </div>
 

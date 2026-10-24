@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Building2, ChevronDown, Coffee, Plus, X } from 'lucide-react'
-import { Booking, BillCharge, Companion, EquipmentRental, EventAddons, PaymentRecord, Room, Venue } from '../../types/booking'
+import { Booking, BillCharge, Companion, EquipmentRental, EventAddons, Room, Venue } from '../../types/booking'
 import { buildStatement, StatementLineItem, shortDate } from '../../utils/statement'
 import { dateToString, normalizeVenueId, randomUUID } from '../../utils/helpers'
 import { recomputeBalance } from '../../utils/bookingBalance'
@@ -11,6 +12,9 @@ import { breakfastSellable, roomBreakfastPrice } from '../../utils/breakfast'
 import { venueTypes } from '../../utils/venueTypes'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { paymentMethodLabel } from '../../utils/paymentMethod'
+import { getSlipsByBooking, OrderSlip } from '../../utils/orderSlips'
+import { groupOf } from '../../utils/bookingGroup'
+import { guestEmailOf } from '../../utils/emailDocument'
 import { lastReceptionist, rememberReceptionist, staffNamesOf } from '../../utils/receptionists'
 import { getInstitutions, insertInstitution } from '../../utils/institutions'
 import { StatementShell, BrandHeader, SectionName } from '../billing/StatementShell'
@@ -18,7 +22,11 @@ import { StatementChargesTable } from '../billing/StatementChargesTable'
 import { Floating, UnitList, UnitOption, KindList, BreakfastList, MonthPick } from './BillRoomLines'
 import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
 import { withMoneyOf, holdsMoney } from '../../utils/roomTakenOff'
-import { AddCharge, WritePayment } from '../billing/BillDesk'
+import { AddCharge, PayInput, WritePayment } from '../billing/BillDesk'
+import type { PaymentPatch } from '../walk-in/bookingPayment'
+import { FixPayment } from '../billing/FixPayment'
+import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
+import { printA5 } from '../../utils/printA5'
 import { want } from '../billing/want'
 import { NationalityInput } from '../NationalityInput'
 import { CountPeso } from '../CountPeso'
@@ -26,7 +34,6 @@ import { useDashboardData } from '../DashboardContext'
 import { showToast } from '../../utils/toast'
 import { submitBookingForm } from '../walk-in/bookingSubmit'
 import { ManualBookingInput } from '../walk-in/bookingSubmitTypes'
-import { BookingCreatedPanel } from '../walk-in/BookingCreatedPanel'
 import { Circled, Sel } from './LogOldBookingModal'
 
 const HOURS = [3, 6, 12, 22] as const
@@ -44,6 +51,8 @@ const NO_EXTRAS: Extras = { extraFoamCount: 0, extraPillowCount: 0, extraBlanket
 const money = (n: number) => '₱' + Math.round(n).toLocaleString()
 const sortUnits = (l: [string, Sel][]) => [...l].sort((a, b) => (a[1].type === 'room' ? 0 : 1) - (b[1].type === 'room' ? 0 : 1))
 const nextDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return dateToString(new Date(y, m - 1, d + 1)) }
+// Long enough for the cache's change to reach the booking panel's own handlers.
+const settle = () => new Promise<void>(r => requestAnimationFrame(() => setTimeout(r)))
 const fmtDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) }
 
 interface Paid { amount: number; method: string; reference: string; purpose: string }
@@ -62,7 +71,7 @@ export interface Discount { pct: boolean; v: number }
  * the booking form's own `submitBookingForm`, so the rooms, prices, receipt and rollback are the
  * form's; nothing is saved until Book.
  */
-export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, editing, onClose }: {
+export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, editing, desk, onSaved, onBooked, onClose }: {
   rooms: Room[]; venues: Venue[]; bookings: Booking[]; allBookings: Booking[]
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>
   updateBooking: (b: Booking) => Promise<void>
@@ -73,9 +82,20 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   /**
    * A booking being corrected (its whole group): the same bill, filled in from what is saved
    * (Sebastian, 2026-10-23: "if it's on the bill, then editing should also be on the bill").
-   * Its payments are shown, not taken — more money is received on the booking panel.
+   * **It is the one bill** (Sebastian, 2026-10-24: "no more view billing or receive money. merge
+   * everything"): every change is saved as it is made, and money is taken on it through `desk`.
    */
   editing?: Booking[]
+  /** The booking panel's own money handlers: write a payment, fix one, show its receipt. */
+  desk?: {
+    onReceipt: (receipt: string) => void
+    onPay: (p: PayInput) => Promise<void> | void
+    onFix: (key: string, patch: PaymentPatch) => Promise<void> | void
+  }
+  /** The rows as saved, after each save of a correction (a swapped room is a new row). */
+  onSaved?: (rows: Booking[]) => void
+  /** A new booking was made: the calendar opens its one bill. */
+  onBooked?: (rows: Booking[]) => void
   onClose: () => void
 }) {
   const ed = editing?.[0]
@@ -119,7 +139,6 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const [typingStaff, setTypingStaff] = useState(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [created, setCreated] = useState<{ list: Booking[]; receipt: PaymentRecord | null; from: { x: number; y: number; w: number; h: number } | null } | null>(null)
   const nameBox = useRef<HTMLInputElement>(null)
   const sheet = useRef<HTMLDivElement>(null)
   // The lists float inside the bill's own sheet, so they are drawn once it is there.
@@ -146,6 +165,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   }, [askIn])
 
   useEffect(() => { getInstitutions().then(l => setInstitutions(l.map(i => i.name))).catch(() => {}) }, [])
+  // The food on a correction's rooms, so its Amount due is the panel's.
+  const [slips, setSlips] = useState<Record<string, OrderSlip[]>>({})
+  const savedIds = (editing || []).map(b => b.id).join(',')
+  useEffect(() => { if (savedIds) getSlipsByBooking(savedIds.split(',')).then(setSlips).catch(() => {}) }, [savedIds])
 
   const isShort = !!(initialStayHours || ed?.stay_hours) && units[0]?.[1].type === 'room'
   const list: [string, Sel][] = isShort ? [[units[0][0], { ...units[0][1], checkOut: nextDay(units[0][1].checkIn) }]] : units
@@ -184,9 +207,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const gone = (editing || []).filter(b => holdsMoney(b) && !list.some(([id]) => id === unitIdOf(b)))
   if (gone.length > 0 && drafts[0]) drafts[0] = withMoneyOf(drafts[0], gone)
   const statement = drafts.length > 0
-    ? buildStatement({ primaryBooking: drafts[0], relatedBookings: drafts, rooms, venues, bookingsList: bookings })
+    ? buildStatement({ primaryBooking: drafts[0], relatedBookings: drafts, rooms, venues, bookingsList: bookings,
+        slipsByBooking: Object.fromEntries(list.map(([id]) => ['draft-' + id, slips[editing?.find(b => unitIdOf(b) === id)?.id || ''] || []])) })
     : null
   const total = statement?.subTotal ?? 0
+  // What the discount takes off, in pesos: the statement's own Discount rows.
+  const discOff = -(statement?.lineItems.filter(i => i.band === 'discount').reduce((s, i) => s + i.amount, 0) ?? 0)
   const received = editing ? (statement?.payments || []).reduce((a, x) => a + x.amount, 0) : paid?.amount ?? 0
   const due = Math.max(0, total - received)
   const paidUp = received > 0 && due === 0
@@ -296,11 +322,15 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     setFresh(id)
   }
 
-  const handleBook = async () => {
-    if (!to && !guestName.trim()) { want(nameBox.current); return }
+  const editingProp = editing
+  // `live` is a correction being saved behind the bill: the rows as the cache holds them when the save runs.
+  const handleBook = async (live?: { rows: Booking[]; active: Booking[]; all: Booking[] }) => {
+    const editing = live?.rows ?? editingProp
+    const ed = editing?.[0]
+    const bookingsNow = live?.active ?? bookings
+    if (!to && !guestName.trim()) { if (!live) want(nameBox.current); return }
     if (list.length === 0) { setError('Pick the room and the dates on the calendar first.'); return }
     setError(''); setSaving(true)
-    const at = sheet.current?.getBoundingClientRect()
     const plan = ed ? ed.payment_plan || 'reservation' : !paid ? 'reservation' : paid.amount >= total ? 'full' : 'custom'
     const sum = (f: (b: Booking) => number) => (editing || []).reduce((a, b) => a + f(b), 0)
     const venueKit = editing?.find(b => b.venue_id && b.equipment_rentals)?.equipment_rentals
@@ -308,8 +338,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       unitSelections: Object.fromEntries(list),
       formRoomIds: new Set(list.filter(([, s]) => s.type === 'room').map(([id]) => id)),
       formVenueIds: new Set(list.filter(([, s]) => s.type === 'venue').map(([id]) => id)),
-      rooms, venues, allBookings, partnerDeals,
-      activeBookings: editing ? bookings.filter(b => !editing.some(e => e.id === b.id)) : bookings,
+      rooms, venues, allBookings: live?.all ?? allBookings, partnerDeals,
+      activeBookings: editing ? bookingsNow.filter(b => !editing.some(e => e.id === b.id)) : bookingsNow,
       formPartnerDealId: deal?.id || '',
       bookingType: to ? 'partner' : 'individual',
       formStatus: 'confirmed',
@@ -343,7 +373,11 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       receivedAmount: paid?.amount || 0,
       createManualBooking, updateBooking, cancelBooking, deleteBooking,
     })
-    if (!result.ok) { setSaving(false); setError(result.error); return }
+    if (!result.ok) {
+      setSaving(false); setError(result.error)
+      if (live) showToast('That change was not saved: ' + result.error, 'error')
+      return
+    }
     if (editing) {
       // The form keeps the balance it was handed; a charge taken off here has to come off
       // what is owed too, so each room is priced again: stay + food − money received.
@@ -366,22 +400,53 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       } catch {
         showToast('The changes are saved, but the balance was not worked out again. Open the booking and try again.', 'error')
       }
-      focusBookingAfterCreate(result.bookings[0]?.id)
-      onClose()
+      setSaving(false); setError('')
+      ids.current = result.bookings.map(b => b.id)
+      onSaved?.(result.bookings)
       return
     }
     setSaving(false)
     if (preparedBy.trim()) rememberReceptionist(preparedBy)
-    setCreated({ list: result.bookings, receipt: result.receipt ?? null, from: at ? { x: at.left, y: at.top, w: at.width, h: at.height } : null })
+    // Booked: its one bill opens, ready for the money (the one-bill mock, 2026-10-24).
+    focusBookingAfterCreate(result.bookings[0]?.id)
+    if (onBooked) onBooked(result.bookings); else onClose()
   }
 
-  if (created) {
-    return createPortal(
-      <BookingCreatedPanel createdBookingList={created.list} rooms={rooms} venues={venues} bookings={bookings}
-        receipt={created.receipt} from={created.from} onClose={onClose} />,
-      document.body,
-    )
+  // **Saved as it is made** (the one-bill mock: "No Save button"). Every save and every payment
+  // waits its turn, and each reads the rows from the cache when it runs, so a payment written
+  // while a change is saving is not written over by it.
+  // ponytail: one queue per open bill; two desks editing the same booking at once can still race.
+  const qc = useQueryClient()
+  const ids = useRef((editing || []).map(b => b.id))
+  const queue = useRef<Promise<unknown>>(Promise.resolve())
+  const chain = (job: () => Promise<unknown>) => (queue.current = queue.current.then(job).catch(() => {}))
+  const liveRows = () => {
+    const all = qc.getQueryData<Booking[]>(['bookings']) || allBookings
+    const active = all.filter(b => b.status !== 'cancelled')
+    const anchor = active.find(b => ids.current.includes(b.id))
+    return { rows: anchor ? groupOf(anchor, active) : editing || [], active, all }
   }
+  const sig = editing ? JSON.stringify([guestName, guestPhone, nationality, address, companions, hours, breakfast, extras, charges, kinds, disc, to, preparedBy, units, rates]) : ''
+  const savedSig = useRef(sig)
+  const latest = useRef(handleBook)
+  useEffect(() => { latest.current = handleBook })
+  const [mark, setMark] = useState<'saving' | 'saved' | null>(null)
+  const save = () => {
+    if (!editing || sig === savedSig.current) return queue.current
+    savedSig.current = sig
+    setMark('saving')
+    return chain(async () => { await settle(); await latest.current(liveRows()); setMark('saved') })
+  }
+  useEffect(() => {
+    if (!editing || sig === savedSig.current) return
+    const t = setTimeout(() => void save(), 800)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig])
+  // Money goes in behind whatever is still saving.
+  const behind = (job: () => Promise<void> | void) => { void save(); void chain(async () => { await settle(); await job() }) }
+  const close = () => { void save(); onClose() }
+  const paperBox = useRef<HTMLDivElement>(null)
 
   const unitName = (id: string, s: Sel) => s.type === 'room'
     ? ['Room ' + (rooms.find(r => r.id === id)?.room_number ?? ''), rooms.find(r => r.id === id)?.name].filter(Boolean).join(' · ')
@@ -580,7 +645,11 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     <div className="fixed inset-0 z-[60] p-3 sm:p-4 bg-slate-900/50 overflow-y-auto bw-dim">
       <div ref={el => { sheet.current = el; setSheetEl(el) }} className="relative bw-eject">
         {floating()}
-        <StatementShell label={(ed ? 'Edit booking' : 'New booking') + (to ? ' · agency' : '')} invoiceNumber={ed?.invoice_number || 'numbered when booked'} onClose={onClose}>
+        <StatementShell label={(ed ? 'Billing statement' : 'New booking') + (to ? ' · agency' : '')} invoiceNumber={ed?.invoice_number || 'numbered when booked'} onClose={ed ? close : onClose}
+          status={mark && <span key={mark} aria-live="polite" className={'text-[11px] font-semibold bw-rise ' + (mark === 'saved' ? 'text-emerald-300' : 'text-white/60')}>{mark === 'saved' ? '✓ Saved' : 'Saving…'}</span>}
+          onPrint={ed ? () => { void save().then(settle).then(printA5) } : undefined}
+          email={ed ? { kind: 'statement', number: ed.invoice_number || '', guestName: ed.guest_name, bookingId: ed.id, to: guestEmailOf(ed) } : undefined}
+          paper={ed ? () => paperBox.current?.querySelector<HTMLElement>('[data-sheet]') ?? null : undefined}>
           <BrandHeader dateIssued={today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}>
             <span className={label + ' row-start-1'}>Bill no.</span>
             {ed?.invoice_number
@@ -692,16 +761,20 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           <div className="grid grid-cols-[1fr_236px] gap-6 items-start">
             <div />
             <div className="relative flex flex-col gap-0.5">
-              {!to && (
+              {(!to || desk) && (
                 <>
-                  <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(total)}</span></div>
-                  {disc ? (
-                    <DiscountBox disc={disc} onChange={setDisc} />
+                  {!to && <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(total + discOff)}</span></div>}
+                  {to ? null : disc ? (
+                    <DiscountBox disc={disc} onChange={setDisc} off={discOff} fold />
                   ) : (
                     <button type="button" onClick={() => setDisc({ pct: true, v: 0 })} className="self-start text-[10.5px] font-bold text-gold-800 hover:underline cursor-pointer">+ Discount</button>
                   )}
                   <p className={label}>Less: payments received</p>
-                  {editing && statement?.payments.map(x => (
+                  {/* On the one bill each payment can be fixed where it stands, and its receipt printed. */}
+                  {editing && desk && statement?.payments.map(x => (
+                    <FixPayment key={x.key} p={x} sheet={sheetEl} onFix={patch => behind(() => desk.onFix(x.key, patch))} onReceipt={desk.onReceipt} />
+                  ))}
+                  {editing && !desk && statement?.payments.map(x => (
                     <div key={x.key} className="flex justify-between items-baseline gap-2.5">
                       <span className={label + ' min-w-0'}>
                         {new Date(x.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {paymentMethodLabel(x.method)}{x.purpose && <> · <span className="font-bold text-ink-900">{x.purpose}</span></>}
@@ -719,7 +792,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                       <span className={figure + ' shrink-0'}>−{money(paid.amount)}</span>
                     </div>
                   )}
-                  {/* One payment at booking — what the guest hands over now; more is taken on the panel. */}
+                  {editing && desk && due > 0 && (
+                    <WritePayment key={statement?.payments.length} open={writing} onOpen={o => { setWriting(o); if (o) void save() }} again={(statement?.payments.length || 0) > 0}
+                      // Deposit only until money is in, and never on a short stay; Full pay is what is still owed.
+                      fills={[...(statement?.payments.length || isShort ? [] : [{ label: 'Deposit', amount: Math.round(total / 2) }]), { label: 'Full pay', amount: due }]}
+                      onPay={p => behind(() => desk.onPay(p))} />
+                  )}
+                  {/* One payment at booking — what the guest hands over now. */}
                   {!editing && !paid && total > 0 && (
                     <WritePayment open={writing} onOpen={setWriting} again={false}
                       fills={[{ label: 'Deposit', amount: Math.round(total / 2) }, { label: 'Full pay', amount: total }]}
@@ -775,12 +854,22 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           </div>
 
           {error && <p className="p-2.5 bg-danger-50 border border-danger-200 text-danger-600 text-[13px] rounded-lg bw-nope">{error}</p>}
-          <button type="button" onClick={() => { if (!saving) handleBook() }}
-            className="w-full min-h-[54px] rounded-xl bg-gold-400 hover:bg-gold-600 text-ink-900 text-[16px] font-bold cursor-pointer active:scale-[0.98] transition-[background-color,transform] bw-shine">
-            {ed ? 'Save changes' : <>Book <span key={book} className="text-[13px] font-semibold opacity-75 inline-block bw-rise">· {book}</span></>}
-          </button>
+          {!ed && (
+            <button type="button" onClick={() => { if (!saving) handleBook() }}
+              className="w-full min-h-[54px] rounded-xl bg-gold-400 hover:bg-gold-600 text-ink-900 text-[16px] font-bold cursor-pointer active:scale-[0.98] transition-[background-color,transform] bw-shine">
+              Book <span key={book} className="text-[13px] font-semibold opacity-75 inline-block bw-rise">· {book}</span>
+            </button>
+          )}
         </StatementShell>
       </div>
+      {/* The paper copy, off screen: what Print and Email send — the saved bill, with its
+          payment details, policies and signatures, and none of the boxes. */}
+      {ed && createPortal(
+        <div ref={paperBox} aria-hidden="true" className="bill-paper fixed top-0 left-[-10000px] w-[576px]">
+          <PrintInvoiceModal booking={ed} rooms={rooms} venues={venues} bookingsList={bookings} onClose={() => {}} embedded />
+        </div>,
+        document.body,
+      )}
     </div>,
     document.body,
   )
@@ -791,9 +880,26 @@ const extrasOf = (e: Extras) => ({
 })
 
 /** "+ Discount" opened: % or ₱, the sign on the side it is read (the mock: % after, ₱ before). */
-export function DiscountBox({ disc, onChange }: { disc: Discount; onChange: (d: Discount | null) => void }) {
+/**
+ * **How much it takes off is said in pesos** (Sebastian, 2026-10-24, task #11: "show how much was
+ * discounted"): `off` stands beside the box as it is typed, so 10% reads as −₱220. With `fold`, a
+ * box that is left folds into the bill's own line, `Less: discount 10% −₱220`, which is tapped to
+ * change it.
+ */
+export function DiscountBox({ disc, onChange, off, fold = false }: { disc: Discount; onChange: (d: Discount | null) => void; off?: number; fold?: boolean }) {
+  const [open, setOpen] = useState(!fold || !disc.v)
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} aria-label="Change the discount"
+        className="w-full -mx-0.5 px-0.5 flex justify-between items-baseline gap-2.5 rounded text-left hover:bg-gold-100 transition-colors cursor-pointer bw-rise">
+        <span className="text-[10px] text-muted">Less: discount{disc.pct && <b className="ml-1 font-bold text-ink-900">{disc.v}%</b>}</span>
+        <span className="font-mono text-[11.5px] font-bold text-danger-600">−₱{(off || 0).toLocaleString()}</span>
+      </button>
+    )
+  }
   return (
-    <div className="flex items-center gap-1.5 my-0.5 bw-unfold">
+    <div className="flex items-center gap-1.5 my-0.5 bw-unfold"
+      onBlur={e => { if (fold && disc.v && !e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false) }}>
       <div role="group" aria-label="Discount by" className="relative grid grid-cols-2 p-0.5 rounded-md bg-card shadow-[inset_0_0_0_1.5px_#1C1C1C]">
         <span aria-hidden="true" style={{ '--i': disc.pct ? 0 : 1 } as React.CSSProperties}
           className="absolute top-0.5 bottom-0.5 left-0.5 w-[calc((100%-4px)/2)] rounded bg-ink-900 translate-x-[calc(var(--i)*100%)] transition-transform duration-300 ease-[cubic-bezier(.34,1.4,.64,1)]" />
@@ -812,6 +918,9 @@ export function DiscountBox({ disc, onChange }: { disc: Discount; onChange: (d: 
       </label>
       <button type="button" onClick={() => onChange(null)} aria-label="No discount"
         className="p-0.5 rounded text-muted opacity-60 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button>
+      {off !== undefined && (
+        <span key={off} className="shrink-0 min-w-[52px] text-right font-mono text-[12px] font-bold text-danger-600 bw-rise">{off ? '−₱' + off.toLocaleString() : '—'}</span>
+      )}
     </div>
   )
 }

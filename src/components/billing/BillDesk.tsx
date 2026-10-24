@@ -2,61 +2,14 @@ import React, { useRef, useState } from 'react'
 import { Check, Plus, X } from 'lucide-react'
 import { PAYMENT_METHODS, methodNeedsReference } from '../../utils/paymentMethod'
 import { dateToString } from '../../utils/helpers'
-import { StatementLineItem } from '../../utils/statementLines'
 import { want } from './want'
-import type { PaymentPatch } from '../walk-in/bookingPayment'
+
+/** A payment as the blank line writes it. */
+export type PayInput = { amount: number; method: string; reference: string; date: string; purpose: string }
 
 const digits = (v: string) => Number(v.replace(/[^0-9]/g, '')) || 0
 /** `2026-09-14` → `Sep 14`, from the date's own parts. */
 const shortDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return y ? new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '' }
-
-/**
- * What the desk can do on the bill itself (Sebastian, 2026-10-20: *"most of the time the staff
- * likes to work on payments on the guest billing paper"*). Given only when the bill is opened
- * from a booking the desk can change; a bill opened to print has none of it.
- */
-export interface BillDeskActions {
-  onPay: (p: { amount: number; method: string; reference: string; date: string; purpose: string }) => void
-  onCharge: (name: string, amount: number) => void
-  onRemove: (line: StatementLineItem) => void
-  /** The room's own price typed over on the stay's line. */
-  onPrice?: (line: StatementLineItem, price: number) => void
-  /** Whether a line (by its key) is this booking's own: on a bill of several rooms, another
-   *  room's charge is taken off from that room's panel. */
-  owns?: (key: string) => boolean
-  /** A charge just taken off, which Undo puts back. */
-  removed: { label: string } | null
-  onUndo: () => void
-  /** Fixes a payment typed wrong (its `key` on the statement). */
-  onFix?: (key: string, patch: PaymentPatch) => void
-  /** Prints the 58 mm receipt of the payment with this number. */
-  onReceipt: (receipt: string) => void
-  /** Rescheduling on the bill, when Settings → Front desk says so and the stay can still move. */
-  move?: BillMove
-}
-
-/**
- * **The stay moved on the bill itself** (Sebastian, 2026-10-22, the reschedule mock: the staff
- * want it on the billing statement — "A · Tap a date" for the dates, "C · On the charge line"
- * for the room). The panel works the figures out; the bill only shows them and says where.
- */
-export interface BillMove {
-  /** The stay's own line in the charges (`<booking id>-stay`). */
-  lineKey: string
-  unitId: string
-  checkIn: string
-  checkOut: string
-  /** Whether the stay fits there, leaving itself out. */
-  free: (unitId: string, checkIn: string, checkOut: string) => boolean
-  /** The other rooms (or venues) of its kind, in board order. */
-  units: { id: string; label: string }[]
-  /** That place's own line on the bill, and what the whole bill changes by. */
-  quote: (unitId: string) => { rate: number; amount: number; diff: number }
-  onMove: (unitId: string, checkIn: string, checkOut: string) => void
-  /** The move just made, which Undo takes back. */
-  moved: { label: string } | null
-  onUndo: () => void
-}
 
 const SLOT = 'min-w-0 bg-transparent border-0 border-b-[1.5px] border-ink-900 rounded-none px-0.5 py-px text-[12px] font-bold text-ink-900 focus:outline-none focus:border-gold-400'
 const GO = 'rounded-md bg-gold-400 hover:bg-gold-600 text-ink-900 text-[12px] font-bold py-1.5 px-3 active:scale-[0.97] transition-[background-color,transform] cursor-pointer'
@@ -71,7 +24,7 @@ const BLANK = 'bill-blank w-full flex items-center gap-1.5 px-1.5 py-1 rounded-m
  * `open` is the bill's, so the payments above can fold away while one is written.
  */
 export function WritePayment({ open, onOpen, onPay, again, paidOn, fills }: {
-  open: boolean; onOpen: (open: boolean) => void; onPay: BillDeskActions['onPay']; again: boolean
+  open: boolean; onOpen: (open: boolean) => void; onPay: (p: PayInput) => void; again: boolean
   /** **Quick fills** — the booking form's deposit choices on a new booking's bill (Deposit, Full
    *  pay): a tap writes what for and how much. */
   fills?: { label: string; amount: number }[]
@@ -181,7 +134,7 @@ export function WritePayment({ open, onOpen, onPay, again, paidOn, fills }: {
  * how much, and it goes under Extras.
  */
 export function AddCharge({ onCharge, cols, beside, presets }: {
-  onCharge: BillDeskActions['onCharge']; cols: number
+  onCharge: (name: string, amount: number) => void; cols: number
   /** Blanks that sit to its left while it is shut — a logged paper's Breakfast. */
   beside?: React.ReactNode
   /** Ready-priced extras offered as chips when it opens (a new booking's Foam, Pillow…); each tap

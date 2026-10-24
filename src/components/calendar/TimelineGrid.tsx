@@ -1,5 +1,5 @@
 import React from 'react'
-import { ArrowRightLeft, Ban, Coffee, FilePlus, LogIn, LogOut, Plus } from 'lucide-react'
+import { Ban, Coffee, FilePlus, LogIn, LogOut, Plus } from 'lucide-react'
 import { Booking, PartnerDeal, Room, Venue } from '../../types/booking'
 import { isBilledToAgency } from '../../utils/bookingMoney'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
@@ -66,25 +66,6 @@ interface TimelineGridProps {
   timeUp?: Record<string, boolean>
   /** The desk has brought that breakfast to the room. */
   onBreakfastServed?: (booking: Booking) => void
-  /** **Rescheduling** (the reschedule mock, "F · Back to the calendar", Sebastian, 2026-10-21):
-   *  the action bar says what the picked place costs and offers Reschedule in place of the
-   *  booking buttons. */
-  move?: MoveBar | null
-  /** Where the stay being rescheduled is now, drawn as a dashed outline while its new place is picked. */
-  was?: { unitId: string; start: number; end: number; short: boolean } | null
-  /** While rescheduling, a room moves among rooms and a venue among venues: the other rows fade. */
-  onlyType?: 'room' | 'venue'
-}
-
-export type MoveBar = {
-  /** The stay's hours, for a short stay. */
-  chip?: string
-  /** What the new place does to the price, or what to tap next. */
-  note: string
-  tone?: 'more' | 'less'
-  /** Missing until there is somewhere new to go. */
-  onConfirm?: () => void
-  onCancel: () => void
 }
 
 // One room's row and one day's column, in one place: the header, the rows and the cells
@@ -127,7 +108,7 @@ type BarAnchor = { unitId: string; iso: string; outIso: string }
  * again — four times a click, which the desk felt as a delay on every tap (Sebastian,
  * 2026-10-16: "when I click on a cell in the calendar there's a short delay").
  */
-function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection, selectionName, rooms, venues, barRoom, move, onNewBooking, onBlockDates, onLogOldBooking, onNewShortStay, onClearSelection }: {
+function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection, selectionName, rooms, venues, barRoom, onNewBooking, onBlockDates, onLogOldBooking, onNewShortStay, onClearSelection }: {
   scrollRef: React.RefObject<HTMLDivElement | null>
   barAnchor: BarAnchor | null
   timelineSelection: TimelineGridProps['timelineSelection']
@@ -136,7 +117,6 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
   rooms: Room[]
   venues: Venue[]
   barRoom: Room | null
-  move?: MoveBar | null
 } & Pick<TimelineGridProps, 'onNewBooking' | 'onBlockDates' | 'onLogOldBooking' | 'onNewShortStay' | 'onClearSelection'>) {
   // Where the bar goes: the middle of the picked dates, its row, how wide it is, and how far
   // left and right it may reach. The width is the bar's own, read back once it is on screen.
@@ -280,22 +260,7 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
         </span>
       )}
 
-      {move ? (
-        <>
-          {move.chip && <span className="bp-up shrink-0 h-5 px-2 rounded-full bg-ink-900 text-white text-[12px] font-bold leading-5">{move.chip}</span>}
-          <span key={move.note} className={'bp-up shrink-0 text-[12px] font-semibold ' + (move.tone === 'more' ? 'text-danger-600' : move.tone === 'less' ? 'text-emerald-700' : 'text-muted')}>{move.note}</span>
-          {move.onConfirm && (
-            <button type="button" onClick={move.onConfirm}
-              className="shrink-0 inline-flex items-center gap-1 h-7 px-3.5 rounded-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold transition-colors active:scale-[0.98] cursor-pointer">
-              <ArrowRightLeft className="w-3.5 h-3.5" /> Reschedule
-            </button>
-          )}
-          <button type="button" onClick={move.onCancel}
-            className="shrink-0 h-7 px-3 rounded-full text-[13px] font-semibold text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer">
-            Cancel
-          </button>
-        </>
-      ) : hasRange ? (
+      {hasRange ? (
         <>
           <button type="button" onClick={() => { rememberPick(); onNewBooking() }}
             className="shrink-0 inline-flex items-center gap-1 h-7 px-3.5 rounded-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold transition-colors active:scale-[0.98] cursor-pointer">
@@ -346,7 +311,6 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
         )
       )}
 
-      {!move && <>
       {/* Block the dates that are picked — ONE icon, the same on a single day
           and on a range (the owner's ruling, 2026-09: the words were noise).
           It opens a small pane that only asks why; the room and dates come
@@ -377,7 +341,6 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
         className="shrink-0 h-7 px-3 rounded-full text-[13px] font-semibold text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer">
         Cancel
       </button>
-      </>}
     </div>
   )
 }
@@ -407,9 +370,6 @@ export const TimelineGrid = React.memo(
     breakfastReady,
     onBreakfastServed,
     timeUp,
-    move,
-    was,
-    onlyType
   }: TimelineGridProps) {
     const scrollRef = React.useRef<HTMLDivElement>(null)
     // Every stay, so a room booked with others can show its whole bill's money (`asBill`).
@@ -569,16 +529,11 @@ export const TimelineGrid = React.memo(
         const halfOf = wholeDay ? undefined : morning ? 'left' : 'right'
         const isDraftCheckIn = timelineSelection && ((type === 'room' && timelineSelection.roomId === id) || (type === 'venue' && timelineSelection.venueId === id)) && dayInfo.time === checkInTime
         const range = selectionRanges[id]
-        // The stay being rescheduled, where it is now (its own pill is off the grid meanwhile).
-        const wasMark = was && was.unitId === id
-          ? was.short ? (dayInfo.time === was.start ? 'day' : null)
-            : dayInfo.time === was.start ? 'start' : dayInfo.time === was.end ? 'end' : dayInfo.time > was.start && dayInfo.time < was.end ? 'mid' : null
-          : null
         const highlight = range
           ? dayInfo.time === range.start ? 'start' : dayInfo.time === range.end ? 'end' : dayInfo.time > range.start && dayInfo.time < range.end ? 'mid' : null
           : null
         cells.push(
-          <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={wholeDay ? 2 : 1} halfOf={halfOf} closesDay={!morning || wholeDay} isCheckIn={!!isDraftCheckIn} highlight={highlight} was={wasMark} pickAt={range ? Math.round((dayInfo.time - range.start) / 86400000) : 0} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+          <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={wholeDay ? 2 : 1} halfOf={halfOf} closesDay={!morning || wholeDay} isCheckIn={!!isDraftCheckIn} highlight={highlight} pickAt={range ? Math.round((dayInfo.time - range.start) / 86400000) : 0} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
         )
         k += wholeDay ? 2 : 1
       }
@@ -598,7 +553,7 @@ export const TimelineGrid = React.memo(
             desk picked, so it is beside both the room and the date and it travels
             with the grid. */}
         <SelectionBar scrollRef={scrollRef} barAnchor={barAnchor} timelineSelection={timelineSelection} groupSelection={groupSelection}
-          selectionName={selectionName} rooms={rooms} venues={venues} barRoom={barRoom} move={move} onNewBooking={onNewBooking}
+          selectionName={selectionName} rooms={rooms} venues={venues} barRoom={barRoom} onNewBooking={onNewBooking}
           onBlockDates={onBlockDates} onLogOldBooking={onLogOldBooking} onNewShortStay={onNewShortStay} onClearSelection={onClearSelection} />
 
         {/* Every cell draws its own rules (`border-separate`). In a collapsed table the
@@ -665,7 +620,7 @@ export const TimelineGrid = React.memo(
             {/* A room is its NUMBER first — it is what the desk says aloud — then its
                 kind and its price. No tile behind the number: the row is the box. */}
             {rooms.map(room => (
-              <tr key={room.id} className={'group hover:bg-paper-50/50 transition-opacity' + (onlyType === 'venue' ? ' opacity-40 pointer-events-none' : '')}>
+              <tr key={room.id} className={'group hover:bg-paper-50/50'}>
                 <td className={occupied[room.id] ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
                   <div className="flex items-center gap-2.5">
                     <span className="w-6 shrink-0 text-center font-display text-[15px] font-bold tabular-nums text-main">{room.room_number}</span>
@@ -713,7 +668,7 @@ export const TimelineGrid = React.memo(
             )}
 
             {venues.map(venue => (
-              <tr key={venue.id} className={'group hover:bg-paper-50/50 transition-opacity' + (onlyType === 'room' ? ' opacity-40 pointer-events-none' : '')}>
+              <tr key={venue.id} className={'group hover:bg-paper-50/50'}>
                 <td className={occupied[venue.id] ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
                   <span className="block truncate text-[13px] font-semibold leading-4 text-main">{venue.name}</span>
                   <span className="block text-[12px] leading-4 tabular-nums text-muted">₱{displayPriceFor(venue).toLocaleString()}/day</span>

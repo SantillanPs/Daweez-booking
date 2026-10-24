@@ -36,7 +36,6 @@ export function CalendarGuide() {
             <Row sign={<Pill className="bg-ink-100 border-ink-200 text-white"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-ink-900 font-display text-[9px] font-extrabold leading-none">?</span></Pill>}>Left today: check-out not noted yet</Row>
             <Row sign={<span className="text-[11px] font-bold text-gold-800">Time's up</span>}>A short stay's hours are over: a bell drops in at the top until you answer it</Row>
             <Row sign={<Pill className="bg-paper-200/60 border-paper-300" />}>Blocked</Row>
-            <Row sign={<Pill className="bg-transparent border-dashed border-paper-400" />}>While rescheduling: where the booking is now</Row>
             <Row sign={<Building2 className="w-4 h-4" />}>Agency reservation</Row>
             <Row sign={<span className="font-display text-[13px] font-bold text-blue-700">AB</span>}>Blue initials: no deposit</Row>
             <Row sign={<span className="font-display font-bold"><span className="text-danger-600">₱</span> <span className="text-emerald-700">₱</span></span>}>Red to pay, green paid · hover for how much</Row>

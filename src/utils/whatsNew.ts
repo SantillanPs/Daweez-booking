@@ -23,6 +23,27 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-24j',
+    changes: [
+      {
+        where: 'Front desk → a booking',
+        what: [
+          'One “Bill” button opens the billing statement, ready to work on. Change the guest, the rooms, the dates or the price, add a charge and take a payment, all on the bill. Each change saves by itself (“✓ Saved” at the top).',
+          'Searching for a statement number opens the same bill. Right after you book, the bill opens ready for the money.',
+          '“Extend stay”, “Reschedule”, “Print bill” and “Receive a payment” are gone from the booking window: the bill does all of them.',
+        ],
+      },
+      {
+        where: 'Billing statement and Diners to pay',
+        what: ['A discount now shows how many pesos it takes off as you type it. The diner’s printed bill shows the discount too.'],
+      },
+      {
+        where: 'Settings',
+        what: ['The Front desk switches are gone. New bookings, old bookings and changes are always made on the bill.'],
+      },
+    ],
+  },
+  {
     id: '2026-10-24i',
     changes: [
       {

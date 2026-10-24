@@ -13,6 +13,8 @@ interface RunningTabSlipProps {
   place?: { label: string; value: string }
   lines: TabLine[]
   total: number
+  /** A discount given at the front desk, printed under the lines. */
+  discount?: { label: string; amount: number }
   /** What happens with this paper next — everybody pays at the front desk. */
   note: string
   onClose: () => void
@@ -24,7 +26,7 @@ interface RunningTabSlipProps {
 // mid-stay, not only at check-out. It is deliberately NOT headed like a receipt —
 // no amount has been received, so it must never be mistaken for one — and it
 // prints on the same 58 mm roll as everything else.
-export function RunningTabSlip({ number, who, place, lines, total, note, onClose }: RunningTabSlipProps) {
+export function RunningTabSlip({ number, who, place, lines, total, discount, note, onClose }: RunningTabSlipProps) {
   return (
     <SlipModal printLabel="Print for the guest" onClose={onClose}>
       <div className="text-center">
@@ -46,7 +48,14 @@ export function RunningTabSlip({ number, who, place, lines, total, note, onClose
         />
       ))}
       <Rule />
-      <Row label="TOTAL" value={money(total)} strong />
+      {/* A discount given at the desk is on the paper the diner is shown (task #11). */}
+      {discount ? (
+        <>
+          <Row label="Sub-total" value={money(total)} />
+          <Row label={'Discount' + (discount.label ? ' ' + discount.label : '')} value={'−' + money(discount.amount)} />
+          <Row label="TO PAY" value={money(total - discount.amount)} strong />
+        </>
+      ) : <Row label="TOTAL" value={money(total)} strong />}
       <Rule />
       <p className="text-center text-[10px] font-bold tracking-wide">NOT A RECEIPT</p>
       <p className="text-center text-[8.5px] mt-1">{note}</p>

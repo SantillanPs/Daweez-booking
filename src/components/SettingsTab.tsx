@@ -11,17 +11,15 @@ import { BreakfastMenuEditor } from './settings/BreakfastMenuEditor'
 import { OtherCharges } from './settings/OtherCharges'
 import { ChannelFeeds } from './settings/ChannelFeeds'
 import { EmailSetup } from './settings/EmailSetup'
-import { FrontDeskOptions } from './settings/FrontDeskOptions'
 import { feedRows, feedUrlClashMessage, findFeedUrlClashes } from '../utils/feedUrls'
 import { askConfirm } from '../utils/confirm'
 import { showToast } from '../utils/toast'
 
-type SettingsTabKey = 'rooms' | 'charges' | 'desk' | 'channels' | 'email'
+type SettingsTabKey = 'rooms' | 'charges' | 'channels' | 'email'
 
 const TABS: { key: SettingsTabKey; label: string }[] = [
   { key: 'rooms', label: 'Rooms & prices' },
   { key: 'charges', label: 'Other charges' },
-  { key: 'desk', label: 'Front desk' },
   { key: 'channels', label: 'Channels' },
   { key: 'email', label: 'Email' },
 ]
@@ -195,7 +193,6 @@ export function SettingsTab() {
             </div>
           )}
 
-          {tab === 'desk' && <FrontDeskOptions />}
 
           {tab === 'email' && <EmailSetup />}
         </div>

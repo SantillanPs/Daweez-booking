@@ -14,7 +14,6 @@ import { NotFound } from './components/NotFound'
 import { hydrateRateConfig } from './utils/rateConfig'
 import { hydratePaymentAccounts } from './utils/paymentAccounts'
 import { hydrateChannelSync } from './utils/channelSync'
-import { hydrateFrontDesk } from './utils/frontDesk'
 
 /**
  * The shared rates and where-guests-pay are read once per page load, before any
@@ -29,7 +28,7 @@ import { hydrateFrontDesk } from './utils/frontDesk'
 let settingsReady: Promise<void> | null = null
 function loadSettings(): Promise<void> {
   if (!settingsReady) {
-    settingsReady = Promise.all([hydrateRateConfig(), hydratePaymentAccounts(), hydrateChannelSync(), hydrateFrontDesk()]).then(() => undefined)
+    settingsReady = Promise.all([hydrateRateConfig(), hydratePaymentAccounts(), hydrateChannelSync()]).then(() => undefined)
   }
   return settingsReady
 }

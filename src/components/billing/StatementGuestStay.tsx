@@ -1,10 +1,7 @@
-import { useState } from 'react'
 import { Booking, Room, Venue, RateConfig } from '../../types/booking'
 import { shortStayLine, stayHoursOf } from '../../utils/shortStay'
 import { fmtTime } from './stayLines'
 import { SectionName } from './StatementShell'
-import { BillMove } from './BillDesk'
-import { DayStrip } from './BillDates'
 
 /** `Mon, Oct 12` — from the recorded moment when there is one, else from the booked date's own parts. */
 const dayOf = (dateStr?: string, actual?: string) => {
@@ -39,10 +36,8 @@ const count = (n: number, word: string) => n + ' ' + word + (n === 1 ? '' : 's')
  * SHORT STAY is hours, not nights, so it names no check-out the guest never had; the count of
  * guests sits with the stay.
  */
-export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel = '', billTo, move }: {
+export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel = '', billTo }: {
   booking: Booking
-  /** Rescheduling on the bill: the two dates are tapped to open the days under them. */
-  move?: BillMove
   /**
    * The agency bill (the owner's pick, 2026-10-15): the first block is **Bill to** — the agency,
    * the guest as `c/o`, the agency's own address and contact. Its Stay leads with the nights;
@@ -84,19 +79,8 @@ export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel =
     return c.name + (about ? ' (' + about + ')' : '')
   }).join(', ')
 
-  // Which date's days are open under the Stay block.
-  const [picking, setPicking] = useState<'in' | 'out' | null>(null)
   const dayValue = 'text-[12.5px] font-bold text-ink-900 leading-tight'
-  // On a bill the stay can move on, a date is written on a dashed gold line like the bill's
-  // other blanks, and prints as plain text.
-  const day = (end: 'in' | 'out', text: string) => move ? (
-    <p className={dayValue}>
-      <button type="button" onClick={() => setPicking(p => (p === end ? null : end))} aria-expanded={picking === end}
-        className={'-ml-0.5 px-0.5 rounded-sm border-b-[1.5px] border-dashed border-gold-400 print:border-0 hover:bg-gold-100 transition-colors cursor-pointer ' + (picking === end ? 'bg-gold-100' : '')}>
-        {text}
-      </button>
-    </p>
-  ) : <p className={dayValue}>{text}</p>
+  const day = (_end: 'in' | 'out', text: string) => <p className={dayValue}>{text}</p>
 
   const label = 'text-[10px] text-muted'
   const big = 'font-display text-[14.5px] font-bold text-ink-900 leading-tight'
@@ -171,7 +155,6 @@ export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel =
             </>
           )}
         </div>
-        {move && picking && <DayStrip key={picking} move={move} end={picking} onClose={() => setPicking(null)} />}
       </div>
     </div>
   )
