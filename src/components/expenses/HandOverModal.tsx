@@ -38,7 +38,7 @@ export function HandOverModal({ inHotel, kind = 'out', onHandOver, onClose }: Ha
         className="bg-card w-full max-w-md rounded-xl p-5 flex flex-col gap-4 [animation:bp-rise_.28s_cubic-bezier(.16,1,.3,1)]"
       >
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="font-display text-[15px] font-bold text-main">{adding ? 'Add cash on hand' : 'Hand over money'}</h3>
+          <h3 className="font-display text-[15px] font-bold text-main">{adding ? 'Add cash on hand' : 'Cash remitted'}</h3>
           <span className="text-[12px] text-muted">In the hotel now <span className="font-mono font-bold text-main">{peso(inHotel)}</span></span>
         </div>
 
@@ -54,7 +54,7 @@ export function HandOverModal({ inHotel, kind = 'out', onHandOver, onClose }: Ha
         </div>
 
         <label className="flex flex-col gap-2">
-          <span className={label}>{adding ? 'Added by' : 'Handed over by'}</span>
+          <span className={label}>{adding ? 'Added by' : 'Remitted by'}</span>
           <input
             value={handedBy}
             onChange={e => setHandedBy(e.target.value)}
@@ -86,7 +86,7 @@ export function HandOverModal({ inHotel, kind = 'out', onHandOver, onClose }: Ha
             disabled={amount <= 0}
             className="min-h-[48px] flex-1 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 text-[14px] font-bold transition-colors active:scale-[0.98] cursor-pointer disabled:bg-gold-200 disabled:cursor-not-allowed"
           >
-            {(adding ? 'Add' : 'Hand over') + (amount > 0 ? ' ' + peso(amount) : '')}
+            {(adding ? 'Add' : 'Remit') + (amount > 0 ? ' ' + peso(amount) : '')}
           </button>
         </div>
       </form>

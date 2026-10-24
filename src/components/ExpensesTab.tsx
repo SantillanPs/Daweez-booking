@@ -107,13 +107,13 @@ export function ExpensesTab() {
     setHandingOver(null)
     insertHandover(row).catch(() => {
       setHandovers(list => list.filter(h => h.id !== row.id))
-      showToast(kind === 'in' ? 'Could not save the cash added. Please try again.' : 'Could not save the money handed over. Please try again.', 'error')
+      showToast(kind === 'in' ? 'Could not save the cash added. Please try again.' : 'Could not save the cash remitted. Please try again.', 'error')
     })
   }
 
   const takeBack = async (handover: Handover) => {
     const ok = await askConfirm({
-      title: 'Take back this ₱' + handover.amount.toLocaleString() + (handover.kind === 'in' ? ' cash added?' : ' hand-over?'),
+      title: 'Take back this ₱' + handover.amount.toLocaleString() + (handover.kind === 'in' ? ' cash added?' : ' cash remitted?'),
       confirmLabel: 'Take back',
       tone: 'danger',
     })
@@ -205,7 +205,7 @@ export function ExpensesTab() {
           <button type="button" onClick={() => setShowHistory(true)} className={quiet}>All expenses</button>
           <button type="button" onClick={() => setShowCategories(true)} className={quiet}>Categories</button>
           <button type="button" onClick={() => setHandingOver('in')} className={quiet}>Add cash on hand</button>
-          <button type="button" onClick={() => setHandingOver('out')} className={quiet}>Hand over money</button>
+          <button type="button" onClick={() => setHandingOver('out')} className={quiet}>Cash remitted</button>
         </div>
       </div>
 
