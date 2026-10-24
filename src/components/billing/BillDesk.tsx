@@ -120,6 +120,11 @@ export function WritePayment({ open, onOpen, onPay, again, paidOn, fills }: {
               </button>
             )
           })}
+          {/* Custom: any amount, with its own what-for (#10, 2026-10-24: "always have deposit, full pay, and custom with label"). */}
+          <button type="button" onClick={() => { setPurpose(''); setAmount(0); setMiss(''); forBox.current?.focus() }}
+            className="flex-1 min-h-7 px-2 rounded-lg border-[1.5px] border-gold-400 bg-paper-50 text-ink-900 text-[10.5px] font-bold hover:bg-white active:scale-95 transition-[border-color,background-color,color,transform] cursor-pointer">
+            Custom
+          </button>
         </div>
       )}
       <div className="grid grid-cols-[minmax(0,1fr)_84px] gap-2 items-end">

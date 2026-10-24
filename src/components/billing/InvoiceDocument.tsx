@@ -185,7 +185,12 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
               {/* The blank line the payment is written on (the mock's "Blank line"). */}
               {desk && statement.amountDue > 0 && (
                 <div data-screen className="print:hidden">
-                  <WritePayment key={statement.payments.length} open={writing} onOpen={setWriting} onPay={desk.onPay} again={statement.payments.length > 0} />
+                  {/* Deposit only until money is in; Full pay is everything still owed. */}
+                  <WritePayment key={statement.payments.length} open={writing} onOpen={setWriting} onPay={desk.onPay} again={statement.payments.length > 0}
+                    fills={[
+                      ...(statement.payments.length ? [] : [{ label: 'Deposit', amount: Math.round(statement.subTotal / 2) }]),
+                      { label: 'Full pay', amount: statement.amountDue + statement.balanceAfter },
+                    ]} />
                 </div>
               )}
             </div>
