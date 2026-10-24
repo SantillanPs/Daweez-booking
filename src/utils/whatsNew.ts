@@ -35,6 +35,7 @@ export const UPDATES: Update[] = [
         where: 'Front desk → History',
         what: [
           'Every payment has a Receipt button. It opens the receipt to print or email again.',
+          'A diner\'s receipt now looks the same as a room\'s: the amount paid first, then the dishes.',
         ],
       },
     ],
