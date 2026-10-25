@@ -12,19 +12,34 @@ const money = (n: number) => '₱' + n.toLocaleString()
 const shortDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
 const short = (m: string) => (m === 'Bank transfer' ? 'Bank' : m)
 
-const CHIP = 'min-w-0 flex flex-col items-start gap-px px-1.5 py-1 rounded-lg bg-paper-50 shadow-[inset_0_-1.5px_0_#D0AB60] text-left cursor-pointer hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,transform] focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400'
-const NAME = 'text-[9px] font-semibold text-muted'
-const VAL = 'max-w-full truncate text-[11px] font-bold text-ink-900 bw-rise'
+// A part of the line that opens its fix: the bill's own dashed-gold tap (the room lines' VAL).
+const PART = 'px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dashed border-transparent hover:border-gold-400 hover:bg-gold-100 aria-expanded:border-gold-400 aria-expanded:border-solid aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,border-color,transform] cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400'
 const SLOT = 'min-w-0 flex-1 bg-transparent border-0 border-b-[1.5px] border-ink-900 rounded-none px-0.5 py-px text-[12.5px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-gold-400'
 const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-lg bg-ink-900 text-white active:scale-90 transition-transform cursor-pointer'
 const LI = 'w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-left text-[11.5px] font-semibold text-ink-900 cursor-pointer hover:bg-gold-100 focus-visible:bg-gold-100 focus-visible:outline-none active:scale-[0.98] transition-[background-color,transform] bw-rise group'
 
 /**
+ * **A payment's line on the bill**, the same for every bill that lists payments: what it was for, how
+ * they paid, the amount, and under it the day and receipt no. One line like the charges above it
+ * (Sebastian, 2026-10-25, the "Payments on the bill" mock: three named boxes a payment were
+ * "horrendous" — labels on every one, words cut off, a screen tall).
+ */
+export function PayRow({ purpose, method, amount, under }: { purpose: React.ReactNode; method: React.ReactNode; amount: React.ReactNode; under?: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-2 items-baseline py-[3px] border-b border-ink-200">
+      <span className="min-w-0 text-[11px] font-semibold text-ink-900 leading-snug">{purpose}</span>
+      <span className="text-[10px] text-muted">{method}</span>
+      <span className="justify-self-end font-mono text-[11.5px] font-bold text-ink-900">{amount}</span>
+      {under && <span className="col-span-3 text-[9.5px] text-muted leading-snug">{under}</span>}
+    </div>
+  )
+}
+
+/**
  * **A payment on the bill, fixed where it is wrong** (Sebastian, 2026-10-24, the "Fixing a payment"
- * mock: "use B", then "the label and payment method is a bit confusing"). Its three parts sit side by
- * side, each named — For, Paid by, Amount — and each is its own tap: a small box floats over the bill
- * under it and never pushes it. Taking a payment back stays on the booking panel ("i don't like the
- * take back the whole payment"). The paper keeps the plain line.
+ * mock): each part of its line is its own tap, and a small box floats over the bill under it and
+ * never pushes it. Taking a payment back stays on the booking panel ("i don't like the take back the
+ * whole payment"). The paper keeps the plain line.
  */
 export function FixPayment({ p, sheet, onFix, onReceipt }: {
   p: StatementPayment
@@ -43,27 +58,22 @@ export function FixPayment({ p, sheet, onFix, onReceipt }: {
     const changed = (Object.keys(patch) as (keyof PaymentPatch)[]).some(k => (patch[k] ?? '') !== ((k === 'amount' ? p.amount : p[k]) ?? ''))
     if (changed) onFix(patch)
   }
-  const chip = (part: Part, name: string, value: string, right?: boolean) => (
-    <button ref={el => { chips.current[part] = el }} type="button" aria-expanded={open === part} aria-label={'Change ' + name}
-      onClick={() => setOpen(o => (o === part ? null : part))} className={CHIP + (right ? ' items-end font-mono' : '')}>
-      <span className={NAME}>{name}</span>
-      <span key={value} className={VAL + (right ? ' font-mono' : '') + (value ? '' : ' !text-muted font-semibold')}>{value || 'Add'}</span>
+  const part = (which: Part, name: string, value: string) => (
+    <button ref={el => { chips.current[which] = el }} type="button" aria-expanded={open === which} aria-label={'Change ' + name}
+      onClick={() => setOpen(o => (o === which ? null : which))} className={PART}>
+      <span key={value} className={'inline-block bw-rise' + (value ? '' : ' text-muted font-semibold')}>{value || 'What for?'}</span>
     </button>
   )
   return (
-    <div data-screen className="print:hidden flex flex-col gap-0.5 py-0.5">
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-1">
-        {chip('purpose', 'For', p.purpose || '')}
-        {chip('method', 'Paid by', short(method || paymentMethodLabel(p.method)) + (p.reference ? ' · ' + p.reference : ''))}
-        {chip('amount', 'Amount', '−' + money(p.amount), true)}
-      </div>
-      <span className="text-[10px] text-muted">
-        {shortDay(p.paidAt)}{p.receipt && <> · {p.receipt}</>}
-        {onReceipt && p.receipt && (
-          <button type="button" onClick={() => onReceipt(p.receipt)}
-            className="ml-1.5 font-semibold text-gold-800 underline underline-offset-2 cursor-pointer">Receipt</button>
-        )}
-      </span>
+    <div data-screen className="print:hidden">
+      <PayRow
+        purpose={part('purpose', 'what it was for', p.purpose || '')}
+        method={part('method', 'how they paid', short(method || paymentMethodLabel(p.method)) + (p.reference ? ' · ' + p.reference : ''))}
+        amount={part('amount', 'the amount', '−' + money(p.amount))}
+        under={<>{shortDay(p.paidAt)}{p.receipt && <> · {onReceipt
+          ? <button type="button" onClick={() => onReceipt(p.receipt)} aria-label={'Open receipt ' + p.receipt}
+            className={PART + ' font-semibold text-gold-800'}>{p.receipt}</button>
+          : p.receipt}</>}</>} />
       {open && sheet && (
         <Floating key={open} at={at} sheet={sheet} right={open === 'amount'} width={open === 'amount' ? 170 : 210}
           label={open === 'purpose' ? 'What it was for' : open === 'method' ? 'How they paid' : 'Amount received'} onClose={close}>

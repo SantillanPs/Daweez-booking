@@ -24,7 +24,7 @@ import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability
 import { withMoneyOf, holdsMoney } from '../../utils/roomTakenOff'
 import { AddCharge, PayInput, WritePayment } from '../billing/BillDesk'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
-import { FixPayment } from '../billing/FixPayment'
+import { FixPayment, PayRow } from '../billing/FixPayment'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { printA5 } from '../../utils/printA5'
 import { want } from '../billing/want'
@@ -49,6 +49,7 @@ type Extras = Record<ExtraKey, number>
 const NO_EXTRAS: Extras = { extraFoamCount: 0, extraPillowCount: 0, extraBlanketCount: 0, extraTowelCount: 0 }
 
 const money = (n: number) => '₱' + Math.round(n).toLocaleString()
+const dayOf = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
 const sortUnits = (l: [string, Sel][]) => [...l].sort((a, b) => (a[1].type === 'room' ? 0 : 1) - (b[1].type === 'room' ? 0 : 1))
 const nextDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return dateToString(new Date(y, m - 1, d + 1)) }
 // Long enough for the cache's change to reach the booking panel's own handlers.
@@ -220,6 +221,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const received = editing ? (statement?.payments || []).reduce((a, x) => a + x.amount, 0) : paid?.amount ?? 0
   const due = Math.max(0, total - received)
   const paidUp = received > 0 && due === 0
+  const [paysOpen, setPaysOpen] = useState(false)
 
   const snapshot = (label: string) => setRemoved({ label, breakfast, extras, charges, disc })
   const unitOf = (key: string) => list.find(([id]) => key.startsWith('draft-' + id + '-'))?.[0]
@@ -791,26 +793,40 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                     <button type="button" onClick={() => setDisc({ pct: true, v: 0 })} className="self-start text-[10.5px] font-bold text-gold-800 hover:underline cursor-pointer">+ Discount</button>
                   )}
                   <p className={label}>Less: payments received</p>
-                  {/* On the one bill each payment can be fixed where it stands, and its receipt printed. */}
-                  {editing && desk && statement?.payments.map(x => (
-                    <FixPayment key={x.key} p={x} sheet={sheetEl} onFix={patch => behind(() => desk.onFix(x.key, patch))} onReceipt={desk.onReceipt} />
-                  ))}
-                  {editing && !desk && statement?.payments.map(x => (
-                    <div key={x.key} className="flex justify-between items-baseline gap-2.5">
-                      <span className={label + ' min-w-0'}>
-                        {new Date(x.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {paymentMethodLabel(x.method)}{x.purpose && <> · <span className="font-bold text-ink-900">{x.purpose}</span></>}
-                      </span>
-                      <span className={figure + ' shrink-0'}>−{money(x.amount)}</span>
+                  {/* On the one bill each payment can be fixed where it stands, and its receipt printed.
+                      Paid in full, they fold to one line (Sebastian, 2026-10-25: "I want B"). */}
+                  {editing && desk && statement && statement.payments.length > 0 && (
+                    <div className="border-t border-ink-200">
+                      {paidUp && statement.payments.length > 1 && (
+                        <button type="button" onClick={() => setPaysOpen(o => !o)} aria-expanded={paysOpen}
+                          className="group w-full grid grid-cols-[minmax(0,1fr)_auto_12px] gap-x-1.5 items-center py-[3px] border-b border-ink-200 text-left hover:bg-paper-50 transition-colors cursor-pointer">
+                          <span className="text-[11px] font-semibold text-ink-900">{statement.payments.length} payments
+                            <span className="ml-1 text-[10px] font-normal text-muted">{dayOf(statement.payments[0].paidAt)}{dayOf(statement.payments[0].paidAt) !== dayOf(statement.payments[statement.payments.length - 1].paidAt) && <> – {dayOf(statement.payments[statement.payments.length - 1].paidAt)}</>}</span>
+                          </span>
+                          <span className="font-mono text-[11.5px] font-bold text-ink-900">−{money(received)}</span>
+                          <ChevronDown aria-hidden="true" className="w-3 h-3 text-gold-800 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
+                        </button>
+                      )}
+                      {(!paidUp || statement.payments.length < 2 || paysOpen) && statement.payments.map((x, i) => (
+                        <div key={x.key} className="bw-rise" style={{ '--i': i } as React.CSSProperties}>
+                          <FixPayment p={x} sheet={sheetEl} onFix={patch => behind(() => desk.onFix(x.key, patch))} onReceipt={desk.onReceipt} />
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+                  {editing && !desk && statement && statement.payments.length > 0 && (
+                    <div className="border-t border-ink-200">
+                      {statement.payments.map(x => (
+                        <PayRow key={x.key} purpose={x.purpose || '—'} method={paymentMethodLabel(x.method)} amount={'−' + money(x.amount)} under={dayOf(x.paidAt)} />
+                      ))}
+                    </div>
+                  )}
                   {paid && (
-                    <div className="flex justify-between items-baseline gap-2.5 bill-ink">
-                      <span className={label + ' min-w-0'}>
-                        Today · {paymentMethodLabel(paid.method)} · <span className="font-bold text-ink-900">{paid.purpose}</span>
+                    <div className="border-t border-ink-200 bill-ink">
+                      <PayRow purpose={<>{paid.purpose}
                         <button type="button" onClick={() => setPaid(null)} aria-label={'Take the ' + paid.purpose + ' payment off'}
-                          className="ml-0.5 p-0.5 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button>
-                      </span>
-                      <span className={figure + ' shrink-0'}>−{money(paid.amount)}</span>
+                          className="ml-0.5 p-0.5 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button></>}
+                        method={paymentMethodLabel(paid.method)} amount={'−' + money(paid.amount)} under="Today" />
                     </div>
                   )}
                   {editing && desk && due > 0 && (

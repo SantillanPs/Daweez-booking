@@ -13,6 +13,7 @@ import { StatementShell, BrandHeader, SectionName } from '../billing/StatementSh
 import { StatementChargesTable } from '../billing/StatementChargesTable'
 import { AddCharge, WritePayment } from '../billing/BillDesk'
 import { want } from '../billing/want'
+import { PayRow } from '../billing/FixPayment'
 import { randomUUID } from '../../utils/helpers'
 import { NationalityInput } from '../NationalityInput'
 import { CountPeso } from '../CountPeso'
@@ -376,16 +377,18 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
             <div className="relative flex flex-col gap-0.5">
               <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(subTotal)}</span></div>
               <p className={label}>Less: payments received</p>
-              {paid.map(p => (
-                <div key={p.id} className="flex justify-between items-baseline gap-2.5 bill-ink">
-                  <span className={label + ' min-w-0'}>
-                    {shortDay(p.date)} · {paymentMethodLabel(p.method)} · <span className="font-bold text-ink-900">{p.purpose}</span>
-                    <button type="button" onClick={() => setPaid(ps => ps.filter(x => x.id !== p.id))} aria-label={'Take the ' + p.purpose + ' payment off'}
-                      className="ml-0.5 p-0.5 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button>
-                  </span>
-                  <span className={figure + ' shrink-0'}>−{money(p.amount)}</span>
+              {paid.length > 0 && (
+                <div className="border-t border-ink-200">
+                  {paid.map(p => (
+                    <div key={p.id} className="bill-ink">
+                      <PayRow purpose={<>{p.purpose}
+                        <button type="button" onClick={() => setPaid(ps => ps.filter(x => x.id !== p.id))} aria-label={'Take the ' + p.purpose + ' payment off'}
+                          className="ml-0.5 p-0.5 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button></>}
+                        method={paymentMethodLabel(p.method)} amount={'−' + money(p.amount)} under={shortDay(p.date)} />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
               {due > 0 && first && (
                 <WritePayment key={paid.length} open={writing} onOpen={setWriting} again={paid.length > 0} paidOn={first.checkIn}
                   onPay={p => setPaid(ps => [...ps, { id: 'rcpt-' + Date.now(), ...p }])} />
