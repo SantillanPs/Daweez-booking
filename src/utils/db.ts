@@ -232,6 +232,7 @@ export async function getBookings(): Promise<Booking[]> {
           // blank), which is why the row and the screen disagreed. The realtime mapper
           // always carried this field; this read path must carry it too.
           stay_hours: b.stay_hours != null ? Number(b.stay_hours) : undefined,
+          stay_half: b.stay_half != null ? (Number(b.stay_half) as 0 | 1) : undefined,
           // Saved by its own small writer and, until 2026-10-04, never read back — so a
           // Custom deposit figure was forgotten the moment the page was reloaded.
           agreed_deposit: b.agreed_deposit != null ? Number(b.agreed_deposit) : undefined,
@@ -302,6 +303,7 @@ function toBookingRecord(booking: Booking): Record<string, unknown> {
     // Short stay (hours the room was taken for). Written by its own small writer
     // after the booking lands, like the agreed deposit above.
     stay_hours: booking.stay_hours ?? null,
+    stay_half: booking.stay_half ?? null,
   }
 }
 

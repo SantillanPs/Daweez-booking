@@ -248,6 +248,8 @@ export function useBookings() {
     referenceNumber?: string; registeredOn?: string; paymentRecords?: PaymentRecord[]; agreedDeposit?: number
     /** Short stay (printed rate board): the hours the room was taken for. */
     stayHours?: number
+    /** The half of the day a short stay was booked for: 0 the morning, 1 the afternoon. */
+    stayHalf?: 0 | 1
     /** Ties the rooms of one booking together — the same value on each of them. */
     groupId?: string
     /** A paper booking whose stay is already over arrives checked in and out. */
@@ -261,14 +263,14 @@ export function useBookings() {
         paymentMethod, paymentReference, paymentPlan, venueExcessHours = 0,
         paymentStatus, downpaymentPaid, balanceDue, securityDeposit,
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, notes, preparedBy, breakfastDays,
-        referenceNumber, registeredOn, paymentRecords, agreedDeposit, stayHours, groupId, actualCheckIn, actualCheckOut } = params
+        referenceNumber, registeredOn, paymentRecords, agreedDeposit, stayHours, stayHalf, groupId, actualCheckIn, actualCheckOut } = params
 
-      if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings, id)) {
+      if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings, id, { stay_hours: stayHours, stay_half: stayHalf })) {
         throw new Error('The room is already booked or blocked for these dates.')
       }
       // `id` is the booking being corrected: without it a venue booking collided with
       // itself and could never be saved again.
-      if (venueId && !syncEngine.isVenueRangeAvailable(venueId, checkIn, checkOut, bookings, id)) {
+      if (venueId && !syncEngine.isVenueRangeAvailable(venueId, checkIn, checkOut, bookings, id, { stay_hours: stayHours, stay_half: stayHalf })) {
         throw new Error('This venue is already reserved for the selected date(s).')
       }
 
@@ -344,6 +346,7 @@ export function useBookings() {
         prepared_by: preparedBy,
         agreed_deposit: agreedDeposit,
         stay_hours: stayHours,
+        stay_half: stayHours ? stayHalf : undefined,
         group_id: groupId,
         actual_check_in: actualCheckIn,
         actual_check_out: actualCheckOut,
@@ -375,6 +378,7 @@ export function useBookings() {
           actual_check_out: saved.actual_check_out,
           invoice_type: saved.invoice_type,
           stay_hours: newBooking.stay_hours ?? saved.stay_hours,
+          stay_half: newBooking.stay_half ?? saved.stay_half,
         } : newBooking)
         return { ...updated, group_id: group }
       }
@@ -447,10 +451,10 @@ export function useBookings() {
         before.check_in !== updatedBooking.check_in ||
         before.check_out !== updatedBooking.check_out
       )
-      if (moved && updatedBooking.room_id && !syncEngine.isRoomAvailable(updatedBooking.room_id, updatedBooking.check_in, updatedBooking.check_out, bookings, updatedBooking.id)) {
+      if (moved && updatedBooking.room_id && !syncEngine.isRoomAvailable(updatedBooking.room_id, updatedBooking.check_in, updatedBooking.check_out, bookings, updatedBooking.id, updatedBooking)) {
         throw new Error('Overlap collision — room already reserved.')
       }
-      if (moved && updatedBooking.venue_id && !syncEngine.isVenueRangeAvailable(updatedBooking.venue_id, updatedBooking.check_in, updatedBooking.check_out, bookings, updatedBooking.id)) {
+      if (moved && updatedBooking.venue_id && !syncEngine.isVenueRangeAvailable(updatedBooking.venue_id, updatedBooking.check_in, updatedBooking.check_out, bookings, updatedBooking.id, updatedBooking)) {
         throw new Error('Overlap collision — venue already reserved.')
       }
       await syncEngine.updateBooking(updatedBooking)

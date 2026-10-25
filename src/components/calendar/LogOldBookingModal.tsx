@@ -23,7 +23,7 @@ export type CreateManual = (p: {
   referenceNumber?: string; registeredOn?: string
   paymentMethod?: string; downpaymentPaid?: number; balanceDue?: number
   paymentStatus?: 'unpaid' | 'downpayment' | 'paid'; paymentRecords?: Booking['payment_records']
-  preparedBy?: string; breakfastIncluded?: boolean; stayHours?: number; groupId?: string
+  preparedBy?: string; breakfastIncluded?: boolean; stayHours?: number; stayHalf?: 0 | 1; groupId?: string
   eventAddons?: EventAddons; actualCheckIn?: string; actualCheckOut?: string
 }) => Promise<Booking>
 
@@ -42,6 +42,8 @@ interface LogOldBookingModalProps {
    *  is a short stay and only its hours are asked (Sebastian, 2026-10-17: "even though I
    *  clicked short stay on the calendar, it didn't choose it immediately in the form"). */
   shortStay?: boolean
+  /** The half of the day picked for it: 0 the morning, 1 the afternoon. */
+  shortHalf?: 0 | 1
 }
 
 const HOURS = [3, 6, 12, 22] as const

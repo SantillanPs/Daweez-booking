@@ -38,7 +38,7 @@ interface Paid { id: string; amount: number; method: string; reference: string; 
  * until Log booking**, so a paper left halfway leaves nothing behind. The paper form stays as the
  * other choice in Settings → Front desk.
  */
-export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClose, initialSelections, shortStay }: React.ComponentProps<typeof LogOldBookingModal>) {
+export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClose, initialSelections, shortStay, shortHalf }: React.ComponentProps<typeof LogOldBookingModal>) {
   const { updateRoomBreakfastPrice } = useDashboardData()
   // The room whose breakfast is being priced in its blank.
   const [pricing, setPricing] = useState<string | null>(null)
@@ -180,6 +180,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
           breakfastIncluded: breakfast.includes(id),
           eventAddons: ea && Object.keys(ea).length > 0 ? ea : undefined,
           stayHours: isShort ? hours : undefined,
+          stayHalf: isShort ? shortHalf : undefined,
           paymentMethod: paid.length > 0 ? paid[paid.length - 1].method : undefined,
           downpaymentPaid: down,
           balanceDue: bal,

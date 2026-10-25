@@ -23,6 +23,20 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-25b',
+    changes: [
+      {
+        where: 'Front desk → calendar',
+        what: [
+          'The other half of a short stay’s day can now be booked. Tap the free morning or afternoon and pick the hours, or start a night from the afternoon.',
+          'When a whole day is free, tap Morning or Afternoon on the bar to choose which half the short stay takes.',
+          'A 12-hour stay takes two halves: all day from a morning, or into the night from an afternoon.',
+          'A guest who checks in late still gets all their hours. If that runs into the next booking, the time is not saved and you are told, so you can sell fewer hours or move the other booking.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-25',
     changes: [
       {

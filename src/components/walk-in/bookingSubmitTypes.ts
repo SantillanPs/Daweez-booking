@@ -52,6 +52,8 @@ export interface ManualBookingInput {
   securityDeposit?: number
   /** Short stay (printed rate board): the hours the room was taken for — 3/6/12/22. */
   stayHours?: number
+  /** The half of the day a short stay was booked for: 0 the morning, 1 the afternoon. */
+  stayHalf?: 0 | 1
   /** Ties the rooms of one booking together — the same value on each of them. */
   groupId?: string
 }
@@ -109,6 +111,8 @@ export interface BookingSubmitParams {
    * booking form's Short stay switch; undefined means an ordinary overnight stay.
    */
   stay_hours?: number
+  /** The half of the day the short stay was picked on (0 the morning, 1 the afternoon). */
+  stay_half?: 0 | 1
   /** Derived from the money on the booking — never typed in by staff. */
   derivedPaymentStatus: 'unpaid' | 'downpayment' | 'paid'
   formDownpaymentPaid: number

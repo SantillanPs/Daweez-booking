@@ -30,12 +30,12 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
   for (const [id, sel] of Object.entries(p.unitSelections)) {
     const isRoom = sel.type === 'room'
     if (isRoom) {
-      if (!syncEngine.isRoomAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings)) {
+      if (!syncEngine.isRoomAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings, undefined, p)) {
         const roomNum = p.rooms.find(r => r.id === id)?.room_number || id
         return { ok: false, error: `Room ${roomNum} is already booked for the selected dates.` }
       }
     } else {
-      if (!syncEngine.isVenueRangeAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings)) {
+      if (!syncEngine.isVenueRangeAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings, undefined, p)) {
         const venueName = p.venues.find(v => v.id === id)?.name || id
         return { ok: false, error: `Venue ${venueName} is already reserved for the selected dates.` }
       }
@@ -164,7 +164,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         paymentReference: p.formPaymentReference || undefined,
         paymentPlan: p.bookingStatus === 'blocked' ? undefined : p.formPaymentPlan,
         ...editedMoney(p, existingBooking),
-        stayHours: p.stay_hours || undefined
+        stayHours: p.stay_hours || undefined,
+        stayHalf: p.stay_hours ? p.stay_half : undefined
       })
       createdBookings.push(b)
     }
@@ -228,7 +229,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         venueExcessHours: p.formVenueExcessHours,
         ...editedMoney(p, existingBooking),
         // The Gazebo and the Garden are sold by the hour too (2026-10-20).
-        stayHours: p.stay_hours || undefined
+        stayHours: p.stay_hours || undefined,
+        stayHalf: p.stay_hours ? p.stay_half : undefined
       })
       createdBookings.push(b)
     }

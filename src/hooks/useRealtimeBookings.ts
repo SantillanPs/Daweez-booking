@@ -73,6 +73,7 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     // Short stay (the hours the room was taken for). Missing here would wipe it on
     // the next save, exactly like the fields the comment above warns about.
     stay_hours: b.stay_hours != null ? Number(b.stay_hours) : undefined,
+    stay_half: b.stay_half != null ? (Number(b.stay_half) as 0 | 1) : undefined,
     agreed_deposit: b.agreed_deposit != null ? Number(b.agreed_deposit) : undefined,
   }
 }

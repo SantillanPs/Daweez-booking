@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { Booking, PaymentRecord } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
-import { dateToString } from '../utils/helpers'
+import { dateToString, normalizeVenueId } from '../utils/helpers'
 import { breakfastOn, wantsBreakfastToday, saveBreakfastChoices, breakfastAskOpen, BREAKFAST_ASK_UNTIL } from '../utils/breakfastChoice'
 import { useQueryClient } from '@tanstack/react-query'
 import { extendStay } from '../utils/bookingBalance'
@@ -28,6 +28,7 @@ import { shortStayOut, shortStayTimeUp } from '../utils/shortStay'
 import { recomputeBalance } from '../utils/bookingBalance'
 import { readBookingFoodTotal } from '../utils/orderSlips'
 import { ShortStayAlerts } from './calendar/ShortStayAlerts'
+import { clashIn, dayHalf } from '../utils/halfDays'
 
 // The bills are only fetched when needed, so the calendar itself loads faster. Both are
 // fetched a moment after the calendar opens, so the first "New booking" still opens at once.
@@ -36,7 +37,9 @@ const LogOldBill = React.lazy(() => loadLogOldBill().then(m => ({ default: m.Log
 const loadNewBill = () => import('./calendar/NewBookingBill')
 const NewBookingBill = React.lazy(() => loadNewBill().then(m => ({ default: m.NewBookingBill })))
 
-type Selection = { roomId?: string; venueId?: string; checkIn: Date }
+/** One picked day. `half` is the half a short stay would take (0 the morning, 1 the
+ *  afternoon) and `open` which of that morning, that afternoon and the next morning are free. */
+type Selection = { roomId?: string; venueId?: string; checkIn: Date; half: 0 | 1; open: [boolean, boolean, boolean] }
 type GroupSel = Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }>
 type UnitSel = { checkIn: string; checkOut: string; type: 'room' | 'venue' }
 
@@ -63,6 +66,7 @@ export function CalendarTab() {
   const [breakfastForId, setBreakfastForId] = useState<string | null>(null)
   const [logOldSelections, setLogOldSelections] = useState<Record<string, UnitSel>>({})
   const [logOldShort, setLogOldShort] = useState(false)
+  const [logOldHalf, setLogOldHalf] = useState<0 | 1>(1)
   /** The dates the block pane is holding — one day or a range, plus which units. */
   const [blockTarget, setBlockTarget] = useState<{
     units: { id: string; type: 'room' | 'venue' }[]
@@ -75,7 +79,7 @@ export function CalendarTab() {
   // ── Full wizard (editing + advanced) ──
   // The rooms being corrected together, fixed when Edit is pressed: a list rebuilt on
   // every render would re-seed the form and wipe what the desk has typed.
-  const [showManualForm, setShowManualForm] = useState(false); const [formSelections, setFormSelections] = useState<Record<string, UnitSel>>({}); const [formStayHours, setFormStayHours] = useState<number | null>(null)
+  const [showManualForm, setShowManualForm] = useState(false); const [formSelections, setFormSelections] = useState<Record<string, UnitSel>>({}); const [formStayHours, setFormStayHours] = useState<number | null>(null); const [formStayHalf, setFormStayHalf] = useState<0 | 1>(1)
   // **The one bill** open over a booking's panel (Sebastian, 2026-10-24: "merge everything"): every
   // way into a booking's bill opens it, and its money goes through the panel beneath (`deskRef`).
   const [billOf, setBillOf] = useState<Booking | null>(null)
@@ -215,7 +219,7 @@ export function CalendarTab() {
     catch { queryClient.setQueryData(['bookings'], before); showToast('Could not mark the breakfast served. Please try again.', 'error') }
   }, [queryClient, todayKey])
 
-  const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date) => {
+  const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date, half?: 0 | 1) => {
     const curTimeline = timelineSelectionRef.current
     const curGroup = groupSelectionRef.current
 
@@ -231,7 +235,9 @@ export function CalendarTab() {
 
     const selIdKey = type === 'room' ? 'roomId' : 'venueId'
     if (curTimeline && curTimeline[selIdKey] === id && date.toDateString() === curTimeline.checkIn.toDateString()) {
-      setTimelineSelection(null)
+      // The other half of the picked day moves the pick there; the same one lets go.
+      if (half !== undefined && half !== curTimeline.half) setTimelineSelection({ ...curTimeline, half })
+      else setTimelineSelection(null)
       return
     }
 
@@ -240,17 +246,21 @@ export function CalendarTab() {
       : syncEngine.isVenueRangeAvailable(id, dateToString(from), dateToString(to), bookingsRef.current)
     const unitLabel = () => (type === 'room' ? 'Room' : 'Venue') + ' ' + (type === 'room' ? roomDisplayName(roomsRef.current.find(r => r.id === id)) : (venuesRef.current.find(v => v.id === id)?.name ?? id))
 
-    // A stay can only BEGIN on a day whose night is free. A day that another guest arrives
-    // on is split: its morning half is free (it ends a stay) but the stay would run into
-    // that guest, so it cannot be where a stay starts.
+    // A night can only BEGIN on a day whose afternoon and next morning are free, but since
+    // 2026-10-25 (the free-half mock) a single free half is still a pick: a short stay can
+    // go there. The pick says which halves are free, so the bar offers only what fits.
     const pickCheckIn = () => {
-      const nextDay = new Date(date)
-      nextDay.setDate(nextDay.getDate() + 1)
-      if (!isFree(date, nextDay)) {
-        showToast(unitLabel() + ' is already booked that night.', 'error')
+      const d = dayHalf(dateToString(date))
+      const unitOf = (b: Booking) => (type === 'room' ? b.room_id : normalizeVenueId(b.venue_id))
+      const own = type === 'room' ? id : normalizeVenueId(id) || id
+      const free = (k: number) => !clashIn(unitOf, own, k, k + 1, bookingsRef.current)
+      const open: Selection['open'] = [free(d), free(d + 1), free(d + 2)]
+      const at = half ?? (open[1] ? 1 : 0)
+      if (!open[at]) {
+        showToast(unitLabel() + ' is already booked then.', 'error')
         return
       }
-      setTimelineSelection({ [selIdKey]: id, checkIn: date })
+      setTimelineSelection({ [selIdKey]: id, checkIn: date, half: at, open })
     }
 
     if (!curTimeline || (curTimeline.roomId !== id && curTimeline.venueId !== id)) {
@@ -301,6 +311,7 @@ export function CalendarTab() {
     setTimelineSelection(null)
     setGroupSelection(null)
     setFormStayHours(hours)
+    setFormStayHalf(picked.half)
     setFormSelections({ [unitId]: { checkIn: dateToString(checkIn), checkOut: dateToString(checkOut), type: picked.roomId ? 'room' : 'venue' } })
     setShowManualForm(true)
   }, [])
@@ -441,6 +452,7 @@ export function CalendarTab() {
     // ONE day picked is how a short stay starts (its bar offers 3h · 6h · 12h), so the paper
     // opens as a short stay; it opened on Overnight for one night.
     setLogOldShort(!groupSelection && !!(picked && roomId))
+    setLogOldHalf(picked?.half ?? 1)
     setLogOldSelections(serialized)
     setGroupSelection(null)
     setTimelineSelection(null)
@@ -467,6 +479,8 @@ export function CalendarTab() {
     }, 450)
   }
   const clearSelection = useCallback(() => { setTimelineSelection(null); setGroupSelection(null) }, [])
+  /** The bar's Morning / Afternoon: which half of the picked day a short stay takes. */
+  const pickHalf = useCallback((half: 0 | 1) => setTimelineSelection(s => (s ? { ...s, half } : s)), [])
   const askBreakfast = useCallback((b: Booking) => setBreakfastForId(b.id), [])
 
   const fmtBlockDate = (iso: string) => {
@@ -521,6 +535,7 @@ export function CalendarTab() {
           onLogOldBooking={openLogOldBooking}
           onNewShortStay={confirmShortStay}
           onClearSelection={clearSelection}
+          onPickHalf={pickHalf}
           loading={isLoading}
           breakfastToAsk={breakfastToAsk}
           onBreakfast={askBreakfast}
@@ -603,6 +618,7 @@ export function CalendarTab() {
             deleteBooking={deleteBooking}
             initialSelections={formSelections}
             initialStayHours={formStayHours ?? undefined}
+            initialStayHalf={formStayHalf}
             // Booked: the panel opens with its one bill over it, ready for the money.
             onBooked={rows => { closeManualForm(); setSelectedExtendBooking(rows[0]); setBillOf(rows[0]) }}
             onClose={closeManualForm}
@@ -636,7 +652,7 @@ export function CalendarTab() {
       {showLogOld && (
         <React.Suspense fallback={null}>
           <LogOldBill rooms={rooms} venues={venues} bookings={allBookings} createManualBooking={createManualBooking}
-            initialSelections={logOldSelections} shortStay={logOldShort} onClose={() => setShowLogOld(false)} />
+            initialSelections={logOldSelections} shortStay={logOldShort} shortHalf={logOldHalf} onClose={() => setShowLogOld(false)} />
         </React.Suspense>
       )}
 

@@ -71,7 +71,7 @@ export interface Discount { pct: boolean; v: number }
  * the booking form's own `submitBookingForm`, so the rooms, prices, receipt and rollback are the
  * form's; nothing is saved until Book.
  */
-export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, editing, desk, onSaved, onBooked, onClose }: {
+export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, initialStayHalf, editing, desk, onSaved, onBooked, onClose }: {
   rooms: Room[]; venues: Venue[]; bookings: Booking[]; allBookings: Booking[]
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>
   updateBooking: (b: Booking) => Promise<void>
@@ -79,6 +79,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   deleteBooking: (id: string) => Promise<void>
   initialSelections?: Record<string, Sel>
   initialStayHours?: number
+  /** The half of the day picked for a short stay: 0 the morning, 1 the afternoon. */
+  initialStayHalf?: 0 | 1
   /**
    * A booking being corrected (its whole group): the same bill, filled in from what is saved
    * (Sebastian, 2026-10-23: "if it's on the bill, then editing should also be on the bill").
@@ -171,6 +173,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   useEffect(() => { if (savedIds) getSlipsByBooking(savedIds.split(',')).then(setSlips).catch(() => {}) }, [savedIds])
 
   const isShort = !!(initialStayHours || ed?.stay_hours) && units[0]?.[1].type === 'room'
+  const half = initialStayHalf ?? ed?.stay_half ?? 1
   const list: [string, Sel][] = isShort ? [[units[0][0], { ...units[0][1], checkOut: nextDay(units[0][1].checkIn) }]] : units
   const first = list[0]?.[1]
   const firstRoomId = list.find(([, s]) => s.type === 'room')?.[0]
@@ -196,6 +199,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       // A short stay has no breakfast (the owner, 2026-10-24: "they won't need it").
       breakfast_included: !isShort && (breakfast.includes(id) || (s.type === 'room' && deal?.breakfast_default === 'with')),
       stay_hours: isShort ? hours : undefined,
+      stay_half: isShort ? half : undefined,
       event_addons: Object.keys(ea).length > 0 ? ea : undefined,
       equipment_rentals: rentals,
       partner_deal_id: deal?.id, company_name: to?.name, contract_rate_override: rates[id] || deal?.contracted_rates[id] || undefined,
@@ -250,7 +254,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
 
   const others = editing ? bookings.filter(b => !editing.some(e => e.id === b.id)) : bookings
   const free = (id: string, from: string, to: string) => rooms.some(r => r.id === id)
-    ? isRoomAvailable(id, from, to, others) : isVenueRangeAvailable(id, from, to, others)
+    ? isRoomAvailable(id, from, to, others, undefined, isShort ? { stay_hours: hours, stay_half: half } : undefined)
+    : isVenueRangeAvailable(id, from, to, others)
   const countOf = (from: string, to: string) => Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000))
   const priceOf = (id: string) => {
     const r = rooms.find(x => x.id === id), v = venues.find(x => x.id === id)
@@ -364,6 +369,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       formCharges: charges,
       formRates: rates,
       stay_hours: isShort ? hours : undefined,
+      stay_half: isShort ? half : undefined,
       editingBookings: editing,
       // Each room keeps its own money; the balance is worked out again below.
       derivedPaymentStatus: ed ? ed.payment_status || 'unpaid' : 'unpaid',

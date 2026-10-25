@@ -31,9 +31,11 @@ interface TimelineGridProps {
   halves: Record<string, (Booking | null)[]>
   /** The saved agencies — a stay billed to one wears its name on the calendar. */
   partnerDeals: PartnerDeal[]
-  timelineSelection: { roomId?: string; venueId?: string; checkIn: Date } | null
+  /** One picked day: `half` is the half a short stay takes (0 the morning, 1 the afternoon),
+   *  `open` which of that morning, that afternoon and the next morning are free. */
+  timelineSelection: { roomId?: string; venueId?: string; checkIn: Date; half: 0 | 1; open: [boolean, boolean, boolean] } | null
   groupSelection?: Record<string, { checkIn: Date; checkOut: Date; type: 'room' | 'venue' }> | null
-  handleCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
+  handleCellClick: (id: string, type: 'room' | 'venue', date: Date, half?: 0 | 1) => void
   setSelectedExtendBooking: (booking: Booking) => void
   setExtendCheckoutDate: (date: string) => void
   setExtendError: (err: string) => void
@@ -53,6 +55,8 @@ interface TimelineGridProps {
   onNewShortStay: (hours: number) => void
   /** Clears whatever is picked — a single day AND a finished range. */
   onClearSelection: () => void
+  /** Moves a single pick to the morning or the afternoon of its day. */
+  onPickHalf: (half: 0 | 1) => void
   /** The rooms have not arrived from the database yet. */
   loading?: boolean
   /** The guest to ask about breakfast this morning, per room id — only the rooms that have
@@ -108,7 +112,7 @@ type BarAnchor = { unitId: string; iso: string; outIso: string }
  * again — four times a click, which the desk felt as a delay on every tap (Sebastian,
  * 2026-10-16: "when I click on a cell in the calendar there's a short delay").
  */
-function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection, selectionName, rooms, venues, barRoom, onNewBooking, onBlockDates, onLogOldBooking, onNewShortStay, onClearSelection }: {
+function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection, selectionName, rooms, venues, barRoom, onNewBooking, onBlockDates, onLogOldBooking, onNewShortStay, onClearSelection, onPickHalf }: {
   scrollRef: React.RefObject<HTMLDivElement | null>
   barAnchor: BarAnchor | null
   timelineSelection: TimelineGridProps['timelineSelection']
@@ -117,7 +121,7 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
   rooms: Room[]
   venues: Venue[]
   barRoom: Room | null
-} & Pick<TimelineGridProps, 'onNewBooking' | 'onBlockDates' | 'onLogOldBooking' | 'onNewShortStay' | 'onClearSelection'>) {
+} & Pick<TimelineGridProps, 'onNewBooking' | 'onBlockDates' | 'onLogOldBooking' | 'onNewShortStay' | 'onClearSelection' | 'onPickHalf'>) {
   // Where the bar goes: the middle of the picked dates, its row, how wide it is, and how far
   // left and right it may reach. The width is the bar's own, read back once it is on screen.
   const [barPos, setBarPos] = React.useState<{ center: number; top: number; width: number; minLeft: number; maxRight: number } | null>(null)
@@ -236,6 +240,11 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
         h: o.hours, label: o.hours + 'h' + (o.aircon ? ' w/ aircon' : ''), price: o.price, unitName: barVenue?.name || '',
         save: (p: number) => saveRateConfig({ ...getRateConfig(), [o.key]: p }),
       }))
+  // A single pick: 12 hours need the half after it free too, and a night (or a block) its
+  // afternoon and the next morning.
+  const single = !hasRange ? timelineSelection : null
+  const fitsTwo = !single || (single.half ? single.open[2] : single.open[1])
+  const overnight = !single || (single.open[1] && single.open[2])
   // Centred on the dates, kept between the room names and the end of the grid.
   const left = Math.min(
     Math.max(barPos.center - barPos.width / 2, barPos.minLeft),
@@ -260,6 +269,20 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
         </span>
       )}
 
+      {/* A single day is HALF a day for a short stay (the free-half mock, 2026-10-25): which
+          half, popping when it changes, and a tap moves it when the other half is free too. */}
+      {single && (single.open[0] && single.open[1] ? (
+        <button type="button" key={single.half} onClick={() => onPickHalf(single.half ? 0 : 1)}
+          title={'Tap for the ' + (single.half ? 'morning' : 'afternoon')}
+          className="bp-up shrink-0 h-5 px-2 rounded-full bg-ink-900 hover:bg-ink-700 text-white text-[12px] font-bold leading-5 transition-[background-color,transform] active:scale-90 cursor-pointer">
+          {single.half ? 'Afternoon' : 'Morning'}
+        </button>
+      ) : (
+        <span key={single.half} className="bp-up shrink-0 h-5 px-2 rounded-full bg-ink-900 text-white text-[12px] font-bold leading-5">
+          {single.half ? 'Afternoon' : 'Morning'}
+        </span>
+      ))}
+
       {hasRange ? (
         <>
           <button type="button" onClick={() => { rememberPick(); onNewBooking() }}
@@ -277,7 +300,7 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
            the price of the hours is on the room and in the tooltip, so the
            bar stays short. */
         chips.length > 0 ? (
-          chips.map(({ h, label, price, unitName, save }) => {
+          chips.filter(({ h }) => h < 12 || fitsTwo).map(({ h, label, price, unitName, save }) => {
             const sellable = price > 0
             // A room or venue with no price for these hours asks for it right here instead of
             // being greyed out (Sebastian, 2026-10-16: "ask the staff to enter a price for that
@@ -297,11 +320,12 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
               <button key={h} type="button"
                 onClick={() => { if (sellable) { rememberPick(); onNewShortStay(h) } else setPricing({ h, pick }) }}
                 title={sellable
-                  ? 'A ' + h + '-hour stay — ₱' + price.toLocaleString() + ' — takes ' + unitName + ' for this whole day'
+                  ? 'A ' + h + '-hour stay — ₱' + price.toLocaleString() + ' — takes ' + unitName + ' ' + (h >= 12 ? (single?.half ? 'into the night' : 'all day') : 'for the ' + (single?.half ? 'afternoon' : 'morning'))
                   : 'No ' + label + ' price for ' + unitName + ' yet — tap to set it'}
                 className={'shrink-0 inline-flex items-center gap-1 h-7 px-3 rounded-full border text-[13px] font-bold text-brand-text hover:bg-gold-100 hover:border-gold-400 transition-[background-color,border-color,transform] duration-200 active:scale-90 cursor-pointer ' +
                   (sellable ? 'border-soft' : 'border-dashed border-gold-400')}>
-                {label}{!sellable && <span className="font-semibold text-muted">· ₱?</span>}
+                {label}{h >= 12 && <span className="font-semibold text-muted">· {single?.half ? 'into the night' : 'all day'}</span>}
+                {!sellable && <span className="font-semibold text-muted">· ₱?</span>}
               </button>
             )
           })
@@ -315,12 +339,12 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
           and on a range (the owner's ruling, 2026-09: the words were noise).
           It opens a small pane that only asks why; the room and dates come
           from the pick. Blocking is no longer a mode of the booking form. */}
-      <button type="button" onClick={onBlockDates}
+      {overnight && <button type="button" onClick={onBlockDates}
         title="Block these dates — cleaning, maintenance or owner use"
         aria-label="Block these dates"
         className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full border border-gold-400 text-brand-text hover:bg-gold-100 transition-colors active:scale-95 cursor-pointer">
         <Ban className="w-3.5 h-3.5" />
-      </button>
+      </button>}
 
       {/* Log old booking — **now its only entrance** (the owner, 2026-09-29:
           the toolbar's copy was removed as a duplicate). It is offered by the
@@ -364,6 +388,7 @@ export const TimelineGrid = React.memo(
     onLogOldBooking,
     onNewShortStay,
     onClearSelection,
+    onPickHalf,
     loading = false,
     breakfastToAsk,
     onBreakfast,
@@ -533,7 +558,7 @@ export const TimelineGrid = React.memo(
           ? dayInfo.time === range.start ? 'start' : dayInfo.time === range.end ? 'end' : dayInfo.time > range.start && dayInfo.time < range.end ? 'mid' : null
           : null
         cells.push(
-          <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={wholeDay ? 2 : 1} halfOf={halfOf} closesDay={!morning || wholeDay} isCheckIn={!!isDraftCheckIn} highlight={highlight} pickAt={range ? Math.round((dayInfo.time - range.start) / 86400000) : 0} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+          <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={null} span={wholeDay ? 2 : 1} halfOf={halfOf} closesDay={!morning || wholeDay} isCheckIn={!!isDraftCheckIn} inMorning={!!isDraftCheckIn && timelineSelection?.half === 0} highlight={highlight} pickAt={range ? Math.round((dayInfo.time - range.start) / 86400000) : 0} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
         )
         k += wholeDay ? 2 : 1
       }
@@ -554,7 +579,7 @@ export const TimelineGrid = React.memo(
             with the grid. */}
         <SelectionBar scrollRef={scrollRef} barAnchor={barAnchor} timelineSelection={timelineSelection} groupSelection={groupSelection}
           selectionName={selectionName} rooms={rooms} venues={venues} barRoom={barRoom} onNewBooking={onNewBooking}
-          onBlockDates={onBlockDates} onLogOldBooking={onLogOldBooking} onNewShortStay={onNewShortStay} onClearSelection={onClearSelection} />
+          onBlockDates={onBlockDates} onLogOldBooking={onLogOldBooking} onNewShortStay={onNewShortStay} onClearSelection={onClearSelection} onPickHalf={onPickHalf} />
 
         {/* Every cell draws its own rules (`border-separate`). In a collapsed table the
             rules belong to the table, and the pinned header and room column — which

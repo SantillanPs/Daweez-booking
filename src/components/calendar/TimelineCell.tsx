@@ -22,6 +22,8 @@ export interface TimelineCellProps {
   /** A free cell that is only the morning (`left`) or the afternoon (`right`) of its day,
    *  because a stay fills the other half. Left out when the cell is the whole day. */
   halfOf?: 'left' | 'right'
+  /** The picked day is a morning short stay: its "In" sits on the morning half. */
+  inMorning?: boolean
   /** The cell's right edge is the end of a day, so it draws that day's rule. A cell that
    *  ends at noon does not: the day is not over there. */
   closesDay: boolean
@@ -51,7 +53,7 @@ export interface TimelineCellProps {
   todayFrom?: number
   todayHalves?: number
   getBookingStyle: (b: Booking) => string
-  onCellClick: (id: string, type: 'room' | 'venue', date: Date) => void
+  onCellClick: (id: string, type: 'room' | 'venue', date: Date, half?: 0 | 1) => void
   setSelectedExtendBooking: (booking: Booking) => void
   setExtendCheckoutDate: (date: string) => void
   setExtendError: (err: string) => void
@@ -229,6 +231,7 @@ export const TimelineCell = React.memo(
     bill,
     span,
     halfOf,
+    inMorning,
     closesDay,
     isCheckIn,
     highlight,
@@ -407,14 +410,16 @@ export const TimelineCell = React.memo(
     // the first day (in from 2 PM) to the MORNING of the last (out by 12 PM), so on a day
     // that is still whole they take only the half that belongs to the stay.
     const whole = !halfOf
+    // A half cell says which half was tapped; a whole day leaves it to the pick (2026-10-25).
+    const tap = () => onCellClick(id, type, date, halfOf === 'left' ? 0 : halfOf === 'right' ? 1 : undefined)
 
     if (isCheckIn) {
       return (
         // The picked day renders as this "In" cell — and it MUST carry the position
         // markers too, or the action bar cannot find the cell it hangs off (that is
         // why the Short stay button never appeared on a single picked day).
-        <td data-unit={id} data-day={isoStr} colSpan={span} onClick={() => onCellClick(id, type, date)} className={'p-0 h-12 border-b border-soft relative cursor-cell align-middle' + dayRule}>
-          <div className={'absolute inset-y-1 rounded-md bg-gold-400 text-ink-900 flex items-center justify-center text-[12px] font-bold animate-in zoom-in-95 duration-150 ' + (whole ? 'left-1/2 right-0.5' : 'inset-x-0.5')}>
+        <td data-unit={id} data-day={isoStr} colSpan={span} onClick={tap} className={'p-0 h-12 border-b border-soft relative cursor-cell align-middle' + dayRule}>
+          <div className={'absolute inset-y-1 rounded-md bg-gold-400 text-ink-900 flex items-center justify-center text-[12px] font-bold animate-in zoom-in-95 duration-150 ' + (whole ? (inMorning ? 'left-0.5 right-1/2' : 'left-1/2 right-0.5') : 'inset-x-0.5')}>
             In
           </div>
         </td>
@@ -428,7 +433,7 @@ export const TimelineCell = React.memo(
           data-unit={id}
           data-day={isoStr}
           colSpan={span}
-          onClick={() => onCellClick(id, type, date)}
+          onClick={tap}
           className={'p-0 h-12 border-b border-soft cursor-cell relative align-middle' + dayRule}
         >
           <div style={{ '--i': pickAt } as React.CSSProperties} className={'fd-pick absolute inset-y-0 border-y border-dashed border-gold-400/50 bg-gold-100/70 transition-colors hover:bg-gold-100 ' + place} />
@@ -441,7 +446,7 @@ export const TimelineCell = React.memo(
         data-unit={id}
         data-day={isoStr}
         colSpan={span}
-        onClick={() => onCellClick(id, type, date)}
+        onClick={tap}
         className={'fd-free relative border-b border-soft p-0 h-12 cursor-cell transition-colors ' + (isToday ? 'bg-gold-100/50' : isWeekend ? 'bg-paper-50/60' : '') + ' hover:bg-gold-100/70' + dayRule}
       >
         {/* Nothing is drawn where a guest left: the end of their pill says it. The arrow and
@@ -467,6 +472,7 @@ export const TimelineCell = React.memo(
       prevProps.highlight === nextProps.highlight &&
       prevProps.pickAt === nextProps.pickAt &&
       prevProps.halfOf === nextProps.halfOf &&
+      prevProps.inMorning === nextProps.inMorning &&
       prevProps.closesDay === nextProps.closesDay &&
       prevProps.isContinuation === nextProps.isContinuation &&
       prevProps.isWeekend === nextProps.isWeekend &&

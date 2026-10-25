@@ -1,22 +1,19 @@
 import { Booking } from '../types/booking'
 import { normalizeVenueId } from './helpers'
+import { bookingHalves, clashIn } from './halfDays'
 
-// 6. Availability Collision Vectors (Bilateral safety)
-export function isRoomAvailable(roomId: string, checkInStr: string, checkOutStr: string, bookingsList: Booking[] = [], skipBookingId?: string): boolean {
-  const checkIn = new Date(checkInStr)
-  const checkOut = new Date(checkOutStr)
-  if (checkIn >= checkOut) return false
+/** What makes a booking being checked a short stay: its hours and the half it is booked for. */
+export type ShortFacts = Pick<Booking, 'stay_hours' | 'stay_half' | 'actual_check_in' | 'late_check_out_hours'>
 
-  return !bookingsList.some(booking => {
-    if (booking.room_id !== roomId) return false
-    if (booking.id === skipBookingId) return false
-    // A cancelled booking has given its room back.
-    if (booking.status === 'cancelled') return false
+// Kept apart by HALF-DAYS (`utils/halfDays.ts`, 2026-10-25), as the database does: a short stay
+// leaves the other half of its day free. Pass `short` when the booking being checked is one.
+const spanOf = (checkInStr: string, checkOutStr: string, short?: ShortFacts) =>
+  bookingHalves({ check_in: checkInStr, check_out: checkOutStr, ...(short?.stay_hours ? short : { stay_hours: undefined }) })
 
-    const bStart = new Date(booking.check_in)
-    const bEnd = new Date(booking.check_out)
-    return checkIn < bEnd && checkOut > bStart
-  })
+export function isRoomAvailable(roomId: string, checkInStr: string, checkOutStr: string, bookingsList: Booking[] = [], skipBookingId?: string, short?: ShortFacts): boolean {
+  if (checkInStr >= checkOutStr) return false
+  const [from, to] = spanOf(checkInStr, checkOutStr, short)
+  return !clashIn(b => b.room_id, roomId, from, to, bookingsList, skipBookingId)
 }
 
 export function isVenueAvailable(venueId: string, eventDateStr: string, bookingsList: Booking[] = [], skipBookingId?: string): boolean {
@@ -28,18 +25,8 @@ export function isVenueAvailable(venueId: string, eventDateStr: string, bookings
   })
 }
 
-export function isVenueRangeAvailable(venueId: string, checkInStr: string, checkOutStr: string, bookingsList: Booking[] = [], skipBookingId?: string): boolean {
-  const checkIn = new Date(checkInStr)
-  const checkOut = new Date(checkOutStr)
-  if (checkIn >= checkOut) return false
-
-  return !bookingsList.some(booking => {
-    if (normalizeVenueId(booking.venue_id) !== normalizeVenueId(venueId)) return false
-    if (booking.id === skipBookingId) return false
-    if (booking.status === 'cancelled') return false
-
-    const bStart = new Date(booking.check_in)
-    const bEnd = new Date(booking.check_out)
-    return checkIn < bEnd && checkOut > bStart
-  })
+export function isVenueRangeAvailable(venueId: string, checkInStr: string, checkOutStr: string, bookingsList: Booking[] = [], skipBookingId?: string, short?: ShortFacts): boolean {
+  if (checkInStr >= checkOutStr) return false
+  const [from, to] = spanOf(checkInStr, checkOutStr, short)
+  return !clashIn(b => normalizeVenueId(b.venue_id), normalizeVenueId(venueId) || '', from, to, bookingsList, skipBookingId)
 }

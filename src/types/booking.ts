@@ -250,12 +250,12 @@ export interface Booking {
   agreed_deposit?: number
   /**
    * Short stay: how many hours the room was taken for — 3, 6, 12 or 22. `undefined`
-   * is an ordinary overnight booking. The stay still blocks the WHOLE day for that
-   * room, because housekeeping cleans it afterwards (the owner's ruling), so every
-   * availability check, the calendar and the bill keep working exactly as they do
-   * for a night.
+   * is an ordinary overnight booking. Its `check_out` is stored as the next day, but it
+   * holds only the half-days of `bookingHalves` (`utils/halfDays.ts`, 2026-10-25).
    */
   stay_hours?: number
+  /** The half of the day a short stay was booked for: 0 the morning, 1 the afternoon. */
+  stay_half?: 0 | 1
   balance_due: number      // Remaining 50% + rentals/addons + security deposit
   security_deposit: number // ₱500 flat
   breakfast_orders?: BreakfastOrder[]

@@ -17,11 +17,12 @@ import { BookingStageLine } from './BookingStageLine'
 import { stayStage } from '../../utils/stayStage'
 import { undoBookingCheck } from '../../utils/db'
 import { CountPeso } from '../CountPeso'
-import { stayHoursOf } from '../../utils/shortStay'
+import { clockLabel, shortStayOut, stayHoursOf } from '../../utils/shortStay'
+import { bookingHalves, clashIn } from '../../utils/halfDays'
 import { airconWords } from '../../utils/venueHours'
 import { BreakfastPicker } from './BreakfastPicker'
 import { wantsBreakfastToday, breakfastOn, breakfastSummary, breakfastAskOpen } from '../../utils/breakfastChoice'
-import { dateToString } from '../../utils/helpers'
+import { dateToString, normalizeVenueId } from '../../utils/helpers'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 import { asBill, groupOf } from '../../utils/bookingGroup'
 import { BillRooms } from './BillRooms'
@@ -459,6 +460,24 @@ export function ExtendStayModal({
   const noteDoor = async (k: 'in' | 'out', at: string | undefined) => {
     const before = localBooking
     const updated = withRecomputedBalance(localBooking, k === 'in' ? { actual_check_in: at } : { actual_check_out: at })
+    // **A short stay checked in late keeps its hours** (Sebastian, 2026-10-25: "ship it"): the
+    // stay then reaches the next half or two, and when another booking is there the time is
+    // not saved — the desk settles it with the guest (fewer hours, or that booking moved);
+    // the app never moves the other booking. The database refuses it the same way.
+    if (k === 'in' && at && stayHoursOf(updated)) {
+      const venue = !updated.room_id
+      const unit = venue ? normalizeVenueId(updated.venue_id) || '' : updated.room_id || ''
+      const [from, to] = bookingHalves(updated)
+      const inTheWay = clashIn(b => (venue ? normalizeVenueId(b.venue_id) : b.room_id), unit, from, to, allBookings || bookings, updated.id)
+      if (inTheWay) {
+        const s = Math.max(from, bookingHalves(inTheWay)[0])
+        const day = new Date(Date.UTC(2000, 0, 1 + Math.floor(s / 2)))
+        const when = day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) + (s % 2 ? ' afternoon' : ' morning')
+        const out = shortStayOut(updated)
+        showToast((out ? 'Out at ' + clockLabel(out) + ' runs' : 'This runs') + ' into the next booking (' + when + '). Sell fewer hours on the bill, or move that booking first.', 'error')
+        return
+      }
+    }
     setLocalBooking(updated)
     try {
       // `update_booking` keeps the old time when it is sent blank, so a time taken off is
