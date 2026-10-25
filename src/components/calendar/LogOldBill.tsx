@@ -98,7 +98,8 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
     const id = unitOf(line.key)
     if (!id || !line.remove) return
     setRemoved({ label: line.description, breakfast, addons })
-    if ('breakfast_included' in line.remove) setBreakfast(b => b.filter(x => x !== id))
+    // The rooms' breakfasts are one line, so its × takes them all off (Undo puts them back).
+    if ('breakfast_included' in line.remove) setBreakfast([])
     if (line.remove.event_addons) setAddons(a => ({ ...a, [id]: line.remove!.event_addons! }))
   }
   // A charge goes on the bill's first room, as on a booking of several rooms.

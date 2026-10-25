@@ -45,6 +45,8 @@ export interface StatementLineItem {
   checkOut?: string
   /** Room rows only: the number in the `No. of Night` column. */
   nights?: number
+  /** A room's breakfast row only: the room's number, so the rooms' rows can be joined into one. */
+  room?: string
   /** Order slip rows only: `Paid` or `Not paid`, printed beside the slip's number. */
   status?: string
   /**
@@ -79,6 +81,34 @@ export function mergeDiscountRows(items: StatementLineItem[]): StatementLineItem
   let placed = false
   return items.flatMap(i => {
     if (i.band !== 'discount') return [i]
+    if (placed) return []
+    placed = true
+    return [merged]
+  })
+}
+
+/**
+ * **One breakfast row for the whole bill** (Sebastian, 2026-10-24 on the screen, 2026-10-25 on
+ * paper and on an agency's bill too: four breakfast lines "take too much space"). The rooms'
+ * breakfast rows are joined into `Breakfast · Rooms 1, 2, 3, 5`: every morning across them,
+ * the first to the last. The price shows only when every room's is the same.
+ */
+export function mergeBreakfastRows(items: StatementLineItem[]): StatementLineItem[] {
+  const rows = items.filter(i => i.band === 'breakfast' && i.room)
+  if (rows.length < 2) return items
+  const same = rows.every(i => i.price === rows[0].price)
+  const merged: StatementLineItem = {
+    ...rows[0],
+    description: 'Breakfast · Rooms ' + rows.map(i => i.room).join(', '),
+    qty: String(rows.reduce((sum, i) => sum + Number(i.qty), 0)),
+    price: same ? rows[0].price : 0,
+    amount: rows.reduce((sum, i) => sum + i.amount, 0),
+    checkIn: rows.map(i => i.checkIn || '').sort()[0] || undefined,
+    checkOut: rows.map(i => i.checkOut || '').sort().slice(-1)[0] || undefined,
+  }
+  let placed = false
+  return items.flatMap(i => {
+    if (!(i.band === 'breakfast' && i.room)) return [i]
     if (placed) return []
     placed = true
     return [merged]
@@ -207,6 +237,8 @@ export function bookingLines(b: Booking, o: {
   // Breakfast is the room's own price once a night (2026-10-17) and prints as one line
   // under the Breakfast band — `Room 6 · Breakfast`, 2 × NIGHT — never per guest.
   if (isRoom && pricing.breakfastTotal > 0) {
+    const firstMorning = new Date(b.check_in + 'T00:00:00')
+    firstMorning.setDate(firstMorning.getDate() + 1)
     items.push({
       key: b.id + '-breakfast',
       band: 'breakfast',
@@ -217,6 +249,8 @@ export function bookingLines(b: Booking, o: {
       discount: 0,
       amount: Math.round(pricing.breakfastTotal),
       remove: { breakfast_included: false },
+      room: String(rooms.find(r => r.id === b.room_id)?.room_number ?? ''),
+      checkIn: dateToString(firstMorning), checkOut: b.check_out,
     })
   }
 

@@ -120,7 +120,6 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
       isFirstRoom = false
 
       const deal = p.partnerDeals.find(d => d.id === p.formPartnerDealId)
-      const isBreakfastIncluded = deal ? deal.breakfast_default === 'with' : false
       const contractedPrice = deal?.contracted_rates[roomId]
 
       const existingBooking = p.editingBookings?.find(eb => eb.room_id === roomId)
@@ -158,7 +157,9 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         // Charges written on the bill go on the first unit, as on the bill itself.
         eventAddons: (c => c && { ...existingBooking?.event_addons, ...c })(firstCharges()),
         breakfastOrders: undefined,
-        breakfastIncluded: isBreakfastIncluded || p.formBreakfastRoomIds.includes(roomId),
+        // The bill's switches decide; an agency that always has breakfast turns them all on
+        // there, and the desk can turn one off (2026-10-25).
+        breakfastIncluded: p.formBreakfastRoomIds.includes(roomId),
         contractRateOverride: p.formRates ? (p.formRates[roomId] || contractedPrice || undefined) : contractedPrice || (existingBooking && !existingBooking.partner_deal_id ? existingBooking.contract_rate_override : undefined),
         paymentMethod: p.formPaymentMethod || undefined,
         paymentReference: p.formPaymentReference || undefined,

@@ -197,7 +197,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       guest_name: guestName, guest_email: '', guest_phone: '', check_in: s.checkIn, check_out: s.checkOut,
       source: 'manual', status: 'confirmed', payment_records: saved?.payment_records || [], downpayment_paid: saved?.downpayment_paid || 0, balance_due: 0,
       // A short stay has no breakfast (the owner, 2026-10-24: "they won't need it").
-      breakfast_included: !isShort && (breakfast.includes(id) || (s.type === 'room' && deal?.breakfast_default === 'with')),
+      breakfast_included: !isShort && breakfast.includes(id),
       stay_hours: isShort ? hours : undefined,
       stay_half: isShort ? half : undefined,
       event_addons: Object.keys(ea).length > 0 ? ea : undefined,
@@ -244,7 +244,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     setPicking(false)
     if (!name) return
     const d = partnerDeals.find(x => x.name.trim().toUpperCase() === name)
-    if (d) { setTo({ name: d.name, dealId: d.id }); setPaid(null); setWriting(false); return }
+    if (d) {
+      setTo({ name: d.name, dealId: d.id }); setPaid(null); setWriting(false)
+      // An agency that always has breakfast turns every room's switch on; the desk can still
+      // turn one off (Sebastian, 2026-10-25: four breakfast lines took too much space).
+      if (d.breakfast_default === 'with' && !isShort) setBreakfast(list.filter(([, s]) => s.type === 'room').map(([id]) => id))
+      return
+    }
     const known = institutions.find(n => n.trim().toUpperCase() === name)
     setTo({ name: known || name }); setPaid(null); setWriting(false)
     // A name not in either list is kept as a new institution, as the form's list does.
@@ -294,6 +300,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const type: Sel['type'] = rooms.some(r => r.id === id) ? 'room' : 'venue'
     if (pop.kind === 'add') {
       setUnits(u => sortUnits([...u, [id, { checkIn: first.checkIn, checkOut: type === 'venue' ? nextDay(first.checkIn) : first.checkOut, type }]]))
+      if (type === 'room' && !isShort && deal?.breakfast_default === 'with') setBreakfast(b => [...b, id])
       setAskIn(id)
     } else {
       const out = pop.id
@@ -467,8 +474,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const nights = span ? Math.round((new Date(span.checkOut).getTime() - new Date(span.checkIn).getTime()) / 86400000) : 0
   const today = new Date()
 
-  // Breakfast is one line with a switch for each room; an agency that always includes it has none to flip.
-  const bfMenu = !(to && deal?.breakfast_default === 'with')
+  // Breakfast is one line with a switch for each room, an agency's bill too.
   const bfRooms = isShort ? [] : list.filter(([id, s]) => s.type === 'room' && rooms.some(r => r.id === id))
   const bfLines = statement?.lineItems.filter(i => /^draft-.+-breakfast$/.test(i.key)) || []
   const lastRoomKey = 'draft-' + list[list.length - 1]?.[0] + '-stay'
@@ -485,7 +491,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const renderLine = (it: StatementLineItem, cell: string): React.ReactNode | undefined => {
     // All the rooms' breakfasts are one line (Sebastian, 2026-10-24): every morning across them,
     // the first morning to the last; its name opens the rooms' switches.
-    if (bfMenu && /^draft-.+-breakfast$/.test(it.key)) {
+    if (/^draft-.+-breakfast$/.test(it.key)) {
       if (it !== bfLines[0]) return null
       const on = bfRooms.filter(([id]) => breakfast.includes(id))
       const count = bfLines.reduce((a, i) => a + Number(i.qty), 0)
@@ -498,7 +504,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               <ChevronDown aria-hidden="true" className={CHEV} />
             </button>
           </td>
-          <td className={cell + ' text-right font-mono'}>{new Set(bfLines.map(i => i.price)).size === 1 ? money(it.price) : '—'}</td>
+          <td className={cell + ' text-right font-mono'}>{it.price ? money(it.price) : '—'}</td>
           <td className={cell + ' text-right font-mono'}>{shortDate(on.map(([, s]) => isShort ? s.checkIn : nextDay(s.checkIn)).sort()[0])}</td>
           <td className={cell + ' text-right font-mono'}>{shortDate(on.map(([, s]) => s.checkOut).sort().slice(-1)[0])}</td>
           <td className={cell + ' text-right font-mono'}>{count}</td>
@@ -742,7 +748,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
 
           {statement && (
             <StatementChargesTable items={statement.lineItems} onRemove={removeLine} isNew={() => false} renderLine={renderLine}>
-              {bfMenu && bfRooms.length > 0 && bfLines.length === 0 && (
+              {bfRooms.length > 0 && bfLines.length === 0 && (
                 <tr data-screen className="print:hidden">
                   <td colSpan={6} className="p-0">
                     <button type="button" onClick={toggle('bf')} aria-expanded={isOpen('bf')} className={BLANK}>
