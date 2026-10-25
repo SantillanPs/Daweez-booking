@@ -2,6 +2,7 @@ import { AppliedDiscount, Room, Venue } from '../../types/booking'
 import { calculatePricing } from '../../utils/pricing'
 import { getRateConfig } from '../../utils/rateConfig'
 import { allocatePayment } from './bookingPayment'
+import { unitOfLine } from '../../utils/bookingGroup'
 
 /**
  * ONE FLAT DISCOUNT IS ONE DISCOUNT (Sebastian, 2026-10-06).
@@ -44,8 +45,8 @@ export function splitDiscount(
   }
   // What each unit's stay costs before any discount — the same figure the discount is taken from.
   const costs = units.map(u => calculatePricing({
-    roomId: u.type === 'room' ? u.id : undefined,
-    venueId: u.type === 'venue' ? u.id : undefined,
+    roomId: u.type === 'room' ? unitOfLine(u.id) : undefined,
+    venueId: u.type === 'venue' ? unitOfLine(u.id) : undefined,
     checkIn: u.checkIn,
     checkOut: u.checkOut,
     guestEmail: '',

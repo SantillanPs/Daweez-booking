@@ -56,3 +56,10 @@ export function asBill(booking: Booking, list: Booking[]): Booking {
     .filter((r, i, all) => !r.receipt_number || all.findIndex(x => x.receipt_number === r.receipt_number) === i)
   return { ...booking, balance_due: owed, downpayment_paid: paid, payment_status: owed <= 0 ? 'paid' : paid > 0 ? 'downpayment' : 'unpaid', payment_records: records }
 }
+
+/**
+ * A bill line's room or venue. The same one can be on a bill twice on different days (Sebastian,
+ * 2026-10-25: the Vacation House, then the Vacation House Exclusive later, "on the same bill"), so a
+ * line's key is its id, and `id~…` for the second, where `…` is its saved row's id once it has one.
+ */
+export const unitOfLine = (key: string) => key.split('~')[0]

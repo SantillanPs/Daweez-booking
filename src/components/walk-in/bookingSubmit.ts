@@ -5,6 +5,7 @@ import { BookingSubmitParams, BookingSubmitResult } from './bookingSubmitTypes'
 import { editedMoney } from './bookingEditMoney'
 import { generateUUID } from '../../utils/helpers'
 import { splitDiscount } from './discountSplit'
+import { unitOfLine } from '../../utils/bookingGroup'
 
 // The param and result shapes live in `bookingSubmitTypes`, and the payment logic in
 // `bookingPayment` — both split out to keep this file inside the 300-line limit.
@@ -27,7 +28,8 @@ function withVenueType(existing: EventAddons | undefined, kind: string | undefin
 // and per venue, cancelling any edit-mode bookings the user removed.
 export async function submitBookingForm(p: BookingSubmitParams): Promise<BookingSubmitResult> {
   // 1. Run collision checks for all selected units on their respective dates
-  for (const [id, sel] of Object.entries(p.unitSelections)) {
+  for (const [key, sel] of Object.entries(p.unitSelections)) {
+    const id = unitOfLine(key)
     const isRoom = sel.type === 'room'
     if (isRoom) {
       if (!syncEngine.isRoomAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings, undefined, p)) {
@@ -61,7 +63,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
     appliedDiscount,
     Object.entries(p.unitSelections)
       .filter(([id]) => p.formRoomIds.has(id) || p.formVenueIds.has(id))
-      .map(([id, sel]) => ({ id, type: sel.type, checkIn: sel.checkIn, checkOut: sel.checkOut, contractRate: bookedDeal?.contracted_rates[id] || undefined, venueType: sel.type === 'venue' ? p.formVenueTypes[id] : undefined })),
+      .map(([id, sel]) => ({ id, type: sel.type, checkIn: sel.checkIn, checkOut: sel.checkOut, contractRate: bookedDeal?.contracted_rates[unitOfLine(id)] || undefined, venueType: sel.type === 'venue' ? p.formVenueTypes[id] : undefined })),
     { rooms: p.rooms, venues: p.venues, venueDayBlocks: p.venueDayBlocks, shortStayHours: p.stay_hours },
   )
   const companions = p.bookingType === 'partner'
@@ -101,12 +103,21 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
 
   const createdBookings: Booking[] = []
   const processedBookingIds = new Set<string>()
+  // The saved row a line is: the one its key names (`id~row`, the same room or venue on the bill
+  // again), else the one of that unit no other line names.
+  const named = new Set(Object.keys(p.unitSelections).map(k => k.split('~')[1]).filter(Boolean))
+  const rowFor = (key: string, field: 'room_id' | 'venue_id') => {
+    const [id, row] = key.split('~')
+    return row ? p.editingBookings?.find(eb => eb.id === row)
+      : p.editingBookings?.find(eb => eb[field] === id && !named.has(eb.id) && !processedBookingIds.has(eb.id))
+  }
 
   try {
     // 2. Loop to create or update room bookings
     let isFirstRoom = true
-    for (const roomId of Array.from(p.formRoomIds)) {
-      const sel = p.unitSelections[roomId]
+    for (const key of Array.from(p.formRoomIds)) {
+      const sel = p.unitSelections[key]
+      const roomId = unitOfLine(key)
       const rentals = (p.bookingType === 'partner' || !isFirstRoom) ? undefined : {
         bigTableCount: 0,
         smallTableCount: 0,
@@ -122,7 +133,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
       const deal = p.partnerDeals.find(d => d.id === p.formPartnerDealId)
       const contractedPrice = deal?.contracted_rates[roomId]
 
-      const existingBooking = p.editingBookings?.find(eb => eb.room_id === roomId)
+      const existingBooking = rowFor(key, 'room_id')
       if (existingBooking) processedBookingIds.add(existingBooking.id)
 
       const b = await p.createManualBooking({
@@ -138,7 +149,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         guestAddress: p.formGuestAddress || undefined,
         birthdate: p.formBirthdate || undefined,
         preparedBy: p.formPreparedBy || undefined,
-        appliedDiscount: discounts[roomId],
+        appliedDiscount: discounts[key],
         venueDayBlocks: p.venueDayBlocks,
         notes: p.formBlockNotes.trim() || undefined,
         checkIn: sel.checkIn,
@@ -159,8 +170,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         breakfastOrders: undefined,
         // The bill's switches decide; an agency that always has breakfast turns them all on
         // there, and the desk can turn one off (2026-10-25).
-        breakfastIncluded: p.formBreakfastRoomIds.includes(roomId),
-        contractRateOverride: p.formRates ? (p.formRates[roomId] || contractedPrice || undefined) : contractedPrice || (existingBooking && !existingBooking.partner_deal_id ? existingBooking.contract_rate_override : undefined),
+        breakfastIncluded: p.formBreakfastRoomIds.includes(key),
+        contractRateOverride: p.formRates ? (p.formRates[key] || contractedPrice || undefined) : contractedPrice || (existingBooking && !existingBooking.partner_deal_id ? existingBooking.contract_rate_override : undefined),
         paymentMethod: p.formPaymentMethod || undefined,
         paymentReference: p.formPaymentReference || undefined,
         paymentPlan: p.bookingStatus === 'blocked' ? undefined : p.formPaymentPlan,
@@ -175,8 +186,9 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
     // Extras are entered once for the whole group, so they belong on the FIRST
     // venue only — the same rule the rooms loop above uses.
     let isFirstVenue = true
-    for (const venueId of Array.from(p.formVenueIds)) {
-      const sel = p.unitSelections[venueId]
+    for (const key of Array.from(p.formVenueIds)) {
+      const sel = p.unitSelections[key]
+      const venueId = unitOfLine(key)
       const rentals = (p.bookingType === 'partner' || !isFirstVenue) ? undefined : {
         bigTableCount: 0,
         smallTableCount: 0,
@@ -186,12 +198,12 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         tentCount: p.formEventTent
       }
       isFirstVenue = false
-      const existingBooking = p.editingBookings?.find(eb => eb.venue_id === venueId)
+      const existingBooking = rowFor(key, 'venue_id')
       if (existingBooking) processedBookingIds.add(existingBooking.id)
 
       const deal = p.partnerDeals.find(d => d.id === p.formPartnerDealId)
       const contractedPrice = deal?.contracted_rates[venueId]
-      const kind = withVenueType(existingBooking?.event_addons, p.formVenueTypes[venueId])
+      const kind = withVenueType(existingBooking?.event_addons, p.formVenueTypes[key])
       const charges = firstCharges()
       const eventAddons = charges ? { ...kind, ...charges } : kind
 
@@ -209,7 +221,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         birthdate: p.formBirthdate || undefined,
         preparedBy: p.formPreparedBy || undefined,
         eventAddons,
-        appliedDiscount: discounts[venueId],
+        appliedDiscount: discounts[key],
         venueDayBlocks: p.venueDayBlocks,
         notes: p.formBlockNotes.trim() || undefined,
         checkIn: sel.checkIn,
@@ -223,7 +235,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         companyName: p.formCompanyName || undefined,
         institution: p.formInstitution || undefined,
         vehiclePlate: p.formVehiclePlate || undefined,
-        contractRateOverride: p.formRates ? (p.formRates[venueId] || contractedPrice || undefined) : contractedPrice || (existingBooking && !existingBooking.partner_deal_id ? existingBooking.contract_rate_override : undefined),
+        contractRateOverride: p.formRates ? (p.formRates[key] || contractedPrice || undefined) : contractedPrice || (existingBooking && !existingBooking.partner_deal_id ? existingBooking.contract_rate_override : undefined),
         paymentMethod: p.formPaymentMethod || undefined,
         paymentReference: p.formPaymentReference || undefined,
         paymentPlan: p.bookingStatus === 'blocked' ? undefined : p.formPaymentPlan,

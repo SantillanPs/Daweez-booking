@@ -54,8 +54,8 @@ const LI = 'w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-left te
 const AMT = 'ml-auto font-mono text-[10.5px] font-medium text-ink-700'
 const peso = (n: number) => '₱' + Math.round(n).toLocaleString()
 
-/** `taken`: the first night someone else has it on those dates ("10/29"), '' when free. */
-export interface UnitOption { id: string; label: string; rate: number; count: number; diff: number; venue: boolean; taken: string }
+/** `taken`: the first night someone else has it on those dates ("10/29"), '' when free. `mine`: it is on this bill already. */
+export interface UnitOption { id: string; label: string; rate: number; count: number; diff: number; venue: boolean; taken: string; mine?: boolean }
 
 /** Every room (then the venues) in order: what each costs and what the bill changes by; a taken one says so and still picks. */
 export function UnitList({ options, adding, onPick }: { options: UnitOption[]; adding: boolean; onPick: (id: string) => void }) {
@@ -67,7 +67,9 @@ export function UnitList({ options, adding, onPick }: { options: UnitOption[]; a
           {adding && i === firstVenue && <p className="px-2 pt-2 pb-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-muted">Venues</p>}
           <button type="button" onClick={() => onPick(o.id)} style={{ '--i': i } as React.CSSProperties} className={LI + (o.taken ? ' text-muted' : '')}>
             {o.label}
-            {o.taken
+            {o.mine
+              ? <span className="px-1.5 py-px rounded bg-ink-900 text-[9.5px] font-bold text-white">On this bill</span>
+              : o.taken
               ? <span className="px-1.5 rounded border border-ink-200 text-[9.5px] font-bold text-muted">Taken {o.taken}</span>
               : <span className={'px-1.5 py-px rounded text-[9.5px] font-bold ' + (o.diff > 0 ? 'bg-gold-100 text-gold-800' : o.diff < 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-ink-100 text-muted')}>
                 {o.diff === 0 ? 'Same price' : (o.diff > 0 ? '+' : '−') + peso(Math.abs(o.diff))}

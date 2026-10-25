@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-25f',
+    changes: [
+      {
+        where: 'Front desk → bill',
+        what: [
+          'A room or venue can be on the same bill more than once, on different days. In “Add a room or venue” it says “On this bill”: tap it again and pick the later day.',
+          'Each day keeps its own kind, like the Vacation House one day and the Vacation House Exclusive later.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-25e',
     changes: [
       {

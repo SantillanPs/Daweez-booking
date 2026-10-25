@@ -13,7 +13,7 @@ import { venueTypes } from '../../utils/venueTypes'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { paymentMethodLabel } from '../../utils/paymentMethod'
 import { getSlipsByBooking, OrderSlip } from '../../utils/orderSlips'
-import { groupOf } from '../../utils/bookingGroup'
+import { groupOf, unitOfLine } from '../../utils/bookingGroup'
 import { guestEmailOf } from '../../utils/emailDocument'
 import { lastReceptionist, rememberReceptionist, staffNamesOf } from '../../utils/receptionists'
 import { getInstitutions, insertInstitution } from '../../utils/institutions'
@@ -103,6 +103,11 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
 }) {
   const ed = editing?.[0]
   const unitIdOf = (b: Booking) => b.room_id || normalizeVenueId(b.venue_id) || ''
+  // Each saved row's line key (`unitOfLine`): its unit's id, `id~row` for the same unit again.
+  const keyOfRow = new Map<string, string>()
+  for (const b of editing || []) { const id = unitIdOf(b); keyOfRow.set(b.id, [...keyOfRow.values()].includes(id) ? id + '~' + b.id : id) }
+  const keyOf = (b: Booking) => keyOfRow.get(b.id) || unitIdOf(b)
+  const rowOf = (key: string) => editing?.find(b => keyOf(b) === key || key.endsWith('~' + b.id))
   const { updateRoomBreakfastPrice, partnerDeals } = useDashboardData()
   const [pricing, setPricing] = useState<string | null>(null)
   const [guestName, setGuestName] = useState(ed?.guest_name || '')
@@ -112,7 +117,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const [companions, setCompanions] = useState<Companion[]>(ed?.companions || [])
   const [more, setMore] = useState(!!ed?.guest_address || !!ed?.companions?.length)
   const [hours, setHours] = useState<number>(initialStayHours || ed?.stay_hours || 3)
-  const [breakfast, setBreakfast] = useState<string[]>(() => (editing || []).filter(b => b.room_id && b.breakfast_included).map(unitIdOf))
+  const [breakfast, setBreakfast] = useState<string[]>(() => (editing || []).filter(b => b.room_id && b.breakfast_included).map(keyOf))
   const [extras, setExtras] = useState<Extras>(() => {
     const r = editing?.find(b => b.room_id && b.equipment_rentals)?.equipment_rentals
     return r ? { extraFoamCount: r.extraFoamCount || 0, extraPillowCount: r.extraPillowCount || 0, extraBlanketCount: r.extraBlanketCount || 0, extraTowelCount: r.extraTowelCount || 0 } : NO_EXTRAS
@@ -120,7 +125,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // Every charge of the booking, wherever it was written — saved back onto the first unit.
   const [charges, setCharges] = useState<BillCharge[]>(() => (editing || []).flatMap(b => b.event_addons?.charges || []))
   const [kinds, setKinds] = useState<Record<string, string>>(() =>
-    Object.fromEntries((editing || []).filter(b => b.venue_id && b.event_addons?.venue_type).map(b => [unitIdOf(b), b.event_addons!.venue_type!])))
+    Object.fromEntries((editing || []).filter(b => b.venue_id && b.event_addons?.venue_type).map(b => [keyOf(b), b.event_addons!.venue_type!])))
   // As the form reads it back: a flat amount is what the rooms' shares add up to.
   const [disc, setDisc] = useState<Discount | null>(() => {
     const d = editing?.find(b => (b.applied_discount?.value || 0) > 0)?.applied_discount
@@ -149,11 +154,11 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // **Rooms on the bill** (the mock, Sebastian, 2026-10-24): the rooms and venues are the bill's own
   // lines, each with its own dates and rate, swapped, added or taken off right here.
   const [units, setUnits] = useState<[string, Sel][]>(() => sortUnits(editing
-    ? editing.map((b): [string, Sel] => [unitIdOf(b), { checkIn: b.check_in, checkOut: b.check_out, type: b.room_id ? 'room' : 'venue' }])
+    ? editing.map((b): [string, Sel] => [keyOf(b), { checkIn: b.check_in, checkOut: b.check_out, type: b.room_id ? 'room' : 'venue' }])
     : Object.entries(initialSelections || {})))
   // A rate typed on the line; an agency's own rate is not one.
   const [rates, setRates] = useState<Record<string, number>>(() => Object.fromEntries((editing || [])
-    .filter(b => b.contract_rate_override != null && !b.partner_deal_id).map(b => [unitIdOf(b), Number(b.contract_rate_override)])))
+    .filter(b => b.contract_rate_override != null && !b.partner_deal_id).map(b => [keyOf(b), Number(b.contract_rate_override)])))
   const [pop, setPop] = useState<{ kind: 'swap' | 'add' | 'kind' | 'bf' | 'in' | 'out'; id: string; at: HTMLElement } | null>(null)
   const [rateBox, setRateBox] = useState<string | null>(null)
   const [fresh, setFresh] = useState<string | null>(null)
@@ -187,14 +192,15 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const ea: EventAddons = {}
     if (kinds[id]) ea.venue_type = kinds[id]
     if (i === 0 && charges.length > 0) ea.charges = charges
+    const unit = unitOfLine(id)
     const rentals: EquipmentRental | undefined = id === firstRoomId && !to
       ? { bigTableCount: 0, smallTableCount: 0, chairCount: 0, mineralWaterCount: 0, ...extras } : undefined
     // A correction starts from the saved row, so its payments, breakfasts and hours stay on the bill.
-    const saved = editing?.find(b => unitIdOf(b) === id)
+    const saved = rowOf(id)
     return {
       security_deposit: 0, created_at: '', expires_at: null,
       ...saved,
-      id: 'draft-' + id, room_id: s.type === 'room' ? id : undefined, venue_id: s.type === 'venue' ? id : undefined,
+      id: 'draft-' + id, room_id: s.type === 'room' ? unit : undefined, venue_id: s.type === 'venue' ? unit : undefined,
       guest_name: guestName, guest_email: '', guest_phone: '', check_in: s.checkIn, check_out: s.checkOut,
       source: 'manual', status: 'confirmed', payment_records: saved?.payment_records || [], downpayment_paid: saved?.downpayment_paid || 0, balance_due: 0,
       // A short stay has no breakfast (the owner, 2026-10-24: "they won't need it").
@@ -203,17 +209,17 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       stay_half: isShort ? half : undefined,
       event_addons: Object.keys(ea).length > 0 ? ea : undefined,
       equipment_rentals: rentals,
-      partner_deal_id: deal?.id, company_name: to?.name, contract_rate_override: rates[id] || deal?.contracted_rates[id] || undefined,
+      partner_deal_id: deal?.id, company_name: to?.name, contract_rate_override: rates[id] || deal?.contracted_rates[unit] || undefined,
       applied_discount: disc && disc.v > 0 && !to && (disc.pct || i === 0) ? { type: disc.pct ? 'percent' : 'flat', value: disc.v } : undefined,
     } as Booking
   }
   const drafts = list.map(([id, s], i) => draftOf(id, s, i))
   // Taken off, a room's money stays on the bill: shown on the first room, where saving puts it.
-  const gone = (editing || []).filter(b => holdsMoney(b) && !list.some(([id]) => id === unitIdOf(b)))
+  const gone = (editing || []).filter(b => holdsMoney(b) && !list.some(([id]) => rowOf(id) === b))
   if (gone.length > 0 && drafts[0]) drafts[0] = withMoneyOf(drafts[0], gone)
   const statement = drafts.length > 0
     ? buildStatement({ primaryBooking: drafts[0], relatedBookings: drafts, rooms, venues, bookingsList: bookings,
-        slipsByBooking: Object.fromEntries(list.map(([id]) => ['draft-' + id, slips[editing?.find(b => unitIdOf(b) === id)?.id || ''] || []])) })
+        slipsByBooking: Object.fromEntries(list.map(([id]) => ['draft-' + id, slips[rowOf(id)?.id || ''] || []])) })
     : null
   const total = statement?.subTotal ?? 0
   // What the discount takes off, in pesos: the statement's own Discount rows.
@@ -261,16 +267,22 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   }
 
   const others = editing ? bookings.filter(b => !editing.some(e => e.id === b.id)) : bookings
-  const free = (id: string, from: string, to: string) => rooms.some(r => r.id === id)
-    ? isRoomAvailable(id, from, to, others, undefined, isShort ? { stay_hours: hours, stay_half: half } : undefined)
-    : isVenueRangeAvailable(id, from, to, others)
+  // Free of other bookings, and of this bill's other line of the same room or venue.
+  const free = (key: string, from: string, to: string) => {
+    const id = unitOfLine(key)
+    return (rooms.some(r => r.id === id)
+      ? isRoomAvailable(id, from, to, others, undefined, isShort ? { stay_hours: hours, stay_half: half } : undefined)
+      : isVenueRangeAvailable(id, from, to, others))
+      && !list.some(([k, s]) => k !== key && unitOfLine(k) === id && s.checkIn < to && from < s.checkOut)
+  }
   const countOf = (from: string, to: string) => Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000))
-  const priceOf = (id: string) => {
+  const priceOf = (key: string) => {
+    const id = unitOfLine(key)
     const r = rooms.find(x => x.id === id), v = venues.find(x => x.id === id)
     return deal?.contracted_rates[id] || (r ? getEffectiveNightlyPrice(r.base_price, r.promo_price) : v ? getEffectiveNightlyPrice(v.base_price, v.promo_price) : 0)
   }
-  const kindsOf = (id: string) => {
-    const venue = venues.find(v => v.id === id)
+  const kindsOf = (key: string) => {
+    const venue = venues.find(v => v.id === unitOfLine(key))
     const types = venueTypes(venue)
     return venue && types.length > 0
       ? [{ key: '', label: venue.name.split(' ').pop() || venue.name, price: getEffectiveNightlyPrice(venue.base_price, venue.promo_price) },
@@ -285,7 +297,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   }
   // A room swaps for a room and a venue for a venue; adding offers the rooms, then the venues.
   // Every one is listed in room order, a taken one too (Sebastian, 2026-10-25: "it should always show
-  // ALL the rooms … they will just [change] the date if needed"): picking it opens its dates.
+  // ALL the rooms … they will just [change] the date if needed"): picking it opens its dates. Adding
+  // lists the ones on the bill too, "On this bill", for the same one again on a later day (2026-10-25).
+  const after = (id: string) => list.filter(([k]) => unitOfLine(k) === id).map(([, s]) => s.checkOut).sort().pop()
   const unitChoices = (swapOut?: string) => {
     const was = swapOut ? list.find(([id]) => id === swapOut)?.[1] : undefined
     const at = was || first
@@ -293,11 +307,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const options: UnitOption[] = []
     if (!at) return options
     const all = [...rooms.map(r => ({ id: r.id, type: 'room' as const })), ...venues.map(v => ({ id: v.id, type: 'venue' as const }))]
-      .filter(u => !list.some(([id]) => id === u.id) && (!was || u.type === was.type))
+      .filter(u => !(was && list.some(([id]) => unitOfLine(id) === u.id)) && (!was || u.type === was.type))
     for (const u of all) {
-      const ci = at.checkIn, co = was || u.type === 'room' ? at.checkOut : nextDay(at.checkIn)
+      const mine = was ? undefined : after(u.id)
+      const ci = mine || at.checkIn, co = mine ? nextDay(mine) : was || u.type === 'room' ? at.checkOut : nextDay(at.checkIn)
       const rate = priceOf(u.id), count = countOf(ci, co)
-      options.push({ id: u.id, label: unitName(u.id, { checkIn: ci, checkOut: co, type: u.type }), rate, count, diff: (rate - wasRate) * count, venue: u.type === 'venue', taken: takenOn(u.id, ci, co) })
+      options.push({ id: u.id, label: unitName(u.id, { checkIn: ci, checkOut: co, type: u.type }), rate, count, diff: (rate - wasRate) * count, venue: u.type === 'venue', taken: takenOn(u.id + '~new', ci, co), mine: !!mine })
     }
     return options
   }
@@ -307,9 +322,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     if (!pop || !first) return
     const type: Sel['type'] = rooms.some(r => r.id === id) ? 'room' : 'venue'
     if (pop.kind === 'add') {
-      setUnits(u => sortUnits([...u, [id, { checkIn: first.checkIn, checkOut: type === 'venue' ? nextDay(first.checkIn) : first.checkOut, type }]]))
-      if (type === 'room' && !isShort && deal?.breakfast_default === 'with') setBreakfast(b => [...b, id])
-      setAskIn(id)
+      // On the bill already: a line of its own, the day after its last one.
+      const last = after(id), key = last ? id + '~' + randomUUID().slice(0, 8) : id
+      setUnits(u => sortUnits([...u, [key, last ? { checkIn: last, checkOut: nextDay(last), type } : { checkIn: first.checkIn, checkOut: type === 'venue' ? nextDay(first.checkIn) : first.checkOut, type }]]))
+      if (type === 'room' && !isShort && deal?.breakfast_default === 'with') setBreakfast(b => [...b, key])
+      setAskIn(key); setPop(null); setUnitOff(null); setFresh(key)
+      return
     } else {
       const out = pop.id
       // A swapped room takes its breakfast along; a new venue starts on its plain kind and price.
@@ -323,7 +341,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     setPop(null); setUnitOff(null); setFresh(id)
   }
   const takeOff = (id: string, s: Sel) => {
-    const saved = editing?.find(b => unitIdOf(b) === id)
+    const saved = rowOf(id)
     setUnitOff({ label: unitName(id, s), money: saved && holdsMoney(saved) ? Number(saved.downpayment_paid || 0) : 0, units, breakfast, kinds, rates })
     setUnits(u => u.filter(([x]) => x !== id)); setBreakfast(b => b.filter(x => x !== id)); setPop(null)
   }
@@ -337,9 +355,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     if (!v) return
     const kind = kindsOf(id).find(k => k.key === (kinds[id] || ''))
     // A short stay's own price is the room's board price for its hours.
-    const room = isShort ? rooms.find(r => r.id === id) : undefined
+    const room = isShort ? rooms.find(r => r.id === unitOfLine(id)) : undefined
     const hourly = hours === 3 ? room?.hour3_price : hours === 6 ? room?.hour6_price : hours === 12 ? room?.hour12_price : null
-    const own = deal?.contracted_rates[id] || kind?.price || hourly || priceOf(id)
+    const own = deal?.contracted_rates[unitOfLine(id)] || kind?.price || hourly || priceOf(id)
     setRates(r => { const n = { ...r }; if (v === own) delete n[id]; else n[id] = v; return n })
     setFresh(id)
   }
@@ -425,6 +443,17 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       }
       setSaving(false); setError('')
       ids.current = result.bookings.map(b => b.id)
+      // A line added again (`id~…`) takes the id of the row it was saved as, so the next save updates
+      // that row instead of making another. The save goes rooms first, then venues, in the bill's order.
+      const order = [...list.filter(([, s]) => s.type === 'room'), ...list.filter(([, s]) => s.type === 'venue')].map(([k]) => k)
+      const renamed = new Map<string, string>()
+      order.forEach((k, i) => { const row = result.bookings[i]; if (k.includes('~') && row && !k.endsWith('~' + row.id)) renamed.set(k, unitOfLine(k) + '~' + row.id) })
+      if (renamed.size > 0) {
+        const re = (k: string) => renamed.get(k) || k
+        const reKeys = <T,>(r: Record<string, T>) => Object.fromEntries(Object.entries(r).map(([k, v]) => [re(k), v]))
+        // ponytail: the new keys read as a change and save the same bill once more; harmless.
+        setUnits(u => u.map(([k, s]): [string, Sel] => [re(k), s])); setBreakfast(b => b.map(re)); setKinds(reKeys); setRates(reKeys)
+      }
       onSaved?.(result.bookings)
       return
     }
@@ -471,9 +500,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const close = () => { void save(); onClose() }
   const paperBox = useRef<HTMLDivElement>(null)
 
-  const unitName = (id: string, s: Sel) => s.type === 'room'
-    ? ['Room ' + (rooms.find(r => r.id === id)?.room_number ?? ''), rooms.find(r => r.id === id)?.name].filter(Boolean).join(' · ')
-    : venues.find(v => v.id === id)?.name || id
+  const unitName = (key: string, s: Sel) => {
+    const id = unitOfLine(key)
+    return s.type === 'room'
+      ? ['Room ' + (rooms.find(r => r.id === id)?.room_number ?? ''), rooms.find(r => r.id === id)?.name].filter(Boolean).join(' · ')
+      : venues.find(v => v.id === id)?.name || id
+  }
 
   const label = 'text-[10px] text-muted'
   const figure = 'font-mono text-[11.5px] font-bold text-ink-900'
@@ -485,7 +517,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const today = new Date()
 
   // Breakfast is one line with a switch for each room, an agency's bill too.
-  const bfRooms = isShort ? [] : list.filter(([id, s]) => s.type === 'room' && rooms.some(r => r.id === id))
+  const bfRooms = isShort ? [] : list.filter(([id, s]) => s.type === 'room' && rooms.some(r => r.id === unitOfLine(id)))
   const bfLines = statement?.lineItems.filter(i => /^draft-.+-breakfast$/.test(i.key)) || []
   const lastRoomKey = 'draft-' + list[list.length - 1]?.[0] + '-stay'
   const isOpen = (kind: NonNullable<typeof pop>['kind'], id = '') => pop?.kind === kind && pop.id === id
@@ -510,7 +542,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
         <tr key={'bf-' + count + '-' + amount} className={fresh === 'bf' ? 'bill-ink' : undefined}>
           <td className={cell + ' pl-0 text-left whitespace-normal'}>
             <button type="button" data-bf onClick={toggle('bf')} aria-expanded={isOpen('bf')} className={VAL + ' group inline-flex items-center gap-1 -ml-0.5'}>
-              Breakfast · {on.length > 1 ? 'Rooms ' : 'Room '}{on.map(([id]) => rooms.find(r => r.id === id)?.room_number).join(', ')}
+              Breakfast · {on.length > 1 ? 'Rooms ' : 'Room '}{[...new Set(on.map(([id]) => rooms.find(r => r.id === unitOfLine(id))?.room_number))].join(', ')}
               <ChevronDown aria-hidden="true" className={CHEV} />
             </button>
           </td>
@@ -564,7 +596,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
         <tr key={id + s.checkIn + s.checkOut + it.amount} className={fresh === id ? 'bill-ink' : undefined}>
           <td className={cell + ' pl-0 text-left whitespace-normal'}>
             <button type="button" onClick={toggle('swap', id)} aria-expanded={isOpen('swap', id)} className={VAL + ' group inline-flex items-center gap-1 -ml-0.5'}>
-              {name}{deal?.contracted_rates[id] && !rates[id] ? ' · corporate' : ''}<ChevronDown aria-hidden="true" className={CHEV} />
+              {name}{deal?.contracted_rates[unitOfLine(id)] && !rates[id] ? ' · corporate' : ''}<ChevronDown aria-hidden="true" className={CHEV} />
             </button>
             {list.length > 1 && (
               <button type="button" onClick={() => takeOff(id, s)} aria-label={'Take ' + name + ' off the bill'}
@@ -636,7 +668,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       <Floating key={p.kind + p.id} {...common} at={at} width={320} label="Breakfast">
         <BreakfastList pricing={pricing} onPrice={setPricing}
           rows={bfRooms.map(([id, us]) => {
-            const room = rooms.find(r => r.id === id)!
+            const room = rooms.find(r => r.id === unitOfLine(id))!
             return { id, label: unitName(id, us), price: breakfastSellable(room) ? roomBreakfastPrice(room) : null, count: isShort ? 1 : countOf(us.checkIn, us.checkOut), on: breakfast.includes(id) }
           })}
           onToggle={id => {
@@ -647,8 +679,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           }}
           onPriced={(id, price) => {
             setPricing(null)
-            updateRoomBreakfastPrice?.(id, price)
-              .catch(() => showToast('The breakfast price for Room ' + rooms.find(r => r.id === id)?.room_number + ' was not saved. Try again.', 'error'))
+            updateRoomBreakfastPrice?.(unitOfLine(id), price)
+              .catch(() => showToast('The breakfast price for Room ' + rooms.find(r => r.id === unitOfLine(id))?.room_number + ' was not saved. Try again.', 'error'))
             setBreakfast(b => [...b, id]); setRemoved(null); setFresh('bf')
           }} />
       </Floating>
