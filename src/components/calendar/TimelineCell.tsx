@@ -353,13 +353,20 @@ export const TimelineCell = React.memo(
                 morning, or its first afternoon at the edge of the screen — so it wears the
                 guest's INITIALS (the staff wanted to see who is leaving; it used to say only
                 IN). The full name is on the hover card and in the panel. */}
-            {narrow ? (
+            {narrow ? (<>
               <span className={'relative font-display text-[13px] font-bold leading-4' + (money.noDeposit && !isBlock ? ' text-blue-700' : '')}>
                 {isBlock ? '' : pillInitials(pillName)}
                 {askIn && <AskDoor k="in" className="absolute -left-2.5 -top-2" />}
                 {askOut && <AskDoor k="out" className="absolute -right-2.5 -top-2" />}
               </span>
-            ) : (<>
+              {/* A short stay is half a day now (2026-10-25), so its leave time rides under the
+                  initials, without AM/PM to fit; its hours until the check-in is noted. */}
+              {!!booking.stay_hours && (
+                <span className={'relative text-[12px] font-semibold leading-4 tabular-nums ' + (timeUp ? 'text-gold-800' : 'text-muted')}>
+                  {freeAt ? clockLabel(freeAt).replace(/ [AP]M$/, '') : booking.stay_hours + 'h'}
+                </span>
+              )}
+            </>) : (<>
             {/* TWO LINES, both in words (the staff's feedback, 2026-10-04): who is in the
                 room and whether they are IN or OUT, then what is still to pay. The desk
                 reads the calendar without opening a booking. A block has one line — why

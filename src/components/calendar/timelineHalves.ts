@@ -16,11 +16,13 @@ import { TimelineDayInfo } from './timelineDays'
  * Who fills each half of each room's and venue's row, keyed by the unit's id. A half with
  * nobody in it is `null`; a unit nobody is booked into has no row at all.
  *
- * A SHORT STAY is the one exception: it takes the whole day it is on (its stored check-out
- * is only the next day because the room is taken for that whole day — housekeeping cleans
- * it afterwards), so it fills both halves of its day and nothing of the next. Ordinary
- * stays are placed first, so when a short stay is on the day a guest leaves, the guest keeps
- * the morning and the short stay shows the afternoon only.
+ * A SHORT STAY is the one exception: it is HALF A DAY, the half its hours are in (Sebastian,
+ * 2026-10-25, the pill states mock: "since a short stay just requires half a pill, shouldn't
+ * the pill also be half?"; it used to fill the whole day). A check-in noted before 12 PM is
+ * the morning, anything else — not noted yet included — the afternoon, like every arrival.
+ * Its stored check-out is still the next day, so the room stays taken for the whole day.
+ * Ordinary stays are placed first; when its half is a guest's last morning, it takes the
+ * afternoon instead.
  */
 export function halvesByUnit(bookings: Booking[], days: TimelineDayInfo[]): Record<string, (Booking | null)[]> {
   const rows: Record<string, (Booking | null)[]> = {}
@@ -36,8 +38,10 @@ export function halvesByUnit(bookings: Booking[], days: TimelineDayInfo[]): Reco
     const unit = b.room_id || normalizeVenueId(b.venue_id)
     if (!unit) return
     const arrives = dayIndex(b.check_in)
-    const start = b.stay_hours ? arrives * 2 : arrives * 2 + 1
-    const end = b.stay_hours ? arrives * 2 + 2 : dayIndex(b.check_out) * 2 + 1
+    const morning = !!b.actual_check_in && new Date(b.actual_check_in).getHours() < 12
+    let start = b.stay_hours ? arrives * 2 + (morning ? 0 : 1) : arrives * 2 + 1
+    if (b.stay_hours && morning && rows[unit]?.[start]) start++
+    const end = b.stay_hours ? start + 1 : dayIndex(b.check_out) * 2 + 1
     // Only the days on screen are filled: a block with no end date runs to a far-off year.
     const from = Math.max(start, 0)
     const to = Math.min(end, width)

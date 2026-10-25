@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-25',
+    changes: [
+      {
+        where: 'Front desk → calendar',
+        what: [
+          'Once you note that a guest checked out, their booking turns grey straight away, even if they left before their dates ended.',
+          'A short stay now takes half a day on the calendar: the morning if they checked in before 12 PM, otherwise the afternoon. It shows the guest’s initials and the time they should leave.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-24l',
     changes: [
       {
