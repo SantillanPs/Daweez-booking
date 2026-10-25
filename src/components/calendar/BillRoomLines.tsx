@@ -54,28 +54,29 @@ const LI = 'w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-left te
 const AMT = 'ml-auto font-mono text-[10.5px] font-medium text-ink-700'
 const peso = (n: number) => '₱' + Math.round(n).toLocaleString()
 
-export interface UnitOption { id: string; label: string; rate: number; count: number; diff: number; venue: boolean }
+/** `taken`: the first night someone else has it on those dates ("10/29"), '' when free. */
+export interface UnitOption { id: string; label: string; rate: number; count: number; diff: number; venue: boolean; taken: string }
 
-/** The rooms (then the venues) free on those dates: what each costs and what the bill changes by, closest first. */
-export function UnitList({ options, taken, adding, onPick }: { options: UnitOption[]; taken: string[]; adding: boolean; onPick: (id: string) => void }) {
+/** Every room (then the venues) in order: what each costs and what the bill changes by; a taken one says so and still picks. */
+export function UnitList({ options, adding, onPick }: { options: UnitOption[]; adding: boolean; onPick: (id: string) => void }) {
   const firstVenue = options.findIndex(o => o.venue)
   return (
     <>
       {options.map((o, i) => (
         <React.Fragment key={o.id}>
           {adding && i === firstVenue && <p className="px-2 pt-2 pb-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-muted">Venues</p>}
-          <button type="button" onClick={() => onPick(o.id)} style={{ '--i': i } as React.CSSProperties} className={LI}>
+          <button type="button" onClick={() => onPick(o.id)} style={{ '--i': i } as React.CSSProperties} className={LI + (o.taken ? ' text-muted' : '')}>
             {o.label}
-            <span className={'px-1.5 py-px rounded text-[9.5px] font-bold ' + (o.diff > 0 ? 'bg-gold-100 text-gold-800' : o.diff < 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-ink-100 text-muted')}>
-              {o.diff === 0 ? 'Same price' : (o.diff > 0 ? '+' : '−') + peso(Math.abs(o.diff))}
-            </span>
-            <span className={AMT}>{peso(o.rate)} × {o.count}</span>
+            {o.taken
+              ? <span className="px-1.5 rounded border border-ink-200 text-[9.5px] font-bold text-muted">Taken {o.taken}</span>
+              : <span className={'px-1.5 py-px rounded text-[9.5px] font-bold ' + (o.diff > 0 ? 'bg-gold-100 text-gold-800' : o.diff < 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-ink-100 text-muted')}>
+                {o.diff === 0 ? 'Same price' : (o.diff > 0 ? '+' : '−') + peso(Math.abs(o.diff))}
+              </span>}
+            <span className={AMT + (o.taken ? ' !text-muted' : '')}>{peso(o.rate)} × {o.count}</span>
           </button>
         </React.Fragment>
       ))}
-      <p className="mt-1 px-2 pt-1.5 pb-1 border-t border-ink-200 text-[10px] text-muted whitespace-normal">
-        {options.length === 0 ? 'Nothing else is free those nights.' : taken.length > 0 ? 'Taken those nights: ' + taken.join(', ') : 'Everything is free those nights.'}
-      </p>
+      {options.length === 0 && <p className="px-2 py-1.5 text-[10px] text-muted">Every room is on this bill.</p>}
     </>
   )
 }
@@ -132,9 +133,11 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
  * check-in moves the stay and its nights come along; a new check-out changes the nights. A night
  * someone else has is struck through and refuses with a shake.
  */
-export function MonthPick({ end, checkIn, checkOut, free, onPick }: {
+export function MonthPick({ end, checkIn, checkOut, free, taken, onPick }: {
   end: 'in' | 'out'; checkIn: string; checkOut: string
   free: (from: string, to: string) => boolean
+  /** Said over the month when someone else has these dates: they show gold until they move. */
+  taken?: string
   onPick: (checkIn: string, checkOut: string) => void
 }) {
   const [month, setMonth] = useState((end === 'in' ? checkIn : checkOut).slice(0, 7))
@@ -161,6 +164,7 @@ export function MonthPick({ end, checkIn, checkOut, free, onPick }: {
         <span>{end === 'in' ? 'Check in' : 'Check out'} · {MONTHS[m - 1]} {y}</span>
         <button type="button" onClick={() => step(1)} aria-label="Next month" className={NAV}><ChevronRight className="w-3.5 h-3.5" /></button>
       </div>
+      {taken && <p className="mb-1 px-1 text-[10px] font-semibold text-gold-800 bw-rise">{taken}</p>}
       <div className="grid grid-cols-7 text-center text-[9px] font-bold text-muted pb-0.5">{['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i}>{d}</span>)}</div>
       <div className="grid grid-cols-7">
         {Array.from({ length: lead }, (_, i) => <span key={'x' + i} />)}
@@ -168,7 +172,8 @@ export function MonthPick({ end, checkIn, checkOut, free, onPick }: {
           const d = month + '-' + String(i + 1).padStart(2, '0')
           const sold = !free(d, addDays(d, 1)) && !(d >= checkIn && d < checkOut)
           const stay = d >= checkIn && d < checkOut
-          const tone = d === checkIn ? 'bg-ink-900 text-white rounded-l-lg' : d === checkOut ? 'bg-ink-900 text-white rounded-r-lg' : stay ? 'bg-gold-100' : 'hover:bg-gold-100 hover:rounded-lg'
+          const edge = taken ? 'bg-gold-500 text-white' : 'bg-ink-900 text-white'
+          const tone = d === checkIn ? edge + ' rounded-l-lg' : d === checkOut ? edge + ' rounded-r-lg' : stay ? 'bg-gold-100' : 'hover:bg-gold-100 hover:rounded-lg'
           return (
             <button key={d} type="button" onClick={e => tap(d, e.currentTarget)} aria-label={MONTHS[m - 1] + ' ' + (i + 1) + (sold ? ', taken' : '')}
               className={'h-[30px] grid place-items-center text-[11.5px] font-semibold active:scale-90 transition-[background-color,transform] ' + tone +

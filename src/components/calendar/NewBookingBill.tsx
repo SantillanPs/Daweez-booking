@@ -276,25 +276,31 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       : []
   }
   const lineOf = (id: string) => statement?.lineItems.find(i => i.key === 'draft-' + id + '-stay')
+  // The first night a unit is taken in the given dates ("10/29"), or '' when it is free.
+  const takenOn = (id: string, from: string, to: string) => {
+    for (let d = from; d < to; d = nextDay(d)) if (!free(id, d, nextDay(d))) return Number(d.slice(5, 7)) + '/' + Number(d.slice(8))
+    return ''
+  }
   // A room swaps for a room and a venue for a venue; adding offers the rooms, then the venues.
+  // Every one is listed in room order, a taken one too (Sebastian, 2026-10-25: "it should always show
+  // ALL the rooms … they will just [change] the date if needed"): picking it opens its dates.
   const unitChoices = (swapOut?: string) => {
     const was = swapOut ? list.find(([id]) => id === swapOut)?.[1] : undefined
     const at = was || first
     const wasRate = swapOut ? lineOf(swapOut)?.price || 0 : 0
-    const options: UnitOption[] = [], taken: string[] = []
-    if (!at) return { options, taken }
+    const options: UnitOption[] = []
+    if (!at) return options
     const all = [...rooms.map(r => ({ id: r.id, type: 'room' as const })), ...venues.map(v => ({ id: v.id, type: 'venue' as const }))]
       .filter(u => !list.some(([id]) => id === u.id) && (!was || u.type === was.type))
     for (const u of all) {
       const ci = at.checkIn, co = was || u.type === 'room' ? at.checkOut : nextDay(at.checkIn)
-      const name = unitName(u.id, { checkIn: ci, checkOut: co, type: u.type })
-      if (!free(u.id, ci, co)) { taken.push(name.split(' · ')[0]); continue }
       const rate = priceOf(u.id), count = countOf(ci, co)
-      options.push({ id: u.id, label: name, rate, count, diff: (rate - wasRate) * count, venue: u.type === 'venue' })
+      options.push({ id: u.id, label: unitName(u.id, { checkIn: ci, checkOut: co, type: u.type }), rate, count, diff: (rate - wasRate) * count, venue: u.type === 'venue', taken: takenOn(u.id, ci, co) })
     }
-    options.sort((a, b) => Number(a.venue) - Number(b.venue) || Math.abs(a.diff) - Math.abs(b.diff))
-    return { options, taken }
+    return options
   }
+  // A unit on the bill whose dates are booked by someone else: it waits for new dates before it saves.
+  const clash = list.some(([id, s]) => !free(id, s.checkIn, s.checkOut))
   const pickUnit = (id: string) => {
     if (!pop || !first) return
     const type: Sel['type'] = rooms.some(r => r.id === id) ? 'room' : 'venue'
@@ -309,6 +315,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       setBreakfast(b => b.map(x => x === out ? id : x))
       setKinds(k => { const n = { ...k }; delete n[out]; return n })
       setRates(r => { const n = { ...r }; delete n[out]; return n })
+      const s = list.find(([x]) => x === out)?.[1]
+      if (s && !free(id, s.checkIn, s.checkOut)) setAskIn(id)
     }
     setPop(null); setUnitOff(null); setFresh(id)
   }
@@ -445,13 +453,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   useEffect(() => { latest.current = handleBook })
   const [mark, setMark] = useState<'saving' | 'saved' | null>(null)
   const save = () => {
-    if (!editing || sig === savedSig.current) return queue.current
+    if (!editing || clash || sig === savedSig.current) return queue.current
     savedSig.current = sig
     setMark('saving')
     return chain(async () => { await settle(); await latest.current(liveRows()); setMark('saved') })
   }
   useEffect(() => {
-    if (!editing || sig === savedSig.current) return
+    if (!editing || clash || sig === savedSig.current) return
     const t = setTimeout(() => void save(), 800)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -572,7 +580,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           </td>
           {rateCell(id, name, it)}
           <td className={cell + ' text-right font-mono'}>
-            <button type="button" data-in={id} onClick={toggle('in', id)} aria-expanded={isOpen('in', id)} aria-label={name + ' check in'} className={VAL}>{shortDate(s.checkIn)}</button>
+            <button type="button" data-in={id} onClick={toggle('in', id)} aria-expanded={isOpen('in', id)} aria-label={name + ' check in'} className={VAL + (free(id, s.checkIn, s.checkOut) ? '' : ' !bg-gold-100 !text-gold-800 print:!bg-transparent')}>{shortDate(s.checkIn)}</button>
           </td>
           <td className={cell + ' text-right font-mono'}>
             <button type="button" onClick={toggle('out', id)} aria-expanded={isOpen('out', id)} aria-label={name + ' check out'} className={VAL}>{shortDate(s.checkOut)}</button>
@@ -612,7 +620,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       const c = unitChoices(p.kind === 'swap' ? p.id : undefined)
       return (
         <Floating key={p.kind + p.id} {...common} at={at} width={330} label={p.kind === 'add' ? 'Add a room or venue' : 'Swap ' + (s ? unitName(p.id, s) : '')}>
-          <UnitList options={c.options} taken={c.taken} adding={p.kind === 'add'} onPick={pickUnit} />
+          <UnitList options={c} adding={p.kind === 'add'} onPick={pickUnit} />
         </Floating>
       )
     }
@@ -647,6 +655,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     return (
       <Floating key={p.kind + p.id} {...common} at={at} right width={236} label={(p.kind === 'in' ? 'Check in for ' : 'Check out for ') + unitName(p.id, s)}>
         <MonthPick end={p.kind === 'in' ? 'in' : 'out'} checkIn={s.checkIn} checkOut={s.checkOut} free={(a, b) => free(p.id, a, b)}
+          taken={free(p.id, s.checkIn, s.checkOut) ? '' : unitName(p.id, s).split(' · ')[0] + ' is taken on these dates'}
           onPick={(ci, co) => { setUnits(u => u.map(([x, y]): [string, Sel] => x === p.id ? [x, { ...y, checkIn: ci, checkOut: co }] : [x, y])); setFresh(p.id); setPop(null) }} />
       </Floating>
     )

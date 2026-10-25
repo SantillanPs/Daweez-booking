@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-25d',
+    changes: [
+      {
+        where: 'Front desk → bill',
+        what: [
+          '“Add a room or venue” lists every room. A room booked on those dates says “Taken”.',
+          'Pick a taken room and its dates open: choose a free night and it saves.',
+          'Adding a room to an older bill keeps the bill’s own number.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-25c',
     changes: [
       {

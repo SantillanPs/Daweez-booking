@@ -26,7 +26,9 @@ export function groupOf(booking: Booking, list: Booking[]): Booking[] {
   const rows = together.some(b => b.id === booking.id) ? together : [booking, ...together]
   return rows
     .map(b => (b.id === booking.id ? booking : b))
-    .sort((a, b) => (a.invoice_number || '').localeCompare(b.invoice_number || '') || a.created_at.localeCompare(b.created_at))
+    // Booked first leads, then the number: a new-style number ("202610-…") sorts before an old
+    // "GRF-…" one, so a room added later to an old bill took over the bill's number (2026-10-25).
+    .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || (a.invoice_number || '').localeCompare(b.invoice_number || ''))
 }
 
 /** True when the booking is one of several rooms booked together. */
