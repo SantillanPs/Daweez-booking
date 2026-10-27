@@ -114,12 +114,13 @@ function TextFix({ value, placeholder, label, money: isMoney, onSave }: { value:
 
 /**
  * **The day it was paid** (Sebastian, 2026-10-27: "the date of the payment should be changeable"; the
- * "Payment Date" mock): Today, Yesterday, or any day up to today. The time of day stays as it was.
+ * "Payment Date" mock): any day up to today, in the date box alone (the Today and Yesterday buttons came
+ * off, 2026-10-27). The time of day stays as it was.
  */
 function DayFix({ paidAt, onSave }: { paidAt: string; onSave: (paidAt: string) => void }) {
   const was = paidAt ? new Date(paidAt) : new Date()
   const [v, setV] = useState(dateToString(was))
-  const today = new Date(), yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)
+  const today = new Date()
   const pick = (day: string) => {
     if (!day || day > dateToString(today)) return
     const [y, m, d] = day.split('-').map(Number)
@@ -128,15 +129,6 @@ function DayFix({ paidAt, onSave }: { paidAt: string; onSave: (paidAt: string) =
   }
   return (
     <div className="p-1">
-      <div className="flex gap-1 pb-2">
-        {[['Today', today], ['Yesterday', yesterday]].map(([name, d], i) => {
-          const day = dateToString(d as Date)
-          return (
-            <button key={day} type="button" aria-pressed={day === dateToString(was)} onClick={() => pick(day)} style={{ '--i': i } as React.CSSProperties}
-              className="flex-1 py-[7px] rounded-lg bg-paper-100 text-[11.5px] font-bold text-ink-900 cursor-pointer hover:bg-gold-100 aria-pressed:bg-ink-900 aria-pressed:text-white active:scale-95 transition-[background-color,color,transform] bw-rise">{name as string}</button>
-          )
-        })}
-      </div>
       <form onSubmit={e => { e.preventDefault(); pick(v) }} className="flex items-end gap-1.5">
         <input type="date" value={v} max={dateToString(today)} onChange={e => setV(e.target.value)} aria-label="Day it was paid" className={SLOT + ' text-[16px]'} />
         <button type="submit" aria-label="Save" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>

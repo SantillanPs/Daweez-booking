@@ -28,7 +28,7 @@ export const UPDATES: Update[] = [
       {
         where: 'Front desk → bill',
         what: [
-          'The day a payment was made can be changed: tap the day under the payment and pick Today, Yesterday or any other day. The money moves to that day in Today’s money.',
+          'The day a payment was made can be changed: tap the day under the payment and pick the day. The money moves to that day in Today’s money.',
         ],
       },
     ],
