@@ -13,14 +13,17 @@ import { venueTypes } from '../../utils/venueTypes'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { paymentMethodLabel } from '../../utils/paymentMethod'
 import { getSlipsByBooking, OrderSlip } from '../../utils/orderSlips'
+import { clearStayHours } from '../../utils/db'
 import { groupOf, unitOfLine } from '../../utils/bookingGroup'
 import { guestEmailOf } from '../../utils/emailDocument'
 import { lastReceptionist, rememberReceptionist, staffNamesOf } from '../../utils/receptionists'
 import { getInstitutions, insertInstitution } from '../../utils/institutions'
 import { StatementShell, BrandHeader, SectionName } from '../billing/StatementShell'
 import { StatementChargesTable } from '../billing/StatementChargesTable'
-import { Floating, UnitList, UnitOption, KindList, BreakfastList, MonthPick } from './BillRoomLines'
+import { Floating, UnitList, UnitOption, KindList, LengthList, BreakfastList, MonthPick } from './BillRoomLines'
 import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
+import { venueHoursOf } from '../../utils/venueHours'
+import { getRateConfig } from '../../utils/rateConfig'
 import { withMoneyOf, holdsMoney } from '../../utils/roomTakenOff'
 import { AddCharge, PayInput, WritePayment } from '../billing/BillDesk'
 import { useLateFocus } from '../billing/want'
@@ -118,6 +121,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const [companions, setCompanions] = useState<Companion[]>(ed?.companions || [])
   const [more, setMore] = useState(!!ed?.guest_address || !!ed?.companions?.length)
   const [hours, setHours] = useState<number>(initialStayHours || ed?.stay_hours || 3)
+  // A day can be turned into hours on the bill, and back (Sebastian, 2026-10-27: "what if I made a
+  // mistake here and instead of booking 1 day, it's supposed to be just 6 hours"; the "Day or Hours" mock).
+  const [short, setShort] = useState(!!(initialStayHours || ed?.stay_hours))
+  const [half, setHalf] = useState<0 | 1>(initialStayHalf ?? ed?.stay_half ?? 1)
   const [breakfast, setBreakfast] = useState<string[]>(() => (editing || []).filter(b => b.room_id && b.breakfast_included).map(keyOf))
   const [extras, setExtras] = useState<Extras>(() => {
     const r = editing?.find(b => b.room_id && b.equipment_rentals)?.equipment_rentals
@@ -160,7 +167,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     .filter(b => b.contract_rate_override != null && !b.partner_deal_id).map(b => [keyOf(b), Number(b.contract_rate_override)])))
   // Everything tapped on the bill opens in one floating box (Sebastian, 2026-10-27, the "Bill pop-ups" mock);
   // `v` is the rate it opens on.
-  const [pop, setPop] = useState<{ kind: 'swap' | 'add' | 'kind' | 'bf' | 'in' | 'out' | 'rate' | 'disc' | 'staff' | 'to'; id: string; at: HTMLElement; v?: number } | null>(null)
+  const [pop, setPop] = useState<{ kind: 'swap' | 'add' | 'kind' | 'len' | 'bf' | 'in' | 'out' | 'rate' | 'disc' | 'staff' | 'to'; id: string; at: HTMLElement; v?: number } | null>(null)
   const [fresh, setFresh] = useState<string | null>(null)
   const [unitOff, setUnitOff] = useState<{ label: string; money: number; units: [string, Sel][]; breakfast: string[]; kinds: Record<string, string>; rates: Record<string, number> } | null>(null)
   // A room added asks for its own dates (decided 2026-10-24): its check-in month opens once it is drawn.
@@ -178,8 +185,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const savedIds = (editing || []).map(b => b.id).join(',')
   useEffect(() => { if (savedIds) getSlipsByBooking(savedIds.split(',')).then(setSlips).catch(() => {}) }, [savedIds])
 
-  const isShort = !!(initialStayHours || ed?.stay_hours) && units[0]?.[1].type === 'room'
-  const half = initialStayHalf ?? ed?.stay_half ?? 1
+  // A venue's hours are a short stay too: before, the bill left them off, and saving a venue's hours dropped them.
+  const isShort = short && !!units[0]
   const list: [string, Sel][] = isShort ? [[units[0][0], { ...units[0][1], checkOut: nextDay(units[0][1].checkIn) }]] : units
   const first = list[0]?.[1]
   const firstRoomId = list.find(([, s]) => s.type === 'room')?.[0]
@@ -272,7 +279,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const id = unitOfLine(key)
     return (rooms.some(r => r.id === id)
       ? isRoomAvailable(id, from, to, others, undefined, isShort ? { stay_hours: hours, stay_half: half } : undefined)
-      : isVenueRangeAvailable(id, from, to, others))
+      : isVenueRangeAvailable(id, from, to, others, undefined, isShort ? { stay_hours: hours, stay_half: half } : undefined))
       && !list.some(([k, s]) => k !== key && unitOfLine(k) === id && s.checkIn < to && from < s.checkOut)
   }
   const countOf = (from: string, to: string) => Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000))
@@ -348,6 +355,31 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const putBack = () => {
     if (!unitOff) return
     setUnits(unitOff.units); setBreakfast(unitOff.breakfast); setKinds(unitOff.kinds); setRates(unitOff.rates); setUnitOff(null)
+  }
+  // How long the one unit on the bill can be: a day (a room's night), or the hours it is sold for.
+  const lengthsOf = (key: string) => {
+    const id = unitOfLine(key)
+    const room = rooms.find(r => r.id === id), venue = venues.find(v => v.id === id)
+    if (room) return [{ h: 0, label: '1 night', price: priceOf(key) },
+      ...HOURS.map(h => ({ h, label: h + ' hrs', price: (h === 3 ? room.hour3_price : h === 6 ? room.hour6_price : h === 12 ? room.hour12_price : null) || priceOf(key) }))]
+    const hourly = venueHoursOf(venue, getRateConfig())
+    return hourly.length === 0 ? [] : [{ h: 0, label: '1 day', price: kindsOf(key).find(k => k.key === (kinds[key] || ''))?.price || priceOf(key) },
+      ...hourly.map(o => ({ h: o.hours, label: o.hours + ' hrs' + (o.aircon ? ' · aircon' : ''), price: o.price }))]
+  }
+  // Whether these hours fit in that half of the day, beside the other bookings.
+  const fits = (key: string, h: number, hf: 0 | 1) => {
+    const id = unitOfLine(key), ci = units[0]?.[1].checkIn
+    if (!ci) return false
+    const facts = { stay_hours: h, stay_half: hf }
+    return rooms.some(r => r.id === id) ? isRoomAvailable(id, ci, nextDay(ci), others, undefined, facts) : isVenueRangeAvailable(id, ci, nextDay(ci), others, undefined, facts)
+  }
+  const pickLength = (key: string, h: number) => {
+    unRate(key); setFresh(key)
+    if (!h) { setShort(false); setPop(null); return }
+    // Hours are one day: the check-out comes back to the day after, and the half is one that is free.
+    // The box stays open on the Morning / Afternoon under them.
+    setUnits(u => u.map(([x, y], i): [string, Sel] => i === 0 ? [x, { ...y, checkOut: nextDay(y.checkIn) }] : [x, y]))
+    setShort(true); setHours(h); setHalf(fits(key, h, half) ? half : half ? 0 : 1)
   }
   const keepRate = (id: string, raw: string) => {
     const v = Number(raw.replace(/\D/g, ''))
@@ -427,6 +459,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
         // and the cancelled copy goes once the money has landed, or it would count twice.
         const left = editing.filter(b => holdsMoney(b) && !result.bookings.some(r => r.id === b.id))
         const saved = [...result.bookings]
+        // Hours turned back into a day: `update_booking` keeps hours it is sent none of, so they come off here.
+        for (const [i, b] of saved.entries()) if (!isShort && b.stay_hours) { await clearStayHours(b.id); saved[i] = { ...b, stay_hours: undefined, stay_half: undefined } }
         if (left.length > 0 && saved[0]) {
           const held = editing.reduce((a, b) => a + Number(b.downpayment_paid || 0), 0)
           const kept = saved.reduce((a, b) => a + Number(b.downpayment_paid || 0), 0)
@@ -477,7 +511,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const anchor = active.find(b => ids.current.includes(b.id))
     return { rows: anchor ? groupOf(anchor, active) : editing || [], active, all }
   }
-  const sig = editing ? JSON.stringify([guestName, guestPhone, nationality, address, companions, hours, breakfast, extras, charges, kinds, disc, to, preparedBy, units, rates]) : ''
+  const sig = editing ? JSON.stringify([guestName, guestPhone, nationality, address, companions, short, hours, half, breakfast, extras, charges, kinds, disc, to, preparedBy, units, rates]) : ''
   const savedSig = useRef(sig)
   const latest = useRef(handleBook)
   useEffect(() => { latest.current = handleBook })
@@ -553,6 +587,14 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
         </tr>
       )
     }
+    // How long it is: on a bill of one room or venue it is a tap that turns a day into hours and back.
+    const lenCell = (id: string, words: React.ReactNode) => (
+      <td className={cell + ' text-right font-mono'}>
+        {list.length === 1 && lengthsOf(id).length > 1
+          ? <button type="button" data-len onClick={toggle('len', id)} aria-expanded={isOpen('len', id)} aria-label="How long" className={VAL}>{words}</button>
+          : words}
+      </td>
+    )
     // A room's price: tapped, a box floats under it to type a new one or go back to its own. A short stay's line uses it too (2026-10-24).
     const rateCell = (id: string, name: string, it: StatementLineItem) => (
       <td className={cell + ' text-right font-mono'}>
@@ -569,7 +611,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           {rateCell(id, it.description, it)}
           <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>
           <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>
-          <td className={cell + ' text-right font-mono'}>{it.qty} hrs</td>
+          {lenCell(id, hours + ' hrs')}
           <td className={cell + ' text-right font-mono font-bold'}>{money(it.amount)}</td>
         </tr>
       )
@@ -609,7 +651,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           <td className={cell + ' text-right font-mono'}>
             <button type="button" onClick={toggle('out', id)} aria-expanded={isOpen('out', id)} aria-label={name + ' check out'} className={VAL}>{shortDate(s.checkOut)}</button>
           </td>
-          <td className={cell + ' text-right font-mono'}>{it.qty}</td>
+          {lenCell(id, it.qty)}
           <td className={cell + ' text-right font-mono font-bold'}>{money(it.amount)}</td>
         </tr>
         {it.key === lastRoomKey && (
@@ -638,8 +680,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const p = pop
     const s = list.find(([id]) => id === p.id)?.[1]
     const common = { sheet: sheetEl, onClose: () => setPop(null) }
-    // The breakfast line is drawn anew when its first switch goes on: the list follows it there.
-    const at = () => (p.kind === 'bf' ? sheet.current?.querySelector<HTMLElement>('[data-bf]') : null) || p.at
+    // The breakfast line is drawn anew when its first switch goes on, and the stay's line when its length
+    // changes: the box follows it there.
+    const at = () => (p.kind === 'bf' || p.kind === 'len' ? sheet.current?.querySelector<HTMLElement>(p.kind === 'bf' ? '[data-bf]' : '[data-len]') : null) || p.at
     if (p.kind === 'swap' || p.kind === 'add') {
       const c = unitChoices(p.kind === 'swap' ? p.id : undefined)
       return (
@@ -652,6 +695,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       <Floating key={p.kind + p.id} {...common} at={at} width={260} label="Type">
         <KindList kinds={kindsOf(p.id)} chosen={kinds[p.id] || ''}
           onPick={k => { setKinds(x => ({ ...x, [p.id]: k })); unRate(p.id); setFresh(p.id); setPop(null) }} />
+      </Floating>
+    )
+    if (p.kind === 'len') return (
+      <Floating key={p.kind + p.id} {...common} at={at} right label="How long">
+        <LengthList lengths={lengthsOf(p.id)} chosen={isShort ? hours : 0} half={half}
+          fits={(h, hf) => fits(p.id, h, hf)} onPick={h => pickLength(p.id, h)}
+          onHalf={hf => { setHalf(hf); setFresh(p.id); setPop(null) }} />
       </Floating>
     )
     if (p.kind === 'bf') return (
@@ -776,11 +826,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               {first && (
                 <>
                   {isShort ? (
-                    <div role="radiogroup" aria-label="Hours" className="flex flex-wrap gap-x-2.5 gap-y-1 mt-1.5">
-                      {HOURS.map(h => (
-                        <Circled key={h} on={hours === h} onClick={() => setHours(h)} className="!min-h-0 !py-0.5 !px-2 text-[12px] font-bold text-ink-900">{h} hrs</Circled>
-                      ))}
-                    </div>
+                    // The hours are picked on the line's length, under No. of night.
+                    <p key={hours + '-' + half} className="text-[10.5px] font-medium text-ink-900 bw-rise">{hours} hours · {half ? 'Afternoon' : 'Morning'}</p>
                   ) : (
                     <p className="text-[10.5px] font-medium text-ink-900">{nights} {list.every(([, s]) => s.type === 'venue') ? 'day' : 'night'}{nights === 1 ? '' : 's'}</p>
                   )}

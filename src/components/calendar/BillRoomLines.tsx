@@ -102,6 +102,48 @@ export function KindList({ kinds, chosen, onPick }: { kinds: { key: string; labe
 }
 
 /**
+ * **How long the stay is**: a day (a room's night) or the hours it is sold for, each at its price
+ * (Sebastian, 2026-10-27, the "Day or Hours" mock). Hours ask which half of the day; a half taken by
+ * another booking cannot be picked, and hours with neither half free cannot either.
+ */
+export function LengthList({ lengths, chosen, half, fits, onPick, onHalf }: {
+  lengths: { h: number; label: string; price: number }[]
+  chosen: number
+  half: 0 | 1
+  fits: (hours: number, half: 0 | 1) => boolean
+  onPick: (hours: number) => void
+  onHalf: (half: 0 | 1) => void
+}) {
+  return (
+    <div className="min-w-[180px]">
+      <div role="radiogroup" aria-label="How long">
+        {lengths.map((l, i) => {
+          const off = l.h > 0 && !fits(l.h, 0) && !fits(l.h, 1)
+          return (
+            <button key={l.h + l.label} type="button" role="radio" aria-checked={l.h === chosen} disabled={off} onClick={() => onPick(l.h)}
+              style={{ '--i': i } as React.CSSProperties} className={LI + ' group disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent'}>
+              <span aria-hidden="true" className="w-3 text-center opacity-0 scale-50 group-aria-checked:opacity-100 group-aria-checked:scale-100 transition-[opacity,transform] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)]">✓</span>
+              {l.label}<span className={AMT}>{off ? 'Taken' : peso(l.price)}</span>
+            </button>
+          )
+        })}
+      </div>
+      {chosen > 0 && (
+        <div role="radiogroup" aria-label="Which half of the day" className="flex gap-0.5 mx-1 mt-1 pt-1.5 border-t border-ink-200 bw-rise">
+          {([0, 1] as const).map(hf => (
+            <button key={hf} type="button" role="radio" aria-checked={half === hf} disabled={!fits(chosen, hf)} onClick={() => onHalf(hf)}
+              className="relative flex-1 px-2.5 py-[5px] rounded-md text-[11px] font-bold text-ink-600 aria-checked:text-ink-900 hover:bg-gold-100 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent active:scale-95 transition-[background-color,color,transform] cursor-pointer
+                after:absolute after:left-[22%] after:right-[22%] after:bottom-px after:h-0.5 after:rounded-full after:bg-gold-400 after:scale-x-0 aria-checked:after:scale-x-100 after:transition-transform after:duration-300 after:ease-[cubic-bezier(.34,1.56,.64,1)]">
+              {hf ? 'Afternoon' : 'Morning'}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
  * Breakfast is one line for the whole bill (Sebastian, 2026-10-24: "if theres more than 1 room with
  * breakfast, just merge them in this one row"); its name opens a switch for each room ("more like a
  * drop down and toggle"). A room with no breakfast price asks for one first.

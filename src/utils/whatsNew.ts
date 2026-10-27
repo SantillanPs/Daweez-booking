@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-27f',
+    changes: [
+      {
+        where: 'Front desk → bill',
+        what: [
+          'A booking made for a whole day that should have been hours can be fixed on the bill. Tap the number under No. of night and pick the hours, or pick 1 day to turn it back.',
+          'With hours picked, choose Morning or Afternoon in the same box. A half that is already booked cannot be picked.',
+          'This works for a room, the Gazebo and the Garden Area.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-27e',
     changes: [
       {
