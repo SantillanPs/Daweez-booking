@@ -89,6 +89,9 @@ export function FixPayment({ p, sheet, onFix, onReceipt }: {
     </button>
   )
   const ref = methodNeedsReference(method) ? p.reference : ''
+  // The ⌄ sits at the foot of the line, so it drops to the ref. no. row when the payment opens (2026-10-27).
+  const fold = <button type="button" onClick={() => setUnfolded(u => !u)} aria-expanded={unfolded} aria-label={unfolded ? 'Hide the ref. no. and receipt' : 'Show the ref. no. and receipt'}
+            className="ml-auto w-6 h-5 shrink-0 grid place-items-center rounded hover:bg-gold-100 active:scale-90 transition cursor-pointer"><Fold open={unfolded} /></button>
   return (
     <div data-screen className="print:hidden">
       {/* A tap anywhere on the line that is not a part opens or shuts it, and a tap off it shuts it:
@@ -100,8 +103,7 @@ export function FixPayment({ p, sheet, onFix, onReceipt }: {
           amount={part('amount', 'the amount', '−' + money(p.amount))}
           under={part('day', 'the day it was paid', shortDay(p.paidAt))}
           method={part('method', 'how they paid', short(method || paymentMethodLabel(p.method)))}
-          end={<button type="button" onClick={() => setUnfolded(u => !u)} aria-expanded={unfolded} aria-label={unfolded ? 'Hide the ref. no. and receipt' : 'Show the ref. no. and receipt'}
-            className="ml-auto w-6 h-5 shrink-0 grid place-items-center rounded hover:bg-gold-100 active:scale-90 transition cursor-pointer"><Fold open={unfolded} /></button>} />
+          end={!unfolded && fold} />
         {unfolded && (
           <span className="mt-0.5 flex items-center gap-2.5 text-[10.5px] text-ink-700 bw-unfold">
             {ref && <span><span className="font-semibold text-muted mr-1">Ref</span>{ref}</span>}
@@ -109,6 +111,7 @@ export function FixPayment({ p, sheet, onFix, onReceipt }: {
               ? <button type="button" onClick={() => onReceipt(p.receipt)} aria-label={'Open receipt ' + p.receipt}
                 className={PART + ' font-semibold text-gold-800'}>{p.receipt}</button>
               : <span>{p.receipt}</span>)}
+            {fold}
           </span>
         )}
       </div>
