@@ -23,6 +23,15 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-27i',
+    changes: [
+      {
+        where: 'Cash Flow → Today\'s money',
+        what: ['Total in and Total out now always sit side by side at the bottom of the two lists.'],
+      },
+    ],
+  },
+  {
     id: '2026-10-27h',
     changes: [
       {

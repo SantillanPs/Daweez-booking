@@ -296,7 +296,7 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
   return (
     <div className="bg-card border border-soft rounded-xl shadow-soft">
       <div className="grid md:grid-cols-2 md:divide-x divide-soft">
-        <div className="p-4">
+        <div className="p-4 flex flex-col">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money in</p>
           {report.moneyIn.length === 0 && <p className="text-[13px] text-muted">Nothing received yet.</p>}
           {report.moneyIn.map((line, i) => (
@@ -305,20 +305,24 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
               <span className="font-mono text-[14px] font-bold text-emerald-600 shrink-0">{peso(line.amount)}</span>
             </div>
           ))}
-          <div className="flex justify-between items-baseline gap-3 border-t border-soft mt-2 pt-2 text-[14px] font-extrabold">
+          {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
+          <div className="flex-1 min-h-2" />
+          <div className="flex justify-between items-baseline gap-3 border-t border-soft pt-2 text-[14px] font-extrabold">
             <span className="text-main">Total in</span>
             <span className="font-mono text-[18px] text-emerald-600">{peso(report.totalIn)}</span>
           </div>
         </div>
 
-        <div className="p-4 border-t md:border-t-0 border-soft">
+        <div className="p-4 flex flex-col border-t md:border-t-0 border-soft">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money out</p>
           {dayExpenses.length === 0 && <p className="text-[13px] text-muted">Nothing spent yet.</p>}
           {dayExpenses.map(expense => (
             <ExpenseLine key={expense.id} expense={expense} categories={categories} nameOf={nameOf} onRemove={onRemove} onChange={onChange} />
           ))}
           <ExpenseBlank key={report.date} categories={categories} another={dayExpenses.length > 0} pastDay={pastDay} onAdd={onAdd} />
-          <div className="flex justify-between items-baseline gap-3 border-t border-soft mt-2 pt-2 text-[14px] font-extrabold">
+          {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
+          <div className="flex-1 min-h-2" />
+          <div className="flex justify-between items-baseline gap-3 border-t border-soft pt-2 text-[14px] font-extrabold">
             <span className="text-main">Total out</span>
             <span key={report.totalOut} className="font-mono text-[18px] text-danger-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(report.totalOut)}</span>
           </div>
