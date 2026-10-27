@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-27g',
+    changes: [
+      {
+        where: 'Cash Flow → Today\'s money',
+        what: [
+          'An expense under Money out can be fixed where it is written. Tap what it was for, the note or the amount and change it. It saves by itself.',
+          'Tapping what it was for shows the five used most at the top, with the rest below. Type in the search box to find one fast.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-27f',
     changes: [
       {

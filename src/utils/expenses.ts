@@ -73,6 +73,13 @@ export async function insertExpense(expense: Omit<Expense, 'created_at'> & { cre
   return newExp
 }
 
+export async function updateExpense(id: string, change: Partial<Pick<Expense, 'category_id' | 'amount' | 'notes'>>): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+
+  const { error } = await supabase.from('expenses').update(change).eq('id', id)
+  if (error) throw error
+}
+
 export async function deleteExpense(id: string): Promise<void> {
   if (!isSupabaseConfigured) throw new Error('No database is connected, so this expense was not deleted.')
 

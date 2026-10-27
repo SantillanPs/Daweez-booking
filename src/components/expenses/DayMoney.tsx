@@ -1,4 +1,5 @@
-import { Trash2 } from 'lucide-react'
+import { CSSProperties, KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { Search, Trash2 } from 'lucide-react'
 import { Expense, ExpenseCategory, Handover } from '../../types/expense'
 import { CountPeso } from '../CountPeso'
 import { DailyReport, forwardedLabel } from '../../utils/dailyReport'
@@ -14,9 +15,167 @@ interface DayMoneyProps {
   dayExpenses: Expense[]
   categories: ExpenseCategory[]
   onRemove: (expense: Expense) => void
+  /** Saves a fix to one part of an expense; shown at once. */
+  onChange: (expense: Expense, change: Partial<Pick<Expense, 'category_id' | 'amount' | 'notes'>>) => void
   /** Money handed to the owner on this day, so each can be taken back. */
   dayHandovers: Handover[]
   onTakeBack: (handover: Handover) => void
+}
+
+// The bill's quiet tap: a dotted line under a part that can be changed.
+const TAP = 'px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dotted border-paper-400 hover:border-gold-400 hover:bg-gold-100 aria-expanded:border-solid aria-expanded:border-gold-400 aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,border-color,transform] cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400'
+const BOX = 'bg-card border-[1.5px] border-gold-400 rounded-md px-1.5 py-0.5 outline-none [animation:bp-slide_.2s_cubic-bezier(.16,1,.3,1)]'
+
+type Part = 'category' | 'note' | 'amount'
+
+// One expense, every part of it changed where it is written (Sebastian, 2026-10-27: a
+// mistake used to mean removing it and typing it again). Enter or a tap away saves it,
+// Esc puts it back; there is no Save button.
+function ExpenseLine({ expense, categories, nameOf, onRemove, onChange }: {
+  expense: Expense
+  categories: ExpenseCategory[]
+  nameOf: (id: string) => string
+  onRemove: (expense: Expense) => void
+  onChange: DayMoneyProps['onChange']
+}) {
+  const [open, setOpen] = useState<Part | null>(null)
+  const [draft, setDraft] = useState('')
+  const [saved, setSaved] = useState(0)
+  const row = useRef<HTMLDivElement>(null)
+
+  // The list of what it was for shuts on a tap anywhere else.
+  useEffect(() => {
+    if (open !== 'category') return
+    const away = (e: PointerEvent) => { if (!row.current?.contains(e.target as Node)) setOpen(null) }
+    document.addEventListener('pointerdown', away)
+    return () => document.removeEventListener('pointerdown', away)
+  }, [open])
+
+  const start = (part: Part) => {
+    setDraft(part === 'amount' ? String(expense.amount) : part === 'note' ? expense.notes || '' : '')
+    setOpen(o => (o === part ? null : part))
+  }
+  const save = (change: Parameters<DayMoneyProps['onChange']>[1]) => {
+    setOpen(null)
+    onChange(expense, change)
+    setSaved(n => n + 1)
+  }
+  const commit = () => {
+    if (open === 'amount') {
+      const v = parseFloat(draft)
+      if (v > 0 && v !== expense.amount) return save({ amount: v })
+    } else if (open === 'note') {
+      const v = draft.trim()
+      if (v !== (expense.notes || '')) return save({ notes: v })
+    }
+    setOpen(null)
+  }
+  const keys = (e: KeyboardEvent) => {
+    if (e.key === 'Enter') commit()
+    if (e.key === 'Escape') setOpen(null)
+  }
+
+  return (
+    <div ref={row} key={saved} className={'relative flex items-center justify-between gap-3 py-1 -mx-1 px-1 rounded-md text-[13px] ' + (saved ? '[animation:ex-saved_.9s_ease-out]' : '')}>
+      <span className="min-w-0 flex flex-wrap items-baseline gap-x-1">
+        <button type="button" aria-expanded={open === 'category'} aria-label="What it was for" onClick={() => start('category')} className={TAP + ' text-main'}>
+          {nameOf(expense.category_id)}
+        </button>
+        {open === 'note' ? (
+          <input autoFocus value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit} onKeyDown={keys}
+            onFocus={e => e.target.select()} placeholder="e.g. for Ana, receipt 0412" aria-label="Note"
+            className={BOX + ' w-[180px] text-[16px] md:text-[13px] text-main'} />
+        ) : expense.notes ? (
+          <><span className="text-muted">·</span>
+          <button type="button" aria-label="Note" onClick={() => start('note')} className={TAP + ' text-muted truncate'}>{expense.notes}</button></>
+        ) : (
+          <button type="button" onClick={() => start('note')} className={TAP + ' text-paper-400 italic'}>add a note</button>
+        )}
+      </span>
+      <span className="flex items-center gap-2 shrink-0">
+        {open === 'amount' ? (
+          <input autoFocus inputMode="decimal" value={draft} onChange={e => setDraft(e.target.value.replace(/[^0-9.]/g, ''))}
+            onBlur={commit} onKeyDown={keys} onFocus={e => e.target.select()} placeholder="e.g. 250" aria-label="Amount"
+            className={BOX + ' w-[100px] text-right font-mono text-[16px] md:text-[14px] font-bold text-danger-600'} />
+        ) : (
+          <button type="button" aria-label="Amount" onClick={() => start('amount')} className={TAP + ' font-mono text-[14px] font-bold text-danger-600'}>
+            {peso(expense.amount)}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => onRemove(expense)}
+          aria-label={'Remove ' + nameOf(expense.category_id) + ' ' + peso(expense.amount)}
+          className="text-muted hover:text-danger-600 active:scale-90 transition-[color,transform] cursor-pointer"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </span>
+      {open === 'category' && (
+        <CategoryPicker categories={categories} chosen={expense.category_id} onClose={() => setOpen(null)}
+          onPick={id => (id === expense.category_id ? setOpen(null) : save({ category_id: id }))} />
+      )}
+    </div>
+  )
+}
+
+// What it was for, as a tidy list under the word (the owner's pick from the drawing,
+// 2026-10-27): a search box, the five used most, and the rest below them to scroll to.
+// `categories` arrives most-used first.
+function CategoryPicker({ categories, chosen, onPick, onClose }: {
+  categories: ExpenseCategory[]
+  chosen: string
+  onPick: (id: string) => void
+  onClose: () => void
+}) {
+  const [find, setFind] = useState('')
+  const [scrolled, setScrolled] = useState(false)
+  const term = find.trim().toLowerCase()
+  const hits = categories.filter(c => c.name.toLowerCase().includes(term))
+
+  const item = (cat: ExpenseCategory, i: number) => {
+    const on = cat.id === chosen
+    const at = term ? cat.name.toLowerCase().indexOf(term) : -1
+    return (
+      <button key={cat.id} type="button" role="option" aria-selected={on} style={{ '--i': i } as CSSProperties}
+        onClick={() => onPick(cat.id)}
+        className={'bp-row flex items-center gap-2 w-full min-h-[40px] px-2.5 rounded-lg text-left text-[13px] hover:bg-gold-100 active:scale-[.97] transition-[background-color,transform] cursor-pointer ' + (on ? 'font-extrabold text-ink-900' : 'font-semibold text-main')}>
+        <span className={'w-3 text-gold-800 font-extrabold transition-[opacity,transform] duration-300 ' + (on ? 'opacity-100 scale-100' : 'opacity-0 scale-50')}>✓</span>
+        {at < 0 ? cat.name : <span>{cat.name.slice(0, at)}<b className="font-extrabold text-gold-800">{cat.name.slice(at, at + term.length)}</b>{cat.name.slice(at + term.length)}</span>}
+      </button>
+    )
+  }
+  const label = (words: string, first: boolean) => (
+    <p className={'mx-2.5 mb-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.1em] text-muted ' + (first ? 'mt-1.5' : 'mt-2.5 pt-2 border-t border-soft')}>{words}</p>
+  )
+
+  return (
+    <div role="dialog" aria-label="What it was for"
+      className="absolute left-0 top-full mt-1 z-10 w-[240px] bg-card rounded-xl shadow-softLg ring-1 ring-gold-100 overflow-hidden [animation:bp-slide_.22s_cubic-bezier(.16,1,.3,1)]">
+      <label className="flex items-center gap-2 m-1.5 px-2.5 rounded-lg bg-page text-muted focus-within:ring-[1.5px] focus-within:ring-gold-400 transition-shadow">
+        <Search className="w-3.5 h-3.5 shrink-0" />
+        <input autoFocus value={find} onChange={e => setFind(e.target.value)} placeholder="Search, e.g. gas" aria-label="Search what it was for"
+          onKeyDown={e => {
+            if (e.key === 'Enter' && hits[0]) onPick(hits[0].id)
+            if (e.key === 'Escape') onClose()
+          }}
+          className="flex-1 min-w-0 h-9 bg-transparent outline-none text-[16px] md:text-[13px] text-main placeholder:text-paper-400" />
+      </label>
+      <div role="listbox" onScroll={e => setScrolled(e.currentTarget.scrollTop > 2)}
+        className={'max-h-[240px] overflow-y-auto overscroll-contain px-1.5 pb-1.5 border-t transition-colors ' + (scrolled ? 'border-soft' : 'border-transparent')}>
+        {term ? (
+          hits.length ? hits.map(item) : <p className="mx-2.5 my-2.5 text-[12px] text-muted [animation:bp-slide_.25s_both]">Nothing called “{find.trim()}”</p>
+        ) : (
+          <>
+            {label('Most used', true)}
+            {categories.slice(0, 5).map(item)}
+            {categories.length > 5 && label('The rest', false)}
+            {categories.slice(5).map((c, i) => item(c, i + 5))}
+          </>
+        )}
+      </div>
+    </div>
+  )
 }
 
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -24,11 +183,11 @@ const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour
 // The day on screen, in the order the printed sheet reads: money in, money out, and
 // the money in the hotel at the bottom. Money in is read-only here — it comes from the receipts
 // recorded on bookings and at the restaurant — and money out is the list just typed.
-export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandovers, onTakeBack }: DayMoneyProps) {
+export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, dayHandovers, onTakeBack }: DayMoneyProps) {
   const nameOf = (id: string) => categories.find(c => c.id === id)?.name || 'Other'
 
   return (
-    <div className="bg-card border border-soft rounded-xl shadow-soft overflow-hidden">
+    <div className="bg-card border border-soft rounded-xl shadow-soft">
       <div className="grid md:grid-cols-2 md:divide-x divide-soft">
         <div className="p-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money in</p>
@@ -49,27 +208,11 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandove
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money out</p>
           {dayExpenses.length === 0 && <p className="text-[13px] text-muted">Nothing spent yet.</p>}
           {dayExpenses.map(expense => (
-            <div key={expense.id} className="group flex items-center justify-between gap-3 py-1 text-[13px]">
-              <span className="text-main truncate">
-                {nameOf(expense.category_id)}
-                {expense.notes ? <span className="text-muted"> · {expense.notes}</span> : null}
-              </span>
-              <span className="flex items-center gap-2 shrink-0">
-                <span className="font-mono text-[14px] font-bold text-danger-600">{peso(expense.amount)}</span>
-                <button
-                  type="button"
-                  onClick={() => onRemove(expense)}
-                  aria-label={'Remove ' + nameOf(expense.category_id) + ' ' + peso(expense.amount)}
-                  className="text-muted hover:text-danger-600 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </span>
-            </div>
+            <ExpenseLine key={expense.id} expense={expense} categories={categories} nameOf={nameOf} onRemove={onRemove} onChange={onChange} />
           ))}
           <div className="flex justify-between items-baseline gap-3 border-t border-soft mt-2 pt-2 text-[14px] font-extrabold">
             <span className="text-main">Total out</span>
-            <span className="font-mono text-[18px] text-danger-600">{peso(report.totalOut)}</span>
+            <span key={report.totalOut} className="font-mono text-[18px] text-danger-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(report.totalOut)}</span>
           </div>
         </div>
       </div>
@@ -80,7 +223,7 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, dayHandove
           zero each morning, so the day before is carried in. Each figure keeps the colour it has
           above — money in green, money out red — and a hand-over is gold, so it is not read as
           money spent. */}
-      <div className="px-4 py-3 border-t-2 border-ink-800 bg-page text-[13px] text-main">
+      <div className="px-4 py-3 border-t-2 border-ink-800 bg-page rounded-b-xl text-[13px] text-main">
         <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Summary</p>
         <div className="flex justify-between gap-3 py-0.5">
           <span>Total Sales</span>

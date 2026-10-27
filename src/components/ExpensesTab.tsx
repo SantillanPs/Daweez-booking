@@ -8,6 +8,7 @@ import { getTabs } from '../utils/tabs'
 import { buildDailyReport } from '../utils/dailyReport'
 import { Expense, ExpenseCategory, Handover } from '../types/expense'
 import { getHandovers, insertHandover, deleteHandover } from '../utils/handovers'
+import { updateExpense } from '../utils/expenses'
 import { showToast } from '../utils/toast'
 import { askConfirm } from '../utils/confirm'
 import { QuickExpense } from './expenses/QuickExpense'
@@ -63,6 +64,14 @@ export function ExpensesTab() {
     [expenses, date],
   )
 
+  // Most used first, the order the add form's chips are in, so the picker on a line
+  // starts with the four or five things the hotel buys every day.
+  const byUse = useMemo(() => {
+    const used: Record<string, number> = {}
+    expenses.forEach(e => { used[e.category_id] = (used[e.category_id] || 0) + 1 })
+    return [...expenseCategories].sort((x, y) => (used[y.id] || 0) - (used[x.id] || 0) || x.name.localeCompare(y.name))
+  }, [expenseCategories, expenses])
+
   const addExpense = async (input: { amount: number; categoryId: string; notes?: string }) => {
     try {
       await createExpense({
@@ -86,6 +95,18 @@ export function ExpensesTab() {
     })
     if (!ok) return
     try { await deleteExpense(expense.id) } catch { showToast('Could not remove the expense.', 'error') }
+  }
+
+  // A mistake on an expense is fixed where it is written (Sebastian, 2026-10-27), shown at
+  // once and saved behind it; put back as it was if the save fails.
+  const changeExpense = (expense: Expense, change: Partial<Pick<Expense, 'category_id' | 'amount' | 'notes'>>) => {
+    const patch = (to: Partial<Expense>) => queryClient.setQueryData<Expense[]>(['expenses'], (list = []) =>
+      list.map(e => e.id === expense.id ? { ...e, ...to } : e))
+    patch(change)
+    updateExpense(expense.id, change).catch(() => {
+      patch({ category_id: expense.category_id, amount: expense.amount, notes: expense.notes })
+      showToast('Could not save that change. Please try again.', 'error')
+    })
   }
 
   // Shown at once and saved behind it; taken back off the screen if the save fails.
@@ -189,8 +210,9 @@ export function ExpensesTab() {
       <DayMoney
         report={report}
         dayExpenses={dayExpenses}
-        categories={expenseCategories}
+        categories={byUse}
         onRemove={removeExpense}
+        onChange={changeExpense}
         dayHandovers={dayHandovers}
         onTakeBack={takeBack}
       />
