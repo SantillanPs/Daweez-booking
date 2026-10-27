@@ -831,11 +831,11 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                     <div className="border-t border-ink-200">
                       {paidUp && statement.payments.length > 1 && (
                         <button type="button" onClick={() => setPaysOpen(o => !o)} aria-expanded={paysOpen}
-                          className="group w-full grid grid-cols-[minmax(0,1fr)_auto_12px] gap-x-1.5 items-center py-[3px] border-b border-ink-200 text-left hover:bg-paper-50 transition-colors cursor-pointer">
-                          <span className="text-[11px] font-semibold text-ink-900">{statement.payments.length} payments
-                            <span className="ml-1 text-[10px] font-normal text-muted">{dayOf(statement.payments[0].paidAt)}{dayOf(statement.payments[0].paidAt) !== dayOf(statement.payments[statement.payments.length - 1].paidAt) && <> – {dayOf(statement.payments[statement.payments.length - 1].paidAt)}</>}</span>
+                          className="group w-full grid grid-cols-[minmax(0,1fr)_auto_12px] gap-x-1.5 items-center py-1.5 border-b border-ink-200 text-left hover:bg-paper-50 transition-colors cursor-pointer">
+                          <span className="text-[12.5px] font-bold text-ink-900">{statement.payments.length} payments
+                            <span className="ml-1 text-[11px] font-normal text-ink-700">{dayOf(statement.payments[0].paidAt)}{dayOf(statement.payments[0].paidAt) !== dayOf(statement.payments[statement.payments.length - 1].paidAt) && <> – {dayOf(statement.payments[statement.payments.length - 1].paidAt)}</>}</span>
                           </span>
-                          <span className="font-mono text-[11.5px] font-bold text-ink-900">−{money(received)}</span>
+                          <span className="font-mono text-[13px] font-bold text-ink-900">−{money(received)}</span>
                           <ChevronDown aria-hidden="true" className="w-3 h-3 text-gold-800 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
                         </button>
                       )}

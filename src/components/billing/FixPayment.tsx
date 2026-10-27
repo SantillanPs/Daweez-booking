@@ -12,8 +12,9 @@ const money = (n: number) => '₱' + n.toLocaleString()
 const shortDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
 const short = (m: string) => (m === 'Bank transfer' ? 'Bank' : m)
 
-// A part of the line that opens its fix: the bill's own dashed-gold tap (the room lines' VAL).
-const PART = 'px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dashed border-transparent hover:border-gold-400 hover:bg-gold-100 aria-expanded:border-gold-400 aria-expanded:border-solid aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,border-color,transform] cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400'
+// A part of the line that opens its fix: the bill's own dashed-gold tap (the room lines' VAL), always
+// showing — on a tablet nothing hovers (Sebastian, 2026-10-25: "they aren't very obvious they are editable").
+const PART = 'px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dashed border-gold-400 hover:bg-gold-100 aria-expanded:border-solid aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,border-color,transform] cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400'
 const SLOT = 'min-w-0 flex-1 bg-transparent border-0 border-b-[1.5px] border-ink-900 rounded-none px-0.5 py-px text-[12.5px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-gold-400'
 const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-lg bg-ink-900 text-white active:scale-90 transition-transform cursor-pointer'
 const LI = 'w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-left text-[11.5px] font-semibold text-ink-900 cursor-pointer hover:bg-gold-100 focus-visible:bg-gold-100 focus-visible:outline-none active:scale-[0.98] transition-[background-color,transform] bw-rise group'
@@ -26,11 +27,12 @@ const LI = 'w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-left te
  */
 export function PayRow({ purpose, method, amount, under }: { purpose: React.ReactNode; method: React.ReactNode; amount: React.ReactNode; under?: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-2 items-baseline py-[3px] border-b border-ink-200">
-      <span className="min-w-0 text-[11px] font-semibold text-ink-900 leading-snug">{purpose}</span>
-      <span className="text-[10px] text-muted">{method}</span>
-      <span className="justify-self-end font-mono text-[11.5px] font-bold text-ink-900">{amount}</span>
-      {under && <span className="col-span-3 text-[9.5px] text-muted leading-snug">{under}</span>}
+    // Bigger, darker and roomier than the bill's small print ("it's not very easy to read", 2026-10-25).
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-2 gap-y-0.5 items-baseline py-1.5 border-b border-ink-200">
+      <span className="min-w-0 text-[12.5px] font-bold text-ink-900 leading-snug">{purpose}</span>
+      <span className="text-[11.5px] font-semibold text-ink-700">{method}</span>
+      <span className="justify-self-end font-mono text-[13px] font-bold text-ink-900">{amount}</span>
+      {under && <span className="col-span-3 text-[11px] text-ink-700 leading-snug">{under}</span>}
     </div>
   )
 }
@@ -61,7 +63,7 @@ export function FixPayment({ p, sheet, onFix, onReceipt }: {
   const part = (which: Part, name: string, value: string) => (
     <button ref={el => { chips.current[which] = el }} type="button" aria-expanded={open === which} aria-label={'Change ' + name}
       onClick={() => setOpen(o => (o === which ? null : which))} className={PART}>
-      <span key={value} className={'inline-block bw-rise' + (value ? '' : ' text-muted font-semibold')}>{value || 'What for?'}</span>
+      <span key={value} className={'inline-block bw-rise' + (value ? '' : ' text-gold-800 font-bold')}>{value || 'What for?'}</span>
     </button>
   )
   return (
