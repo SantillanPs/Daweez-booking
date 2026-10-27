@@ -109,7 +109,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
       ))}
       {thumb && chosen && (
         <span aria-hidden="true" style={{ '--x': thumb.x + 'px', '--y': thumb.y + 'px', '--w': thumb.w + 'px', '--h': thumb.h + 'px' } as React.CSSProperties}
-          className="bk-thumb absolute left-0 top-0 rounded-[9px] [transform:translate(var(--x),var(--y))] w-[var(--w)] h-[var(--h)] pointer-events-none group-has-[:focus-visible]/seg:outline group-has-[:focus-visible]/seg:outline-2 group-has-[:focus-visible]/seg:-outline-offset-2 group-has-[:focus-visible]/seg:outline-[var(--brand-ring)] bg-gold-400 text-ink-900 text-[14px] font-semibold whitespace-nowrap flex flex-col items-center justify-center">
+          className="bk-thumb absolute left-0 top-0 rounded-[9px] [transform:translate(var(--x),var(--y))] w-[var(--w)] h-[var(--h)] pointer-events-none bg-gold-400 text-ink-900 text-[14px] font-semibold whitespace-nowrap flex flex-col items-center justify-center">
           {twoLines ? (
             <>
               <span className="block leading-5">{chosen.label}</span>

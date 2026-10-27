@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-27h',
+    changes: [
+      {
+        where: 'Cash Flow → Today\'s money',
+        what: [
+          'To write an expense, tap "Write an expense" at the bottom of Money out. Pick what it was for, add a note if you like, write the amount and tap ✓. The next line is ready for the one after.',
+          'Print, All expenses, Categories, Add cash on hand and Cash remitted are now in the thin row under Total cash on hand.',
+          'Tap the date to open the month. A green dot is a day money came in, a red dot a day something was spent. The arrows beside the date go back or forward a day.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-27g',
     changes: [
       {

@@ -55,11 +55,11 @@
     @apply shadow-[0_8px_32px_rgba(28,28,28,0.08)];
   }
 
-  /* Accessible focus */
+  /* No black ring around what is being typed in or tapped (Sebastian, 2026-10-27: "remove
+     it for everything"). A box shows it is in use with its own gold border; a control that
+     wants a ring for the keyboard asks for one with `focus-visible:outline-…`. */
   :focus-visible {
-    outline: 2px solid var(--brand-ring);
-    outline-offset: 2px;
-    border-radius: 4px;
+    outline: none;
   }
 
 /* Custom scrollbars */

@@ -1,5 +1,5 @@
-import { CSSProperties, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { Search, Trash2 } from 'lucide-react'
+import { CSSProperties, FormEvent, KeyboardEvent, ReactNode, useEffect, useRef, useState } from 'react'
+import { Check, ChevronDown, Plus, Search, Trash2, X } from 'lucide-react'
 import { Expense, ExpenseCategory, Handover } from '../../types/expense'
 import { CountPeso } from '../CountPeso'
 import { DailyReport, forwardedLabel } from '../../utils/dailyReport'
@@ -20,6 +20,12 @@ interface DayMoneyProps {
   /** Money handed to the owner on this day, so each can be taken back. */
   dayHandovers: Handover[]
   onTakeBack: (handover: Handover) => void
+  /** Saves a new expense for the day on screen. */
+  onAdd: (input: { amount: number; categoryId: string; notes?: string }) => Promise<void>
+  /** "Oct 26" when the screen is on a day gone by, so the blank line says which day it writes on. */
+  pastDay?: string
+  /** The quiet things and Print, in a thin row under the total. */
+  footer?: ReactNode
 }
 
 // The bill's quiet tap: a dotted line under a part that can be changed.
@@ -178,12 +184,113 @@ function CategoryPicker({ categories, chosen, onPick, onClose }: {
   )
 }
 
+// The bill's blanks: a line to write on, no boxes (the owner, 2026-10-27: it should feel like
+// adding information on paper, the way the bill takes a payment).
+const SLOT = 'min-w-0 bg-transparent border-0 border-b-[1.5px] border-ink-900 rounded-none px-0.5 py-px text-[16px] md:text-[14px] font-semibold text-ink-900 placeholder:text-paper-400 placeholder:font-medium focus:outline-none focus:border-gold-400 transition-colors'
+
+// A new expense is written on a blank line at the end of Money out, like "Write a payment" on
+// the bill (the owner's pick of the drawings, 2026-10-27), closed until it is wanted. It is
+// filled in the order it goes on paper: what for (the list opens first), a note, the amount, ✓.
+// The line clears at once and the next one is ready with its list open; the save happens
+// behind it, and the line comes back filled in if it fails.
+function ExpenseBlank({ categories, another, pastDay, onAdd }: {
+  categories: ExpenseCategory[]
+  another: boolean
+  pastDay?: string
+  onAdd: DayMoneyProps['onAdd']
+}) {
+  const [open, setOpen] = useState(false)
+  const [picking, setPicking] = useState(false)
+  const [categoryId, setCategoryId] = useState('')
+  const [notes, setNotes] = useState('')
+  const [amount, setAmount] = useState('')
+  const [tried, setTried] = useState(false)
+  const line = useRef<HTMLDivElement>(null)
+  const noteRef = useRef<HTMLInputElement>(null)
+  const amountRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!picking) return
+    const away = (e: PointerEvent) => { if (!line.current?.contains(e.target as Node)) setPicking(false) }
+    document.addEventListener('pointerdown', away)
+    return () => document.removeEventListener('pointerdown', away)
+  }, [picking])
+
+  const value = parseFloat(amount) || 0
+  const problem = !tried ? '' : !categoryId ? 'Pick what it was for.' : value <= 0 ? 'Write the amount.' : ''
+  const name = categories.find(c => c.id === categoryId)?.name
+
+  const shut = () => { setOpen(false); setPicking(false); setTried(false) }
+  const write = (e: FormEvent) => {
+    e.preventDefault()
+    setTried(true)
+    if (!categoryId || value <= 0) return
+    const kept = { categoryId, notes, amount }
+    setCategoryId(''); setNotes(''); setAmount(''); setTried(false); setPicking(true)
+    onAdd({ amount: value, categoryId: kept.categoryId, notes: kept.notes.trim() || undefined }).catch(() => {
+      setCategoryId(kept.categoryId); setNotes(kept.notes); setAmount(kept.amount); setPicking(false)
+    })
+  }
+  const typeAmount = (raw: string) => {
+    let s = raw.replace(/[^0-9.]/g, '')
+    const dot = s.indexOf('.')
+    if (dot !== -1) s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, '')
+    setAmount(s)
+  }
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => { setOpen(true); setPicking(true) }}
+        className="w-full mt-1.5 flex items-center gap-1.5 px-2 py-[5px] rounded-md border-[1.5px] border-dashed border-ink-200 text-[11px] font-bold text-gold-800 hover:border-gold-400 hover:bg-gold-100/40 active:scale-[0.99] transition-[background-color,border-color,transform] cursor-pointer [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">
+        <Plus aria-hidden="true" className="w-3.5 h-3.5" />{another ? 'Another expense' : 'Write an expense'}{pastDay ? ' for ' + pastDay : ''}
+      </button>
+    )
+  }
+
+  return (
+    <div ref={line} className="relative mt-1 pt-1 pb-0.5 [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]"
+      onKeyDown={e => { if (e.key === 'Escape' && !picking) shut() }}>
+      <form onSubmit={write} className="flex items-end gap-2">
+        <button type="button" aria-expanded={picking} aria-label="What it was for" onClick={() => setPicking(p => !p)}
+          className={'group shrink-0 inline-flex items-center gap-0.5 min-h-7 px-0.5 border-b-[1.5px] border-dashed border-gold-400 text-[12px] font-bold active:scale-95 transition-transform cursor-pointer ' + (name ? 'text-ink-900' : 'text-gold-800')}>
+          <span key={name} className="inline-block [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">{name || 'What for?'}</span>
+          <ChevronDown aria-hidden="true" className="w-3 h-3 text-gold-600 transition-transform duration-300 group-aria-expanded:rotate-180" />
+        </button>
+        <input ref={noteRef} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Note, e.g. for Ana" aria-label="Note"
+          // Enter on the note moves on to the amount, as the pen would.
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); amountRef.current?.focus() } }}
+          className={SLOT + ' flex-1'} />
+        <label className="flex items-baseline gap-0.5 border-b-2 border-ink-900 focus-within:border-gold-400 transition-colors">
+          <span className="font-display text-[11px] font-extrabold text-muted">₱</span>
+          <input ref={amountRef} inputMode="decimal" value={amount} onChange={e => typeAmount(e.target.value)} placeholder="250" aria-label="Amount spent"
+            className="min-w-0 w-[72px] bg-transparent border-0 p-0 text-right font-display text-[16px] font-extrabold text-ink-900 placeholder:text-paper-400 focus:outline-none" />
+        </label>
+        <button type="submit" aria-label="Write the expense" className="shrink-0 w-[30px] h-7 grid place-items-center rounded-lg bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer">
+          <Check className="w-3.5 h-3.5" strokeWidth={3} />
+        </button>
+        <button type="button" onClick={shut} aria-label="Close" className="shrink-0 w-6 h-7 grid place-items-center rounded-md text-muted hover:text-main hover:bg-page cursor-pointer">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </form>
+      {(problem || pastDay) && (
+        <p role={problem ? 'alert' : undefined} className={'mt-1 text-[10px] font-semibold ' + (problem ? 'text-danger-600 [animation:bp-slide_.25s]' : 'text-muted')}>
+          {problem || 'Spent on ' + pastDay}
+        </p>
+      )}
+      {picking && (
+        <CategoryPicker categories={categories} chosen={categoryId} onClose={() => setPicking(false)}
+          onPick={id => { setCategoryId(id); setPicking(false); setTimeout(() => noteRef.current?.focus()) }} />
+      )}
+    </div>
+  )
+}
+
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
 // The day on screen, in the order the printed sheet reads: money in, money out, and
 // the money in the hotel at the bottom. Money in is read-only here — it comes from the receipts
 // recorded on bookings and at the restaurant — and money out is the list just typed.
-export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, dayHandovers, onTakeBack }: DayMoneyProps) {
+export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, dayHandovers, onTakeBack, onAdd, pastDay, footer }: DayMoneyProps) {
   const nameOf = (id: string) => categories.find(c => c.id === id)?.name || 'Other'
 
   return (
@@ -210,6 +317,7 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           {dayExpenses.map(expense => (
             <ExpenseLine key={expense.id} expense={expense} categories={categories} nameOf={nameOf} onRemove={onRemove} onChange={onChange} />
           ))}
+          <ExpenseBlank key={report.date} categories={categories} another={dayExpenses.length > 0} pastDay={pastDay} onAdd={onAdd} />
           <div className="flex justify-between items-baseline gap-3 border-t border-soft mt-2 pt-2 text-[14px] font-extrabold">
             <span className="text-main">Total out</span>
             <span key={report.totalOut} className="font-mono text-[18px] text-danger-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(report.totalOut)}</span>
@@ -287,6 +395,7 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
             {report.balance < 0 && '('}<CountPeso value={Math.abs(report.balance)} />{report.balance < 0 && ')'}
           </span>
         </div>
+        {footer && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-soft mt-3 pt-2.5">{footer}</div>}
       </div>
     </div>
   )

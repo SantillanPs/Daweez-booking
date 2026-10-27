@@ -42,6 +42,8 @@
 - Extras (foam, pillow, blanket, towel, tables, chairs, tent) are entered once for a group and go on the first room or first venue only.
 - **The desk can add a charge on the bill itself** (Sebastian, 2026-10-20: *"staff should also be able to add a bill in the billing statement. for example: DINNER - 300 pesos"*): what it is for and how much, under Extras. It is kept in `event_addons.charges` and priced with everything else. A charge put on by mistake comes off with its × (he asked, *"how do I remove a charge I just added?"*), with Undo for five seconds.
 
+- **Today's money is the day's card, and everything else is folded into it** (Sebastian, 2026-10-27). He called the card (Money in, Money out, Summary) fine and not to be changed. Writing an expense and printing are what the staff do every day: they should be quick, but closed until they are needed. All expenses, Categories, Add cash on hand and Cash remitted are rare, so they are quiet but easy to find. It should feel like *"adding information on paper"*, the way the bill takes a payment. So an expense is a dashed blank line at the end of Money out, filled in as a line (what for, note, amount, tick), and Print sits with the four rare things in a thin row under the total. The date opens a month with a dot for each day money came in or was spent.
+
 ## Lessons that cost real money
 
 - **Every place that re-prices a booking must be handed every fact about it** — breakfast, short-stay hours, discount, agency rate. Each time one was left out, a screen charged a different stay than the one stored (a 3-hour stay billed as a night; a booking stored ₱600 short).

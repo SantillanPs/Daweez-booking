@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Printer, Wallet } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, List, Printer, Tag, Wallet } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { generateUUID } from '../utils/syncEngine'
 import { dateToString } from '../utils/helpers'
@@ -11,17 +11,16 @@ import { getHandovers, insertHandover, deleteHandover } from '../utils/handovers
 import { updateExpense } from '../utils/expenses'
 import { showToast } from '../utils/toast'
 import { askConfirm } from '../utils/confirm'
-import { QuickExpense } from './expenses/QuickExpense'
+import { DayPicker } from './expenses/DayPicker'
 import { DayMoney } from './expenses/DayMoney'
 import { ExpenseHistory } from './expenses/ExpenseHistory'
 import { CategoryManager } from './expenses/CategoryManager'
 import { HandOverModal } from './expenses/HandOverModal'
 import { DailyReportModal } from './analytics/DailyReportModal'
 
-const prettyDay = (iso: string) => {
+const shortDay = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number)
-  if (!y || !m || !d) return iso
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 // THE DAY'S MONEY, on one screen (the owner's ask, 2026-10-04).
@@ -30,6 +29,10 @@ const prettyDay = (iso: string) => {
 // That used to be two tabs and a slow form: a category dropdown with a search box, a
 // date to pick and a notes box, then over to Analytics to print. Now the day is the
 // screen — type what was spent, see money in, money out and what is left, print.
+//
+// The card is the day (the owner, 2026-10-27: "this design is fine, don't change it"), and
+// everything else is folded into it: a new expense is a blank line at the end of Money out,
+// and Print with the four rarely used things sit in a thin row under the total.
 //
 // The figures are `buildDailyReport`, the same function the printed sheet uses, so the
 // screen and the paper cannot disagree.
@@ -72,20 +75,30 @@ export function ExpensesTab() {
     return [...expenseCategories].sort((x, y) => (used[y.id] || 0) - (used[x.id] || 0) || x.name.localeCompare(y.name))
   }, [expenseCategories, expenses])
 
+  // Written on the card at once and saved behind it; taken off again if the save fails.
   const addExpense = async (input: { amount: number; categoryId: string; notes?: string }) => {
+    const row = {
+      id: 'exp-' + generateUUID(),
+      amount: input.amount,
+      category_id: input.categoryId,
+      expense_date: date,
+      notes: input.notes,
+    }
+    queryClient.setQueryData<Expense[]>(['expenses'], (list = []) => [...list, { ...row, created_at: new Date().toISOString() } as Expense])
     try {
-      await createExpense({
-        id: 'exp-' + generateUUID(),
-        amount: input.amount,
-        category_id: input.categoryId,
-        expense_date: date,
-        notes: input.notes,
-      })
+      await createExpense(row)
     } catch (err) {
+      queryClient.setQueryData<Expense[]>(['expenses'], (list = []) => list.filter(e => e.id !== row.id))
       showToast('Could not save that expense. Please try again.', 'error')
       throw err
     }
   }
+
+  // The month's dots: a day money came in, a day something was spent.
+  const marksOf = useCallback((day: string) => {
+    const r = buildDailyReport({ date: day, bookings: allBookings, tabs, expenses, handovers, categories: expenseCategories, rooms })
+    return { moneyIn: r.totalIn > 0, spent: r.totalOut > 0 }
+  }, [allBookings, tabs, expenses, handovers, expenseCategories, rooms])
 
   const removeExpense = async (expense: Expense) => {
     const ok = await askConfirm({
@@ -169,43 +182,17 @@ export function ExpensesTab() {
     )
   }
 
-  const quiet = 'text-[12px] font-semibold text-muted hover:text-gold-700 transition-colors cursor-pointer'
+  const quiet = 'inline-flex items-center gap-1 min-h-8 px-1 text-[12px] font-semibold text-muted hover:text-gold-700 active:scale-95 transition-[color,transform] cursor-pointer'
 
   return (
     <div className="space-y-3 font-sans">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display font-bold text-xl text-main flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-gold-600" />
-            Cash Flow
-          </h2>
-          <p className="text-[13px] text-muted mt-0.5">{prettyDay(date)}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {date !== today && (
-            <button type="button" onClick={() => setDate(today)} className="text-[12px] font-bold text-gold-700 hover:bg-gold-100 px-2.5 py-2 rounded-lg transition-colors cursor-pointer">
-              Back to today
-            </button>
-          )}
-          <input
-            type="date"
-            value={date}
-            max={today}
-            onChange={e => { if (e.target.value) setDate(e.target.value) }}
-            aria-label="Day"
-            className="bg-card border border-soft text-main text-xs px-2 py-2 rounded-lg outline-none font-mono focus:border-gold-500 cursor-pointer"
-          />
-          <button
-            type="button"
-            onClick={() => setPrinting(true)}
-            className="inline-flex items-center gap-1.5 bg-ink-900 hover:bg-ink-700 text-white text-[13px] font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
-          >
-            <Printer className="w-4 h-4" /> Print daily report
-          </button>
-        </div>
+      <div>
+        <h2 className="font-display font-bold text-xl text-main flex items-center gap-2">
+          <Wallet className="w-5 h-5 text-gold-600" />
+          Cash Flow
+        </h2>
+        <DayPicker day={date} today={today} onPick={setDate} marksOf={marksOf} />
       </div>
-
-      <QuickExpense key={date} categories={expenseCategories} expenses={expenses} onAdd={addExpense} />
 
       <DayMoney
         report={report}
@@ -215,21 +202,27 @@ export function ExpensesTab() {
         onChange={changeExpense}
         dayHandovers={dayHandovers}
         onTakeBack={takeBack}
+        onAdd={addExpense}
+        pastDay={date === today ? undefined : shortDay(date)}
+        footer={<>
+          <div className="flex flex-wrap items-center gap-x-2 -ml-1">
+            <button type="button" onClick={() => setShowHistory(true)} className={quiet}><List className="w-3.5 h-3.5 opacity-75" />All expenses</button>
+            <button type="button" onClick={() => setShowCategories(true)} className={quiet}><Tag className="w-3.5 h-3.5 opacity-75" />Categories</button>
+            <button type="button" onClick={() => setHandingOver('in')} className={quiet}><ArrowDownLeft className="w-3.5 h-3.5 opacity-75" />Add cash on hand</button>
+            <button type="button" onClick={() => setHandingOver('out')} className={quiet}><ArrowUpRight className="w-3.5 h-3.5 opacity-75" />Cash remitted</button>
+          </div>
+          <button type="button" onClick={() => setPrinting(true)}
+            className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 rounded-lg bg-ink-900 hover:bg-ink-700 text-white text-[11.5px] font-extrabold active:scale-95 transition-[background-color,transform] cursor-pointer">
+            <Printer className="w-3.5 h-3.5" />{date === today ? 'Print' : 'Print ' + shortDay(date)}
+          </button>
+        </>}
       />
 
-      <div className="flex items-center justify-between gap-3 px-1">
-        {report.undatedCount > 0 ? (
-          <span className="text-[11px] text-muted">
-            {report.undatedCount} booking{report.undatedCount === 1 ? '' : 's'} holding ₱{report.undatedMoney.toLocaleString()} with no payment date
-          </span>
-        ) : <span />}
-        <div className="flex items-center gap-4">
-          <button type="button" onClick={() => setShowHistory(true)} className={quiet}>All expenses</button>
-          <button type="button" onClick={() => setShowCategories(true)} className={quiet}>Categories</button>
-          <button type="button" onClick={() => setHandingOver('in')} className={quiet}>Add cash on hand</button>
-          <button type="button" onClick={() => setHandingOver('out')} className={quiet}>Cash remitted</button>
-        </div>
-      </div>
+      {report.undatedCount > 0 && (
+        <p className="px-1 text-[11px] text-muted">
+          {report.undatedCount} booking{report.undatedCount === 1 ? '' : 's'} holding ₱{report.undatedMoney.toLocaleString()} with no payment date
+        </p>
+      )}
 
       {printing && <DailyReportModal initialDate={date} onClose={() => setPrinting(false)} />}
       {showHistory && (
