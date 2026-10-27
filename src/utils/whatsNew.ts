@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-27e',
+    changes: [
+      {
+        where: 'Front desk → bill',
+        what: [
+          'Every part of a payment can be changed straight away, without opening it first.',
+          'Tap anywhere else on a payment to see its ref. no. and receipt, and tap anywhere off it to close it again.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-27d',
     changes: [
       {

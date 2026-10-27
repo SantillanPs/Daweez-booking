@@ -16,6 +16,7 @@ const short = (m: string) => (m === 'Bank transfer' ? 'Bank' : m)
 // A part of the line that opens its fix: the bill's own dashed-gold tap (the room lines' VAL), always
 // showing — on a tablet nothing hovers (Sebastian, 2026-10-25: "they aren't very obvious they are editable").
 const PART = 'px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dashed border-gold-400 hover:bg-gold-100 aria-expanded:border-solid aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,border-color,transform] cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400'
+const QUIET = 'px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dotted border-paper-400 hover:border-gold-400 hover:bg-gold-100 aria-expanded:border-solid aria-expanded:border-gold-400 aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,border-color,transform] cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400'
 const SLOT = 'min-w-0 flex-1 bg-transparent border-0 border-b-[1.5px] border-ink-900 rounded-none px-0.5 py-px text-[12.5px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-gold-400'
 const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-lg bg-ink-900 text-white active:scale-90 transition-transform cursor-pointer'
 const LI = 'w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-left text-[11.5px] font-semibold text-ink-900 cursor-pointer hover:bg-gold-100 focus-visible:bg-gold-100 focus-visible:outline-none active:scale-[0.98] transition-[background-color,transform] bw-rise group'
@@ -45,7 +46,7 @@ export function PayRow(props: { purpose: React.ReactNode; method: React.ReactNod
 
 // The ⌄ that says a payment opens, and flips when it is open.
 const Fold = ({ open }: { open: boolean }) => (
-  <ChevronDown aria-hidden="true" className={'ml-auto w-3.5 h-3.5 shrink-0 text-gold-800 transition-transform duration-300 ease-[cubic-bezier(.34,1.56,.64,1)]' + (open ? ' rotate-180' : '')} strokeWidth={2.6} />
+  <ChevronDown aria-hidden="true" className={'w-3.5 h-3.5 shrink-0 text-gold-800 transition-transform duration-300 ease-[cubic-bezier(.34,1.56,.64,1)]' + (open ? ' rotate-180' : '')} strokeWidth={2.6} />
 )
 
 /**
@@ -63,6 +64,13 @@ export function FixPayment({ p, sheet, onFix, onReceipt }: {
 }) {
   const [open, setOpen] = useState<Part | null>(null)
   const [unfolded, setUnfolded] = useState(false)
+  const row = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!unfolded || open) return
+    const off = (e: PointerEvent) => { if (!row.current?.contains(e.target as Node)) setUnfolded(false) }
+    document.addEventListener('pointerdown', off)
+    return () => document.removeEventListener('pointerdown', off)
+  }, [unfolded, open])
   const chips = useRef<Partial<Record<Part, HTMLButtonElement | null>>>({})
   const at = useCallback(() => chips.current[open || 'amount'] as HTMLElement, [open])
   const close = useCallback(() => setOpen(null), [])
@@ -73,36 +81,28 @@ export function FixPayment({ p, sheet, onFix, onReceipt }: {
     if (changed) onFix(patch)
   }
   const part = (which: Part, name: string, value: string) => (
+    // Every part is its own tap, opened or not (Sebastian, 2026-10-27: "everything should still be
+    // editable even if it's not opened"): shut, its line is a faint dot; open, the bill's gold dash.
     <button ref={el => { chips.current[which] = el }} type="button" aria-expanded={open === which} aria-label={'Change ' + name}
-      onClick={() => setOpen(o => (o === which ? null : which))} className={PART}>
+      onClick={() => setOpen(o => (o === which ? null : which))} className={unfolded ? PART : QUIET}>
       <span key={value} className={'inline-block bw-rise' + (value ? '' : ' text-gold-800 font-bold')}>{value || 'What for?'}</span>
     </button>
   )
   const ref = methodNeedsReference(method) ? p.reference : ''
-  const at_rest = (
-    // Shut, the payment is two calm rows; a faint dotted line under what it was for and the ⌄ say it
-    // opens (Sebastian, 2026-10-27: C "doesn't look like it's clickable" without them).
-    <button type="button" onClick={() => setUnfolded(true)} aria-expanded={false} aria-label={'Open the ' + (p.purpose || '') + ' payment'}
-      className={LINE + ' group text-left rounded-md cursor-pointer hover:bg-paper-50 active:scale-[0.99] transition-[background-color,transform] focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400'}>
-      <PayLine
-        purpose={<span className={'border-b-[1.5px] border-dotted border-paper-400 group-hover:border-gold-400 transition-colors' + (p.purpose ? '' : ' text-gold-800')}>{p.purpose || 'What for?'}</span>}
-        amount={'−' + money(p.amount)}
-        under={shortDay(p.paidAt)}
-        method={short(method || paymentMethodLabel(p.method))}
-        end={<Fold open={false} />} />
-    </button>
-  )
   return (
     <div data-screen className="print:hidden">
-      {!unfolded ? at_rest : (
-        <div className={LINE + ' rounded-md bg-paper-50 bw-rise'}>
-          <PayLine
-            purpose={part('purpose', 'what it was for', p.purpose || '')}
-            amount={part('amount', 'the amount', '−' + money(p.amount))}
-            under={part('day', 'the day it was paid', shortDay(p.paidAt))}
-            method={part('method', 'how they paid', short(method || paymentMethodLabel(p.method)))}
-            end={<button type="button" onClick={() => { setOpen(null); setUnfolded(false) }} aria-expanded={true} aria-label="Close the payment"
-              className="ml-auto w-6 h-5 grid place-items-center rounded hover:bg-gold-100 active:scale-90 transition cursor-pointer"><Fold open /></button>} />
+      {/* A tap anywhere on the line that is not a part opens or shuts it, and a tap off it shuts it:
+          the ⌄ only says which way it is ("the arrow shouldn't need to be clicked", 2026-10-27). */}
+      <div ref={row} onClick={e => { if (!(e.target as HTMLElement).closest('button')) setUnfolded(u => !u) }}
+        className={LINE + ' rounded-md cursor-pointer transition-colors ' + (unfolded ? 'bg-paper-50' : 'hover:bg-paper-50')}>
+        <PayLine
+          purpose={part('purpose', 'what it was for', p.purpose || '')}
+          amount={part('amount', 'the amount', '−' + money(p.amount))}
+          under={part('day', 'the day it was paid', shortDay(p.paidAt))}
+          method={part('method', 'how they paid', short(method || paymentMethodLabel(p.method)))}
+          end={<button type="button" onClick={() => setUnfolded(u => !u)} aria-expanded={unfolded} aria-label={unfolded ? 'Hide the ref. no. and receipt' : 'Show the ref. no. and receipt'}
+            className="ml-auto w-6 h-5 shrink-0 grid place-items-center rounded hover:bg-gold-100 active:scale-90 transition cursor-pointer"><Fold open={unfolded} /></button>} />
+        {unfolded && (
           <span className="mt-0.5 flex items-center gap-2.5 text-[10.5px] text-ink-700 bw-unfold">
             {ref && <span><span className="font-semibold text-muted mr-1">Ref</span>{ref}</span>}
             {p.receipt && (onReceipt
@@ -110,8 +110,8 @@ export function FixPayment({ p, sheet, onFix, onReceipt }: {
                 className={PART + ' font-semibold text-gold-800'}>{p.receipt}</button>
               : <span>{p.receipt}</span>)}
           </span>
-        </div>
-      )}
+        )}
+      </div>
       {open && sheet && (
         <Floating key={open} at={at} sheet={sheet} right={open === 'amount'} width={open === 'amount' ? 170 : 210}
           label={open === 'purpose' ? 'What it was for' : open === 'method' ? 'How they paid' : open === 'day' ? 'Day it was paid' : 'Amount received'} onClose={close}>
