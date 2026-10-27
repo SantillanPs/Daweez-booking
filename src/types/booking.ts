@@ -194,6 +194,8 @@ export interface PaymentFix {
   method: string
   reference?: string
   purpose?: string
+  /** The day it said it was paid, kept when the day was changed (2026-10-27). */
+  paid_at?: string
   /** When it was fixed (ISO date-time). */
   at: string
 }

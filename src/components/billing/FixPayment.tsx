@@ -4,8 +4,9 @@ import { Floating } from '../calendar/BillRoomLines'
 import { PAYMENT_METHODS, methodNeedsReference, paymentMethodChoice, paymentMethodLabel } from '../../utils/paymentMethod'
 import type { StatementPayment } from '../../utils/statement'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
+import { dateToString } from '../../utils/helpers'
 
-type Part = 'purpose' | 'method' | 'amount'
+type Part = 'purpose' | 'method' | 'amount' | 'day'
 
 const digits = (v: string) => Number(v.replace(/[^0-9]/g, '')) || 0
 const money = (n: number) => '₱' + n.toLocaleString()
@@ -57,7 +58,7 @@ export function FixPayment({ p, sheet, onFix, onReceipt }: {
   const method = paymentMethodChoice(p.method)
   const save = (patch: PaymentPatch) => {
     setOpen(null)
-    const changed = (Object.keys(patch) as (keyof PaymentPatch)[]).some(k => (patch[k] ?? '') !== ((k === 'amount' ? p.amount : p[k]) ?? ''))
+    const changed = (Object.keys(patch) as (keyof PaymentPatch)[]).some(k => (patch[k] ?? '') !== ((k === 'amount' ? p.amount : k === 'paid_at' ? p.paidAt : p[k]) ?? ''))
     if (changed) onFix(patch)
   }
   const part = (which: Part, name: string, value: string) => (
@@ -72,15 +73,16 @@ export function FixPayment({ p, sheet, onFix, onReceipt }: {
         purpose={part('purpose', 'what it was for', p.purpose || '')}
         method={part('method', 'how they paid', short(method || paymentMethodLabel(p.method)) + (p.reference ? ' · ' + p.reference : ''))}
         amount={part('amount', 'the amount', '−' + money(p.amount))}
-        under={<>{shortDay(p.paidAt)}{p.receipt && <> · {onReceipt
+        under={<>{part('day', 'the day it was paid', shortDay(p.paidAt))}{p.receipt && <> · {onReceipt
           ? <button type="button" onClick={() => onReceipt(p.receipt)} aria-label={'Open receipt ' + p.receipt}
             className={PART + ' font-semibold text-gold-800'}>{p.receipt}</button>
           : p.receipt}</>}</>} />
       {open && sheet && (
         <Floating key={open} at={at} sheet={sheet} right={open === 'amount'} width={open === 'amount' ? 170 : 210}
-          label={open === 'purpose' ? 'What it was for' : open === 'method' ? 'How they paid' : 'Amount received'} onClose={close}>
+          label={open === 'purpose' ? 'What it was for' : open === 'method' ? 'How they paid' : open === 'day' ? 'Day it was paid' : 'Amount received'} onClose={close}>
           {open === 'purpose' && <TextFix value={p.purpose || ''} placeholder="e.g. Deposit" label="What it was for" onSave={v => v && save({ purpose: v })} />}
           {open === 'amount' && <TextFix money value={p.amount.toLocaleString()} placeholder="950" label="Amount received" onSave={v => digits(v) > 0 && save({ amount: digits(v) })} />}
+          {open === 'day' && <DayFix paidAt={p.paidAt} onSave={paid_at => save({ paid_at })} />}
           {open === 'method' && <MethodFix method={method} reference={p.reference || ''} onSave={(m, reference) => save({ method: m, reference: reference || undefined })} />}
         </Floating>
       )}
@@ -107,6 +109,39 @@ function TextFix({ value, placeholder, label, money: isMoney, onSave }: { value:
       )}
       <button type="submit" aria-label="Save" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
     </form>
+  )
+}
+
+/**
+ * **The day it was paid** (Sebastian, 2026-10-27: "the date of the payment should be changeable"; the
+ * "Payment Date" mock): Today, Yesterday, or any day up to today. The time of day stays as it was.
+ */
+function DayFix({ paidAt, onSave }: { paidAt: string; onSave: (paidAt: string) => void }) {
+  const was = paidAt ? new Date(paidAt) : new Date()
+  const [v, setV] = useState(dateToString(was))
+  const today = new Date(), yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)
+  const pick = (day: string) => {
+    if (!day || day > dateToString(today)) return
+    const [y, m, d] = day.split('-').map(Number)
+    const at = new Date(was); at.setFullYear(y, m - 1, d)
+    onSave(at.toISOString())
+  }
+  return (
+    <div className="p-1">
+      <div className="flex gap-1 pb-2">
+        {[['Today', today], ['Yesterday', yesterday]].map(([name, d], i) => {
+          const day = dateToString(d as Date)
+          return (
+            <button key={day} type="button" aria-pressed={day === dateToString(was)} onClick={() => pick(day)} style={{ '--i': i } as React.CSSProperties}
+              className="flex-1 py-[7px] rounded-lg bg-paper-100 text-[11.5px] font-bold text-ink-900 cursor-pointer hover:bg-gold-100 aria-pressed:bg-ink-900 aria-pressed:text-white active:scale-95 transition-[background-color,color,transform] bw-rise">{name as string}</button>
+          )
+        })}
+      </div>
+      <form onSubmit={e => { e.preventDefault(); pick(v) }} className="flex items-end gap-1.5">
+        <input type="date" value={v} max={dateToString(today)} onChange={e => setV(e.target.value)} aria-label="Day it was paid" className={SLOT + ' text-[16px]'} />
+        <button type="submit" aria-label="Save" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
+      </form>
+    </div>
   )
 }
 

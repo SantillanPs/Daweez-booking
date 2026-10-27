@@ -44,6 +44,8 @@ interface Event {
 const peso = (n: number) => '₱' + Math.round(n).toLocaleString()
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 const shortDay = (day: string) => new Date(day + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+// A fix that changed the day it was paid says both days.
+const dayMoved = (f: { paid_at?: string }, now: { paid_at?: string }) => !!f.paid_at && !!now.paid_at && dateToString(new Date(f.paid_at)) !== dateToString(new Date(now.paid_at))
 const span = (b: Booking) => (b.stay_hours ? b.stay_hours + '-hour stay · ' + shortDay(b.check_in) : shortDay(b.check_in) + '–' + shortDay(b.check_out))
 const join = (...parts: (string | undefined | null | false)[]) => parts.filter(Boolean).join(' · ')
 
@@ -129,8 +131,8 @@ export function DeskHistory() {
         const now = fixes[i + 1] || p.rec
         out.push({
           key: 'fix-' + key + '-' + i, at: f.at, kind: 'fixed', booking: p.holders[0],
-          was: peso(f.amount) + ' ' + paymentMethodLabel(f.method) + (f.purpose ? ' ' + f.purpose : ''),
-          title: peso(Number(now.amount || 0)) + ' ' + paymentMethodLabel(now.method) + (now.purpose ? ' ' + now.purpose : ''),
+          was: peso(f.amount) + ' ' + paymentMethodLabel(f.method) + (f.purpose ? ' ' + f.purpose : '') + (dayMoved(f, now) ? ' ' + shortDay(dateToString(new Date(f.paid_at!))) : ''),
+          title: peso(Number(now.amount || 0)) + ' ' + paymentMethodLabel(now.method) + (now.purpose ? ' ' + now.purpose : '') + (dayMoved(f, now) ? ' ' + shortDay(dateToString(new Date(now.paid_at!))) : ''),
           detail: join('Payment fixed', who(p.holders[0]), p.rec.receipt_number, 'paid ' + shortDay(dateToString(new Date(p.rec.paid_at)))),
         })
       })

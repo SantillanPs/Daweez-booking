@@ -154,14 +154,14 @@ export function paymentShare(booking: Booking, rec: PaymentRecord, sharedWithOth
 }
 
 /** What the desk can fix on a payment written wrong: the figure, how they paid, what it was for. */
-export type PaymentPatch = Partial<Pick<PaymentRecord, 'amount' | 'method' | 'reference' | 'purpose'>>
+export type PaymentPatch = Partial<Pick<PaymentRecord, 'amount' | 'method' | 'reference' | 'purpose' | 'paid_at'>>
 
 /**
  * **A payment typed wrong, fixed** (Sebastian, 2026-10-24, the mock's B). It changes on every room
  * that holds it; a new figure is shared out across them as the old one was (the first room takes
  * what does not divide), and each room's money received and amount to pay follow. The receipt keeps
- * its number and the day it was paid, so Today's money corrects that day; the old figures are kept
- * in `fixes`.
+ * its number; a new day (Sebastian, 2026-10-27: "the date of the payment should be changeable") moves
+ * the money to that day in Today's money. The old figures are kept in `fixes`.
  */
 export function withFixedPayment(holders: { booking: Booking; rec: PaymentRecord }[], patch: PaymentPatch, at: string): Booking[] {
   const shared = holders.length > 1
@@ -171,7 +171,7 @@ export function withFixedPayment(holders: { booking: Booking; rec: PaymentRecord
   const shares = old.map(s => (oldTotal > 0 ? Math.floor(amount * s / oldTotal) : 0))
   if (shares.length > 0) shares[0] += amount - shares.reduce((a, b) => a + b, 0)
   return holders.map(({ booking, rec }, i) => {
-    const was = { amount: Number(rec.amount || 0), method: rec.method, reference: rec.reference, purpose: rec.purpose, at }
+    const was = { amount: Number(rec.amount || 0), method: rec.method, reference: rec.reference, purpose: rec.purpose, paid_at: rec.paid_at, at }
     const fixed: PaymentRecord = { ...rec, ...patch, amount, fixes: [...(rec.fixes || []), was] }
     if (shared || typeof rec.share === 'number') fixed.share = shares[i]
     const paid = Number(booking.downpayment_paid || 0)
