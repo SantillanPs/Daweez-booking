@@ -13,7 +13,10 @@ import { PriceBox } from '../PriceBox'
  */
 export function Floating({ at, sheet, right, width, label, onClose, children }: {
   /** What it opens under, asked again each time it is placed: the line it belongs to may be drawn anew. */
-  at: () => HTMLElement; sheet: HTMLElement; right?: boolean; width: number; label: string
+  at: () => HTMLElement; sheet: HTMLElement; right?: boolean; label: string
+  /** Left out, the box is as wide as what is in it (Sebastian, 2026-10-27: "the design should use only
+   *  as much as the content and interaction it requires"). */
+  width?: number
   onClose: () => void; children: React.ReactNode
 }) {
   const box = useRef<HTMLDivElement>(null)
@@ -22,6 +25,7 @@ export function Floating({ at, sheet, right, width, label, onClose, children }: 
     const place = () => {
       const el = box.current
       if (!el) return
+      const width = el.offsetWidth
       const a = at().getBoundingClientRect(), s = sheet.getBoundingClientRect(), h = el.offsetHeight
       const up = a.bottom + 6 + h > s.bottom - 8 && a.top - h - 6 > s.top + 8
       const left = Math.min(Math.max(8, (right ? a.right - width : a.left) - s.left), s.width - width - 8)
@@ -43,7 +47,7 @@ export function Floating({ at, sheet, right, width, label, onClose, children }: 
   return createPortal(
     <div ref={box} role="dialog" aria-label={label} data-screen
       style={{ width, '--x': (pos?.left ?? 0) + 'px', '--y': (pos?.top ?? 0) + 'px' } as React.CSSProperties}
-      className={(pos ? '' : 'invisible ') + (pos?.up ? (right ? 'origin-bottom-right' : 'origin-bottom-left') : right ? 'origin-top-right' : 'origin-top-left') + ' left-[var(--x)] top-[var(--y)] br-float print:hidden absolute z-30 p-1.5 rounded-xl bg-card shadow-[0_14px_34px_-12px_rgba(60,45,15,0.32),inset_0_0_0_1.5px_#F5EAD1] max-h-80 overflow-y-auto'}>
+      className={(pos ? '' : 'invisible ') + (width ? '' : 'w-max max-w-[calc(100%-16px)] ') + (pos?.up ? (right ? 'origin-bottom-right' : 'origin-bottom-left') : right ? 'origin-top-right' : 'origin-top-left') + ' left-[var(--x)] top-[var(--y)] br-float print:hidden absolute z-30 p-1.5 rounded-xl bg-card shadow-[0_14px_34px_-12px_rgba(60,45,15,0.32),inset_0_0_0_1.5px_#F5EAD1] max-h-80 overflow-y-auto'}>
       {children}
     </div>,
     sheet,

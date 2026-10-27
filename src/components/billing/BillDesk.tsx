@@ -1,8 +1,9 @@
 import React, { useRef, useState } from 'react'
-import { Check, Plus, X } from 'lucide-react'
+import { Check, ChevronDown, Plus } from 'lucide-react'
+import { Floating } from '../calendar/BillRoomLines'
 import { PAYMENT_METHODS, methodNeedsReference } from '../../utils/paymentMethod'
 import { dateToString } from '../../utils/helpers'
-import { want } from './want'
+import { useLateFocus, want } from './want'
 
 /** A payment as the blank line writes it. */
 export type PayInput = { amount: number; method: string; reference: string; date: string; purpose: string }
@@ -11,19 +12,23 @@ const digits = (v: string) => Number(v.replace(/[^0-9]/g, '')) || 0
 /** `2026-09-14` → `Sep 14`, from the date's own parts. */
 const shortDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return y ? new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '' }
 
-const SLOT = 'min-w-0 bg-transparent border-0 border-b-[1.5px] border-ink-900 rounded-none px-0.5 py-px text-[12px] font-bold text-ink-900 focus:outline-none focus:border-gold-400'
-const GO = 'rounded-md bg-gold-400 hover:bg-gold-600 text-ink-900 text-[12px] font-bold py-1.5 px-3 active:scale-[0.97] transition-[background-color,transform] cursor-pointer'
-const SHUT = 'rounded-md bg-card text-muted hover:text-main px-2 grid place-items-center active:scale-90 transition-transform cursor-pointer'
+const SLOT = 'min-w-0 bg-transparent border-0 border-b-[1.5px] border-ink-900 rounded-none px-0.5 py-px text-[12px] font-bold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-gold-400'
 const BLANK = 'bill-blank w-full flex items-center gap-1.5 px-1.5 py-1 rounded-md border-[1.5px] border-dashed text-[11px] cursor-pointer transition-colors'
+const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-lg bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer'
+const LI = 'w-full flex items-center gap-2 px-2 py-[6px] rounded-lg text-left text-[11.5px] font-semibold text-ink-900 cursor-pointer hover:bg-gold-100 focus-visible:bg-gold-100 focus-visible:outline-none active:scale-[0.98] transition-[background-color,transform] bw-rise'
+const MONEY = 'flex items-baseline gap-0.5 border-b-2 border-ink-900 focus-within:border-gold-400 transition-colors'
+const MONEY_IN = 'min-w-0 w-20 bg-transparent border-0 p-0 text-right font-display text-[16px] font-extrabold text-ink-900 placeholder:text-paper-400 focus:outline-none'
 
 /**
- * **The blank line under the payments** (the mock's "Blank line", his pick), in two rows (the
- * "what for" mock's C, Sebastian, 2026-10-20): what it was for and how much, then how they paid
- * and Record. The words are asked every time and print on the bill and the receipt. The amount
- * starts at 0, and the day is always today: there is no day to pick.
+ * **A payment, written in a box that floats over the bill** (Sebastian, 2026-10-27, the "Bill pop-ups"
+ * mock: "I like how editing these shows a pop up. I want to apply that to everything editable in the
+ * billing statement"). What it was for, then the amount with how they paid beside it and the ✓, then
+ * the ref. no. under them when the way has one. How they paid shows only the one picked; a tap on it
+ * lists the four (the mock's B). Nothing is picked for them: a silent Cash on a GCash guest is the
+ * mistake `paymentMethodChoice` was written against. The day is today, except on a paper booking.
  * `open` is the bill's, so the payments above can fold away while one is written.
  */
-export function WritePayment({ open, onOpen, onPay, again, paidOn, fills }: {
+export function WritePayment({ open, onOpen, onPay, again, paidOn, fills, sheet }: {
   open: boolean; onOpen: (open: boolean) => void; onPay: (p: PayInput) => void; again: boolean
   /** **Quick fills** — the booking form's deposit choices on a new booking's bill (Deposit, Full
    *  pay): a tap writes what for and how much. */
@@ -31,165 +36,172 @@ export function WritePayment({ open, onOpen, onPay, again, paidOn, fills }: {
   /** **The day it was paid, as a chip** — only on a paper booking being logged, whose money was
    *  not taken today (the log-on-the-bill mock, Sebastian, 2026-10-23). Opens on this day. */
   paidOn?: string
+  /** What the box floats in. */
+  sheet: HTMLElement | null
 }) {
   const [purpose, setPurpose] = useState('')
   const [day, setDay] = useState(paidOn ?? '')
   const [amount, setAmount] = useState(0)
   const [method, setMethod] = useState('')
+  const [choosing, setChoosing] = useState(false)
   const [reference, setReference] = useState('')
   const [miss, setMiss] = useState('')
+  const blank = useRef<HTMLButtonElement>(null)
   const forBox = useRef<HTMLInputElement>(null)
   const amountBox = useRef<HTMLInputElement>(null)
-  const ways = useRef<HTMLDivElement>(null)
+  const way = useRef<HTMLButtonElement>(null)
   const refBox = useRef<HTMLInputElement>(null)
   const needsRef = methodNeedsReference(method)
   const short = (m: string) => (m === 'Bank transfer' ? 'Bank' : m)
-  const picked = PAYMENT_METHODS.findIndex(m => m === method)
+  useLateFocus(forBox, open)
+  useLateFocus(refBox, needsRef)
 
-  if (!open) return (
-    <button type="button" onClick={() => onOpen(true)}
-      className={BLANK + ' my-0.5 border-gold-400 bg-paper-50 text-gold-800 font-bold hover:bg-gold-100'}>
-      <Plus aria-hidden="true" className="w-3.5 h-3.5" />{again ? 'Another payment' : 'Write a payment'}
-    </button>
-  )
   const stop = (why: string, el: HTMLElement | null) => { setMiss(why); want(el) }
+  const shut = () => { onOpen(false); setMiss(''); setChoosing(false) }
   const record = () => {
     if (!purpose.trim()) return stop('Write what it was for', forBox.current)
     if (!(amount > 0)) return stop('Type the amount received', amountBox.current)
-    if (!method) return stop('Pick how they paid', ways.current)
+    if (!method) { setChoosing(true); return stop('Pick how they paid', way.current) }
     if (needsRef && !reference.trim()) return stop('Type the ' + short(method) + ' ref. no.', refBox.current)
     onPay({ amount, method, reference: needsRef ? reference.trim() : '', date: paidOn ? day || paidOn : dateToString(new Date()), purpose: purpose.trim() })
-    onOpen(false); setPurpose(''); setAmount(0); setMethod(''); setReference(''); setMiss('')
+    shut(); setPurpose(''); setAmount(0); setMethod(''); setReference('')
   }
   return (
-    <form onSubmit={e => { e.preventDefault(); record() }} className="my-0.5 -mx-1.5 p-1.5 rounded-lg bg-gold-100 flex flex-col gap-1.5 bw-unfold">
-      {fills && fills.length > 0 && (
-        <div className="flex gap-1">
-          {fills.map(f => {
-            const on = purpose === f.label && amount === f.amount
-            return (
-              <button key={f.label} type="button" aria-pressed={on} onClick={() => { setPurpose(f.label); setAmount(f.amount); setMiss('') }}
-                className={'flex-1 min-h-7 px-2 rounded-lg border-[1.5px] text-[10.5px] font-bold active:scale-95 transition-[border-color,background-color,color,transform] cursor-pointer ' +
-                  (on ? 'border-ink-900 bg-ink-900 text-white' : 'border-gold-400 bg-paper-50 text-ink-900 hover:bg-white')}>
-                {f.label} <span className="font-mono font-semibold opacity-70">₱{f.amount.toLocaleString()}</span>
+    <>
+      <button ref={blank} type="button" onClick={() => (open ? shut() : onOpen(true))} aria-expanded={open}
+        className={BLANK + ' my-0.5 border-gold-400 bg-paper-50 text-gold-800 font-bold hover:bg-gold-100 aria-expanded:bg-gold-100 aria-expanded:border-solid'}>
+        <Plus aria-hidden="true" className="w-3.5 h-3.5" />{again ? 'Another payment' : 'Write a payment'}
+      </button>
+      {open && sheet && (
+        <Floating at={() => blank.current!} sheet={sheet} right label="A payment" onClose={shut}>
+          <form onSubmit={e => { e.preventDefault(); record() }} className="w-[236px] flex flex-col gap-1.5 p-1">
+            {fills && fills.length > 0 && (
+              <div className="flex gap-1">
+                {fills.map(f => {
+                  const on = purpose === f.label && amount === f.amount
+                  return (
+                    <button key={f.label} type="button" aria-pressed={on} onClick={() => { setPurpose(f.label); setAmount(f.amount); setMiss('') }}
+                      className={'flex-1 min-h-7 px-2 rounded-lg border-[1.5px] text-[10.5px] font-bold active:scale-95 transition-[border-color,background-color,color,transform] cursor-pointer ' +
+                        (on ? 'border-ink-900 bg-ink-900 text-white' : 'border-gold-400 bg-paper-50 text-ink-900 hover:bg-white')}>
+                      {f.label} <span className="font-mono font-semibold opacity-70">₱{f.amount.toLocaleString()}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {paidOn && (
+              <label className="relative self-start flex items-center gap-1 min-h-7 px-2.5 rounded-lg bg-gold-400 hover:bg-gold-500 text-ink-900 text-[10.5px] font-bold whitespace-nowrap cursor-pointer transition-colors">
+                Paid on {shortDay(day || paidOn)}
+                <input type="date" value={day || paidOn} onChange={e => e.target.value && setDay(e.target.value)} aria-label="Day it was paid"
+                  onClick={e => { try { e.currentTarget.showPicker() } catch { /* the browser opens it itself */ } }}
+                  className="absolute inset-0 opacity-0 cursor-pointer" />
+              </label>
+            )}
+            <input ref={forBox} value={purpose} onChange={e => { setPurpose(e.target.value); setMiss('') }}
+              placeholder="What for · e.g. Deposit" aria-label="What the payment was for" className={SLOT + ' w-full text-[16px] font-semibold'} />
+            <div className="flex items-center gap-1.5">
+              <label className={MONEY + ' flex-1'}>
+                <span className="font-display text-[11px] font-extrabold text-muted">₱</span>
+                <input ref={amountBox} inputMode="numeric" placeholder="0" aria-label="Amount received"
+                  value={amount ? amount.toLocaleString() : ''} onChange={e => { setAmount(digits(e.target.value)); setMiss('') }} className={MONEY_IN + ' flex-1'} />
+              </label>
+              <button ref={way} type="button" onClick={() => setChoosing(c => !c)} aria-expanded={choosing} aria-label="How the guest paid"
+                className={'group shrink-0 inline-flex items-center gap-0.5 min-h-7 px-0.5 border-b-[1.5px] border-dashed border-gold-400 text-[11.5px] font-bold active:scale-95 transition-transform cursor-pointer ' + (method ? 'text-ink-900' : 'text-gold-800')}>
+                <span key={method} className="inline-block bw-rise">{method ? short(method) : 'How paid?'}</span>
+                <ChevronDown aria-hidden="true" className="w-3 h-3 text-gold-600 transition-transform duration-300 group-aria-expanded:rotate-180" />
               </button>
-            )
-          })}
-        </div>
+              <button type="submit" aria-label="Record the payment" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3} /></button>
+            </div>
+            {choosing && (
+              <div role="radiogroup" aria-label="How the guest paid" className="py-0.5 border-y border-ink-200 bw-unfold">
+                {PAYMENT_METHODS.map((m, i) => (
+                  <button key={m} type="button" role="radio" aria-checked={method === m} style={{ '--i': i } as React.CSSProperties}
+                    onClick={() => { setMethod(m); setChoosing(false); setMiss(''); if (!methodNeedsReference(m)) setReference('') }} className={LI}>
+                    {m}{method === m && <span aria-hidden="true" className="ml-auto">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+            {needsRef && (
+              <input ref={refBox} value={reference} onChange={e => { setReference(e.target.value); setMiss('') }}
+                placeholder="Ref no. · e.g. 4012 3381 22" aria-label={short(method) + ' ref. no.'}
+                className={SLOT + ' w-full text-[16px] font-semibold bw-unfold'} />
+            )}
+            {miss && <span role="alert" className="text-[10px] font-semibold text-red-700">{miss}</span>}
+          </form>
+        </Floating>
       )}
-      <div className="grid grid-cols-[minmax(0,1fr)_84px] gap-2 items-end">
-        <input ref={forBox} autoFocus value={purpose} onChange={e => { setPurpose(e.target.value); setMiss('') }}
-          placeholder="What for" aria-label="What the payment was for" className={SLOT + ' w-full text-[12.5px] font-semibold'} />
-        <label className="flex items-baseline gap-0.5 border-b-2 border-ink-900 focus-within:border-gold-400 transition-colors">
-          <span className="font-display text-[11px] font-extrabold text-muted">₱</span>
-          <input ref={amountBox} inputMode="numeric" placeholder="0" aria-label="Amount received"
-            value={amount ? amount.toLocaleString() : ''} onChange={e => { setAmount(digits(e.target.value)); setMiss('') }}
-            className="min-w-0 w-full bg-transparent border-0 p-0 text-right font-display text-[16px] font-extrabold text-ink-900 placeholder:text-paper-400 focus:outline-none" />
-        </label>
-      </div>
-      <div className="grid gap-1 grid-cols-[minmax(0,1fr)_30px_22px]">
-        {/* Its own line: beside the four ways it left them too narrow to read (2026-10-23). */}
-        {paidOn && (
-          <label className="relative col-span-3 justify-self-start flex items-center gap-1 min-h-7 px-2.5 rounded-lg bg-gold-400 hover:bg-gold-500 text-ink-900 text-[10.5px] font-bold whitespace-nowrap cursor-pointer transition-colors">
-            Paid on {shortDay(day || paidOn)}
-            <input type="date" value={day || paidOn} onChange={e => e.target.value && setDay(e.target.value)} aria-label="Day it was paid"
-              onClick={e => { try { e.currentTarget.showPicker() } catch { /* the browser opens it itself */ } }}
-              className="absolute inset-0 opacity-0 cursor-pointer" />
-          </label>
-        )}
-        {/* How they paid: the dark thumb slides to the one picked. */}
-        <div ref={ways} role="group" aria-label="How the guest paid" className="relative grid grid-cols-4 p-0.5 rounded-lg bg-card shadow-[inset_0_0_0_1.5px_#1C1C1C]">
-          <span aria-hidden="true" style={{ '--i': Math.max(picked, 0) } as React.CSSProperties}
-            className={'absolute top-0.5 bottom-0.5 left-0.5 w-[calc((100%-4px)/4)] rounded-md bg-ink-900 translate-x-[calc(var(--i)*100%)] transition-[transform,opacity] duration-[380ms] ease-[cubic-bezier(.34,1.4,.64,1)] ' + (picked < 0 ? 'opacity-0 scale-75' : '')} />
-          {PAYMENT_METHODS.map(m => (
-            <button key={m} type="button" aria-pressed={method === m}
-              onClick={() => { setMethod(m); setMiss(''); if (!methodNeedsReference(m)) setReference('') }}
-              className={'relative min-h-7 rounded-md text-[10.5px] font-bold transition-[color,transform] active:scale-90 cursor-pointer ' + (method === m ? 'text-white' : 'text-ink-900')}>
-              {short(m)}
-            </button>
-          ))}
-        </div>
-        <button type="submit" aria-label="Record the payment"
-          className="grid place-items-center rounded-lg bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer">
-          <Check className="w-3.5 h-3.5" strokeWidth={3} />
-        </button>
-        <button type="button" onClick={() => { onOpen(false); setMiss('') }} aria-label="Not now"
-          className="grid place-items-center rounded-md text-gold-800 hover:bg-white/60 active:scale-90 transition-transform cursor-pointer">
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
-      {needsRef && (
-        <input ref={refBox} autoFocus value={reference} onChange={e => { setReference(e.target.value); setMiss('') }}
-          placeholder={short(method) + ' ref. no.'} aria-label="Reference no."
-          className={SLOT + ' font-mono text-[11px] bw-unfold'} />
-      )}
-      {miss && <span role="alert" className="text-[10px] font-semibold text-red-700">{miss}</span>}
-    </form>
+    </>
   )
 }
 
 /**
  * **"Add a charge"** under the bill's rows (Sebastian, 2026-10-20: *"staff should also be able
  * to add a bill in the billing statement. for example: DINNER - 300 pesos"*): what for and
- * how much, and it goes under Extras.
+ * how much, and it goes under Extras. Written in a box that floats over the bill (2026-10-27).
  */
-export function AddCharge({ onCharge, cols, beside, presets }: {
+export function AddCharge({ onCharge, cols, beside, presets, sheet }: {
   onCharge: (name: string, amount: number) => void; cols: number
-  /** Blanks that sit to its left while it is shut — a logged paper's Breakfast. */
+  /** Blanks that sit to its left — a logged paper's Breakfast. */
   beside?: React.ReactNode
   /** Ready-priced extras offered as chips when it opens (a new booking's Foam, Pillow…); each tap
    *  adds one more. "Something else" is the ordinary name and price. */
   presets?: { label: string; price: number; onPick: () => void }[]
+  /** What the box floats in. */
+  sheet: HTMLElement | null
 }) {
   const [other, setOther] = useState(false)
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [amount, setAmount] = useState(0)
+  const blank = useRef<HTMLButtonElement>(null)
   const nameBox = useRef<HTMLInputElement>(null)
   const amountBox = useRef<HTMLInputElement>(null)
+  const typing = open && (!presets || other)
+  useLateFocus(nameBox, typing)
+  const shut = () => { setOpen(false); setOther(false); setName(''); setAmount(0) }
   const add = () => {
     if (!name.trim()) { want(nameBox.current); return }
     if (!(amount > 0)) { want(amountBox.current); return }
     onCharge(name.trim(), amount)
-    setOpen(false); setOther(false); setName(''); setAmount(0)
+    shut()
   }
   return (
     <tr data-screen className="print:hidden">
       <td colSpan={cols} className="pt-1.5">
-        {!open ? (
-          <div className="flex gap-1.5">
-            {beside}
-            <button type="button" onClick={() => setOpen(true)}
-              className={BLANK + ' flex-1 [animation:none] border-ink-200 text-muted font-semibold hover:border-gold-400 hover:text-gold-800 hover:bg-paper-50'}>
-              <Plus aria-hidden="true" className="w-3.5 h-3.5" />Add a charge
-            </button>
-          </div>
-        ) : presets && !other ? (
-          <div className="p-1.5 rounded-md bg-gold-100 flex flex-wrap items-center gap-1.5 bw-unfold">
-            {presets.map(p => (
-              <button key={p.label} type="button" onClick={p.onPick}
-                className="min-h-8 px-2.5 rounded-md border-[1.5px] border-gold-400 bg-paper-50 hover:bg-white text-[11px] font-bold text-ink-900 active:scale-90 transition-[background-color,transform] cursor-pointer">
-                {p.label} <span className="font-mono text-[10px] font-semibold text-muted">₱{p.price}</span>
-              </button>
-            ))}
-            <button type="button" onClick={() => setOther(true)}
-              className="min-h-8 px-2.5 rounded-md border-[1.5px] border-dashed border-gold-400 text-[11px] font-bold text-gold-800 hover:bg-white active:scale-95 transition-[background-color,transform] cursor-pointer">Something else…</button>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Not now" className={SHUT + ' ml-auto self-stretch'}>
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={e => { e.preventDefault(); add() }} className="p-1.5 rounded-md bg-gold-100 flex items-center gap-1.5 bw-unfold">
-            <input ref={nameBox} autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="What for · e.g. Dinner"
-              aria-label="What the charge is for" className={SLOT + ' flex-1 font-semibold'} />
-            <span className="text-[10px] text-muted">₱</span>
-            <input ref={amountBox} inputMode="numeric" aria-label="Amount" value={amount ? amount.toLocaleString() : ''}
-              onChange={e => setAmount(digits(e.target.value))} className={SLOT + ' w-16 text-right font-mono text-[13px]'} />
-            <button type="submit" className={GO}>Add</button>
-            <button type="button" onClick={() => { setOpen(false); setOther(false); setName(''); setAmount(0) }} aria-label="Not now" className={SHUT + ' self-stretch'}>
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </form>
+        <div className="flex gap-1.5">
+          {beside}
+          <button ref={blank} type="button" onClick={() => (open ? shut() : setOpen(true))} aria-expanded={open}
+            className={BLANK + ' flex-1 [animation:none] border-ink-200 text-muted font-semibold hover:border-gold-400 hover:text-gold-800 hover:bg-paper-50 aria-expanded:border-gold-400 aria-expanded:text-gold-800 aria-expanded:bg-gold-100'}>
+            <Plus aria-hidden="true" className="w-3.5 h-3.5" />Add a charge
+          </button>
+        </div>
+        {open && sheet && (
+          <Floating at={() => blank.current!} sheet={sheet} label="Add a charge" onClose={shut}>
+            {!typing ? (
+              <div className="flex flex-wrap items-center gap-1.5 p-1 max-w-[300px]">
+                {presets!.map(p => (
+                  <button key={p.label} type="button" onClick={p.onPick}
+                    className="min-h-8 px-2.5 rounded-md border-[1.5px] border-gold-400 bg-paper-50 hover:bg-white text-[11px] font-bold text-ink-900 active:scale-90 transition-[background-color,transform] cursor-pointer">
+                    {p.label} <span className="font-mono text-[10px] font-semibold text-muted">₱{p.price}</span>
+                  </button>
+                ))}
+                <button type="button" onClick={() => setOther(true)}
+                  className="min-h-8 px-2.5 rounded-md border-[1.5px] border-dashed border-gold-400 text-[11px] font-bold text-gold-800 hover:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">Something else…</button>
+              </div>
+            ) : (
+              <form onSubmit={e => { e.preventDefault(); add() }} className="flex items-end gap-1.5 p-1">
+                <input ref={nameBox} value={name} onChange={e => setName(e.target.value)} placeholder="What for · e.g. Dinner"
+                  aria-label="What the charge is for" className={SLOT + ' w-40 text-[16px] font-semibold'} />
+                <label className={MONEY}>
+                  <span className="font-display text-[11px] font-extrabold text-muted">₱</span>
+                  <input ref={amountBox} inputMode="numeric" placeholder="300" aria-label="Amount" value={amount ? amount.toLocaleString() : ''}
+                    onChange={e => setAmount(digits(e.target.value))} className={MONEY_IN + ' !w-16'} />
+                </label>
+                <button type="submit" aria-label="Add the charge" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3} /></button>
+              </form>
+            )}
+          </Floating>
         )}
       </td>
     </tr>

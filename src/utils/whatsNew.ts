@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-27c',
+    changes: [
+      {
+        where: 'Front desk → bill',
+        what: [
+          'A payment, a charge, a discount, a room’s rate, the agency or institution and the receptionist each open in a small box over the bill, like changing a payment does.',
+          'In a payment, tap How paid? beside the amount to pick Cash, GCash, Bank or Check. The ref. no. goes under them.',
+          'Agency or institution shows the agencies and the institutions in two lists. Type a new institution under them, or tap Not billed to anyone to take it off.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-27b',
     changes: [
       {

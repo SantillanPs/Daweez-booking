@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Building2, ChevronDown, Coffee, Plus, X } from 'lucide-react'
+import { Building2, Check, ChevronDown, Coffee, Plus, X } from 'lucide-react'
 import { Booking, BillCharge, Companion, EquipmentRental, EventAddons, Room, Venue } from '../../types/booking'
 import { buildStatement, StatementLineItem, shortDate } from '../../utils/statement'
 import { dateToString, normalizeVenueId, randomUUID } from '../../utils/helpers'
@@ -23,6 +23,7 @@ import { Floating, UnitList, UnitOption, KindList, BreakfastList, MonthPick } fr
 import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
 import { withMoneyOf, holdsMoney } from '../../utils/roomTakenOff'
 import { AddCharge, PayInput, WritePayment } from '../billing/BillDesk'
+import { useLateFocus } from '../billing/want'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
 import { FixPayment, PayRow } from '../billing/FixPayment'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
@@ -138,13 +139,11 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const [to, setTo] = useState<BillTo | null>(() =>
     ed?.partner_deal_id || ed?.company_name ? { name: ed.company_name || '', dealId: ed.partner_deal_id || undefined }
       : ed?.institution ? { name: ed.institution } : null)
-  const [picking, setPicking] = useState(false)
   const [institutions, setInstitutions] = useState<string[]>([])
   const [paid, setPaid] = useState<Paid | null>(null)
   const [writing, setWriting] = useState(false)
   const [preparedBy, setPreparedBy] = useState(() => ed ? ed.prepared_by || '' : lastReceptionist())
   const [staffNames, setStaffNames] = useState(() => staffNamesOf(bookings))
-  const [typingStaff, setTypingStaff] = useState(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const nameBox = useRef<HTMLInputElement>(null)
@@ -159,8 +158,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // A rate typed on the line; an agency's own rate is not one.
   const [rates, setRates] = useState<Record<string, number>>(() => Object.fromEntries((editing || [])
     .filter(b => b.contract_rate_override != null && !b.partner_deal_id).map(b => [keyOf(b), Number(b.contract_rate_override)])))
-  const [pop, setPop] = useState<{ kind: 'swap' | 'add' | 'kind' | 'bf' | 'in' | 'out'; id: string; at: HTMLElement } | null>(null)
-  const [rateBox, setRateBox] = useState<string | null>(null)
+  // Everything tapped on the bill opens in one floating box (Sebastian, 2026-10-27, the "Bill pop-ups" mock);
+  // `v` is the rate it opens on.
+  const [pop, setPop] = useState<{ kind: 'swap' | 'add' | 'kind' | 'bf' | 'in' | 'out' | 'rate' | 'disc' | 'staff' | 'to'; id: string; at: HTMLElement; v?: number } | null>(null)
   const [fresh, setFresh] = useState<string | null>(null)
   const [unitOff, setUnitOff] = useState<{ label: string; money: number; units: [string, Sel][]; breakfast: string[]; kinds: Record<string, string>; rates: Record<string, number> } | null>(null)
   // A room added asks for its own dates (decided 2026-10-24): its check-in month opens once it is drawn.
@@ -249,7 +249,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
 
   const pickTo = (raw: string) => {
     const name = raw.trim().toUpperCase()
-    setPicking(false)
+    setPop(null)
     if (!name) return
     const d = partnerDeals.find(x => x.name.trim().toUpperCase() === name)
     if (d) {
@@ -350,7 +350,6 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     setUnits(unitOff.units); setBreakfast(unitOff.breakfast); setKinds(unitOff.kinds); setRates(unitOff.rates); setUnitOff(null)
   }
   const keepRate = (id: string, raw: string) => {
-    setRateBox(null)
     const v = Number(raw.replace(/\D/g, ''))
     if (!v) return
     const kind = kindsOf(id).find(k => k.key === (kinds[id] || ''))
@@ -523,7 +522,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const isOpen = (kind: NonNullable<typeof pop>['kind'], id = '') => pop?.kind === kind && pop.id === id
   const toggle = (kind: NonNullable<typeof pop>['kind'], id = '') => (e: React.MouseEvent<HTMLElement>) => {
     const at = e.currentTarget
-    setPop(p => p && p.kind === kind && p.id === id ? null : { kind, id, at }); setRateBox(null)
+    setPop(p => p && p.kind === kind && p.id === id ? null : { kind, id, at })
   }
   const VAL = 'px-0.5 rounded-sm border-b-[1.5px] border-dashed border-gold-400 print:border-0 hover:bg-gold-100 aria-expanded:bg-gold-100 aria-expanded:border-solid active:scale-95 transition-[background-color,transform] cursor-pointer'
   const CHEV = 'print:hidden w-3 h-3 text-gold-600 transition-transform duration-300 group-aria-expanded:rotate-180'
@@ -554,21 +553,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
         </tr>
       )
     }
-    // A room's price: tapped to type a new one, "custom ↺" back to its own. A short stay's line uses it too (2026-10-24).
+    // A room's price: tapped, a box floats under it to type a new one or go back to its own. A short stay's line uses it too (2026-10-24).
     const rateCell = (id: string, name: string, it: StatementLineItem) => (
       <td className={cell + ' text-right font-mono'}>
-        {rates[id] != null && rateBox !== id && (
-          <button type="button" onClick={() => { unRate(id); setFresh(id) }} title="Back to its own price"
-            className="print:hidden mr-1.5 px-1 py-px rounded bg-gold-100 text-gold-800 font-sans text-[9px] font-bold active:scale-90 transition-transform cursor-pointer bw-rise">custom ↺</button>
-        )}
-        {rateBox === id ? (
-          <input autoFocus defaultValue={String(it.price)} inputMode="numeric" placeholder="950" aria-label={name + ' rate'}
-            onFocus={e => e.currentTarget.select()} onBlur={e => keepRate(id, e.currentTarget.value)}
-            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setRateBox(null) }}
-            className="w-16 bg-card border-0 border-b-[1.5px] border-ink-900 focus:border-gold-400 rounded-none px-0.5 text-right font-mono text-[11px] font-semibold text-ink-900 focus:outline-none bw-rise" />
-        ) : (
-          <button type="button" onClick={() => { setRateBox(id); setPop(null) }} className={VAL}>{money(it.price)}</button>
-        )}
+        {rates[id] != null && <span className="print:hidden mr-1 font-sans text-[9px] font-bold text-gold-800 bw-rise">custom</span>}
+        <button type="button" aria-label={name + ' rate'} aria-expanded={isOpen('rate', id)} className={VAL}
+          onClick={e => { const at = e.currentTarget; setPop(p => p?.kind === 'rate' && p.id === id ? null : { kind: 'rate', id, at, v: it.price }) }}>{money(it.price)}</button>
       </td>
     )
     if (isShort && it.key.endsWith('-stay')) {
@@ -685,6 +675,31 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           }} />
       </Floating>
     )
+    if (p.kind === 'rate') return (
+      <Floating key={p.kind + p.id} {...common} at={at} right label={(s ? unitName(p.id, s) : '') + ' rate'}>
+        <TypeIn money value={p.v ? p.v.toLocaleString() : ''} placeholder="950" label="Rate" onSave={v => { keepRate(p.id, v); setPop(null) }}>
+          {rates[p.id] != null && <button type="button" onClick={() => { unRate(p.id); setFresh(p.id); setPop(null) }} className={QUIET}>Back to its own price</button>}
+        </TypeIn>
+      </Floating>
+    )
+    if (p.kind === 'disc') return (
+      <Floating key={p.kind} at={at} sheet={sheetEl} right label="Discount" onClose={() => { setPop(null); setDisc(d => (d?.v ? d : null)) }}>
+        <DiscountPop disc={disc || { pct: true, v: 0 }} off={discOff} onChange={setDisc}
+          onDone={() => { setPop(null); setDisc(d => (d?.v ? d : null)) }} onNone={() => { setDisc(null); setPop(null) }} />
+      </Floating>
+    )
+    if (p.kind === 'staff') return (
+      <Floating key={p.kind} {...common} at={at} label="Receptionist">
+        <TypeIn upper value="" placeholder="NAME · ANNA" label="Receptionist's name"
+          onSave={raw => { const v = raw.trim().toUpperCase(); if (v) { setStaffNames(ns => ns.includes(v) ? ns : [...ns, v]); setPreparedBy(v) } setPop(null) }} />
+      </Floating>
+    )
+    if (p.kind === 'to') return (
+      <Floating key={p.kind} {...common} at={at} label="Agency or institution">
+        <BillToList agencies={partnerDeals.map(d => d.name)} institutions={institutions} chosen={to?.name || ''} onPick={pickTo}
+          onNone={to ? () => { setTo(null); setPop(null) } : undefined} />
+      </Floating>
+    )
     if (!s) return null
     return (
       <Floating key={p.kind + p.id} {...common} at={at} right width={236} label={(p.kind === 'in' ? 'Check in for ' : 'Check out for ') + unitName(p.id, s)}>
@@ -718,24 +733,14 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               {/* One list for agencies and institutions, above the name (Sebastian, 2026-10-23). */}
               {to ? (
                 <div className="bw-rise">
-                  <p className="flex items-center gap-1.5 font-display text-[14.5px] font-bold text-ink-900 leading-tight">
-                    <Building2 aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />{to.name}
-                    <button type="button" onClick={() => setTo(null)} aria-label={'Not billed to ' + to.name}
-                      className="p-0.5 rounded text-muted opacity-60 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button>
-                  </p>
-                  <span className={label}>c/o</span>
-                </div>
-              ) : picking ? (
-                <div className="flex items-end gap-1 bw-unfold">
-                  <input autoFocus list="bill-to-list" placeholder="SURIGAO SUN TOURS or DEPED TANDAG" aria-label="Agency or institution"
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); pickTo(e.currentTarget.value) } if (e.key === 'Escape') setPicking(false) }}
-                    onBlur={e => pickTo(e.currentTarget.value)} className={info + ' !mt-0 uppercase'} />
-                  <datalist id="bill-to-list">
-                    {[...partnerDeals.map(d => d.name), ...institutions].map(n => <option key={n} value={n} />)}
-                  </datalist>
+                  <button type="button" onClick={toggle('to')} aria-expanded={isOpen('to')} aria-label={'Billed to ' + to.name + ', change'}
+                    className={VAL + ' group inline-flex items-center gap-1.5 -ml-0.5 font-display text-[14.5px] font-bold text-ink-900 leading-tight text-left'}>
+                    {to.dealId && <Building2 aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />}{to.name}<ChevronDown aria-hidden="true" className={CHEV} />
+                  </button>
+                  <span className={label + ' block'}>{to.dealId ? 'c/o' : 'Institution'}</span>
                 </div>
               ) : (
-                <button type="button" onClick={() => setPicking(true)} className="mb-0.5 inline-flex items-center gap-1 text-[10.5px] font-bold text-gold-800 hover:underline cursor-pointer">
+                <button type="button" onClick={toggle('to')} aria-expanded={isOpen('to')} className="mb-0.5 inline-flex items-center gap-1 px-0.5 -ml-0.5 rounded text-[10.5px] font-bold text-gold-800 hover:underline aria-expanded:bg-gold-100 cursor-pointer">
                   <Plus className="w-3 h-3" /> Agency or institution
                 </button>
               )}
@@ -807,7 +812,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                   </td>
                 </tr>
               )}
-              <AddCharge onCharge={addCharge} cols={6}
+              <AddCharge sheet={sheetEl} onCharge={addCharge} cols={6}
                 // The form's room extras, a tap for each one more; an agency's stay has none.
                 presets={firstRoomId && !to ? EXTRAS.map(x => ({ label: x.label, price: x.price, onPick: () => { setExtras(e => ({ ...e, [x.key]: e[x.key] + 1 })); setRemoved(null) } })) : undefined} />
             </StatementChargesTable>
@@ -819,10 +824,14 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               {(!to || desk) && (
                 <>
                   {!to && <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(total + discOff)}</span></div>}
-                  {to ? null : disc ? (
-                    <DiscountBox disc={disc} onChange={setDisc} off={discOff} fold />
+                  {to ? null : disc?.v ? (
+                    <button type="button" onClick={toggle('disc')} aria-expanded={isOpen('disc')} aria-label="Change the discount"
+                      className="w-full -mx-0.5 px-0.5 flex justify-between items-baseline gap-2.5 rounded text-left hover:bg-gold-100 aria-expanded:bg-gold-100 transition-colors cursor-pointer bw-rise">
+                      <span className="text-[10px] text-muted">Less: discount{disc.pct && <b className="ml-1 font-bold text-ink-900">{disc.v}%</b>}</span>
+                      <span className="font-mono text-[11.5px] font-bold text-danger-600">−₱{discOff.toLocaleString()}</span>
+                    </button>
                   ) : (
-                    <button type="button" onClick={() => setDisc({ pct: true, v: 0 })} className="self-start text-[10.5px] font-bold text-gold-800 hover:underline cursor-pointer">+ Discount</button>
+                    <button type="button" onClick={toggle('disc')} aria-expanded={isOpen('disc')} className="self-start px-0.5 -ml-0.5 rounded text-[10.5px] font-bold text-gold-800 hover:underline aria-expanded:bg-gold-100 cursor-pointer">+ Discount</button>
                   )}
                   <p className={label}>Less: payments received</p>
                   {/* On the one bill each payment can be fixed where it stands, and its receipt printed.
@@ -862,14 +871,14 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                     </div>
                   )}
                   {editing && desk && due > 0 && (
-                    <WritePayment key={statement?.payments.length} open={writing} onOpen={o => { setWriting(o); if (o) void save() }} again={(statement?.payments.length || 0) > 0}
+                    <WritePayment key={statement?.payments.length} sheet={sheetEl} open={writing} onOpen={o => { setWriting(o); if (o) void save() }} again={(statement?.payments.length || 0) > 0}
                       // Deposit only until money is in, and never on a short stay; Full pay is what is still owed.
                       fills={[...(statement?.payments.length || isShort ? [] : [{ label: 'Deposit', amount: Math.round(total / 2) }]), { label: 'Full pay', amount: due }]}
                       onPay={p => behind(() => desk.onPay(p))} />
                   )}
                   {/* One payment at booking — what the guest hands over now. */}
                   {!editing && !paid && total > 0 && (
-                    <WritePayment open={writing} onOpen={setWriting} again={false}
+                    <WritePayment sheet={sheetEl} open={writing} onOpen={setWriting} again={false}
                       fills={[{ label: 'Deposit', amount: Math.round(total / 2) }, { label: 'Full pay', amount: total }]}
                       onPay={p => setPaid({ amount: p.amount, method: p.method, reference: p.reference, purpose: p.purpose })} />
                   )}
@@ -897,21 +906,20 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             <div>
               <div role="radiogroup" aria-label="Receptionist on duty" className="min-h-6 flex flex-wrap items-end gap-x-3 gap-y-1 pb-0.5 border-b border-ink-900">
                 {staffNames.map(n => (
-                  <Circled key={n} on={preparedBy === n} onClick={() => { setPreparedBy(n); setTypingStaff(false) }}
+                  <Circled key={n} on={preparedBy === n} onClick={() => setPreparedBy(n)}
                     className={'!min-h-0 !py-0 !px-1.5 text-[12px] font-bold tracking-[0.02em] ' + (preparedBy === n ? 'text-ink-900' : 'text-ink-600')}>{n}</Circled>
                 ))}
-                {typingStaff || staffNames.length === 0 ? (
-                  <input autoFocus={typingStaff} placeholder="NAME · ANNA" aria-label="Receptionist's name"
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } if (e.key === 'Escape') setTypingStaff(false) }}
+                {staffNames.length === 0 ? (
+                  <input placeholder="NAME · ANNA" aria-label="Receptionist's name"
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
                     onBlur={e => {
                       const v = e.currentTarget.value.trim().toUpperCase()
                       if (v) { setStaffNames(ns => ns.includes(v) ? ns : [...ns, v]); setPreparedBy(v) }
-                      setTypingStaff(false)
                     }}
                     className={LINE + ' !w-24 text-[12px] font-bold'} />
                 ) : (
-                  <button type="button" onClick={() => setTypingStaff(true)}
-                    className="text-[11px] font-bold text-gold-800 hover:underline cursor-pointer inline-flex items-center gap-0.5"><Plus className="w-3 h-3" /> Someone else</button>
+                  <button type="button" onClick={toggle('staff')} aria-expanded={isOpen('staff')}
+                    className="px-0.5 rounded text-[11px] font-bold text-gold-800 hover:underline aria-expanded:bg-gold-100 cursor-pointer inline-flex items-center gap-0.5"><Plus className="w-3 h-3" /> Someone else</button>
                 )}
               </div>
               <p className={label + ' mt-0.5'}>Prepared by</p>
@@ -990,6 +998,101 @@ export function DiscountBox({ disc, onChange, off, fold = false }: { disc: Disco
       {off !== undefined && (
         <span key={off} className="shrink-0 min-w-[52px] text-right font-mono text-[12px] font-bold text-danger-600 bw-rise">{off ? '−₱' + off.toLocaleString() : '—'}</span>
       )}
+    </div>
+  )
+}
+
+const QUIET = 'self-start px-1 pt-1 text-[10.5px] font-bold text-gold-800 hover:underline cursor-pointer bw-rise'
+const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-lg bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer'
+const SLOT = 'min-w-0 w-40 bg-transparent border-0 border-b-[1.5px] border-ink-900 rounded-none px-0.5 py-px text-[16px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-gold-400'
+const PICK = 'w-full flex items-center gap-2 px-2 py-[6px] rounded-lg text-left text-[11.5px] font-semibold text-ink-900 whitespace-nowrap cursor-pointer hover:bg-gold-100 focus-visible:bg-gold-100 focus-visible:outline-none active:scale-[0.98] transition-[background-color,transform] bw-rise'
+
+/** One thing typed in the floating box and saved with its ✓: a rate, a receptionist's name. */
+function TypeIn({ value, placeholder, label, money: isMoney, upper, onSave, children }: {
+  value: string; placeholder: string; label: string; money?: boolean; upper?: boolean; onSave: (v: string) => void; children?: React.ReactNode
+}) {
+  const [v, setV] = useState(value)
+  const box = useRef<HTMLInputElement>(null)
+  useLateFocus(box)
+  return (
+    <form onSubmit={e => { e.preventDefault(); onSave(v.trim()) }} className="flex flex-col p-1">
+      <div className="flex items-end gap-1.5">
+        {isMoney ? (
+          <label className="flex items-baseline gap-0.5 border-b-2 border-ink-900 focus-within:border-gold-400 transition-colors">
+            <span className="font-display text-[11px] font-extrabold text-muted">₱</span>
+            <input ref={box} inputMode="numeric" value={v} placeholder={placeholder} aria-label={label} onFocus={e => e.currentTarget.select()}
+              onChange={e => { const n = Number(e.target.value.replace(/\D/g, '')) || 0; setV(n ? n.toLocaleString() : '') }}
+              className="min-w-0 w-20 bg-transparent border-0 p-0 text-right font-display text-[16px] font-extrabold text-ink-900 placeholder:text-paper-400 focus:outline-none" />
+          </label>
+        ) : (
+          <input ref={box} value={v} placeholder={placeholder} aria-label={label} onChange={e => setV(upper ? e.target.value.toUpperCase() : e.target.value)} className={SLOT} />
+        )}
+        <button type="submit" aria-label="Save" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
+      </div>
+      {children}
+    </form>
+  )
+}
+
+/**
+ * **The discount, in the floating box** (Sebastian, 2026-10-27: "the visual hierarchy is money, and
+ * choosing what type of discount it is, then okay"): the amount first, % or ₱ beside it as a quiet
+ * choice (the picked one in ink with a gold line under it), then ✓. What it takes off in pesos stays
+ * under it as it is typed (task #11). It changes the bill as it is typed, like the box it replaced.
+ */
+function DiscountPop({ disc, off, onChange, onDone, onNone }: {
+  disc: Discount; off: number; onChange: (d: Discount) => void; onDone: () => void; onNone: () => void
+}) {
+  const box = useRef<HTMLInputElement>(null)
+  useLateFocus(box)
+  return (
+    <form onSubmit={e => { e.preventDefault(); onDone() }} className="flex flex-col p-1">
+      <div className="flex items-center gap-1">
+        <label className="flex items-baseline gap-0.5 border-b-2 border-ink-900 focus-within:border-gold-400 transition-colors">
+          <input ref={box} inputMode="numeric" placeholder={disc.pct ? '10' : '200'} aria-label="Discount" value={disc.v ? disc.v.toLocaleString() : ''}
+            onChange={e => { const n = Number(e.target.value.replace(/\D/g, '')) || 0; onChange({ ...disc, v: disc.pct ? Math.min(n, 100) : n }) }}
+            className="min-w-0 w-16 bg-transparent border-0 p-0 text-right font-display text-[16px] font-extrabold text-ink-900 placeholder:text-paper-400 focus:outline-none" />
+        </label>
+        <div role="radiogroup" aria-label="Discount by" className="flex">
+          {[true, false].map(p => (
+            <button key={String(p)} type="button" role="radio" aria-checked={disc.pct === p} onClick={() => { onChange({ pct: p, v: p ? Math.min(disc.v, 100) : disc.v }); box.current?.focus() }}
+              className={'relative min-h-7 px-1.5 font-mono text-[12px] font-bold transition-colors cursor-pointer after:absolute after:left-1.5 after:right-1.5 after:bottom-1 after:h-0.5 after:rounded-full after:bg-gold-400 after:transition-transform after:duration-300 after:ease-[cubic-bezier(.34,1.56,.64,1)] ' +
+                (disc.pct === p ? 'text-ink-900 after:scale-x-100' : 'text-paper-400 hover:text-ink-700 after:scale-x-0')}>{p ? '%' : '₱'}</button>
+          ))}
+        </div>
+        <button type="submit" aria-label="Done" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
+      </div>
+      <span key={off} className="px-0.5 pt-1 font-mono text-[11.5px] font-bold text-danger-600 bw-rise">{off ? '−₱' + off.toLocaleString() : '\u00a0'}</span>
+      {disc.v > 0 && <button type="button" onClick={onNone} className={QUIET}>No discount</button>}
+    </form>
+  )
+}
+
+/**
+ * **Who the bill goes to**, in the floating box (Sebastian, 2026-10-27: "make the agency and institution
+ * function"): the agencies, then the institutions, the one chosen ticked. An agency turns the bill into
+ * its statement; an institution only names it. A name typed under them is a new institution.
+ */
+function BillToList({ agencies, institutions, chosen, onPick, onNone }: {
+  agencies: string[]; institutions: string[]; chosen: string; onPick: (name: string) => void; onNone?: () => void
+}) {
+  const [v, setV] = useState('')
+  let i = 0
+  const row = (n: string) => (
+    <button key={n} type="button" onClick={() => onPick(n)} style={{ '--i': i++ } as React.CSSProperties} className={PICK}>
+      {n}{n === chosen && <span aria-hidden="true" className="ml-auto">✓</span>}
+    </button>
+  )
+  const head = 'px-2 pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-muted'
+  return (
+    <div className="min-w-[220px]">
+      {agencies.length > 0 && <><p className={head}>Agencies</p>{agencies.map(row)}</>}
+      {institutions.length > 0 && <><p className={head}>Institutions</p>{institutions.map(row)}</>}
+      <form onSubmit={e => { e.preventDefault(); if (v.trim()) onPick(v) }} className="flex items-end gap-1.5 mt-1 pt-1.5 px-1 pb-1 border-t border-ink-200">
+        <input value={v} onChange={e => setV(e.target.value.toUpperCase())} placeholder="A new institution · e.g. DPWH SURIGAO" aria-label="A new institution" className={SLOT + ' !w-56'} />
+        <button type="submit" aria-label="Add" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
+      </form>
+      {onNone && <button type="button" onClick={onNone} className={QUIET + ' px-2 pb-1'}>Not billed to anyone</button>}
     </div>
   )
 }

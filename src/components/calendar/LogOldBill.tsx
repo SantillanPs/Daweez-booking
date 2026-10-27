@@ -65,6 +65,8 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
   const [error, setError] = useState('')
   const [logged, setLogged] = useState(false)
   const nameBox = useRef<HTMLInputElement>(null)
+  // The payment and charge boxes float inside the bill's own sheet.
+  const [sheetEl, setSheetEl] = useState<HTMLDivElement | null>(null)
 
   const entries = Object.entries(initialSelections || {})
   // A short stay is one room for one day: the room and the day the desk picked.
@@ -242,7 +244,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
 
   return createPortal(
     <div className="fixed inset-0 z-[60] p-3 sm:p-4 bg-slate-900/50 overflow-y-auto bw-dim">
-      <div className="bw-eject">
+      <div ref={setSheetEl} className="relative bw-eject">
         <StatementShell label="Log old booking" invoiceNumber="copied from the paper" onClose={onClose}>
           <BrandHeader>
             <span className={label}>Paper no.</span>
@@ -339,7 +341,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
                   </td>
                 </tr>
               )}
-              <AddCharge onCharge={addCharge} cols={6} beside={noBreakfast.map(([id]) => {
+              <AddCharge sheet={sheetEl} onCharge={addCharge} cols={6} beside={noBreakfast.map(([id]) => {
                 const room = rooms.find(r => r.id === id)!
                 const name = 'Breakfast' + (list.length > 1 ? ' · Room ' + room.room_number : '')
                 // A room never priced asks for its price right here, as the paper form does
@@ -390,7 +392,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
                 </div>
               )}
               {due > 0 && first && (
-                <WritePayment key={paid.length} open={writing} onOpen={setWriting} again={paid.length > 0} paidOn={first.checkIn}
+                <WritePayment key={paid.length} sheet={sheetEl} open={writing} onOpen={setWriting} again={paid.length > 0} paidOn={first.checkIn}
                   onPay={p => setPaid(ps => [...ps, { id: 'rcpt-' + Date.now(), ...p }])} />
               )}
               <div className={'mt-1 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 text-white transition-colors duration-500 ' + (paidUp ? 'bg-emerald-700' : 'bg-ink-900')}>
