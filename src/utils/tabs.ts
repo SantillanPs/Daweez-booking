@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from './supabaseClient'
 import { randomUUID } from './helpers'
 import { Tab, TabLine } from '../types/tab'
 import { PaymentRecord } from '../types/booking'
-import { nextTabReceiptNumber } from './receiptNumber'
+import { nextTabReceiptNumber, usedReceiptNumbers } from './receiptNumber'
 
 // Order slips — the tables are still named `tabs` and `tab_lines` (board card k69);
 // what a stay's slips add up to, and paying them, is in `orderSlips.ts`.
@@ -291,26 +291,6 @@ export async function readTabTotal(tabId: string): Promise<number> {
   const { data, error } = await supabase.from('tab_lines').select('amount').eq('tab_id', tabId)
   if (error) throw error
   return money((data || []).reduce((sum, l) => sum + Number(l.amount || 0), 0))
-}
-
-/**
- * Every receipt number already handed out — on every tab AND every booking, because
- * both print `PR-YYYYMM-NNN`. Settling used to look only at the tab being settled,
- * and a fresh tab has no payments, so every walk-in came out as `…-001`. Read
- * straight from the database and thrown on failure: a number guessed from an empty
- * list is exactly the duplicate this exists to stop. `payment_records` is JSON
- * `null` on most rows.
- */
-async function usedReceiptNumbers(): Promise<string[]> {
-  const [tabs, bookings] = await Promise.all([
-    supabase.from('tabs').select('payment_records'),
-    supabase.from('bookings').select('payment_records'),
-  ])
-  if (tabs.error) throw tabs.error
-  if (bookings.error) throw bookings.error
-  return [...(tabs.data || []), ...(bookings.data || [])]
-    .flatMap(row => (row.payment_records as PaymentRecord[] | null) || [])
-    .map(r => r.receipt_number || '')
 }
 
 /**

@@ -6,7 +6,7 @@ import * as syncEngine from '../utils/syncEngine'
 import { getEffectiveNightlyPrice } from '../utils/promoMode'
 import { dateToString } from '../utils/helpers'
 import { getPaymentAccounts } from '../utils/paymentAccounts'
-import { nextReceiptNumber } from '../utils/receiptNumber'
+import { freshReceiptNumber, nextReceiptNumber } from '../utils/receiptNumber'
 import { roomDisplayName } from './calendar/bookingStyles'
 
 export function PublicReservePortal() {
@@ -186,6 +186,9 @@ export function PublicReservePortal() {
       // The downpayment was taken online, so it needs its own numbered receipt
       // like any other payment. Staff can then reprint it for the guest, and the
       // booking is not left looking unpaid.
+      // Checked against the order slips too; if that read fails the booking still goes through,
+      // numbered from the bookings on hand as before.
+      const receiptNumber = await freshReceiptNumber(newBooking, bookings).catch(() => nextReceiptNumber(newBooking, bookings))
       const onlinePayment: PaymentRecord = {
         id: 'rcpt-' + syncEngine.generateUUID(),
         amount: Number(pricing.downpayment) || 0,
@@ -194,7 +197,7 @@ export function PublicReservePortal() {
         paid_at: now.toISOString(),
         prepared_by: 'Online booking (guest portal)',
         // Handed the bookings list so an online payment cannot take a number the desk already used.
-        receipt_number: nextReceiptNumber(newBooking, bookings),
+        receipt_number: receiptNumber,
       }
       if (onlinePayment.amount > 0) {
         newBooking.payment_records = [onlinePayment]

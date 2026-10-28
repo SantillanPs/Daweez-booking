@@ -1,5 +1,5 @@
 import { Booking, PaymentRecord } from '../../types/booking'
-import { nextReceiptNumber } from '../../utils/receiptNumber'
+import { freshReceiptNumber } from '../../utils/receiptNumber'
 
 /**
  * Taking the money **in the booking form** (the owner's ruling, 2026-09-29, from what the
@@ -91,7 +91,7 @@ export async function recordBookingPayment(
   const shares = allocatePayment(owed, received)
   const paidAt = new Date().toISOString()
   // **One number for the whole payment**, decided once — not once per booking.
-  const receiptNumber = nextReceiptNumber(p.bookings[0], p.allBookings || [])
+  const receiptNumber = await freshReceiptNumber(p.bookings[0], p.allBookings || [])
 
   let receipt: PaymentRecord | undefined
   const updated: Booking[] = []

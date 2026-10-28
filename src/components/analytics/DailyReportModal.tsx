@@ -26,7 +26,7 @@ export function DailyReportModal({ onClose, initialDate }: {
 }) {
   // Every booking, cancelled ones too: money received on a booking that was later
   // cancelled still arrived on its day, and a money sheet must not lose it.
-  const { allBookings: bookings, rooms, expenses, expenseCategories } = useDashboardData()
+  const { allBookings: bookings, rooms, venues, expenses, expenseCategories } = useDashboardData()
   const [date, setDate] = useState(() => initialDate || localToday())
 
   // A report is a cold read of a whole day, so the tabs are fetched here rather than riding the booking cache:
@@ -36,8 +36,8 @@ export function DailyReportModal({ onClose, initialDate }: {
   const { data: handovers = [] } = useQuery({ queryKey: ['handovers'], queryFn: getHandovers })
 
   const report = useMemo(
-    () => buildDailyReport({ date, bookings, tabs, expenses, handovers, categories: expenseCategories, rooms }),
-    [date, bookings, tabs, expenses, handovers, expenseCategories, rooms],
+    () => buildDailyReport({ date, bookings, tabs, expenses, handovers, categories: expenseCategories, rooms, venues }),
+    [date, bookings, tabs, expenses, handovers, expenseCategories, rooms, venues],
   )
 
   // **Rendered through a portal to `document.body`**, the way every other print modal in the app is

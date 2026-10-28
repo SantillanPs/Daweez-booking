@@ -16,7 +16,6 @@ import { BlockDatesPane } from './calendar/BlockDatesPane'
 import { CalendarToolbar } from './calendar/CalendarToolbar'
 import { TodayStrip } from './calendar/TodayStrip'
 import { CalendarSearch } from './calendar/CalendarSearch'
-import { PrintInvoiceModal } from './billing/PrintInvoiceModal'
 import { PrintPaymentReceiptModal } from './billing/PrintPaymentReceiptModal'
 import { setDeskBusy } from '../utils/deskState'
 import { BreakfastPicker } from './calendar/BreakfastPicker'
@@ -59,7 +58,6 @@ export function CalendarTab() {
   // ── Booking detail / extension modal ──
   const [selectedExtendBooking, setSelectedExtendBooking] = useState<Booking | null>(null)
   // What the calendar search opened: a billing statement or a receipt (`CalendarSearch`).
-  const [foundBill, setFoundBill] = useState<Booking | null>(null)
   const [foundReceipt, setFoundReceipt] = useState<{ booking: Booking; record: PaymentRecord; covered: Booking[] } | null>(null)
   const [showLogOld, setShowLogOld] = useState(false)
   /** The booking whose breakfast for today is being written down. */
@@ -515,7 +513,7 @@ export function CalendarTab() {
           onToday={() => setMonthAnchor(todayStart())}
         >
           <CalendarSearch allBookings={allBookings} rooms={rooms} venues={venues}
-            onBooking={openFound} onBill={b => { if (b.status === 'cancelled') setFoundBill(b); else { openFound(b); setBillOf(b) } }} onReceipt={(booking, record, covered) => setFoundReceipt({ booking, record, covered })} />
+            onBooking={openFound} onBill={b => { openFound(b); setBillOf(b) }} onReceipt={(booking, record, covered) => setFoundReceipt({ booking, record, covered })} />
           <TodayStrip />
         </CalendarToolbar>
         <TimelineGrid
@@ -547,9 +545,6 @@ export function CalendarTab() {
 
       <ShortStayAlerts due={timeUpDue} rooms={rooms} venues={venues} onOut={timeUpOut} onMore={timeUpMore} />
 
-      {foundBill && (
-        <PrintInvoiceModal booking={foundBill} rooms={rooms} venues={venues} bookingsList={allBookings} onClose={() => setFoundBill(null)} />
-      )}
       {foundReceipt && (
         <PrintPaymentReceiptModal booking={foundReceipt.booking} record={foundReceipt.record} rooms={rooms} venues={venues}
           covered={foundReceipt.covered.length > 1 ? foundReceipt.covered : undefined} onClose={() => setFoundReceipt(null)} />

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDownLeft, ArrowUpRight, List, Printer, Tag, Wallet } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
@@ -17,6 +17,12 @@ import { ExpenseHistory } from './expenses/ExpenseHistory'
 import { CategoryManager } from './expenses/CategoryManager'
 import { HandOverModal } from './expenses/HandOverModal'
 import { DailyReportModal } from './analytics/DailyReportModal'
+import { TabReceiptModal } from './restaurant/TabReceiptModal'
+import { readTabLines } from '../utils/tabs'
+import { WorkingBill } from './calendar/WorkingBill'
+import { openKey, type MoneyInLine } from '../utils/dailyReport'
+import type { PaymentRecord } from '../types/booking'
+import type { Tab, TabLine } from '../types/tab'
 
 const shortDay = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number)
@@ -38,7 +44,7 @@ const shortDay = (iso: string) => {
 // screen and the paper cannot disagree.
 export function ExpensesTab() {
   const {
-    allBookings, rooms, expenses, expenseCategories, isLoading,
+    allBookings, rooms, venues, expenses, expenseCategories, isLoading,
     createExpense, deleteExpense, createExpenseCategory, deleteExpenseCategory,
   } = useDashboardData()
 
@@ -50,6 +56,14 @@ export function ExpensesTab() {
   const [showHistory, setShowHistory] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
   const [handingOver, setHandingOver] = useState<'out' | 'in' | null>(null)
+  const [opening, setOpening] = useState<string | null>(null)
+  const [billOf, setBillOf] = useState<{ id: string; receipt?: string } | null>(null)
+  // The bill's code is fetched while the day is read, so a tapped payment's bill comes up at once.
+  useEffect(() => {
+    const id = window.setTimeout(() => { void import('./calendar/NewBookingBill') }, 1500)
+    return () => window.clearTimeout(id)
+  }, [])
+  const [slipReceipt, setSlipReceipt] = useState<{ tab: Tab; lines: TabLine[]; record: PaymentRecord } | null>(null)
 
   // A tab settled at the counter is money in with no booking behind it.
   const { data: tabs = [] } = useQuery({ queryKey: ['tabs'], queryFn: getTabs })
@@ -58,14 +72,31 @@ export function ExpensesTab() {
   const { data: handovers = [] } = useQuery({ queryKey: ['handovers'], queryFn: getHandovers })
 
   const report = useMemo(
-    () => buildDailyReport({ date, bookings: allBookings, tabs, expenses, handovers, categories: expenseCategories, rooms }),
-    [date, allBookings, tabs, expenses, handovers, expenseCategories, rooms],
+    () => buildDailyReport({ date, bookings: allBookings, tabs, expenses, handovers, categories: expenseCategories, rooms, venues }),
+    [date, allBookings, tabs, expenses, handovers, expenseCategories, rooms, venues],
   )
+  const billBooking = billOf ? allBookings.find(b => b.id === billOf.id) : undefined
   const dayHandovers = useMemo(() => handovers.filter(h => h.handover_date === date), [handovers, date])
   const dayExpenses = useMemo(
     () => expenses.filter(e => e.expense_date === date).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')),
     [expenses, date],
   )
+
+  // A payment on a booking opens its bill here, being worked on — never a copy only to look at
+  // (Sebastian, 2026-10-28: "it should never be in a view only state", "it should open the bill IN
+  // the cash flow"). A diner's slip paid at the counter has no bill, so it opens its receipt, which
+  // reads the slip's lines first: the row says it is coming.
+  const openPayment = (line: MoneyInLine) => {
+    if (line.bookingId) { setBillOf({ id: line.bookingId, receipt: line.receipt }); return }
+    setOpening(openKey(line))
+    const tab = tabs.find(t => t.id === line.tabId)
+    const record = tab?.payment_records?.find(r => r.id === line.recordId)
+    if (!tab || !record) { setOpening(null); return }
+    readTabLines(tab.id)
+      .then(lines => setSlipReceipt({ tab, lines, record }))
+      .catch(() => showToast('Could not open the receipt. Please try again.', 'error'))
+      .finally(() => setOpening(null))
+  }
 
   // Most used first, the order the add form's chips are in, so the picker on a line
   // starts with the four or five things the hotel buys every day.
@@ -204,6 +235,8 @@ export function ExpensesTab() {
         onTakeBack={takeBack}
         onAdd={addExpense}
         pastDay={date === today ? undefined : shortDay(date)}
+        onOpenPayment={openPayment}
+        opening={opening}
         footer={<>
           <div className="flex flex-wrap items-center gap-x-2 -ml-1">
             <button type="button" onClick={() => setShowHistory(true)} className={quiet}><List className="w-3.5 h-3.5 opacity-75" />All expenses</button>
@@ -224,6 +257,8 @@ export function ExpensesTab() {
         </p>
       )}
 
+      {billBooking && <WorkingBill booking={billBooking} mark={billOf?.receipt} onClose={() => setBillOf(null)} />}
+      {slipReceipt && <TabReceiptModal tab={slipReceipt.tab} lines={slipReceipt.lines} record={slipReceipt.record} onClose={() => setSlipReceipt(null)} />}
       {printing && <DailyReportModal initialDate={date} onClose={() => setPrinting(false)} />}
       {showHistory && (
         <ExpenseHistory

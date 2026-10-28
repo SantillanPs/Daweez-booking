@@ -413,6 +413,12 @@
 .bw-unfold { animation: bw-unfold 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .bw-in { animation: bw-arrive 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--i, 0) * 55ms); }
 .bw-rise { animation: bw-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i, 0) * 55ms); }
+/* The payment tapped in Cash Flow, on its bill: a gold ring draws in, blinks once and stays. */
+.bill-mark { position: relative; z-index: 1; }
+.bill-mark::after { content: ''; position: absolute; inset: -1px -6px; border: 2px solid #D0AB60; border-radius: 8px; pointer-events: none; animation: bill-ring 1.4s ease-out 0.35s both; }
+@keyframes bill-ring { 0% { opacity: 0; transform: scale(1.06); } 25% { opacity: 1; transform: scale(1); } 45% { opacity: 0.35; } 65%, 100% { opacity: 1; } }
+@media print { .bill-mark::after { display: none; } }
+@media (prefers-reduced-motion: reduce) { .bill-mark::after { animation: none; } }
 /* The bill as the desk's paper (the pay-on-the-bill mock, Sebastian, 2026-10-20): a line just
    written settles from gold into ink, left to right, and a bill paid in full is stamped. */
 @keyframes bill-ink { 0% { color: #D0AB60; background: #F5EAD1; clip-path: inset(0 100% 0 0); } 60% { clip-path: inset(0 0 0 0); background: #F5EAD1; } 100% { background: transparent; } }

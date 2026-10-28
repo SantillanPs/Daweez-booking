@@ -112,16 +112,6 @@ export function WritePayment({ open, onOpen, onPay, again, paidOn, fills, sheet 
               </button>
               <button type="submit" aria-label="Record the payment" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3} /></button>
             </div>
-            {choosing && (
-              <div role="radiogroup" aria-label="How the guest paid" className="py-0.5 border-y border-ink-200 bw-unfold">
-                {PAYMENT_METHODS.map((m, i) => (
-                  <button key={m} type="button" role="radio" aria-checked={method === m} style={{ '--i': i } as React.CSSProperties}
-                    onClick={() => { setMethod(m); setChoosing(false); setMiss(''); if (!methodNeedsReference(m)) setReference('') }} className={LI}>
-                    {m}{method === m && <span aria-hidden="true" className="ml-auto">✓</span>}
-                  </button>
-                ))}
-              </div>
-            )}
             {needsRef && (
               <input ref={refBox} value={reference} onChange={e => { setReference(e.target.value); setMiss('') }}
                 placeholder="Ref no. · e.g. 4012 3381 22" aria-label={short(method) + ' ref. no.'}
@@ -129,6 +119,19 @@ export function WritePayment({ open, onOpen, onPay, again, paidOn, fills, sheet 
             )}
             {miss && <span role="alert" className="text-[10px] font-semibold text-red-700">{miss}</span>}
           </form>
+        </Floating>
+      )}
+      {/* How they paid opens a popup of its own beside the box, so the box keeps its size. */}
+      {open && choosing && sheet && (
+        <Floating at={() => way.current!} sheet={sheet} right nested label="How the guest paid" onClose={() => setChoosing(false)}>
+          <div role="radiogroup" aria-label="How the guest paid" className="w-[140px]">
+            {PAYMENT_METHODS.map((m, i) => (
+              <button key={m} type="button" role="radio" aria-checked={method === m} style={{ '--i': i } as React.CSSProperties}
+                onClick={() => { setMethod(m); setChoosing(false); setMiss(''); if (!methodNeedsReference(m)) setReference('') }} className={LI}>
+                {m}{method === m && <span aria-hidden="true" className="ml-auto">✓</span>}
+              </button>
+            ))}
+          </div>
         </Floating>
       )}
     </>

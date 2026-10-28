@@ -11,12 +11,16 @@ import { PriceBox } from '../PriceBox'
  * the bill ("like the calendar, this shouldn't make space in the billing when opened"); above it
  * when there is no room below. A tap anywhere else, or Esc, puts it away.
  */
-export function Floating({ at, sheet, right, width, label, onClose, children }: {
+export function Floating({ at, sheet, right, width, label, nested, onClose, children }: {
   /** What it opens under, asked again each time it is placed: the line it belongs to may be drawn anew. */
   at: () => HTMLElement; sheet: HTMLElement; right?: boolean; label: string
   /** Left out, the box is as wide as what is in it (Sebastian, 2026-10-27: "the design should use only
    *  as much as the content and interaction it requires"). */
   width?: number
+  /** **A popup opened from inside another** (the payment's How paid?, Sebastian, 2026-10-28: "this is
+   *  supposed to be another popup, and shouldn't change the size of the original popup"). The one
+   *  beneath stays open while it is tapped, and Esc puts away only this one. */
+  nested?: boolean
   onClose: () => void; children: React.ReactNode
 }) {
   const box = useRef<HTMLDivElement>(null)
@@ -38,14 +42,23 @@ export function Floating({ at, sheet, right, width, label, onClose, children }: 
   // Opened below the edge of the screen: the bill glides up just enough to show all of it.
   useEffect(() => { if (pos) box.current?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }) }, [!!pos]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const away = (e: PointerEvent) => { const t = e.target as Node; if (!box.current?.contains(t) && !at().contains(t)) onClose() }
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }
+    const away = (e: PointerEvent) => {
+      const t = e.target as Node
+      if (box.current?.contains(t) || at().contains(t)) return
+      if (!nested && t instanceof Element && t.closest('[data-nested]')) return
+      onClose()
+    }
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (!nested && document.querySelector('[data-nested]')) return
+      e.stopPropagation(); onClose()
+    }
     document.addEventListener('pointerdown', away)
     document.addEventListener('keydown', esc, true)
     return () => { document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', esc, true) }
-  }, [at, onClose])
+  }, [at, onClose, nested])
   return createPortal(
-    <div ref={box} role="dialog" aria-label={label} data-screen
+    <div ref={box} role="dialog" aria-label={label} data-screen data-nested={nested || undefined}
       style={{ width, '--x': (pos?.left ?? 0) + 'px', '--y': (pos?.top ?? 0) + 'px' } as React.CSSProperties}
       className={(pos ? '' : 'invisible ') + (width ? '' : 'w-max max-w-[calc(100%-16px)] ') + (pos?.up ? (right ? 'origin-bottom-right' : 'origin-bottom-left') : right ? 'origin-top-right' : 'origin-top-left') + ' left-[var(--x)] top-[var(--y)] br-float print:hidden absolute z-30 p-1.5 rounded-xl bg-card shadow-[0_14px_34px_-12px_rgba(60,45,15,0.32),inset_0_0_0_1.5px_#F5EAD1] max-h-80 overflow-y-auto'}>
       {children}

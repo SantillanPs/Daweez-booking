@@ -1,4 +1,5 @@
 import { Booking, PaymentRecord } from '../types/booking'
+import { supabase } from './supabaseClient'
 
 // Every payment gets its own numbered receipt. The number is STORED on the
 // payment when it is recorded, because a receipt number derived from the
@@ -29,16 +30,49 @@ function prefixFor(booking: Booking): string {
 // `PR-202609-001` — the desk could quote a receipt number and land on the wrong payment, and the guest
 // was handed two different receipts carrying the same number (found on the owner's own bookings,
 // 2026-09-30). It now scans every booking it is handed, so the month's numbers stay unique.
-export function nextReceiptNumber(booking: Booking, otherBookings: Booking[] = []): string {
+export function nextReceiptNumber(booking: Booking, otherBookings: Booking[] = [], usedNumbers: string[] = []): string {
   const prefix = prefixFor(booking)
   const used = [booking, ...otherBookings]
     .flatMap(b => b.payment_records || [])
     .map(r => r.receipt_number || '')
+    .concat(usedNumbers)
     .filter(n => n.startsWith(prefix))
     .map(n => Number(n.slice(prefix.length)))
     .filter(n => Number.isFinite(n) && n > 0)
   const next = (used.length > 0 ? Math.max(...used) : 0) + 1
   return prefix + String(next).padStart(3, '0')
+}
+
+/**
+ * Every receipt number already handed out — on every tab AND every booking, because
+ * both print `PR-YYYYMM-NNN`. Settling used to look only at the tab being settled,
+ * and a fresh tab has no payments, so every walk-in came out as `…-001`. Read
+ * straight from the database and thrown on failure: a number guessed from an empty
+ * list is exactly the duplicate this exists to stop. `payment_records` is JSON
+ * `null` on most rows.
+ */
+export async function usedReceiptNumbers(): Promise<string[]> {
+  const [tabs, bookings] = await Promise.all([
+    supabase.from('tabs').select('payment_records'),
+    supabase.from('bookings').select('payment_records'),
+  ])
+  if (tabs.error) throw tabs.error
+  if (bookings.error) throw bookings.error
+  return [...(tabs.data || []), ...(bookings.data || [])]
+    .flatMap(row => (row.payment_records as PaymentRecord[] | null) || [])
+    .map(r => r.receipt_number || '')
+}
+
+/**
+ * The next receipt number for a payment on a booking, checked against the order slips too.
+ *
+ * `nextReceiptNumber` alone sees only the bookings it is handed, and a diner's slip paid at the
+ * counter takes its number from the same `PR-YYYYMM-` run — so a room payment and a slip kept
+ * coming out with one number between them (27 times on live, 14–24 Oct 2026). Today's money groups
+ * payments by number, so each pair became one line and the slip's money dropped out of the day.
+ */
+export async function freshReceiptNumber(booking: Booking, otherBookings: Booking[] = []): Promise<string> {
+  return nextReceiptNumber(booking, otherBookings, await usedReceiptNumbers())
 }
 
 // The number to SHOW for a payment. New payments carry their own; payments

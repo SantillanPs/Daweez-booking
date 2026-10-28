@@ -76,7 +76,7 @@ export interface Discount { pct: boolean; v: number }
  * the booking form's own `submitBookingForm`, so the rooms, prices, receipt and rollback are the
  * form's; nothing is saved until Book.
  */
-export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, initialStayHalf, editing, desk, onSaved, onBooked, onClose }: {
+export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, initialStayHalf, editing, desk, mark: tapped, onSaved, onBooked, onClose }: {
   rooms: Room[]; venues: Venue[]; bookings: Booking[]; allBookings: Booking[]
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>
   updateBooking: (b: Booking) => Promise<void>
@@ -99,6 +99,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     onPay: (p: PayInput) => Promise<void> | void
     onFix: (key: string, patch: PaymentPatch) => Promise<void> | void
   }
+  /** The receipt number of the payment the desk tapped to get here (Cash Flow): it is ringed. */
+  mark?: string
   /** The rows as saved, after each save of a correction (a swapped room is a new row). */
   onSaved?: (rows: Booking[]) => void
   /** A new booking was made: the calendar opens its one bill. */
@@ -234,7 +236,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const received = editing ? (statement?.payments || []).reduce((a, x) => a + x.amount, 0) : paid?.amount ?? 0
   const due = Math.max(0, total - received)
   const paidUp = received > 0 && due === 0
-  const [paysOpen, setPaysOpen] = useState(false)
+  // Folded payments open by themselves when one of them is the payment that was tapped.
+  const [paysOpen, setPaysOpen] = useState(!!tapped)
+  const markSeen = useRef(false)
 
   const snapshot = (label: string) => setRemoved({ label, breakfast, extras, charges, disc })
   const unitOf = (key: string) => list.find(([id]) => key.startsWith('draft-' + id + '-'))?.[0]
@@ -896,7 +900,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                         </button>
                       )}
                       {(!paidUp || statement.payments.length < 2 || paysOpen) && statement.payments.map((x, i) => (
-                        <div key={x.key} className="bw-rise" style={{ '--i': i } as React.CSSProperties}>
+                        // The payment tapped in Cash Flow is ringed in gold until the bill closes (Sebastian,
+                        // 2026-10-28, "apply B"), and brought into view once.
+                        <div key={x.key} className={'bw-rise' + (tapped && x.receipt === tapped ? ' bill-mark' : '')} style={{ '--i': i } as React.CSSProperties}
+                          ref={tapped && x.receipt === tapped ? el => { if (el && !markSeen.current) { markSeen.current = true; el.scrollIntoView({ block: 'center', behavior: 'smooth' }) } } : undefined}>
                           <FixPayment p={x} sheet={sheetEl} onFix={patch => behind(() => desk.onFix(x.key, patch))} onReceipt={desk.onReceipt} />
                         </div>
                       ))}

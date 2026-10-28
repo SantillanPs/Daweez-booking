@@ -23,6 +23,24 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-28',
+    changes: [
+      {
+        where: 'Cash Flow → Today\'s money',
+        what: [
+          'Each payment under Money in now reads like its receipt: who paid and their room, what it was for, how they paid, the time and the receipt number.',
+          'Tap a payment to open that guest\'s bill right there, ready to change or add to. A diner\'s payment opens its receipt.',
+          'The payment you tapped has a gold ring around it on the bill, so you can see which one it was.',
+          'Restaurant payments that were missing from Money in are back, so Total in and the cash on hand are right again.',
+        ],
+      },
+      {
+        where: 'Front desk → the bill',
+        what: ['When you write a payment, "How paid?" now opens its own small list, so the payment box stays the same size.', 'A cancelled booking found by search opens its bill the same way, never as a copy you can only look at.'],
+      },
+    ],
+  },
+  {
     id: '2026-10-27i',
     changes: [
       {

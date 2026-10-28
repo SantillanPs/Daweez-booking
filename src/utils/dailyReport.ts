@@ -22,12 +22,13 @@
 // (keeping a night shift's takings on one sheet). When he names the hour, **`hotelDay` is the only function
 // that changes** — every line of the report goes through it.
 
-import type { Booking, PaymentRecord, Room } from '../types/booking'
+import type { Booking, PaymentRecord, Room, Venue } from '../types/booking'
 import { slipNumber } from './orderSlips'
 import type { Expense, ExpenseCategory, Handover } from '../types/expense'
 import type { Tab } from '../types/tab'
 import { paymentMethodLabel } from './paymentMethod'
 import { formatRoomNumbers } from './roomNumbers'
+import { normalizeVenueId } from './helpers'
 
 /** One line of the sheet: what it was, and what it was worth. */
 export interface DailyReportLine {
@@ -36,10 +37,34 @@ export interface DailyReportLine {
   amount: number
 }
 
+/**
+ * One payment received, as the screen shows it: a receipt (design A of the Money in mock,
+ * Sebastian, 2026-10-28). `label` is still the printed sheet's one line.
+ */
+export interface MoneyInLine extends DailyReportLine {
+  /** The guest, or the table of a diner's order slip. */
+  who: string
+  /** `Room 8`, `Rooms 2, 3`, `Vacation House`, or the slip's `OS-0043`. */
+  place: string
+  /** A diner's order slip paid at the counter, rather than a payment on a booking. */
+  slip: boolean
+  /** What it was for, as written on the bill (`PaymentRecord.purpose`). */
+  purpose?: string
+  method: string
+  /** When it was paid (ISO). */
+  paidAt: string
+  receipt?: string
+  /** The booking it was written on, so the screen can open its billing statement. */
+  bookingId?: string
+  /** The diner's slip and its payment, so the screen can open the receipt. */
+  tabId?: string
+  recordId?: string
+}
+
 export interface DailyReport {
   /** The day being reported, `YYYY-MM-DD`, in the hotel's own time. */
   date: string
-  moneyIn: DailyReportLine[]
+  moneyIn: MoneyInLine[]
   moneyOut: DailyReportLine[]
   totalIn: number
   totalOut: number
@@ -64,6 +89,16 @@ export interface DailyReport {
   undatedMoney: number
   undatedCount: number
 }
+
+/** The diner on a slip: its own name, or its table — stored as a bare number, so `9` reads `Table 9`. */
+function tableName(tab: Tab): string {
+  const name = (tab.label || tab.table_label || '').trim()
+  if (!name) return 'Order slip'
+  return /^\d+$/.test(name) ? 'Table ' + name : name
+}
+
+/** Which payment is being opened from the screen: its booking, or its slip and record. */
+export const openKey = (line: MoneyInLine) => line.bookingId || (line.tabId ? line.tabId + ':' + line.recordId : '')
 
 /**
  * The hotel's calendar day for an instant, as `YYYY-MM-DD`.
@@ -134,6 +169,8 @@ export interface DailyReportInput {
   handovers?: Handover[]
   categories?: ExpenseCategory[]
   rooms?: Room[]
+  /** Names a venue on its payment's line; without it a venue's payment names no place. */
+  venues?: Venue[]
 }
 
 /**
@@ -141,7 +178,7 @@ export interface DailyReportInput {
  * paper and any later reader of the same day cannot disagree.
  */
 export function buildDailyReport(input: DailyReportInput): DailyReport {
-  const { date, bookings, tabs = [], expenses = [], handovers = [], categories = [], rooms = [] } = input
+  const { date, bookings, tabs = [], expenses = [], handovers = [], categories = [], rooms = [], venues = [] } = input
 
   // ── MONEY IN: one line per PAYMENT that landed on this day ───────────────────────────────────────────
   //
@@ -150,21 +187,20 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
   // any room it paid for, and must reprint the money that was actually handed over — never a room's
   // slice of it). Listing the rows as they come would print ₱9,200 seven times. The number is what says
   // those seven rows are one payment, so the day is summed by number and the line names every room.
-  const payments = new Map<string, { day: string; rooms: number[]; guest: string; method: string; amount: number }>()
+  type Payment = Omit<MoneyInLine, 'label' | 'place'> & { day: string; rooms: number[]; place: string }
+  const payments = new Map<string, Payment>()
 
   //
   // Every dated payment is gathered, not only this day's: the ones before it are what the hotel was
   // already holding (`broughtForward`), and they need the same grouping or a seven-room payment would be
   // carried over seven times.
-  const addPayment = (key: string, day: string, room: number | null, guest: string, method: string, amount: number) => {
-    const found = payments.get(key)
-    if (found) {
-      if (room !== null && !found.rooms.includes(room)) found.rooms.push(room)
-      return
-    }
-    payments.set(key, { day, rooms: room === null ? [] : [room], guest, method, amount })
-  }
-
+  //
+  // **A diner's slip is never grouped with a booking's payment.** Room and counter receipts drew from
+  // the same `PR-YYYYMM-` run without seeing each other, so a room payment and a slip often shared a
+  // number, and this map made the pair one line — the slip's table on the room's amount, the slip's
+  // money gone from the day (27 slips, ₱7,695 on live, 14–24 Oct 2026). A slip paid from the booking
+  // panel is marked with `paid_receipt_number` and has no payment of its own, so the two never are
+  // the same payment: slips are keyed apart.
   bookings.forEach(booking => {
     recordsOf(booking.payment_records)
       .forEach(record => {
@@ -172,8 +208,18 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
         if (!day) return
         const room = roomNumberOf(booking, rooms)
         // A record with no number of its own (legacy) stands alone, keyed by its own id.
-        const key = record.receipt_number || record.id
-        addPayment(key, day, room, guestLabel(booking), paymentMethodLabel(record.method), record.amount)
+        const key = 'b:' + (record.receipt_number || record.id)
+        const found = payments.get(key)
+        if (found) {
+          if (room !== null && !found.rooms.includes(room)) found.rooms.push(room)
+          return
+        }
+        const venue = !booking.room_id && booking.venue_id ? venues.find(v => v.id === normalizeVenueId(booking.venue_id))?.name || '' : ''
+        payments.set(key, {
+          day, rooms: room === null ? [] : [room], place: venue, who: guestLabel(booking), slip: false,
+          purpose: record.purpose, method: paymentMethodLabel(record.method), paidAt: record.paid_at || '',
+          receipt: record.receipt_number, amount: record.amount, bookingId: booking.id,
+        })
       })
   })
 
@@ -182,18 +228,26 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
       .forEach(record => {
         const day = hotelDay(record.paid_at)
         if (!day) return
-        const key = record.receipt_number || record.id
-        const label = [tab.label || tab.table_label, slipNumber(tab)].filter(Boolean).join(' · ') || 'Order slip'
-        const found = payments.get(key)
-        if (found) found.guest = label
-        else payments.set(key, { day, rooms: [], guest: label, method: paymentMethodLabel(record.method), amount: record.amount })
+        payments.set('t:' + tab.id + ':' + (record.receipt_number || record.id), {
+          day, rooms: [], place: slipNumber(tab), who: tableName(tab), slip: true,
+          method: paymentMethodLabel(record.method), paidAt: record.paid_at || '', receipt: record.receipt_number,
+          amount: record.amount, tabId: tab.id, recordId: record.id,
+        })
       })
   })
 
-  const moneyIn: DailyReportLine[] = Array.from(payments.values()).filter(payment => payment.day === date).map(payment => ({
-    label: [payment.guest, roomList(payment.rooms), payment.method].filter(Boolean).join(' · '),
-    amount: payment.amount,
-  }))
+  const moneyIn: MoneyInLine[] = Array.from(payments.values())
+    .filter(payment => payment.day === date)
+    .sort((a, b) => a.paidAt.localeCompare(b.paidAt))
+    .map(payment => {
+      const place = roomList(payment.rooms) || payment.place
+      return {
+        who: payment.who, place, slip: payment.slip, purpose: payment.purpose, method: payment.method,
+        paidAt: payment.paidAt, receipt: payment.receipt, amount: payment.amount,
+        bookingId: payment.bookingId, tabId: payment.tabId, recordId: payment.recordId,
+        label: [payment.who, place, payment.method].filter(Boolean).join(' · '),
+      }
+    })
 
   // Money held with no dated receipt, so no day can claim it. Reported, never dropped in silence.
   let undatedMoney = 0

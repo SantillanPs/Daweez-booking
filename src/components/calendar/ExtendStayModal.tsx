@@ -8,7 +8,7 @@ import { roomDisplayName } from './bookingStyles'
 import { statusAfterPayment } from '../../utils/bookingStatus'
 import { amountToPayNow, isBilledToAgency } from '../../utils/bookingMoney'
 import { methodNeedsReference } from '../../utils/paymentMethod'
-import { nextReceiptNumber } from '../../utils/receiptNumber'
+import { freshReceiptNumber } from '../../utils/receiptNumber'
 import { withFixedPayment, PaymentPatch } from '../walk-in/bookingPayment'
 import { recomputeBalance, pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
 import { useBookingSlips } from '../../hooks/useBookingSlips'
@@ -51,6 +51,8 @@ interface ExtendStayModalProps {
   onOpenBill?: () => void
   /** Where this panel hands the bill its money handlers, which need the panel's own state. */
   deskRef?: React.MutableRefObject<PanelDesk | null>
+  /** Kept out of sight: the panel only carries the bill's payments (Cash Flow's `WorkingBill`). */
+  unseen?: boolean
   /** Opens another booking's panel in place of this one (a room on the same bill). */
   onOpenBooking?: (b: Booking) => void
 }
@@ -120,6 +122,7 @@ export function ExtendStayModal({
   onOpenBill,
   deskRef,
   onOpenBooking,
+  unseen = false,
 }: ExtendStayModalProps) {
   // `toolAsk` replaces the tool row with its question.
   const [toolAsk, setToolAsk] = useState<'cancel' | null>(null)
@@ -414,7 +417,9 @@ export function ExtendStayModal({
     const owed = billRows.map(b => Math.max(0, Number(b.balance_due || 0)))
     const amount = Math.min(w.amount, owed.reduce((a, b) => a + b, 0)) || w.amount
     const shares = allocatePayment(owed, amount)
-    const number = nextReceiptNumber(localBooking, allBookings || bookings)
+    let number: string
+    try { number = await freshReceiptNumber(localBooking, allBookings || bookings) }
+    catch { showToast('Could not record the payment. Please try again.', 'error'); return }
     const paidAt = w.date !== todayKey ? new Date(w.date + 'T12:00:00').toISOString() : new Date().toISOString()
     const id = newReceiptId()
     const reference = methodNeedsReference(w.method) ? w.reference.trim() : ''
@@ -520,6 +525,9 @@ export function ExtendStayModal({
     // The method is the guest's own choice, so it is never assumed: no method, no receipt.
     if (!method.trim()) return
     if (methodNeedsReference(method) && !reference) return
+    let receiptNumber: string
+    try { receiptNumber = await freshReceiptNumber(localBooking, allBookings || bookings) }
+    catch { showToast('Could not record the payment. Please try again.', 'error'); return }
     const newPaid = paidSoFar + amount
     const remaining = Math.max(0, totalCharge - newPaid)
     const rec: PaymentRecord = {
@@ -532,7 +540,8 @@ export function ExtendStayModal({
       // Stored, not derived: the receipt keeps this number even if another
       // payment is later removed. Handed the whole list so it cannot take a number another booking
       // already used this month — the payment's own records alone always start a fresh booking at 001.
-      receipt_number: nextReceiptNumber(localBooking, allBookings || bookings),
+      // Read fresh from the database, slips included (`freshReceiptNumber`).
+      receipt_number: receiptNumber,
       ...(paying ? { slips: [slipNumber(paying.tab)] } : {}),
       ...(written?.purpose ? { purpose: written.purpose } : {}),
     }
@@ -662,7 +671,7 @@ export function ExtendStayModal({
   const breakfastAsked = breakfastWanted && !breakfastUnasked
 
   const modalContent = (
-    <div className={'fixed inset-0 z-50 flex items-center justify-center p-4 ' + (closing ? 'pointer-events-none' : '')}>
+    <div className={'fixed inset-0 z-50 flex items-center justify-center p-4 ' + (unseen ? 'hidden ' : '') + (closing ? 'pointer-events-none' : '')}>
       <div aria-hidden="true" className={'absolute inset-0 bg-slate-900/50 animate-in fade-in duration-200 motion-reduce:animate-none ' + (closing ? 'bp-gone' : '')} />
       {/* The panel is as wide as its contents, not a fixed number (the owner: *"don't
           make the width fixed"*): `w-fit` lets the widest row set the width and the short

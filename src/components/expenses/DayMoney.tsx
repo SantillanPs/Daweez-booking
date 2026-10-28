@@ -1,8 +1,9 @@
 import { CSSProperties, FormEvent, KeyboardEvent, ReactNode, useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Plus, Search, Trash2, X } from 'lucide-react'
+import { Check, ChevronDown, Loader2, Plus, Search, Trash2, X } from 'lucide-react'
 import { Expense, ExpenseCategory, Handover } from '../../types/expense'
 import { CountPeso } from '../CountPeso'
-import { DailyReport, forwardedLabel } from '../../utils/dailyReport'
+import { DailyReport, MoneyInLine, forwardedLabel, openKey } from '../../utils/dailyReport'
+import { PaymentKind, paymentKind } from '../../utils/paymentMethod'
 
 const peso = (n: number) => '₱' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
 
@@ -24,6 +25,10 @@ interface DayMoneyProps {
   onAdd: (input: { amount: number; categoryId: string; notes?: string }) => Promise<void>
   /** "Oct 26" when the screen is on a day gone by, so the blank line says which day it writes on. */
   pastDay?: string
+  /** Opens what a payment belongs to: a booking's bill, or a diner's receipt. */
+  onOpenPayment?: (line: MoneyInLine) => void
+  /** `openKey` of the payment whose paper is on its way, so its row shows it is loading. */
+  opening?: string | null
   /** The quiet things and Print, in a thin row under the total. */
   footer?: ReactNode
 }
@@ -285,12 +290,53 @@ function ExpenseBlank({ categories, another, pastDay, onAdd }: {
   )
 }
 
+const METHOD_DOT: Record<PaymentKind, string> = {
+  cash: 'bg-emerald-600', gcash: 'bg-blue-700', bank: 'bg-ink-900', check: 'bg-paper-500', other: 'bg-paper-400',
+}
+
+// **One payment, read as its receipt** (design A of the Money in mock, Sebastian, 2026-10-28: "it's a
+// payment receipt and for some reason it say OS"): who paid and where on top with the amount; what
+// for, how and when beneath with the receipt number. An order slip's number shows only on a diner's
+// payment, in gold like the restaurant's. A room's payment opens its bill right here, ready to
+// work on; a diner's opens its receipt, which reads its lines first, so the row shows it is on its way.
+function PaymentLine({ line, loading, onOpen }: { line: MoneyInLine; loading: boolean; onOpen?: (line: MoneyInLine) => void }) {
+  const what = line.purpose || (line.slip ? 'Order slip' : '')
+  const body = (
+    <>
+      <span className="min-w-0 truncate font-bold text-main">
+        {line.who}
+        {line.place && (
+          <span className={'ml-1.5 inline-block align-[1px] px-1.5 rounded-md text-[10.5px] font-extrabold ' + (line.slip ? 'bg-gold-100 text-gold-800' : 'bg-paper-100 text-main')}>{line.place}</span>
+        )}
+      </span>
+      <span className="flex items-center justify-end gap-1.5">
+        {loading && <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" />}
+        <span className="font-mono text-[14px] font-bold text-emerald-600">{peso(line.amount)}</span>
+      </span>
+      <span className="min-w-0 truncate text-[12px] text-muted">
+        {what && <>{what} · </>}
+        <span className="inline-flex items-center gap-1"><i className={'w-1.5 h-1.5 rounded-full ' + METHOD_DOT[paymentKind(line.method)]} />{line.method}</span>
+        {line.paidAt && <> · {timeOf(line.paidAt)}</>}
+      </span>
+      <span className="justify-self-end font-mono text-[11px] text-muted">{line.receipt}</span>
+    </>
+  )
+  const grid = 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left'
+  return onOpen && openKey(line) ? (
+    <button type="button" onClick={() => onOpen(line)} aria-busy={loading}
+      className={grid + ' w-[calc(100%+1rem)] hover:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (loading ? ' bg-page' : '')}>
+      {body}
+    </button>
+  ) : <div className={grid}>{body}</div>
+}
+
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
 // The day on screen, in the order the printed sheet reads: money in, money out, and
 // the money in the hotel at the bottom. Money in is read-only here — it comes from the receipts
-// recorded on bookings and at the restaurant — and money out is the list just typed.
-export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, dayHandovers, onTakeBack, onAdd, pastDay, footer }: DayMoneyProps) {
+// recorded on bookings and at the restaurant — and money out is the list just typed. A payment
+// written on a booking opens that guest's billing statement (Sebastian, 2026-10-28).
+export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, dayHandovers, onTakeBack, onAdd, pastDay, footer, onOpenPayment, opening }: DayMoneyProps) {
   const nameOf = (id: string) => categories.find(c => c.id === id)?.name || 'Other'
 
   return (
@@ -300,10 +346,7 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money in</p>
           {report.moneyIn.length === 0 && <p className="text-[13px] text-muted">Nothing received yet.</p>}
           {report.moneyIn.map((line, i) => (
-            <div key={line.label + i} className="flex justify-between gap-3 py-1 text-[13px]">
-              <span className="text-main truncate">{line.label}</span>
-              <span className="font-mono text-[14px] font-bold text-emerald-600 shrink-0">{peso(line.amount)}</span>
-            </div>
+            <PaymentLine key={(line.receipt || line.label) + i} line={line} loading={!!opening && opening === openKey(line)} onOpen={onOpenPayment} />
           ))}
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
           <div className="flex-1 min-h-2" />
