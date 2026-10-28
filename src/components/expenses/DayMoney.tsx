@@ -7,6 +7,13 @@ import { PaymentKind, paymentKind } from '../../utils/paymentMethod'
 
 const peso = (n: number) => '₱' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
 
+// The day's expenses in groups of one category, each group where its first expense was.
+const byCategory = (list: Expense[]) => {
+  const groups = new Map<string, Expense[]>()
+  list.forEach(e => { const g = groups.get(e.category_id); if (g) g.push(e); else groups.set(e.category_id, [e]) })
+  return [...groups.values()]
+}
+
 const signed = (n: number) => n < 0 ? '(' + peso(-n) + ')' : peso(n)
 
 interface DayMoneyProps {
@@ -42,8 +49,10 @@ type Part = 'category' | 'note' | 'amount'
 // One expense, every part of it changed where it is written (Sebastian, 2026-10-27: a
 // mistake used to mean removing it and typing it again). Enter or a tap away saves it,
 // Esc puts it back; there is no Save button.
-function ExpenseLine({ expense, categories, nameOf, onRemove, onChange }: {
+function ExpenseLine({ expense, categories, nameOf, onRemove, onChange, time }: {
   expense: Expense
+  /** Inside a merged line: when it was written, so the repeats can be told apart. */
+  time?: string
   categories: ExpenseCategory[]
   nameOf: (id: string) => string
   onRemove: (expense: Expense) => void
@@ -89,6 +98,7 @@ function ExpenseLine({ expense, categories, nameOf, onRemove, onChange }: {
   return (
     <div ref={row} key={saved} className={'relative flex items-center justify-between gap-3 py-1 -mx-1 px-1 rounded-md text-[13px] ' + (saved ? '[animation:ex-saved_.9s_ease-out]' : '')}>
       <span className="min-w-0 flex flex-wrap items-baseline gap-x-1">
+        {time && <span className="font-mono text-[11px] text-muted mr-1">{time}</span>}
         <button type="button" aria-expanded={open === 'category'} aria-label="What it was for" onClick={() => start('category')} className={TAP + ' text-main'}>
           {nameOf(expense.category_id)}
         </button>
@@ -126,6 +136,50 @@ function ExpenseLine({ expense, categories, nameOf, onRemove, onChange }: {
         <CategoryPicker categories={categories} chosen={expense.category_id} onClose={() => setOpen(null)}
           onPick={id => (id === expense.category_id ? setOpen(null) : save({ category_id: id }))} />
       )}
+    </div>
+  )
+}
+
+// The same thing bought again and again is one line with how many times (Sebastian, 2026-10-28:
+// "if theres repeat expenses just merge them and show how many times it's merged"; design A of
+// the mock). It sits where the first one was, and a tap opens every one of them below it, each
+// still changed where it is written; their notes are only seen there ("keep the notes inside the
+// dropdown").
+function ExpenseGroup({ expenses, categories, nameOf, onRemove, onChange }: {
+  expenses: Expense[]
+  categories: ExpenseCategory[]
+  nameOf: (id: string) => string
+  onRemove: (expense: Expense) => void
+  onChange: DayMoneyProps['onChange']
+}) {
+  const [open, setOpen] = useState(false)
+  const name = nameOf(expenses[0].category_id)
+  const sum = expenses.reduce((s, e) => s + Number(e.amount || 0), 0)
+  const timeOf = (e: Expense) => e.created_at ? new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
+        className="group w-full flex items-center justify-between gap-3 py-1 -mx-1 px-1 rounded-md text-[13px] text-left hover:bg-paper-50 aria-expanded:bg-paper-50 transition-colors cursor-pointer" style={{ width: 'calc(100% + 0.5rem)' }}>
+        <span className="min-w-0 flex items-baseline gap-1.5">
+          <span className="truncate text-main">{name}</span>
+          <span key={expenses.length} className="shrink-0 inline-grid place-items-center min-w-6 h-[19px] px-1.5 rounded-full bg-danger-50 text-danger-600 text-[11px] font-extrabold group-active:scale-90 transition-transform [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">×{expenses.length}</span>
+        </span>
+        <span className="flex items-center gap-2 shrink-0">
+          <span key={sum} className="font-mono text-[14px] font-bold text-danger-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(sum)}</span>
+          <ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-gold-600 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
+        </span>
+      </button>
+      <div className={'grid transition-[grid-template-rows] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+        <div className="min-h-0 overflow-hidden">
+          <div className="ml-1.5 mb-1 pl-3 border-l-2 border-paper-200">
+            {expenses.map((expense, i) => (
+              <div key={expense.id} className={open ? 'bw-rise' : ''} style={{ '--i': i } as CSSProperties}>
+                <ExpenseLine expense={expense} time={timeOf(expense)} categories={categories} nameOf={nameOf} onRemove={onRemove} onChange={onChange} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -359,8 +413,10 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
         <div className="p-4 flex flex-col border-t md:border-t-0 border-soft">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money out</p>
           {dayExpenses.length === 0 && <p className="text-[13px] text-muted">Nothing spent yet.</p>}
-          {dayExpenses.map(expense => (
-            <ExpenseLine key={expense.id} expense={expense} categories={categories} nameOf={nameOf} onRemove={onRemove} onChange={onChange} />
+          {byCategory(dayExpenses).map(group => group.length > 1 ? (
+            <ExpenseGroup key={group[0].category_id} expenses={group} categories={categories} nameOf={nameOf} onRemove={onRemove} onChange={onChange} />
+          ) : (
+            <ExpenseLine key={group[0].id} expense={group[0]} categories={categories} nameOf={nameOf} onRemove={onRemove} onChange={onChange} />
           ))}
           <ExpenseBlank key={report.date} categories={categories} another={dayExpenses.length > 0} pastDay={pastDay} onAdd={onAdd} />
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
