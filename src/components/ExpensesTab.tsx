@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { ArrowDownLeft, ArrowUpRight, List, Printer, Tag, Wallet } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { generateUUID } from '../utils/syncEngine'
@@ -20,6 +21,7 @@ import { DailyReportModal } from './analytics/DailyReportModal'
 import { TabReceiptModal } from './restaurant/TabReceiptModal'
 import { readTabLines } from '../utils/tabs'
 import { WorkingBill } from './calendar/WorkingBill'
+import { focusBookingAfterCreate } from '../utils/bookingFocus'
 import { openKey, type MoneyInLine } from '../utils/dailyReport'
 import type { PaymentRecord } from '../types/booking'
 import type { Tab, TabLine } from '../types/tab'
@@ -58,6 +60,7 @@ export function ExpensesTab() {
   const [handingOver, setHandingOver] = useState<'out' | 'in' | null>(null)
   const [opening, setOpening] = useState<string | null>(null)
   const [billOf, setBillOf] = useState<{ id: string; receipt?: string } | null>(null)
+  const navigate = useNavigate()
   // The bill's code is fetched while the day is read, so a tapped payment's bill comes up at once.
   useEffect(() => {
     const id = window.setTimeout(() => { void import('./calendar/NewBookingBill') }, 1500)
@@ -257,7 +260,9 @@ export function ExpensesTab() {
         </p>
       )}
 
-      {billBooking && <WorkingBill booking={billBooking} mark={billOf?.receipt} onClose={() => setBillOf(null)} />}
+      {billBooking && <WorkingBill booking={billBooking} mark={billOf?.receipt} onClose={() => setBillOf(null)}
+        // The bill's Booking: the Front desk opens on the stay, its panel open (Sebastian, 2026-10-29).
+        onBooking={b => { focusBookingAfterCreate(b.id); setBillOf(null); void navigate({ to: '/calendar' }) }} />}
       {slipReceipt && <TabReceiptModal tab={slipReceipt.tab} lines={slipReceipt.lines} record={slipReceipt.record} onClose={() => setSlipReceipt(null)} />}
       {printing && <DailyReportModal initialDate={date} onClose={() => setPrinting(false)} />}
       {showHistory && (

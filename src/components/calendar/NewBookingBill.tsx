@@ -76,7 +76,7 @@ export interface Discount { pct: boolean; v: number }
  * the booking form's own `submitBookingForm`, so the rooms, prices, receipt and rollback are the
  * form's; nothing is saved until Book.
  */
-export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, initialStayHalf, editing, desk, mark: tapped, onSaved, onBooked, onClose }: {
+export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, initialStayHalf, editing, desk, mark: tapped, onSaved, onBooked, onBooking, onClose }: {
   rooms: Room[]; venues: Venue[]; bookings: Booking[]; allBookings: Booking[]
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>
   updateBooking: (b: Booking) => Promise<void>
@@ -105,6 +105,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   onSaved?: (rows: Booking[]) => void
   /** A new booking was made: the calendar opens its one bill. */
   onBooked?: (rows: Booking[]) => void
+  /** Opened in Cash Flow: the top bar's Booking takes the desk to it on the calendar. */
+  onBooking?: () => void
   onClose: () => void
 }) {
   const ed = editing?.[0]
@@ -811,6 +813,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       <div ref={el => { sheet.current = el; setSheetEl(el) }} className="relative bw-eject">
         {floating()}
         <StatementShell label={(ed ? 'Billing statement' : 'New booking') + (to ? ' · agency' : '')} invoiceNumber={ed?.invoice_number || 'numbered when booked'} onClose={ed ? close : onClose}
+          onBooking={ed && onBooking ? () => { void save(); onBooking() } : undefined}
           status={mark && <span key={mark} aria-live="polite" className={'text-[11px] font-semibold bw-rise ' + (mark === 'saved' ? 'text-emerald-300' : 'text-white/60')}>{mark === 'saved' ? '✓ Saved' : 'Saving…'}</span>}
           onPrint={ed ? () => { void save().then(settle).then(printA5) } : undefined}
           email={ed ? { kind: 'statement', number: ed.invoice_number || '', guestName: ed.guest_name, bookingId: ed.id, to: guestEmailOf(ed) } : undefined}

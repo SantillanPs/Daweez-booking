@@ -13,7 +13,7 @@ const NewBookingBill = React.lazy(() => import('./NewBookingBill').then(m => ({ 
 // worked on, never a copy to look at. The booking's panel is there but out of sight, because the
 // bill's payments and receipts go through it (`deskRef`, so `payBill` shares them out across the
 // rooms); closing the bill closes both.
-export function WorkingBill({ booking, mark, onClose }: { booking: Booking; mark?: string; onClose: () => void }) {
+export function WorkingBill({ booking, mark, onBooking, onClose }: { booking: Booking; mark?: string; onBooking?: (b: Booking) => void; onClose: () => void }) {
   const { rooms, venues, bookings, allBookings, createManualBooking, cancelBooking, deleteBooking, updateBooking } = useDashboardData()
   const deskRef = useRef<PanelDesk | null>(null)
   const [id, setId] = useState(booking.id)
@@ -59,6 +59,8 @@ export function WorkingBill({ booking, mark, onClose }: { booking: Booking; mark
           }}
           // A room swapped or taken off is a new row: the bill and the panel follow the booking.
           mark={mark}
+          // A cancelled booking has no place on the calendar to go to.
+          onBooking={onBooking && live.status !== 'cancelled' ? () => onBooking(live) : undefined}
           onSaved={rows => setId(cur => rows.some(r => r.id === cur) ? cur : rows[0].id)}
           onClose={onClose}
         />

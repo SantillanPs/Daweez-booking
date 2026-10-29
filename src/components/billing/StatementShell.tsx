@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { Printer, X } from 'lucide-react'
+import { CalendarDays, Printer, X } from 'lucide-react'
 import { EmailTarget } from '../../utils/emailDocument'
 import { EmailBar, EmailButton } from './EmailBar'
 
@@ -8,13 +8,15 @@ import { EmailBar, EmailButton } from './EmailBar'
  * and the A4 page itself, so the **normal** statement and the **agency** statement are the
  * same piece of paper with different contents on it (the owner's design, 2026-09).
  */
-export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedded = false, email, paper, status, children }: {
+export function StatementShell({ label, invoiceNumber, onClose, onPrint, onBooking, embedded = false, email, paper, status, children }: {
   /** The little badge on the control bar — `Billing statement` on both. */
   label: string
   invoiceNumber: string
   onClose: () => void
   /** No Print button without it: a bill still being written has nothing to print yet. */
   onPrint?: () => void
+  /** The bill opened away from the calendar (Cash Flow): a way to its booking there. */
+  onBooking?: () => void
   embedded?: boolean
   /** Who this bill can be emailed to. The Email button is drawn only when it is given. */
   email?: EmailTarget
@@ -37,6 +39,12 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, embedde
           {status}
         </div>
         <div className="flex items-center gap-2">
+          {onBooking && (
+            <button type="button" onClick={onBooking} className="bg-white/10 hover:bg-white/20 text-white font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 active:scale-95 transition-[background-color,transform] cursor-pointer bw-rise">
+              <CalendarDays className="w-3.5 h-3.5" />
+              Booking
+            </button>
+          )}
           {email && <EmailButton tone="ink" onClick={() => setEmailing(open => !open)} />}
           {onPrint && (
             <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-ink-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">

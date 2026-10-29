@@ -108,7 +108,7 @@ export function CalendarTab() {
     timelineSelectionRef.current = timelineSelection; groupSelectionRef.current = groupSelection; bookingsRef.current = bookings; roomsRef.current = rooms; venuesRef.current = venues
   })
 
-  // A booking opened from the Bookings list lands here: the calendar moves to the
+  // A booking opened from the History or from a bill in Cash Flow lands here: the calendar moves to the
   // booking's own dates when they are off screen, and its panel opens. Read once, off the
   // effect body, the same way the Restaurant screen takes its hand-off.
   React.useEffect(() => {
@@ -124,6 +124,11 @@ export function CalendarTab() {
       setExtendError('')
       setExtendCheckoutDate(isOpenEnded(wanted) ? '' : wanted.check_out)
       setSelectedExtendBooking(wanted)
+      // Its pill pulses once it is drawn, as a booking found by search does.
+      setTimeout(() => {
+        const pill = document.querySelector<HTMLElement>('[data-pill="' + wanted.id + '"]')
+        if (pill) { pill.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }); pill.classList.remove('cs-found'); void pill.offsetWidth; pill.classList.add('cs-found') }
+      }, 120)
     })
   }, [])
 
