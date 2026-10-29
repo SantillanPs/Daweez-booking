@@ -1181,7 +1181,9 @@ const COUPON_ROW_STUB = 72
  * "it looks a little cramped and the notes field is wider than it needs to be"): a gold ticket with the
  * amount and a sliding % / ₱ on its face, what it is for in a white write-in slot under them (dashed
  * until it is filled, since a plain line did not read as a field), and what it takes off in pesos on
- * the torn stub beside ✓. The amount and the slot are as wide as what is in them. It changes the bill
+ * the torn stub beside ✓. The amount grows with what is typed but is never narrower than its example, so
+ * it does not jump at the first key; the slot is never narrower than the amount and % / ₱ above it
+ * and grows only once the words are longer (Sebastian, 2026-10-29). It changes the bill
  * as it is typed, like the box it replaced.
  */
 function DiscountPop({ disc, off, onChange, onDone, onNone }: {
@@ -1199,7 +1201,7 @@ function DiscountPop({ disc, off, onChange, onDone, onNone }: {
           <div className="flex items-center gap-2">
             <input ref={box} inputMode="numeric" placeholder={disc.pct ? '10' : '200'} aria-label="Discount" value={amount}
               onChange={e => { const n = Number(e.target.value.replace(/\D/g, '')) || 0; onChange({ ...disc, v: disc.pct ? Math.min(n, 100) : n }) }}
-              style={{ width: Math.max(2, (amount || (disc.pct ? '10' : '200')).length) + 0.4 + 'ch' }}
+              style={{ width: Math.max((disc.pct ? '10' : '200').length, amount.length) + 0.4 + 'ch' }}
               className="min-w-0 bg-transparent border-0 p-0 text-right font-display text-[24px] leading-none font-extrabold text-gold-800 placeholder:text-gold-200 focus:outline-none" />
             <div role="radiogroup" aria-label="Discount by" className="relative grid grid-cols-2 p-0.5 rounded-full bg-paper-0">
               <span aria-hidden="true" className={'absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-full bg-ink-900 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.56,.64,1)] ' + (disc.pct ? 'translate-x-0' : 'translate-x-full')} />
@@ -1210,13 +1212,13 @@ function DiscountPop({ disc, off, onChange, onDone, onNone }: {
             </div>
           </div>
           {/* What it is for, printed on the bill (Sebastian, 2026-10-29: "include notes in discounts"). */}
-          <label className={'self-start flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-paper-0 border-[1.5px] transition-colors cursor-text ' +
+          <label className={'flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-paper-0 border-[1.5px] transition-colors cursor-text ' +
             (note ? 'border-solid border-gold-100' : 'border-dashed border-gold-200 focus-within:border-solid focus-within:border-gold-400')}>
             <Tag className="w-3 h-3 shrink-0 text-gold-400" strokeWidth={2.4} />
-            <input placeholder="Senior citizen" aria-label="What it is for" value={note}
+            <input placeholder="Senior" aria-label="What it is for" value={note}
               onChange={e => onChange({ ...disc, note: e.target.value })}
-              style={{ width: Math.min(26, Math.max(9, (note || 'Senior citizen').length + 1)) + 'ch' }}
-              className="min-w-0 bg-transparent border-0 p-0 text-[13px] font-bold text-gold-800 placeholder:text-paper-400 placeholder:font-semibold focus:outline-none" />
+              style={{ width: Math.min(26, note.length + 1) + 'ch' }}
+              className="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] font-bold text-gold-800 placeholder:text-paper-400 placeholder:font-semibold focus:outline-none" />
           </label>
         </div>
         <div className="shrink-0 flex flex-col items-center justify-between gap-2 py-2.5 border-l-2 border-dashed border-gold-200" style={{ width: STUB }}>
