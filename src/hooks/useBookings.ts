@@ -6,6 +6,7 @@ import { Expense, ExpenseCategory } from '../types/expense'
 import { useRealtimeBookings } from './useRealtimeBookings'
 import { useCallback, useEffect, useMemo } from 'react'
 import { supabase, isSupabaseConfigured } from '../utils/supabaseClient'
+import { noteMove } from '../utils/movedFrom'
 
 type MutationContext = { previous: Booking[] | undefined }
 
@@ -382,7 +383,8 @@ export function useBookings() {
           stay_hours: newBooking.stay_hours ?? saved.stay_hours,
           stay_half: newBooking.stay_half ?? saved.stay_half,
         } : newBooking)
-        return { ...updated, group_id: group }
+        const moved = saved ? await noteMove(saved, newBooking.check_in) : undefined
+        return { ...updated, group_id: group, moved_from: moved }
       }
       return await syncEngine.insertBooking(newBooking)
     },

@@ -23,6 +23,28 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-29d',
+    changes: [
+      {
+        where: 'Front desk → Bills & receipts (new)',
+        what: [
+          'Every billing statement and every payment receipt is now on its own page. Search a name, a bill number (INV-) or a receipt number (PR-), or pick a day.',
+          'On Billing statements, "Show" picks Paid, Part paid, Not paid, Cancelled or Rescheduled. Not paid is who still owes. Open a statement to work on its bill right there.',
+          'A booking moved to another check-in day on its bill is Rescheduled, and its row says the dates it was first booked for.',
+          'On Receipts, each day lists the money received. Reprint a receipt, open its bill, or remove a payment typed by mistake.',
+        ],
+      },
+      {
+        where: 'Front desk → History',
+        what: [
+          'History now shows only what happened to the bookings: made, rescheduled, checked in, checked out and cancelled. Payments and "Still to pay" moved to Bills & receipts.',
+          'A booking moved to another day shows as Rescheduled, from its old dates to its new ones. Tap Rescheduled to see only those.',
+          'A booking cancelled with the reason "No show" says No show. It is under Cancelled.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-29c',
     changes: [
       {

@@ -137,6 +137,12 @@ const bookingsRoute = createRoute({
   component: lazyRouteComponent(() => import('./components/DeskHistory'), 'DeskHistory')
 })
 
+const billsRoute = createRoute({
+  getParentRoute: () => dashboardRoute,
+  path: '/bills',
+  component: lazyRouteComponent(() => import('./components/BillsReceipts'), 'BillsReceipts')
+})
+
 /**
  * **One route, three addresses:** `/housekeeping` is the stock room, `/housekeeping/dishes` is "What a dish
  * uses", `/housekeeping/cleaning` is the cleaning checklist.
@@ -180,6 +186,7 @@ const routeTree = rootRoute.addChildren([
     dashboardIndexRoute,
     calendarRoute,
     bookingsRoute,
+    billsRoute,
     guestsRoute,
     analyticsRoute,
     settingsRoute,

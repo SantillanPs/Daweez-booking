@@ -208,6 +208,9 @@ export interface Companion {
   breakfast?: boolean
 }
 
+/** Where a rescheduled booking was first booked, and when it last moved. */
+export interface MovedFrom { check_in: string; check_out: string; at: string }
+
 export interface Booking {
   id: string
   room_id?: string // Nullable if booking a venue
@@ -296,6 +299,9 @@ export interface Booking {
   cancelled_at?: string // ISO date-time
   // Why it was cancelled — a quick reason and/or the desk's words. Written only by `cancel_booking`.
   cancel_note?: string
+  // The dates it was first booked for, once its check-in day has moved (2026-10-29). Written only
+  // by `set_booking_moved_from` (`utils/movedFrom.ts`), never by `update_booking`.
+  moved_from?: MovedFrom
   // Blocked-date notes (maintenance / cleaning reason).
   notes?: string
   prepared_by?: string

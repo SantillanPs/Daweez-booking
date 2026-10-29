@@ -215,6 +215,7 @@ export async function getBookings(): Promise<Booking[]> {
           actual_check_out: b.actual_check_out || undefined,
           cancelled_at: b.cancelled_at || undefined,
           cancel_note: b.cancel_note || undefined,
+          moved_from: (b as { moved_from?: Booking['moved_from'] }).moved_from || undefined,
           group_id: b.group_id || undefined,
           notes: b.notes || undefined,
           prepared_by: b.prepared_by || undefined,

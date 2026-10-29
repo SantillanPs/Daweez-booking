@@ -32,6 +32,7 @@ const TABS = [
     screens: [
       { label: 'Calendar', to: '/calendar' },
       { label: 'History', to: '/bookings' },
+      { label: 'Bills & receipts', to: '/bills' },
       { label: 'Agencies', to: '/guests' },
     ],
   },
