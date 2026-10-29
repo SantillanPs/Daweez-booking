@@ -23,6 +23,32 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-29f',
+    changes: [
+      {
+        where: "Cash Flow → Today's money",
+        what: ['A payment on a booking that was cancelled is now crossed out, with the day it was cancelled. It still shows on the day it was paid, but it is not added to Total in or to the cash on hand. The printed daily report crosses it out too.', 'Each expense under Money out now reads like a payment under Money in: what it was for and the amount on top, the note and the time underneath.'],
+      },
+      {
+        where: 'Cash Flow → Earnings report',
+        what: ['Money paid on a booking that was later cancelled is no longer counted as earnings.'],
+      },
+    ],
+  },
+  {
+    id: '2026-10-29e',
+    changes: [
+      {
+        where: 'Front desk → History',
+        what: ['History now shows only new bookings, check-ins and check-outs. To see cancelled or rescheduled bookings, go to Bills & receipts and pick Cancelled or Rescheduled under "Show".'],
+      },
+      {
+        where: 'Front desk → Bills & receipts',
+        what: ['A cancelled bill shows why it was cancelled, like "No show", on its row.'],
+      },
+    ],
+  },
+  {
     id: '2026-10-29d',
     changes: [
       {
@@ -37,9 +63,7 @@ export const UPDATES: Update[] = [
       {
         where: 'Front desk → History',
         what: [
-          'History now shows only what happened to the bookings: made, rescheduled, checked in, checked out and cancelled. Payments and "Still to pay" moved to Bills & receipts.',
-          'A booking moved to another day shows as Rescheduled, from its old dates to its new ones. Tap Rescheduled to see only those.',
-          'A booking cancelled with the reason "No show" says No show. It is under Cancelled.',
+          'History now shows only new bookings, check-ins and check-outs. Payments, "Still to pay", cancelled and rescheduled bookings are all in Bills & receipts.',
         ],
       },
     ],

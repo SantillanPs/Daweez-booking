@@ -123,14 +123,19 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
 }
 
 /** One side of the sheet: every line named, then its total. */
-function MoneyBlock({ title, lines, total }: { title: string; lines: { label: string; amount: number }[]; total: number }) {
+// A payment on a cancelled booking prints struck through with the day it was cancelled, outside the
+// total — the paper keeps what the screen shows (option B, Sebastian, 2026-10-29).
+function MoneyBlock({ title, lines, total }: { title: string; lines: { label: string; amount: number; cancelled?: string }[]; total: number }) {
   return (
     <div>
       <p className="text-[10px] font-extrabold tracking-[0.14em] uppercase text-ink-600 mb-1">{title}</p>
       {lines.map((line, index) => (
-        <div key={`${line.label}-${index}`} className="flex justify-between gap-3 text-[12px]">
-          <span className="truncate">{line.label}</span>
-          <span className="font-mono">{money(line.amount)}</span>
+        <div key={`${line.label}-${index}`} className={'flex justify-between gap-3 text-[12px]' + (line.cancelled ? ' text-ink-500' : '')}>
+          <span className="truncate">
+            {line.cancelled ? <s>{line.label}</s> : line.label}
+            {line.cancelled && <span className="ml-1 text-[10px] font-extrabold">Cancelled {new Date(line.cancelled + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
+          </span>
+          <span className="font-mono">{line.cancelled ? <s>{money(line.amount)}</s> : money(line.amount)}</span>
         </div>
       ))}
       <div className="flex justify-between gap-3 text-[13px] font-extrabold border-t border-ink-400 mt-1 pt-1">

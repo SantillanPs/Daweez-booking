@@ -310,31 +310,9 @@ export function useAnalyticsCalculations({
       })
     })
 
-    // MONEY KEPT FROM A CANCELLED BOOKING stays in the report (Sebastian, 2026-10-17: "make
-    // sure it stays"). A cancelled stay earns no nights, but the deposit the hotel kept is
-    // income — Today's money already counts it. It lands on the day it was received, under
-    // its room or venue, and adds no room-night. A payment for several rooms counts only this
-    // room's `share`.
-    bookings.filter(b => b.status === 'cancelled').forEach(b => {
-      const records = Array.isArray(b.payment_records) ? b.payment_records : []
-      records.forEach(r => {
-        const day = dateToString(new Date(r.paid_at))
-        const amount = r.share ?? r.amount ?? 0
-        if (!amount || !isDateBetween(day, dateRange.start, dateRange.end)) return
-        let category: 'pension' | 'vacationHouse' | 'gardenArea' | 'gazebo' | null = null
-        if (b.room_id) {
-          category = 'pension'
-          totalPensionBase += amount
-          if (roomRevenues[b.room_id]) { roomRevenues[b.room_id].base += amount; roomRevenues[b.room_id].total += amount }
-        } else if (b.venue_id) {
-          const vid = b.venue_id.toLowerCase()
-          if (vid.includes('vacation')) { category = 'vacationHouse'; totalVacationHouse += amount }
-          else if (vid.includes('garden')) { category = 'gardenArea'; totalGardenArea += amount }
-          else if (vid.includes('gazebo')) { category = 'gazebo'; totalGazebo += amount }
-        }
-        trendSlots.forEach(slot => { if (category && isDateBetween(day, slot.start, slot.end)) slot[category] += amount })
-      })
-    })
+    // A CANCELLED BOOKING EARNS NOTHING here, the money it received included (Sebastian,
+    // 2026-10-29, "drop it there too": Today's money scratches it off, so this report leaves it
+    // out to match). Until then it was counted as money kept (2026-10-17).
 
     // 2. Calculate expenses in range
     expenses.forEach(e => {

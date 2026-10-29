@@ -275,7 +275,8 @@ export function BillsReceipts() {
                   <span className="text-[14px] text-main truncate">{who(b.first)} · {roomsOf(b.rows)}</span>
                   <span className="text-[12.5px] text-muted truncate">
                     {b.first.invoice_number && <span className="sm:hidden font-mono">{b.first.invoice_number} · </span>}
-                    {join(span(b.first), b.moved?.moved_from && 'moved from ' + shortDay(b.moved.moved_from.check_in) + '–' + shortDay(b.moved.moved_from.check_out), 'made ' + longDay(dateToString(new Date(b.made))))}
+                    {/* History no longer lists cancellations (2026-10-29), so a cancelled bill says why here: "No show". */}
+                    {join(span(b.first), b.status === 'Cancelled' && b.first.cancel_note, b.moved?.moved_from && 'moved from ' + shortDay(b.moved.moved_from.check_in) + '–' + shortDay(b.moved.moved_from.check_out), 'made ' + longDay(dateToString(new Date(b.made))))}
                   </span>
                 </span>
                 <span className="flex items-center gap-2">

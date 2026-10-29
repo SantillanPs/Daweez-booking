@@ -62,6 +62,8 @@ export interface MoneyInLine extends DailyReportLine {
   /** The diner's slip and its payment, so the screen can open the receipt. */
   tabId?: string
   recordId?: string
+  /** The day its booking was cancelled (`YYYY-MM-DD`): the line is shown scratched off and counts nowhere. */
+  cancelled?: string
 }
 
 export interface DailyReport {
@@ -212,9 +214,15 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
         const room = roomNumberOf(booking, rooms)
         // A record with no number of its own (legacy) stands alone, keyed by its own id.
         const key = 'b:' + (record.receipt_number || record.id)
+        // A payment on a CANCELLED booking is scratched off and counted nowhere (Sebastian, 2026-10-29:
+        // "payments in cancelled billing statements should not show up in cash flow, or it should at
+        // least be shown as scratched off automatically" — option B of the mock). A payment for several
+        // rooms is scratched off only once every room it covered is cancelled.
+        const cancelled = booking.status === 'cancelled' ? hotelDay(booking.cancelled_at) || day : undefined
         const found = payments.get(key)
         if (found) {
           if (room !== null && !found.rooms.includes(room)) found.rooms.push(room)
+          if (!cancelled) found.cancelled = undefined
           return
         }
         const venue = !booking.room_id && booking.venue_id ? venues.find(v => v.id === normalizeVenueId(booking.venue_id))?.name || '' : ''
@@ -222,7 +230,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
           day, rooms: room === null ? [] : [room], place: venue, who: guestLabel(booking), slip: false,
           purpose: record.purpose, method: paymentMethodLabel(record.method), paidAt: record.paid_at || '',
           receipt: record.receipt_number, amount: record.amount, bookingId: booking.id,
-          bill: groupOf(booking, bookings)[0]?.invoice_number || booking.invoice_number,
+          bill: groupOf(booking, bookings)[0]?.invoice_number || booking.invoice_number, cancelled,
         })
       })
   })
@@ -249,6 +257,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
         who: payment.who, place, slip: payment.slip, purpose: payment.purpose, method: payment.method,
         paidAt: payment.paidAt, receipt: payment.receipt, amount: payment.amount,
         bookingId: payment.bookingId, bill: payment.bill, tabId: payment.tabId, recordId: payment.recordId,
+        cancelled: payment.cancelled,
         label: [payment.who, place, payment.method].filter(Boolean).join(' · '),
       }
     })
@@ -279,11 +288,11 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
       return { label: notes ? `${name} · ${notes}` : name, amount: expense.amount }
     })
 
-  const totalIn = moneyIn.reduce((sum, line) => sum + line.amount, 0)
+  const totalIn = moneyIn.reduce((sum, line) => (line.cancelled ? sum : sum + line.amount), 0)
   const totalOut = moneyOut.reduce((sum, line) => sum + line.amount, 0)
 
   // `YYYY-MM-DD` sorts as text, so "before this day" is a plain comparison.
-  const inBefore = Array.from(payments.values()).reduce((sum, p) => (p.day < date ? sum + p.amount : sum), 0)
+  const inBefore = Array.from(payments.values()).reduce((sum, p) => (p.day < date && !p.cancelled ? sum + p.amount : sum), 0)
   const outBefore = expenses.reduce((sum, e) => (e.expense_date < date ? sum + e.amount : sum), 0)
   // Money handed to the owner is gone from the hotel, so it comes off what is carried over — but it
   // is never in `moneyOut`: the hotel earned it, it did not spend it.

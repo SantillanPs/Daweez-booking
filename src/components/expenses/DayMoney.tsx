@@ -104,25 +104,33 @@ function ExpenseLine({ expense, categories, nameOf, onRemove, onChange, time }: 
     if (e.key === 'Escape') setOpen(null)
   }
 
+  // Drawn like a payment in Money in, as a receipt (design A of the Money out mock, Sebastian,
+  // 2026-10-29: "make it more consistent with the money in design"): what it was for on top with
+  // the amount, the note and the time beneath with the bin where a payment has its receipt number.
+  // Inside a group the category is said once above, so a line there leads with its note.
+  const noteTap = open === 'note' ? (
+    <input autoFocus value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit} onKeyDown={keys}
+      onFocus={e => e.target.select()} placeholder="e.g. for Ana, receipt 0412" aria-label="Note"
+      className={BOX + ' w-[180px] text-[16px] md:text-[13px] text-main'} />
+  ) : expense.notes ? (
+    <button type="button" aria-label="Note" onClick={() => start('note')} className={TAP + (time ? ' text-main' : '')}>{expense.notes}</button>
+  ) : (
+    <button type="button" onClick={() => start('note')} className={TAP + ' text-paper-400 italic font-medium'}>add a note</button>
+  )
+  const at = expense.created_at ? new Date(expense.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
+
   return (
-    <div ref={row} key={saved} className={'relative flex items-center justify-between gap-3 py-1 -mx-1 px-1 rounded-md text-[13px] ' + (saved ? '[animation:ex-saved_.9s_ease-out]' : '')}>
-      <span className="min-w-0 flex flex-wrap items-baseline gap-x-1">
-        {time && <span className="font-mono text-[11px] text-muted mr-1">{time}</span>}
-        <button type="button" aria-expanded={open === 'category'} aria-label="What it was for" onClick={() => start('category')} className={TAP + ' text-main'}>
-          {nameOf(expense.category_id)}
-        </button>
-        {open === 'note' ? (
-          <input autoFocus value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit} onKeyDown={keys}
-            onFocus={e => e.target.select()} placeholder="e.g. for Ana, receipt 0412" aria-label="Note"
-            className={BOX + ' w-[180px] text-[16px] md:text-[13px] text-main'} />
-        ) : expense.notes ? (
-          <><span className="text-muted">·</span>
-          <button type="button" aria-label="Note" onClick={() => start('note')} className={TAP + ' text-muted truncate'}>{expense.notes}</button></>
-        ) : (
-          <button type="button" onClick={() => start('note')} className={TAP + ' text-paper-400 italic'}>add a note</button>
-        )}
-      </span>
-      <span className="flex items-center gap-2 shrink-0">
+    <div ref={row} key={saved} className={'relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] ' + (saved ? '[animation:ex-saved_.9s_ease-out]' : '')}>
+      {time ? (
+        <span className="min-w-0 truncate font-semibold">{noteTap}</span>
+      ) : (
+        <span className="min-w-0 truncate font-bold">
+          <button type="button" aria-expanded={open === 'category'} aria-label="What it was for" onClick={() => start('category')} className={TAP + ' text-main'}>
+            {nameOf(expense.category_id)}
+          </button>
+        </span>
+      )}
+      <span className="flex items-center justify-end">
         {open === 'amount' ? (
           <input autoFocus inputMode="decimal" value={draft} onChange={e => setDraft(e.target.value.replace(/[^0-9.]/g, ''))}
             onBlur={commit} onKeyDown={keys} onFocus={e => e.target.select()} placeholder="e.g. 250" aria-label="Amount"
@@ -132,15 +140,19 @@ function ExpenseLine({ expense, categories, nameOf, onRemove, onChange, time }: 
             {peso(expense.amount)}
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => onRemove(expense)}
-          aria-label={'Remove ' + nameOf(expense.category_id) + ' ' + peso(expense.amount)}
-          className="text-muted hover:text-danger-600 active:scale-90 transition-[color,transform] cursor-pointer"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
       </span>
+      <span className="min-w-0 truncate text-[12px] text-muted">
+        {!time && <>{noteTap}{at && ' · '}</>}
+        {at}
+      </span>
+      <button
+        type="button"
+        onClick={() => onRemove(expense)}
+        aria-label={'Remove ' + nameOf(expense.category_id) + ' ' + peso(expense.amount)}
+        className="justify-self-end w-6 h-6 -my-0.5 grid place-items-center rounded-md text-muted hover:text-danger-600 hover:bg-danger-50 active:scale-90 transition-[color,background-color,transform] cursor-pointer"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
       {open === 'category' && (
         <CategoryPicker categories={categories} chosen={expense.category_id} onClose={() => setOpen(null)}
           onPick={id => (id === expense.category_id ? setOpen(null) : save({ category_id: id }))} />
@@ -165,18 +177,21 @@ function ExpenseGroup({ expenses, categories, nameOf, onRemove, onChange }: {
   const name = nameOf(expenses[0].category_id)
   const sum = expenses.reduce((s, e) => s + Number(e.amount || 0), 0)
   const timeOf = (e: Expense) => e.created_at ? new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
+  const times = expenses.map(timeOf).filter(Boolean)
   return (
     <div>
       <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
-        className="group w-full flex items-center justify-between gap-3 py-1 -mx-1 px-1 rounded-md text-[13px] text-left hover:bg-paper-50 aria-expanded:bg-paper-50 transition-colors cursor-pointer" style={{ width: 'calc(100% + 0.5rem)' }}>
-        <span className="min-w-0 flex items-baseline gap-1.5">
-          <span className="truncate text-main">{name}</span>
-          <span key={expenses.length} className="shrink-0 inline-grid place-items-center min-w-6 h-[19px] px-1.5 rounded-full bg-danger-50 text-danger-600 text-[11px] font-extrabold group-active:scale-90 transition-transform [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">×{expenses.length}</span>
+        className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 w-[calc(100%+1rem)] py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer">
+        <span className="min-w-0 truncate font-bold text-main">
+          {name}
+          <span key={expenses.length} className="ml-1.5 inline-grid place-items-center align-[1px] min-w-6 h-[19px] px-1.5 rounded-full bg-danger-50 text-danger-600 text-[11px] font-extrabold group-active:scale-90 transition-transform [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">×{expenses.length}</span>
         </span>
-        <span className="flex items-center gap-2 shrink-0">
+        <span className="flex items-center justify-end gap-1.5">
           <span key={sum} className="font-mono text-[14px] font-bold text-danger-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(sum)}</span>
           <ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-gold-600 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
         </span>
+        <span className="min-w-0 truncate text-[12px] text-muted">{expenses.map(e => (e.notes || '').trim() || 'Expense').join(' · ')}</span>
+        <span className="justify-self-end font-mono text-[11px] text-muted">{times.length > 1 ? times[0] + '–' + times[times.length - 1] : times[0]}</span>
       </button>
       <div className={'grid transition-[grid-template-rows] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
         <div className="min-h-0 overflow-hidden">
@@ -363,10 +378,19 @@ const METHOD_DOT: Record<PaymentKind, string> = {
 // payment, in gold like the restaurant's. A room's payment opens its bill right here, ready to
 // work on; a diner's opens its receipt, which reads its lines first, so the row shows it is on its way.
 // Inside a bill's group the guest and room are said once above, so a payment there leads with what it was for.
+// A payment on a cancelled booking stays on the day it came in, scratched off with the day it was
+// cancelled, and counts in no total (option B of the mock, Sebastian, 2026-10-29).
+const cancelChip = (day: string) => (
+  <span className="ml-1.5 inline-block align-[1px] px-1.5 rounded-full ring-1 ring-inset ring-danger-300 text-danger-600 text-[10.5px] font-extrabold dm-pop">
+    Cancelled {new Date(day + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+  </span>
+)
+
 function PaymentLine({ line, loading, onOpen, inGroup }: { line: MoneyInLine; loading: boolean; onOpen?: (line: MoneyInLine) => void; inGroup?: boolean }) {
   const what = line.purpose || (line.slip ? 'Order slip' : '')
   const body = (
     <>
+      {line.cancelled && <i aria-hidden="true" className="dm-scratch" />}
       {inGroup ? (
         <span className="min-w-0 truncate font-semibold text-main">{what || 'Payment'}</span>
       ) : (
@@ -376,11 +400,12 @@ function PaymentLine({ line, loading, onOpen, inGroup }: { line: MoneyInLine; lo
           <span className={'ml-1.5 inline-block align-[1px] px-1.5 rounded-md text-[10.5px] font-extrabold ' + (line.slip ? 'bg-gold-100 text-gold-800' : 'bg-paper-100 text-main')}>{line.place}</span>
         )}
         {line.bill && <span className="ml-1.5 inline-block align-[1px] px-1 rounded-md border border-paper-200 font-mono text-[10.5px] font-semibold text-muted">{line.bill}</span>}
+        {line.cancelled && cancelChip(line.cancelled)}
       </span>
       )}
       <span className="flex items-center justify-end gap-1.5">
         {loading && <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" />}
-        <span className="font-mono text-[14px] font-bold text-emerald-600">{peso(line.amount)}</span>
+        <span className={'font-mono text-[14px] font-bold ' + (line.cancelled ? 'text-paper-400' : 'text-emerald-600')}>{peso(line.amount)}</span>
       </span>
       <span className="min-w-0 truncate text-[12px] text-muted">
         {what && !inGroup && <>{what} · </>}
@@ -390,7 +415,7 @@ function PaymentLine({ line, loading, onOpen, inGroup }: { line: MoneyInLine; lo
       <span className="justify-self-end font-mono text-[11px] text-muted">{line.receipt}</span>
     </>
   )
-  const grid = 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left'
+  const grid = 'relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left' + (line.cancelled ? ' dm-struck' : '')
   return onOpen && openKey(line) ? (
     <button type="button" onClick={() => onOpen(line)} aria-busy={loading}
       className={grid + ' w-[calc(100%+1rem)] hover:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (loading ? ' bg-page' : '')}>
@@ -403,20 +428,25 @@ function PaymentLine({ line, loading, onOpen, inGroup }: { line: MoneyInLine; lo
 function PaymentGroup({ lines, opening, onOpen }: { lines: MoneyInLine[]; opening?: string | null; onOpen?: (line: MoneyInLine) => void }) {
   const [open, setOpen] = useState(false)
   const first = lines[0]
-  const sum = lines.reduce((s, l) => s + Number(l.amount || 0), 0)
+  const whole = lines.reduce((s, l) => s + Number(l.amount || 0), 0)
+  const sum = lines.reduce((s, l) => (l.cancelled ? s : s + Number(l.amount || 0)), 0)
+  // A bill's payments share its booking, so a cancelled bill scratches off the whole group.
+  const cancelled = lines.every(l => l.cancelled) ? first.cancelled : undefined
   const loading = !!opening && lines.some(l => openKey(l) === opening)
   return (
     <div>
       <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
-        className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 w-[calc(100%+1rem)] py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer">
+        className={'group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 w-[calc(100%+1rem)] py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (cancelled ? ' dm-struck' : '')}>
+        {cancelled && <i aria-hidden="true" className="dm-scratch group-aria-expanded:opacity-0" />}
         <span className="min-w-0 truncate font-bold text-main">
           {first.who}
           {first.place && <span className="ml-1.5 inline-block align-[1px] px-1.5 rounded-md text-[10.5px] font-extrabold bg-paper-100 text-main">{first.place}</span>}
           <span key={lines.length} className="ml-1.5 inline-grid place-items-center align-[1px] min-w-6 h-[19px] px-1.5 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold group-active:scale-90 transition-transform [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">×{lines.length}</span>
+          {cancelled && cancelChip(cancelled)}
         </span>
         <span className="flex items-center justify-end gap-1.5">
           {loading && <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" />}
-          <span key={sum} className="font-mono text-[14px] font-bold text-emerald-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(sum)}</span>
+          <span key={sum} className={'font-mono text-[14px] font-bold inline-block ' + (cancelled ? 'text-paper-400' : 'text-emerald-600') + ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(cancelled ? whole : sum)}</span>
           <ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-gold-600 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
         </span>
         <span className="min-w-0 truncate text-[12px] text-muted">{lines.map(l => l.purpose || 'Payment').join(' · ')}</span>

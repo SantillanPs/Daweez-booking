@@ -25,7 +25,7 @@ export function DailyReportModal({ onClose, initialDate }: {
   initialDate?: string
 }) {
   // Every booking, cancelled ones too: money received on a booking that was later
-  // cancelled still arrived on its day, and a money sheet must not lose it.
+  // cancelled is printed on its day, crossed out and outside the totals (2026-10-29).
   const { allBookings: bookings, rooms, venues, expenses, expenseCategories } = useDashboardData()
   const [date, setDate] = useState(() => initialDate || localToday())
 

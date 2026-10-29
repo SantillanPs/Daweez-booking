@@ -212,6 +212,20 @@
   .hc-grow, .hc-grow > *, .hc-night, .hc-bar { animation: none; }
 }
 
+/* ── A cancelled booking's payment in Money in (`DayMoney`, option B, 2026-10-29) ──
+   A red line is drawn across it from the left, the row fades, and the chip with the
+   day it was cancelled pops in. */
+@keyframes dm-scratch { from { transform: scaleX(0); } }
+@keyframes dm-pop { from { opacity: 0; transform: scale(0.6); } 60% { transform: scale(1.08); } }
+.dm-struck > :not(.dm-scratch) { opacity: 0.5; transition: opacity 0.3s; }
+.dm-scratch { position: absolute; left: 0.5rem; right: 0.5rem; top: 50%; height: 1.5px; background: theme('colors.danger.600');
+  pointer-events: none; z-index: 1; transform-origin: left; transition: opacity 0.2s;
+  animation: dm-scratch 0.5s 0.1s cubic-bezier(0.65, 0, 0.35, 1) both; }
+.dm-pop { animation: dm-pop 0.4s 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .dm-scratch, .dm-pop { animation: none; }
+}
+
 /* ── Diners to pay: the bills hang on the top line as receipts (`TodayStrip`) ──
    The owner picked option B of the mock, without the utensils, with an idle move
    (2026-10-15): a new receipt tears in from above, and each one sways now and then

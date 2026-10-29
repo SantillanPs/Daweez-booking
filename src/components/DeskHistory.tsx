@@ -1,21 +1,20 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { CalendarClock, CalendarPlus, LogIn, LogOut, X } from 'lucide-react'
+import { CalendarPlus, LogIn, LogOut } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { Booking } from '../types/booking'
 import { focusBookingAfterCreate } from '../utils/bookingFocus'
 import { dateToString } from '../utils/helpers'
 
 // THE FRONT DESK'S HISTORY (Sebastian, 2026-10-14: "turn the bookings page into a history of whatever
-// happened in the front desk"). It replaced the Bookings list. Since 2026-10-29 it holds only what
-// happened to the stays — made, rescheduled, checked in, checked out, cancelled: payments, their fixes and removals,
-// and who still owes moved to Bills & receipts ("remove in history what contains here"). Nothing here
-// is stored for it: every row is read from a booking's `created_at`, `moved_from`, `actual_check_in`,
-// `actual_check_out` and `cancelled_at`. A rescheduled booking is one row at its latest move, from the
-// dates it was first booked for to where it is now (task #13, 2026-10-29).
+// happened in the front desk"). It replaced the Bookings list. Since 2026-10-29 it holds only the
+// bookings made and the check-ins and check-outs noted: payments, their fixes and removals, and who
+// still owes moved to Bills & receipts ("remove in history what contains here"), and so did cancelled
+// and rescheduled bookings, which its Show menu already lists ("it's redundant"). Nothing here is
+// stored for it: every row is read from a booking's `created_at`, `actual_check_in` and `actual_check_out`.
 
-type Kind = 'book' | 'moved' | 'in' | 'out' | 'cancel'
-type Filter = 'all' | 'book' | 'moved' | 'inout' | 'cancel'
+type Kind = 'book' | 'in' | 'out'
+type Filter = 'all' | 'book' | 'inout'
 
 interface Event {
   key: string
@@ -33,12 +32,10 @@ const join = (...parts: (string | undefined | null | false)[]) => parts.filter(B
 
 const ICON: Record<Kind, { Icon: typeof LogIn; tone: string }> = {
   book: { Icon: CalendarPlus, tone: 'bg-gold-100 text-gold-800' },
-  moved: { Icon: CalendarClock, tone: 'bg-sky-50 text-sky-700' },
   in: { Icon: LogIn, tone: 'bg-emerald-50 text-emerald-700' },
   out: { Icon: LogOut, tone: 'bg-page text-main border border-soft' },
-  cancel: { Icon: X, tone: 'bg-danger-50 text-danger-600' },
 }
-const FILTERS: [Filter, string][] = [['all', 'All'], ['book', 'Bookings'], ['moved', 'Rescheduled'], ['inout', 'Check-ins & outs'], ['cancel', 'Cancelled']]
+const FILTERS: [Filter, string][] = [['all', 'All'], ['book', 'Bookings'], ['inout', 'Check-ins & outs']]
 const PAGE = 14
 
 export function DeskHistory() {
@@ -69,16 +66,8 @@ export function DeskHistory() {
       if (b.status === 'blocked') continue
       const g = b.group_id || b.id
       groups.set(g, [...(groups.get(g) || []), b])
-      if (b.moved_from) out.push({ key: 'mv-' + b.id, at: b.moved_from.at, kind: 'moved', title: 'Rescheduled · ' + unit(b), detail: join(who(b), shortDay(b.moved_from.check_in) + '–' + shortDay(b.moved_from.check_out) + ' → ' + span(b)), booking: b })
       if (b.actual_check_in) out.push({ key: 'in-' + b.id, at: b.actual_check_in, kind: 'in', title: 'Checked in · ' + unit(b), detail: join(who(b), span(b)), booking: b })
       if (b.actual_check_out) out.push({ key: 'out-' + b.id, at: b.actual_check_out, kind: 'out', title: 'Checked out · ' + unit(b), detail: who(b), booking: b })
-      // A no-show is cancelled with the quick reason "No show" (task #13): it says so in its title,
-      // and stays under Cancelled, as on paper.
-      if (b.status === 'cancelled' && b.cancelled_at) {
-        const noShow = /^No show( · |$)/.test(b.cancel_note || '')
-        const note = noShow ? (b.cancel_note || '').replace(/^No show( · )?/, '') : b.cancel_note
-        out.push({ key: 'x-' + b.id, at: b.cancelled_at, kind: 'cancel', title: (noShow ? 'No show · ' : 'Cancelled · ') + unit(b), detail: join(who(b), span(b), note), booking: b })
-      }
     }
     // A booking of several rooms is one booking (`group_id`), made at one time.
     for (const list of groups.values()) {
