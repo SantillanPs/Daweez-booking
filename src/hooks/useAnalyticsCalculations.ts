@@ -239,6 +239,7 @@ export function useAnalyticsCalculations({
         eventAddons: b.event_addons,
         bookingsList: bookings,
         breakfastIncluded: b.breakfast_included === true,
+        breakfastDays: b.breakfast_days,
         contractRateOverride: b.contract_rate_override,
         // A short stay earns its hours price, not a night's.
         shortStayHours: b.stay_hours,

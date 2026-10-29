@@ -4,6 +4,7 @@ import { venueTypePrice } from './venueTypes'
 import { venueHoursOf } from './venueHours'
 import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 import { DEFAULT_RATE_CONFIG } from './rateConfig'
+import { breakfastMornings } from './breakfast'
 
 function diffDays(a: string, b: string): number {
   return Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / (1000 * 60 * 60 * 24))
@@ -32,6 +33,8 @@ export function calculatePricing(params: {
   breakfastEnabled?: boolean
   /** What the saved booking holds: this room has breakfast (card k140). */
   breakfastIncluded?: boolean
+  /** The mornings the desk chose on the bill (`bookings.breakfast_days`); none is every morning. */
+  breakfastDays?: string[] | null
   rooms?: Room[]
   venues?: Venue[]
   /**
@@ -46,7 +49,7 @@ export function calculatePricing(params: {
   venueDayBlocks?: number
   rates?: RateConfig
 }) {
-  const { roomId, venueId, checkIn, checkOut, breakfastIncluded, equipmentRentals, eventAddons, rateMultiplier, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastRecords, rooms: liveRooms, venues: liveVenues, appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, rates: ratesOverride, shortStayHours } = params
+  const { roomId, venueId, checkIn, checkOut, breakfastIncluded, equipmentRentals, eventAddons, rateMultiplier, contractRateOverride, venueExcessHours = 0, breakfastEnabled, breakfastRecords, breakfastDays, rooms: liveRooms, venues: liveVenues, appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, rates: ratesOverride, shortStayHours } = params
   const rates = ratesOverride ?? DEFAULT_RATE_CONFIG
 
   let basePrice = 0
@@ -199,7 +202,9 @@ export function calculatePricing(params: {
     const wantsBreakfast = breakfastEnabled !== undefined
       ? breakfastEnabled
       : breakfastIncluded === true
-    if (wantsBreakfast) { breakfastNights = Math.max(1, nights); breakfastTotal = roomBreakfastPrice * breakfastNights }
+    // Once a night, or once for each morning the desk chose on the bill (2026-10-29).
+    const chosen = breakfastDays?.length && nights > 0 ? breakfastMornings(checkIn, checkOut, breakfastDays).length : 0
+    if (wantsBreakfast) { breakfastNights = chosen || Math.max(1, nights); breakfastTotal = roomBreakfastPrice * breakfastNights }
   }
   // **A room with no breakfast price sells NO breakfast** (the owner's ruling, 2026-09-29:
   // *"if a room has no breakfast price, then breakfast should be unavailable. remove every

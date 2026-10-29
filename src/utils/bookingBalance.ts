@@ -54,6 +54,7 @@ export function recomputeBalance(
     venueDayBlocks: base.venue_day_blocks,
     breakfastRecords: base.breakfast_records,
     breakfastIncluded: base.breakfast_included === true,
+    breakfastDays: base.breakfast_days,
     // SHORT STAY: the hours must reach the pricing rule or a 3-hour stay is re-priced
     // as a whole night (the room's normal price instead of its 3-hour figure). Every
     // reader that re-prices a booking has to pass this — see `docs/why/money.md`.

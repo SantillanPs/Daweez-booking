@@ -1,4 +1,5 @@
 import { Booking, BreakfastChoice } from '../types/booking'
+import { breakfastMornings } from './breakfast'
 import { supabase, isSupabaseConfigured } from './supabaseClient'
 
 // BREAKFAST, EVERY MORNING (the owner, 2026-10-04): a guest who booked breakfast is
@@ -24,7 +25,9 @@ export function wantsBreakfastToday(b: Booking, today: string): boolean {
   if (!BREAKFAST_ASK_ON) return false
   const inHotel = b.check_in < today && today <= b.check_out
   return !!b.room_id && b.breakfast_included === true && inHotel &&
-    !b.stay_hours && b.status !== 'blocked' && b.status !== 'cancelled'
+    !b.stay_hours && b.status !== 'blocked' && b.status !== 'cancelled' &&
+    // Only the mornings the bill charges for (2026-10-29).
+    breakfastMornings(b.check_in, b.check_out, b.breakfast_days).includes(today)
 }
 
 /** What was written down for this booking on `date`, or undefined when nobody has asked yet. */

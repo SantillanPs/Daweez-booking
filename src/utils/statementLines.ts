@@ -7,6 +7,7 @@ import { roomDisplayName } from '../components/calendar/bookingStyles'
 import { OrderSlip, slipNumber, slipsTotal } from './orderSlips'
 import { venueTypeOf, venueTypeTitle } from './venueTypes'
 import { airconWords } from './venueHours'
+import { breakfastMornings } from './breakfast'
 
 /**
  * The rows of the printed Guest Billing Statement, one per charge.
@@ -145,6 +146,7 @@ export function bookingPricing(b: Booking, o: {
     guestEmail: b.guest_email,
     // What the booking holds: this room has breakfast (card k140).
     breakfastIncluded: b.breakfast_included === true,
+    breakfastDays: b.breakfast_days,
     equipmentRentals: b.equipment_rentals,
     eventAddons: b.event_addons,
     bookingsList: o.bookingsList,
@@ -237,8 +239,8 @@ export function bookingLines(b: Booking, o: {
   // Breakfast is the room's own price once a night (2026-10-17) and prints as one line
   // under the Breakfast band — `Room 6 · Breakfast`, 2 × NIGHT — never per guest.
   if (isRoom && pricing.breakfastTotal > 0) {
-    const firstMorning = new Date(b.check_in + 'T00:00:00')
-    firstMorning.setDate(firstMorning.getDate() + 1)
+    // From the first morning to the last: the stay's, or the ones chosen on the bill.
+    const mornings = breakfastMornings(b.check_in, b.check_out, b.breakfast_days)
     items.push({
       key: b.id + '-breakfast',
       band: 'breakfast',
@@ -250,7 +252,7 @@ export function bookingLines(b: Booking, o: {
       amount: Math.round(pricing.breakfastTotal),
       remove: { breakfast_included: false },
       room: String(rooms.find(r => r.id === b.room_id)?.room_number ?? ''),
-      checkIn: dateToString(firstMorning), checkOut: b.check_out,
+      checkIn: mornings[0] || b.check_out, checkOut: mornings[mornings.length - 1] || b.check_out,
     })
   }
 

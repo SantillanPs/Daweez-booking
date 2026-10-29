@@ -100,6 +100,7 @@ export function buildLedger(params: {
       eventAddons: b.event_addons,
       bookingsList: bookings,
       breakfastIncluded: b.breakfast_included === true,
+      breakfastDays: b.breakfast_days,
       contractRateOverride: b.contract_rate_override,
       shortStayHours: b.stay_hours,
       rooms,

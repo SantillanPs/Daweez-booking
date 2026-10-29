@@ -171,6 +171,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         // The bill's switches decide; an agency that always has breakfast turns them all on
         // there, and the desk can turn one off (2026-10-25).
         breakfastIncluded: p.formBreakfastRoomIds.includes(key),
+        breakfastDays: p.formBreakfastDays ? p.formBreakfastDays[key] || [] : undefined,
         contractRateOverride: p.formRates ? (p.formRates[key] || contractedPrice || undefined) : contractedPrice || (existingBooking && !existingBooking.partner_deal_id ? existingBooking.contract_rate_override : undefined),
         paymentMethod: p.formPaymentMethod || undefined,
         paymentReference: p.formPaymentReference || undefined,

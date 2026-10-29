@@ -41,6 +41,7 @@ export interface ManualBookingInput {
   vehiclePlate?: string
   breakfastOrders?: BreakfastOrder[]
   breakfastIncluded?: boolean
+  breakfastDays?: string[]
   contractRateOverride?: number
   paymentMethod?: string
   paymentReference?: string
@@ -87,6 +88,8 @@ export interface BookingSubmitParams {
   formInvoiceNumber: string
   formSource: BookingSource
   formBreakfastRoomIds: string[]
+  /** The bill's chosen breakfast mornings by room; a room not in it has every morning. Left out, the saved ones stay. */
+  formBreakfastDays?: Record<string, string[]>
   formCompanions: Companion[]
   formExtraFoam: number
   formExtraPillow: number

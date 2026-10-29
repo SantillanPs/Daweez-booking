@@ -290,6 +290,8 @@ export function useBookings() {
         // Due of ₱1,800 copied from that short balance. A Deposit booking lost half of
         // it as well.
         breakfastIncluded,
+        // The mornings chosen on the bill; a save that does not send them keeps the saved ones.
+        breakfastDays: breakfastDays ?? (id ? allBookings.find(b => b.id === id)?.breakfast_days : undefined),
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks,
         // A short stay must be priced for its hours, or the booking is stored owing a
         // whole night (see `docs/why/money.md`).

@@ -247,3 +247,43 @@ export function MonthPick({ end, checkIn, checkOut, free, taken, onPick }: {
     </div>
   )
 }
+
+// The breakfast line's first or last morning (Sebastian, 2026-10-29: "make the breakfast date
+// editable"). Only the stay's mornings are there to tap; the ones with breakfast are shaded.
+export function MorningPick({ end, from, to, mornings, onPick }: {
+  end: 'from' | 'to'; from: string; to: string; mornings: string[]
+  onPick: (from: string, to: string) => void
+}) {
+  if (mornings.length === 0) return null
+  const first = mornings[0], last = mornings[mornings.length - 1]
+  const days: string[] = []
+  for (let d = first; d <= last; d = addDays(d, 1)) days.push(d)
+  const [y, m] = first.split('-').map(Number)
+  const lead = new Date(y, m - 1, Number(first.slice(8))).getDay()
+  const months = [...new Set(days.map(d => MONTHS[Number(d.slice(5, 7)) - 1]))].join(' – ')
+  const nope = (el: HTMLElement) => { el.classList.remove('bw-nope'); void el.offsetWidth; el.classList.add('bw-nope') }
+  const tap = (d: string, el: HTMLElement) => {
+    if (end === 'from') return d <= to ? onPick(d, to) : nope(el)
+    return d >= from ? onPick(from, d) : nope(el)
+  }
+  return (
+    <div className="p-1">
+      <div className="mb-1.5 text-center font-display text-[12px] font-bold text-ink-900">{end === 'from' ? 'First breakfast' : 'Last breakfast'} · {months}</div>
+      <div className="grid grid-cols-7 text-center text-[9px] font-bold text-muted pb-0.5">{['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i}>{d}</span>)}</div>
+      <div className="grid grid-cols-7">
+        {Array.from({ length: lead }, (_, i) => <span key={'x' + i} />)}
+        {days.map(d => {
+          const ok = mornings.includes(d)
+          const edge = d === from && d === to ? 'bg-ink-900 text-white rounded-lg' : d === from ? 'bg-ink-900 text-white rounded-l-lg' : d === to ? 'bg-ink-900 text-white rounded-r-lg' : ''
+          const tone = edge || (d > from && d < to ? 'bg-gold-100' : 'hover:bg-gold-100 hover:rounded-lg')
+          return (
+            <button key={d} type="button" disabled={!ok} onClick={e => tap(d, e.currentTarget)} aria-label={MONTHS[Number(d.slice(5, 7)) - 1] + ' ' + Number(d.slice(8))}
+              className={'h-[30px] grid place-items-center text-[11.5px] font-semibold active:scale-90 transition-[background-color,transform] ' + (ok ? tone + ' cursor-pointer' : 'text-paper-300 cursor-default')}>
+              {Number(d.slice(8))}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
