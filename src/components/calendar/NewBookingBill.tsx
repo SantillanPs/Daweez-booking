@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Building2, Check, ChevronDown, Coffee, Plus, X } from 'lucide-react'
+import { Building2, Check, ChevronDown, Coffee, Plus, Tag, X } from 'lucide-react'
 import { Booking, BillCharge, Companion, EquipmentRental, EventAddons, Room, Venue } from '../../types/booking'
 import { buildStatement, StatementLineItem, shortDate } from '../../utils/statement'
 import { dateToString, normalizeVenueId, randomUUID } from '../../utils/helpers'
@@ -10,6 +10,7 @@ import { readBookingFoodTotal } from '../../utils/orderSlips'
 import { focusBookingAfterCreate } from '../../utils/bookingFocus'
 import { breakfastSellable, roomBreakfastPrice, stayMornings } from '../../utils/breakfast'
 import { venueTypes } from '../../utils/venueTypes'
+import { discountsOf } from '../../utils/discounts'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { paymentMethodLabel } from '../../utils/paymentMethod'
 import { getSlipsByBooking, OrderSlip } from '../../utils/orderSlips'
@@ -64,7 +65,7 @@ const fmtDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); 
 interface Paid { amount: number; method: string; reference: string; purpose: string }
 /** Who the bill goes to instead of the guest: an agency (its deal) or an institution (a name). */
 interface BillTo { name: string; dealId?: string }
-export interface Discount { pct: boolean; v: number }
+export interface Discount { pct: boolean; v: number; note?: string }
 
 /**
  * **A new booking on the billing statement** (Sebastian, 2026-10-23: "what would it look like if we
@@ -142,15 +143,18 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const [charges, setCharges] = useState<BillCharge[]>(() => (editing || []).flatMap(b => b.event_addons?.charges || []))
   const [kinds, setKinds] = useState<Record<string, string>>(() =>
     Object.fromEntries((editing || []).filter(b => b.venue_id && b.event_addons?.venue_type).map(b => [keyOf(b), b.event_addons!.venue_type!])))
-  // As the form reads it back: a flat amount is what the rooms' shares add up to.
-  const [disc, setDisc] = useState<Discount | null>(() => {
-    const d = editing?.find(b => (b.applied_discount?.value || 0) > 0)?.applied_discount
-    if (!d) return null
-    return d.type === 'flat'
-      ? { pct: false, v: editing!.reduce((a, b) => a + (b.applied_discount?.type === 'flat' ? Number(b.applied_discount.value || 0) : 0), 0) }
-      : { pct: true, v: d.value }
+  // As the form reads it back: a flat amount is what the rooms' shares add up to. Every room
+  // holds the bill's list in the same order, so a place in it is one discount (2026-10-29).
+  const [discs, setDiscs] = useState<Discount[]>(() => {
+    const lists = (editing || []).map(b => discountsOf(b.applied_discount))
+    const longest = lists.reduce((a, l) => (l.length > a.length ? l : a), [] as ReturnType<typeof discountsOf>)
+    return longest.map((d, i) => ({
+      pct: d.type === 'percent', note: d.note || '',
+      v: d.type === 'percent' ? Number(d.value) || 0 : lists.reduce((a, l) => a + (l[i]?.type === 'flat' ? Number(l[i].value) || 0 : 0), 0),
+    })).filter(d => d.v > 0)
   })
-  const [removed, setRemoved] = useState<{ label: string; breakfast: string[]; extras: Extras; charges: BillCharge[]; disc: Discount | null } | null>(null)
+  const given = discs.filter(d => d.v > 0)
+  const [removed, setRemoved] = useState<{ label: string; breakfast: string[]; extras: Extras; charges: BillCharge[]; discs: Discount[] } | null>(null)
   const [to, setTo] = useState<BillTo | null>(() =>
     ed?.partner_deal_id || ed?.company_name ? { name: ed.company_name || '', dealId: ed.partner_deal_id || undefined }
       : ed?.institution ? { name: ed.institution } : null)
@@ -226,7 +230,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       event_addons: Object.keys(ea).length > 0 ? ea : undefined,
       equipment_rentals: rentals,
       partner_deal_id: deal?.id, company_name: to?.name, contract_rate_override: rates[id] || deal?.contracted_rates[unit] || undefined,
-      applied_discount: disc && disc.v > 0 && !to && (disc.pct || i === 0) ? { type: disc.pct ? 'percent' : 'flat', value: disc.v } : undefined,
+      // Every room holds the whole list, so a discount keeps its place; a flat amount counts once, on the first.
+      applied_discount: given.length > 0 && !to ? discs.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.pct || i === 0 ? d.v : 0, note: d.note })) : undefined,
     } as Booking
   }
   const drafts = list.map(([id, s], i) => draftOf(id, s, i))
@@ -240,6 +245,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const total = statement?.subTotal ?? 0
   // What the discount takes off, in pesos: the statement's own Discount rows.
   const discOff = -(statement?.lineItems.filter(i => i.band === 'discount').reduce((s, i) => s + i.amount, 0) ?? 0)
+  // …and what each one takes off, by its place in the list.
+  const offOf = (slot: number) => -(statement?.lineItems.filter(i => i.band === 'discount' && (i.slot ?? 0) === slot).reduce((s, i) => s + i.amount, 0) ?? 0)
   const received = editing ? (statement?.payments || []).reduce((a, x) => a + x.amount, 0) : paid?.amount ?? 0
   const due = Math.max(0, total - received)
   const paidUp = received > 0 && due === 0
@@ -247,7 +254,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const [paysOpen, setPaysOpen] = useState(!!tapped)
   const markSeen = useRef(false)
 
-  const snapshot = (label: string) => setRemoved({ label, breakfast, extras, charges, disc })
+  const snapshot = (label: string) => setRemoved({ label, breakfast, extras, charges, discs })
   const unitOf = (key: string) => list.find(([id]) => key.startsWith('draft-' + id + '-'))?.[0]
   const removeLine = (line: StatementLineItem) => {
     const id = unitOf(line.key), r = line.remove
@@ -256,9 +263,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     if ('breakfast_included' in r) setBreakfast(b => b.filter(x => x !== id))
     if (r.equipment_rentals) setExtras(e => { const n = { ...e }; EXTRAS.forEach(x => { n[x.key] = Number(r.equipment_rentals![x.key] || 0) }); return n })
     if (r.event_addons) setCharges(r.event_addons.charges || [])
-    if (r.applied_discount) setDisc(null)
+    if (r.applied_discount) setDiscs(ds => ds.filter((_, k) => k !== line.slot))
   }
-  const undo = () => { if (!removed) return; setBreakfast(removed.breakfast); setExtras(removed.extras); setCharges(removed.charges); setDisc(removed.disc); setRemoved(null) }
+  const undo = () => { if (!removed) return; setBreakfast(removed.breakfast); setExtras(removed.extras); setCharges(removed.charges); setDiscs(removed.discs); setRemoved(null) }
   const addCharge = (name: string, amount: number) => {
     if (!first) return
     setCharges(c => [...c, { id: randomUUID(), name, amount, date: first.checkIn }])
@@ -441,7 +448,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       // What the bill does not show is sent back as saved, or the save would blank it.
       formChairs: venueKit?.chairCount || 0, formEventTable: venueKit?.tableCount || 0, formEventTent: venueKit?.tentCount || 0,
       formVenueExcessHours: ed?.venue_excess_hours || 0, formBlockNotes: ed?.notes || '', venueDayBlocks: ed?.venue_day_blocks || undefined,
-      discountType: !disc || !disc.v || to ? 'none' : disc.pct ? 'percent' : 'flat', discountValue: disc?.v || 0,
+      discounts: to ? [] : given.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.v, note: d.note?.trim() || undefined })),
       formVenueTypes: kinds,
       formPaymentMethod: ed ? ed.payment_method || '' : paid?.method || '', formPaymentReference: ed ? ed.payment_reference || '' : paid?.reference || '',
       formPaymentPlan: plan, formPaymentPurpose: paid?.purpose,
@@ -524,7 +531,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const anchor = active.find(b => ids.current.includes(b.id))
     return { rows: anchor ? groupOf(anchor, active) : editing || [], active, all }
   }
-  const sig = editing ? JSON.stringify([guestName, guestPhone, nationality, address, companions, short, hours, half, breakfast, bfDays, extras, charges, kinds, disc, to, preparedBy, units, rates]) : ''
+  const sig = editing ? JSON.stringify([guestName, guestPhone, nationality, address, companions, short, hours, half, breakfast, bfDays, extras, charges, kinds, discs, to, preparedBy, units, rates]) : ''
   const savedSig = useRef(sig)
   const latest = useRef(handleBook)
   useEffect(() => { latest.current = handleBook })
@@ -777,9 +784,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       </Floating>
     )
     if (p.kind === 'disc') return (
-      <Floating key={p.kind} at={at} sheet={sheetEl} right label="Discount" onClose={() => { setPop(null); setDisc(d => (d?.v ? d : null)) }}>
-        <DiscountPop disc={disc || { pct: true, v: 0 }} off={discOff} onChange={setDisc}
-          onDone={() => { setPop(null); setDisc(d => (d?.v ? d : null)) }} onNone={() => { setDisc(null); setPop(null) }} />
+      <Floating key={p.kind} at={at} sheet={sheetEl} right label="Discount" onClose={() => { setPop(null); setDiscs(ds => ds.filter(d => d.v > 0)) }}>
+        <DiscountsPop discs={discs} offOf={offOf} onChange={setDiscs}
+          onDone={() => { setPop(null); setDiscs(ds => ds.filter(d => d.v > 0)) }} />
       </Floating>
     )
     if (p.kind === 'staff') return (
@@ -921,11 +928,21 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               {(!to || desk) && (
                 <>
                   {!to && <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(total + discOff)}</span></div>}
-                  {to ? null : disc?.v ? (
-                    <button type="button" onClick={toggle('disc')} aria-expanded={isOpen('disc')} aria-label="Change the discount"
-                      className="w-full -mx-0.5 px-0.5 flex justify-between items-baseline gap-2.5 rounded text-left hover:bg-gold-100 aria-expanded:bg-gold-100 transition-colors cursor-pointer bw-rise">
-                      <span className="text-[10px] text-muted">Less: discount{disc.pct && <b className="ml-1 font-bold text-ink-900">{disc.v}%</b>}</span>
-                      <span className="font-mono text-[11.5px] font-bold text-danger-600">−₱{discOff.toLocaleString()}</span>
+                  {/* Every discount on one line (Sebastian, 2026-10-29, "apply C"): a count when there are
+                      several, and what they come to; what each is for shows once the line is opened. The
+                      line is a small coupon like the box it opens ("Apply A"), what it takes off on its stub. */}
+                  {to ? null : given.length > 0 ? (
+                    <button type="button" onClick={toggle('disc')} aria-expanded={isOpen('disc')} aria-label="Change the discounts"
+                      style={{ '--stub': COUPON_LINE_STUB + 'px', '--notch': '4px' } as React.CSSProperties}
+                      className="coupon-notch w-full my-0.5 flex items-stretch rounded-md bg-gold-100 text-left hover:bg-[#F0E1BF] aria-expanded:bg-[#F0E1BF] active:scale-[0.97] transition-[background-color,transform] duration-200 ease-[cubic-bezier(.34,1.56,.64,1)] cursor-pointer bw-rise">
+                      <span className="flex-1 min-w-0 px-2 py-1 text-[10px] font-bold text-gold-800">Less: discount
+                        {given.length > 1
+                          ? <b key={given.length} className="inline-grid place-items-center min-w-4 h-4 px-1 ml-1 rounded-full bg-ink-900 text-white text-[9.5px] font-bold align-[1px] [animation:bw-pop_.35s_cubic-bezier(.34,1.56,.64,1)_both]">{given.length}</b>
+                          : given[0].pct && <b className="ml-1 font-display font-extrabold">{given[0].v}%</b>}
+                      </span>
+                      <span className="shrink-0 grid place-items-center border-l-[1.5px] border-dashed border-gold-200 coupon-stub">
+                        <span key={discOff} className="font-mono text-[11.5px] font-bold text-danger-600 bw-rise">−₱{discOff.toLocaleString()}</span>
+                      </span>
                     </button>
                   ) : (
                     <button type="button" onClick={toggle('disc')} aria-expanded={isOpen('disc')} className="self-start px-0.5 -ml-0.5 rounded text-[10.5px] font-bold text-gold-800 hover:underline aria-expanded:bg-gold-100 cursor-pointer">+ Discount</button>
@@ -1134,36 +1151,134 @@ function TypeIn({ value, placeholder, label, money: isMoney, upper, onSave, chil
   )
 }
 
+/** A figure that runs to its new value instead of jumping (what a discount takes off, as it is typed). */
+function useRunTo(to: number) {
+  const [shown, setShown] = useState(to)
+  const from = useRef(to)
+  useEffect(() => {
+    const dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 380
+    const a = from.current, t0 = performance.now()
+    let id = 0
+    const step = (t: number) => {
+      const k = dur ? Math.min(1, (t - t0) / dur) : 1
+      const n = Math.round(a + (to - a) * (1 - (1 - k) ** 3))
+      from.current = n; setShown(n)
+      if (k < 1) id = requestAnimationFrame(step)
+    }
+    id = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(id)
+  }, [to])
+  return shown
+}
+
+// The coupon's stub is a fixed width, so its two notches (`.coupon-notch` in index.css) sit on the tear line.
+const STUB = 84
+const COUPON_LINE_STUB = 62
+const COUPON_ROW_STUB = 72
+
 /**
- * **The discount, in the floating box** (Sebastian, 2026-10-27: "the visual hierarchy is money, and
- * choosing what type of discount it is, then okay"): the amount first, % or ₱ beside it as a quiet
- * choice (the picked one in ink with a gold line under it), then ✓. What it takes off in pesos stays
- * under it as it is typed (task #11). It changes the bill as it is typed, like the box it replaced.
+ * **The discount, as a coupon** (Sebastian, 2026-10-29: "love the coupon design", note style 1, after
+ * "it looks a little cramped and the notes field is wider than it needs to be"): a gold ticket with the
+ * amount and a sliding % / ₱ on its face, what it is for in a white write-in slot under them (dashed
+ * until it is filled, since a plain line did not read as a field), and what it takes off in pesos on
+ * the torn stub beside ✓. The amount and the slot are as wide as what is in them. It changes the bill
+ * as it is typed, like the box it replaced.
  */
 function DiscountPop({ disc, off, onChange, onDone, onNone }: {
-  disc: Discount; off: number; onChange: (d: Discount) => void; onDone: () => void; onNone: () => void
+  disc: Discount; off: number; onChange: (d: Discount) => void; onDone: () => void; onNone?: () => void
 }) {
   const box = useRef<HTMLInputElement>(null)
   useLateFocus(box)
+  const shown = useRunTo(off)
+  const amount = disc.v ? disc.v.toLocaleString() : ''
+  const note = disc.note || ''
   return (
-    <form onSubmit={e => { e.preventDefault(); onDone() }} className="flex flex-col p-1">
-      <div className="flex items-center gap-1">
-        <label className="flex items-baseline gap-0.5 border-b-2 border-ink-900 focus-within:border-gold-400 transition-colors">
-          <input ref={box} inputMode="numeric" placeholder={disc.pct ? '10' : '200'} aria-label="Discount" value={disc.v ? disc.v.toLocaleString() : ''}
-            onChange={e => { const n = Number(e.target.value.replace(/\D/g, '')) || 0; onChange({ ...disc, v: disc.pct ? Math.min(n, 100) : n }) }}
-            className="min-w-0 w-16 bg-transparent border-0 p-0 text-right font-display text-[16px] font-extrabold text-ink-900 placeholder:text-paper-400 focus:outline-none" />
-        </label>
-        <div role="radiogroup" aria-label="Discount by" className="flex">
-          {[true, false].map(p => (
-            <button key={String(p)} type="button" role="radio" aria-checked={disc.pct === p} onClick={() => { onChange({ pct: p, v: p ? Math.min(disc.v, 100) : disc.v }); box.current?.focus() }}
-              className={'relative min-h-7 px-1.5 font-mono text-[12px] font-bold transition-colors cursor-pointer after:absolute after:left-1.5 after:right-1.5 after:bottom-1 after:h-0.5 after:rounded-full after:bg-gold-400 after:transition-transform after:duration-300 after:ease-[cubic-bezier(.34,1.56,.64,1)] ' +
-                (disc.pct === p ? 'text-ink-900 after:scale-x-100' : 'text-paper-400 hover:text-ink-700 after:scale-x-0')}>{p ? '%' : '₱'}</button>
-          ))}
+    <form onSubmit={e => { e.preventDefault(); onDone() }} className="flex flex-col p-0.5">
+      <div className="coupon-notch flex rounded-[10px] bg-gold-100" style={{ '--stub': STUB + 'px', '--notch': '7px' } as React.CSSProperties}>
+        <div className="flex flex-col gap-2 py-2.5 px-3">
+          <div className="flex items-center gap-2">
+            <input ref={box} inputMode="numeric" placeholder={disc.pct ? '10' : '200'} aria-label="Discount" value={amount}
+              onChange={e => { const n = Number(e.target.value.replace(/\D/g, '')) || 0; onChange({ ...disc, v: disc.pct ? Math.min(n, 100) : n }) }}
+              style={{ width: Math.max(2, (amount || (disc.pct ? '10' : '200')).length) + 0.4 + 'ch' }}
+              className="min-w-0 bg-transparent border-0 p-0 text-right font-display text-[24px] leading-none font-extrabold text-gold-800 placeholder:text-gold-200 focus:outline-none" />
+            <div role="radiogroup" aria-label="Discount by" className="relative grid grid-cols-2 p-0.5 rounded-full bg-paper-0">
+              <span aria-hidden="true" className={'absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-full bg-ink-900 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.56,.64,1)] ' + (disc.pct ? 'translate-x-0' : 'translate-x-full')} />
+              {[true, false].map(p => (
+                <button key={String(p)} type="button" role="radio" aria-checked={disc.pct === p} onClick={() => { onChange({ ...disc, pct: p, v: p ? Math.min(disc.v, 100) : disc.v }); box.current?.focus() }}
+                  className={'relative w-[26px] h-6 font-mono text-[12px] font-bold transition-colors duration-200 cursor-pointer ' + (disc.pct === p ? 'text-white' : 'text-muted hover:text-ink-900')}>{p ? '%' : '₱'}</button>
+              ))}
+            </div>
+          </div>
+          {/* What it is for, printed on the bill (Sebastian, 2026-10-29: "include notes in discounts"). */}
+          <label className={'self-start flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-paper-0 border-[1.5px] transition-colors cursor-text ' +
+            (note ? 'border-solid border-gold-100' : 'border-dashed border-gold-200 focus-within:border-solid focus-within:border-gold-400')}>
+            <Tag className="w-3 h-3 shrink-0 text-gold-400" strokeWidth={2.4} />
+            <input placeholder="Senior citizen" aria-label="What it is for" value={note}
+              onChange={e => onChange({ ...disc, note: e.target.value })}
+              style={{ width: Math.min(26, Math.max(9, (note || 'Senior citizen').length + 1)) + 'ch' }}
+              className="min-w-0 bg-transparent border-0 p-0 text-[13px] font-bold text-gold-800 placeholder:text-paper-400 placeholder:font-semibold focus:outline-none" />
+          </label>
         </div>
-        <button type="submit" aria-label="Done" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
+        <div className="shrink-0 flex flex-col items-center justify-between gap-2 py-2.5 border-l-2 border-dashed border-gold-200" style={{ width: STUB }}>
+          <span className={'font-mono text-[12.5px] font-extrabold tabular-nums whitespace-nowrap transition-colors ' + (off > 0 ? 'text-danger-600' : 'text-gold-200')}>−₱{shown.toLocaleString()}</span>
+          <button type="submit" aria-label="Done" className="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer"><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
+        </div>
       </div>
-      <span key={off} className="px-0.5 pt-1 font-mono text-[11.5px] font-bold text-danger-600 bw-rise">{off ? '−₱' + off.toLocaleString() : '\u00a0'}</span>
-      {disc.v > 0 && <button type="button" onClick={onNone} className={QUIET}>No discount</button>}
+      {onNone && <button type="button" onClick={onNone} className={QUIET}>Take this one off</button>}
+    </form>
+  )
+}
+
+/**
+ * **The bill's discounts, in the floating box** (Sebastian, 2026-10-29, "apply C"): the bill shows them
+ * as one line, and it opens to each one — what it is for and what it takes off — with "+ Discount"
+ * under them. A discount tapped opens the box above to change it; ✓ brings the list back. The bill
+ * changes as it is typed.
+ */
+function DiscountsPop({ discs, offOf, onChange, onDone }: {
+  discs: Discount[]; offOf: (slot: number) => number; onChange: (ds: Discount[]) => void; onDone: () => void
+}) {
+  // With none yet, it opens straight onto a new one.
+  const [at, setAt] = useState<number | 'list'>(() => (discs.some(d => d.v > 0) ? 'list' : discs.length))
+  const fromList = useRef(at === 'list')
+  const back = (ds: Discount[]) => {
+    const kept = ds.filter(d => d.v > 0)
+    onChange(kept)
+    if (fromList.current && kept.length > 0) setAt('list'); else onDone()
+  }
+  if (at !== 'list') {
+    const d = discs[at] || { pct: true, v: 0, note: '' }
+    const put = (n: Discount) => { const ds = [...discs]; ds[at] = n; onChange(ds) }
+    return (
+      <DiscountPop key={at} disc={d} off={offOf(at)} onChange={put} onDone={() => back(discs)}
+        onNone={d.v > 0 ? () => back(discs.filter((_, k) => k !== at)) : undefined} />
+    )
+  }
+  // A stack of small coupons, one for each discount ("Apply A"), then a blank one to add another.
+  let n = 0
+  const total = discs.reduce((t, _, i) => t + offOf(i), 0)
+  return (
+    <form onSubmit={e => { e.preventDefault(); onDone() }} className="flex flex-col gap-1.5 p-0.5 w-56">
+      {discs.map((d, i) => d.v > 0 && (
+        <button key={i} type="button" onClick={() => { fromList.current = true; setAt(i) }}
+          style={{ '--i': n++, '--stub': COUPON_ROW_STUB + 'px', '--notch': '6px' } as React.CSSProperties}
+          className="coupon-notch flex items-stretch rounded-[9px] bg-gold-100 text-left hover:bg-[#F0E1BF] hover:-translate-y-px active:scale-[0.97] transition-[background-color,transform] duration-200 ease-[cubic-bezier(.34,1.56,.64,1)] cursor-pointer bw-rise">
+          <span className="flex-1 min-w-0 flex items-baseline gap-1.5 px-2.5 py-2.5">
+            <span className="truncate text-[12.5px] font-bold text-gold-800">{d.note?.trim() || 'Discount'}</span>
+            {d.pct && <span className="shrink-0 font-display text-[11px] font-extrabold text-gold-800/60">{d.v}%</span>}
+          </span>
+          <span className="shrink-0 grid place-items-center border-l-2 border-dashed border-gold-200 font-mono text-[12px] font-extrabold text-danger-600 coupon-stub">−₱{offOf(i).toLocaleString()}</span>
+        </button>
+      ))}
+      <button type="button" onClick={() => { fromList.current = true; onChange([...discs, { pct: true, v: 0, note: '' }]); setAt(discs.length) }}
+        style={{ '--i': n++ } as React.CSSProperties}
+        className="flex items-center justify-center gap-1.5 p-2 rounded-[9px] border-[1.5px] border-dashed border-gold-200 text-[11.5px] font-bold text-gold-800 hover:bg-gold-100 hover:border-gold-400 transition-colors cursor-pointer bw-rise">
+        <Plus className="w-3 h-3" strokeWidth={3} />Discount
+      </button>
+      <div className="flex items-center justify-between gap-2 px-0.5 pt-1">
+        <span className="font-display text-[13px] font-extrabold text-danger-600"><span className="mr-1.5 font-sans text-[10px] font-semibold text-muted">Total off</span>−₱{total.toLocaleString()}</span>
+        <button type="submit" aria-label="Done" className="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer"><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
+      </div>
     </form>
   )
 }

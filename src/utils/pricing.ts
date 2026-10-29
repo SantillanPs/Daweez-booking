@@ -1,3 +1,4 @@
+import { discountsOf, discountOffs } from './discounts'
 import { Booking, EquipmentRental, EventAddons, BookingSource, Room, Venue, AppliedDiscount, RateConfig, BreakfastRecord } from '../types/booking'
 import { normalizeVenueId } from './helpers'
 import { venueTypePrice } from './venueTypes'
@@ -43,7 +44,7 @@ export function calculatePricing(params: {
    * the stay is ONE charge, not nights × rate.
    */
   shortStayHours?: number
-  appliedDiscount?: AppliedDiscount
+  appliedDiscount?: AppliedDiscount | AppliedDiscount[]
   earlyCheckInHours?: number
   lateCheckOutHours?: number
   venueDayBlocks?: number
@@ -159,12 +160,9 @@ export function calculatePricing(params: {
     discountPercent = Math.round(((undiscountedBasePrice - basePrice) / undiscountedBasePrice) * 100)
   }
 
-  let appliedDiscountAmount = 0
-  if (appliedDiscount && appliedDiscount.value > 0) {
-    appliedDiscountAmount = appliedDiscount.type === 'percent'
-      ? Math.round(subtotal * appliedDiscount.value / 100)
-      : Math.min(appliedDiscount.value, subtotal)
-  }
+  // Every discount on the stay, each worked out on its own (several since 2026-10-29).
+  const appliedDiscountLines = discountOffs(discountsOf(appliedDiscount), subtotal)
+  const appliedDiscountAmount = appliedDiscountLines.reduce((a, n) => a + n, 0)
   const stayTotal = Math.max(0, subtotal - appliedDiscountAmount)
 
   const earlyRate = isVenue ? rates.venueHourlyRate : rates.lateEarlyRatePesos
@@ -272,6 +270,8 @@ export function calculatePricing(params: {
     securityDeposit,
     stayTotal: Math.round(stayTotal),
     appliedDiscountAmount: Math.round(appliedDiscountAmount),
+    /** What each of the stay's discounts takes off, in the order `discountsOf` gives them. */
+    appliedDiscountLines,
     earlyLateTotal: Math.round(earlyLateTotal),
     earlyCharge: Math.round(earlyCharge),
     lateCharge: Math.round(lateCharge),

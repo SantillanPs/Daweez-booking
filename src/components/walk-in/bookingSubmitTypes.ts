@@ -2,7 +2,6 @@ import {
   Booking, BookingSource, Room, Venue, PartnerDeal, Companion,
   EquipmentRental, BreakfastOrder, AppliedDiscount, PaymentRecord, EventAddons, BillCharge,
 } from '../../types/booking'
-import { DiscountType } from '../calendar/DiscountPricingControls'
 
 /**
  * The shapes `submitBookingForm` reads and answers with — split out of `bookingSubmit` when
@@ -23,7 +22,7 @@ export interface ManualBookingInput {
   guestAddress?: string
   birthdate?: string
   preparedBy?: string
-  appliedDiscount?: AppliedDiscount
+  appliedDiscount?: AppliedDiscount | AppliedDiscount[]
   venueDayBlocks?: number
   notes?: string
   checkIn: string
@@ -100,8 +99,8 @@ export interface BookingSubmitParams {
   formEventTent: number
   formVenueExcessHours: number
   formBlockNotes: string
-  discountType: DiscountType
-  discountValue: number
+  /** The bill's discounts, each with its note; none is an empty list. */
+  discounts: AppliedDiscount[]
   /** The kind chosen for each venue (`VenueType.key`, by venue id). */
   formVenueTypes: Record<string, string>
   venueDayBlocks?: number

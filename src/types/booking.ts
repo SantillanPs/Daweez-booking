@@ -153,9 +153,14 @@ export interface BillCharge {
 
 // Staff-applied discount. 'percent' takes a % (20% or 10%) off the stay;
 // 'flat' is a fixed peso amount off the stay (the "custom" option).
+// A bill can carry several, each with what it is for (Sebastian, 2026-10-29: "I should be able
+// to add more than 1 discount … include notes in discounts"): `applied_discount` holds a list
+// then, and older rows still hold one. Read it with `discountsOf` (utils/discounts.ts).
 export interface AppliedDiscount {
   type: 'percent' | 'flat'
   value: number
+  /** What it is for — `Senior citizen`, `PWD` — printed on the bill. */
+  note?: string
 }
 
 // One payment receipt, created only after the guest actually pays. A booking
@@ -286,7 +291,7 @@ export interface Booking {
   breakfast_choices?: BreakfastChoice[]
   contract_rate_override?: number
   promo_applied?: boolean
-  applied_discount?: AppliedDiscount
+  applied_discount?: AppliedDiscount | AppliedDiscount[]
   early_check_in_hours?: number
   late_check_out_hours?: number
   // Actual arrival/departure times recorded by the check-in / check-out button.

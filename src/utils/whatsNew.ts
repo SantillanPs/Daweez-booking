@@ -23,6 +23,15 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-29g',
+    changes: [
+      {
+        where: 'Front desk → the bill',
+        what: ["A bill can now have more than one discount, and each one can say what it is for, like Senior citizen or PWD. They sit on one line, Less: discount, with how many there are and what they take off together. Tap it to see each one, change it, take it off, or add another. Each discount prints on the bill on its own row with what it is for."],
+      },
+    ],
+  },
+  {
     id: '2026-10-29f',
     changes: [
       {

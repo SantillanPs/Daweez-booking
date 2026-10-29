@@ -59,6 +59,20 @@ export function splitDiscount(
     rates: getRateConfig(),
   }).stayTotal)
   const shares = allocatePayment(costs, Math.round(discount.value))
-  units.forEach((u, i) => { out[u.id] = { type: 'flat', value: shares[i] } })
+  units.forEach((u, i) => { out[u.id] = { type: 'flat', value: shares[i], note: discount.note } })
   return out
+}
+
+/**
+ * Several discounts on one bill (2026-10-29): each is shared out as above, and every unit keeps the
+ * whole list in the same order — a unit whose share of a flat amount is 0 still holds its place, so
+ * the bill can join the rooms' rows of the same discount. `undefined` stays `undefined`.
+ */
+export function splitDiscounts(
+  list: AppliedDiscount[] | undefined,
+  units: DiscountUnit[],
+  o: { rooms: Room[]; venues: Venue[]; venueDayBlocks?: number; shortStayHours?: number | null },
+): Record<string, AppliedDiscount[] | undefined> {
+  const each = (list || []).map(d => splitDiscount(d, units, o))
+  return Object.fromEntries(units.map(u => [u.id, list ? each.map((byUnit, i) => byUnit[u.id] || list[i]) : undefined]))
 }

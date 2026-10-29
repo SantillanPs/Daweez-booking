@@ -69,7 +69,7 @@ export interface DashboardDataContextValue {
     guestNationality?: string
     guestAddress?: string
     birthdate?: string
-    appliedDiscount?: AppliedDiscount
+    appliedDiscount?: AppliedDiscount | AppliedDiscount[]
     earlyCheckInHours?: number
     lateCheckOutHours?: number
     venueDayBlocks?: number

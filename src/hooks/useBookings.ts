@@ -243,7 +243,7 @@ export function useBookings() {
     downpaymentPaid?: number; balanceDue?: number; securityDeposit?: number
     breakfastIncluded?: boolean; contractRateOverride?: number
     guestGender?: string; guestNationality?: string; guestAddress?: string; birthdate?: string
-    appliedDiscount?: AppliedDiscount
+    appliedDiscount?: AppliedDiscount | AppliedDiscount[]
     earlyCheckInHours?: number; lateCheckOutHours?: number; venueDayBlocks?: number
     notes?: string; preparedBy?: string; breakfastDays?: string[]
     referenceNumber?: string; registeredOn?: string; paymentRecords?: PaymentRecord[]; agreedDeposit?: number

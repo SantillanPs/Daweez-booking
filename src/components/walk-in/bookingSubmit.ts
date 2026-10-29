@@ -4,7 +4,7 @@ import { recordBookingPayment } from './bookingPayment'
 import { BookingSubmitParams, BookingSubmitResult } from './bookingSubmitTypes'
 import { editedMoney } from './bookingEditMoney'
 import { generateUUID } from '../../utils/helpers'
-import { splitDiscount } from './discountSplit'
+import { splitDiscounts } from './discountSplit'
 import { unitOfLine } from '../../utils/bookingGroup'
 
 // The param and result shapes live in `bookingSubmitTypes`, and the payment logic in
@@ -53,14 +53,13 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
   // nothing, so a removed discount or an emptied companion list has to be sent as an
   // empty one — otherwise taking a discount off in the form silently did nothing.
   const isEdit = !!p.editingBookings
-  const appliedDiscount = p.discountType === 'none'
-    ? (isEdit ? { type: 'flat' as const, value: 0 } : undefined)
-    : { type: p.discountType, value: p.discountValue }
+  const given = p.discounts.filter(d => d.value > 0)
+  const appliedDiscounts = given.length > 0 ? given : isEdit ? [] : undefined
   // Each unit is saved as its own row, so a flat amount off is SHARED OUT between them
   // (see `discountSplit`): handed whole to every row it was taken off once per unit.
   const bookedDeal = p.partnerDeals.find(d => d.id === p.formPartnerDealId)
-  const discounts = splitDiscount(
-    appliedDiscount,
+  const discounts = splitDiscounts(
+    appliedDiscounts,
     Object.entries(p.unitSelections)
       .filter(([id]) => p.formRoomIds.has(id) || p.formVenueIds.has(id))
       .map(([id, sel]) => ({ id, type: sel.type, checkIn: sel.checkIn, checkOut: sel.checkOut, contractRate: bookedDeal?.contracted_rates[unitOfLine(id)] || undefined, venueType: sel.type === 'venue' ? p.formVenueTypes[id] : undefined })),

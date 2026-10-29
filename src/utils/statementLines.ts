@@ -8,6 +8,7 @@ import { OrderSlip, slipNumber, slipsTotal } from './orderSlips'
 import { venueTypeOf, venueTypeTitle } from './venueTypes'
 import { airconWords } from './venueHours'
 import { breakfastMornings } from './breakfast'
+import { discountsOf, discountLabel } from './discounts'
 
 /**
  * The rows of the printed Guest Billing Statement, one per charge.
@@ -48,6 +49,8 @@ export interface StatementLineItem {
   nights?: number
   /** A room's breakfast row only: the room's number, so the rooms' rows can be joined into one. */
   room?: string
+  /** Discount rows only: its place in the bill's list of discounts, the same on every room. */
+  slot?: number
   /** Order slip rows only: `Paid` or `Not paid`, printed beside the slip's number. */
   status?: string
   /**
@@ -70,21 +73,23 @@ export interface StatementLineItem {
 export function mergeDiscountRows(items: StatementLineItem[]): StatementLineItem[] {
   const discounts = items.filter(i => i.band === 'discount')
   if (discounts.length < 2) return items
-  const total = discounts.reduce((sum, i) => sum + i.amount, 0)
-  const same = discounts.every(i => i.description === discounts[0].description)
-  const merged: StatementLineItem = {
-    ...discounts[0],
-    description: same ? discounts[0].description : 'Discount',
-    price: total,
-    amount: total,
-  }
-  // Where the first discount row stood — the table groups by band, so this is only its order.
-  let placed = false
+  // A bill can hold several discounts (2026-10-29): the rooms' rows are joined for each one.
+  const slotOf = (i: StatementLineItem) => i.slot ?? 0
+  const merged = new Map<number, StatementLineItem>()
+  discounts.forEach(i => {
+    const m = merged.get(slotOf(i))
+    if (!m) { merged.set(slotOf(i), { ...i }); return }
+    m.price += i.amount
+    m.amount += i.amount
+    if (m.description !== i.description) m.description = 'Discount'
+  })
+  // Where each discount's first row stood — the table groups by band, so this is only its order.
+  const placed = new Set<number>()
   return items.flatMap(i => {
     if (i.band !== 'discount') return [i]
-    if (placed) return []
-    placed = true
-    return [merged]
+    if (placed.has(slotOf(i))) return []
+    placed.add(slotOf(i))
+    return [merged.get(slotOf(i))!]
   })
 }
 
@@ -217,24 +222,25 @@ export function bookingLines(b: Booking, o: {
     nights: stayQty,
   })
 
-  // A real staff discount, once, as its own row.
-  if (pricing.appliedDiscountAmount > 0) {
+  // Each staff discount as its own row, with what it is for (several since 2026-10-29).
+  const discountList = discountsOf(b.applied_discount)
+  pricing.appliedDiscountLines.forEach((off, slot) => {
+    if (off <= 0) return
     items.push({
-      key: b.id + '-discount',
+      key: b.id + '-discount-' + slot,
       band: 'discount',
-      // Just `Discount` (Sebastian, 2026-10-06: *"remove the 'Staff' in the discount"*).
-      description: b.applied_discount?.type === 'percent'
-        ? 'Discount (' + b.applied_discount.value + '%)'
-        : 'Discount',
+      slot,
+      // Just `Discount` (Sebastian, 2026-10-06: *"remove the 'Staff' in the discount"*), or its note.
+      description: discountLabel(discountList[slot]),
       qty: '1',
       unit: 'PC',
-      price: -Math.round(pricing.appliedDiscountAmount),
+      price: -Math.round(off),
       discount: 0,
-      amount: -Math.round(pricing.appliedDiscountAmount),
-      // A value of 0, not null: `update_booking` keeps the stored discount when sent null.
-      remove: { applied_discount: { type: 'flat', value: 0 } },
+      amount: -Math.round(off),
+      // The list without it. Never null: `update_booking` keeps the stored discount when sent null.
+      remove: { applied_discount: discountList.filter((_, k) => k !== slot) },
     })
-  }
+  })
 
   // Breakfast is the room's own price once a night (2026-10-17) and prints as one line
   // under the Breakfast band — `Room 6 · Breakfast`, 2 × NIGHT — never per guest.
