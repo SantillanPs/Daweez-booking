@@ -55,7 +55,7 @@ export function WorkingBill({ booking, mark, onBooking, onClose }: { booking: Bo
           desk={{
             onPay: p => deskRef.current ? deskRef.current.onPay(p) : showToast('Open the booking again to take the payment.', 'error'),
             onFix: (key, patch) => deskRef.current?.onFix(key, patch),
-            onReceipt: n => deskRef.current?.onReceipt(n),
+            onReceipt: (n, start) => deskRef.current?.onReceipt(n, start),
           }}
           // A room swapped or taken off is a new row: the bill and the panel follow the booking.
           mark={mark}

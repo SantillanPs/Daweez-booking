@@ -453,12 +453,97 @@
 .bill-why { animation: bill-why 0.6s 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
 @media (prefers-reduced-motion: reduce) { .bill-why { animation: none; } }
 .bill-blank { animation: bill-breathe 2.4s ease-in-out infinite; }
+/* The bill's gold write-on lines are drawn as straight-edged dashes of one size, like the Paper
+   mock; the browser's own 1.5px dashed border blurs into round dots (Sebastian, 2026-10-29).
+   Typing in one, or opening it, turns it solid as before. */
+[data-sheet] .border-dashed[class*="border-b-[1.5px]"]:is(.border-gold-300, .border-gold-400) {
+  border-bottom-style: solid;
+  /* Drawn as the border itself, so it snaps to the screen's pixels and every line's dashes are the
+     same size wherever it sits (a background pattern blurred thicker on some lines, 2026-10-29). */
+  border-image: repeating-linear-gradient(90deg, #D0AB60 0 5px, transparent 5px 8px) 1;
+}
+[data-sheet] .border-dashed[class*="border-b-[1.5px]"]:is(.border-gold-300, .border-gold-400):is(:focus, :focus-within, [aria-expanded="true"]) {
+  border-bottom-color: #D0AB60;
+  border-image: none;
+}
+/* The bill written in ink (the Paper mock, Sebastian, 2026-10-29: "I want the billing statement editor
+   to be exactly like that"): a receipt slip torn along its foot, the money bar a tear-off slip pinned to
+   the bottom of the screen, which steps aside while the bill's own totals are in sight, and "Paid in
+   full" a rubber stamp. */
+.bill-tear-b {
+  -webkit-mask: radial-gradient(circle 3px at 6px 100%, #0000 98%, #000) bottom / 12px 100% repeat-x;
+          mask: radial-gradient(circle 3px at 6px 100%, #0000 98%, #000) bottom / 12px 100% repeat-x;
+}
+.bill-tear-t {
+  -webkit-mask: radial-gradient(circle 4px at 7px 0, #0000 97%, #000) -7px 0 / 14px 100% repeat-x;
+          mask: radial-gradient(circle 4px at 7px 0, #0000 97%, #000) -7px 0 / 14px 100% repeat-x;
+}
+.bill-slip { transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s; }
+.bill-slip.away { transform: translateY(24px) scale(0.96); opacity: 0; pointer-events: none; }
+@keyframes bill-paid { from { opacity: 0; transform: rotate(-6deg) scale(1.9); } }
+.bill-paid { transform: rotate(-6deg); animation: bill-paid 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes bill-bump { 50% { transform: scale(1.35); } }
+.bill-bump { display: inline-block; animation: bill-bump 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@media (prefers-reduced-motion: reduce) { .bill-slip { transition: none; } .bill-paid, .bill-bump { animation: none; } }
 /* The bill's rooms, in a bubble under the "4 rooms" tag. */
 @keyframes bill-pop { from { opacity: 0; transform: scale(0.6); } }
 .bill-pop { transform-origin: 20px -6px; animation: bill-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 /* Rooms on the bill (2026-10-24): a list or a month floats over the bill, which never makes room for it. */
 @keyframes br-float { from { opacity: 0; transform: translateY(-6px) scale(0.96); } }
 .br-float { animation: br-float 0.26s cubic-bezier(0.16, 1, 0.3, 1) both; }
+/* Snappy (Sebastian, 2026-10-30, on the Paper mock: "add microinteractions and keep them fast and
+   snappy"): on the bill every tap answers within a tenth of a second and nothing moves for longer
+   than a fifth of one. `.bill-snap` is the bill's own box, so the floating boxes inside it and its
+   money slip follow too. */
+.bill-snap { --snap: cubic-bezier(0.2, 0.9, 0.3, 1.15); }
+.bill-snap :is(button, label, input, span, svg, b, i, em) { transition-duration: 0.14s; transition-timing-function: var(--snap); }
+.bill-snap button { transition-property: color, background-color, border-color, box-shadow, opacity, transform, scale, gap; }
+.bill-snap button:not([class*="active:scale"]):active { scale: 0.92; transition-duration: 0.06s; }
+.bill-snap button[class*="w-full"]:not([class*="active:scale"]):active { scale: 0.98; }
+.bill-snap button:active { transition-duration: 0.06s; }
+.bill-snap .br-float { animation: br-float 0.14s var(--snap) both; }
+@keyframes br-out { to { opacity: 0; transform: translateY(-3px) scale(0.97); } }
+.br-out { animation: br-out 0.09s ease-in both; pointer-events: none; }
+.bill-snap .bw-rise { animation-duration: 0.16s; animation-timing-function: var(--snap); animation-delay: calc(var(--i, 0) * 20ms); }
+.bill-snap .bill-bump { animation-duration: 0.16s; animation-timing-function: var(--snap); }
+.bill-snap .bill-paid { animation-duration: 0.2s; }
+.bill-snap .bill-ink, .bill-snap .bill-ink > td { animation-duration: 0.3s; }
+.bill-snap .bill-slip { transition: transform 0.18s var(--snap), opacity 0.12s; }
+.bill-snap .br-sw, .bill-snap .br-sw::after { transition-duration: 0.14s; }
+@keyframes bill-roll { from { transform: translateY(40%); opacity: 0.3; } }
+.bill-roll { display: inline-block; animation: bill-roll 0.14s cubic-bezier(0.2, 0.9, 0.3, 1.15); }
+@keyframes bill-punch { 50% { transform: scale(1.12); } }
+.bill-punch { display: inline-block; animation: bill-punch 0.12s cubic-bezier(0.2, 0.9, 0.3, 1.15); }
+@keyframes bill-land { from { background-color: #F5EAD1; } }
+.bill-land { animation: bill-land 0.3s ease-out; }
+.bill-land > span:last-child { animation: bill-punch 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.15); }
+@keyframes bill-draw { from { stroke-dashoffset: 24; } }
+.bill-snap button:is(:hover, :focus-visible) > svg.lucide-check path { stroke-dasharray: 24; animation: bill-draw 0.16s ease-out; }
+/* The charges table answers too (comment on the mock, 2026-10-30: "what about here?"): a room's row
+   washes gold under the pointer, its × shows only then and slides away when pressed. */
+.bill-snap tr.group\/row > td { transition: background-color 0.12s; }
+.bill-snap tr.group\/row:hover > td { background-color: rgba(245, 234, 209, 0.45); }
+@keyframes bill-going { to { opacity: 0; transform: translateX(12px); } }
+.bill-going > td { animation: bill-going 0.16s ease-in both; }
+/* Every blank on the bill (the guest's lines, the payment, a charge, a discount, a room's price) keeps
+   its dashes while a solid line draws over them from the left as it is written on (the snappy mock,
+   2026-10-30). A background, so it works on inputs, which cannot carry ::after. */
+.bill-snap :is(input[class*="focus:border-solid"], label[class*="focus-within:border-solid"]) { background-image: linear-gradient(#D0AB60, #D0AB60); background-repeat: no-repeat; background-origin: border-box; background-position: left bottom; background-size: 0 1.5px; transition: background-size 0.16s var(--snap), background-color 0.14s; }
+.bill-snap input[class*="focus:border-solid"]:focus, .bill-snap label[class*="focus-within:border-solid"]:focus-within { background-size: 100% 1.5px; border-bottom-style: dashed; }
+/* On the sheet the dashes are a border-image that the rule above it took off on focus, so the line
+   jumped solid at once; here they stay, and the drawn line shows through their gaps. */
+.bill-snap [data-sheet] input.border-dashed[class*="border-b-[1.5px]"][class*="focus:border-solid"]:focus,
+.bill-snap [data-sheet] label.border-dashed[class*="border-b-[1.5px]"][class*="focus-within:border-solid"]:focus-within { border-bottom-style: solid; border-image: repeating-linear-gradient(90deg, #D0AB60 0 5px, transparent 5px 8px) 1; }
+/* Every + on the bill turns a quarter as it is pointed at, and the breakfast cup hops quicker. */
+.bill-snap button:hover > svg.lucide-plus { transform: rotate(90deg); }
+.bill-snap button:hover > svg.lucide-coffee { animation-duration: 0.22s; }
+@media (prefers-reduced-motion: reduce) {
+  .br-out, .bill-roll, .bill-punch, .bill-land, .bill-land > span:last-child, .bill-going > td { animation: none; }
+  .bill-snap button:is(:hover, :focus-visible) > svg.lucide-check path { animation: none; }
+  .bill-snap button:active { scale: none; }
+  .bill-snap button:hover > svg.lucide-plus { transform: none; }
+  .bill-snap :is(input[class*="focus:border-solid"], label[class*="focus-within:border-solid"]) { transition: none; }
+}
 .br-sw { flex: none; position: relative; width: 28px; height: 16px; border-radius: 999px; background: #E3DDD0; transition: background-color 0.2s; }
 .br-sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1); }
 [aria-checked="true"] > .br-sw { background: #1C1C1C; }

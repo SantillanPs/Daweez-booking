@@ -23,6 +23,24 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-30',
+    changes: [
+      {
+        where: 'Front desk → the bill',
+        what: [
+          'The bill on screen now looks like the printed paper. What you can change is underlined in gold, payments are in green and discounts in red.',
+          'Discounts and payments each sit on one line with how many there are. Tap the line to see each one. The small + beside it adds another.',
+          'Room, Breakfast and Charge are on one line under the rows.',
+          'Each payment has a small receipt button. Tap it to see the receipt and print or email it from there.',
+          'While you scroll the bill, the money stays pinned at the bottom of the screen.',
+          'Pressing + Discount again now closes the discount instead of adding another one.',
+          'The bill answers your taps more quickly: boxes open and close in a blink, the money changes straight away, and a room taken off slides away.',
+          'The bill saves itself 5 seconds after you start changing something, or as soon as you close it.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-29g',
     changes: [
       {

@@ -33,12 +33,30 @@ export function Floating({ at, sheet, right, width, label, nested, onClose, chil
       const a = at().getBoundingClientRect(), s = sheet.getBoundingClientRect(), h = el.offsetHeight
       const up = a.bottom + 6 + h > s.bottom - 8 && a.top - h - 6 > s.top + 8
       const left = Math.min(Math.max(8, (right ? a.right - width : a.left) - s.left), s.width - width - 8)
-      setPos({ left, top: up ? a.top - s.top - h - 6 : a.bottom - s.top + 6, up })
+      const top = up ? a.top - s.top - h - 6 : a.bottom - s.top + 6
+      // Placed again on every draw of the bill; left where it is, it draws nothing more.
+      setPos(p => p && p.left === left && p.top === top && p.up === up ? p : { left, top, up })
     }
     place()
     addEventListener('resize', place)
     return () => removeEventListener('resize', place)
   }, [at, sheet, right, width, children])
+  // Put away, it shrinks back for a tenth of a second instead of vanishing (Sebastian, 2026-10-30:
+  // "keep them fast and snappy"): a lifeless copy plays the way out, so nothing waits on it.
+  // Made as the box goes, in the same frame, so it never blinks out first.
+  useLayoutEffect(() => {
+    const el = box.current, parent = el?.parentElement
+    return () => {
+      if (!el || !parent || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      const ghost = el.cloneNode(true) as HTMLElement
+      ghost.classList.remove('br-float'); ghost.classList.add('br-out')
+      ghost.removeAttribute('role'); ghost.setAttribute('aria-hidden', 'true'); ghost.inert = true
+      parent.appendChild(ghost)
+      setTimeout(() => ghost.remove(), 90)
+      // Still in the page means it was not put away (React's check run in development): no copy.
+      requestAnimationFrame(() => { if (el.isConnected) ghost.remove() })
+    }
+  }, [])
   // Opened below the edge of the screen: the bill glides up just enough to show all of it.
   useEffect(() => { if (pos) box.current?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }) }, [!!pos]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -60,14 +78,14 @@ export function Floating({ at, sheet, right, width, label, nested, onClose, chil
   return createPortal(
     <div ref={box} role="dialog" aria-label={label} data-screen data-nested={nested || undefined}
       style={{ width, '--x': (pos?.left ?? 0) + 'px', '--y': (pos?.top ?? 0) + 'px' } as React.CSSProperties}
-      className={(pos ? '' : 'invisible ') + (width ? '' : 'w-max max-w-[calc(100%-16px)] ') + (pos?.up ? (right ? 'origin-bottom-right' : 'origin-bottom-left') : right ? 'origin-top-right' : 'origin-top-left') + ' left-[var(--x)] top-[var(--y)] br-float print:hidden absolute z-30 p-1.5 rounded-xl bg-card shadow-[0_14px_34px_-12px_rgba(60,45,15,0.32),inset_0_0_0_1.5px_#F5EAD1] max-h-80 overflow-y-auto'}>
+      className={(pos ? '' : 'invisible ') + (width ? '' : 'w-max max-w-[calc(100%-16px)] ') + (pos?.up ? (right ? 'origin-bottom-right' : 'origin-bottom-left') : right ? 'origin-top-right' : 'origin-top-left') + ' left-[var(--x)] top-[var(--y)] br-float print:hidden absolute z-30 p-1.5 rounded-[3px] bg-paper-50 border-[1.5px] border-ink-900 shadow-[0_10px_24px_-14px_rgba(28,28,28,0.35)] max-h-80 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] [scrollbar-width:thin]'}>
       {children}
     </div>,
     sheet,
   )
 }
 
-const LI = 'w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-left text-[11.5px] font-semibold text-ink-900 whitespace-nowrap cursor-pointer hover:bg-gold-100 focus-visible:bg-gold-100 focus-visible:outline-none active:scale-[0.98] transition-[background-color,transform] bw-rise'
+const LI = 'w-full flex items-center gap-2 px-2 py-[7px] border-b border-dotted border-ink-200 last:border-b-0 text-left text-[11.5px] font-semibold text-ink-900 whitespace-nowrap cursor-pointer hover:text-gold-800 focus-visible:text-gold-800 focus-visible:outline-none active:scale-[0.98] transition-[background-color,transform] bw-rise'
 const AMT = 'ml-auto font-mono text-[10.5px] font-medium text-ink-700'
 const peso = (n: number) => '₱' + Math.round(n).toLocaleString()
 
@@ -83,7 +101,7 @@ export function UnitList({ options, adding, onPick }: { options: UnitOption[]; a
         <React.Fragment key={o.id}>
           {adding && i === firstVenue && <p className="px-2 pt-2 pb-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-muted">Venues</p>}
           <button type="button" onClick={() => onPick(o.id)} style={{ '--i': i } as React.CSSProperties} className={LI + (o.taken ? ' text-muted' : '')}>
-            {o.label}
+            <span className="min-w-0 truncate">{o.label}</span>
             {o.mine
               ? <span className="px-1.5 py-px rounded bg-ink-900 text-[9.5px] font-bold text-white">On this bill</span>
               : o.taken
@@ -91,7 +109,7 @@ export function UnitList({ options, adding, onPick }: { options: UnitOption[]; a
               : <span className={'px-1.5 py-px rounded text-[9.5px] font-bold ' + (o.diff > 0 ? 'bg-gold-100 text-gold-800' : o.diff < 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-ink-100 text-muted')}>
                 {o.diff === 0 ? 'Same price' : (o.diff > 0 ? '+' : '−') + peso(Math.abs(o.diff))}
               </span>}
-            <span className={AMT + (o.taken ? ' !text-muted' : '')}>{peso(o.rate)} × {o.count}</span>
+            <span className={AMT + ' shrink-0' + (o.taken ? ' !text-muted' : '')}>{peso(o.rate)} × {o.count}</span>
           </button>
         </React.Fragment>
       ))}

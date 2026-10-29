@@ -15,11 +15,13 @@ interface PrintPaymentReceiptModalProps {
   card?: boolean
   /** Every booking this payment covered, when it covered more than one — see `PaymentReceiptDocument`. */
   covered?: Booking[]
+  /** From a bill's receipt slip: Print prints at once, Email opens with its box open. */
+  start?: 'print' | 'email'
 }
 
 // Controller for the printable payment receipt: hands the booking + the one
 // payment record to the presentational <PaymentReceiptDocument />.
-export function PrintPaymentReceiptModal({ booking, record, rooms, venues, onClose, embedded = false, covered, card = false }: PrintPaymentReceiptModalProps) {
+export function PrintPaymentReceiptModal({ booking, record, rooms, venues, onClose, embedded = false, covered, card = false, start }: PrintPaymentReceiptModalProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -31,6 +33,8 @@ export function PrintPaymentReceiptModal({ booking, record, rooms, venues, onClo
   // The hotel prints receipts on a 58 mm thermal roll; `useSlipPage` sizes the page.
   useSlipPage()
   const handlePrint = () => window.print()
+  // Print on the slip is the whole errand: the receipt is drawn, then the print window opens.
+  useEffect(() => { if (start !== 'print') return; const t = setTimeout(() => window.print(), 350); return () => clearTimeout(t) }, [start])
 
   const doc = (
     <PaymentReceiptDocument
@@ -43,6 +47,7 @@ export function PrintPaymentReceiptModal({ booking, record, rooms, venues, onClo
       embedded={embedded}
       covered={covered}
       card={card}
+      startEmail={start === 'email'}
     />
   )
 

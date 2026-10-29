@@ -1,4 +1,6 @@
 import { Booking, Room, Venue, PartnerDeal } from '../types/booking'
+import { normalizeVenueId } from './helpers'
+import { stayUnitsLabel } from './roomNumbers'
 import { amountToPayNow } from './bookingMoney'
 import { OrderSlip } from './orderSlips'
 import { paymentShare } from '../components/walk-in/bookingPayment'
@@ -68,7 +70,7 @@ export interface Statement {
   companyAddress: string
   companyContact: string
   companyTin: string
-  /** `7, 9` when the bill covers several rooms booked together; empty for one room. */
+  /** `Rooms 7, 9 · Gazebo` when the bill covers several rooms or venues booked together; empty for one. */
   roomsLabel: string
 }
 
@@ -155,7 +157,11 @@ export function buildStatement(o: StatementInput): Statement {
     .map(b => rooms.find(r => r.id === b.room_id)?.room_number)
     .filter((n): n is number => typeof n === 'number')
     .sort((a, b) => a - b)
-  const roomsLabel = relatedBookings.length > 1 ? roomNumbers.join(', ') : ''
+  const venueNames = relatedBookings
+    .filter(b => !b.room_id && b.venue_id)
+    .map(b => venues.find(v => v.id === normalizeVenueId(b.venue_id || ''))?.name)
+    .filter((n): n is string => !!n)
+  const roomsLabel = relatedBookings.length > 1 ? stayUnitsLabel(roomNumbers, venueNames) : ''
 
   const invoiceNumber = primaryBooking.invoice_number || (
     primaryBooking.check_in.substring(0, 7).replace('-', '') + '-PREVIEW'

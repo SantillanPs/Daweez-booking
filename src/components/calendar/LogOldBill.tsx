@@ -11,7 +11,7 @@ import { paymentMethodLabel } from '../../utils/paymentMethod'
 import { lastReceptionist, rememberReceptionist, staffNamesOf } from '../../utils/receptionists'
 import { StatementShell, BrandHeader, SectionName } from '../billing/StatementShell'
 import { StatementChargesTable } from '../billing/StatementChargesTable'
-import { AddCharge, WritePayment } from '../billing/BillDesk'
+import { ADD, AddCharge, WritePayment } from '../billing/BillDesk'
 import { want } from '../billing/want'
 import { PayRow } from '../billing/FixPayment'
 import { randomUUID } from '../../utils/helpers'
@@ -244,7 +244,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
 
   return createPortal(
     <div className="fixed inset-0 z-[60] p-3 sm:p-4 bg-slate-900/50 overflow-y-auto bw-dim">
-      <div ref={setSheetEl} className="relative bw-eject">
+      <div ref={setSheetEl} className="relative bw-eject bill-snap">
         <StatementShell label="Log old booking" invoiceNumber="copied from the paper" onClose={onClose}>
           <BrandHeader>
             <span className={label}>Paper no.</span>
@@ -347,7 +347,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
                 // A room never priced asks for its price right here, as the paper form does
                 // (Sebastian, 2026-10-23: "where's breakfast?" — it was hidden for such a room).
                 if (pricing === id) return (
-                  <span key={id} className="shrink-0 flex items-center gap-1.5 px-2 rounded-md border-[1.5px] border-gold-400 bg-gold-100 text-[11px] font-bold text-gold-800 bw-rise">
+                  <span key={id} className="shrink-0 flex items-center gap-1.5 px-2.5 first:pl-0 text-[11px] font-bold text-gold-800 bw-rise">
                     <Coffee aria-hidden="true" className="w-3.5 h-3.5" />{name}
                     <PriceBox className="h-7 text-[12px]" label={null} onBack={() => setPricing(null)}
                       onSave={price => {
@@ -363,7 +363,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
                   // Breakfast waits beside "Add a charge" and is written onto the bill when tapped
                   // (the mock: the switch on a greyed row "looks" wrong).
                   <button key={id} type="button" onClick={() => { if (!priced) { setPricing(id); return } setBreakfast(b => [...b, id]); setRemoved(null) }}
-                    className="group bill-blank shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-md border-[1.5px] border-dashed border-gold-300 bg-paper-50 text-[11px] font-bold text-gold-800 hover:bg-gold-100 hover:border-gold-400 active:scale-[0.98] transition-[background-color,border-color,transform] cursor-pointer">
+                    className={ADD}>
                     <Coffee aria-hidden="true" className="w-3.5 h-3.5 group-hover:[animation:bk-hop_0.5s_cubic-bezier(0.34,1.56,0.64,1)]" />
                     {name}
                     <span className="font-mono text-[10px] font-semibold text-muted">{priced ? money(roomBreakfastPrice(room)) + (isShort ? '' : ' a night') : 'Set price'}</span>
@@ -376,38 +376,39 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
           {/* Always two columns, like the bill (card k144: A5 never reaches `sm`). */}
           <div className="grid grid-cols-[1fr_236px] gap-6 items-start">
             <div />
-            <div className="relative flex flex-col gap-0.5">
+            <div className="relative flex flex-col gap-[3px]">
               <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(subTotal)}</span></div>
-              <p className={label}>Less: payments received</p>
-              {paid.length > 0 && (
-                <div className="border-t border-ink-200">
-                  {paid.map(p => (
-                    <div key={p.id} className="bill-ink">
-                      <PayRow purpose={<>{p.purpose}
-                        <button type="button" onClick={() => setPaid(ps => ps.filter(x => x.id !== p.id))} aria-label={'Take the ' + p.purpose + ' payment off'}
-                          className="ml-0.5 p-0.5 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button></>}
-                        method={paymentMethodLabel(p.method)} amount={'−' + money(p.amount)} under={shortDay(p.date)} />
-                    </div>
-                  ))}
+              {/* The bill written in ink, like the one bill (the Paper mock, Sebastian, 2026-10-29): the
+                  payments are one ledger line with their amount in green, each one under it, and the "+"
+                  that writes one hangs in the margin beside it. */}
+              <div className="relative">
+                {first && (
+                  <WritePayment key={paid.length} sheet={sheetEl} open={writing} onOpen={setWriting} gone={!(due > 0)} paidOn={first.checkIn}
+                    onPay={p => setPaid(ps => [...ps, { id: 'rcpt-' + Date.now(), ...p }])} />
+                )}
+                <div className="flex items-baseline py-[3px] border-b border-dotted border-ink-200 text-[10px] font-medium text-ink-900">
+                  <span className="flex-1">Less: payments{paid.length > 0 && <span key={paid.length} className="ml-1 text-muted bill-bump">({paid.length})</span>}</span>
+                  <span key={paidTotal} className={'w-[62px] text-right font-mono text-[11.5px] font-bold bw-rise ' + (paidTotal > 0 ? 'text-emerald-700' : 'text-muted')}>{paidTotal > 0 ? '−' + money(paidTotal) : '—'}</span>
                 </div>
+              </div>
+              {paid.map(p => (
+                <div key={p.id} className="bill-ink">
+                  <PayRow purpose={<>{p.purpose}
+                    <button type="button" onClick={() => setPaid(ps => ps.filter(x => x.id !== p.id))} aria-label={'Take the ' + p.purpose + ' payment off'}
+                      className="ml-0.5 p-0.5 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button></>}
+                    method={paymentMethodLabel(p.method).replace('Bank transfer', 'Bank')} amount={'−' + money(p.amount)} under={shortDay(p.date)} />
+                </div>
+              ))}
+              {paidUp && (
+                <span className="bill-paid self-end mt-1.5 mb-0.5 px-[9px] py-0.5 border-2 border-emerald-700 rounded text-[11px] font-extrabold uppercase tracking-[0.1em] text-emerald-700">✓ Paid in full</span>
               )}
-              {due > 0 && first && (
-                <WritePayment key={paid.length} sheet={sheetEl} open={writing} onOpen={setWriting} again={paid.length > 0} paidOn={first.checkIn}
-                  onPay={p => setPaid(ps => [...ps, { id: 'rcpt-' + Date.now(), ...p }])} />
-              )}
-              <div className={'mt-1 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 text-white transition-colors duration-500 ' + (paidUp ? 'bg-emerald-700' : 'bg-ink-900')}>
+              <div className="mt-1.5 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
                 <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">
                   Amount due
-                  {(paidUp || paidTotal > 0) && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px">{paidUp ? 'Paid in full' : 'Remaining balance'}</span>}
+                  {paidTotal > 0 && !paidUp && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px text-muted">Remaining balance</span>}
                 </span>
-                <span className="font-display text-[24px] font-extrabold leading-none"><CountPeso value={due} /></span>
+                <span className="font-display text-[24px] font-extrabold leading-none"><CountPeso roll value={due} /></span>
               </div>
-              {paidUp && (
-                <span aria-hidden="true"
-                  className="bill-stamp pointer-events-none absolute right-full mr-8 top-4 px-3 py-0.5 rounded-lg border-[3px] border-emerald-700 text-emerald-700 font-display text-[26px] font-extrabold tracking-[0.12em] opacity-85 mix-blend-multiply">
-                  PAID
-                </span>
-              )}
             </div>
           </div>
 

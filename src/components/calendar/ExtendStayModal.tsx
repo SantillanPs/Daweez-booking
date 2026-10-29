@@ -62,7 +62,7 @@ interface ExtendStayModalProps {
 export interface PanelDesk {
   onPay: (p: { amount: number; method: string; reference: string; date: string; purpose: string }) => Promise<void>
   onFix: (key: string, patch: PaymentPatch) => Promise<void>
-  onReceipt: (receipt: string) => void
+  onReceipt: (receipt: string, start?: 'print' | 'email') => void
 }
 
 const fmtShort = (d: string) => (d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—')
@@ -195,6 +195,7 @@ export function ExtendStayModal({
   const [receiptRef, setReceiptRef] = useState('')
   const [receiptFor, setReceiptFor] = useState<PaymentRecord | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
+  const [receiptStart, setReceiptStart] = useState<'print' | 'email' | undefined>()
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [trySave, setTrySave] = useState(false)
   // The step just finished, said over the panel for a moment.
@@ -575,6 +576,7 @@ export function ExtendStayModal({
       if (!written) {
         await sealSeen
         setReceiptFor(rec)
+        setReceiptStart(undefined)
         setShowReceipt(true)
         // Dismissing the receipt closes this whole panel only when the stay has begun and this
         // was the first money recorded: there the payment was the last errand.
@@ -633,9 +635,9 @@ export function ExtendStayModal({
     deskRef.current = {
       onPay: p => handleAddReceipt(p),
       onFix: (key, patch) => fixPayment(key, patch),
-      onReceipt: number => {
+      onReceipt: (number, start) => {
         const rec = receiptRecords.find(x => x.receipt_number === number)
-        if (rec) { setReceiptFor(rec); setShowReceipt(true) }
+        if (rec) { setReceiptFor(rec); setReceiptStart(start); setShowReceipt(true) }
       },
     }
   })
@@ -983,6 +985,7 @@ export function ExtendStayModal({
           /* Every room this payment covered, so a receipt found from Room 7 names Rooms 4–10 and its
              figures are the money that was actually taken (2026-09-30). */
           covered={coveredBookings[receiptFor.receipt_number || '']}
+          start={receiptStart}
           /* The receipt for a payment just taken is the end of the errand: closing
              it closes the whole panel, so the desk is back at the calendar instead of
              holding a booking they have finished with. */

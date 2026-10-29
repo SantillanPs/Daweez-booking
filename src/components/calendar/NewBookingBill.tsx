@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Building2, Check, ChevronDown, Coffee, Plus, Tag, X } from 'lucide-react'
@@ -16,6 +16,7 @@ import { paymentMethodLabel } from '../../utils/paymentMethod'
 import { getSlipsByBooking, OrderSlip } from '../../utils/orderSlips'
 import { clearStayHours } from '../../utils/db'
 import { groupOf, unitOfLine } from '../../utils/bookingGroup'
+import { stayUnitsLabel } from '../../utils/roomNumbers'
 import { guestEmailOf } from '../../utils/emailDocument'
 import { lastReceptionist, rememberReceptionist, staffNamesOf } from '../../utils/receptionists'
 import { getInstitutions, insertInstitution } from '../../utils/institutions'
@@ -26,7 +27,7 @@ import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability
 import { venueHoursOf } from '../../utils/venueHours'
 import { getRateConfig } from '../../utils/rateConfig'
 import { withMoneyOf, holdsMoney } from '../../utils/roomTakenOff'
-import { AddCharge, PayInput, WritePayment } from '../billing/BillDesk'
+import { ADD, AddCharge, Gut, PayInput, WritePayment } from '../billing/BillDesk'
 import { useLateFocus } from '../billing/want'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
 import { FixPayment, PayRow } from '../billing/FixPayment'
@@ -55,6 +56,7 @@ type Extras = Record<ExtraKey, number>
 const NO_EXTRAS: Extras = { extraFoamCount: 0, extraPillowCount: 0, extraBlanketCount: 0, extraTowelCount: 0 }
 
 const money = (n: number) => '₱' + Math.round(n).toLocaleString()
+const shortWay = (m: string) => (m === 'Bank transfer' ? 'Bank' : m)
 const dayOf = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
 const sortUnits = (l: [string, Sel][]) => [...l].sort((a, b) => (a[1].type === 'room' ? 0 : 1) - (b[1].type === 'room' ? 0 : 1))
 const nextDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return dateToString(new Date(y, m - 1, d + 1)) }
@@ -97,7 +99,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   editing?: Booking[]
   /** The booking panel's own money handlers: write a payment, fix one, show its receipt. */
   desk?: {
-    onReceipt: (receipt: string) => void
+    onReceipt: (receipt: string, start?: 'print' | 'email') => void
     onPay: (p: PayInput) => Promise<void> | void
     onFix: (key: string, patch: PaymentPatch) => Promise<void> | void
   }
@@ -167,8 +169,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const [saving, setSaving] = useState(false)
   const nameBox = useRef<HTMLInputElement>(null)
   const sheet = useRef<HTMLDivElement>(null)
-  // The lists float inside the bill's own sheet, so they are drawn once it is there.
+  // The lists float inside the bill's own sheet, so they are drawn once it is there. One ref for
+  // the life of the bill: a new one each render set the sheet again and drew the bill twice a key.
   const [sheetEl, setSheetEl] = useState<HTMLDivElement | null>(null)
+  const sheetRef = useCallback((el: HTMLDivElement | null) => { sheet.current = el; setSheetEl(el) }, [])
   // **Rooms on the bill** (the mock, Sebastian, 2026-10-24): the rooms and venues are the bill's own
   // lines, each with its own dates and rate, swapped, added or taken off right here.
   const [units, setUnits] = useState<[string, Sel][]>(() => sortUnits(editing
@@ -252,7 +256,23 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const paidUp = received > 0 && due === 0
   // Folded payments open by themselves when one of them is the payment that was tapped.
   const [paysOpen, setPaysOpen] = useState(!!tapped)
+  const [discOpen, setDiscOpen] = useState(false)
+  // Counts the coupons put away with something on them, so the discount line flashes as it takes each in.
+  const [landed, setLanded] = useState(0)
   const markSeen = useRef(false)
+  const pays = editing ? statement?.payments || [] : []
+  const payCount = editing ? pays.length : paid ? 1 : 0
+  // The pinned money slip steps aside while the bill's own totals are in sight.
+  const scroller = useRef<HTMLDivElement>(null)
+  const totalsBox = useRef<HTMLDivElement>(null)
+  const [totalsSeen, setTotalsSeen] = useState(false)
+  useEffect(() => {
+    const el = totalsBox.current, root = scroller.current
+    if (!el || !root) return
+    const io = new IntersectionObserver(([e]) => setTotalsSeen(e.isIntersecting), { root, threshold: 0.35 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   const snapshot = (label: string) => setRemoved({ label, breakfast, extras, charges, discs })
   const unitOf = (key: string) => list.find(([id]) => key.startsWith('draft-' + id + '-'))?.[0]
@@ -536,18 +556,27 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const latest = useRef(handleBook)
   useEffect(() => { latest.current = handleBook })
   const [mark, setMark] = useState<'saving' | 'saved' | null>(null)
+  // What the top bar's "✓ Saved" stands for: a change made after it hides it until it is saved too.
+  const [markSig, setMarkSig] = useState(sig)
   const save = () => {
     if (!editing || clash || sig === savedSig.current) return queue.current
     savedSig.current = sig
-    setMark('saving')
+    setMark('saving'); setMarkSig(sig)
     return chain(async () => { await settle(); await latest.current(liveRows()); setMark('saved') })
   }
+  // Saved 5 seconds after the first change, or as the bill closes, whichever comes first (Sebastian,
+  // 2026-10-30: "The billing should save after it closes or 5 seconds after a staff is changing
+  // something"). Counted from the first change, so steady typing never keeps putting it off.
+  const saveNow = useRef(save)
+  useEffect(() => { saveNow.current = save })
+  const wait = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => {
-    if (!editing || clash || sig === savedSig.current) return
-    const t = setTimeout(() => void save(), 800)
-    return () => clearTimeout(t)
+    if (!editing || clash || sig === savedSig.current || wait.current) return
+    wait.current = setTimeout(() => { wait.current = undefined; void saveNow.current() }, 5000)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig])
+  // However the bill goes away (closed, or the panel's Booking), what is still waiting is saved.
+  useEffect(() => () => { clearTimeout(wait.current); void saveNow.current() }, [])
   // Money goes in behind whatever is still saving.
   const behind = (job: () => Promise<void> | void) => { void save(); void chain(async () => { await settle(); await job() }) }
   const close = () => { void save(); onClose() }
@@ -597,9 +626,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const at = e.currentTarget
     setPop(p => p && p.kind === kind && p.id === id ? null : { kind, id, at })
   }
-  const VAL = 'px-0.5 rounded-sm border-b-[1.5px] border-dashed border-gold-400 print:border-0 hover:bg-gold-100 aria-expanded:bg-gold-100 aria-expanded:border-solid active:scale-95 transition-[background-color,transform] cursor-pointer'
-  const CHEV = 'print:hidden w-3 h-3 text-gold-600 transition-transform duration-300 group-aria-expanded:rotate-180'
-  const BLANK = 'group w-full mt-1.5 mb-0.5 flex items-center gap-1.5 px-2 py-[5px] rounded-md border-[1.5px] border-dashed border-paper-200 text-[11px] font-bold text-gold-800 hover:border-gold-400 hover:bg-gold-100/40 aria-expanded:border-gold-400 aria-expanded:bg-gold-100 active:scale-[0.99] transition-[background-color,border-color,transform] cursor-pointer'
+  const VAL = 'px-0.5 rounded-none border-b-[1.5px] border-dashed border-gold-400 print:border-0 hover:bg-gold-100 aria-expanded:bg-gold-100 aria-expanded:border-solid active:scale-95 transition-[background-color,transform] cursor-pointer'
+  const CHEV = 'print:hidden w-3 h-3 text-gold-800 transition-transform duration-300 group-aria-expanded:rotate-180'
   const unRate = (id: string) => setRates(r => { const n = { ...r }; delete n[id]; return n })
 
   const renderLine = (it: StatementLineItem, cell: string): React.ReactNode | undefined => {
@@ -630,6 +658,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           <td className={cell + ' text-right font-mono font-bold'}>{money(amount)}</td>
         </tr>
       )
+    }
+    // The × slides its room's line away first, then takes it off (the snappy mock, 2026-10-30).
+    const slideOff = (x: HTMLElement, go: () => void) => {
+      const tr = x.closest('tr')
+      if (!tr || matchMedia('(prefers-reduced-motion: reduce)').matches) return go()
+      tr.classList.add('bill-going'); setTimeout(go, 160)
     }
     // How long it is: on a bill of one room or venue it is a tap that turns a day into hours and back.
     const lenCell = (id: string, words: React.ReactNode) => (
@@ -669,21 +703,21 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     return (
       <>
         {/* A line changed lands like ink, the same as a charge just written. */}
-        <tr key={id + s.checkIn + s.checkOut + it.amount} className={fresh === id ? 'bill-ink' : undefined}>
+        <tr key={id + s.checkIn + s.checkOut + it.amount} className={'group/row' + (fresh === id ? ' bill-ink' : '')}>
           <td className={cell + ' pl-0 text-left whitespace-normal'}>
             <button type="button" onClick={toggle('swap', id)} aria-expanded={isOpen('swap', id)} className={VAL + ' group inline-flex items-center gap-1 -ml-0.5'}>
               {name}{deal?.contracted_rates[unitOfLine(id)] && !rates[id] ? ' · corporate' : ''}<ChevronDown aria-hidden="true" className={CHEV} />
             </button>
             {list.length > 1 && (
-              <button type="button" onClick={() => takeOff(id, s)} aria-label={'Take ' + name + ' off the bill'}
-                className="print:hidden -my-1 ml-0.5 p-1 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer">
+              <button type="button" onClick={e => slideOff(e.currentTarget, () => takeOff(id, s))} aria-label={'Take ' + name + ' off the bill'}
+                className="print:hidden -my-1 ml-0.5 p-1 align-middle rounded text-muted opacity-50 mouse:opacity-0 mouse:group-hover/row:opacity-50 focus-visible:!opacity-100 hover:!opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer">
                 <X className="w-3 h-3" />
               </button>
             )}
             {/* Only the kind it is shows (the owner: "make it more contextual"); the others float under it. */}
             {kindList.length > 0 && (
               <button type="button" onClick={toggle('kind', id)} aria-expanded={isOpen('kind', id)} aria-label={name + ' type'}
-                className="group ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-px rounded-md bg-paper-100 text-[10px] font-bold text-ink-700 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">
+                className="group ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-px rounded-[3px] shadow-[inset_0_0_0_1px_#E5E5E5] text-[10px] font-bold text-ink-700 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">
                 {kindList.find(k => k.key === (kinds[id] || ''))?.label}<ChevronDown aria-hidden="true" className={CHEV} />
               </button>
             )}
@@ -696,7 +730,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             <button type="button" onClick={toggle('out', id)} aria-expanded={isOpen('out', id)} aria-label={name + ' check out'} className={VAL}>{shortDate(s.checkOut)}</button>
           </td>
           {lenCell(id, it.qty)}
-          <td className={cell + ' text-right font-mono font-bold'}>{money(it.amount)}</td>
+          <td className={cell + ' text-right font-mono font-bold'}><span className={fresh === id ? 'bill-roll' : undefined}>{money(it.amount)}</span></td>
         </tr>
         {it.key === lastRoomKey && (
           <>
@@ -707,11 +741,6 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                 </td>
               </tr>
             )}
-            <tr data-screen className="print:hidden">
-              <td colSpan={6} className="p-0">
-                <button type="button" onClick={toggle('add')} aria-expanded={isOpen('add')} className={BLANK}><Plus aria-hidden="true" className="w-3.5 h-3.5" /> Add a room or venue</button>
-              </td>
-            </tr>
           </>
         )}
       </>
@@ -730,7 +759,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     if (p.kind === 'swap' || p.kind === 'add') {
       const c = unitChoices(p.kind === 'swap' ? p.id : undefined)
       return (
-        <Floating key={p.kind + p.id} {...common} at={at} width={330} label={p.kind === 'add' ? 'Add a room or venue' : 'Swap ' + (s ? unitName(p.id, s) : '')}>
+        <Floating key={p.kind + p.id} {...common} at={at} label={p.kind === 'add' ? 'Add a room or venue' : 'Swap ' + (s ? unitName(p.id, s) : '')}>
           <UnitList options={c} adding={p.kind === 'add'} onPick={pickUnit} />
         </Floating>
       )
@@ -783,12 +812,17 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
         </TypeIn>
       </Floating>
     )
-    if (p.kind === 'disc') return (
-      <Floating key={p.kind} at={at} sheet={sheetEl} right label="Discount" onClose={() => { setPop(null); setDiscs(ds => ds.filter(d => d.v > 0)) }}>
-        <DiscountsPop discs={discs} offOf={offOf} onChange={setDiscs}
-          onDone={() => { setPop(null); setDiscs(ds => ds.filter(d => d.v > 0)) }} />
-      </Floating>
-    )
+    if (p.kind === 'disc') {
+      const i = Number(p.id)
+      const d = discs[i] || { pct: true, v: 0, note: '' }
+      const done = () => { setPop(null); if (d.v > 0) setLanded(n => n + 1); setDiscs(ds => ds.filter(x => x.v > 0)) }
+      return (
+        <Floating key={p.kind + p.id} at={at} sheet={sheetEl} right label="A discount" onClose={done}>
+          <DiscountPop disc={d} off={offOf(i)} onChange={n => setDiscs(ds => { const c = [...ds]; c[i] = n; return c })} onDone={done}
+            onNone={d.v > 0 ? () => { setPop(null); setDiscs(ds => ds.filter((x, k) => k !== i && x.v > 0)) } : undefined} />
+        </Floating>
+      )
+    }
     if (p.kind === 'staff') return (
       <Floating key={p.kind} {...common} at={at} label="Receptionist">
         <TypeIn upper value="" placeholder="NAME · ANNA" label="Receptionist's name"
@@ -815,15 +849,28 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       </Floating>
     )
   }
+  // "+ Discount" in the margin: a blank one on the end of the list, its coupon open under the line.
+  // Pressed again while its coupon is open, it puts the coupon away (Sebastian, 2026-10-29: "pressing
+  // discount twice doesn't close the discount").
+  const addDisc = (e: React.MouseEvent<HTMLElement>) => {
+    if (pop?.kind === 'disc') { setPop(null); if (discs.some((d, k) => k >= given.length && d.v > 0)) setLanded(n => n + 1); setDiscs(ds => ds.filter(d => d.v > 0)); return }
+    const at = e.currentTarget.parentElement as HTMLElement
+    setDiscs(ds => [...ds.filter(d => d.v > 0), { pct: true, v: 0, note: '' }])
+    setDiscOpen(true)
+    setPop({ kind: 'disc', id: String(given.length), at })
+  }
+  // The paper copy follows the saved booking, not each key typed: drawn again only once a change
+  // is saved (typing on the bill was slow, 2026-10-29).
+  const paperCopy = useMemo(() => ed && <PrintInvoiceModal booking={ed} rooms={rooms} venues={venues} bookingsList={bookings} onClose={() => {}} embedded />, [ed, rooms, venues, bookings])
   const book = ed ? '' : to ? 'Agency pays' : !paid ? 'No deposit' : paidUp ? 'Paid in full' : money(paid.amount) + ' deposit'
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] p-3 sm:p-4 bg-slate-900/50 overflow-y-auto bw-dim">
-      <div ref={el => { sheet.current = el; setSheetEl(el) }} className="relative bw-eject">
+    <div ref={scroller} className="fixed inset-0 z-[60] p-3 sm:p-4 bg-slate-900/50 overflow-y-auto bw-dim">
+      <div ref={sheetRef} className="relative bw-eject bill-snap">
         {floating()}
         <StatementShell label={(ed ? 'Billing statement' : 'New booking') + (to ? ' · agency' : '')} invoiceNumber={ed?.invoice_number || 'numbered when booked'} onClose={ed ? close : onClose}
           onBooking={ed && onBooking ? () => { void save(); onBooking() } : undefined}
-          status={mark && <span key={mark} aria-live="polite" className={'text-[11px] font-semibold bw-rise ' + (mark === 'saved' ? 'text-emerald-300' : 'text-white/60')}>{mark === 'saved' ? '✓ Saved' : 'Saving…'}</span>}
+          status={mark && (mark === 'saving' || sig === markSig) && <span key={mark} aria-live="polite" className={'text-[11px] font-semibold bw-rise ' + (mark === 'saved' ? 'text-emerald-300' : 'text-white/60')}>{mark === 'saved' ? '✓ Saved' : 'Saving…'}</span>}
           onPrint={ed ? () => { void save().then(settle).then(printA5) } : undefined}
           email={ed ? { kind: 'statement', number: ed.invoice_number || '', guestName: ed.guest_name, bookingId: ed.id, to: guestEmailOf(ed) } : undefined}
           paper={ed ? () => paperBox.current?.querySelector<HTMLElement>('[data-sheet]') ?? null : undefined}>
@@ -877,7 +924,14 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             <div>
               <SectionName>Stay</SectionName>
               {list.length === 0 && <p className="text-[11px] text-muted">Pick the room and the dates on the calendar first.</p>}
-              {list.map(([id, s]) => (
+              {/* Several rooms are named once, as the paper does; their rows below say what each is. */}
+              {list.length > 1 ? (
+                <p className="font-display text-[14.5px] font-bold text-ink-900 leading-tight">
+                  {stayUnitsLabel(
+                    list.filter(([, s]) => s.type === 'room').map(([id]) => rooms.find(r => r.id === unitOfLine(id))?.room_number).filter((n): n is number => typeof n === 'number'),
+                    list.filter(([, s]) => s.type === 'venue').map(([id, s]) => unitName(id, s)))}
+                </p>
+              ) : list.map(([id, s]) => (
                 <p key={id} className="font-display text-[14.5px] font-bold text-ink-900 leading-tight">{unitName(id, s)}</p>
               ))}
               {first && (
@@ -898,17 +952,11 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             </div>
           </div>
 
+          {/* The discounts are the totals' own ledger line, so the table stops at its charges and Room,
+              Breakfast and Charge sit right under the rooms (the Paper mock, 2026-10-29). The paper
+              still prints a row for each discount. */}
           {statement && (
-            <StatementChargesTable items={statement.lineItems} onRemove={removeLine} isNew={() => false} renderLine={renderLine}>
-              {bfRooms.length > 0 && bfLines.length === 0 && (
-                <tr data-screen className="print:hidden">
-                  <td colSpan={6} className="p-0">
-                    <button type="button" onClick={toggle('bf')} aria-expanded={isOpen('bf')} className={BLANK}>
-                      <Coffee aria-hidden="true" className="w-3.5 h-3.5 group-hover:[animation:bk-hop_0.5s_cubic-bezier(0.34,1.56,0.64,1)]" /> Breakfast
-                    </button>
-                  </td>
-                </tr>
-              )}
+            <StatementChargesTable items={to ? statement.lineItems : statement.lineItems.filter(l => l.band !== 'discount')} onRemove={removeLine} isNew={() => false} renderLine={renderLine}>
               {removed && (
                 <tr key={removed.label}>
                   <td colSpan={6} className="pt-1 text-[10.5px] font-semibold text-muted bw-rise">
@@ -917,105 +965,116 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                 </tr>
               )}
               <AddCharge sheet={sheetEl} onCharge={addCharge} cols={6}
+                beside={<>
+                  {list.length > 0 && <button type="button" onClick={toggle('add')} aria-expanded={isOpen('add')} aria-label="Add a room or venue" className={ADD}><Plus aria-hidden="true" className="w-3 h-3" strokeWidth={3} />Room</button>}
+                  {bfRooms.length > 0 && bfLines.length === 0 && (
+                    <button type="button" onClick={toggle('bf')} aria-expanded={isOpen('bf')} className={ADD}>
+                      <Coffee aria-hidden="true" className="w-3.5 h-3.5 group-hover:[animation:bk-hop_0.5s_cubic-bezier(0.34,1.56,0.64,1)]" />Breakfast
+                    </button>
+                  )}
+                </>}
                 // The form's room extras, a tap for each one more; an agency's stay has none.
                 presets={firstRoomId && !to ? EXTRAS.map(x => ({ label: x.label, price: x.price, onPick: () => { setExtras(e => ({ ...e, [x.key]: e[x.key] + 1 })); setRemoved(null) } })) : undefined} />
             </StatementChargesTable>
           )}
 
-          <div className="grid grid-cols-[1fr_236px] gap-6 items-start">
+          <div ref={totalsBox} className="grid grid-cols-[1fr_236px] gap-6 items-start">
             <div />
-            <div className="relative flex flex-col gap-0.5">
+            <div className="relative flex flex-col gap-[3px]">
               {(!to || desk) && (
                 <>
-                  {!to && <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(total + discOff)}</span></div>}
-                  {/* Every discount on one line (Sebastian, 2026-10-29, "apply C"): a count when there are
-                      several, and what they come to; what each is for shows once the line is opened. The
-                      line is a small coupon like the box it opens ("Apply A"), what it takes off on its stub. */}
-                  {to ? null : given.length > 0 ? (
-                    <button type="button" onClick={toggle('disc')} aria-expanded={isOpen('disc')} aria-label="Change the discounts"
-                      style={{ '--stub': COUPON_LINE_STUB + 'px', '--notch': '4px' } as React.CSSProperties}
-                      className="coupon-notch w-full my-0.5 flex items-stretch rounded-md bg-gold-100 text-left hover:bg-[#F0E1BF] aria-expanded:bg-[#F0E1BF] active:scale-[0.97] transition-[background-color,transform] duration-200 ease-[cubic-bezier(.34,1.56,.64,1)] cursor-pointer bw-rise">
-                      <span className="flex-1 min-w-0 px-2 py-1 text-[10px] font-bold text-gold-800">Less: discount
-                        {given.length > 1
-                          ? <b key={given.length} className="inline-grid place-items-center min-w-4 h-4 px-1 ml-1 rounded-full bg-ink-900 text-white text-[9.5px] font-bold align-[1px] [animation:bw-pop_.35s_cubic-bezier(.34,1.56,.64,1)_both]">{given.length}</b>
-                          : given[0].pct && <b className="ml-1 font-display font-extrabold">{given[0].v}%</b>}
-                      </span>
-                      <span className="shrink-0 grid place-items-center border-l-[1.5px] border-dashed border-gold-200 coupon-stub">
-                        <span key={discOff} className="font-mono text-[11.5px] font-bold text-danger-600 bw-rise">−₱{discOff.toLocaleString()}</span>
-                      </span>
-                    </button>
-                  ) : (
-                    <button type="button" onClick={toggle('disc')} aria-expanded={isOpen('disc')} className="self-start px-0.5 -ml-0.5 rounded text-[10.5px] font-bold text-gold-800 hover:underline aria-expanded:bg-gold-100 cursor-pointer">+ Discount</button>
+                  {/* The lines that add to the money hang a "+" in the margin beside them (Sebastian,
+                      2026-10-29, the Paper mock: "I don't like the buttons to have their own row of space").
+                      With no discount yet, its "+" waits beside the Sub-total. */}
+                  {!to && (
+                    <div className="relative flex justify-between gap-2.5">
+                      {given.length === 0 && <Gut name="Discount" onClick={addDisc} expanded={pop?.kind === 'disc' && Number(pop.id) >= given.length} />}
+                      <span className={label}>Sub-total</span><span key={total + discOff} className={figure + ' bill-roll'}>{money(total + discOff)}</span>
+                    </div>
                   )}
-                  <p className={label}>Less: payments received</p>
-                  {/* On the one bill each payment can be fixed where it stands, and its receipt printed.
-                      Paid in full, they fold to one line (Sebastian, 2026-10-25: "I want B"). */}
-                  {editing && desk && statement && statement.payments.length > 0 && (
-                    <div className="border-t border-ink-200">
-                      {paidUp && statement.payments.length > 1 && (
-                        <button type="button" onClick={() => setPaysOpen(o => !o)} aria-expanded={paysOpen}
-                          className="group w-full grid grid-cols-[minmax(0,1fr)_auto_12px] gap-x-1.5 items-center py-1.5 border-b border-ink-200 text-left hover:bg-paper-50 transition-colors cursor-pointer">
-                          <span className="text-[12.5px] font-bold text-ink-900">{statement.payments.length} payments
-                            <span className="ml-1 text-[11px] font-normal text-ink-700">{dayOf(statement.payments[0].paidAt)}{dayOf(statement.payments[0].paidAt) !== dayOf(statement.payments[statement.payments.length - 1].paidAt) && <> – {dayOf(statement.payments[statement.payments.length - 1].paidAt)}</>}</span>
-                          </span>
-                          <span className="font-mono text-[13px] font-bold text-ink-900">−{money(received)}</span>
-                          <ChevronDown aria-hidden="true" className="w-3 h-3 text-gold-800 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
+                  {/* Every discount is one ledger line that opens to each one, its note, its % and what it
+                      takes off in red; a tap on one opens its coupon (the Paper mock, 2026-10-29). */}
+                  {!to && given.length > 0 && (
+                    <>
+                      <div className="relative">
+                        <Gut name="Discount" onClick={addDisc} expanded={pop?.kind === 'disc' && Number(pop.id) >= given.length} />
+                        <button key={landed} type="button" onClick={() => setDiscOpen(o => !o)} aria-expanded={discOpen} aria-label="The discounts" className={LEDGER + (landed ? ' bill-land' : '')}>
+                          <span className="flex-1 flex items-center gap-1">Less: discount <span key={given.length} className="text-muted bill-bump">({given.length})</span><ChevronDown aria-hidden="true" className={FOLD} /></span>
+                          <span key={discOff} className="w-[62px] text-right font-mono text-[11.5px] font-bold text-danger-600 bw-rise">−{money(discOff)}</span>
                         </button>
-                      )}
-                      {(!paidUp || statement.payments.length < 2 || paysOpen) && statement.payments.map((x, i) => (
-                        // The payment tapped in Cash Flow is ringed in gold until the bill closes (Sebastian,
-                        // 2026-10-28, "apply B"), and brought into view once.
-                        <div key={x.key} className={'bw-rise' + (tapped && x.receipt === tapped ? ' bill-mark' : '')} style={{ '--i': i } as React.CSSProperties}
-                          ref={tapped && x.receipt === tapped ? el => { if (el && !markSeen.current) { markSeen.current = true; el.scrollIntoView({ block: 'center', behavior: 'smooth' }) } } : undefined}>
-                          <FixPayment p={x} sheet={sheetEl} onFix={patch => behind(() => desk.onFix(x.key, patch))} onReceipt={desk.onReceipt} />
-                        </div>
-                      ))}
-                    </div>
+                      </div>
+                      <Unfold open={discOpen}>
+                        {given.map((d, i) => (
+                          <button key={i} type="button" onClick={toggle('disc', String(i))} aria-expanded={isOpen('disc', String(i))} aria-label={'Change the ' + (d.note?.trim() || 'discount')}
+                            style={{ '--i': i } as React.CSSProperties}
+                            className="w-full grid grid-cols-[minmax(0,1fr)_auto_62px] gap-x-2 items-baseline py-1 pl-9 text-left aria-expanded:bg-gold-100 transition-colors cursor-pointer bw-rise">
+                            <b className="justify-self-start max-w-full truncate border-b-[1.5px] border-dashed border-gold-400 text-[10.5px] font-bold text-gold-800">{d.note?.trim() || 'Discount'}</b>
+                            <em className="not-italic font-display text-[10px] font-extrabold text-gold-800/60">{d.pct ? d.v + '%' : ''}</em>
+                            <i className="not-italic justify-self-center font-mono text-[11px] font-bold text-danger-600">−{money(offOf(i))}</i>
+                          </button>
+                        ))}
+                      </Unfold>
+                    </>
                   )}
-                  {editing && !desk && statement && statement.payments.length > 0 && (
-                    <div className="border-t border-ink-200">
-                      {statement.payments.map(x => (
-                        <PayRow key={x.key} purpose={x.purpose || '—'} method={paymentMethodLabel(x.method)} amount={'−' + money(x.amount)} under={dayOf(x.paidAt)} />
-                      ))}
-                    </div>
-                  )}
-                  {paid && (
-                    <div className="border-t border-ink-200 bill-ink">
-                      <PayRow purpose={<>{paid.purpose}
-                        <button type="button" onClick={() => setPaid(null)} aria-label={'Take the ' + paid.purpose + ' payment off'}
-                          className="ml-0.5 p-0.5 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button></>}
-                        method={paymentMethodLabel(paid.method)} amount={'−' + money(paid.amount)} under="Today" />
-                    </div>
-                  )}
-                  {editing && desk && due > 0 && (
-                    <WritePayment key={statement?.payments.length} sheet={sheetEl} open={writing} onOpen={o => { setWriting(o); if (o) void save() }} again={(statement?.payments.length || 0) > 0}
-                      // Deposit only until money is in, and never on a short stay; Full pay is what is still owed.
-                      fills={[...(statement?.payments.length || isShort ? [] : [{ label: 'Deposit', amount: Math.round(total / 2) }]), { label: 'Full pay', amount: due }]}
-                      onPay={p => behind(() => desk.onPay(p))} />
-                  )}
-                  {/* One payment at booking — what the guest hands over now. */}
-                  {!editing && !paid && total > 0 && (
-                    <WritePayment sheet={sheetEl} open={writing} onOpen={setWriting} again={false}
-                      fills={[{ label: 'Deposit', amount: Math.round(total / 2) }, { label: 'Full pay', amount: total }]}
-                      onPay={p => setPaid({ amount: p.amount, method: p.method, reference: p.reference, purpose: p.purpose })} />
+                  {/* Every payment is one ledger line too, its amount in green; it opens to each one. Writing
+                      one is the "+" beside it, gone once nothing is owed. A payment is never taken back on
+                      the bill: that stays on the booking panel (Sebastian, 2026-10-24). */}
+                  <div className="relative">
+                    {editing && desk && (
+                      <WritePayment key={pays.length} sheet={sheetEl} open={writing} onOpen={o => { setWriting(o); if (o) void save() }} gone={!(due > 0)}
+                        // Deposit only until money is in, and never on a short stay; Full pay is what is still owed.
+                        fills={[...(pays.length || isShort ? [] : [{ label: 'Deposit', amount: Math.round(total / 2) }]), { label: 'Full pay', amount: due }]}
+                        onPay={p => { setPaysOpen(true); behind(() => desk.onPay(p)) }} />
+                    )}
+                    {/* One payment at booking — what the guest hands over now. */}
+                    {!editing && (
+                      <WritePayment sheet={sheetEl} open={writing} onOpen={setWriting} gone={!!paid || !(total > 0)}
+                        fills={[{ label: 'Deposit', amount: Math.round(total / 2) }, { label: 'Full pay', amount: total }]}
+                        onPay={p => { setPaysOpen(true); setPaid({ amount: p.amount, method: p.method, reference: p.reference, purpose: p.purpose }) }} />
+                    )}
+                    <button type="button" onClick={() => setPaysOpen(o => !o)} aria-expanded={paysOpen} aria-label="The payments" className={LEDGER}>
+                      <span className="flex-1 flex items-center gap-1">Less: payments
+                        {payCount > 0 && <><span key={payCount} className="text-muted bill-bump">({payCount})</span><ChevronDown aria-hidden="true" className={FOLD} /></>}
+                      </span>
+                      <span key={received} className={'w-[62px] text-right font-mono text-[11.5px] font-bold bw-rise ' + (received > 0 ? 'text-emerald-700' : 'text-muted')}>{received > 0 ? '−' + money(received) : '—'}</span>
+                    </button>
+                  </div>
+                  <Unfold open={paysOpen && payCount > 0}>
+                    {editing && desk && pays.map((x, i) => (
+                      // The payment tapped in Cash Flow is ringed in gold until the bill closes (Sebastian,
+                      // 2026-10-28, "apply B"), and brought into view once.
+                      <div key={x.key} className={'bw-rise' + (tapped && x.receipt === tapped ? ' bill-mark' : '')} style={{ '--i': i } as React.CSSProperties}
+                        ref={tapped && x.receipt === tapped ? el => { if (el && !markSeen.current) { markSeen.current = true; el.scrollIntoView({ block: 'center', behavior: 'smooth' }) } } : undefined}>
+                        <FixPayment p={x} sheet={sheetEl} onFix={patch => behind(() => desk.onFix(x.key, patch))} onReceipt={desk.onReceipt} />
+                      </div>
+                    ))}
+                    {editing && !desk && pays.map(x => (
+                      <PayRow key={x.key} purpose={x.purpose || '—'} method={shortWay(paymentMethodLabel(x.method))} amount={'−' + money(x.amount)} under={dayOf(x.paidAt)} />
+                    ))}
+                    {!editing && paid && (
+                      <div className="bill-ink">
+                        <PayRow purpose={<>{paid.purpose}
+                          <button type="button" onClick={() => setPaid(null)} aria-label={'Take the ' + paid.purpose + ' payment off'}
+                            className="ml-0.5 p-0.5 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button></>}
+                          method={shortWay(paymentMethodLabel(paid.method))} amount={'−' + money(paid.amount)} under="Today" />
+                      </div>
+                    )}
+                  </Unfold>
+                  {paidUp && ed?.status !== 'cancelled' && (
+                    <span className="bill-paid self-end mt-1.5 mb-0.5 px-[9px] py-0.5 border-2 border-emerald-700 rounded text-[11px] font-extrabold uppercase tracking-[0.1em] text-emerald-700">✓ Paid in full</span>
                   )}
                 </>
               )}
-              <div className={'mt-1 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 text-white transition-colors duration-500 ' + (paidUp ? 'bg-emerald-700' : 'bg-ink-900')}>
+              <div className="mt-1.5 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
                 <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">
                   {to ? 'Total' : 'Amount due'}
-                  {received > 0 && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px">{paidUp ? 'Paid in full' : 'Remaining balance'}</span>}
+                  {received > 0 && !paidUp && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px text-muted">Remaining balance</span>}
                 </span>
-                <span className="font-display text-[24px] font-extrabold leading-none"><CountPeso value={to ? total : due} /></span>
+                <span className="font-display text-[24px] font-extrabold leading-none"><CountPeso roll value={to ? total : due} /></span>
               </div>
               {/* Nothing written and nobody else paying: said once, in blue, like the calendar's pill. */}
               {!to && received === 0 && !writing && <p className="mt-0.5 text-right text-[11px] font-bold text-sky-700 bw-rise">No deposit</p>}
-              {ed?.status === 'cancelled' ? <CancelledStamp booking={ed} /> : paidUp && (
-                <span aria-hidden="true"
-                  className="bill-stamp pointer-events-none absolute right-full mr-8 top-4 px-3 py-0.5 rounded-lg border-[3px] border-emerald-700 text-emerald-700 font-display text-[26px] font-extrabold tracking-[0.12em] opacity-85 mix-blend-multiply">
-                  PAID
-                </span>
-              )}
+              {ed?.status === 'cancelled' && <CancelledStamp booking={ed} />}
             </div>
           </div>
 
@@ -1055,12 +1114,27 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             </button>
           )}
         </StatementShell>
+        {/* The money, pinned to the bottom of the screen as a tear-off slip while the bill's own totals are
+            out of sight, and stepping aside once they are in sight, so it never shows twice (the Paper
+            mock, Sebastian, 2026-10-29). */}
+        {statement && (
+          <div aria-hidden={totalsSeen} className={'bill-slip bill-tear-t print:hidden sticky bottom-2.5 z-20 w-full max-w-xl mx-auto -mt-16 mb-2.5 flex items-center gap-3.5 pl-4 pr-3 pt-[13px] pb-[9px] rounded-b-md bg-paper-50 border-b-[1.5px] border-ink-900 text-ink-900' + (totalsSeen ? ' away' : '')}>
+            {!to && <SlipFigure name="Sub-total" value={money(total + discOff)} />}
+            {!to && discOff > 0 && <SlipFigure name="Discount" value={'−' + money(discOff)} tone="text-danger-600" />}
+            {received > 0 && <SlipFigure name="Paid" value={'−' + money(received)} tone="text-emerald-700" />}
+            <span className="flex-1" />
+            <div className="flex items-baseline gap-2 px-3 py-[5px] bg-card border-2 border-ink-900">
+              <span className="text-[9px] font-extrabold uppercase tracking-[0.1em]">{to ? 'Total' : 'Due'}</span>
+              <span className="font-display text-[20px] font-extrabold tabular-nums leading-none"><CountPeso roll value={to ? total : due} /></span>
+            </div>
+          </div>
+        )}
       </div>
       {/* The paper copy, off screen: what Print and Email send — the saved bill, with its
           payment details, policies and signatures, and none of the boxes. */}
       {ed && createPortal(
         <div ref={paperBox} aria-hidden="true" className="bill-paper fixed top-0 left-[-10000px] w-[576px]">
-          <PrintInvoiceModal booking={ed} rooms={rooms} venues={venues} bookingsList={bookings} onClose={() => {}} embedded />
+          {paperCopy}
         </div>,
         document.body,
       )}
@@ -1119,10 +1193,34 @@ export function DiscountBox({ disc, onChange, off, fold = false }: { disc: Disco
   )
 }
 
-const QUIET = 'self-start px-1 pt-1 text-[10.5px] font-bold text-gold-800 hover:underline cursor-pointer bw-rise'
-const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-lg bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer'
-const SLOT = 'min-w-0 w-40 bg-transparent border-0 border-b-[1.5px] border-ink-900 rounded-none px-0.5 py-px text-[16px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-gold-400'
-const PICK = 'w-full flex items-center gap-2 px-2 py-[6px] rounded-lg text-left text-[11.5px] font-semibold text-ink-900 whitespace-nowrap cursor-pointer hover:bg-gold-100 focus-visible:bg-gold-100 focus-visible:outline-none active:scale-[0.98] transition-[background-color,transform] bw-rise'
+// The boxes over the bill are written in ink like it (the Paper mock, 2026-10-29): a gold dashed line to
+// write on, ✓ a gold outline, a list ruled in dots, and a way back as a quiet dotted word.
+const QUIET = 'self-start mt-1 px-1 py-0.5 text-[10.5px] font-semibold text-muted border-b-[1.5px] border-dotted border-paper-400 hover:text-danger-600 hover:border-danger-600 transition-colors cursor-pointer bw-rise'
+const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-[3px] text-gold-800 shadow-[inset_0_0_0_1.5px_#D0AB60] hover:bg-gold-100 active:scale-90 transition-[background-color,transform] cursor-pointer'
+const SLOT = 'min-w-0 w-40 bg-transparent border-0 border-b-[1.5px] border-dashed border-gold-400 rounded-none px-0.5 py-px text-[16px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-solid'
+const PICK = 'w-full flex items-center gap-2 px-2 py-[6px] border-b border-dotted border-ink-200 last:border-b-0 text-left text-[11.5px] font-semibold text-ink-900 whitespace-nowrap cursor-pointer hover:text-gold-800 focus-visible:text-gold-800 focus-visible:outline-none active:scale-[0.98] transition-[color,transform] bw-rise'
+// A totals line of the ledger, and the ⌄ that says it opens.
+const LEDGER = 'w-full flex items-baseline py-[3px] border-b border-dotted border-ink-200 text-left text-[10px] font-medium text-ink-900 active:scale-[0.98] transition-transform cursor-pointer group'
+const FOLD = 'ml-auto mr-2 w-3 h-3 self-center text-gold-800 transition-transform duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] group-aria-expanded:rotate-180'
+
+/** What a folded totals line opens to: it grows from the line instead of jumping. */
+function Unfold({ open, children }: { open: boolean; children: React.ReactNode }) {
+  return (
+    <div className={'grid transition-[grid-template-rows] duration-[180ms] ease-[cubic-bezier(.2,.9,.3,1.15)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+      <div className="overflow-hidden" inert={!open || undefined}>{open && children}</div>
+    </div>
+  )
+}
+
+/** One figure on the pinned money slip. */
+function SlipFigure({ name, value, tone = '' }: { name: string; value: string; tone?: string }) {
+  return (
+    <span className="flex flex-col leading-[1.15]">
+      <span className="text-[9.5px] font-semibold text-muted">{name}</span>
+      <b key={value} className={'font-mono text-[12.5px] font-bold tabular-nums bw-rise ' + tone}>{value}</b>
+    </span>
+  )
+}
 
 /** One thing typed in the floating box and saved with its ✓: a rate, a receptionist's name. */
 function TypeIn({ value, placeholder, label, money: isMoney, upper, onSave, children }: {
@@ -1135,7 +1233,7 @@ function TypeIn({ value, placeholder, label, money: isMoney, upper, onSave, chil
     <form onSubmit={e => { e.preventDefault(); onSave(v.trim()) }} className="flex flex-col p-1">
       <div className="flex items-end gap-1.5">
         {isMoney ? (
-          <label className="flex items-baseline gap-0.5 border-b-2 border-ink-900 focus-within:border-gold-400 transition-colors">
+          <label className="flex items-baseline gap-0.5 border-b-[1.5px] border-dashed border-gold-400 focus-within:border-solid transition-colors">
             <span className="font-display text-[11px] font-extrabold text-muted">₱</span>
             <input ref={box} inputMode="numeric" value={v} placeholder={placeholder} aria-label={label} onFocus={e => e.currentTarget.select()}
               onChange={e => { const n = Number(e.target.value.replace(/\D/g, '')) || 0; setV(n ? n.toLocaleString() : '') }}
@@ -1152,135 +1250,58 @@ function TypeIn({ value, placeholder, label, money: isMoney, upper, onSave, chil
 }
 
 /** A figure that runs to its new value instead of jumping (what a discount takes off, as it is typed). */
-function useRunTo(to: number) {
-  const [shown, setShown] = useState(to)
-  const from = useRef(to)
-  useEffect(() => {
-    const dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 380
-    const a = from.current, t0 = performance.now()
-    let id = 0
-    const step = (t: number) => {
-      const k = dur ? Math.min(1, (t - t0) / dur) : 1
-      const n = Math.round(a + (to - a) * (1 - (1 - k) ** 3))
-      from.current = n; setShown(n)
-      if (k < 1) id = requestAnimationFrame(step)
-    }
-    id = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(id)
-  }, [to])
-  return shown
-}
-
-// The coupon's stub is a fixed width, so its two notches (`.coupon-notch` in index.css) sit on the tear line.
+// The coupon's stub is a fixed width, so its perforation sits where the stub tears off.
 const STUB = 84
-const COUPON_LINE_STUB = 62
-const COUPON_ROW_STUB = 72
 
 /**
- * **The discount, as a coupon** (Sebastian, 2026-10-29: "love the coupon design", note style 1, after
- * "it looks a little cramped and the notes field is wider than it needs to be"): a gold ticket with the
- * amount and a sliding % / ₱ on its face, what it is for in a white write-in slot under them (dashed
- * until it is filled, since a plain line did not read as a field), and what it takes off in pesos on
- * the torn stub beside ✓. The amount grows with what is typed but is never narrower than its example, so
- * it does not jump at the first key; the slot is never narrower than the amount and % / ₱ above it
- * and grows only once the words are longer (Sebastian, 2026-10-29). It changes the bill
- * as it is typed, like the box it replaced.
+ * **The discount, as a coupon written in ink** (Sebastian, 2026-10-29: "love the coupon design", then
+ * "let's redesign this to match the paper design"): the amount on a gold line with a boxed % / ₱ beside
+ * it, what it is for on the gold line under them, and what it takes off in red on the stub beside ✓,
+ * past a dashed perforation. The amount grows with what is typed but is never narrower than its example,
+ * so it does not jump at the first key, and the note's line keeps one width (2026-10-29). It changes the
+ * bill as it is typed, like the box it replaced.
  */
-function DiscountPop({ disc, off, onChange, onDone, onNone }: {
+function DiscountPop({ disc: start, off, onChange, onDone, onNone }: {
   disc: Discount; off: number; onChange: (d: Discount) => void; onDone: () => void; onNone?: () => void
 }) {
+  // The coupon keeps its own copy, so a key shows at once; the bill behind it follows when it can.
+  // It was the one box that drew the whole bill again on every key, and felt slower (2026-10-29).
+  const [disc, setDisc] = useState(start)
+  const change = (n: Discount) => { setDisc(n); startTransition(() => onChange(n)) }
   const box = useRef<HTMLInputElement>(null)
   useLateFocus(box)
-  const shown = useRunTo(off)
   const amount = disc.v ? disc.v.toLocaleString() : ''
-  const note = disc.note || ''
   return (
-    <form onSubmit={e => { e.preventDefault(); onDone() }} className="flex flex-col p-0.5">
-      <div className="coupon-notch flex rounded-[10px] bg-gold-100" style={{ '--stub': STUB + 'px', '--notch': '7px' } as React.CSSProperties}>
+    <form onSubmit={e => { e.preventDefault(); onDone() }} className="flex flex-col gap-1 p-0.5">
+      <div className="flex bg-card shadow-[inset_0_0_0_1px_#E5E5E5]">
         <div className="flex flex-col gap-2 py-2.5 px-3">
           <div className="flex items-center gap-2">
             <input ref={box} inputMode="numeric" placeholder={disc.pct ? '10' : '200'} aria-label="Discount" value={amount}
-              onChange={e => { const n = Number(e.target.value.replace(/\D/g, '')) || 0; onChange({ ...disc, v: disc.pct ? Math.min(n, 100) : n }) }}
+              onChange={e => { const n = Number(e.target.value.replace(/\D/g, '')) || 0; change({ ...disc, v: disc.pct ? Math.min(n, 100) : n }) }}
               style={{ width: Math.max((disc.pct ? '10' : '200').length, amount.length) + 0.4 + 'ch' }}
-              className="min-w-0 bg-transparent border-0 p-0 text-right font-display text-[24px] leading-none font-extrabold text-gold-800 placeholder:text-gold-200 focus:outline-none" />
-            <div role="radiogroup" aria-label="Discount by" className="relative grid grid-cols-2 p-0.5 rounded-full bg-paper-0">
-              <span aria-hidden="true" className={'absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-full bg-ink-900 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.56,.64,1)] ' + (disc.pct ? 'translate-x-0' : 'translate-x-full')} />
+              className="min-w-0 bg-transparent border-0 border-b-[1.5px] border-dashed border-gold-400 focus:border-solid rounded-none p-0 text-right font-mono text-[22px] leading-none font-bold text-ink-900 placeholder:text-paper-400 focus:outline-none" />
+            <div role="radiogroup" aria-label="Discount by" className="relative grid grid-cols-2 p-0.5 rounded-[2px] shadow-[inset_0_0_0_1px_#E5E5E5]">
+              <span aria-hidden="true" className={'absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-[1px] bg-ink-900 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.56,.64,1)] ' + (disc.pct ? 'translate-x-0' : 'translate-x-full')} />
               {[true, false].map(p => (
-                <button key={String(p)} type="button" role="radio" aria-checked={disc.pct === p} onClick={() => { onChange({ ...disc, pct: p, v: p ? Math.min(disc.v, 100) : disc.v }); box.current?.focus() }}
+                <button key={String(p)} type="button" role="radio" aria-checked={disc.pct === p} onClick={() => { change({ ...disc, pct: p, v: p ? Math.min(disc.v, 100) : disc.v }); box.current?.focus() }}
                   className={'relative w-[26px] h-6 font-mono text-[12px] font-bold transition-colors duration-200 cursor-pointer ' + (disc.pct === p ? 'text-white' : 'text-muted hover:text-ink-900')}>{p ? '%' : '₱'}</button>
               ))}
             </div>
           </div>
           {/* What it is for, printed on the bill (Sebastian, 2026-10-29: "include notes in discounts"). */}
-          <label className={'flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-paper-0 border-[1.5px] transition-colors cursor-text ' +
-            (note ? 'border-solid border-gold-100' : 'border-dashed border-gold-200 focus-within:border-solid focus-within:border-gold-400')}>
-            <Tag className="w-3 h-3 shrink-0 text-gold-400" strokeWidth={2.4} />
-            <input placeholder="Senior" aria-label="What it is for" value={note}
-              onChange={e => onChange({ ...disc, note: e.target.value })}
-              style={{ width: Math.min(26, note.length + 1) + 'ch' }}
-              className="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] font-bold text-gold-800 placeholder:text-paper-400 placeholder:font-semibold focus:outline-none" />
+          <label className="flex items-center gap-1.5 py-1 border-b-[1.5px] border-dashed border-gold-400 focus-within:border-solid text-gold-800 cursor-text">
+            <Tag className="w-3 h-3 shrink-0" strokeWidth={2.4} />
+            <input placeholder="Senior" aria-label="What it is for" value={disc.note || ''}
+              onChange={e => change({ ...disc, note: e.target.value })}
+              className="flex-1 min-w-0 w-[13ch] bg-transparent border-0 p-0 text-[13px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none" />
           </label>
         </div>
-        <div className="shrink-0 flex flex-col items-center justify-between gap-2 py-2.5 border-l-2 border-dashed border-gold-200" style={{ width: STUB }}>
-          <span className={'font-mono text-[12.5px] font-extrabold tabular-nums whitespace-nowrap transition-colors ' + (off > 0 ? 'text-danger-600' : 'text-gold-200')}>−₱{shown.toLocaleString()}</span>
-          <button type="submit" aria-label="Done" className="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer"><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
+        <div className="shrink-0 flex flex-col items-center justify-between gap-2 py-2.5 border-l-[1.5px] border-dashed border-ink-200" style={{ width: STUB }}>
+          <span className={'font-mono text-[12.5px] font-extrabold tabular-nums whitespace-nowrap transition-colors ' + (off > 0 ? 'text-danger-600' : 'text-gold-200')}><span key={off} className={off > 0 ? 'bill-punch' : undefined}>−₱{off.toLocaleString()}</span></span>
+          <button type="submit" aria-label="Done" className="shrink-0 w-8 h-8 grid place-items-center rounded-[3px] text-gold-800 shadow-[inset_0_0_0_1.5px_#D0AB60] hover:bg-gold-100 active:scale-90 transition-[background-color,transform] cursor-pointer"><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
         </div>
       </div>
       {onNone && <button type="button" onClick={onNone} className={QUIET}>Take this one off</button>}
-    </form>
-  )
-}
-
-/**
- * **The bill's discounts, in the floating box** (Sebastian, 2026-10-29, "apply C"): the bill shows them
- * as one line, and it opens to each one — what it is for and what it takes off — with "+ Discount"
- * under them. A discount tapped opens the box above to change it; ✓ brings the list back. The bill
- * changes as it is typed.
- */
-function DiscountsPop({ discs, offOf, onChange, onDone }: {
-  discs: Discount[]; offOf: (slot: number) => number; onChange: (ds: Discount[]) => void; onDone: () => void
-}) {
-  // With none yet, it opens straight onto a new one.
-  const [at, setAt] = useState<number | 'list'>(() => (discs.some(d => d.v > 0) ? 'list' : discs.length))
-  const fromList = useRef(at === 'list')
-  const back = (ds: Discount[]) => {
-    const kept = ds.filter(d => d.v > 0)
-    onChange(kept)
-    if (fromList.current && kept.length > 0) setAt('list'); else onDone()
-  }
-  if (at !== 'list') {
-    const d = discs[at] || { pct: true, v: 0, note: '' }
-    const put = (n: Discount) => { const ds = [...discs]; ds[at] = n; onChange(ds) }
-    return (
-      <DiscountPop key={at} disc={d} off={offOf(at)} onChange={put} onDone={() => back(discs)}
-        onNone={d.v > 0 ? () => back(discs.filter((_, k) => k !== at)) : undefined} />
-    )
-  }
-  // A stack of small coupons, one for each discount ("Apply A"), then a blank one to add another.
-  let n = 0
-  const total = discs.reduce((t, _, i) => t + offOf(i), 0)
-  return (
-    <form onSubmit={e => { e.preventDefault(); onDone() }} className="flex flex-col gap-1.5 p-0.5 w-56">
-      {discs.map((d, i) => d.v > 0 && (
-        <button key={i} type="button" onClick={() => { fromList.current = true; setAt(i) }}
-          style={{ '--i': n++, '--stub': COUPON_ROW_STUB + 'px', '--notch': '6px' } as React.CSSProperties}
-          className="coupon-notch flex items-stretch rounded-[9px] bg-gold-100 text-left hover:bg-[#F0E1BF] hover:-translate-y-px active:scale-[0.97] transition-[background-color,transform] duration-200 ease-[cubic-bezier(.34,1.56,.64,1)] cursor-pointer bw-rise">
-          <span className="flex-1 min-w-0 flex items-baseline gap-1.5 px-2.5 py-2.5">
-            <span className="truncate text-[12.5px] font-bold text-gold-800">{d.note?.trim() || 'Discount'}</span>
-            {d.pct && <span className="shrink-0 font-display text-[11px] font-extrabold text-gold-800/60">{d.v}%</span>}
-          </span>
-          <span className="shrink-0 grid place-items-center border-l-2 border-dashed border-gold-200 font-mono text-[12px] font-extrabold text-danger-600 coupon-stub">−₱{offOf(i).toLocaleString()}</span>
-        </button>
-      ))}
-      <button type="button" onClick={() => { fromList.current = true; onChange([...discs, { pct: true, v: 0, note: '' }]); setAt(discs.length) }}
-        style={{ '--i': n++ } as React.CSSProperties}
-        className="flex items-center justify-center gap-1.5 p-2 rounded-[9px] border-[1.5px] border-dashed border-gold-200 text-[11.5px] font-bold text-gold-800 hover:bg-gold-100 hover:border-gold-400 transition-colors cursor-pointer bw-rise">
-        <Plus className="w-3 h-3" strokeWidth={3} />Discount
-      </button>
-      <div className="flex items-center justify-between gap-2 px-0.5 pt-1">
-        <span className="font-display text-[13px] font-extrabold text-danger-600"><span className="mr-1.5 font-sans text-[10px] font-semibold text-muted">Total off</span>−₱{total.toLocaleString()}</span>
-        <button type="submit" aria-label="Done" className="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer"><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
-      </div>
     </form>
   )
 }

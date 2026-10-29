@@ -52,6 +52,8 @@ export function StatementChargesTable({ items, dates = true, onRemove, isNew, re
     .filter(b => b.rows.length > 0)
 
   // No boxes and no grey header (the owner's pick, 2026-10-13): one thin line under each row.
+  // One row of column names, no "Date" over Check In and Check Out, on screen and on paper
+  // (Sebastian, 2026-10-29, on the mock: "remove this").
   // The column names and the band names are labels, so they are grey; everything the guest
   // is charged is black.
   const head = 'pb-1 pl-2 text-[8.5px] font-medium uppercase tracking-[0.08em] text-muted align-bottom whitespace-nowrap'
@@ -61,18 +63,13 @@ export function StatementChargesTable({ items, dates = true, onRemove, isNew, re
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th rowSpan={dates ? 2 : 1} className={head + ' pl-0 text-left border-b-[1.5px] border-ink-900'}>Room / Particulars</th>
-            <th rowSpan={dates ? 2 : 1} className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>Rate</th>
-            {dates && <th colSpan={2} className={head + ' pb-0.5 text-center border-b border-ink-200'}>Date</th>}
-            <th rowSpan={dates ? 2 : 1} className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>{dates ? 'No. of Night' : 'Qty'}</th>
-            <th rowSpan={dates ? 2 : 1} className={head + ' text-right w-20 border-b-[1.5px] border-ink-900'}>Total</th>
+            <th className={head + ' pl-0 text-left border-b-[1.5px] border-ink-900'}>Room / Particulars</th>
+            <th className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>Rate</th>
+            {dates && <th className={head + ' text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check In</th>}
+            {dates && <th className={head + ' text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check Out</th>}
+            <th className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>{dates ? 'No. of Night' : 'Qty'}</th>
+            <th className={head + ' text-right w-20 border-b-[1.5px] border-ink-900'}>Total</th>
           </tr>
-          {dates ? (
-            <tr>
-              <th className={head + ' pt-0.5 text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check In</th>
-              <th className={head + ' pt-0.5 text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check Out</th>
-            </tr>
-          ) : null}
         </thead>
         <tbody>
           {bands.map(({ band, rows }) => (

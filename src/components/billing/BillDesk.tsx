@@ -12,11 +12,33 @@ const digits = (v: string) => Number(v.replace(/[^0-9]/g, '')) || 0
 /** `2026-09-14` → `Sep 14`, from the date's own parts. */
 const shortDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return y ? new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '' }
 
-const SLOT = 'min-w-0 bg-transparent border-0 border-b-[1.5px] border-ink-900 rounded-none px-0.5 py-px text-[12px] font-bold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-gold-400'
-const BLANK = 'bill-blank w-full flex items-center gap-1.5 px-1.5 py-1 rounded-md border-[1.5px] border-dashed text-[11px] cursor-pointer transition-colors'
-const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-lg bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer'
-const LI = 'w-full flex items-center gap-2 px-2 py-[6px] rounded-lg text-left text-[11.5px] font-semibold text-ink-900 cursor-pointer hover:bg-gold-100 focus-visible:bg-gold-100 focus-visible:outline-none active:scale-[0.98] transition-[background-color,transform] bw-rise'
-const MONEY = 'flex items-baseline gap-0.5 border-b-2 border-ink-900 focus-within:border-gold-400 transition-colors'
+// The paper's boxes (the Paper mock, 2026-10-29): a blank to write on is a gold dashed line, ✓ a gold
+// outline, and a list is ruled in dots.
+const SLOT = 'min-w-0 bg-transparent border-0 border-b-[1.5px] border-dashed border-gold-400 rounded-none px-0.5 py-px text-[12px] font-bold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-solid'
+const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-[3px] text-gold-800 shadow-[inset_0_0_0_1.5px_#D0AB60] hover:bg-gold-100 active:scale-90 transition-[background-color,transform] cursor-pointer'
+const LI = 'w-full flex items-center gap-2 px-2 py-[6px] border-b border-dotted border-ink-200 last:border-b-0 text-left text-[11.5px] font-semibold text-ink-900 cursor-pointer hover:text-gold-800 focus-visible:text-gold-800 focus-visible:outline-none active:scale-[0.98] transition-[color,transform] bw-rise'
+const MONEY = 'flex items-baseline gap-0.5 border-b-[1.5px] border-dashed border-gold-400 focus-within:border-solid transition-colors'
+/** One of the bill's adds — Room, Breakfast, Charge — as a gold word on the one line under the rows. */
+export const ADD = 'group inline-flex items-center gap-1 px-2.5 first:pl-0 py-px text-[11px] font-bold text-gold-800 hover:underline aria-expanded:underline underline-offset-[3px] active:scale-95 transition-transform cursor-pointer'
+
+/**
+ * **A "+" in the bill's margin**, beside the line it adds to (Sebastian, 2026-10-29, on the mock: "move
+ * the add discount button outside like the payment. but I don't like the buttons to have their own row
+ * of space"). It says what it adds when the pointer is on it; `gone`, it fades away (nothing is owed).
+ * Its line must be `relative`.
+ */
+export function Gut({ name, onClick, expanded, gone, btnRef }: {
+  name: string; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; expanded?: boolean; gone?: boolean; btnRef?: React.Ref<HTMLButtonElement>
+}) {
+  return (
+    <button ref={btnRef} type="button" onClick={onClick} aria-expanded={expanded} aria-label={'Add a ' + name.toLowerCase()} tabIndex={gone ? -1 : undefined}
+      className={'group/gut print:hidden absolute right-[calc(100%+6px)] top-1/2 h-[22px] px-[5px] flex items-center gap-0 hover:gap-[3px] focus-visible:gap-[3px] aria-expanded:gap-[3px] rounded-full text-[10.5px] font-bold text-gold-800 whitespace-nowrap hover:bg-gold-100 focus-visible:bg-gold-100 aria-expanded:bg-gold-100 transition-[background-color,gap,opacity,transform] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] cursor-pointer '
+        + (gone ? 'opacity-0 pointer-events-none -translate-y-1/2 scale-50' : '-translate-y-1/2 active:scale-90')}>
+      <span className="max-w-0 overflow-hidden opacity-0 group-hover/gut:max-w-[70px] group-hover/gut:opacity-100 group-focus-visible/gut:max-w-[70px] group-focus-visible/gut:opacity-100 group-aria-expanded/gut:max-w-[70px] group-aria-expanded/gut:opacity-100 transition-[max-width,opacity] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)]">{name}</span>
+      <Plus aria-hidden="true" className="w-3 h-3 shrink-0 group-hover/gut:rotate-90 group-aria-expanded/gut:!rotate-45 transition-transform duration-300 ease-[cubic-bezier(.34,1.56,.64,1)]" strokeWidth={3} />
+    </button>
+  )
+}
 const MONEY_IN = 'min-w-0 w-20 bg-transparent border-0 p-0 text-right font-display text-[16px] font-extrabold text-ink-900 placeholder:text-paper-400 focus:outline-none'
 
 /**
@@ -28,8 +50,10 @@ const MONEY_IN = 'min-w-0 w-20 bg-transparent border-0 p-0 text-right font-displ
  * mistake `paymentMethodChoice` was written against. The day is today, except on a paper booking.
  * `open` is the bill's, so the payments above can fold away while one is written.
  */
-export function WritePayment({ open, onOpen, onPay, again, paidOn, fills, sheet }: {
-  open: boolean; onOpen: (open: boolean) => void; onPay: (p: PayInput) => void; again: boolean
+export function WritePayment({ open, onOpen, onPay, paidOn, fills, sheet, gone }: {
+  open: boolean; onOpen: (open: boolean) => void; onPay: (p: PayInput) => void
+  /** Nothing is owed: the + fades away. */
+  gone?: boolean
   /** **Quick fills** — the booking form's deposit choices on a new booking's bill (Deposit, Full
    *  pay): a tap writes what for and how much. */
   fills?: { label: string; amount: number }[]
@@ -68,12 +92,9 @@ export function WritePayment({ open, onOpen, onPay, again, paidOn, fills, sheet 
   }
   return (
     <>
-      <button ref={blank} type="button" onClick={() => (open ? shut() : onOpen(true))} aria-expanded={open}
-        className={BLANK + ' my-0.5 border-gold-400 bg-paper-50 text-gold-800 font-bold hover:bg-gold-100 aria-expanded:bg-gold-100 aria-expanded:border-solid'}>
-        <Plus aria-hidden="true" className="w-3.5 h-3.5" />{again ? 'Another payment' : 'Write a payment'}
-      </button>
+      <Gut btnRef={blank} name="Payment" onClick={() => (open ? shut() : onOpen(true))} expanded={open} gone={gone} />
       {open && sheet && (
-        <Floating at={() => blank.current!} sheet={sheet} right label="A payment" onClose={shut}>
+        <Floating at={() => blank.current!.parentElement!} sheet={sheet} right label="A payment" onClose={shut}>
           <form onSubmit={e => { e.preventDefault(); record() }} className="w-[236px] flex flex-col gap-1.5 p-1">
             {fills && fills.length > 0 && (
               <div className="flex gap-1">
@@ -81,7 +102,7 @@ export function WritePayment({ open, onOpen, onPay, again, paidOn, fills, sheet 
                   const on = purpose === f.label && amount === f.amount
                   return (
                     <button key={f.label} type="button" aria-pressed={on} onClick={() => { setPurpose(f.label); setAmount(f.amount); setMiss('') }}
-                      className={'flex-1 min-h-7 px-2 rounded-lg border-[1.5px] text-[10.5px] font-bold active:scale-95 transition-[border-color,background-color,color,transform] cursor-pointer ' +
+                      className={'flex-1 min-h-7 px-2 rounded-[3px] border-[1.5px] text-[10.5px] font-bold active:scale-95 transition-[border-color,background-color,color,transform] cursor-pointer ' +
                         (on ? 'border-ink-900 bg-ink-900 text-white' : 'border-gold-400 bg-paper-50 text-ink-900 hover:bg-white')}>
                       {f.label} <span className="font-mono font-semibold opacity-70">₱{f.amount.toLocaleString()}</span>
                     </button>
@@ -171,12 +192,13 @@ export function AddCharge({ onCharge, cols, beside, presets, sheet }: {
   }
   return (
     <tr data-screen className="print:hidden">
-      <td colSpan={cols} className="pt-1.5">
-        <div className="flex gap-1.5">
+      {/* Room, Breakfast and Charge are one ruled line of gold words (the Paper mock, 2026-10-29: "I
+          don't like the buttons to have their own row of space"). */}
+      <td colSpan={cols} className="p-0">
+        <div className="flex flex-wrap items-center py-[3px] border-b border-dotted border-ink-200 [&>*+*]:border-l [&>*+*]:border-ink-200">
           {beside}
-          <button ref={blank} type="button" onClick={() => (open ? shut() : setOpen(true))} aria-expanded={open}
-            className={BLANK + ' flex-1 [animation:none] border-ink-200 text-muted font-semibold hover:border-gold-400 hover:text-gold-800 hover:bg-paper-50 aria-expanded:border-gold-400 aria-expanded:text-gold-800 aria-expanded:bg-gold-100'}>
-            <Plus aria-hidden="true" className="w-3.5 h-3.5" />Add a charge
+          <button ref={blank} type="button" onClick={() => (open ? shut() : setOpen(true))} aria-expanded={open} aria-label="Add a charge" className={ADD}>
+            <Plus aria-hidden="true" className="w-3 h-3" strokeWidth={3} />Charge
           </button>
         </div>
         {open && sheet && (
@@ -185,12 +207,12 @@ export function AddCharge({ onCharge, cols, beside, presets, sheet }: {
               <div className="flex flex-wrap items-center gap-1.5 p-1 max-w-[300px]">
                 {presets!.map(p => (
                   <button key={p.label} type="button" onClick={p.onPick}
-                    className="min-h-8 px-2.5 rounded-md border-[1.5px] border-gold-400 bg-paper-50 hover:bg-white text-[11px] font-bold text-ink-900 active:scale-90 transition-[background-color,transform] cursor-pointer">
+                    className="min-h-8 px-2.5 rounded-[3px] border-[1.5px] border-gold-400 bg-paper-50 hover:bg-white text-[11px] font-bold text-ink-900 active:scale-90 transition-[background-color,transform] cursor-pointer">
                     {p.label} <span className="font-mono text-[10px] font-semibold text-muted">₱{p.price}</span>
                   </button>
                 ))}
                 <button type="button" onClick={() => setOther(true)}
-                  className="min-h-8 px-2.5 rounded-md border-[1.5px] border-dashed border-gold-400 text-[11px] font-bold text-gold-800 hover:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">Something else…</button>
+                  className="min-h-8 px-2.5 rounded-[3px] border-[1.5px] border-dashed border-gold-400 text-[11px] font-bold text-gold-800 hover:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">Something else…</button>
               </div>
             ) : (
               <form onSubmit={e => { e.preventDefault(); add() }} className="flex items-end gap-1.5 p-1">

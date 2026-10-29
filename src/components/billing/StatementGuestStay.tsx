@@ -44,7 +44,7 @@ export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel =
    * the rooms' numbers sit under it, since the table rows name only each room's type.
    */
   billTo?: { name: string; lines: string[] }
-  /** `7, 9` when the bill covers several rooms; the table below lists each room's type. */
+  /** `Rooms 7, 9 · Gazebo` when the bill covers several; the table below lists each one's type. */
   roomsLabel?: string
   rooms: Room[]
   venues: Venue[]
@@ -54,7 +54,7 @@ export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel =
   const isRoom = !!b.room_id
   const room = rooms.find(r => r.id === b.room_id)
   const venue = venues.find(v => v.id === b.venue_id)
-  const unit = roomsLabel ? 'Rooms ' + roomsLabel
+  const unit = roomsLabel ? roomsLabel
     : isRoom ? ['Room ' + (room?.room_number ?? ''), room?.name].filter(Boolean).join(' · ')
     : (venue?.name || '')
 
@@ -117,7 +117,7 @@ export function StatementGuestStay({ booking, rooms, venues, rates, roomsLabel =
             <p className={big}>{stayHours > 0 ? count(stayHours, 'hour') : count(nights, isRoom ? 'night' : 'day')}</p>
             {/* The table's rows name the room's type, not its number, so the number is here. */}
             <p className={info + ' mt-0.5'}>
-              {roomsLabel ? 'Rooms ' + roomsLabel : isRoom ? 'Room ' + (room?.room_number ?? '') : (venue?.name || '')} · {count(guestCount, 'guest')}
+              {roomsLabel ? roomsLabel : isRoom ? 'Room ' + (room?.room_number ?? '') : (venue?.name || '')} · {count(guestCount, 'guest')}
               {text(b.vehicle_plate) && <> · <span className={label}>Plate no.</span> {b.vehicle_plate}</>}
             </p>
           </>

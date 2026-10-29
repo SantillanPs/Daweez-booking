@@ -27,6 +27,8 @@ interface PaymentReceiptDocumentProps {
    * 2026-09-30). Omit it for a single-room payment and the slip is exactly what it always was.
    */
   covered?: Booking[]
+  /** Opened from the Email on a bill's receipt slip: the email box is already open. */
+  startEmail?: boolean
 }
 
 /** One line of the slip: what it is on the left, the fact on the right. A blank fact prints nothing. */
@@ -47,7 +49,7 @@ function SlipRow({ label, value, mono = false }: { label: string; value?: string
 //
 // The screen preview is the same 58 mm slip rather than a wide page, so what
 // staff see is what comes out of the printer.
-export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose, onPrint, embedded = false, covered, card = false }: PaymentReceiptDocumentProps) {
+export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose, onPrint, embedded = false, covered, card = false, startEmail = false }: PaymentReceiptDocumentProps) {
   const isRoom = !!booking.room_id
   const room = rooms.find(r => r.id === booking.room_id)
   const venue = venues.find(v => v.id === booking.venue_id)
@@ -102,7 +104,7 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
   // The slip itself — what is attached when the receipt is emailed.
   const lab = 'text-[8px] font-bold uppercase tracking-[0.1em]'
   const slip = useRef<HTMLDivElement>(null)
-  const [emailing, setEmailing] = useState(false)
+  const [emailing, setEmailing] = useState(startEmail)
 
   // The slip — the same in the window and on the Booked card. **On screen it is the paper's own
   // size**: the XP-58H prints 48 mm, less the 2 mm / 4 mm sides the print copy gets in `index.css`.

@@ -9,6 +9,17 @@
  *
  * The report and the receipts list must agree word for word, so the wording lives here once.
  */
+/**
+ * The Stay's one line on a bill of several rooms and venues: `Rooms 1, 3, 4 · Vacation House`. The
+ * table under it names every one, so the Stay says them once — the screen listed each room again
+ * in big type (he asked, 2026-10-29) while the paper left the venues out. Both use this wording.
+ */
+export function stayUnitsLabel(numbers: number[], venueNames: string[]): string {
+  const sorted = [...new Set(numbers)].sort((a, b) => a - b)
+  const rooms = sorted.length === 0 ? '' : sorted.length === 1 ? `Room ${sorted[0]}` : `Rooms ${sorted.join(', ')}`
+  return [rooms, ...new Set(venueNames)].filter(Boolean).join(' · ')
+}
+
 export function formatRoomNumbers(numbers: number[]): string {
   if (numbers.length === 0) return ''
   const sorted = [...new Set(numbers)].sort((a, b) => a - b)
