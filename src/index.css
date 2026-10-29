@@ -426,6 +426,10 @@
 @keyframes bill-breathe { 50% { border-color: #E8D3A6; } }
 .bill-ink, .bill-ink > td { animation: bill-ink 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .bill-stamp { transform: rotate(-12deg); animation: bill-stamp 0.45s 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+/* The reason under a CANCELLED stamp is written in after the stamp lands. */
+@keyframes bill-why { from { opacity: 0; clip-path: inset(0 0 0 100%); } }
+.bill-why { animation: bill-why 0.6s 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@media (prefers-reduced-motion: reduce) { .bill-why { animation: none; } }
 .bill-blank { animation: bill-breathe 2.4s ease-in-out infinite; }
 /* The bill's rooms, in a bubble under the "4 rooms" tag. */
 @keyframes bill-pop { from { opacity: 0; transform: scale(0.6); } }

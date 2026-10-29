@@ -294,6 +294,8 @@ export interface Booking {
   group_id?: string
   // When the booking was cancelled. Set by the database; never sent back by the app.
   cancelled_at?: string // ISO date-time
+  // Why it was cancelled — a quick reason and/or the desk's words. Written only by `cancel_booking`.
+  cancel_note?: string
   // Blocked-date notes (maintenance / cleaning reason).
   notes?: string
   prepared_by?: string

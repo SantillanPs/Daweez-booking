@@ -64,6 +64,7 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     actual_check_in: (b.actual_check_in as string) || undefined,
     actual_check_out: (b.actual_check_out as string) || undefined,
     cancelled_at: (b.cancelled_at as string) || undefined,
+    cancel_note: (b.cancel_note as string) || undefined,
     group_id: (b.group_id as string) || undefined,
     notes: (b.notes as string) || undefined,
     prepared_by: (b.prepared_by as string) || undefined,

@@ -30,6 +30,7 @@ import { useLateFocus } from '../billing/want'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
 import { FixPayment, PayRow } from '../billing/FixPayment'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
+import { CancelledStamp } from '../billing/CancelledStamp'
 import { printA5 } from '../../utils/printA5'
 import { want } from '../billing/want'
 import { NationalityInput } from '../NationalityInput'
@@ -427,7 +428,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       formStatus: 'confirmed',
       // As the form: an agency's stay is confirmed by its contract, a guest's by the money.
       // A correction keeps the status the booking already had (the form's rule).
-      bookingStatus: to || (ed && ed.status !== 'pending') ? 'confirmed' : 'pending',
+      // A cancelled bill stays cancelled while it is worked on: saving it once brought the booking back.
+      bookingStatus: ed?.status === 'cancelled' ? 'cancelled' : to || (ed && ed.status !== 'pending') ? 'confirmed' : 'pending',
       formAgreedDeposit: ed ? ed.agreed_deposit ?? 0 : paid?.amount || 0,
       formGuestName: guestName.trim(), formGuestEmail: ed?.guest_email || deal?.email || '', formGuestPhone: guestPhone.trim(),
       formGuestGender: ed?.guest_gender || '', formGuestNationality: nationality.trim(), formGuestAddress: address.trim(), formBirthdate: ed?.birthdate || '',
@@ -991,7 +993,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               </div>
               {/* Nothing written and nobody else paying: said once, in blue, like the calendar's pill. */}
               {!to && received === 0 && !writing && <p className="mt-0.5 text-right text-[11px] font-bold text-sky-700 bw-rise">No deposit</p>}
-              {paidUp && (
+              {ed?.status === 'cancelled' ? <CancelledStamp booking={ed} /> : paidUp && (
                 <span aria-hidden="true"
                   className="bill-stamp pointer-events-none absolute right-full mr-8 top-4 px-3 py-0.5 rounded-lg border-[3px] border-emerald-700 text-emerald-700 font-display text-[26px] font-extrabold tracking-[0.12em] opacity-85 mix-blend-multiply">
                   PAID

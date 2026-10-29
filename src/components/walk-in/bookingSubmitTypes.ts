@@ -29,7 +29,7 @@ export interface ManualBookingInput {
   checkIn: string
   checkOut: string
   source: BookingSource
-  status: 'pending' | 'confirmed' | 'blocked'
+  status: 'pending' | 'confirmed' | 'blocked' | 'cancelled'
   equipmentRentals?: EquipmentRental
   /** A venue booking's `event_addons` — here it holds the chosen kind of venue (`venue_type`). */
   eventAddons?: EventAddons
@@ -72,7 +72,7 @@ export interface BookingSubmitParams {
   formPartnerDealId: string
   bookingType: 'individual' | 'partner'
   formStatus: 'confirmed' | 'blocked'
-  bookingStatus: 'pending' | 'confirmed' | 'blocked'
+  bookingStatus: 'pending' | 'confirmed' | 'blocked' | 'cancelled'
   formAgreedDeposit?: number
   formGuestName: string
   formGuestEmail: string

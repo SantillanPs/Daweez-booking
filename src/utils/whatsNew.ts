@@ -23,6 +23,22 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-29c',
+    changes: [
+      {
+        where: "Cash Flow → Today's money",
+        what: ['Each room payment shows its bill number. Payments on the same bill are one line with a count — tap it to see each payment.'],
+      },
+      {
+        where: 'Front desk → booking window → Cancel booking',
+        what: [
+          'Cancel now asks why. Tap a quick reason (Changed plans, No show, Booked by mistake), write your own, or both. You can also leave it blank.',
+          "A cancelled booking's bill has a red CANCELLED stamp with the date, and your reason is written under it. The printed and emailed bill shows it too.",
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-29b',
     changes: [
       {

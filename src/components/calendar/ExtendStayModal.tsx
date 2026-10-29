@@ -28,6 +28,8 @@ import { asBill, groupOf } from '../../utils/bookingGroup'
 import { BillRooms } from './BillRooms'
 import { allocatePayment } from '../walk-in/bookingPayment'
 import { paymentStatusFromMoney } from '../../utils/bookingMoney'
+
+const CANCEL_REASONS = ['Changed plans', 'No show', 'Booked by mistake']
 import { ExtendStayForm } from './ExtendStayForm'
 import { venueTypeOf } from '../../utils/venueTypes'
 import { showToast } from '../../utils/toast'
@@ -45,7 +47,7 @@ interface ExtendStayModalProps {
   onClose: () => void
   onExtendStaySubmit: (e: React.FormEvent, tabTotal: number) => void
   setExtendCheckoutDate: (date: string) => void
-  onCancelBooking?: (id: string) => void
+  onCancelBooking?: (id: string, note?: string) => void
   onUpdateBooking?: (booking: Booking) => Promise<void>
   /** Opens the one bill (`NewBookingBill`): changes, money, print — everything on it. */
   onOpenBill?: () => void
@@ -126,6 +128,10 @@ export function ExtendStayModal({
 }: ExtendStayModalProps) {
   // `toolAsk` replaces the tool row with its question.
   const [toolAsk, setToolAsk] = useState<'cancel' | null>(null)
+  // Why it was cancelled (Sebastian, 2026-10-29): a quick reason, the desk's own words, or both —
+  // never asked for. No "moved to other dates": a booking that moves is changed on its bill, not cancelled.
+  const [cancelWhy, setCancelWhy] = useState('')
+  const [cancelPick, setCancelPick] = useState('')
   const [toolsSinking, setToolsSinking] = useState(false)
   const [toolsBack, setToolsBack] = useState(false)
   const toolsRow = useRef<HTMLDivElement>(null)
@@ -885,12 +891,9 @@ export function ExtendStayModal({
             Outside the scroll, so they stay put at the bottom — always open, never behind a
             "More" (Sebastian, 2026-10-16: "just keep it open"). Undo and cancel ask in this
             row before it acts. */}
-        {toolAsk ? (
+        {toolAsk && isBlock ? (
           <div className="border-t border-soft px-4 py-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 shrink-0 bw-ask">
-            <span className="text-[12px] font-bold text-danger-600">
-              {isBlock ? 'Remove this block? The dates open again.'
-                  : 'Cancel ' + booking.guest_name + "'s booking?" + (paidSoFar > 0 ? ' The ' + fmtPeso(paidSoFar) + ' received stays on record.' : '')}
-            </span>
+            <span className="text-[12px] font-bold text-danger-600">Remove this block? The dates open again.</span>
             <span className="flex items-center gap-1">
               <button type="button"
                 onClick={() => {
@@ -898,12 +901,45 @@ export function ExtendStayModal({
                   onClose()
                 }}
                 className="min-h-9 px-3 rounded-lg text-[12px] font-bold text-white cursor-pointer active:scale-95 transition-transform bg-danger-600 hover:bg-danger-700">
-                {isBlock ? 'Remove block' : 'Cancel booking'}
+                Remove block
               </button>
               <button type="button" onClick={() => layout(() => { setToolAsk(null); setToolsBack(true) })} className="min-h-9 px-3 rounded-lg text-[12px] font-semibold text-muted hover:text-main cursor-pointer">
                 Keep
               </button>
             </span>
+          </div>
+        ) : toolAsk ? (
+          <div className="border-t border-soft px-3 py-2 grid gap-1.5 shrink-0 bw-ask">
+            <span className="text-[11.5px] font-bold text-danger-600 truncate">
+              {'Cancel ' + booking.guest_name + "'s booking?" + (paidSoFar > 0 ? ' ' + fmtPeso(paidSoFar) + ' received stays on record.' : '')}
+            </span>
+            <div className="flex gap-1.5 overflow-x-auto -mx-3 px-3 [scrollbar-width:none]">
+              {CANCEL_REASONS.map(r => (
+                <button key={r} type="button" aria-pressed={cancelPick === r} onClick={() => setCancelPick(p => p === r ? '' : r)}
+                  className={'flex-none whitespace-nowrap rounded-full border-[1.5px] px-2.5 py-0.5 text-[11px] font-bold cursor-pointer active:scale-95 transition-[background-color,border-color,transform] duration-150 '
+                    + (cancelPick === r ? 'bg-danger-50 border-danger-600 text-danger-600' : 'bg-white border-paper-200 text-main')}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="flex-1 min-w-0 flex items-center gap-1.5 rounded-lg border-[1.5px] border-paper-200 bg-white px-2 focus-within:border-danger-600 transition-colors">
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-muted">Why</span>
+                <input type="text" value={cancelWhy} onChange={e => setCancelWhy(e.target.value)} placeholder="Or write it · Flight moved"
+                  className="flex-1 min-w-0 min-h-8 bg-transparent outline-none text-base sm:text-[12px] font-semibold text-main placeholder:text-muted placeholder:font-normal" />
+              </label>
+              <button type="button"
+                onClick={() => {
+                  onCancelBooking?.(booking.id, [cancelPick, cancelWhy.trim()].filter(Boolean).join(' · '))
+                  onClose()
+                }}
+                className="min-h-9 px-3 rounded-lg text-[12px] font-bold text-white cursor-pointer active:scale-95 transition-transform bg-danger-600 hover:bg-danger-700 whitespace-nowrap">
+                Cancel booking
+              </button>
+              <button type="button" onClick={() => layout(() => { setToolAsk(null); setToolsBack(true) })} className="min-h-9 px-2 rounded-lg text-[12px] font-semibold text-muted hover:text-main cursor-pointer">
+                Keep
+              </button>
+            </div>
           </div>
         ) : (
           <div ref={toolsRow} className={'relative border-t border-soft px-1.5 py-0.5 flex flex-wrap items-center justify-center shrink-0' + (toolsSinking ? ' bw-sink' : '') + (toolsBack ? ' bw-tools-back' : '')}>

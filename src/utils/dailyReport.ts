@@ -29,6 +29,7 @@ import type { Tab } from '../types/tab'
 import { paymentMethodLabel } from './paymentMethod'
 import { formatRoomNumbers } from './roomNumbers'
 import { normalizeVenueId } from './helpers'
+import { groupOf } from './bookingGroup'
 
 /** One line of the sheet: what it was, and what it was worth. */
 export interface DailyReportLine {
@@ -56,6 +57,8 @@ export interface MoneyInLine extends DailyReportLine {
   receipt?: string
   /** The booking it was written on, so the screen can open its billing statement. */
   bookingId?: string
+  /** The number of the bill it was paid on (the first room's), so the screen can put a bill's payments together. */
+  bill?: string
   /** The diner's slip and its payment, so the screen can open the receipt. */
   tabId?: string
   recordId?: string
@@ -219,6 +222,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
           day, rooms: room === null ? [] : [room], place: venue, who: guestLabel(booking), slip: false,
           purpose: record.purpose, method: paymentMethodLabel(record.method), paidAt: record.paid_at || '',
           receipt: record.receipt_number, amount: record.amount, bookingId: booking.id,
+          bill: groupOf(booking, bookings)[0]?.invoice_number || booking.invoice_number,
         })
       })
   })
@@ -244,7 +248,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
       return {
         who: payment.who, place, slip: payment.slip, purpose: payment.purpose, method: payment.method,
         paidAt: payment.paidAt, receipt: payment.receipt, amount: payment.amount,
-        bookingId: payment.bookingId, tabId: payment.tabId, recordId: payment.recordId,
+        bookingId: payment.bookingId, bill: payment.bill, tabId: payment.tabId, recordId: payment.recordId,
         label: [payment.who, place, payment.method].filter(Boolean).join(' · '),
       }
     })

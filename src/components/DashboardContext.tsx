@@ -17,7 +17,7 @@ export interface DashboardDataContextValue {
   isConfirming?: boolean
   confirmBooking: (id: string) => Promise<void>
   /** Marks a booking Cancelled (a date block is simply removed). */
-  cancelBooking: (id: string) => Promise<void>
+  cancelBooking: (id: string, note?: string) => Promise<void>
   /** Removes a row outright — only for a booking whose save was rolled back. */
   deleteBooking: (id: string) => Promise<void>
   createManualBooking: (params: {
@@ -29,7 +29,7 @@ export interface DashboardDataContextValue {
     checkIn: string
     checkOut: string
     source: BookingSource
-    status: 'confirmed' | 'blocked' | 'pending'
+    status: 'confirmed' | 'blocked' | 'pending' | 'cancelled'
     breakfastOrders?: BreakfastOrder[]
     equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons

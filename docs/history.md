@@ -9,3 +9,4 @@ What was done to the live database by hand, and when. Moved out of `CLAUDE.md` o
 - **`money_handovers`** (`20261013120000_money_handovers.sql`) applied to live on 2026-10-13; its `kind = 'in'` (`20261014120000_cash_added.sql`) on 2026-10-14.
 - **Institutions** (`20261020120000_institutions.sql`) applied to live on 2026-10-20, the owner's go-ahead.
 - **Half-day exclusion constraints** (`20261025120000_short_stay_halves.sql`) applied to live on 2026-10-25, the owner's go-ahead.
+- **Cancel note** (`20261029120000_cancel_note.sql`: `bookings.cancel_note`, `cancel_booking(p_booking_id, p_note)`) applied to live on 2026-10-29, the owner's go-ahead.

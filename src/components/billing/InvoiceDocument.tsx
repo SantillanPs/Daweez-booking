@@ -9,6 +9,7 @@ import { guestEmailOf } from '../../utils/emailDocument'
 import { StatementChargesTable } from './StatementChargesTable'
 import { StatementGuestStay } from './StatementGuestStay'
 import { StatementShell, BrandHeader, SectionName } from './StatementShell'
+import { CancelledStamp } from './CancelledStamp'
 
 interface InvoiceDocumentProps {
   primaryBooking: Booking
@@ -114,6 +115,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
         </div>
 
         <div className="relative col-start-2 flex flex-col gap-0.5">
+          <CancelledStamp booking={b} />
           <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(statement.subTotal)}</span></div>
           {/* The bill lists the payments already received (the staff, 2026-10-04: it showed
               what was still to pay but not what had been paid). Money received before

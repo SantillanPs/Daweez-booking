@@ -190,19 +190,19 @@ export function useBookings() {
 
   // 7. Mutation: Cancel Booking — the row stays, marked Cancelled, and the room is freed.
   // A date block is not a booking, so cancelling one simply removes it.
-  const cancelBookingMutation = useMutation<void, Error, string, MutationContext>({
-    mutationFn: async (bookingId: string) => {
+  const cancelBookingMutation = useMutation<void, Error, { bookingId: string; note?: string }, MutationContext>({
+    mutationFn: async ({ bookingId, note }) => {
       const target = allBookings.find(b => b.id === bookingId)
       if (target?.status === 'blocked') await syncEngine.deleteBooking(bookingId)
-      else await syncEngine.cancelBooking(bookingId)
+      else await syncEngine.cancelBooking(bookingId, note)
     },
-    onMutate: async (bookingId) => {
+    onMutate: async ({ bookingId, note }) => {
       await queryClient.cancelQueries({ queryKey: ['bookings'] })
       const previous = queryClient.getQueryData<Booking[]>(['bookings'])
       queryClient.setQueryData<Booking[]>(['bookings'], old => old?.flatMap(b =>
         b.id !== bookingId ? [b]
           : b.status === 'blocked' ? []
-            : [{ ...b, status: 'cancelled' as const, cancelled_at: new Date().toISOString() }]
+            : [{ ...b, status: 'cancelled' as const, cancelled_at: new Date().toISOString(), cancel_note: note?.trim() || undefined }]
       ))
       return { previous }
     },
@@ -233,7 +233,7 @@ export function useBookings() {
     id?: string; invoiceNumber?: string
     roomId?: string; venueId?: string; guestName: string; guestEmail: string
     guestPhone: string; checkIn: string; checkOut: string
-    source: BookingSource; status: 'confirmed' | 'blocked' | 'pending'
+    source: BookingSource; status: 'confirmed' | 'blocked' | 'pending' | 'cancelled'
     breakfastOrders?: BreakfastOrder[]; equipmentRentals?: EquipmentRental
     eventAddons?: EventAddons; rateMultiplier?: number; companions?: Companion[]
     partnerDealId?: string; companyName?: string; institution?: string; vehiclePlate?: string
@@ -649,7 +649,7 @@ export function useBookings() {
     confirmBooking: confirmBookingMutation.mutateAsync,
     isConfirmingBooking: confirmBookingMutation.isPending,
 
-    cancelBooking: cancelBookingMutation.mutateAsync,
+    cancelBooking: (bookingId: string, note?: string) => cancelBookingMutation.mutateAsync({ bookingId, note }),
     deleteBooking: deleteBookingMutation.mutateAsync,
     isCancellingBooking: cancelBookingMutation.isPending,
 

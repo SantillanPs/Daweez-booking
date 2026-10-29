@@ -214,6 +214,7 @@ export async function getBookings(): Promise<Booking[]> {
           actual_check_in: b.actual_check_in || undefined,
           actual_check_out: b.actual_check_out || undefined,
           cancelled_at: b.cancelled_at || undefined,
+          cancel_note: b.cancel_note || undefined,
           group_id: b.group_id || undefined,
           notes: b.notes || undefined,
           prepared_by: b.prepared_by || undefined,
@@ -491,11 +492,11 @@ export async function deleteBooking(bookingId: string): Promise<void> {
  * and the room is free again. Deleting it (`deleteBooking`) is only for a row that
  * should never have existed — a date block, or a booking whose save was rolled back.
  */
-export async function cancelBooking(bookingId: string): Promise<void> {
+export async function cancelBooking(bookingId: string, note?: string): Promise<void> {
   if (!isSupabaseConfigured) {
     throw new Error('No database is connected, so this booking was not cancelled.')
   }
-  const { error } = await supabase.rpc('cancel_booking', { p_booking_id: bookingId })
+  const { error } = await supabase.rpc('cancel_booking', { p_booking_id: bookingId, p_note: note?.trim() || null })
   if (error) throw error
 }
 

@@ -14,6 +14,15 @@ const byCategory = (list: Expense[]) => {
   return [...groups.values()]
 }
 
+// The day's payments in groups of one bill (design B of the Money in mock, Sebastian, 2026-10-29: "group up
+// the payments from the same billing statement like how we grouped the expenses"), each group where its
+// first payment was. A diner's slip has no bill and stands alone.
+const byBill = (list: MoneyInLine[]) => {
+  const groups = new Map<string, MoneyInLine[]>()
+  list.forEach((l, i) => { const k = l.bill ? 'b:' + l.bill : 'x:' + i; const g = groups.get(k); if (g) g.push(l); else groups.set(k, [l]) })
+  return [...groups.values()]
+}
+
 const signed = (n: number) => n < 0 ? '(' + peso(-n) + ')' : peso(n)
 
 interface DayMoneyProps {
@@ -353,22 +362,28 @@ const METHOD_DOT: Record<PaymentKind, string> = {
 // for, how and when beneath with the receipt number. An order slip's number shows only on a diner's
 // payment, in gold like the restaurant's. A room's payment opens its bill right here, ready to
 // work on; a diner's opens its receipt, which reads its lines first, so the row shows it is on its way.
-function PaymentLine({ line, loading, onOpen }: { line: MoneyInLine; loading: boolean; onOpen?: (line: MoneyInLine) => void }) {
+// Inside a bill's group the guest and room are said once above, so a payment there leads with what it was for.
+function PaymentLine({ line, loading, onOpen, inGroup }: { line: MoneyInLine; loading: boolean; onOpen?: (line: MoneyInLine) => void; inGroup?: boolean }) {
   const what = line.purpose || (line.slip ? 'Order slip' : '')
   const body = (
     <>
+      {inGroup ? (
+        <span className="min-w-0 truncate font-semibold text-main">{what || 'Payment'}</span>
+      ) : (
       <span className="min-w-0 truncate font-bold text-main">
         {line.who}
         {line.place && (
           <span className={'ml-1.5 inline-block align-[1px] px-1.5 rounded-md text-[10.5px] font-extrabold ' + (line.slip ? 'bg-gold-100 text-gold-800' : 'bg-paper-100 text-main')}>{line.place}</span>
         )}
+        {line.bill && <span className="ml-1.5 inline-block align-[1px] px-1 rounded-md border border-paper-200 font-mono text-[10.5px] font-semibold text-muted">{line.bill}</span>}
       </span>
+      )}
       <span className="flex items-center justify-end gap-1.5">
         {loading && <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" />}
         <span className="font-mono text-[14px] font-bold text-emerald-600">{peso(line.amount)}</span>
       </span>
       <span className="min-w-0 truncate text-[12px] text-muted">
-        {what && <>{what} · </>}
+        {what && !inGroup && <>{what} · </>}
         <span className="inline-flex items-center gap-1"><i className={'w-1.5 h-1.5 rounded-full ' + METHOD_DOT[paymentKind(line.method)]} />{line.method}</span>
         {line.paidAt && <> · {timeOf(line.paidAt)}</>}
       </span>
@@ -382,6 +397,44 @@ function PaymentLine({ line, loading, onOpen }: { line: MoneyInLine; loading: bo
       {body}
     </button>
   ) : <div className={grid}>{body}</div>
+}
+
+// A bill's payments as one line with a count, opening to each payment (the expense group's shape).
+function PaymentGroup({ lines, opening, onOpen }: { lines: MoneyInLine[]; opening?: string | null; onOpen?: (line: MoneyInLine) => void }) {
+  const [open, setOpen] = useState(false)
+  const first = lines[0]
+  const sum = lines.reduce((s, l) => s + Number(l.amount || 0), 0)
+  const loading = !!opening && lines.some(l => openKey(l) === opening)
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
+        className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 w-[calc(100%+1rem)] py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer">
+        <span className="min-w-0 truncate font-bold text-main">
+          {first.who}
+          {first.place && <span className="ml-1.5 inline-block align-[1px] px-1.5 rounded-md text-[10.5px] font-extrabold bg-paper-100 text-main">{first.place}</span>}
+          <span key={lines.length} className="ml-1.5 inline-grid place-items-center align-[1px] min-w-6 h-[19px] px-1.5 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold group-active:scale-90 transition-transform [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">×{lines.length}</span>
+        </span>
+        <span className="flex items-center justify-end gap-1.5">
+          {loading && <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" />}
+          <span key={sum} className="font-mono text-[14px] font-bold text-emerald-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(sum)}</span>
+          <ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-gold-600 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
+        </span>
+        <span className="min-w-0 truncate text-[12px] text-muted">{lines.map(l => l.purpose || 'Payment').join(' · ')}</span>
+        <span className="justify-self-end font-mono text-[11px] text-muted">{first.bill}</span>
+      </button>
+      <div className={'grid transition-[grid-template-rows] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+        <div className="min-h-0 overflow-hidden">
+          <div className="ml-1.5 mb-1 pl-3 border-l-2 border-paper-200">
+            {lines.map((line, i) => (
+              <div key={(line.receipt || line.label) + i} className={open ? 'bw-rise' : ''} style={{ '--i': i } as CSSProperties}>
+                <PaymentLine line={line} inGroup loading={!!opening && opening === openKey(line)} onOpen={onOpen} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -399,8 +452,10 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
         <div className="p-4 flex flex-col">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money in</p>
           {report.moneyIn.length === 0 && <p className="text-[13px] text-muted">Nothing received yet.</p>}
-          {report.moneyIn.map((line, i) => (
-            <PaymentLine key={(line.receipt || line.label) + i} line={line} loading={!!opening && opening === openKey(line)} onOpen={onOpenPayment} />
+          {byBill(report.moneyIn).map((group, i) => group.length > 1 ? (
+            <PaymentGroup key={'g' + group[0].bill} lines={group} opening={opening} onOpen={onOpenPayment} />
+          ) : (
+            <PaymentLine key={(group[0].receipt || group[0].label) + i} line={group[0]} loading={!!opening && opening === openKey(group[0])} onOpen={onOpenPayment} />
           ))}
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
           <div className="flex-1 min-h-2" />
