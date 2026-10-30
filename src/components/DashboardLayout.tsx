@@ -205,7 +205,7 @@ export function DashboardLayout() {
             {/* Settings is the gear, and Logout sits past a divider: neither is one of the four tabs. They are
                 finger-sized (44px) unless there is a mouse. */}
             <div className="flex items-center gap-1.5">
-              <WhatsNew atFrontDesk={isCalendarTab} />
+              <WhatsNew />
               <button
                 onClick={handleTriggerSync}
                 disabled={isSyncing}

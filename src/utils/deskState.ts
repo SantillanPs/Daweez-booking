@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react'
 
-// Two facts the calendar and the top bar tell each other, so that only one thing ever
-// opens by itself at the front desk: the calendar's short-stay panel, or "What's new".
+// Two facts the calendar and the top bar tell each other: whether the desk has a panel open
+// (an update waits for it to close, `appUpdate.ts`), and whether "What's new" is being read,
+// so the short-stay panel does not open under it.
 // A plain module singleton, the same shape as `bookingFocus.ts`: no provider.
 
 let busy = false

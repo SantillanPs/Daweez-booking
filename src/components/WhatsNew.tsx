@@ -1,31 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Megaphone, X } from 'lucide-react'
 import { UPDATES, markUpdatesSeen, unseenUpdates, updateDay, type Update } from '../utils/whatsNew'
-import { isDeskBusy, setReadingWhatsNew } from '../utils/deskState'
+import { setReadingWhatsNew } from '../utils/deskState'
 
 // Only what this device has not seen is listed (Sebastian, 2026-10-07: what was already
 // opened should be gone to make room for the new). The cap keeps a long absence readable.
 const LISTED = 5
 
-interface WhatsNewProps {
-  /** The Front desk's calendar is the screen that is open: the only place it opens by itself. */
-  atFrontDesk: boolean
-}
-
 // What changed, said to the staff at the front desk (Sebastian, 2026-10-05: *"can you add
 // a what's new after every update we make on the live? make sure it's in the front desk"*).
 //
-// The first time a device opens the Front desk after an update, the window opens by
-// itself — once. After that it stays behind this button in the top bar, beside Sync
-// (*"move the button next to the sync button"*), which carries a dot until it has been
-// opened. The staff share devices and swap places, so whoever missed it finds it there,
-// from any screen.
-//
-// It waits its turn like the short-stay panel does (`utils/deskState.ts`): it never opens
-// over a booking the desk already has open, and while it is open that panel does not open
-// under it.
-export function WhatsNew({ atFrontDesk }: WhatsNewProps) {
+// It never opens by itself (Sebastian, 2026-10-30: "remove the what's new from opening after an
+// update"): it stays behind this button in the top bar, beside Sync (*"move the button next to the
+// sync button"*), which carries a dot until it has been opened. The staff share devices and swap
+// places, so whoever missed it finds it there, from any screen. While it is open the short-stay
+// panel does not open under it (`utils/deskState.ts`).
+export function WhatsNew() {
   // The updates this device had not shown when the window was opened — marked "New" in
   // it. Null while it is closed.
   const [fresh, setFresh] = useState<string[] | null>(null)
@@ -44,16 +35,6 @@ export function WhatsNew({ atFrontDesk }: WhatsNewProps) {
     setFresh(null)
     setReadingWhatsNew(false)
   }
-
-  // A moment after the Front desk opens, so a booking handed over from another screen has
-  // taken its place first — then this stays shut, and the dot says it is there.
-  const showNow = useRef(show)
-  useEffect(() => { showNow.current = show })
-  useEffect(() => {
-    if (!atFrontDesk || unseenUpdates().length === 0) return
-    const timer = window.setTimeout(() => { if (!isDeskBusy()) showNow.current() }, 500)
-    return () => window.clearTimeout(timer)
-  }, [atFrontDesk])
 
   const open = fresh !== null
   useEffect(() => {

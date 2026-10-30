@@ -8,9 +8,8 @@ import { isDeskBusy } from './deskState'
 // An open screen asks for that file when it comes back into view and every few minutes; once the
 // version differs, it reloads — but only at a moment nobody loses anything: no window or panel open,
 // nothing still saving, nobody typing, and nobody has touched the screen for a while (or it is out of
-// sight). There is no "please refresh" banner: the page just comes back new, and "What's new" opens
-// on the calendar as it already does after an update. The kitchen's tablet, open all day, waits for a
-// quiet spell the same way.
+// sight). There is no "please refresh" banner: the page just comes back new, with a dot on "What's
+// new". The kitchen's tablet, open all day, waits for a quiet spell the same way.
 
 const CHECK_EVERY = 5 * 60_000
 const TRY_EVERY = 15_000
