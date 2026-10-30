@@ -1,9 +1,9 @@
 import { CSSProperties, FormEvent, KeyboardEvent, ReactNode, useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Loader2, Plus, Search, Trash2, X } from 'lucide-react'
+import { BedDouble, Check, ChevronDown, Loader2, PenLine, Plus, Search, Trash2, UtensilsCrossed, X } from 'lucide-react'
 import { Expense, ExpenseCategory, Handover } from '../../types/expense'
 import { CountPeso } from '../CountPeso'
 import { DailyReport, MoneyInLine, forwardedLabel, openKey } from '../../utils/dailyReport'
-import { PaymentKind, paymentKind } from '../../utils/paymentMethod'
+import { PAYMENT_METHODS, PaymentKind, methodNeedsReference, paymentKind } from '../../utils/paymentMethod'
 
 const peso = (n: number) => '₱' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
 
@@ -47,6 +47,32 @@ interface DayMoneyProps {
   opening?: string | null
   /** The quiet things and Print, in a thin row under the total. */
   footer?: ReactNode
+  /** The bills a payment can be written on, newest first. */
+  bills: BillChoice[]
+  /** Saves money in written by hand: a restaurant sale, or a payment on a booking's bill. */
+  onAddIn: (input: MoneyInInput) => Promise<void>
+}
+
+/** A bill to write a payment on: its first room's booking, and how it reads in the search. */
+export interface BillChoice {
+  id: string
+  who: string
+  /** `Room 8`, `Rooms 2, 3`, `Vacation House`. */
+  place: string
+  /** `Oct 12–14`. */
+  when: string
+  bill: string
+}
+
+export interface MoneyInInput {
+  /** Restaurant, a booking, or plain: money in linked to nothing. */
+  kind: 'restaurant' | 'booking' | 'plain'
+  /** The bill's first booking, for a booking's payment. */
+  billId?: string
+  note: string
+  amount: number
+  method: string
+  reference?: string
 }
 
 // The bill's quiet tap: a dotted line under a part that can be changed.
@@ -368,6 +394,176 @@ function ExpenseBlank({ categories, another, pastDay, onAdd }: {
   )
 }
 
+// The floating list under a blank line's first word, the same as the expense's "What for?" list.
+const POP = 'absolute left-0 top-full mt-1 z-10 bg-card rounded-xl shadow-softLg ring-1 ring-gold-100 overflow-hidden [animation:bp-slide_.22s_cubic-bezier(.16,1,.3,1)]'
+const OPT = 'bp-row flex items-center gap-2.5 w-full min-h-[44px] px-2.5 rounded-lg text-left text-[13px] font-bold text-main hover:bg-gold-100 active:scale-[.97] transition-[background-color,transform] cursor-pointer'
+
+// **Money in written by hand** (#19, option A of the mock, Sebastian, 2026-10-30: "Since the
+// restaurant isn't fully done yet, we need an alternative method of adding restaurant orders, and
+// also add a way to just log the old booking's payments"). One blank line at the end of Money in,
+// the expense's twin: what it was for, linked if it belongs somewhere (the restaurant, or a booking found by guest,
+// room or bill number), the amount, ✓, and how it was paid beneath. The line clears at
+// once and the next is ready; the save happens behind it, and it comes back filled in if it fails.
+// Linking it is optional (Sebastian, 2026-10-30: "if there isn't a booking for a payment, it should just be a
+// normal payment"): the line opens on what it was for, and with nothing linked it is plain money in.
+function MoneyInBlank({ bills, pastDay, onAddIn }: { bills: BillChoice[]; pastDay?: string; onAddIn: DayMoneyProps['onAddIn'] }) {
+  const [open, setOpen] = useState(false)
+  const [pop, setPop] = useState<'kind' | 'bill' | null>(null)
+  const [kind, setKind] = useState<'restaurant' | 'booking' | null>(null)
+  const [billId, setBillId] = useState('')
+  const [find, setFind] = useState('')
+  const [note, setNote] = useState('')
+  const [amount, setAmount] = useState('')
+  const [method, setMethod] = useState<string>('Cash')
+  const [reference, setReference] = useState('')
+  const [tried, setTried] = useState(false)
+  const line = useRef<HTMLDivElement>(null)
+  const noteRef = useRef<HTMLInputElement>(null)
+  const amountRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!pop) return
+    const away = (e: PointerEvent) => { if (!line.current?.contains(e.target as Node)) setPop(null) }
+    document.addEventListener('pointerdown', away)
+    return () => document.removeEventListener('pointerdown', away)
+  }, [pop])
+
+  const bill = bills.find(b => b.id === billId)
+  const value = parseFloat(amount) || 0
+  const needsRef = methodNeedsReference(method)
+  const problem = !tried ? '' : kind === 'booking' && !bill ? 'Pick the booking.'
+    : value <= 0 ? 'Write the amount.' : needsRef && !reference.trim() ? 'Write the ref no.' : ''
+  const term = find.trim().toLowerCase()
+  const hits = bills.filter(b => (b.who + ' ' + b.place + ' ' + b.bill).toLowerCase().includes(term)).slice(0, 8)
+
+  const shut = () => { setOpen(false); setPop(null); setTried(false) }
+  const pickKind = (k: 'restaurant' | 'booking' | null) => {
+    setKind(k)
+    if (k === 'booking') { setFind(''); setPop('bill') } else { setBillId(''); setPop(null); setTimeout(() => noteRef.current?.focus()) }
+  }
+  const write = (e: FormEvent) => {
+    e.preventDefault()
+    setTried(true)
+    if ((kind === 'booking' && !bill) || value <= 0 || (needsRef && !reference.trim())) return
+    const kept = { kind, billId, note, amount, method, reference }
+    setKind(null); setBillId(''); setNote(''); setAmount(''); setReference(''); setTried(false); setPop(null)
+    setTimeout(() => noteRef.current?.focus())
+    onAddIn({ kind: kept.kind || 'plain', billId: kept.billId || undefined, note: kept.note.trim(), amount: value, method: kept.method, reference: needsRef ? kept.reference.trim() : undefined }).catch(() => {
+      setKind(kept.kind); setBillId(kept.billId); setNote(kept.note); setAmount(kept.amount); setMethod(kept.method); setReference(kept.reference); setPop(null)
+    })
+  }
+  const typeAmount = (raw: string) => {
+    let s = raw.replace(/[^0-9.]/g, '')
+    const dot = s.indexOf('.')
+    if (dot !== -1) s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, '')
+    setAmount(s)
+  }
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => { setOpen(true); setTimeout(() => noteRef.current?.focus()) }}
+        className="w-full mt-1.5 flex items-center gap-1.5 px-2 py-[5px] rounded-md border-[1.5px] border-dashed border-ink-200 text-[11px] font-bold text-gold-800 hover:border-gold-400 hover:bg-gold-100/40 active:scale-[0.99] transition-[background-color,border-color,transform] cursor-pointer [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">
+        <Plus aria-hidden="true" className="w-3.5 h-3.5" />Write money in{pastDay ? ' for ' + pastDay : ''}
+      </button>
+    )
+  }
+
+  const word = kind === 'restaurant' ? 'Restaurant' : kind === 'booking' ? (bill ? bill.who : 'Which booking?') : 'Link'
+  const set = kind === 'restaurant' || !!bill
+
+  return (
+    <div ref={line} className="relative mt-1 pt-1 pb-0.5 [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]"
+      onKeyDown={e => { if (e.key === 'Escape') { if (pop) setPop(null); else shut() } }}>
+      {kind === 'booking' && bill && (
+        <div key={bill.id} className="flex items-center gap-1.5 mb-1 [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">
+          <span className="px-1.5 rounded-md bg-paper-100 text-[10.5px] font-extrabold text-main">{bill.place}</span>
+          <span className="px-1 rounded-md border border-paper-200 font-mono text-[10.5px] font-semibold text-muted">{bill.bill}</span>
+        </div>
+      )}
+      <form onSubmit={write} className="flex items-end gap-2">
+        <button type="button" aria-expanded={!!pop} aria-label="Where it came from"
+          onClick={() => setPop(p => (p ? null : kind === 'booking' ? 'bill' : 'kind'))}
+          className={'group shrink-0 max-w-[40%] inline-flex items-center gap-0.5 min-h-7 px-0.5 border-b-[1.5px] border-dashed border-gold-400 text-[12px] font-bold active:scale-95 transition-transform cursor-pointer ' + (set ? 'text-ink-900' : 'text-gold-800')}>
+          <span key={word} className="truncate [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">{word}</span>
+          <ChevronDown aria-hidden="true" className="w-3 h-3 shrink-0 text-gold-600 transition-transform duration-300 group-aria-expanded:rotate-180" />
+        </button>
+        <input ref={noteRef} value={note} onChange={e => setNote(e.target.value)} aria-label="What it was for"
+          placeholder={kind === 'booking' ? 'For, e.g. Balance' : kind ? 'e.g. Table 2 · 2 pancit, 1 coke' : 'What for, e.g. Sold old bedsheets'}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); amountRef.current?.focus() } }}
+          className={SLOT + ' flex-1'} />
+        <label className="flex items-baseline gap-0.5 border-b-2 border-ink-900 focus-within:border-gold-400 transition-colors">
+          <span className="font-display text-[11px] font-extrabold text-muted">₱</span>
+          <input ref={amountRef} inputMode="decimal" value={amount} onChange={e => typeAmount(e.target.value)} aria-label="Amount received"
+            placeholder={kind === 'booking' ? '1,200' : kind ? '350' : '500'}
+            className="min-w-0 w-[72px] bg-transparent border-0 p-0 text-right font-display text-[16px] font-extrabold text-ink-900 placeholder:text-paper-400 focus:outline-none" />
+        </label>
+        <button type="submit" aria-label="Write the money in" className="shrink-0 w-[30px] h-7 grid place-items-center rounded-lg bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer">
+          <Check className="w-3.5 h-3.5" strokeWidth={3} />
+        </button>
+        <button type="button" onClick={shut} aria-label="Close" className="shrink-0 w-6 h-7 grid place-items-center rounded-md text-muted hover:text-main hover:bg-page cursor-pointer">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </form>
+      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+        {PAYMENT_METHODS.map(m => (
+          <button key={m} type="button" aria-pressed={method === m} onClick={() => setMethod(m)}
+            className="inline-flex items-center gap-1 h-7 px-2 rounded-full ring-1 ring-inset ring-paper-200 text-[11px] font-bold text-muted aria-pressed:ring-ink-900 aria-pressed:bg-ink-900 aria-pressed:text-white active:scale-95 transition-[background-color,color,box-shadow,transform] cursor-pointer">
+            <i className={'w-1.5 h-1.5 rounded-full ' + METHOD_DOT[paymentKind(m)]} />{m}
+          </button>
+        ))}
+        {needsRef && (
+          <input value={reference} onChange={e => setReference(e.target.value)} placeholder="Ref no. · e.g. 4012 3381 22" aria-label="Reference number"
+            className={SLOT + ' w-[170px] text-[16px] md:text-[12px] [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]'} />
+        )}
+      </div>
+      {(problem || pastDay) && (
+        <p role={problem ? 'alert' : undefined} className={'mt-1 text-[10px] font-semibold ' + (problem ? 'text-danger-600 [animation:bp-slide_.25s]' : 'text-muted')}>
+          {problem || 'Received on ' + pastDay}
+        </p>
+      )}
+      {pop === 'kind' && (
+        <div role="dialog" aria-label="Where it came from" className={POP + ' w-[240px] p-1.5'}>
+          <button type="button" style={{ '--i': 0 } as CSSProperties} onClick={() => pickKind('restaurant')} className={OPT}>
+            <span className="w-8 h-8 shrink-0 grid place-items-center rounded-lg bg-gold-100 text-gold-800"><UtensilsCrossed className="w-4 h-4" /></span>
+            <span>Restaurant<small className="block text-[11px] font-medium text-muted">Food or drinks paid</small></span>
+          </button>
+          <button type="button" style={{ '--i': 1 } as CSSProperties} onClick={() => pickKind('booking')} className={OPT}>
+            <span className="w-8 h-8 shrink-0 grid place-items-center rounded-lg bg-paper-100 text-main"><BedDouble className="w-4 h-4" /></span>
+            <span>A booking<small className="block text-[11px] font-medium text-muted">Paid on a room or venue</small></span>
+          </button>
+          {kind && (
+            <button type="button" style={{ '--i': 2 } as CSSProperties} onClick={() => pickKind(null)} className={OPT}>
+              <span className="w-8 h-8 shrink-0 grid place-items-center rounded-lg bg-page text-muted"><X className="w-4 h-4" /></span>
+              <span>Nothing<small className="block text-[11px] font-medium text-muted">Just money in</small></span>
+            </button>
+          )}
+        </div>
+      )}
+      {pop === 'bill' && (
+        <div role="dialog" aria-label="Find the booking" className={POP + ' w-[290px] max-w-[calc(100vw-3rem)]'}>
+          <label className="flex items-center gap-2 m-1.5 px-2.5 rounded-lg bg-page text-muted focus-within:ring-[1.5px] focus-within:ring-gold-400 transition-shadow">
+            <Search className="w-3.5 h-3.5 shrink-0" />
+            <input autoFocus value={find} onChange={e => setFind(e.target.value)} placeholder="Guest, room or GRF-…" aria-label="Find the booking"
+              onKeyDown={e => { if (e.key === 'Enter' && hits[0]) { e.preventDefault(); setBillId(hits[0].id); setPop(null); setTimeout(() => noteRef.current?.focus()) } }}
+              className="flex-1 min-w-0 h-9 bg-transparent outline-none text-[16px] md:text-[13px] text-main placeholder:text-paper-400" />
+          </label>
+          <div role="listbox" className="max-h-[260px] overflow-y-auto overscroll-contain px-1.5 pb-1.5">
+            {hits.length ? hits.map((b, i) => (
+              <button key={b.id} type="button" role="option" aria-selected={b.id === billId} style={{ '--i': i } as CSSProperties}
+                onClick={() => { setBillId(b.id); setPop(null); setTimeout(() => noteRef.current?.focus()) }} className={OPT}>
+                <span className="min-w-0">
+                  <span className="block truncate">{b.who}</span>
+                  <small className="block truncate text-[11px] font-medium text-muted">{b.place} · {b.when} · <span className="font-mono">{b.bill.slice(-4)}</span></small>
+                </span>
+              </button>
+            )) : <p className="mx-2.5 my-2.5 text-[12px] text-muted [animation:bp-slide_.25s_both]">Nobody called “{find.trim()}”</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const METHOD_DOT: Record<PaymentKind, string> = {
   cash: 'bg-emerald-600', gcash: 'bg-blue-700', bank: 'bg-ink-900', check: 'bg-paper-500', other: 'bg-paper-400',
 }
@@ -387,12 +583,16 @@ const cancelChip = (day: string) => (
 )
 
 function PaymentLine({ line, loading, onOpen, inGroup }: { line: MoneyInLine; loading: boolean; onOpen?: (line: MoneyInLine) => void; inGroup?: boolean }) {
-  const what = line.purpose || (line.slip ? 'Order slip' : '')
+  // Plain money in written by hand is a slip with no number, so it is not called one.
+  const what = line.purpose || (line.slip && line.place ? 'Order slip' : '')
   const body = (
     <>
       {line.cancelled && <i aria-hidden="true" className="dm-scratch" />}
       {inGroup ? (
-        <span className="min-w-0 truncate font-semibold text-main">{what || 'Payment'}</span>
+        <span className="min-w-0 truncate font-semibold text-main">
+          {what || 'Payment'}
+          {line.hand && <PenLine aria-label="Written by hand" className="ml-1.5 inline-block align-[-1px] w-3 h-3 text-gold-600" />}
+        </span>
       ) : (
       <span className="min-w-0 truncate font-bold text-main">
         {line.who}
@@ -400,6 +600,7 @@ function PaymentLine({ line, loading, onOpen, inGroup }: { line: MoneyInLine; lo
           <span className={'ml-1.5 inline-block align-[1px] px-1.5 rounded-md text-[10.5px] font-extrabold ' + (line.slip ? 'bg-gold-100 text-gold-800' : 'bg-paper-100 text-main')}>{line.place}</span>
         )}
         {line.bill && <span className="ml-1.5 inline-block align-[1px] px-1 rounded-md border border-paper-200 font-mono text-[10.5px] font-semibold text-muted">{line.bill}</span>}
+        {line.hand && <PenLine aria-label="Written by hand" className="ml-1.5 inline-block align-[-1px] w-3 h-3 text-gold-600" />}
         {line.cancelled && cancelChip(line.cancelled)}
       </span>
       )}
@@ -470,10 +671,10 @@ function PaymentGroup({ lines, opening, onOpen }: { lines: MoneyInLine[]; openin
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
 // The day on screen, in the order the printed sheet reads: money in, money out, and
-// the money in the hotel at the bottom. Money in is read-only here — it comes from the receipts
-// recorded on bookings and at the restaurant — and money out is the list just typed. A payment
+// the money in the hotel at the bottom. Money in comes from the receipts recorded on bookings and
+// at the restaurant, plus what is written by hand on its blank line; money out is the list just typed. A payment
 // written on a booking opens that guest's billing statement (Sebastian, 2026-10-28).
-export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, dayHandovers, onTakeBack, onAdd, pastDay, footer, onOpenPayment, opening }: DayMoneyProps) {
+export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, dayHandovers, onTakeBack, onAdd, pastDay, footer, onOpenPayment, opening, bills, onAddIn }: DayMoneyProps) {
   const nameOf = (id: string) => categories.find(c => c.id === id)?.name || 'Other'
 
   return (
@@ -487,11 +688,12 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           ) : (
             <PaymentLine key={(group[0].receipt || group[0].label) + i} line={group[0]} loading={!!opening && opening === openKey(group[0])} onOpen={onOpenPayment} />
           ))}
+          <MoneyInBlank key={report.date} bills={bills} pastDay={pastDay} onAddIn={onAddIn} />
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
           <div className="flex-1 min-h-2" />
           <div className="flex justify-between items-baseline gap-3 border-t border-soft pt-2 text-[14px] font-extrabold">
             <span className="text-main">Total in</span>
-            <span className="font-mono text-[18px] text-emerald-600">{peso(report.totalIn)}</span>
+            <span key={report.totalIn} className="font-mono text-[18px] text-emerald-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(report.totalIn)}</span>
           </div>
         </div>
 

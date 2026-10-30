@@ -64,6 +64,8 @@ export interface MoneyInLine extends DailyReportLine {
   recordId?: string
   /** The day its booking was cancelled (`YYYY-MM-DD`): the line is shown scratched off and counts nowhere. */
   cancelled?: string
+  /** Written by hand in Cash Flow (`PaymentRecord.by_hand`), so the line carries a pen. */
+  hand?: boolean
 }
 
 export interface DailyReport {
@@ -230,7 +232,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
           day, rooms: room === null ? [] : [room], place: venue, who: guestLabel(booking), slip: false,
           purpose: record.purpose, method: paymentMethodLabel(record.method), paidAt: record.paid_at || '',
           receipt: record.receipt_number, amount: record.amount, bookingId: booking.id,
-          bill: groupOf(booking, bookings)[0]?.invoice_number || booking.invoice_number, cancelled,
+          bill: groupOf(booking, bookings)[0]?.invoice_number || booking.invoice_number, cancelled, hand: record.by_hand,
         })
       })
   })
@@ -241,7 +243,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
         const day = hotelDay(record.paid_at)
         if (!day) return
         payments.set('t:' + tab.id + ':' + (record.receipt_number || record.id), {
-          day, rooms: [], place: slipNumber(tab), who: tableName(tab), slip: true,
+          day, rooms: [], place: slipNumber(tab), who: tableName(tab), slip: true, purpose: record.purpose, hand: record.by_hand,
           method: paymentMethodLabel(record.method), paidAt: record.paid_at || '', receipt: record.receipt_number,
           amount: record.amount, tabId: tab.id, recordId: record.id,
         })
@@ -257,7 +259,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
         who: payment.who, place, slip: payment.slip, purpose: payment.purpose, method: payment.method,
         paidAt: payment.paidAt, receipt: payment.receipt, amount: payment.amount,
         bookingId: payment.bookingId, bill: payment.bill, tabId: payment.tabId, recordId: payment.recordId,
-        cancelled: payment.cancelled,
+        cancelled: payment.cancelled, hand: payment.hand,
         label: [payment.who, place, payment.method].filter(Boolean).join(' · '),
       }
     })

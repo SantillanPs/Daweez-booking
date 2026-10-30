@@ -23,6 +23,21 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-30c',
+    changes: [
+      {
+        where: 'Cash Flow → Today\'s money',
+        what: [
+          'You can now write money in by hand. Tap "Write money in" under Money in, write what it was for and the amount, and press ✓. For GCash or a bank transfer, write the ref no. too.',
+          'If it belongs somewhere, tap "Link" first and pick the restaurant or a booking. If not, leave it: it is written as plain money in.',
+          'Restaurant: write what was sold and the amount. It gets its own order slip number and receipt, and counts in the restaurant\'s sales.',
+          'A booking: find it by the guest, the room or the bill number, then write the payment. It goes on that guest\'s bill, the same as paying at the front desk.',
+          'Money written by hand has a small pen beside it.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-30b',
     changes: [
       {

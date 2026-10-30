@@ -4,8 +4,12 @@ import { useNavigate } from '@tanstack/react-router'
 import { ArrowDownLeft, ArrowUpRight, List, Printer, Tag, Wallet } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { generateUUID } from '../utils/syncEngine'
-import { dateToString } from '../utils/helpers'
-import { getTabs } from '../utils/tabs'
+import { dateToString, normalizeVenueId } from '../utils/helpers'
+import { getTabs, handSale, saveHandSale } from '../utils/tabs'
+import { groupOf } from '../utils/bookingGroup'
+import { formatRoomNumbers } from '../utils/roomNumbers'
+import { freshReceiptNumber } from '../utils/receiptNumber'
+import { payOnBill, paySlipsIfCleared } from '../utils/billPayment'
 import { buildDailyReport } from '../utils/dailyReport'
 import { Expense, ExpenseCategory, Handover } from '../types/expense'
 import { getHandovers, insertHandover, deleteHandover } from '../utils/handovers'
@@ -13,7 +17,7 @@ import { updateExpense } from '../utils/expenses'
 import { showToast } from '../utils/toast'
 import { askConfirm } from '../utils/confirm'
 import { DayPicker } from './expenses/DayPicker'
-import { DayMoney } from './expenses/DayMoney'
+import { DayMoney, type BillChoice, type MoneyInInput } from './expenses/DayMoney'
 import { ExpenseHistory } from './expenses/ExpenseHistory'
 import { CategoryManager } from './expenses/CategoryManager'
 import { HandOverModal } from './expenses/HandOverModal'
@@ -47,7 +51,7 @@ const shortDay = (iso: string) => {
 export function ExpensesTab() {
   const {
     allBookings, rooms, venues, expenses, expenseCategories, isLoading,
-    createExpense, deleteExpense, createExpenseCategory, deleteExpenseCategory,
+    createExpense, deleteExpense, createExpenseCategory, deleteExpenseCategory, updateBooking,
   } = useDashboardData()
 
   // LOCAL today — `toISOString()` is UTC and showed yesterday until 8 AM in UTC+8, so
@@ -124,6 +128,60 @@ export function ExpensesTab() {
     } catch (err) {
       queryClient.setQueryData<Expense[]>(['expenses'], (list = []) => list.filter(e => e.id !== row.id))
       showToast('Could not save that expense. Please try again.', 'error')
+      throw err
+    }
+  }
+
+  // Every bill a payment can be written on, newest stay first: one entry per bill, under its first room.
+  const bills = useMemo((): BillChoice[] => {
+    const seen = new Set<string>()
+    const fmt = (iso: string) => new Date(iso + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return allBookings
+      .filter(b => b.status !== 'cancelled' && b.status !== 'blocked')
+      .sort((a, b) => b.check_in.localeCompare(a.check_in))
+      .flatMap(b => {
+        const rows = groupOf(b, allBookings)
+        const first = rows[0]
+        if (seen.has(first.id)) return []
+        seen.add(first.id)
+        const numbers = rows.map(r => rooms.find(x => x.id === r.room_id)?.room_number).filter((n): n is number => n != null)
+        const venue = rows.map(r => r.venue_id && venues.find(v => v.id === normalizeVenueId(r.venue_id))?.name).find(Boolean)
+        const place = formatRoomNumbers(numbers) || venue || ''
+        return [{ id: first.id, who: (first.guest_name || '').trim() || 'Guest', place, when: fmt(first.check_in) + '–' + fmt(first.check_out.slice(0, 10)), bill: first.invoice_number || '' }]
+      })
+  }, [allBookings, rooms, venues])
+
+  // **Money in written by hand** (#19): shown on the day at once and saved behind it; taken off
+  // again with a message if the save fails, and the blank line comes back filled in. A day gone
+  // by gets it at noon, the way the bill dates a payment written for another day.
+  const addMoneyIn = async (input: MoneyInInput) => {
+    const paidAt = date === today ? new Date().toISOString() : new Date(date + 'T12:00:00').toISOString()
+    if (input.kind !== 'booking') {
+      const sale = handSale({ note: input.note, amount: input.amount, method: input.method, reference: input.reference, paidAt, plain: input.kind === 'plain' })
+      queryClient.setQueryData<Tab[]>(['tabs'], (list = []) => [sale.tab, ...list])
+      try {
+        const saved = await saveHandSale(sale)
+        queryClient.setQueryData<Tab[]>(['tabs'], (list = []) => list.map(t => (t.id === saved.id ? saved : t)))
+        void queryClient.invalidateQueries({ queryKey: ['tab-lines'] })
+      } catch (err) {
+        queryClient.setQueryData<Tab[]>(['tabs'], (list = []) => list.filter(t => t.id !== sale.tab.id))
+        showToast('Could not save that money in. Please try again.', 'error')
+        throw err
+      }
+      return
+    }
+    const first = allBookings.find(b => b.id === input.billId)
+    if (!first) throw new Error('No such booking')
+    try {
+      const number = await freshReceiptNumber(first, allBookings)
+      const updated = payOnBill(groupOf(first, allBookings), {
+        amount: input.amount, method: input.method, reference: input.reference, paidAt,
+        purpose: input.note || undefined, number, byHand: true,
+      })
+      for (const b of updated) await updateBooking(b)
+      paySlipsIfCleared(updated, number).catch(() => showToast('The payment is recorded, but the order slips were not marked as paid.', 'error'))
+    } catch (err) {
+      showToast('Could not save that payment. Please try again.', 'error')
       throw err
     }
   }
@@ -240,6 +298,8 @@ export function ExpensesTab() {
         pastDay={date === today ? undefined : shortDay(date)}
         onOpenPayment={openPayment}
         opening={opening}
+        bills={bills}
+        onAddIn={addMoneyIn}
         footer={<>
           <div className="flex flex-wrap items-center gap-x-2 -ml-1">
             <button type="button" onClick={() => setShowHistory(true)} className={quiet}><List className="w-3.5 h-3.5 opacity-75" />All expenses</button>

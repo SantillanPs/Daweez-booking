@@ -12,7 +12,8 @@ import { freshReceiptNumber } from '../../utils/receiptNumber'
 import { withFixedPayment, PaymentPatch } from '../walk-in/bookingPayment'
 import { recomputeBalance, pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
 import { useBookingSlips } from '../../hooks/useBookingSlips'
-import { getSlipsByBooking, markSlipsPaid, slipNumber, unpaidSlips } from '../../utils/orderSlips'
+import { markSlipsPaid, slipNumber, unpaidSlips } from '../../utils/orderSlips'
+import { payOnBill, paySlipsIfCleared } from '../../utils/billPayment'
 import { BookingStageLine } from './BookingStageLine'
 import { stayStage } from '../../utils/stayStage'
 import { undoBookingCheck } from '../../utils/db'
@@ -26,8 +27,6 @@ import { dateToString, normalizeVenueId } from '../../utils/helpers'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 import { asBill, groupOf } from '../../utils/bookingGroup'
 import { BillRooms } from './BillRooms'
-import { allocatePayment } from '../walk-in/bookingPayment'
-import { paymentStatusFromMoney } from '../../utils/bookingMoney'
 
 const CANCEL_REASONS = ['Changed plans', 'No show', 'Booked by mistake']
 import { ExtendStayForm } from './ExtendStayForm'
@@ -415,35 +414,14 @@ export function ExtendStayModal({
       showToast('Could not remove ' + line.description + '. Please try again.', 'error')
     }
   }
-  // **One payment on a bill of several rooms** (the owner's ruling, 2026-09-30, as the booking
-  // form already does it — `recordBookingPayment`): the same receipt on every room, each room
-  // keeping its share of it, shared out by what each still owes. Every room's figure is the
-  // bill's, so they all go down together.
+  // One payment on a bill of several rooms, shared out across them (`payOnBill`).
   const payBill = async (w: { amount: number; method: string; reference: string; date: string; purpose?: string }) => {
     const before = localBooking
-    const owed = billRows.map(b => Math.max(0, Number(b.balance_due || 0)))
-    const amount = Math.min(w.amount, owed.reduce((a, b) => a + b, 0)) || w.amount
-    const shares = allocatePayment(owed, amount)
     let number: string
     try { number = await freshReceiptNumber(localBooking, allBookings || bookings) }
     catch { showToast('Could not record the payment. Please try again.', 'error'); return }
     const paidAt = w.date !== todayKey ? new Date(w.date + 'T12:00:00').toISOString() : new Date().toISOString()
-    const id = newReceiptId()
-    const reference = methodNeedsReference(w.method) ? w.reference.trim() : ''
-    const updated = billRows.map((b, i): Booking => {
-      const paid = Number(b.downpayment_paid || 0) + shares[i]
-      const balance = Math.max(0, owed[i] - shares[i])
-      const rec: PaymentRecord = {
-        id: id + '-' + i, amount, method: w.method, reference: reference || undefined, paid_at: paidAt,
-        prepared_by: b.prepared_by, receipt_number: number, share: shares[i],
-        ...(w.purpose ? { purpose: w.purpose } : {}),
-      }
-      return {
-        ...b, payment_records: [...(b.payment_records || []), rec], downpayment_paid: paid, balance_due: balance,
-        payment_status: paymentStatusFromMoney(paid, balance), status: statusAfterPayment(b.status),
-        payment_method: w.method, payment_reference: reference || b.payment_reference,
-      }
-    })
+    const updated = payOnBill(billRows, { ...w, paidAt, number })
     const mine = updated.find(b => b.id === localBooking.id)
     if (mine) setLocalBooking(mine)
     try {
@@ -456,9 +434,7 @@ export function ExtendStayModal({
     // Nothing left on the bill: every room's order slips are paid by it.
     if (updated.every(b => Number(b.balance_due || 0) <= 0)) {
       try {
-        const map = await getSlipsByBooking(updated.map(b => b.id))
-        const open = unpaidSlips(Object.values(map).flat())
-        if (open.length > 0) await markSlipsPaid(open.map(s => s.tab.id), number)
+        await paySlipsIfCleared(updated, number)
         await reloadSlips()
       } catch {
         showToast('The payment is recorded, but the order slips were not marked as paid.', 'error')

@@ -336,3 +336,48 @@ export async function settleTab(input: {
   if (error) throw error
   return record
 }
+
+/**
+ * **A restaurant sale written by hand in Cash Flow** (#19, Sebastian, 2026-10-30: "since the
+ * restaurant isn't fully done yet, we need an alternative method of adding restaurant orders").
+ * It is an order slip already paid: one line with what was written, served and counted, so it
+ * never reaches the kitchen, takes nothing off the shelf (no menu dish), gets its OS number from
+ * the database like any slip, opens its receipt from Money in and counts in the Earnings report.
+ * Built here so the screen can show it at once; `saveHandSale` writes it.
+ */
+export function handSale(input: { note: string; amount: number; method: string; reference?: string; paidAt: string; plain?: boolean }): { tab: Tab; line: TabLine | null } {
+  const amount = money(input.amount)
+  const record: PaymentRecord = {
+    id: randomUUID(), amount, method: input.method, reference: input.reference?.trim() || undefined,
+    paid_at: input.paidAt, purpose: input.plain ? undefined : input.note.trim() || undefined, by_hand: true,
+  }
+  const tab: Tab = {
+    id: randomUUID(), label: input.plain ? input.note.trim() || 'Money in' : 'Restaurant', status: 'closed',
+    opened_at: input.paidAt, closed_at: input.paidAt, billed_at: input.paidAt, paid_at: input.paidAt,
+    created_at: input.paidAt, payment_records: [record],
+  }
+  const line: TabLine = {
+    id: randomUUID(), tab_id: tab.id, description: input.note.trim() || 'Restaurant sale', qty: 1,
+    unit_price: amount, amount, kind: 'charge', sent_qty: 1, ready_qty: 1, served_qty: 1, created_at: input.paidAt,
+  } as TabLine
+  // Money in linked to nothing (Sebastian, 2026-10-30: "if there isn't a booking for a payment, it should just be a
+  // normal payment") is the same paid slip with no line on it: no OS number, nothing in the restaurant's sales.
+  return { tab, line: input.plain ? null : line }
+}
+
+/** Writes a hand-written sale with a fresh receipt number, and hands back the slip as saved. */
+export async function saveHandSale(sale: { tab: Tab; line: TabLine | null }): Promise<Tab> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+  const [record] = sale.tab.payment_records || []
+  const numbered = { ...record, receipt_number: nextTabReceiptNumber(await usedReceiptNumbers()) }
+  const tab = { ...sale.tab, payment_records: [numbered], paid_receipt_number: numbered.receipt_number }
+  const { error } = await supabase.from('tabs').insert(tab)
+  if (error) throw error
+  const { error: lineError } = sale.line ? await supabase.from('tab_lines').insert({ ...sale.line, sent_at: sale.line.created_at }) : { error: null }
+  if (lineError) {
+    await supabase.from('tabs').delete().eq('id', tab.id)
+    throw lineError
+  }
+  const { data } = await supabase.from('tabs').select('*').eq('id', tab.id).single()
+  return (data as Tab) || tab
+}

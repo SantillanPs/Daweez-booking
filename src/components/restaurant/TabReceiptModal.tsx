@@ -84,13 +84,14 @@ export function TabReceiptModal({ tab, lines, record, onClose }: TabReceiptModal
 
           <div className="my-2 border-[3px] border-black py-1.5 flex flex-col items-center">
             <span className={lab}>Payment received</span>
-            <span className="font-display text-[22px] font-extrabold leading-none mt-1">{money(total - (record.discount || 0))}</span>
+            {/* Money in written by hand with nothing linked has no lines, so its own amount is the figure. */}
+            <span className="font-display text-[22px] font-extrabold leading-none mt-1">{money(lines.length ? total - (record.discount || 0) : record.amount)}</span>
           </div>
 
           <div className="space-y-[3px]">
             <Row label="From" value={who} />
             {tab.label && tab.table_label ? <Row label="Table" value={tab.table_label} /> : null}
-            <Row label="Order slip" value={slipNumber(tab)} mono />
+            {slipNumber(tab) ? <Row label="Order slip" value={slipNumber(tab)} mono /> : null}
             <Row label="Paid by" value={paymentMethodLabel(record.method)} />
             {showRef ? <Row label={kind === 'gcash' ? 'GCash ref no.' : 'Bank ref no.'} value={record.reference} mono /> : null}
           </div>
