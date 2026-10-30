@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal, flushSync } from 'react-dom'
-import { X, Receipt, CalendarPlus, Banknote, Check, Coffee, DoorOpen, KeyRound, XCircle } from 'lucide-react'
+import { X, Receipt, CalendarPlus, Banknote, Check, Coffee, DoorOpen, KeyRound, XCircle, Trash2 } from 'lucide-react'
 import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
 import { getRateConfig } from '../../utils/rateConfig'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
@@ -47,6 +47,8 @@ interface ExtendStayModalProps {
   onExtendStaySubmit: (e: React.FormEvent, tabTotal: number) => void
   setExtendCheckoutDate: (date: string) => void
   onCancelBooking?: (id: string, note?: string) => void
+  /** Takes a finished stay off for good, every room of its bill. */
+  onDeleteBooking?: (id: string) => Promise<void>
   onUpdateBooking?: (booking: Booking) => Promise<void>
   /** Opens the one bill (`NewBookingBill`): changes, money, print — everything on it. */
   onOpenBill?: () => void
@@ -119,6 +121,7 @@ export function ExtendStayModal({
   onExtendStaySubmit,
   setExtendCheckoutDate,
   onCancelBooking,
+  onDeleteBooking,
   onUpdateBooking,
   onOpenBill,
   deskRef,
@@ -126,7 +129,7 @@ export function ExtendStayModal({
   unseen = false,
 }: ExtendStayModalProps) {
   // `toolAsk` replaces the tool row with its question.
-  const [toolAsk, setToolAsk] = useState<'cancel' | null>(null)
+  const [toolAsk, setToolAsk] = useState<'cancel' | 'delete' | null>(null)
   // Why it was cancelled (Sebastian, 2026-10-29): a quick reason, the desk's own words, or both —
   // never asked for. No "moved to other dates": a booking that moves is changed on its bill, not cancelled.
   const [cancelWhy, setCancelWhy] = useState('')
@@ -176,7 +179,7 @@ export function ExtendStayModal({
     })
   }
   // Undo and Cancel: the tools sink first, then the question rises in their place.
-  const askTool = (which: 'cancel') => {
+  const askTool = (which: 'cancel' | 'delete') => {
     setToolsSinking(true)
     setTimeout(() => layout(() => { setToolsSinking(false); setToolAsk(which) }), 170)
   }
@@ -886,6 +889,33 @@ export function ExtendStayModal({
               </button>
             </span>
           </div>
+        ) : toolAsk === 'delete' ? (
+          <div className="border-t border-soft px-4 py-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 shrink-0 bw-ask">
+            <span className="text-[12px] font-bold text-danger-600">
+              {'Delete ' + booking.guest_name + "'s booking" + (billRows.length > 1 ? ' (' + billRows.length + ' rooms)' : '') + ' for good?'
+                + (billPaid > 0 ? ' ' + fmtPeso(billPaid) + ' received goes too.' : '')}
+            </span>
+            <span className="flex items-center gap-1">
+              <button type="button"
+                onClick={() => {
+                  onClose()
+                  void (async () => {
+                    try {
+                      for (const b of billRows) await onDeleteBooking?.(b.id)
+                      showToast(booking.guest_name + "'s booking deleted.", 'success')
+                    } catch {
+                      showToast('Could not delete the booking. Please try again.', 'error')
+                    }
+                  })()
+                }}
+                className="min-h-9 px-3 rounded-lg text-[12px] font-bold text-white cursor-pointer active:scale-95 transition-transform bg-danger-600 hover:bg-danger-700">
+                Delete
+              </button>
+              <button type="button" onClick={() => layout(() => { setToolAsk(null); setToolsBack(true) })} className="min-h-9 px-3 rounded-lg text-[12px] font-semibold text-muted hover:text-main cursor-pointer">
+                Keep
+              </button>
+            </span>
+          </div>
         ) : toolAsk ? (
           <div className="border-t border-soft px-3 py-2 grid gap-1.5 shrink-0 bw-ask">
             <span className="text-[11.5px] font-bold text-danger-600 truncate">
@@ -937,6 +967,15 @@ export function ExtendStayModal({
               <button type="button" onClick={() => askTool('cancel')} className={TOOL + ' !text-danger-400 hover:!text-danger-600'}>
                 <XCircle data-i="x" className="w-3.5 h-3.5" />
                 {isBlock ? 'Remove block' : 'Cancel booking'}
+              </button>
+            )}
+            {/* A finished stay is not cancelled but can be deleted (Sebastian, 2026-10-30: "I want to be
+                able to delete bookings that are finished and past the current date"). It asks first, and
+                takes the whole bill with it, its money too. */}
+            {onDeleteBooking && !isBlock && stayStage(localBooking, todayKey) === 'after' && (
+              <button type="button" onClick={() => askTool('delete')} className={TOOL + ' !text-danger-400 hover:!text-danger-600'}>
+                <Trash2 data-i="x" className="w-3.5 h-3.5" />
+                Delete booking
               </button>
             )}
             <span ref={toolBar} aria-hidden="true" className="bw-bar" />

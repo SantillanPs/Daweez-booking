@@ -213,7 +213,8 @@ export function useBookings() {
   })
 
   // 7b. Mutation: Delete Booking — for a row that should never have existed (a booking
-  // whose save was rolled back). Everything else is cancelled, never deleted.
+  // whose save was rolled back), and for a finished stay the desk takes off from its panel
+  // (2026-10-30). A stay that has not ended is cancelled, never deleted.
   const deleteBookingMutation = useMutation<void, Error, string, MutationContext>({
     mutationFn: async (bookingId: string) => {
       await syncEngine.deleteBooking(bookingId)

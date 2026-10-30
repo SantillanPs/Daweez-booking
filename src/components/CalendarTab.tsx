@@ -568,6 +568,7 @@ export function CalendarTab() {
           onExtendStaySubmit={handleExtendStaySubmit}
           setExtendCheckoutDate={setExtendCheckoutDate}
           onCancelBooking={cancelBooking}
+          onDeleteBooking={deleteBooking}
           onUpdateBooking={updateBooking}
           onOpenBill={() => setBillOf(liveExtendBooking)}
           deskRef={deskRef}
