@@ -134,8 +134,6 @@ export function ExtendStayModal({
   // never asked for. No "moved to other dates": a booking that moves is changed on its bill, not cancelled.
   const [cancelWhy, setCancelWhy] = useState('')
   const [cancelPick, setCancelPick] = useState('')
-  // Deleting a room on a shared bill: null is that room alone; a list is the other rooms picked with it.
-  const [delAlso, setDelAlso] = useState<string[] | null>(null)
   const [toolsSinking, setToolsSinking] = useState(false)
   const [toolsBack, setToolsBack] = useState(false)
   const toolsRow = useRef<HTMLDivElement>(null)
@@ -891,75 +889,31 @@ export function ExtendStayModal({
               </button>
             </span>
           </div>
-        ) : toolAsk === 'delete' ? (() => {
-          // A room on a shared bill is deleted by itself unless the desk picks the others too, one by
-          // one (Sebastian, 2026-10-30: "give me a choice whether to delete just THAT booking or include
-          // the others … add selections instead of deleting everything immediately").
-          const others = billRows.filter(b => b.id !== booking.id)
-          const going = [localBooking, ...others.filter(b => delAlso?.includes(b.id))]
-          const goingPaid = going.reduce((sum, b) => sum + Number(b.downpayment_paid || 0), 0)
-          // By number: several rooms share a name (three are "Full Double").
-          const unitOf = (b: Booking) => {
-            const r = b.room_id ? rooms.find(x => x.id === b.room_id) : undefined
-            return r ? 'Room ' + r.room_number : b.room_id ? roomDisplayName(r) : (venues.find(v => v.id === normalizeVenueId(b.venue_id || ''))?.name || 'Venue')
-          }
-          const chip = (on: boolean) => 'flex-none whitespace-nowrap rounded-full border-[1.5px] px-2.5 py-0.5 text-[11px] font-bold cursor-pointer active:scale-95 transition-[background-color,border-color,transform] duration-150 '
-            + (on ? 'bg-danger-50 border-danger-600 text-danger-600' : 'bg-white border-paper-200 text-main')
-          return (
-            <div className="border-t border-soft px-3 py-2 grid gap-1.5 shrink-0 bw-ask">
-              <span className="text-[11.5px] font-bold text-danger-600 truncate">
-                {'Delete ' + booking.guest_name + "'s booking for good?" + (goingPaid > 0 ? ' ' + fmtPeso(goingPaid) + ' received goes too.' : '')}
-              </span>
-              {others.length > 0 && (
-                <div className="flex gap-1.5 overflow-x-auto -mx-3 px-3 [scrollbar-width:none]">
-                  <button type="button" aria-pressed={delAlso === null} onClick={() => layout(() => setDelAlso(null))} className={chip(delAlso === null)}>
-                    {'Just ' + unitOf(localBooking)}
-                  </button>
-                  <button type="button" aria-pressed={delAlso !== null} onClick={() => layout(() => setDelAlso(a => a ?? []))} className={chip(delAlso !== null)}>
-                    {'+ Others on the bill (' + others.length + ')'}
-                  </button>
-                </div>
-              )}
-              {delAlso !== null && others.length > 0 && (
-                <div className="flex gap-1.5 overflow-x-auto -mx-3 px-3 [scrollbar-width:none] bw-ask">
-                  {others.map(b => {
-                    const on = delAlso.includes(b.id)
-                    return (
-                      <button key={b.id} type="button" aria-pressed={on}
-                        onClick={() => setDelAlso(a => (a ?? []).includes(b.id) ? (a ?? []).filter(x => x !== b.id) : [...(a ?? []), b.id])}
-                        className={chip(on) + ' inline-flex items-center gap-1'}>
-                        <span className={'grid place-items-center w-3.5 h-3.5 rounded-[4px] border-[1.5px] transition-colors ' + (on ? 'bg-danger-600 border-danger-600 text-white' : 'border-paper-200')}>
-                          {on && <Check className="w-2.5 h-2.5" strokeWidth={3.5} />}
-                        </span>
-                        {unitOf(b)}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-              <div className="flex items-center justify-end gap-1.5">
-                <button type="button"
-                  onClick={() => {
-                    onClose()
-                    void (async () => {
-                      try {
-                        for (const b of going) await onDeleteBooking?.(b.id)
-                        showToast(going.length > 1 ? going.length + ' rooms of ' + booking.guest_name + "'s booking deleted." : unitOf(localBooking) + ' of ' + booking.guest_name + "'s booking deleted.", 'success')
-                      } catch {
-                        showToast('Could not delete the booking. Please try again.', 'error')
-                      }
-                    })()
-                  }}
-                  className="min-h-9 px-3 rounded-lg text-[12px] font-bold text-white cursor-pointer active:scale-95 transition-transform bg-danger-600 hover:bg-danger-700 whitespace-nowrap">
-                  {going.length > 1 ? 'Delete ' + going.length + ' rooms' : 'Delete'}
-                </button>
-                <button type="button" onClick={() => layout(() => { setToolAsk(null); setDelAlso(null); setToolsBack(true) })} className="min-h-9 px-2 rounded-lg text-[12px] font-semibold text-muted hover:text-main cursor-pointer">
-                  Keep
-                </button>
-              </div>
-            </div>
-          )
-        })() : toolAsk ? (
+        ) : toolAsk === 'delete' ? (
+          // Only this room, always (Sebastian, 2026-10-30: "just keep the delete as a delete single
+          // booking always"); another room on the same bill is deleted from its own panel.
+          <div className="border-t border-soft px-4 py-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 shrink-0 bw-ask">
+            <span className="text-[12px] font-bold text-danger-600">
+              {'Delete ' + booking.guest_name + "'s booking" + (billRows.length > 1 ? ' in ' + unitName : '') + ' for good?'
+                + (paidSoFar > 0 ? ' ' + fmtPeso(paidSoFar) + ' received goes too.' : '')}
+            </span>
+            <span className="flex items-center gap-1">
+              <button type="button"
+                onClick={() => {
+                  onClose()
+                  onDeleteBooking?.(booking.id)
+                    .then(() => showToast(booking.guest_name + "'s booking deleted.", 'success'))
+                    .catch(() => showToast('Could not delete the booking. Please try again.', 'error'))
+                }}
+                className="min-h-9 px-3 rounded-lg text-[12px] font-bold text-white cursor-pointer active:scale-95 transition-transform bg-danger-600 hover:bg-danger-700">
+                Delete
+              </button>
+              <button type="button" onClick={() => layout(() => { setToolAsk(null); setToolsBack(true) })} className="min-h-9 px-3 rounded-lg text-[12px] font-semibold text-muted hover:text-main cursor-pointer">
+                Keep
+              </button>
+            </span>
+          </div>
+        ) : toolAsk ? (
           <div className="border-t border-soft px-3 py-2 grid gap-1.5 shrink-0 bw-ask">
             <span className="text-[11.5px] font-bold text-danger-600 truncate">
               {'Cancel ' + booking.guest_name + "'s booking?" + (paidSoFar > 0 ? ' ' + fmtPeso(paidSoFar) + ' received stays on record.' : '')}
@@ -1014,7 +968,7 @@ export function ExtendStayModal({
             )}
             {/* A finished stay is not cancelled but can be deleted (Sebastian, 2026-10-30: "I want to be
                 able to delete bookings that are finished and past the current date"). It asks first, and
-                takes the whole bill with it, its money too. */}
+                takes only this room, its money too. */}
             {onDeleteBooking && !isBlock && stayStage(localBooking, todayKey) === 'after' && (
               <button type="button" onClick={() => askTool('delete')} className={TOOL + ' !text-danger-400 hover:!text-danger-600'}>
                 <Trash2 data-i="x" className="w-3.5 h-3.5" />

@@ -28,8 +28,7 @@ export const UPDATES: Update[] = [
       {
         where: 'Front desk → Calendar',
         what: [
-          'Deleting a room that shares a bill with other rooms now deletes only that room.',
-          'To delete others with it, tap "+ Others on the bill" and pick each room you want to go. The button says how many rooms will be deleted.',
+          'Deleting a booking now deletes only the room you have open. If the bill has other rooms, they stay; delete each one from its own booking if they should go too.',
         ],
       },
     ],
@@ -41,7 +40,7 @@ export const UPDATES: Update[] = [
         where: 'Front desk → Calendar',
         what: [
           'A booking whose stay is over can now be deleted. Open it on the calendar and tap "Delete booking" at the bottom, then "Delete". It asks first.',
-          'Deleting takes off every room on that bill, and the money received on it goes too.',
+          'The money received on it goes too.',
         ],
       },
     ],
