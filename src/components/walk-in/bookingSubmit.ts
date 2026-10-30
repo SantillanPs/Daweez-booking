@@ -176,6 +176,9 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         paymentReference: p.formPaymentReference || undefined,
         paymentPlan: p.bookingStatus === 'blocked' ? undefined : p.formPaymentPlan,
         ...editedMoney(p, existingBooking),
+        // Hours changed or taken off on the bill; none sent keeps the saved ones.
+        earlyCheckInHours: p.formHours?.[key]?.early,
+        lateCheckOutHours: p.formHours?.[key]?.late,
         stayHours: p.stay_hours || undefined,
         stayHalf: p.stay_hours ? p.stay_half : undefined
       })
@@ -241,6 +244,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         paymentPlan: p.bookingStatus === 'blocked' ? undefined : p.formPaymentPlan,
         venueExcessHours: p.formVenueExcessHours,
         ...editedMoney(p, existingBooking),
+        earlyCheckInHours: p.formHours?.[key]?.early,
+        lateCheckOutHours: p.formHours?.[key]?.late,
         // The Gazebo and the Garden are sold by the hour too (2026-10-20).
         stayHours: p.stay_hours || undefined,
         stayHalf: p.stay_hours ? p.stay_half : undefined

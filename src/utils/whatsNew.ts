@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-30b',
+    changes: [
+      {
+        where: 'Front desk → the bill',
+        what: [
+          'Late checkout and early check-in can be taken off the bill with the ✕ beside them. Press Undo if it was a mistake.',
+          'You can change their hours right on the bill: tap the number of hours and type the right one. The money follows.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-30',
     changes: [
       {

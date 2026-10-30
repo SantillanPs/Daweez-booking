@@ -37,6 +37,7 @@ import { printA5 } from '../../utils/printA5'
 import { want } from '../billing/want'
 import { NationalityInput } from '../NationalityInput'
 import { CountPeso } from '../CountPeso'
+import { NumInput } from '../NumInput'
 import { useDashboardData } from '../DashboardContext'
 import { showToast } from '../../utils/toast'
 import { submitBookingForm } from '../walk-in/bookingSubmit'
@@ -156,7 +157,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     })).filter(d => d.v > 0)
   })
   const given = discs.filter(d => d.v > 0)
-  const [removed, setRemoved] = useState<{ label: string; breakfast: string[]; extras: Extras; charges: BillCharge[]; discs: Discount[] } | null>(null)
+  // Early check-in and late checkout hours changed on the bill, by line; a line not here keeps the saved hours.
+  // Before, the bill only read them from the saved row, so their × did nothing and the hours could not be typed.
+  const [hrs, setHrs] = useState<Record<string, { early?: number; late?: number }>>({})
+  const [removed, setRemoved] = useState<{ label: string; breakfast: string[]; extras: Extras; charges: BillCharge[]; discs: Discount[]; hrs: typeof hrs } | null>(null)
   const [to, setTo] = useState<BillTo | null>(() =>
     ed?.partner_deal_id || ed?.company_name ? { name: ed.company_name || '', dealId: ed.partner_deal_id || undefined }
       : ed?.institution ? { name: ed.institution } : null)
@@ -231,6 +235,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       breakfast_days: bfDays[id] || [],
       stay_hours: isShort ? hours : undefined,
       stay_half: isShort ? half : undefined,
+      ...(hrs[id]?.early != null && { early_check_in_hours: hrs[id].early }),
+      ...(hrs[id]?.late != null && { late_check_out_hours: hrs[id].late }),
       event_addons: Object.keys(ea).length > 0 ? ea : undefined,
       equipment_rentals: rentals,
       partner_deal_id: deal?.id, company_name: to?.name, contract_rate_override: rates[id] || deal?.contracted_rates[unit] || undefined,
@@ -274,7 +280,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     return () => io.disconnect()
   }, [])
 
-  const snapshot = (label: string) => setRemoved({ label, breakfast, extras, charges, discs })
+  const snapshot = (label: string) => setRemoved({ label, breakfast, extras, charges, discs, hrs })
+  const putHours = (id: string, k: 'early' | 'late', n: number) => setHrs(h => ({ ...h, [id]: { ...h[id], [k]: n } }))
   const unitOf = (key: string) => list.find(([id]) => key.startsWith('draft-' + id + '-'))?.[0]
   const removeLine = (line: StatementLineItem) => {
     const id = unitOf(line.key), r = line.remove
@@ -284,8 +291,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     if (r.equipment_rentals) setExtras(e => { const n = { ...e }; EXTRAS.forEach(x => { n[x.key] = Number(r.equipment_rentals![x.key] || 0) }); return n })
     if (r.event_addons) setCharges(r.event_addons.charges || [])
     if (r.applied_discount) setDiscs(ds => ds.filter((_, k) => k !== line.slot))
+    if ('early_check_in_hours' in r) putHours(id, 'early', 0)
+    if ('late_check_out_hours' in r) putHours(id, 'late', 0)
   }
-  const undo = () => { if (!removed) return; setBreakfast(removed.breakfast); setExtras(removed.extras); setCharges(removed.charges); setDiscs(removed.discs); setRemoved(null) }
+  const undo = () => { if (!removed) return; setBreakfast(removed.breakfast); setExtras(removed.extras); setCharges(removed.charges); setDiscs(removed.discs); setHrs(removed.hrs); setRemoved(null) }
   const addCharge = (name: string, amount: number) => {
     if (!first) return
     setCharges(c => [...c, { id: randomUUID(), name, amount, date: first.checkIn }])
@@ -474,6 +483,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       formPaymentPlan: plan, formPaymentPurpose: paid?.purpose,
       formCharges: charges,
       formRates: rates,
+      formHours: hrs,
       stay_hours: isShort ? hours : undefined,
       stay_half: isShort ? half : undefined,
       editingBookings: editing,
@@ -551,7 +561,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const anchor = active.find(b => ids.current.includes(b.id))
     return { rows: anchor ? groupOf(anchor, active) : editing || [], active, all }
   }
-  const sig = editing ? JSON.stringify([guestName, guestPhone, nationality, address, companions, short, hours, half, breakfast, bfDays, extras, charges, kinds, discs, to, preparedBy, units, rates]) : ''
+  const sig = editing ? JSON.stringify([guestName, guestPhone, nationality, address, companions, short, hours, half, breakfast, bfDays, extras, charges, kinds, discs, to, preparedBy, units, rates, hrs]) : ''
   const savedSig = useRef(sig)
   const latest = useRef(handleBook)
   useEffect(() => { latest.current = handleBook })
@@ -690,6 +700,30 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>
           <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>
           {lenCell(id, hours + ' hrs')}
+          <td className={cell + ' text-right font-mono font-bold'}>{money(it.amount)}</td>
+        </tr>
+      )
+    }
+    // Early check-in and late checkout: the hours are typed on the line, and the money follows.
+    const hrLine = /^draft-(.+)-(early|late)$/.exec(it.key)
+    const hrId = hrLine && list.find(([id]) => id === hrLine[1])?.[0]
+    if (hrLine && hrId) {
+      const k = hrLine[2] as 'early' | 'late'
+      return (
+        <tr key={it.key}>
+          <td className={cell + ' pl-0 text-left whitespace-normal'}>
+            {k === 'early' ? 'Early check-in' : 'Late checkout'}
+            <button type="button" onClick={() => removeLine(it)} aria-label={'Take ' + it.description + ' off the bill'}
+              className="print:hidden -my-1 ml-0.5 p-1 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer">
+              <X className="w-3 h-3" />
+            </button>
+          </td>
+          <td className={cell + ' text-right font-mono'}>{it.price ? money(it.price) : '—'}</td>
+          <td className={cell} /><td className={cell} />
+          <td className={cell + ' text-right font-mono'}>
+            <NumInput value={Number(it.qty) || 0} onChange={n => putHours(hrId, k, n)} allowDecimal={false} placeholder="2" aria-label={(k === 'early' ? 'Early check-in' : 'Late checkout') + ' hours'}
+              className={VAL + ' w-10 bg-transparent border-0 p-0 text-right font-mono text-[11px] font-semibold focus:outline-none'} /> hr{Number(it.qty) === 1 ? '' : 's'}
+          </td>
           <td className={cell + ' text-right font-mono font-bold'}>{money(it.amount)}</td>
         </tr>
       )

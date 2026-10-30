@@ -46,6 +46,8 @@ export interface ManualBookingInput {
   paymentReference?: string
   paymentPlan?: 'deposit' | 'full' | 'custom' | 'reservation' | 'agency'
   venueExcessHours?: number
+  earlyCheckInHours?: number
+  lateCheckOutHours?: number
   paymentStatus?: 'unpaid' | 'downpayment' | 'paid'
   downpaymentPaid?: number
   balanceDue?: number
@@ -138,6 +140,8 @@ export interface BookingSubmitParams {
    * it is the whole truth: a unit missing from it is back on its own price, an older figure included.
    */
   formRates?: Record<string, number>
+  /** Early check-in and late checkout hours set on the bill, by line; a line left out keeps its saved hours. */
+  formHours?: Record<string, { early?: number; late?: number }>
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>
   updateBooking: (booking: Booking) => Promise<void>
   cancelBooking: (id: string) => Promise<void>
