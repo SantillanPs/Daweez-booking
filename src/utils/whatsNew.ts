@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-30e',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'Deleting a room that shares a bill with other rooms now deletes only that room.',
+          'To delete others with it, tap "+ Others on the bill" and pick each room you want to go. The button says how many rooms will be deleted.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-30d',
     changes: [
       {
