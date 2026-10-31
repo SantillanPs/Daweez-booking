@@ -11,3 +11,4 @@ What was done to the live database by hand, and when. Moved out of `CLAUDE.md` o
 - **Half-day exclusion constraints** (`20261025120000_short_stay_halves.sql`) applied to live on 2026-10-25, the owner's go-ahead.
 - **Cancel note** (`20261029120000_cancel_note.sql`: `bookings.cancel_note`, `cancel_booking(p_booking_id, p_note)`) applied to live on 2026-10-29, the owner's go-ahead.
 - **Rescheduled** (`20261029130000_moved_from.sql`: `bookings.moved_from`, `set_booking_moved_from`) applied to live on 2026-10-29, the owner's go-ahead.
+- **Early check-out frees the room** (`20261031120000_early_check_out_frees_room.sql`: `booking_halves` takes `actual_check_out`, with `book_booking`, `update_booking` and both exclusion constraints) applied to live on 2026-10-31, the owner's go-ahead.
