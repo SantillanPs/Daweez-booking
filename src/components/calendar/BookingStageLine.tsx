@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Booking } from '../../types/booking'
+import { addDays } from '../../utils/dailyLedger'
 import { clockLabel, shortStayOut, stayHoursOf } from '../../utils/shortStay'
 import { stayStage } from '../../utils/stayStage'
-import { Door, doorDay, doorIso, doorTime, minutesLabel, usualMinutes } from '../../utils/doorTimes'
+import { Door, doorDay, doorIso, doorTime, leftEarly, minutesLabel, usualMinutes } from '../../utils/doorTimes'
 
 const fmtDay = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
@@ -27,6 +28,10 @@ const PRESS = 'active:scale-[0.92] transition-[background-color,color,box-shadow
  * it only notes the time (`utils/doorTimes`). A day gone by with nothing ticked shows the usual
  * time in grey.
  *
+ * **A guest may leave before their check-out day** (Sebastian, 2026-10-31), so the far end can be
+ * tapped from the day they arrive. The desk often notes it later, so it also says which day they
+ * left. That frees the room from then on, and the bill stays as booked (`bookingHalves`).
+ *
  * **There is no money step** (the booking window mock, Sebastian, 2026-10-16: "make sure to
  * check for redundancies"): the big figure above it already says what is paid or owed.
  */
@@ -39,6 +44,7 @@ export function BookingStageLine({ booking, todayKey, onDoor }: {
   const [editing, setEditing] = useState<Door | null>(null)
   const [mins, setMins] = useState(0)
   const [dir, setDir] = useState(0)
+  const [day, setDay] = useState('')
   const [just, setJust] = useState<Door | null>(null)
   const stage = stayStage(booking, todayKey)
   const isIn = stage !== 'before'
@@ -63,21 +69,28 @@ export function BookingStageLine({ booking, todayKey, onDoor }: {
   const nowMins = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
   const word = (k: Door) => (k === 'in' ? 'Checked in' : 'Checked out')
 
+  // The days the guest can have left: from the day they came, up to their check-out day or today.
+  const lastDay = todayKey < booking.check_out ? todayKey : booking.check_out
   const open = (k: Door) => {
     if (editing === k) return setEditing(null)
     const t = doorTime(booking, k, todayKey)
-    setMins(t ? t.minutes : todayKey === doorDay(booking, k) ? nowMins() : usualMinutes(k))
-    setDir(0); setEditing(k)
+    const on = k === 'out' && !hours ? leftEarly(booking) || lastDay : doorDay(booking, k)
+    setMins(t ? t.minutes : todayKey === on ? nowMins() : usualMinutes(k))
+    setDay(on); setDir(0); setEditing(k)
   }
   const step = (by: number) => { setDir(by); setMins(m => (by > 0 ? Math.floor(m / 15) * 15 + 15 : Math.ceil(m / 15) * 15 - 15)) }
   const pick = (m: number) => { setDir(m < mins ? -1 : m > mins ? 1 : 0); setMins(m) }
   const save = (at: string | undefined) => { if (editing) { onDoor?.(editing, at); setJust(at ? editing : null) } setEditing(null) }
 
   const door = (k: Door, plain: React.ReactNode) => {
-    if (!onDoor || todayKey < doorDay(booking, k)) return plain
+    // Both ends open the day the stay begins: a guest can leave before their check-out day.
+    if (!onDoor || todayKey < booking.check_in) return plain
     const t = doorTime(booking, k, todayKey)
-    // A short stay's end says when it should leave, and asks only once that time has come.
-    const shortWord = k === 'out' && hours && !t ? (!booking.actual_check_in ? outWord : waiting ? outWord : null) : null
+    // A short stay's end says when it should leave, and asks only once that time has come. A stay
+    // not yet at its check-out day keeps its date, without the question: nothing is waiting to be noted.
+    const shortWord = k === 'out' && hours && !t ? (!booking.actual_check_in ? outWord : waiting ? outWord : null)
+      : k === 'out' && !t && todayKey < booking.check_out ? outWord : null
+    const early = k === 'out' ? leftEarly(booking) : null
     return (
       <button type="button" onClick={() => open(k)} aria-expanded={editing === k}
         className={'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-bold whitespace-nowrap ' + PRESS +
@@ -86,14 +99,17 @@ export function BookingStageLine({ booking, todayKey, onDoor }: {
           <span aria-hidden="true" className={'ask-mark w-4 h-4 rounded-full grid place-items-center text-white ' + (k === 'in' ? 'bg-emerald-600' : 'bg-ink-900') + ' font-display text-[11px] font-extrabold leading-none'}>?</span>
         )}
         {shortWord || word(k)}
+        {early && ' ' + dayWord(early)}
         {t && <span key={t.minutes} className={'inline-block ' + (t.usual ? 'font-semibold text-muted' : 'text-main') + (just === k && !t.usual ? ' animate-pop' : '')}>{minutesLabel(t.minutes)}</span>}
       </button>
     )
   }
 
   const presets: [string, number][] = editing
-    ? [['Usual', usualMinutes(editing)], ...(todayKey === doorDay(booking, editing) ? [['Now', nowMins()] as [string, number]] : [])]
+    ? [['Usual', usualMinutes(editing)], ...(todayKey === day ? [['Now', nowMins()] as [string, number]] : [])]
     : []
+  const picksDay = editing === 'out' && !hours && booking.check_in < lastDay
+  const DAY_NAV = 'w-10 h-9 grid place-items-center rounded-[9px] text-main hover:bg-gold-100 disabled:opacity-30 disabled:cursor-default ' + PRESS
   const noted = editing && (editing === 'in' ? booking.actual_check_in : booking.actual_check_out)
 
   return (
@@ -119,7 +135,7 @@ export function BookingStageLine({ booking, todayKey, onDoor }: {
             <button type="button" onClick={() => step(15)} aria-label="15 minutes later"
               className={'h-full rounded-[9px] font-display text-[17px] font-bold text-main hover:bg-gold-100 ' + PRESS}>+</button>
           </div>
-          <button type="button" onClick={() => save(doorIso(booking, editing, mins))} aria-label={'Save ' + minutesLabel(mins)}
+          <button type="button" onClick={() => save(doorIso(booking, editing, mins, editing === 'out' && !hours ? day : undefined))} aria-label={'Save ' + minutesLabel(mins)}
             className={'h-10 rounded-[9px] grid place-items-center bg-ink-900 text-white hover:bg-ink-700 ' + PRESS}>
             <Check className="w-4 h-4" strokeWidth={3} />
           </button>
@@ -127,6 +143,13 @@ export function BookingStageLine({ booking, todayKey, onDoor }: {
             className={'h-10 rounded-lg grid place-items-center text-muted hover:text-main hover:bg-card ' + PRESS}>
             <X className="w-4 h-4" />
           </button>
+          {picksDay && (
+            <div role="group" aria-label="Day they left" className="col-span-full grid grid-cols-[40px_minmax(0,1fr)_40px] items-center rounded-[9px] bg-card">
+              <button type="button" disabled={day <= booking.check_in} onClick={() => setDay(d => addDays(d, -1))} aria-label="A day earlier" className={DAY_NAV}><ChevronLeft className="w-4 h-4" /></button>
+              <output aria-live="polite" className="text-center font-display text-[13px] font-bold text-main">{day === todayKey ? 'Today' : new Date(day + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</output>
+              <button type="button" disabled={day >= lastDay} onClick={() => setDay(d => addDays(d, 1))} aria-label="A day later" className={DAY_NAV}><ChevronRight className="w-4 h-4" /></button>
+            </div>
+          )}
           <div className="col-span-full flex items-center gap-1.5">
             {presets.map(([name, m]) => (
               <button key={name} type="button" onClick={() => pick(m)} aria-pressed={m === mins}

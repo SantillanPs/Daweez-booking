@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-10-31',
+    changes: [
+      {
+        where: 'Front desk → Calendar',
+        what: [
+          'Guest left early? Open the booking and tap Out, then pick the day and the time they left. The room is free on the calendar from that day, and the guest still pays for the whole stay.',
+          'To change the booking itself, tap the dates on the bill. That calendar now shows the days just before and after the month, so you can always reach the day you need.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-10-30e',
     changes: [
       {

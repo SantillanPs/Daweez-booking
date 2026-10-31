@@ -95,6 +95,7 @@
 - **Check-out works like check-in: the guest may leave owing** (Sebastian, 2026-10-18: *"make the checkout function the same as the check in without paying"*). It used to be refused while money was owed. Now Receive still leads, and a quiet "Check out, pay later" asks first, naming the amount. What is owed stays on the bill and the pill (`₱… to pay`) until it is received. The staff often forgot to check guests in and out, and did not know check-in could happen unpaid (the check-in loop mock, 2026-10-18).
 - **Check-in and check-out must not happen by accident** (the staff, 2026-10-04). Sebastian chose: the app asks first, and a wrong one can be undone.
 - **Food can only be ordered once the guest is checked in** — people order when they are physically in the hotel.
+- **A guest who leaves early still pays for the whole stay, and the room is free from when they left** (the staff, then Sebastian, 2026-10-31). The staff could not update a check-out for a guest who left a day before it. Sebastian's example: *"the check out is nov 2, but the guest checked out at 1. they should still pay for the entire stay, but the calendar should adjust."* The booked dates stay on the bill and only the calendar shrinks. This is the one place a noted door time changes anything: until now a note changed nothing else. If the freed night has been sold, the note cannot be taken off or moved later until that booking is moved.
 
 ## Venues
 

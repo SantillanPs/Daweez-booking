@@ -31,13 +31,17 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
   for (const [key, sel] of Object.entries(p.unitSelections)) {
     const id = unitOfLine(key)
     const isRoom = sel.type === 'room'
+    // A guest gone early no longer holds the nights they left, which may be sold now.
+    const rowId = key.split('~')[1]
+    const row = p.editingBookings?.find(eb => (rowId ? eb.id === rowId : (isRoom ? eb.room_id : eb.venue_id) === id))
+    const facts = { ...p, actual_check_out: row?.actual_check_out }
     if (isRoom) {
-      if (!syncEngine.isRoomAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings, undefined, p)) {
+      if (!syncEngine.isRoomAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings, undefined, facts)) {
         const roomNum = p.rooms.find(r => r.id === id)?.room_number || id
         return { ok: false, error: `Room ${roomNum} is already booked for the selected dates.` }
       }
     } else {
-      if (!syncEngine.isVenueRangeAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings, undefined, p)) {
+      if (!syncEngine.isVenueRangeAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings, undefined, facts)) {
         const venueName = p.venues.find(v => v.id === id)?.name || id
         return { ok: false, error: `Venue ${venueName} is already reserved for the selected dates.` }
       }

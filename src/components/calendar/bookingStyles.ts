@@ -1,6 +1,7 @@
 import { Booking, Room } from '../../types/booking'
 import { getPaymentView, hasPaymentRecorded, PaymentTone } from '../../utils/bookingMoney'
 import { stayStage } from '../../utils/stayStage'
+import { leaveDay } from '../../utils/doorTimes'
 import { dateToString } from '../../utils/helpers'
 
 // Show the real room name (e.g. "Full Double Deluxe") instead of a bare
@@ -66,7 +67,7 @@ export const greetName = (name: string): string => {
 /** Whether a stay arrives or leaves today, from its dates. A short stay leaves on the day it came. */
 export const dueToday = (b: Booking, todayIso: string): 'in' | 'out' | null => {
   if (b.status === 'blocked') return null
-  if ((b.stay_hours ? b.check_in : b.check_out) === todayIso) return 'out'
+  if (leaveDay(b) === todayIso) return 'out'
   return b.check_in === todayIso ? 'in' : null
 }
 

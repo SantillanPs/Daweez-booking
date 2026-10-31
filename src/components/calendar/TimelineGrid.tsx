@@ -8,6 +8,7 @@ import { dateToString } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
 import { asBill } from '../../utils/bookingGroup'
 import { stayStage } from '../../utils/stayStage'
+import { leaveDay } from '../../utils/doorTimes'
 import { TimelineDayInfo } from './timelineDays'
 import { rememberFormOrigin } from '../../utils/bookingFocus'
 import { useDashboardData } from '../DashboardContext'
@@ -493,7 +494,7 @@ export const TimelineGrid = React.memo(
         seen[b.id] = true
         if (stayStage(b, todayIso) === 'during') occupied[unitId] = true
         at(b.check_in).arrive.push(b.id)
-        at(b.stay_hours ? b.check_in : b.check_out).leave.push(b.id)
+        at(leaveDay(b)).leave.push(b.id)
       }))
       return { occupied, counts }
     }, [halves, todayIso])

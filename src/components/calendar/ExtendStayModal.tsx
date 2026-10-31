@@ -455,7 +455,11 @@ export function ExtendStayModal({
     // stay then reaches the next half or two, and when another booking is there the time is
     // not saved — the desk settles it with the guest (fewer hours, or that booking moved);
     // the app never moves the other booking. The database refuses it the same way.
-    if (k === 'in' && at && stayHoursOf(updated)) {
+    //
+    // **A guest who left early gave the room back** (Sebastian, 2026-10-31), so taking that note
+    // off, or moving it later, can run into whoever has the room now. The same answer.
+    const leaving = k === 'out' && !stayHoursOf(updated)
+    if (leaving || (k === 'in' && at && stayHoursOf(updated))) {
       const venue = !updated.room_id
       const unit = venue ? normalizeVenueId(updated.venue_id) || '' : updated.room_id || ''
       const [from, to] = bookingHalves(updated)
@@ -464,6 +468,10 @@ export function ExtendStayModal({
         const s = Math.max(from, bookingHalves(inTheWay)[0])
         const day = new Date(Date.UTC(2000, 0, 1 + Math.floor(s / 2)))
         const when = day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) + (s % 2 ? ' afternoon' : ' morning')
+        if (leaving) {
+          showToast('Another booking has this ' + (venue ? 'venue' : 'room') + ' from ' + when + '. Move that booking first.', 'error')
+          return
+        }
         const out = shortStayOut(updated)
         showToast((out ? 'Out at ' + clockLabel(out) + ' runs' : 'This runs') + ' into the next booking (' + when + '). Sell fewer hours on the bill, or move that booking first.', 'error')
         return

@@ -267,12 +267,14 @@ export function useBookings() {
         appliedDiscount, earlyCheckInHours, lateCheckOutHours, venueDayBlocks, notes, preparedBy, breakfastDays,
         referenceNumber, registeredOn, paymentRecords, agreedDeposit, stayHours, stayHalf, groupId, actualCheckIn, actualCheckOut } = params
 
-      if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings, id, { stay_hours: stayHours, stay_half: stayHalf })) {
+      // A guest gone early no longer holds the nights they left, which may be sold now.
+      const facts = { stay_hours: stayHours, stay_half: stayHalf, actual_check_out: id ? allBookings.find(b => b.id === id)?.actual_check_out : undefined }
+      if (roomId && !syncEngine.isRoomAvailable(roomId, checkIn, checkOut, bookings, id, facts)) {
         throw new Error('The room is already booked or blocked for these dates.')
       }
       // `id` is the booking being corrected: without it a venue booking collided with
       // itself and could never be saved again.
-      if (venueId && !syncEngine.isVenueRangeAvailable(venueId, checkIn, checkOut, bookings, id, { stay_hours: stayHours, stay_half: stayHalf })) {
+      if (venueId && !syncEngine.isVenueRangeAvailable(venueId, checkIn, checkOut, bookings, id, facts)) {
         throw new Error('This venue is already reserved for the selected date(s).')
       }
 

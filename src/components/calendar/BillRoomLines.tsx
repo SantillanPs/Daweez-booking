@@ -211,17 +211,25 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
  * A month under the date tapped (Sebastian, 2026-10-24: "show a calendar to make it easier"). A new
  * check-in moves the stay and its nights come along; a new check-out changes the nights. A night
  * someone else has is struck through and refuses with a shake.
+ *
+ * The days either side of the month are there to tap too, a whole week when the month starts on a
+ * Sunday or ends on a Saturday. A guest due out Sun Nov 1 left on Sat Oct 31 (the staff, 2026-10-31):
+ * the month opened on November, where the 1st is the first square, and they could not change it.
  */
-export function MonthPick({ end, checkIn, checkOut, free, taken, onPick }: {
+export function MonthPick({ end, checkIn, checkOut, free, taken, sameDay, onPick }: {
   end: 'in' | 'out'; checkIn: string; checkOut: string
   free: (from: string, to: string) => boolean
   /** Said over the month when someone else has these dates: they show gold until they move. */
   taken?: string
+  /** Said when the check-in day is tapped for the check-out, which a shake alone did not explain. */
+  sameDay?: string
   onPick: (checkIn: string, checkOut: string) => void
 }) {
   const [month, setMonth] = useState((end === 'in' ? checkIn : checkOut).slice(0, 7))
+  const [said, setSaid] = useState(false)
   const [y, m] = month.split('-').map(Number)
-  const lead = new Date(y, m - 1, 1).getDay(), len = new Date(y, m, 0).getDate()
+  const before = new Date(y, m - 1, 1).getDay() || 7, len = new Date(y, m, 0).getDate()
+  const after = 7 - (before + len) % 7
   const today = dateToString(new Date())
   const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
   const step = (k: number) => { const t = new Date(y, m - 1 + k, 1); setMonth(dateToString(t).slice(0, 7)) }
@@ -231,6 +239,7 @@ export function MonthPick({ end, checkIn, checkOut, free, taken, onPick }: {
       if (!free(d, addDays(d, nights))) return nope(el)
       onPick(d, addDays(d, nights))
     } else {
+      if (d === checkIn) setSaid(true)
       if (d <= checkIn || !free(checkIn, d)) return nope(el)
       onPick(checkIn, d)
     }
@@ -244,20 +253,22 @@ export function MonthPick({ end, checkIn, checkOut, free, taken, onPick }: {
         <button type="button" onClick={() => step(1)} aria-label="Next month" className={NAV}><ChevronRight className="w-3.5 h-3.5" /></button>
       </div>
       {taken && <p className="mb-1 px-1 text-[10px] font-semibold text-gold-800 bw-rise">{taken}</p>}
+      {said && sameDay && <p className="mb-1 px-1 text-[10px] font-semibold text-gold-800 bw-rise">{sameDay}</p>}
       <div className="grid grid-cols-7 text-center text-[9px] font-bold text-muted pb-0.5">{['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i}>{d}</span>)}</div>
       <div className="grid grid-cols-7">
-        {Array.from({ length: lead }, (_, i) => <span key={'x' + i} />)}
-        {Array.from({ length: len }, (_, i) => {
-          const d = month + '-' + String(i + 1).padStart(2, '0')
+        {Array.from({ length: before + len + after }, (_, i) => {
+          const d = addDays(month + '-01', i - before)
           const sold = !free(d, addDays(d, 1)) && !(d >= checkIn && d < checkOut)
           const stay = d >= checkIn && d < checkOut
           const edge = taken ? 'bg-gold-500 text-white' : 'bg-ink-900 text-white'
           const tone = d === checkIn ? edge + ' rounded-l-lg' : d === checkOut ? edge + ' rounded-r-lg' : stay ? 'bg-gold-100' : 'hover:bg-gold-100 hover:rounded-lg'
+          const other = !d.startsWith(month) && d !== checkIn && d !== checkOut
+          const day = Number(d.slice(8))
           return (
-            <button key={d} type="button" onClick={e => tap(d, e.currentTarget)} aria-label={MONTHS[m - 1] + ' ' + (i + 1) + (sold ? ', taken' : '')}
+            <button key={d} type="button" onClick={e => tap(d, e.currentTarget)} aria-label={MONTHS[Number(d.slice(5, 7)) - 1] + ' ' + day + (sold ? ', taken' : '')}
               className={'h-[30px] grid place-items-center text-[11.5px] font-semibold active:scale-90 transition-[background-color,transform] ' + tone +
-                (sold ? ' text-muted line-through cursor-not-allowed' : ' cursor-pointer') + (d === today ? ' shadow-[inset_0_-2px_0_#D0AB60]' : '')}>
-              {i + 1}
+                (sold ? ' text-muted line-through cursor-not-allowed' : ' cursor-pointer') + (other && !sold ? ' text-muted' : '') + (d === today ? ' shadow-[inset_0_-2px_0_#D0AB60]' : '')}>
+              {day}
             </button>
           )
         })}

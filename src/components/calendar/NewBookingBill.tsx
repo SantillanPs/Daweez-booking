@@ -324,9 +324,11 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // Free of other bookings, and of this bill's other line of the same room or venue.
   const free = (key: string, from: string, to: string) => {
     const id = unitOfLine(key)
+    // A guest gone early no longer holds the nights they left, which may be sold now: their bill can still be worked on.
+    const facts = { actual_check_out: rowOf(key)?.actual_check_out, ...(isShort && { stay_hours: hours, stay_half: half }) }
     return (rooms.some(r => r.id === id)
-      ? isRoomAvailable(id, from, to, others, undefined, isShort ? { stay_hours: hours, stay_half: half } : undefined)
-      : isVenueRangeAvailable(id, from, to, others, undefined, isShort ? { stay_hours: hours, stay_half: half } : undefined))
+      ? isRoomAvailable(id, from, to, others, undefined, facts)
+      : isVenueRangeAvailable(id, from, to, others, undefined, facts))
       && !list.some(([k, s]) => k !== key && unitOfLine(k) === id && s.checkIn < to && from < s.checkOut)
   }
   const countOf = (from: string, to: string) => Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000))
@@ -874,6 +876,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       <Floating key={p.kind + p.id} {...common} at={at} right width={236} label={(p.kind === 'in' ? 'Check in for ' : 'Check out for ') + unitName(p.id, s)}>
         <MonthPick end={p.kind === 'in' ? 'in' : 'out'} checkIn={s.checkIn} checkOut={s.checkOut} free={(a, b) => free(p.id, a, b)}
           taken={free(p.id, s.checkIn, s.checkOut) ? '' : unitName(p.id, s).split(' · ')[0] + ' is taken on these dates'}
+          sameDay="Guest left early? Tap Out on the booking panel. The bill stays as booked."
           onPick={(ci, co) => {
             setUnits(u => u.map(([x, y]): [string, Sel] => x === p.id ? [x, { ...y, checkIn: ci, checkOut: co }] : [x, y]))
             // New dates are a new stay: its breakfast is every morning again.

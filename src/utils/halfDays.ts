@@ -17,11 +17,14 @@ export const dayHalf = (iso: string) => {
 /** The half a moment falls in, in the hotel's own time. */
 const halfAt = (t: Date) => dayHalf(dateToString(t)) + (t.getHours() >= 12 ? 1 : 0)
 
-export type HalfFacts = Pick<Booking, 'check_in' | 'check_out' | 'stay_hours' | 'stay_half' | 'actual_check_in' | 'late_check_out_hours'>
+export type HalfFacts = Pick<Booking, 'check_in' | 'check_out' | 'stay_hours' | 'stay_half' | 'actual_check_in' | 'late_check_out_hours' | 'actual_check_out'>
 
 /**
  * The halves a booking holds, as [first, last + 1):
  *   * a night from the afternoon it arrives to the morning it leaves;
+ *   * a guest who left before their check-out day to the morning of the day they left, or only the
+ *     arrival afternoon if they left the day they came. The bill stays as booked (Sebastian,
+ *     2026-10-31: "they should still pay for the entire stay, but the calendar should adjust");
  *   * a short stay its booked half — 12 hours that half and the next, 22 from a morning three;
  *   * and once a short stay's check-in is noted, every half up to when it should leave: the
  *     clock starts at check-in, so a 12-hour morning stay checked in at 4 PM holds the next
@@ -29,7 +32,12 @@ export type HalfFacts = Pick<Booking, 'check_in' | 'check_out' | 'stay_hours' | 
  */
 export function bookingHalves(b: HalfFacts): [number, number] {
   const hours = Number(b.stay_hours || 0)
-  if (!hours) return [dayHalf(b.check_in) + 1, dayHalf(b.check_out) + 1]
+  if (!hours) {
+    const start = dayHalf(b.check_in) + 1
+    const left = b.actual_check_out ? dateToString(new Date(b.actual_check_out)) : ''
+    if (left && left < b.check_out) return [start, Math.max(start + 1, dayHalf(left) + 1)]
+    return [start, dayHalf(b.check_out) + 1]
+  }
   const half = b.stay_half ?? 1
   const start = dayHalf(b.check_in) + half
   let end = start + (hours < 12 ? 1 : hours > 12 && half === 0 ? 3 : 2)
