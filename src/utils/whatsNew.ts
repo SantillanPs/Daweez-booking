@@ -23,6 +23,29 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-11-01b',
+    changes: [
+      {
+        where: 'Bill',
+        what: [
+          'Tap the Breakfast line and turn a room on, as before. If the guest wants to talk about breakfast, Menu and Time are right under the room. Nothing there has to be filled in.',
+        ],
+      },
+      {
+        where: 'Calendar',
+        what: [
+          'The breakfast cup is back, with a small question mark, until 11 AM. Tap it, ask the guest, and press Serve to send it to the kitchen. What they chose before is already filled in, and you can change it.',
+          'When the kitchen has cooked it, the cup comes back in brown. Tap it once the breakfast is served.',
+          'Open a booking to see its breakfast, morning by morning, and the time they want it. Tap a morning to change it. Later mornings can have different food.',
+        ],
+      },
+      {
+        where: 'Restaurant → Kitchen',
+        what: ['The kitchen only sees a breakfast once the front desk has pressed Serve. The card shows the time the guest wants it.'],
+      },
+    ],
+  },
+  {
     id: '2026-10-31',
     changes: [
       {

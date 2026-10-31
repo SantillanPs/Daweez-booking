@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal, flushSync } from 'react-dom'
-import { X, Receipt, CalendarPlus, Banknote, Check, Coffee, DoorOpen, KeyRound, XCircle, Trash2 } from 'lucide-react'
+import { X, Receipt, CalendarPlus, Banknote, Check, DoorOpen, KeyRound, XCircle, Trash2 } from 'lucide-react'
 import { Booking, Room, Venue, PaymentRecord } from '../../types/booking'
 import { getRateConfig } from '../../utils/rateConfig'
 import { PrintPaymentReceiptModal } from '../billing/PrintPaymentReceiptModal'
@@ -22,7 +22,9 @@ import { clockLabel, shortStayOut, stayHoursOf } from '../../utils/shortStay'
 import { bookingHalves, clashIn } from '../../utils/halfDays'
 import { airconWords } from '../../utils/venueHours'
 import { BreakfastPicker } from './BreakfastPicker'
-import { wantsBreakfastToday, breakfastOn, breakfastSummary, breakfastAskOpen } from '../../utils/breakfastChoice'
+import { useQueryClient } from '@tanstack/react-query'
+import { BreakfastMornings } from './BreakfastMornings'
+import { withBreakfastTime } from '../../utils/breakfastChoice'
 import { dateToString, normalizeVenueId } from '../../utils/helpers'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 import { asBill, groupOf } from '../../utils/bookingGroup'
@@ -140,7 +142,8 @@ export function ExtendStayModal({
   const toolBar = useRef<HTMLSpanElement>(null)
   const card = useRef<HTMLDivElement>(null)
   const [closing, setClosing] = useState(false)
-  const [breakfastOpen, setBreakfastOpen] = useState(false)
+  const queryClient = useQueryClient()
+  const [breakfastOn, setBreakfastOn] = useState<string | null>(null)
   const [localBooking, setLocalBooking] = useState(booking)
   // Something the pressed action could not do, said on the page beside the
   // button (e.g. checking out while money is still owed). Replaced every popup.
@@ -615,7 +618,6 @@ export function ExtendStayModal({
       showToast('Could not end the block. Please try again.', 'error')
     }
   }
-  const breakfastToday = breakfastOn(booking, todayKey)
   // The one bill takes its money through this panel, which knows the rooms, the slips and the receipts.
   useEffect(() => {
     if (!deskRef) return
@@ -660,10 +662,17 @@ export function ExtendStayModal({
   const [openedPaid] = useState(figure?.value === null)
   // Something done behind a seal shows once the seal has faded.
   const wait = { '--wait': '1.1s' } as React.CSSProperties
-  const breakfastWanted = wantsBreakfastToday(localBooking, todayKey)
-  // After 11 AM an unasked morning is not asked any more — it reads as nothing today.
-  const breakfastUnasked = breakfastWanted && !breakfastToday && breakfastAskOpen()
-  const breakfastAsked = breakfastWanted && !breakfastUnasked
+  // The stay's breakfast time goes with the whole row, on the choices the cache holds now: they
+  // have their own writer, and a morning answered a moment ago must not read as unanswered.
+  const setBreakfastTime = async (minutes: number) => {
+    const before = localBooking
+    const latest = queryClient.getQueryData<Booking[]>(['bookings'])?.find(b => b.id === localBooking.id)
+    const updated = withBreakfastTime({ ...localBooking, breakfast_choices: latest?.breakfast_choices ?? localBooking.breakfast_choices }, minutes)
+    setLocalBooking(updated)
+    try { await onUpdateBooking?.(updated) }
+    catch { setLocalBooking(before); showToast('Could not save the breakfast time. Please try again.', 'error') }
+  }
+  const hasBreakfast = !!localBooking.room_id && localBooking.breakfast_included === true && !localBooking.stay_hours && localBooking.status !== 'blocked' && localBooking.status !== 'cancelled'
 
   const modalContent = (
     <div className={'fixed inset-0 z-50 flex items-center justify-center p-4 ' + (unseen ? 'hidden ' : '') + (closing ? 'pointer-events-none' : '')}>
@@ -710,22 +719,6 @@ export function ExtendStayModal({
         {isBlock && <div aria-hidden="true" className="bw-hatch mt-2 shrink-0" />}
         <div className="px-5 overflow-y-auto flex-1">
           <div className="pt-3 pb-5 flex flex-col gap-[22px] empty:hidden">
-            {/* What needs the desk before anything else sits on top: a breakfast nobody has
-                asked about yet. */}
-            {breakfastUnasked && (
-              <div className="space-y-2 empty:hidden">
-                {breakfastUnasked && (
-                  <button type="button" onClick={() => setBreakfastOpen(true)}
-                    className="w-full min-h-11 flex items-center gap-2.5 rounded-lg bg-danger-50 px-3 text-[13px] font-bold text-danger-600 text-left hover:bg-danger-100 transition-colors cursor-pointer">
-                    <span aria-hidden="true" className="w-2 h-2 rounded-full bg-current animate-pulse motion-reduce:animate-none" />
-                    <Coffee aria-hidden="true" className="w-[18px] h-[18px] animate-hop" />
-                    Breakfast not asked
-                    <span className="ml-auto underline underline-offset-[3px]">Ask</span>
-                  </button>
-                )}
-              </div>
-            )}
-
             {/* LEVEL 1 — the answer: what is owed, biggest, and where the stay is under it. */}
             {!isBlock && (
               <div className="space-y-2">
@@ -767,6 +760,12 @@ export function ExtendStayModal({
                   <BookingStageLine booking={localBooking} todayKey={todayKey} onDoor={onUpdateBooking ? (k, at) => void noteDoor(k, at) : undefined} />
                 </div>
               </div>
+            )}
+
+            {/* The choices are read from the LIVE booking — they are saved by their own writer. */}
+            {hasBreakfast && (
+              <BreakfastMornings booking={{ ...localBooking, breakfast_choices: booking.breakfast_choices }} todayKey={todayKey}
+                onMorning={setBreakfastOn} onTime={m => void setBreakfastTime(m)} />
             )}
 
             {/* LEVEL 2 — the next step: receiving the money while the guest owes. There is no
@@ -830,7 +829,7 @@ export function ExtendStayModal({
                 its receipt. Small and grey; opened when the desk wants the detail. The guest's
                 details fold in with it (the booking window mock, 2026-10-16): one line to open,
                 not a block of small print under the bill. */}
-            {(removed || breakfastAsked) && (
+            {removed && (
               <div className="space-y-2">
                 {removed && (
                   <div role="status" key={removed.label} className="bw-arrive relative overflow-hidden flex items-center gap-2 h-11 my-1.5 rounded-lg bg-ink-900 text-white pl-3 pr-1.5 text-[13px] font-semibold">
@@ -839,17 +838,6 @@ export function ExtendStayModal({
                       className="h-8 px-3.5 rounded-md bg-gold-400 text-ink-900 text-[13px] font-bold cursor-pointer active:scale-95 transition-transform">Undo</button>
                     <span aria-hidden="true" style={{ '--ms': '5000ms' } as React.CSSProperties} className="fd-drain absolute left-0 bottom-0 h-[3px] w-full bg-gold-400" />
                   </div>
-                )}
-
-                {/* Breakfast is asked every morning (the owner, 2026-10-04). Unasked, it is the
-                    red line at the top; answered, it is a quiet line here. The choices are read
-                    from the LIVE booking — they are saved by their own writer. */}
-                {breakfastAsked && (
-                  <button type="button" onClick={() => setBreakfastOpen(true)}
-                    className="w-full min-h-10 flex items-center justify-between gap-3 border-t border-soft text-[12px] text-left hover:text-main transition-colors cursor-pointer">
-                    <span className="font-bold text-muted shrink-0">Breakfast today</span>
-                    <span className="text-muted truncate">{breakfastToday ? breakfastSummary(breakfastToday) : 'Nothing today'}</span>
-                  </button>
                 )}
               </div>
             )}
@@ -988,12 +976,14 @@ export function ExtendStayModal({
         )}
       </div>
 
-      {breakfastOpen && (
+      {breakfastOn && (
         <BreakfastPicker
-          booking={booking}
-          date={todayKey}
+          booking={{ ...localBooking, breakfast_choices: booking.breakfast_choices }}
+          date={breakfastOn}
+          today={todayKey}
           place={unitSub || unitName}
-          onClose={() => setBreakfastOpen(false)}
+          onTime={setBreakfastTime}
+          onClose={() => setBreakfastOn(null)}
         />
       )}
       {showReceipt && receiptFor && (

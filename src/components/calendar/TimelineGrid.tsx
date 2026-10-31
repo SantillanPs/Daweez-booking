@@ -1,6 +1,7 @@
 import React from 'react'
 import { Ban, Coffee, FilePlus, LogIn, LogOut, Plus } from 'lucide-react'
 import { Booking, PartnerDeal, Room, Venue } from '../../types/booking'
+import { AskCup } from './BreakfastParts'
 import { isBilledToAgency } from '../../utils/bookingMoney'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { dueToday, getBookingStyle, roomDisplayName } from './bookingStyles'
@@ -657,15 +658,16 @@ export const TimelineGrid = React.memo(
                     {/* **The breakfast cup is on the ROOM, and it is a button** (Sebastian,
                         2026-10-08). It began on the pill, where it was too small to tap and
                         did not fit any bigger. Here it can be, and a guest who has overstayed
-                        — no pill on the calendar — still has a room to wear it. It hops
-                        because it is a job, not a label (*"it looks more of a status than a
-                        'this room needs breakfast'"*), and it is gone once the room is asked. */}
+                        — no pill on the calendar — still has a room to wear it. It is a job,
+                        not a label (*"it looks more of a status than a 'this room needs
+                        breakfast'"*), so it asks with the door's `?` (2026-11-01; it used to
+                        hop), and it is gone once the guest has confirmed. */}
                     {breakfastToAsk?.[room.id] && (
                       <button type="button" onClick={() => onBreakfast?.(breakfastToAsk[room.id])}
                         title={'Ask room ' + room.room_number + ' what they want for breakfast'}
                         aria-label={'Ask room ' + room.room_number + ' about breakfast'}
                         className="-mr-1.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-main transition-colors hover:bg-gold-200 active:scale-95 cursor-pointer">
-                        <Coffee className="w-5 h-5 animate-hop" />
+                        <AskCup />
                       </button>
                     )}
                     {/* The same cup in brown: the kitchen has cooked it (brown, not green, so

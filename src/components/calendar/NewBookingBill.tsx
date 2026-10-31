@@ -2,7 +2,7 @@ import React, { startTransition, useCallback, useEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Building2, Check, ChevronDown, Coffee, Plus, Tag, X } from 'lucide-react'
-import { Booking, BillCharge, Companion, EquipmentRental, EventAddons, Room, Venue } from '../../types/booking'
+import { Booking, BillCharge, BreakfastPlan, Companion, EquipmentRental, EventAddons, Room, Venue } from '../../types/booking'
 import { buildStatement, StatementLineItem, shortDate } from '../../utils/statement'
 import { dateToString, normalizeVenueId, randomUUID } from '../../utils/helpers'
 import { recomputeBalance } from '../../utils/bookingBalance'
@@ -138,6 +138,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // The mornings a room's breakfast is for, when the desk changed its dates on the bill
   // (Sebastian, 2026-10-29). A room not here has breakfast every morning of its stay.
   const [bfDays, setBfDays] = useState<Record<string, string[]>>(() => Object.fromEntries((editing || []).filter(b => b.room_id && b.breakfast_days?.length).map(b => [keyOf(b), b.breakfast_days!])))
+  // What each room's guest said about breakfast for the stay, when they talked about it
+  // (Sebastian, 2026-11-01). Inside the pop-up, never on the bill; the mornings read it from the row.
+  const [bfPlans, setBfPlans] = useState<Record<string, BreakfastPlan>>(() => Object.fromEntries((editing || []).filter(b => b.room_id && b.event_addons?.breakfast_plan).map(b => [keyOf(b), b.event_addons!.breakfast_plan!])))
   const [extras, setExtras] = useState<Extras>(() => {
     const r = editing?.find(b => b.room_id && b.equipment_rentals)?.equipment_rentals
     return r ? { extraFoamCount: r.extraFoamCount || 0, extraPillowCount: r.extraPillowCount || 0, extraBlanketCount: r.extraBlanketCount || 0, extraTowelCount: r.extraTowelCount || 0 } : NO_EXTRAS
@@ -390,6 +393,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       setUnits(u => u.map(([x, s]): [string, Sel] => x === out ? [id, s] : [x, s]))
       setBreakfast(b => b.map(x => x === out ? id : x))
       setBfDays(d => { if (!d[out]) return d; const n = { ...d, [id]: d[out] }; delete n[out]; return n })
+      setBfPlans(d => { if (!d[out]) return d; const n = { ...d, [id]: d[out] }; delete n[out]; return n })
       setKinds(k => { const n = { ...k }; delete n[out]; return n })
       setRates(r => { const n = { ...r }; delete n[out]; return n })
       const s = list.find(([x]) => x === out)?.[1]
@@ -474,7 +478,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       formPreparedBy: preparedBy.trim(),
       formCompanyName: to?.name || '', formInstitution: to && !to.dealId ? to.name : ed?.institution || '',
       formVehiclePlate: ed?.vehicle_plate || deal?.vehicle_plate || '', formInvoiceNumber: ed?.invoice_number || '', formSource: ed?.source || 'manual',
-      formBreakfastRoomIds: isShort ? [] : breakfast, formBreakfastDays: bfDays, formCompanions: companions.filter(c => c.name.trim()),
+      formBreakfastRoomIds: isShort ? [] : breakfast, formBreakfastDays: bfDays, formBreakfastPlans: isShort ? {} : bfPlans, formCompanions: companions.filter(c => c.name.trim()),
       ...extrasOf(to ? NO_EXTRAS : extras),
       // What the bill does not show is sent back as saved, or the save would blank it.
       formChairs: venueKit?.chairCount || 0, formEventTable: venueKit?.tableCount || 0, formEventTent: venueKit?.tentCount || 0,
@@ -537,7 +541,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
         const re = (k: string) => renamed.get(k) || k
         const reKeys = <T,>(r: Record<string, T>) => Object.fromEntries(Object.entries(r).map(([k, v]) => [re(k), v]))
         // ponytail: the new keys read as a change and save the same bill once more; harmless.
-        setUnits(u => u.map(([k, s]): [string, Sel] => [re(k), s])); setBreakfast(b => b.map(re)); setBfDays(reKeys); setKinds(reKeys); setRates(reKeys)
+        setUnits(u => u.map(([k, s]): [string, Sel] => [re(k), s])); setBreakfast(b => b.map(re)); setBfDays(reKeys); setBfPlans(reKeys); setKinds(reKeys); setRates(reKeys)
       }
       onSaved?.(result.bookings)
       return
@@ -563,7 +567,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const anchor = active.find(b => ids.current.includes(b.id))
     return { rows: anchor ? groupOf(anchor, active) : editing || [], active, all }
   }
-  const sig = editing ? JSON.stringify([guestName, guestPhone, nationality, address, companions, short, hours, half, breakfast, bfDays, extras, charges, kinds, discs, to, preparedBy, units, rates, hrs]) : ''
+  const sig = editing ? JSON.stringify([guestName, guestPhone, nationality, address, companions, short, hours, half, breakfast, bfDays, bfPlans, extras, charges, kinds, discs, to, preparedBy, units, rates, hrs]) : ''
   const savedSig = useRef(sig)
   const latest = useRef(handleBook)
   useEffect(() => { latest.current = handleBook })
@@ -814,8 +818,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       </Floating>
     )
     if (p.kind === 'bf') return (
-      <Floating key={p.kind + p.id} {...common} at={at} width={320} label="Breakfast">
-        <BreakfastList pricing={pricing} onPrice={setPricing}
+      <Floating key={p.kind + p.id} {...common} at={at} width={320} grows label="Breakfast">
+        <BreakfastList pricing={pricing} onPrice={setPricing} plans={bfPlans}
+          onPlan={(id, plan) => setBfPlans(d => ({ ...d, [id]: plan }))}
           rows={bfRooms.map(([id, us]) => {
             const room = rooms.find(r => r.id === unitOfLine(id))!
             return { id, label: unitName(id, us), price: breakfastSellable(room) ? roomBreakfastPrice(room) : null, count: isShort ? 1 : countOf(us.checkIn, us.checkOut), on: breakfast.includes(id) }

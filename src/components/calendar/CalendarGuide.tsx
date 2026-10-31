@@ -1,6 +1,6 @@
 import React from 'react'
 import { Building2, Coffee, LogIn, LogOut } from 'lucide-react'
-import { BREAKFAST_ASK_ON } from '../../utils/breakfastChoice'
+import { AskCup } from './BreakfastParts'
 
 // The key to the calendar: **every sign on it, and what it means, in one place** (Sebastian,
 // 2026-10-08: *"move all of the instructions there so that all the calendar is showing is
@@ -44,8 +44,8 @@ export function CalendarGuide() {
 
           <Section title="On the room">
             <Row sign={<span className="h-5 w-[5px] rounded-sm bg-emerald-600" />}>This room is occupied today</Row>
-            {BREAKFAST_ASK_ON && <Row sign={<Coffee className="w-5 h-5 animate-hop" />}>Tap to ask this room about breakfast (until 11 AM)</Row>}
-            {BREAKFAST_ASK_ON && <Row sign={<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gold-800 text-white"><Coffee className="w-4 h-4" /></span>}>Breakfast is ready. Tap once it is served</Row>}
+            <Row sign={<AskCup />}>Ask the guest about breakfast (until 11 AM). The kitchen cooks once it is confirmed</Row>
+            <Row sign={<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gold-800 text-white"><Coffee className="w-4 h-4" /></span>}>Breakfast is ready. Tap once it is served</Row>
           </Section>
 
           <Section title="Under the date">

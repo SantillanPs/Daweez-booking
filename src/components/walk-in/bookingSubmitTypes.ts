@@ -1,6 +1,6 @@
 import {
   Booking, BookingSource, Room, Venue, PartnerDeal, Companion,
-  EquipmentRental, BreakfastOrder, AppliedDiscount, PaymentRecord, EventAddons, BillCharge,
+  EquipmentRental, BreakfastOrder, AppliedDiscount, PaymentRecord, EventAddons, BillCharge, BreakfastPlan,
 } from '../../types/booking'
 
 /**
@@ -91,6 +91,8 @@ export interface BookingSubmitParams {
   formBreakfastRoomIds: string[]
   /** The bill's chosen breakfast mornings by room; a room not in it has every morning. Left out, the saved ones stay. */
   formBreakfastDays?: Record<string, string[]>
+  /** What each room's guest said about breakfast for the stay, by the bill's key. */
+  formBreakfastPlans?: Record<string, BreakfastPlan>
   formCompanions: Companion[]
   formExtraFoam: number
   formExtraPillow: number

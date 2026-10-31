@@ -101,7 +101,8 @@ export interface BreakfastRecord {
 export interface BreakfastChoice {
   date: string // YYYY-MM-DD the breakfast is for
   items: { name: string; qty: number }[] // empty = asked, and the guest wanted nothing
-  /** When the desk pressed Serve — the kitchen's screen counts the wait from here. */
+  /** When the desk confirmed it with the guest (Serve, or Nothing). The kitchen's screen counts the
+   *  wait from here. A later morning changed ahead of time has none: it is asked again on its day. */
   sent_at?: string
   /** When the kitchen said the breakfast was ready. Until then it is on the kitchen's screen. */
   ready_at?: string
@@ -140,6 +141,18 @@ export interface EventAddons {
    * reason as `venue_type`: the column exists and every writer already carries it.
    */
   charges?: BillCharge[]
+  /**
+   * What the guest said about breakfast for the stay, when the desk and the guest talked about
+   * it (Sebastian, 2026-11-01). In this JSON for the same reason as `venue_type`. It is a
+   * starting point, never an order: each morning is still confirmed on its own.
+   */
+  breakfast_plan?: BreakfastPlan
+}
+
+/** The food the guest would like, and when, in minutes after midnight. Neither is ever required. */
+export interface BreakfastPlan {
+  items: { name: string; qty: number }[]
+  time?: number
 }
 
 /** One charge written on the bill by the desk: what for, how much, and the day it was put on. */

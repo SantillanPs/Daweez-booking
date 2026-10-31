@@ -3,7 +3,7 @@ import { useDashboardData } from './DashboardContext'
 import { Booking, PaymentRecord } from '../types/booking'
 import * as syncEngine from '../utils/syncEngine'
 import { dateToString, normalizeVenueId } from '../utils/helpers'
-import { breakfastOn, wantsBreakfastToday, saveBreakfastChoices, breakfastAskOpen, BREAKFAST_ASK_UNTIL } from '../utils/breakfastChoice'
+import { breakfastOn, isConfirmed, wantsBreakfastToday, withBreakfastTime, saveBreakfastChoices, breakfastAskOpen, BREAKFAST_ASK_UNTIL } from '../utils/breakfastChoice'
 import { useQueryClient } from '@tanstack/react-query'
 import { extendStay } from '../utils/bookingBalance'
 import { clearStayHours } from '../utils/db'
@@ -173,7 +173,7 @@ export function CalendarTab() {
   const breakfastToAsk = useMemo(() => {
     const ask: Record<string, Booking> = {}
     if (!morning) return ask
-    bookings.forEach(b => { if (b.room_id && wantsBreakfastToday(b, todayKey) && !breakfastOn(b, todayKey)) ask[b.room_id] = b })
+    bookings.forEach(b => { if (b.room_id && wantsBreakfastToday(b, todayKey) && !isConfirmed(breakfastOn(b, todayKey))) ask[b.room_id] = b })
     return ask
   }, [bookings, todayKey, morning])
 
@@ -221,6 +221,14 @@ export function CalendarTab() {
     try { await saveBreakfastChoices(booking.id, choices) }
     catch { queryClient.setQueryData(['bookings'], before); showToast('Could not mark the breakfast served. Please try again.', 'error') }
   }, [queryClient, todayKey])
+
+  // Read from the cache at the last moment: the window saves the morning's answer just before this.
+  const setBreakfastTime = useCallback(async (minutes: number) => {
+    const row = queryClient.getQueryData<Booking[]>(['bookings'])?.find(b => b.id === breakfastForId)
+    if (!row) return
+    try { await updateBooking(withBreakfastTime(row, minutes)) }
+    catch { showToast('Could not save the breakfast time. Please try again.', 'error') }
+  }, [queryClient, breakfastForId, updateBooking])
 
   const handleCellClick = useCallback((id: string, type: 'room' | 'venue', date: Date, half?: 0 | 1) => {
     const curTimeline = timelineSelectionRef.current
@@ -645,7 +653,9 @@ export function CalendarTab() {
           key={breakfastFor.id}
           booking={breakfastFor}
           date={todayKey}
+          today={todayKey}
           place={'Room ' + (rooms.find(r => r.id === breakfastFor.room_id)?.room_number ?? '')}
+          onTime={setBreakfastTime}
           onClose={() => setBreakfastForId(null)}
         />
       )}

@@ -1,6 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { BreakfastPlan } from '../../types/booking'
+import { BreakfastPlanLinks } from './BreakfastParts'
 import { addDays } from '../../utils/dailyLedger'
 import { dateToString } from '../../utils/helpers'
 import { PriceBox } from '../PriceBox'
@@ -11,7 +13,7 @@ import { PriceBox } from '../PriceBox'
  * the bill ("like the calendar, this shouldn't make space in the billing when opened"); above it
  * when there is no room below. A tap anywhere else, or Esc, puts it away.
  */
-export function Floating({ at, sheet, right, width, label, nested, onClose, children }: {
+export function Floating({ at, sheet, right, width, label, nested, grows, onClose, children }: {
   /** What it opens under, asked again each time it is placed: the line it belongs to may be drawn anew. */
   at: () => HTMLElement; sheet: HTMLElement; right?: boolean; label: string
   /** Left out, the box is as wide as what is in it (Sebastian, 2026-10-27: "the design should use only
@@ -21,26 +23,30 @@ export function Floating({ at, sheet, right, width, label, nested, onClose, chil
    *  supposed to be another popup, and shouldn't change the size of the original popup"). The one
    *  beneath stays open while it is tapped, and Esc puts away only this one. */
   nested?: boolean
+  /** It unfolds while it is open, so it stays on the side it opened on: a dish tapped must not move the dishes. */
+  grows?: boolean
   onClose: () => void; children: React.ReactNode
 }) {
   const box = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number; up: boolean } | null>(null)
+  const side = useRef<boolean | null>(null)
   useLayoutEffect(() => {
     const place = () => {
       const el = box.current
       if (!el) return
       const width = el.offsetWidth
       const a = at().getBoundingClientRect(), s = sheet.getBoundingClientRect(), h = el.offsetHeight
-      const up = a.bottom + 6 + h > s.bottom - 8 && a.top - h - 6 > s.top + 8
+      const up = (grows ? side.current : null) ?? (a.bottom + 6 + h > s.bottom - 8 && a.top - h - 6 > s.top + 8)
+      side.current = up
       const left = Math.min(Math.max(8, (right ? a.right - width : a.left) - s.left), s.width - width - 8)
-      const top = up ? a.top - s.top - h - 6 : a.bottom - s.top + 6
+      const top = up ? Math.max(8, a.top - s.top - h - 6) : a.bottom - s.top + 6
       // Placed again on every draw of the bill; left where it is, it draws nothing more.
       setPos(p => p && p.left === left && p.top === top && p.up === up ? p : { left, top, up })
     }
     place()
     addEventListener('resize', place)
     return () => removeEventListener('resize', place)
-  }, [at, sheet, right, width, children])
+  }, [at, sheet, right, width, grows, children])
   // Put away, it shrinks back for a tenth of a second instead of vanishing (Sebastian, 2026-10-30:
   // "keep them fast and snappy"): a lifeless copy plays the way out, so nothing waits on it.
   // Made as the box goes, in the same frame, so it never blinks out first.
@@ -179,9 +185,11 @@ export function LengthList({ lengths, chosen, half, fits, onPick, onHalf }: {
  * breakfast, just merge them in this one row"); its name opens a switch for each room ("more like a
  * drop down and toggle"). A room with no breakfast price asks for one first.
  */
-export function BreakfastList({ rows, pricing, onToggle, onPrice, onPriced }: {
+export function BreakfastList({ rows, pricing, plans, onPlan, onToggle, onPrice, onPriced }: {
   rows: { id: string; label: string; price: number | null; count: number; on: boolean }[]
   pricing: string | null
+  plans: Record<string, BreakfastPlan>
+  onPlan: (id: string, plan: BreakfastPlan) => void
   onToggle: (id: string) => void
   onPrice: (id: string | null) => void
   onPriced: (id: string, price: number) => void
@@ -194,12 +202,18 @@ export function BreakfastList({ rows, pricing, onToggle, onPrice, onPriced }: {
           <PriceBox className="ml-auto h-7 text-[12px]" label={null} onBack={() => onPrice(null)} onSave={p => onPriced(r.id, p)} />
         </div>
       ) : (
-        <button key={r.id} type="button" role="switch" aria-checked={r.on} style={{ '--i': i } as React.CSSProperties}
-          onClick={() => (r.price === null && !r.on ? onPrice(r.id) : onToggle(r.id))} className={LI}>
-          {r.label}
-          <span className={AMT + ' mr-1'}>{r.price === null ? 'Set price' : peso(r.price) + ' × ' + r.count}</span>
-          <span aria-hidden="true" className="br-sw" />
-        </button>
+        <React.Fragment key={r.id}>
+          <button type="button" role="switch" aria-checked={r.on} style={{ '--i': i } as React.CSSProperties}
+            onClick={() => (r.price === null && !r.on ? onPrice(r.id) : onToggle(r.id))} className={LI}>
+            {r.label}
+            <span className={AMT + ' mr-1'}>{r.price === null ? 'Set price' : peso(r.price) + ' × ' + r.count}</span>
+            <span aria-hidden="true" className="br-sw" />
+          </button>
+          {r.on && (
+            <BreakfastPlanLinks plan={plans[r.id]} onChange={p => onPlan(r.id, p)}
+              others={rows.filter(o => o.id !== r.id && o.on && plans[o.id]?.items.length).map(o => ({ name: o.label.split(' · ')[0], items: plans[o.id].items }))} />
+          )}
+        </React.Fragment>
       ))}
     </>
   )

@@ -7,7 +7,8 @@ import { KitchenOrder, useKitchenQueue } from '../hooks/useKitchenQueue'
 import { kitchenSoundIsOn, playKitchenChime, setKitchenSound, wakeKitchenSound } from '../utils/kitchenSound'
 import { Booking } from '../types/booking'
 import { dateToString } from '../utils/helpers'
-import { breakfastOn, saveBreakfastChoices } from '../utils/breakfastChoice'
+import { breakfastOn, breakfastPlanOf, isConfirmed, saveBreakfastChoices } from '../utils/breakfastChoice'
+import { minutesLabel } from '../utils/doorTimes'
 import { showToast } from '../utils/toast'
 
 const QUIET = 'min-h-11 inline-flex items-center gap-1.5 px-3 rounded-lg border border-soft bg-card text-[14px] font-semibold text-main hover:border-gold-400 hover:bg-gold-100 transition-colors duration-200 active:scale-[0.98] cursor-pointer'
@@ -121,8 +122,11 @@ export function KitchenTab() {
     .filter(b => b.status !== 'cancelled')
     .map(b => ({ booking: b, choice: breakfastOn(b, today) }))
     .filter((x): x is { booking: Booking; choice: NonNullable<ReturnType<typeof breakfastOn>> } =>
-      !!x.choice && x.choice.items.length > 0 && !x.choice.ready_at)
-    .sort((a, b) => (a.choice.sent_at || '').localeCompare(b.choice.sent_at || '')), [allBookings, today])
+      // Only what the desk confirmed (Sebastian, 2026-11-01: "they don't usually cook unless it's
+      // confirmed"): a morning changed ahead of time has no `sent_at`.
+      isConfirmed(x.choice) && !!x.choice && x.choice.items.length > 0 && !x.choice.ready_at)
+    // The soonest to the table first; one with no time asked comes after them, oldest first.
+    .sort((a, b) => (breakfastPlanOf(a.booking)?.time ?? 1e4) - (breakfastPlanOf(b.booking)?.time ?? 1e4) || (a.choice.sent_at || '').localeCompare(b.choice.sent_at || '')), [allBookings, today])
 
   // The same sound as any other order when one comes in.
   const breakfastCount = useRef(breakfasts.length)
@@ -194,7 +198,12 @@ export function KitchenTab() {
       {!kitchen.loading && waiting > 0 && (
         <div className="grid gap-4 items-start sm:grid-cols-2 xl:grid-cols-3">
           {breakfasts.map(({ booking, choice }) => {
-            const minutes = minutesWaited(choice.sent_at || null, now)
+            // With a time asked for, the wait starts at that time, or when it was confirmed if that was later.
+            const time = breakfastPlanOf(booking)?.time
+            const due = time == null ? null : new Date(today + 'T00:00').getTime() + time * 60000
+            const from = Math.max(due ?? 0, Date.parse(choice.sent_at || '') || 0)
+            const minutes = Math.max(0, Math.floor((now - from) / 60000))
+            const coming = due != null && due > now ? Math.ceil((due - now) / 60000) : 0
             const late = minutes >= WAITING_TOO_LONG
             return (
               <article key={'breakfast-' + booking.id}
@@ -206,7 +215,8 @@ export function KitchenTab() {
                   </div>
                   <span className={'shrink-0 px-2.5 py-1 rounded-lg text-[17px] font-bold tabular-nums ' +
                     (late ? 'bg-danger-50 text-danger-600' : minutes >= WAITING_LONG ? 'bg-gold-100 text-gold-800' : 'text-main')}>
-                    {waited(minutes)}
+                    {time != null && <span className="block text-right font-display text-[22px] leading-tight font-extrabold">{minutesLabel(time)}</span>}
+                    <span className={time != null ? 'block text-right text-[14px] font-bold text-muted' : ''}>{coming > 0 ? 'in ' + waited(coming) : waited(minutes)}</span>
                   </span>
                 </div>
                 <ul className="divide-y divide-soft border-y border-soft">
