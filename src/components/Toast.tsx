@@ -1,4 +1,4 @@
-import { ToastTone, toastMs, useToastMessage } from '../utils/toast'
+import { ToastTone, closeToast, toastMs, useToastMessage } from '../utils/toast'
 
 const TONES: Record<ToastTone, { box: string; dot: string; line: string }> = {
   success: { box: 'border-emerald-200', dot: 'bg-emerald-500', line: 'bg-emerald-500/50' },
@@ -19,9 +19,15 @@ export function ToastHost() {
       <div key={msg.id} className={'relative overflow-hidden flex items-center gap-2 px-4 py-2.5 bg-card border rounded-xl shadow-softLg text-sm font-medium text-main animate-in fade-in slide-in-from-bottom-1 max-w-[92vw] ' + tone.box}>
         <span className={'w-2 h-2 rounded-full shrink-0 ' + tone.dot} />
         <span>{msg.text}</span>
+        {msg.action && (
+          <button type="button" onClick={() => { msg.action?.run(); closeToast() }}
+            className="pointer-events-auto ml-1 -my-1 px-2 min-h-[30px] rounded-lg text-[13px] font-extrabold text-gold-800 hover:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">
+            {msg.action.label}
+          </button>
+        )}
         {/* The line runs out as the message waits to close (the owner approved the Front
             desk's microinteractions, 2026-10-15). */}
-        <span aria-hidden="true" style={{ '--ms': toastMs(msg.tone) + 'ms' } as React.CSSProperties}
+        <span aria-hidden="true" style={{ '--ms': toastMs(msg.tone, msg.action) + 'ms' } as React.CSSProperties}
           className={'fd-drain absolute left-0 bottom-0 h-[3px] w-full ' + tone.line} />
       </div>
     </div>

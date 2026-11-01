@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-11-01c',
+    changes: [
+      {
+        where: 'Cash Flow',
+        what: [
+          'Each payment under Money in now has a pencil. Tap it to fix what it was for, the amount, how they paid or the day, right there. If you move it to another day, you can Undo.',
+          'There is a new “All income” under Total cash on hand. It shows every payment for a day, week, month or year. Tap Cash, GCash, Bank or Check to see only those payments.',
+          '“All expenses” can now show a single day too.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-01b',
     changes: [
       {

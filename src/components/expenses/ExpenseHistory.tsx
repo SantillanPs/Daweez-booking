@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react'
 import { Expense, ExpenseCategory } from '../../types/expense'
 import { dateToString } from '../../utils/helpers'
+import { PERIODS, type Period, fmtDay, inThis, rangeOf, step } from './periods'
 
 interface ExpenseHistoryProps {
   expenses: Expense[]
@@ -14,44 +15,11 @@ interface ExpenseHistoryProps {
   onClose: () => void
 }
 
-// No Day: the Cash Flow screen already is the day (the owner, 2026-10-14).
-type Period = 'week' | 'month' | 'year'
-const PERIODS: [Period, string][] = [['week', 'Week'], ['month', 'Month'], ['year', 'Year']]
-
-const parse = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-const fmtDay = (iso: string) => parse(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 const peso = (n: number) => '₱' + n.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
-/** The first and last day of the period around `day`, and its name. A week runs Monday to Sunday. */
-function rangeOf(period: Period, day: string): { from: string; to: string; name: string } {
-  const d = parse(day)
-  if (period === 'week') {
-    const start = new Date(d)
-    start.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-    const end = new Date(start)
-    end.setDate(start.getDate() + 6)
-    return { from: dateToString(start), to: dateToString(end), name: 'Week of ' + start.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }
-  }
-  if (period === 'month') {
-    return { from: dateToString(new Date(d.getFullYear(), d.getMonth(), 1)), to: dateToString(new Date(d.getFullYear(), d.getMonth() + 1, 0)), name: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) }
-  }
-  return { from: d.getFullYear() + '-01-01', to: d.getFullYear() + '-12-31', name: String(d.getFullYear()) }
-}
-/** The same period, one step earlier or later. */
-function step(period: Period, day: string, by: number): string {
-  const d = parse(day)
-  if (period === 'week') d.setDate(d.getDate() + 7 * by)
-  else if (period === 'month') d.setMonth(d.getMonth() + by, 1)
-  else d.setFullYear(d.getFullYear() + by, 0, 1)
-  return dateToString(d)
-}
-
-// The expenses for a week, month or year (Sebastian, 2026-10-14, choosing "totals for a week, month or
-// year" over repeating expenses): how much went out, a bar for each kind of expense biggest first, and the
-// list under it, where an old mistake can still be taken back. The day screen stays as it is.
+// The expenses for a day, week, month or year (Sebastian, 2026-10-14, choosing "totals for a week, month or
+// year" over repeating expenses; the day added 2026-10-31): how much went out, a bar for each kind of expense
+// biggest first, and the list under it, where an old mistake can still be taken back. The day screen stays as it is.
 export function ExpenseHistory({ expenses, categories, date, onRemove, onOpenDay, onClose }: ExpenseHistoryProps) {
   const [period, setPeriod] = useState<Period>('month')
   const [anchor, setAnchor] = useState(date)
@@ -80,7 +48,7 @@ export function ExpenseHistory({ expenses, categories, date, onRemove, onOpenDay
               {PERIODS.map(([key, label]) => (
                 <button
                   key={key} type="button" aria-pressed={period === key} onClick={() => setPeriod(key)}
-                  className={`min-h-8 px-3 rounded-lg text-[12.5px] cursor-pointer transition-colors ${period === key ? 'bg-brand-primary text-ink-900 font-bold' : 'text-muted font-semibold hover:text-main'}`}
+                  className={`min-h-8 px-2.5 md:px-3 rounded-lg text-[12.5px] cursor-pointer transition-colors ${period === key ? 'bg-brand-primary text-ink-900 font-bold' : 'text-muted font-semibold hover:text-main'}`}
                 >
                   {label}
                 </button>
@@ -117,17 +85,20 @@ export function ExpenseHistory({ expenses, categories, date, onRemove, onOpenDay
           </div>
 
           {rows.length === 0 ? (
-            <p className="p-8 text-center text-sm text-muted">Nothing spent in this {period}.</p>
+            <p className="p-8 text-center text-sm text-muted">Nothing spent {inThis(period)}.</p>
           ) : (
             <table className="w-full text-left text-[13px]">
               <tbody className="divide-y divide-soft">
                 {rows.map(expense => (
                   <tr key={expense.id} className="hover:bg-page transition-colors">
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <button type="button" onClick={() => onOpenDay(expense.expense_date)} className="text-main font-semibold hover:text-gold-700 cursor-pointer">
-                        {fmtDay(expense.expense_date)}
-                      </button>
-                    </td>
+                    {/* A Day list has its date at the top, so its rows drop it. */}
+                    {period !== 'day' && (
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        <button type="button" onClick={() => onOpenDay(expense.expense_date)} className="text-main font-semibold hover:text-gold-700 cursor-pointer">
+                          {fmtDay(expense.expense_date)}
+                        </button>
+                      </td>
+                    )}
                     <td className="px-4 py-2.5 text-main">
                       {nameOf(expense.category_id)}
                       {expense.notes ? <span className="text-muted"> · {expense.notes}</span> : null}

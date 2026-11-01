@@ -3,6 +3,7 @@ import { randomUUID } from './helpers'
 import { Tab, TabLine } from '../types/tab'
 import { PaymentRecord } from '../types/booking'
 import { nextTabReceiptNumber, usedReceiptNumbers } from './receiptNumber'
+import type { PaymentPatch } from '../components/walk-in/bookingPayment'
 
 // Order slips — the tables are still named `tabs` and `tab_lines` (board card k69);
 // what a stay's slips add up to, and paying them, is in `orderSlips.ts`.
@@ -363,6 +364,43 @@ export function handSale(input: { note: string; amount: number; method: string; 
   // Money in linked to nothing (Sebastian, 2026-10-30: "if there isn't a booking for a payment, it should just be a
   // normal payment") is the same paid slip with no line on it: no OS number, nothing in the restaurant's sales.
   return { tab, line: input.plain ? null : line }
+}
+
+/**
+ * **A slip's payment fixed from Money in** (Sebastian, 2026-11-01). The receipt keeps its number and the
+ * old figures go in `fixes`, as on a bill. A sale written by hand is nothing but that payment, so its one
+ * line follows the new figure and words; a real diner's lines are what they ate and keep their prices.
+ * Built here so the screen can show it at once; `saveTabFix` writes it.
+ */
+export function withFixedTabPayment(tab: Tab, recordId: string, patch: PaymentPatch, at: string, label?: string): Tab {
+  const records = (tab.payment_records || []).map(r => (r.id !== recordId ? r : {
+    ...r, ...patch,
+    fixes: [...(r.fixes || []), { amount: Number(r.amount || 0), method: r.method, reference: r.reference, purpose: r.purpose, paid_at: r.paid_at, at }],
+  }))
+  const fixed = records.find(r => r.id === recordId)
+  return {
+    ...tab,
+    payment_records: records,
+    ...(label !== undefined ? { label } : {}),
+    // The slip's own paid day goes with its payment.
+    ...(patch.paid_at && fixed && (fixed.receipt_number === tab.paid_receipt_number || !tab.paid_receipt_number) ? { paid_at: patch.paid_at } : {}),
+  }
+}
+
+/** Writes a slip after a fix (or an undo), and a hand-written sale's one line with it. */
+export async function saveTabFix(tab: Tab, recordId: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+  const { error } = await supabase.from('tabs')
+    .update({ payment_records: tab.payment_records, label: tab.label, paid_at: tab.paid_at })
+    .eq('id', tab.id)
+  if (error) throw error
+  const record = tab.payment_records?.find(r => r.id === recordId)
+  if (!record?.by_hand) return
+  const amount = money(record.amount)
+  const { error: lineError } = await supabase.from('tab_lines')
+    .update({ description: record.purpose || 'Restaurant sale', unit_price: amount, amount })
+    .eq('tab_id', tab.id)
+  if (lineError) throw lineError
 }
 
 /** Writes a hand-written sale with a fresh receipt number, and hands back the slip as saved. */

@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowDownLeft, ArrowUpRight, List, Printer, Tag, Wallet } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Coins, List, Printer, Tag, Wallet } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { generateUUID } from '../utils/syncEngine'
 import { dateToString, normalizeVenueId } from '../utils/helpers'
-import { getTabs, handSale, saveHandSale } from '../utils/tabs'
+import { getTabs, handSale, saveHandSale, saveTabFix, withFixedTabPayment } from '../utils/tabs'
+import { withFixedPayment, type PaymentPatch } from './walk-in/bookingPayment'
 import { groupOf } from '../utils/bookingGroup'
 import { formatRoomNumbers } from '../utils/roomNumbers'
 import { freshReceiptNumber } from '../utils/receiptNumber'
 import { payOnBill, paySlipsIfCleared } from '../utils/billPayment'
-import { buildDailyReport } from '../utils/dailyReport'
+import { allMoneyIn, buildDailyReport } from '../utils/dailyReport'
 import { Expense, ExpenseCategory, Handover } from '../types/expense'
 import { getHandovers, insertHandover, deleteHandover } from '../utils/handovers'
 import { updateExpense } from '../utils/expenses'
@@ -19,6 +20,7 @@ import { askConfirm } from '../utils/confirm'
 import { DayPicker } from './expenses/DayPicker'
 import { DayMoney, type BillChoice, type MoneyInInput } from './expenses/DayMoney'
 import { ExpenseHistory } from './expenses/ExpenseHistory'
+import { IncomeHistory } from './expenses/IncomeHistory'
 import { CategoryManager } from './expenses/CategoryManager'
 import { HandOverModal } from './expenses/HandOverModal'
 import { DailyReportModal } from './analytics/DailyReportModal'
@@ -26,8 +28,8 @@ import { TabReceiptModal } from './restaurant/TabReceiptModal'
 import { readTabLines } from '../utils/tabs'
 import { WorkingBill } from './calendar/WorkingBill'
 import { focusBookingAfterCreate } from '../utils/bookingFocus'
-import { openKey, type MoneyInLine } from '../utils/dailyReport'
-import type { PaymentRecord } from '../types/booking'
+import { hotelDay, openKey, type MoneyInLine } from '../utils/dailyReport'
+import type { Booking, PaymentRecord } from '../types/booking'
 import type { Tab, TabLine } from '../types/tab'
 
 const shortDay = (iso: string) => {
@@ -60,6 +62,7 @@ export function ExpensesTab() {
   const [date, setDate] = useState(today)
   const [printing, setPrinting] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [showIncome, setShowIncome] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
   const [handingOver, setHandingOver] = useState<'out' | 'in' | null>(null)
   const [opening, setOpening] = useState<string | null>(null)
@@ -82,6 +85,11 @@ export function ExpensesTab() {
     () => buildDailyReport({ date, bookings: allBookings, tabs, expenses, handovers, categories: expenseCategories, rooms, venues }),
     [date, allBookings, tabs, expenses, handovers, expenseCategories, rooms, venues],
   )
+  const income = useMemo(
+    () => (showIncome ? allMoneyIn({ bookings: allBookings, tabs, rooms, venues }) : []),
+    [showIncome, allBookings, tabs, rooms, venues],
+  )
+  const closeIncome = useCallback(() => setShowIncome(false), [])
   const billBooking = billOf ? allBookings.find(b => b.id === billOf.id) : undefined
   const dayHandovers = useMemo(() => handovers.filter(h => h.handover_date === date), [handovers, date])
   const dayExpenses = useMemo(
@@ -184,6 +192,58 @@ export function ExpensesTab() {
       showToast('Could not save that payment. Please try again.', 'error')
       throw err
     }
+  }
+
+  // **A payment fixed from Money in** (Sebastian, 2026-11-01). Shown at once and saved behind it, on
+  // every room that holds it, the same way the bill fixes one; put back with a message if the save
+  // fails. A new day takes the line off this day, so the message says where it went and can undo it.
+  const fixMoneyIn = (line: MoneyInLine, patch: PaymentPatch, label?: string) => {
+    const moved = patch.paid_at ? hotelDay(patch.paid_at) : undefined
+    const left = moved && moved !== date ? moved : undefined
+    if (line.bookingId) {
+      const holding = allBookings.flatMap(booking => {
+        const rec = booking.payment_records?.find(r => (line.receipt ? r.receipt_number === line.receipt : r.id === line.recordId))
+        return rec ? [{ booking, rec }] : []
+      })
+      if (holding.length === 0) return
+      const before = holding.map(h => h.booking)
+      const after = withFixedPayment(holding, patch, new Date().toISOString())
+      const put = (rows: Booking[]) => queryClient.setQueryData<Booking[]>(['bookings'], (list = []) =>
+        list.map(b => rows.find(r => r.id === b.id) || b))
+      const write = async (rows: Booking[]) => { for (const b of rows) await updateBooking(b) }
+      put(after)
+      write(after).catch(() => {
+        put(before)
+        void write(before).catch(() => undefined)
+        showToast('Could not fix the payment. Please try again.', 'error')
+      })
+      if (left) showToast('Moved to ' + shortDay(left), 'success', { label: 'Undo', run: () => {
+        put(before)
+        write(before).catch(() => {
+          put(after)
+          showToast('Could not undo that. Please try again.', 'error')
+        })
+      } })
+      return
+    }
+    const tab = tabs.find(t => t.id === line.tabId)
+    if (!tab || !line.recordId) return
+    const recordId = line.recordId
+    const after = withFixedTabPayment(tab, recordId, patch, new Date().toISOString(), label)
+    const put = (row: Tab) => queryClient.setQueryData<Tab[]>(['tabs'], (list = []) => list.map(t => (t.id === row.id ? row : t)))
+    const write = (row: Tab) => saveTabFix(row, recordId).then(() => { void queryClient.invalidateQueries({ queryKey: ['tab-lines'] }) })
+    put(after)
+    write(after).catch(() => {
+      put(tab)
+      showToast('Could not fix the payment. Please try again.', 'error')
+    })
+    if (left) showToast('Moved to ' + shortDay(left), 'success', { label: 'Undo', run: () => {
+      put(tab)
+      write(tab).catch(() => {
+        put(after)
+        showToast('Could not undo that. Please try again.', 'error')
+      })
+    } })
   }
 
   // The month's dots: a day money came in, a day something was spent.
@@ -300,8 +360,11 @@ export function ExpensesTab() {
         opening={opening}
         bills={bills}
         onAddIn={addMoneyIn}
+        onFixPayment={fixMoneyIn}
+        today={today}
         footer={<>
           <div className="flex flex-wrap items-center gap-x-2 -ml-1">
+            <button type="button" onClick={() => setShowIncome(true)} className={quiet}><Coins className="w-3.5 h-3.5 opacity-75" />All income</button>
             <button type="button" onClick={() => setShowHistory(true)} className={quiet}><List className="w-3.5 h-3.5 opacity-75" />All expenses</button>
             <button type="button" onClick={() => setShowCategories(true)} className={quiet}><Tag className="w-3.5 h-3.5 opacity-75" />Categories</button>
             <button type="button" onClick={() => setHandingOver('in')} className={quiet}><ArrowDownLeft className="w-3.5 h-3.5 opacity-75" />Add cash on hand</button>
@@ -333,6 +396,14 @@ export function ExpensesTab() {
           onRemove={removeExpense}
           onOpenDay={day => { setDate(day); setShowHistory(false) }}
           onClose={() => setShowHistory(false)}
+        />
+      )}
+      {showIncome && (
+        <IncomeHistory
+          payments={income}
+          date={date}
+          onOpenDay={day => { setDate(day); setShowIncome(false) }}
+          onClose={closeIncome}
         />
       )}
       {handingOver && <HandOverModal key={handingOver} kind={handingOver} inHotel={report.balance} onHandOver={handOver} onClose={() => setHandingOver(null)} />}

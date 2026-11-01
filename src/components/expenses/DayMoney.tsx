@@ -1,7 +1,9 @@
-import { CSSProperties, FormEvent, KeyboardEvent, ReactNode, useEffect, useRef, useState } from 'react'
-import { BedDouble, Check, ChevronDown, Loader2, PenLine, Plus, Search, Trash2, UtensilsCrossed, X } from 'lucide-react'
+import { CSSProperties, FormEvent, KeyboardEvent, ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { BedDouble, Check, ChevronDown, Loader2, PenLine, Pencil, Plus, Search, Trash2, UtensilsCrossed, X } from 'lucide-react'
 import { Expense, ExpenseCategory, Handover } from '../../types/expense'
 import { CountPeso } from '../CountPeso'
+import { PaymentEdit } from './PaymentEdit'
+import type { PaymentPatch } from '../walk-in/bookingPayment'
 import { DailyReport, MoneyInLine, forwardedLabel, openKey } from '../../utils/dailyReport'
 import { PAYMENT_METHODS, PaymentKind, methodNeedsReference, paymentKind } from '../../utils/paymentMethod'
 
@@ -51,7 +53,21 @@ interface DayMoneyProps {
   bills: BillChoice[]
   /** Saves money in written by hand: a restaurant sale, or a payment on a booking's bill. */
   onAddIn: (input: MoneyInInput) => Promise<void>
+  /** Saves a fix to one payment; shown at once. `label` renames plain money in. */
+  onFixPayment: (line: MoneyInLine, patch: PaymentPatch, label?: string) => void
+  /** The latest day a payment can be moved to. */
+  today: string
 }
+
+/** The pencil's state, handed down to each payment line. */
+interface PaymentEditing {
+  editing: string | null
+  fresh: string | null
+  onEdit: (key: string | null) => void
+  onSave: DayMoneyProps['onFixPayment']
+}
+
+const lineKey = (line: MoneyInLine) => line.receipt + '|' + line.recordId
 
 /** A bill to write a payment on: its first room's booking, and how it reads in the search. */
 export interface BillChoice {
@@ -582,9 +598,21 @@ const cancelChip = (day: string) => (
   </span>
 )
 
-function PaymentLine({ line, loading, onOpen, inGroup }: { line: MoneyInLine; loading: boolean; onOpen?: (line: MoneyInLine) => void; inGroup?: boolean }) {
+function PaymentLine({ line, loading, onOpen, inGroup, today, edit }: {
+  line: MoneyInLine
+  loading: boolean
+  onOpen?: (line: MoneyInLine) => void
+  inGroup?: boolean
+  today: string
+  edit: PaymentEditing
+}) {
   // Plain money in written by hand is a slip with no number, so it is not called one.
   const what = line.purpose || (line.slip && line.place ? 'Order slip' : '')
+  const key = lineKey(line)
+  const editing = edit.editing === key
+  // A scratched-off payment counts for nothing, so there is nothing to fix on it.
+  const canEdit = !line.cancelled && !!line.recordId
+  const fresh = edit.fresh === key
   const body = (
     <>
       {line.cancelled && <i aria-hidden="true" className="dm-scratch" />}
@@ -606,29 +634,48 @@ function PaymentLine({ line, loading, onOpen, inGroup }: { line: MoneyInLine; lo
       )}
       <span className="flex items-center justify-end gap-1.5">
         {loading && <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" />}
-        <span className={'font-mono text-[14px] font-bold ' + (line.cancelled ? 'text-paper-400' : 'text-emerald-600')}>{peso(line.amount)}</span>
+        <span key={line.amount} className={'font-mono text-[14px] font-bold inline-block ' + (line.cancelled ? 'text-paper-400' : 'text-emerald-600') + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(line.amount)}</span>
       </span>
       <span className="min-w-0 truncate text-[12px] text-muted">
         {what && !inGroup && <>{what} · </>}
         <span className="inline-flex items-center gap-1"><i className={'w-1.5 h-1.5 rounded-full ' + METHOD_DOT[paymentKind(line.method)]} />{line.method}</span>
         {line.paidAt && <> · {timeOf(line.paidAt)}</>}
       </span>
-      <span className="justify-self-end font-mono text-[11px] text-muted">{line.receipt}</span>
+      <span className="justify-self-end flex items-center gap-1 font-mono text-[11px] text-muted">
+        {line.receipt}
+        {canEdit && (
+          <button type="button" data-pay-pen aria-label={'Edit this payment, ' + peso(line.amount)} aria-expanded={editing}
+            onClick={e => { e.stopPropagation(); edit.onEdit(editing ? null : key) }}
+            className="w-7 h-7 -my-1 -mr-1 grid place-items-center rounded-lg text-gold-800 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-[.85] active:-rotate-[8deg] transition-[background-color,transform] cursor-pointer">
+            <Pencil aria-hidden="true" className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </span>
     </>
   )
-  const grid = 'relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left' + (line.cancelled ? ' dm-struck' : '')
-  return onOpen && openKey(line) ? (
-    <button type="button" onClick={() => onOpen(line)} aria-busy={loading}
-      className={grid + ' w-[calc(100%+1rem)] hover:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (loading ? ' bg-page' : '')}>
+  const grid = 'relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left' + (line.cancelled ? ' dm-struck' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')
+  // Not a <button>: the pencil is a button of its own and cannot sit inside one.
+  const row = onOpen && openKey(line) ? (
+    <div role="button" tabIndex={0} onClick={() => onOpen(line)} aria-busy={loading}
+      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(line) } }}
+      className={grid + ' w-[calc(100%+1rem)] hover:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400' + (loading || editing ? ' bg-page' : '')}>
       {body}
-    </button>
+    </div>
   ) : <div className={grid}>{body}</div>
+  return (
+    <div className={editing ? 'relative z-20' : 'relative'}>
+      {row}
+      {editing && <PaymentEdit line={line} today={today} onClose={() => edit.onEdit(null)} onSave={(patch, label) => edit.onSave(line, patch, label)} />}
+    </div>
+  )
 }
 
 // A bill's payments as one line with a count, opening to each payment (the expense group's shape).
-function PaymentGroup({ lines, opening, onOpen }: { lines: MoneyInLine[]; opening?: string | null; onOpen?: (line: MoneyInLine) => void }) {
+function PaymentGroup({ lines, opening, onOpen, today, edit }: { lines: MoneyInLine[]; opening?: string | null; onOpen?: (line: MoneyInLine) => void; today: string; edit: PaymentEditing }) {
   const [open, setOpen] = useState(false)
   const first = lines[0]
+  // The slip floats past the end of the group, so while it is up the group does not clip it.
+  const floating = lines.some(l => lineKey(l) === edit.editing)
   const whole = lines.reduce((s, l) => s + Number(l.amount || 0), 0)
   const sum = lines.reduce((s, l) => (l.cancelled ? s : s + Number(l.amount || 0)), 0)
   // A bill's payments share its booking, so a cancelled bill scratches off the whole group.
@@ -654,11 +701,11 @@ function PaymentGroup({ lines, opening, onOpen }: { lines: MoneyInLine[]; openin
         <span className="justify-self-end font-mono text-[11px] text-muted">{first.bill}</span>
       </button>
       <div className={'grid transition-[grid-template-rows] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
-        <div className="min-h-0 overflow-hidden">
+        <div className={'min-h-0 ' + (floating ? 'overflow-visible' : 'overflow-hidden')}>
           <div className="ml-1.5 mb-1 pl-3 border-l-2 border-paper-200">
             {lines.map((line, i) => (
-              <div key={(line.receipt || line.label) + i} className={open ? 'bw-rise' : ''} style={{ '--i': i } as CSSProperties}>
-                <PaymentLine line={line} inGroup loading={!!opening && opening === openKey(line)} onOpen={onOpen} />
+              <div key={(line.receipt || line.label) + i} className={(open ? 'bw-rise ' : '') + (edit.editing === lineKey(line) ? 'relative z-20' : '')} style={{ '--i': i } as CSSProperties}>
+                <PaymentLine line={line} inGroup today={today} edit={edit} loading={!!opening && opening === openKey(line)} onOpen={onOpen} />
               </div>
             ))}
           </div>
@@ -674,8 +721,28 @@ const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour
 // the money in the hotel at the bottom. Money in comes from the receipts recorded on bookings and
 // at the restaurant, plus what is written by hand on its blank line; money out is the list just typed. A payment
 // written on a booking opens that guest's billing statement (Sebastian, 2026-10-28).
-export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, dayHandovers, onTakeBack, onAdd, pastDay, footer, onOpenPayment, opening, bills, onAddIn }: DayMoneyProps) {
+export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, dayHandovers, onTakeBack, onAdd, pastDay, footer, onOpenPayment, opening, bills, onAddIn, onFixPayment, today }: DayMoneyProps) {
   const nameOf = (id: string) => categories.find(c => c.id === id)?.name || 'Other'
+
+  // One payment's slip at a time; the line just fixed glows for a moment, on the day it stayed on.
+  const [editing, setEditing] = useState<string | null>(null)
+  const [fresh, setFresh] = useState<string | null>(null)
+  useEffect(() => {
+    if (!fresh) return
+    const id = window.setTimeout(() => setFresh(null), 1000)
+    return () => window.clearTimeout(id)
+  }, [fresh])
+  const closeEdit = useCallback((key: string | null) => setEditing(key), [])
+  const edit: PaymentEditing = {
+    editing,
+    fresh,
+    onEdit: closeEdit,
+    onSave: (line, patch, label) => {
+      setEditing(null)
+      setFresh(lineKey(line))
+      onFixPayment(line, patch, label)
+    },
+  }
 
   return (
     <div className="bg-card border border-soft rounded-xl shadow-soft">
@@ -684,9 +751,9 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money in</p>
           {report.moneyIn.length === 0 && <p className="text-[13px] text-muted">Nothing received yet.</p>}
           {byBill(report.moneyIn).map((group, i) => group.length > 1 ? (
-            <PaymentGroup key={'g' + group[0].bill} lines={group} opening={opening} onOpen={onOpenPayment} />
+            <PaymentGroup key={'g' + group[0].bill} lines={group} opening={opening} onOpen={onOpenPayment} today={today} edit={edit} />
           ) : (
-            <PaymentLine key={(group[0].receipt || group[0].label) + i} line={group[0]} loading={!!opening && opening === openKey(group[0])} onOpen={onOpenPayment} />
+            <PaymentLine key={(group[0].receipt || group[0].label) + i} line={group[0]} today={today} edit={edit} loading={!!opening && opening === openKey(group[0])} onOpen={onOpenPayment} />
           ))}
           <MoneyInBlank key={report.date} bills={bills} pastDay={pastDay} onAddIn={onAddIn} />
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}

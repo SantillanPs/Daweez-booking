@@ -6,6 +6,8 @@ export interface ToastMessage {
   id: number
   text: string
   tone: ToastTone
+  /** A word to take it back with, for a change that moved something off the screen. */
+  action?: { label: string; run: () => void }
 }
 
 // One tiny module-level store, so any screen can say something without a
@@ -25,11 +27,11 @@ function emit() {
 }
 
 /** How long a message stays: errors stay a little longer — they usually need reading twice. */
-export const toastMs = (tone: ToastTone) => tone === 'error' ? 5000 : 3200
+export const toastMs = (tone: ToastTone, action?: unknown) => action ? 7000 : tone === 'error' ? 5000 : 3200
 
-export function showToast(text: string, tone: ToastTone = 'success') {
+export function showToast(text: string, tone: ToastTone = 'success', action?: ToastMessage['action']) {
   const id = nextId++
-  current = { id, text, tone }
+  current = { id, text, tone, action }
   emit()
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
@@ -37,7 +39,13 @@ export function showToast(text: string, tone: ToastTone = 'success') {
       current = null
       emit()
     }
-  }, toastMs(tone))
+  }, toastMs(tone, action))
+}
+
+/** Takes a message off at once: its action has been pressed. */
+export function closeToast() {
+  current = null
+  emit()
 }
 
 export function useToastMessage(): ToastMessage | null {

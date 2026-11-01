@@ -59,14 +59,20 @@ export interface MoneyInLine extends DailyReportLine {
   bookingId?: string
   /** The number of the bill it was paid on (the first room's), so the screen can put a bill's payments together. */
   bill?: string
-  /** The diner's slip and its payment, so the screen can open the receipt. */
+  /** The diner's slip, so the screen can open the receipt. */
   tabId?: string
+  /** The payment itself, on its slip or (the first room's) booking, so it can be fixed from the screen. */
   recordId?: string
   /** The day its booking was cancelled (`YYYY-MM-DD`): the line is shown scratched off and counts nowhere. */
   cancelled?: string
   /** Written by hand in Cash Flow (`PaymentRecord.by_hand`), so the line carries a pen. */
   hand?: boolean
+  /** The GCash or bank reference number. */
+  reference?: string
 }
+
+/** A payment and the hotel's day it landed on. */
+export type DatedMoneyIn = MoneyInLine & { day: string }
 
 export interface DailyReport {
   /** The day being reported, `YYYY-MM-DD`, in the hotel's own time. */
@@ -180,21 +186,16 @@ export interface DailyReportInput {
   venues?: Venue[]
 }
 
-/**
- * Build one day's sheet. Pure: every figure comes from the records handed in, so the screen, the printed
- * paper and any later reader of the same day cannot disagree.
- */
-export function buildDailyReport(input: DailyReportInput): DailyReport {
-  const { date, bookings, tabs = [], expenses = [], handovers = [], categories = [], rooms = [], venues = [] } = input
+type Payment = Omit<MoneyInLine, 'label' | 'place'> & { day: string; rooms: number[]; place: string }
 
-  // ── MONEY IN: one line per PAYMENT that landed on this day ───────────────────────────────────────────
+function gatherPayments(bookings: Booking[], tabs: Tab[], rooms: Room[], venues: Venue[]): Map<string, Payment> {
+  // ── MONEY IN: one line per PAYMENT ───────────────────────────────────────────────────────────────────
   //
   // **Grouped by receipt number**, because one payment is stored on every room it covered and each of
   // those rows carries the WHOLE amount (the owner's ruling, 2026-09-30: a receipt must be findable from
   // any room it paid for, and must reprint the money that was actually handed over — never a room's
   // slice of it). Listing the rows as they come would print ₱9,200 seven times. The number is what says
   // those seven rows are one payment, so the day is summed by number and the line names every room.
-  type Payment = Omit<MoneyInLine, 'label' | 'place'> & { day: string; rooms: number[]; place: string }
   const payments = new Map<string, Payment>()
 
   //
@@ -230,8 +231,8 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
         const venue = !booking.room_id && booking.venue_id ? venues.find(v => v.id === normalizeVenueId(booking.venue_id))?.name || '' : ''
         payments.set(key, {
           day, rooms: room === null ? [] : [room], place: venue, who: guestLabel(booking), slip: false,
-          purpose: record.purpose, method: paymentMethodLabel(record.method), paidAt: record.paid_at || '',
-          receipt: record.receipt_number, amount: record.amount, bookingId: booking.id,
+          purpose: record.purpose, method: paymentMethodLabel(record.method), paidAt: record.paid_at || '', reference: record.reference,
+          receipt: record.receipt_number, amount: record.amount, bookingId: booking.id, recordId: record.id,
           bill: groupOf(booking, bookings)[0]?.invoice_number || booking.invoice_number, cancelled, hand: record.by_hand,
         })
       })
@@ -244,25 +245,43 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
         if (!day) return
         payments.set('t:' + tab.id + ':' + (record.receipt_number || record.id), {
           day, rooms: [], place: slipNumber(tab), who: tableName(tab), slip: true, purpose: record.purpose, hand: record.by_hand,
-          method: paymentMethodLabel(record.method), paidAt: record.paid_at || '', receipt: record.receipt_number,
+          method: paymentMethodLabel(record.method), paidAt: record.paid_at || '', receipt: record.receipt_number, reference: record.reference,
           amount: record.amount, tabId: tab.id, recordId: record.id,
         })
       })
   })
 
+  return payments
+}
+
+function toLine(payment: Payment): MoneyInLine {
+  const place = roomList(payment.rooms) || payment.place
+  return {
+    who: payment.who, place, slip: payment.slip, purpose: payment.purpose, method: payment.method,
+    paidAt: payment.paidAt, receipt: payment.receipt, reference: payment.reference, amount: payment.amount,
+    bookingId: payment.bookingId, bill: payment.bill, tabId: payment.tabId, recordId: payment.recordId,
+    cancelled: payment.cancelled, hand: payment.hand,
+    label: [payment.who, place, payment.method].filter(Boolean).join(' · '),
+  }
+}
+
+/** Every dated payment and the day it landed on, read the way the day's sheet reads them, for All income. */
+export function allMoneyIn({ bookings, tabs = [], rooms = [], venues = [] }: Pick<DailyReportInput, 'bookings' | 'tabs' | 'rooms' | 'venues'>): DatedMoneyIn[] {
+  return Array.from(gatherPayments(bookings, tabs, rooms, venues).values()).map(payment => ({ ...toLine(payment), day: payment.day }))
+}
+
+/**
+ * Build one day's sheet. Pure: every figure comes from the records handed in, so the screen, the printed
+ * paper and any later reader of the same day cannot disagree.
+ */
+export function buildDailyReport(input: DailyReportInput): DailyReport {
+  const { date, bookings, tabs = [], expenses = [], handovers = [], categories = [], rooms = [], venues = [] } = input
+
+  const payments = gatherPayments(bookings, tabs, rooms, venues)
   const moneyIn: MoneyInLine[] = Array.from(payments.values())
     .filter(payment => payment.day === date)
     .sort((a, b) => a.paidAt.localeCompare(b.paidAt))
-    .map(payment => {
-      const place = roomList(payment.rooms) || payment.place
-      return {
-        who: payment.who, place, slip: payment.slip, purpose: payment.purpose, method: payment.method,
-        paidAt: payment.paidAt, receipt: payment.receipt, amount: payment.amount,
-        bookingId: payment.bookingId, bill: payment.bill, tabId: payment.tabId, recordId: payment.recordId,
-        cancelled: payment.cancelled, hand: payment.hand,
-        label: [payment.who, place, payment.method].filter(Boolean).join(' · '),
-      }
-    })
+    .map(toLine)
 
   // Money held with no dated receipt, so no day can claim it. Reported, never dropped in silence.
   let undatedMoney = 0
