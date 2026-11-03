@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-11-03',
+    changes: [
+      {
+        where: 'Cash Flow',
+        what: [
+          'A payment under Money in can now be removed. Tap its pencil, then the bin, then Remove.',
+          'Expenses under Money out now have a pencil too, like the payments. Tap it to fix the note, the amount, what it was for or the day, or to remove it.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-01c',
     changes: [
       {

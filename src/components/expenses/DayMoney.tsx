@@ -1,8 +1,9 @@
-import { CSSProperties, FormEvent, KeyboardEvent, ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import { BedDouble, Check, ChevronDown, Loader2, PenLine, Pencil, Plus, Search, Trash2, UtensilsCrossed, X } from 'lucide-react'
+import { CSSProperties, FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { BedDouble, Check, ChevronDown, Loader2, PenLine, Pencil, Plus, Search, UtensilsCrossed, X } from 'lucide-react'
 import { Expense, ExpenseCategory, Handover } from '../../types/expense'
 import { CountPeso } from '../CountPeso'
 import { PaymentEdit } from './PaymentEdit'
+import { ExpenseEdit, type ExpenseChange } from './ExpenseEdit'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
 import { DailyReport, MoneyInLine, forwardedLabel, openKey } from '../../utils/dailyReport'
 import { PAYMENT_METHODS, PaymentKind, methodNeedsReference, paymentKind } from '../../utils/paymentMethod'
@@ -35,7 +36,7 @@ interface DayMoneyProps {
   categories: ExpenseCategory[]
   onRemove: (expense: Expense) => void
   /** Saves a fix to one part of an expense; shown at once. */
-  onChange: (expense: Expense, change: Partial<Pick<Expense, 'category_id' | 'amount' | 'notes'>>) => void
+  onChange: (expense: Expense, change: ExpenseChange) => void
   /** Money handed to the owner on this day, so each can be taken back. */
   dayHandovers: Handover[]
   onTakeBack: (handover: Handover) => void
@@ -55,6 +56,8 @@ interface DayMoneyProps {
   onAddIn: (input: MoneyInInput) => Promise<void>
   /** Saves a fix to one payment; shown at once. `label` renames plain money in. */
   onFixPayment: (line: MoneyInLine, patch: PaymentPatch, label?: string) => void
+  /** Takes one payment back off; gone at once. */
+  onRemovePayment: (line: MoneyInLine) => void
   /** The latest day a payment can be moved to. */
   today: string
 }
@@ -65,6 +68,19 @@ interface PaymentEditing {
   fresh: string | null
   onEdit: (key: string | null) => void
   onSave: DayMoneyProps['onFixPayment']
+  onRemove: DayMoneyProps['onRemovePayment']
+}
+
+/** An expense's pencil, handed down the same way; its key shares the payments' one slip at a time. */
+interface ExpenseEditing {
+  editing: string | null
+  fresh: string | null
+  onEdit: (key: string | null) => void
+  onSave: (expense: Expense, change: ExpenseChange) => void
+  onRemove: (expense: Expense) => void
+  categories: ExpenseCategory[]
+  nameOf: (id: string) => string
+  today: string
 }
 
 const lineKey = (line: MoneyInLine) => line.receipt + '|' + line.recordId
@@ -91,113 +107,37 @@ export interface MoneyInInput {
   reference?: string
 }
 
-// The bill's quiet tap: a dotted line under a part that can be changed.
-const TAP = 'px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dotted border-paper-400 hover:border-gold-400 hover:bg-gold-100 aria-expanded:border-solid aria-expanded:border-gold-400 aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,border-color,transform] cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400'
-const BOX = 'bg-card border-[1.5px] border-gold-400 rounded-md px-1.5 py-0.5 outline-none [animation:bp-slide_.2s_cubic-bezier(.16,1,.3,1)]'
-
-type Part = 'category' | 'note' | 'amount'
-
-// One expense, every part of it changed where it is written (Sebastian, 2026-10-27: a
-// mistake used to mean removing it and typing it again). Enter or a tap away saves it,
-// Esc puts it back; there is no Save button.
-function ExpenseLine({ expense, categories, nameOf, onRemove, onChange, time }: {
+// One expense, drawn like a payment in Money in (B of the Money out mock, Sebastian, 2026-11-03: "make
+// the expenses consistent with the design similar to the money in"): what it was for on top with the
+// amount, the note and the time beneath, and a pencil where a payment has its own. The pencil opens the
+// same small slip a payment has (`ExpenseEdit`). Inside a group the category is said once above, so a
+// line there leads with its note.
+function ExpenseLine({ expense, time, edit }: {
   expense: Expense
   /** Inside a merged line: when it was written, so the repeats can be told apart. */
   time?: string
-  categories: ExpenseCategory[]
-  nameOf: (id: string) => string
-  onRemove: (expense: Expense) => void
-  onChange: DayMoneyProps['onChange']
+  edit: ExpenseEditing
 }) {
-  const [open, setOpen] = useState<Part | null>(null)
-  const [draft, setDraft] = useState('')
-  const [saved, setSaved] = useState(0)
-  const row = useRef<HTMLDivElement>(null)
-
-  // The list of what it was for shuts on a tap anywhere else.
-  useEffect(() => {
-    if (open !== 'category') return
-    const away = (e: PointerEvent) => { if (!row.current?.contains(e.target as Node)) setOpen(null) }
-    document.addEventListener('pointerdown', away)
-    return () => document.removeEventListener('pointerdown', away)
-  }, [open])
-
-  const start = (part: Part) => {
-    setDraft(part === 'amount' ? String(expense.amount) : part === 'note' ? expense.notes || '' : '')
-    setOpen(o => (o === part ? null : part))
-  }
-  const save = (change: Parameters<DayMoneyProps['onChange']>[1]) => {
-    setOpen(null)
-    onChange(expense, change)
-    setSaved(n => n + 1)
-  }
-  const commit = () => {
-    if (open === 'amount') {
-      const v = parseFloat(draft)
-      if (v > 0 && v !== expense.amount) return save({ amount: v })
-    } else if (open === 'note') {
-      const v = draft.trim()
-      if (v !== (expense.notes || '')) return save({ notes: v })
-    }
-    setOpen(null)
-  }
-  const keys = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') commit()
-    if (e.key === 'Escape') setOpen(null)
-  }
-
-  // Drawn like a payment in Money in, as a receipt (design A of the Money out mock, Sebastian,
-  // 2026-10-29: "make it more consistent with the money in design"): what it was for on top with
-  // the amount, the note and the time beneath with the bin where a payment has its receipt number.
-  // Inside a group the category is said once above, so a line there leads with its note.
-  const noteTap = open === 'note' ? (
-    <input autoFocus value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit} onKeyDown={keys}
-      onFocus={e => e.target.select()} placeholder="e.g. for Ana, receipt 0412" aria-label="Note"
-      className={BOX + ' w-[180px] text-[16px] md:text-[13px] text-main'} />
-  ) : expense.notes ? (
-    <button type="button" aria-label="Note" onClick={() => start('note')} className={TAP + (time ? ' text-main' : '')}>{expense.notes}</button>
-  ) : (
-    <button type="button" onClick={() => start('note')} className={TAP + ' text-paper-400 italic font-medium'}>add a note</button>
-  )
+  const key = 'x:' + expense.id
+  const editing = edit.editing === key
+  const fresh = edit.fresh === key
   const at = expense.created_at ? new Date(expense.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
-
+  const note = (expense.notes || '').trim()
   return (
-    <div ref={row} key={saved} className={'relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] ' + (saved ? '[animation:ex-saved_.9s_ease-out]' : '')}>
-      {time ? (
-        <span className="min-w-0 truncate font-semibold">{noteTap}</span>
-      ) : (
-        <span className="min-w-0 truncate font-bold">
-          <button type="button" aria-expanded={open === 'category'} aria-label="What it was for" onClick={() => start('category')} className={TAP + ' text-main'}>
-            {nameOf(expense.category_id)}
-          </button>
-        </span>
-      )}
-      <span className="flex items-center justify-end">
-        {open === 'amount' ? (
-          <input autoFocus inputMode="decimal" value={draft} onChange={e => setDraft(e.target.value.replace(/[^0-9.]/g, ''))}
-            onBlur={commit} onKeyDown={keys} onFocus={e => e.target.select()} placeholder="e.g. 250" aria-label="Amount"
-            className={BOX + ' w-[100px] text-right font-mono text-[16px] md:text-[14px] font-bold text-danger-600'} />
-        ) : (
-          <button type="button" aria-label="Amount" onClick={() => start('amount')} className={TAP + ' font-mono text-[14px] font-bold text-danger-600'}>
-            {peso(expense.amount)}
-          </button>
-        )}
-      </span>
-      <span className="min-w-0 truncate text-[12px] text-muted">
-        {!time && <>{noteTap}{at && ' · '}</>}
-        {at}
-      </span>
-      <button
-        type="button"
-        onClick={() => onRemove(expense)}
-        aria-label={'Remove ' + nameOf(expense.category_id) + ' ' + peso(expense.amount)}
-        className="justify-self-end w-6 h-6 -my-0.5 grid place-items-center rounded-md text-muted hover:text-danger-600 hover:bg-danger-50 active:scale-90 transition-[color,background-color,transform] cursor-pointer"
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
-      {open === 'category' && (
-        <CategoryPicker categories={categories} chosen={expense.category_id} onClose={() => setOpen(null)}
-          onPick={id => (id === expense.category_id ? setOpen(null) : save({ category_id: id }))} />
+    <div className={editing ? 'relative z-20' : 'relative'}>
+      <div className={'relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
+        <span className={'min-w-0 truncate text-main ' + (time ? 'font-semibold' : 'font-bold')}>{time ? note || 'Expense' : edit.nameOf(expense.category_id)}</span>
+        <span key={expense.amount} className={'justify-self-end font-mono text-[14px] font-bold text-danger-600 inline-block' + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(expense.amount)}</span>
+        <span className="min-w-0 truncate text-[12px] text-muted">{time ? time : <>{note && <>{note}{at && ' · '}</>}{at}</>}</span>
+        <button type="button" data-pay-pen aria-label={'Edit this expense, ' + peso(expense.amount)} aria-expanded={editing}
+          onClick={e => { e.stopPropagation(); edit.onEdit(editing ? null : key) }}
+          className="justify-self-end w-7 h-7 -my-1 -mr-1 grid place-items-center rounded-lg text-gold-800 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-[.85] active:-rotate-[8deg] transition-[background-color,transform] cursor-pointer">
+          <Pencil aria-hidden="true" className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      {editing && (
+        <ExpenseEdit expense={expense} categories={edit.categories} nameOf={edit.nameOf} today={edit.today}
+          onClose={() => edit.onEdit(null)} onSave={change => edit.onSave(expense, change)} onRemove={() => edit.onRemove(expense)} />
       )}
     </div>
   )
@@ -206,18 +146,13 @@ function ExpenseLine({ expense, categories, nameOf, onRemove, onChange, time }: 
 // The same thing bought again and again is one line with how many times (Sebastian, 2026-10-28:
 // "if theres repeat expenses just merge them and show how many times it's merged"; design A of
 // the mock). It sits where the first one was, and a tap opens every one of them below it, each
-// still changed where it is written; their notes are only seen there ("keep the notes inside the
-// dropdown").
-function ExpenseGroup({ expenses, categories, nameOf, onRemove, onChange }: {
-  expenses: Expense[]
-  categories: ExpenseCategory[]
-  nameOf: (id: string) => string
-  onRemove: (expense: Expense) => void
-  onChange: DayMoneyProps['onChange']
-}) {
+// with its own pencil; their notes are only seen there ("keep the notes inside the dropdown").
+function ExpenseGroup({ expenses, edit }: { expenses: Expense[]; edit: ExpenseEditing }) {
   const [open, setOpen] = useState(false)
-  const name = nameOf(expenses[0].category_id)
+  const name = edit.nameOf(expenses[0].category_id)
   const sum = expenses.reduce((s, e) => s + Number(e.amount || 0), 0)
+  // The slip floats past the end of the group, so while it is up the group does not clip it.
+  const floating = expenses.some(e => edit.editing === 'x:' + e.id)
   const timeOf = (e: Expense) => e.created_at ? new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
   const times = expenses.map(timeOf).filter(Boolean)
   return (
@@ -236,11 +171,11 @@ function ExpenseGroup({ expenses, categories, nameOf, onRemove, onChange }: {
         <span className="justify-self-end font-mono text-[11px] text-muted">{times.length > 1 ? times[0] + '–' + times[times.length - 1] : times[0]}</span>
       </button>
       <div className={'grid transition-[grid-template-rows] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
-        <div className="min-h-0 overflow-hidden">
+        <div className={'min-h-0 ' + (floating ? 'overflow-visible' : 'overflow-hidden')}>
           <div className="ml-1.5 mb-1 pl-3 border-l-2 border-paper-200">
             {expenses.map((expense, i) => (
-              <div key={expense.id} className={open ? 'bw-rise' : ''} style={{ '--i': i } as CSSProperties}>
-                <ExpenseLine expense={expense} time={timeOf(expense)} categories={categories} nameOf={nameOf} onRemove={onRemove} onChange={onChange} />
+              <div key={expense.id} className={(open ? 'bw-rise ' : '') + (edit.editing === 'x:' + expense.id ? 'relative z-20' : '')} style={{ '--i': i } as CSSProperties}>
+                <ExpenseLine expense={expense} time={timeOf(expense)} edit={edit} />
               </div>
             ))}
           </div>
@@ -665,7 +600,7 @@ function PaymentLine({ line, loading, onOpen, inGroup, today, edit }: {
   return (
     <div className={editing ? 'relative z-20' : 'relative'}>
       {row}
-      {editing && <PaymentEdit line={line} today={today} onClose={() => edit.onEdit(null)} onSave={(patch, label) => edit.onSave(line, patch, label)} />}
+      {editing && <PaymentEdit line={line} today={today} onClose={() => edit.onEdit(null)} onSave={(patch, label) => edit.onSave(line, patch, label)} onRemove={() => edit.onRemove(line)} />}
     </div>
   )
 }
@@ -721,7 +656,7 @@ const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour
 // the money in the hotel at the bottom. Money in comes from the receipts recorded on bookings and
 // at the restaurant, plus what is written by hand on its blank line; money out is the list just typed. A payment
 // written on a booking opens that guest's billing statement (Sebastian, 2026-10-28).
-export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, dayHandovers, onTakeBack, onAdd, pastDay, footer, onOpenPayment, opening, bills, onAddIn, onFixPayment, today }: DayMoneyProps) {
+export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, dayHandovers, onTakeBack, onAdd, pastDay, footer, onOpenPayment, opening, bills, onAddIn, onFixPayment, onRemovePayment, today }: DayMoneyProps) {
   const nameOf = (id: string) => categories.find(c => c.id === id)?.name || 'Other'
 
   // One payment's slip at a time; the line just fixed glows for a moment, on the day it stayed on.
@@ -742,6 +677,27 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
       setFresh(lineKey(line))
       onFixPayment(line, patch, label)
     },
+    onRemove: line => {
+      setEditing(null)
+      onRemovePayment(line)
+    },
+  }
+  const editExpense: ExpenseEditing = {
+    editing,
+    fresh,
+    onEdit: closeEdit,
+    onSave: (expense, change) => {
+      setEditing(null)
+      setFresh('x:' + expense.id)
+      onChange(expense, change)
+    },
+    onRemove: expense => {
+      setEditing(null)
+      onRemove(expense)
+    },
+    categories,
+    nameOf,
+    today,
   }
 
   return (
@@ -768,9 +724,9 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money out</p>
           {dayExpenses.length === 0 && <p className="text-[13px] text-muted">Nothing spent yet.</p>}
           {byCategory(dayExpenses).map(group => group.length > 1 ? (
-            <ExpenseGroup key={group[0].category_id} expenses={group} categories={categories} nameOf={nameOf} onRemove={onRemove} onChange={onChange} />
+            <ExpenseGroup key={group[0].category_id} expenses={group} edit={editExpense} />
           ) : (
-            <ExpenseLine key={group[0].id} expense={group[0]} categories={categories} nameOf={nameOf} onRemove={onRemove} onChange={onChange} />
+            <ExpenseLine key={group[0].id} expense={group[0]} edit={editExpense} />
           ))}
           <ExpenseBlank key={report.date} categories={categories} another={dayExpenses.length > 0} pastDay={pastDay} onAdd={onAdd} />
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}

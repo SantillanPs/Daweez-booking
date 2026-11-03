@@ -5,14 +5,16 @@ import { ArrowDownLeft, ArrowUpRight, Coins, List, Printer, Tag, Wallet } from '
 import { useDashboardData } from './DashboardContext'
 import { generateUUID } from '../utils/syncEngine'
 import { dateToString, normalizeVenueId } from '../utils/helpers'
-import { getTabs, handSale, saveHandSale, saveTabFix, withFixedTabPayment } from '../utils/tabs'
-import { withFixedPayment, type PaymentPatch } from './walk-in/bookingPayment'
+import { getTabs, handSale, saveHandSale, saveTabFix, saveTabRemoval, withFixedTabPayment, withoutTabPayment } from '../utils/tabs'
+import { withFixedPayment, withoutPayment, type PaymentPatch } from './walk-in/bookingPayment'
+import { logRemovedPayment, takeBackPayment } from '../utils/removedPayments'
 import { groupOf } from '../utils/bookingGroup'
 import { formatRoomNumbers } from '../utils/roomNumbers'
 import { freshReceiptNumber } from '../utils/receiptNumber'
 import { payOnBill, paySlipsIfCleared } from '../utils/billPayment'
 import { allMoneyIn, buildDailyReport } from '../utils/dailyReport'
 import { Expense, ExpenseCategory, Handover } from '../types/expense'
+import type { ExpenseChange } from './expenses/ExpenseEdit'
 import { getHandovers, insertHandover, deleteHandover } from '../utils/handovers'
 import { updateExpense } from '../utils/expenses'
 import { showToast } from '../utils/toast'
@@ -246,6 +248,56 @@ export function ExpensesTab() {
     } })
   }
 
+  // **A payment removed from Money in** (Sebastian, 2026-11-03). The same steps as removing it in Bills &
+  // receipts: off every room that holds it, its slips unpaid, logged. Gone from the screen at once and
+  // put back with a message if the save fails.
+  const removeMoneyIn = (line: MoneyInLine) => {
+    if (line.bookingId) {
+      const holding = allBookings.flatMap(booking => {
+        const rec = booking.payment_records?.find(r => (line.receipt ? r.receipt_number === line.receipt : r.id === line.recordId))
+        return rec ? [{ booking, rec }] : []
+      })
+      if (holding.length === 0) return
+      const before = holding.map(h => h.booking)
+      const shared = holding.length > 1
+      const put = (rows: Booking[]) => queryClient.setQueryData<Booking[]>(['bookings'], (list = []) =>
+        list.map(b => rows.find(r => r.id === b.id) || b))
+      put(holding.map(h => withoutPayment(h.booking, h.rec, shared)))
+      takeBackPayment(holding[0].rec, before, updateBooking, { guest: line.who, rooms: line.place })
+        .then(() => {
+          void queryClient.invalidateQueries({ queryKey: ['removed-payments'] })
+          void queryClient.invalidateQueries({ queryKey: ['tabs'] })
+        })
+        .catch(() => {
+          put(before)
+          showToast('Could not remove the payment. Please try again.', 'error')
+        })
+      showToast('Payment removed', 'success')
+      return
+    }
+    const tab = tabs.find(t => t.id === line.tabId)
+    const record = tab?.payment_records?.find(r => r.id === line.recordId)
+    if (!tab || !record) return
+    const after = withoutTabPayment(tab, record.id)
+    const put = (row: Tab | null) => queryClient.setQueryData<Tab[]>(['tabs'], (list = []) =>
+      row ? list.map(t => (t.id === tab.id ? row : t)) : list.filter(t => t.id !== tab.id))
+    put(after)
+    saveTabRemoval(tab, after)
+      .then(() => logRemovedPayment({
+        receipt_number: record.receipt_number, amount: Number(record.amount || 0), method: record.method,
+        paid_at: record.paid_at, prepared_by: record.prepared_by, guest_name: line.who, rooms: line.place, booking_ids: [],
+      }).catch(() => undefined))
+      .then(() => {
+        void queryClient.invalidateQueries({ queryKey: ['removed-payments'] })
+        void queryClient.invalidateQueries({ queryKey: ['tab-lines'] })
+      })
+      .catch(() => {
+        queryClient.setQueryData<Tab[]>(['tabs'], (list = []) => [...list.filter(t => t.id !== tab.id), tab])
+        showToast('Could not remove the payment. Please try again.', 'error')
+      })
+    showToast('Payment removed', 'success')
+  }
+
   // The month's dots: a day money came in, a day something was spent.
   const marksOf = useCallback((day: string) => {
     const r = buildDailyReport({ date: day, bookings: allBookings, tabs, expenses, handovers, categories: expenseCategories, rooms })
@@ -262,16 +314,36 @@ export function ExpensesTab() {
     try { await deleteExpense(expense.id) } catch { showToast('Could not remove the expense.', 'error') }
   }
 
-  // A mistake on an expense is fixed where it is written (Sebastian, 2026-10-27), shown at
-  // once and saved behind it; put back as it was if the save fails.
-  const changeExpense = (expense: Expense, change: Partial<Pick<Expense, 'category_id' | 'amount' | 'notes'>>) => {
+  // A mistake on an expense is fixed from its pencil (Sebastian, 2026-10-27; drawn like Money in's
+  // payments, B of the mock, 2026-11-03), shown at once and saved behind it; put back as it was if the
+  // save fails. A new day takes it off this day, so the message says where it went and can undo it.
+  const changeExpense = (expense: Expense, change: ExpenseChange) => {
+    const was = { category_id: expense.category_id, amount: expense.amount, notes: expense.notes, expense_date: expense.expense_date }
     const patch = (to: Partial<Expense>) => queryClient.setQueryData<Expense[]>(['expenses'], (list = []) =>
       list.map(e => e.id === expense.id ? { ...e, ...to } : e))
     patch(change)
     updateExpense(expense.id, change).catch(() => {
-      patch({ category_id: expense.category_id, amount: expense.amount, notes: expense.notes })
+      patch(was)
       showToast('Could not save that change. Please try again.', 'error')
     })
+    if (change.expense_date && change.expense_date !== date) showToast('Moved to ' + shortDay(change.expense_date), 'success', { label: 'Undo', run: () => {
+      patch(was)
+      updateExpense(expense.id, was).catch(() => {
+        patch(change)
+        showToast('Could not undo that. Please try again.', 'error')
+      })
+    } })
+  }
+
+  // Removed from inside its slip, which has already asked (the bin turns into Remove), so no
+  // second question here. Gone at once; back with a message if the save fails.
+  const dropExpense = (expense: Expense) => {
+    queryClient.setQueryData<Expense[]>(['expenses'], (list = []) => list.filter(e => e.id !== expense.id))
+    deleteExpense(expense.id).catch(() => {
+      queryClient.setQueryData<Expense[]>(['expenses'], (list = []) => [...list.filter(e => e.id !== expense.id), expense])
+      showToast('Could not remove the expense. Please try again.', 'error')
+    })
+    showToast('Expense removed', 'success')
   }
 
   // Shown at once and saved behind it; taken back off the screen if the save fails.
@@ -350,7 +422,7 @@ export function ExpensesTab() {
         report={report}
         dayExpenses={dayExpenses}
         categories={byUse}
-        onRemove={removeExpense}
+        onRemove={dropExpense}
         onChange={changeExpense}
         dayHandovers={dayHandovers}
         onTakeBack={takeBack}
@@ -361,6 +433,7 @@ export function ExpensesTab() {
         bills={bills}
         onAddIn={addMoneyIn}
         onFixPayment={fixMoneyIn}
+        onRemovePayment={removeMoneyIn}
         today={today}
         footer={<>
           <div className="flex flex-wrap items-center gap-x-2 -ml-1">

@@ -1,5 +1,5 @@
 import { CSSProperties, FormEvent, ReactNode, useEffect, useRef, useState } from 'react'
-import { Banknote, Check, ChevronLeft, ChevronRight, FileText, Landmark, Smartphone, X } from 'lucide-react'
+import { Banknote, Check, ChevronLeft, ChevronRight, FileText, Landmark, Smartphone, Trash2, X } from 'lucide-react'
 import { dateToString } from '../../utils/helpers'
 import { hotelDay, MoneyInLine } from '../../utils/dailyReport'
 import { PAYMENT_METHODS, methodNeedsReference, paymentMethodChoice } from '../../utils/paymentMethod'
@@ -18,13 +18,13 @@ const Mark = ({ method }: { method: Method }) => (
         : <Landmark aria-hidden="true" className="w-3.5 h-3.5" />
 )
 // The method and the day are one kind of chip: paper ground, ink words, the sign in gold.
-const CHIP = 'inline-flex items-center gap-1 h-7 rounded-lg bg-paper-100 text-ink-900 text-[12px] font-bold aria-expanded:shadow-[inset_0_0_0_1.5px_#1C1C1C] active:scale-95 transition-[box-shadow,transform] cursor-pointer'
+export const CHIP = 'inline-flex items-center gap-1 h-7 rounded-lg bg-paper-100 text-ink-900 text-[12px] font-bold aria-expanded:shadow-[inset_0_0_0_1.5px_#1C1C1C] active:scale-95 transition-[box-shadow,transform] cursor-pointer'
 
 // Every piece of the second row is 28 tall with one corner; the tap reaches a little past it.
-const TAP_AREA = "relative after:content-[''] after:absolute after:-inset-y-1.5 after:-inset-x-0.5"
+export const TAP_AREA = "relative after:content-[''] after:absolute after:-inset-y-1.5 after:-inset-x-0.5"
 
 // The day as a small month: nothing after today can be picked.
-function MonthGrid({ day, today, onPick }: { day: string; today: string; onPick: (day: string) => void }) {
+export function MonthGrid({ day, today, onPick }: { day: string; today: string; onPick: (day: string) => void }) {
   const [month, setMonth] = useState(day.slice(0, 7))
   const [y, m] = month.split('-').map(Number)
   const first = new Date(y, m - 1, 1)
@@ -67,11 +67,13 @@ function MonthGrid({ day, today, onPick }: { day: string; today: string; onPick:
  * what they are now, and a tap unfolds the choices ("the payment method and date should be contextual").
  * Nothing changes until ✓, and then only the parts that were really changed. The save happens behind it.
  */
-export function PaymentEdit({ line, today, onSave, onClose }: {
+export function PaymentEdit({ line, today, onSave, onRemove, onClose }: {
   line: MoneyInLine
   today: string
   /** `label` is the name of money in linked to nothing, which has no "what for" of its own. */
   onSave: (patch: PaymentPatch, label?: string) => void
+  /** Takes the payment back off everything it paid for. */
+  onRemove: () => void
   onClose: () => void
 }) {
   const plain = line.slip && !!line.hand && !line.place
@@ -88,6 +90,8 @@ export function PaymentEdit({ line, today, onSave, onClose }: {
   const [day, setDay] = useState(was.day)
   const [open, setOpen] = useState<'method' | 'day' | null>(null)
   const [tried, setTried] = useState(false)
+  // Remove asks once, right where it was tapped: the bin turns into the word, a second tap means it.
+  const [removing, setRemoving] = useState(false)
   const form = useRef<HTMLFormElement>(null)
   const amountRef = useRef<HTMLInputElement>(null)
   const refRef = useRef<HTMLInputElement>(null)
@@ -181,10 +185,25 @@ export function PaymentEdit({ line, today, onSave, onClose }: {
             {dayNum}
           </span>
         </button>
-        <span className="ml-auto flex items-center gap-1">
-          <button type="button" onClick={onClose} aria-label="Close" className={TAP_AREA + ' w-7 h-7 grid place-items-center rounded-lg text-muted hover:text-main hover:bg-page cursor-pointer'}>
-            <X className="w-3.5 h-3.5" />
-          </button>
+        <span className="ml-auto flex-none flex items-center gap-1">
+          {/* Armed, Remove stands where the bin and ✕ stood, at their width, so nothing else in the row moves
+              (Sebastian, 2026-11-03: the wider word pushed ✓ out of the slip). A tap anywhere else puts them back. */}
+          {removing ? (
+            <button type="button" onClick={onRemove} onBlur={() => setRemoving(false)} autoFocus
+              className={TAP_AREA + ' w-[60px] h-7 grid place-items-center rounded-lg bg-danger-600 hover:bg-danger-500 text-white text-[12px] font-bold active:scale-90 transition-[background-color,transform] cursor-pointer [animation:bp-ready_.35s_cubic-bezier(.34,1.56,.64,1)]'}>
+              Remove
+            </button>
+          ) : (
+            <>
+              <button type="button" onClick={() => { setOpen(null); setRemoving(true) }} aria-label="Remove this payment"
+                className={TAP_AREA + ' w-7 h-7 grid place-items-center rounded-lg text-muted hover:text-danger-600 hover:bg-danger-50 active:scale-90 transition-[background-color,color,transform] cursor-pointer'}>
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+              <button type="button" onClick={onClose} aria-label="Close" className={TAP_AREA + ' w-7 h-7 grid place-items-center rounded-lg text-muted hover:text-main hover:bg-page cursor-pointer'}>
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
           <button type="submit" aria-label="Save" className={TAP_AREA + ' w-8 h-7 grid place-items-center rounded-lg bg-ink-900 hover:bg-ink-700 text-white active:scale-90 transition-[background-color,transform] cursor-pointer'}>
             <Check className="w-3.5 h-3.5" strokeWidth={3} />
           </button>

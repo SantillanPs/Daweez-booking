@@ -403,6 +403,37 @@ export async function saveTabFix(tab: Tab, recordId: string): Promise<void> {
   if (lineError) throw lineError
 }
 
+/**
+ * **A slip's payment removed from Money in** (Sebastian, 2026-11-03: "staff should be able to delete a
+ * payment in the money in when editing"). A sale written by hand is nothing but that payment, so the
+ * slip goes with it; a real diner's slip is unpaid again and waits under "Diners to pay".
+ * `null` means the slip itself is gone.
+ */
+export function withoutTabPayment(tab: Tab, recordId: string): Tab | null {
+  const record = tab.payment_records?.find(r => r.id === recordId)
+  if (!record) return tab
+  if (record.by_hand) return null
+  const left = (tab.payment_records || []).filter(r => r.id !== recordId)
+  const unpaid = !tab.paid_receipt_number || tab.paid_receipt_number === record.receipt_number
+  return { ...tab, payment_records: left, ...(unpaid ? { paid_at: null, paid_receipt_number: null } : {}) } as Tab
+}
+
+/** Writes what `withoutTabPayment` built: the slip without its payment, or no slip at all. */
+export async function saveTabRemoval(tab: Tab, after: Tab | null): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error(NO_DB)
+  // anon cannot delete a slip (a delete it may not make returns no error and removes nothing), so a
+  // hand-written sale goes through `remove_hand_sale`, which deletes only those.
+  if (after === null) {
+    const { error } = await supabase.rpc('remove_hand_sale', { p_tab_id: tab.id })
+    if (error) throw error
+    return
+  }
+  const { error } = await supabase.from('tabs')
+    .update({ payment_records: after.payment_records, paid_at: after.paid_at, paid_receipt_number: after.paid_receipt_number })
+    .eq('id', tab.id)
+  if (error) throw error
+}
+
 /** Writes a hand-written sale with a fresh receipt number, and hands back the slip as saved. */
 export async function saveHandSale(sale: { tab: Tab; line: TabLine | null }): Promise<Tab> {
   if (!isSupabaseConfigured) throw new Error(NO_DB)
