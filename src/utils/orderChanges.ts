@@ -25,6 +25,8 @@ export interface OrderChange {
   unitPrice: number
   /** How many more, or fewer. */
   delta: number
+  /** A charge, not food: it never goes to the kitchen (`TabLine.other_charge`). */
+  other?: boolean
   /** The whole row comes off, whatever its count. */
   remove?: boolean
   /** When it was tapped: a row not saved yet is listed where it was tapped. */
@@ -70,8 +72,12 @@ export function withChanges(lines: TabLine[], changes: OrderChange[], tabId = ''
         unit_price: money(change.unitPrice),
         amount: money(change.delta * change.unitPrice),
         kind: 'charge',
-        menu_item_id: change.menuItemId || null,
-        sent_qty: 0,
+        menu_item_id: change.other ? null : change.menuItemId || null,
+        other_charge: !!change.other,
+        // A charge is written already served, the same as the database writes it.
+        sent_qty: change.other ? change.delta : 0,
+        ready_qty: change.other ? change.delta : 0,
+        served_qty: change.other ? change.delta : 0,
         created_at: change.at,
       })
       continue
@@ -79,6 +85,10 @@ export function withChanges(lines: TabLine[], changes: OrderChange[], tabId = ''
     const row = out[at]
     const qty = Number(row.qty || 0) + change.delta
     if (change.remove || qty <= 0) { out.splice(at, 1); continue }
+    if (row.other_charge) {
+      out[at] = { ...row, qty, amount: money(qty * Number(row.unit_price || 0)), sent_qty: qty, ready_qty: qty, served_qty: qty }
+      continue
+    }
     out[at] = {
       ...row, qty, amount: money(qty * Number(row.unit_price || 0)),
       sent_qty: Math.min(Number(row.sent_qty || 0), qty),
@@ -139,6 +149,7 @@ export async function saveOrderChanges(input: {
       unit_price: money(c.unitPrice),
       delta: c.delta,
       remove: !!c.remove,
+      other: !!c.other,
     })),
     p_booking_id: input.bookingId || null,
     p_label: input.label?.trim() || null,

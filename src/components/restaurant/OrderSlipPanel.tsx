@@ -28,6 +28,8 @@ interface OrderSlipPanelProps {
   onQty: (line: TabLine, delta: 1 | -1) => void
   onSendKitchen: () => Promise<boolean>
   onServeLine: (line: TabLine) => void
+  /** A charge written on the slip: corkage, a take-out box. */
+  onCharge: (description: string, price: number) => void
   /** The guest has finished, or asks for the bill: it leaves the restaurant. */
   onBill: (at: DOMRect) => void
   /** A diner who sat down and ordered nothing: the empty slip is taken off the screen. */
@@ -47,7 +49,7 @@ interface OrderSlipPanelProps {
 // height, and only the rows give way and scroll — the total and its buttons never move.
 export function OrderSlipPanel({
   person, number, lines, total, earlier, errors, ready, tablesOpen,
-  onTables, onClose, onQty, onSendKitchen, onServeLine, onBill, onDropEmpty,
+  onTables, onClose, onQty, onSendKitchen, onServeLine, onCharge, onBill, onDropEmpty,
 }: OrderSlipPanelProps) {
   return (
     <>
@@ -74,6 +76,7 @@ export function OrderSlipPanel({
         onQty={onQty}
         onSendKitchen={onSendKitchen}
         onServeLine={onServeLine}
+        onCharge={onCharge}
         onBill={onBill}
         billLabel={person.booking ? 'Add to ' + person.place + '’s bill' : 'Send bill'}
         emptyText="Tap a dish on the menu"

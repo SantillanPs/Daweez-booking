@@ -179,6 +179,11 @@ export function useTabOrder(
     return true
   }
 
+  /** A charge written on the slip — a label and a price, one of it. Never sent to the kitchen. */
+  const addCharge = (description: string, unitPrice: number) => {
+    add({ lineId: randomUUID(), description: description.trim(), unitPrice, delta: 1, other: true })
+  }
+
   /** The count on a row, up or down by one. Down from one removes the row. */
   const changeQty = async (shown: TabLine, delta: 1 | -1) => {
     // The count on screen may be a moment old; the change is made to the real one.
@@ -201,5 +206,5 @@ export function useTabOrder(
     if (ok) add({ ...row, delta: 0, remove: true })
   }
 
-  return { waiting, error, setError, saveError, pickItem, addWritten, changeQty, finish, showOther, setShowOther }
+  return { waiting, error, setError, saveError, pickItem, addWritten, addCharge, changeQty, finish, showOther, setShowOther }
 }

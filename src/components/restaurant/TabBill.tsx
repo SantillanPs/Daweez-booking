@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Check, ConciergeBell, Flame, Minus, Receipt, Send, UtensilsCrossed } from 'lucide-react'
+import { Check, ConciergeBell, Flame, Minus, Plus, Receipt, Send, UtensilsCrossed } from 'lucide-react'
 import { TabLine } from '../../types/tab'
 import { cookingCount, newCount, readyCount } from '../../utils/orderSlips'
 import { AnimatedNumber } from '../AnimatedNumber'
+import { useLateFocus, want } from '../billing/want'
 
 const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
@@ -18,6 +19,8 @@ interface TabBillProps {
   onSendKitchen: () => Promise<boolean>
   /** This dish's cooked food has been carried to the guest. */
   onServeLine: (line: TabLine) => void
+  /** A charge written on the slip's "+ Charge" line. */
+  onCharge: (description: string, price: number) => void
   /** The guest has finished, or asks for the bill. Handed where the button is. */
   onBill: (at: DOMRect) => void
   /** `Send bill`, or `Add to Room 3’s bill`. */
@@ -51,17 +54,21 @@ interface TabBillProps {
 // a long order used to push the total and "Send to kitchen" off the bottom of the screen.
 // Whoever shows this gives it a column with a height, and `relative`: the "Sent to the
 // kitchen" card lays itself over the whole slip.
-export function TabBill({ lines, total, onQty, emptyText, onSendKitchen, onServeLine, onBill, billLabel }: TabBillProps) {
+export function TabBill({ lines, total, onQty, emptyText, onSendKitchen, onServeLine, onCharge, onBill, billLabel }: TabBillProps) {
   const [stage, setStage] = useState<'idle' | 'sending' | 'sent'>('idle')
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
   if (lines.length === 0) {
     return (
-      <div className="flex-1 grid place-content-center justify-items-center gap-2 py-8 text-[14px] text-muted">
-        <UtensilsCrossed className="w-12 h-12 text-paper-400" strokeWidth={1.2} />
-        {emptyText}
-      </div>
+      <>
+        <div className="flex-1 grid place-content-center justify-items-center gap-2 py-8 text-[14px] text-muted">
+          <UtensilsCrossed className="w-12 h-12 text-paper-400" strokeWidth={1.2} />
+          {emptyText}
+        </div>
+        {/* Corkage can be the whole bill: a group that brought its own food. */}
+        <ChargeLine onCharge={onCharge} />
+      </>
     )
   }
 
@@ -120,8 +127,28 @@ export function TabBill({ lines, total, onQty, emptyText, onSendKitchen, onServe
     )
   }
 
-  const fresh = lines.filter(l => newCount(l) > 0)
-  const given = lines.filter(l => Number(l.qty || 1) - newCount(l) > 0)
+  const food = lines.filter(l => !l.other_charge)
+  const charges = lines.filter(l => l.other_charge)
+  const fresh = food.filter(l => newCount(l) > 0)
+  const given = food.filter(l => Number(l.qty || 1) - newCount(l) > 0)
+
+  /** A charge: its count (the take-one-off button, dashed gold) and its money. No kitchen words. */
+  const chargeRow = (line: TabLine) => {
+    const n = Number(line.qty || 1)
+    return (
+      <li key={line.id} data-slip-line={line.description}
+        className="flex items-center gap-2.5 py-1.5 pl-1.5 pr-2 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300 motion-reduce:animate-none">
+        <button type="button" onClick={() => onQty(line, -1)}
+          aria-label={n > 1 ? 'One fewer ' + line.description : 'Remove ' + line.description}
+          className="group/less relative w-11 h-11 shrink-0 grid place-items-center rounded-lg border-[1.5px] border-dashed border-gold-400 text-[15px] font-bold tabular-nums text-gold-800 transition-[background-color,border-color,color,transform] duration-150 hover:bg-ink-900 hover:border-solid hover:border-ink-900 hover:text-gold-400 active:scale-90 cursor-pointer">
+          <span key={n} className="bp-up transition-[opacity,transform] duration-150 group-hover/less:opacity-0 group-hover/less:scale-50">{n}</span>
+          <Minus className="absolute w-4 h-4 opacity-0 scale-50 transition-[opacity,transform] duration-150 group-hover/less:opacity-100 group-hover/less:scale-100" />
+        </button>
+        <span className="min-w-0 flex-1 text-[14.5px] font-semibold text-main break-words">{line.description}</span>
+        <span className="shrink-0 text-[13.5px] tabular-nums text-muted">{fmtPeso(n * Number(line.unit_price || 0))}</span>
+      </li>
+    )
+  }
   const ACTION = 'min-h-12 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-[14px] font-bold transition-[background-color,border-color,color,transform] duration-200 active:scale-[0.98] cursor-pointer disabled:pointer-events-none '
 
   return (
@@ -131,7 +158,10 @@ export function TabBill({ lines, total, onQty, emptyText, onSendKitchen, onServe
         {fresh.map(l => row(l, newCount(l), false))}
         {given.length > 0 && <li className={GROUP}>In the kitchen</li>}
         {given.map(l => row(l, Number(l.qty || 1) - newCount(l), true))}
+        {charges.length > 0 && <li className={GROUP}>Charges</li>}
+        {charges.map(chargeRow)}
       </ul>
+      <ChargeLine onCharge={onCharge} />
 
       <div className="shrink-0 space-y-3 mt-auto pt-3 border-t border-dashed border-soft">
         {/* The total follows the slip as it changes, so the desk sees it move. */}
@@ -178,5 +208,57 @@ export function TabBill({ lines, total, onQty, emptyText, onSendKitchen, onServe
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * **"+ Charge"** under the slip's rows (Sebastian, 2026-11-03, notes #20): corkage, a take-out
+ * box, a broken glass. Just a label and a price, with no ready-made list, and they open on this
+ * same ruled line so the slip grows by nothing (his comment on the mock: "the design size is
+ * too big than the content it contains"). The + turns to a cross to close it. The look is the
+ * billing statement's Charge line.
+ */
+function ChargeLine({ onCharge }: { onCharge: (description: string, price: number) => void }) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [price, setPrice] = useState(0)
+  const nameBox = useRef<HTMLInputElement>(null)
+  const priceBox = useRef<HTMLInputElement>(null)
+  useLateFocus(nameBox, open)
+  const shut = () => { setOpen(false); setName(''); setPrice(0) }
+  const add = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) { want(nameBox.current); return }
+    if (!(price > 0)) { want(priceBox.current); return }
+    onCharge(name.trim(), price)
+    shut()
+  }
+  const SLOT = 'min-w-0 h-9 bg-transparent border-0 border-b-[1.5px] border-dashed border-gold-400 rounded-none px-0.5 text-[16px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-solid'
+  return (
+    <div className="shrink-0 flex items-center gap-1 min-h-11 border-b border-dotted border-ink-200">
+      <button type="button" onClick={() => (open ? shut() : setOpen(true))} aria-expanded={open}
+        aria-label={open ? 'Close' : 'Add a charge'}
+        className="shrink-0 min-h-11 inline-flex items-center gap-1.5 pr-2 text-[12px] font-bold uppercase tracking-[0.06em] text-gold-800 hover:underline underline-offset-[3px] active:scale-95 transition-transform cursor-pointer">
+        <span className={'w-4 h-4 grid place-items-center rounded-full bg-gold-400 text-ink-900 transition-transform duration-200 motion-reduce:transition-none ' + (open ? 'rotate-45' : '')}>
+          <Plus className="w-3 h-3" strokeWidth={3} />
+        </span>
+        {!open && 'Charge'}
+      </button>
+      {open && (
+        <form onSubmit={add} className="min-w-0 flex-1 flex items-center gap-1.5 origin-left animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
+          <input ref={nameBox} value={name} onChange={e => setName(e.target.value)} placeholder="Corkage"
+            aria-label="What the charge is for" autoComplete="off" className={SLOT + ' flex-1'} />
+          <label className="shrink-0 flex items-baseline gap-0.5">
+            <span className="font-display text-[12px] font-extrabold text-muted">₱</span>
+            <input ref={priceBox} inputMode="numeric" placeholder="200" aria-label="Price" value={price ? price.toLocaleString() : ''}
+              onChange={e => setPrice(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)} className={SLOT + ' w-16 text-right tabular-nums'} />
+          </label>
+          <button type="submit" aria-label="Add the charge"
+            className="shrink-0 w-11 h-11 grid place-items-center rounded-full active:scale-90 transition-transform cursor-pointer">
+            <span className="w-8 h-8 grid place-items-center rounded-full bg-ink-900 text-gold-400"><Check className="w-4 h-4" strokeWidth={3} /></span>
+          </button>
+        </form>
+      )}
+    </div>
   )
 }

@@ -27,6 +27,12 @@ export interface TabLine {
    * deducts nothing.
    */
   menu_item_id?: string | null
+  /**
+   * A charge written on the slip's "+ Charge" line — corkage, a take-out box, a broken glass
+   * (Sebastian, 2026-11-03). Not food: it is saved already given, cooked and served, so the
+   * kitchen never sees it and the slip lists it under "Charges".
+   */
+  other_charge?: boolean
   /** Set on a correction: the line it is fixing. */
   corrects_line_id?: string
   /** Set on a correction: why it was needed. */

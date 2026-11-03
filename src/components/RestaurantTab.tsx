@@ -478,7 +478,7 @@ export function RestaurantTab() {
   const readyAll = people.reduce((n, p) => n + (kitchen[p.key]?.ready || 0), 0)
   // How many of each dish are on the slip, so the menu card marks its line.
   const pickedCounts = selectedLines.reduce<Record<string, number>>((acc, l) => {
-    if (l.kind === 'charge') acc[l.description] = (acc[l.description] || 0) + Number(l.qty || 1)
+    if (l.kind === 'charge' && !l.other_charge) acc[l.description] = (acc[l.description] || 0) + Number(l.qty || 1)
     return acc
   }, {})
   const slipPanel = (person: Served, onClose: () => void) => (
@@ -496,6 +496,7 @@ export function RestaurantTab() {
       onQty={(line, delta) => void order.changeQty(line, delta)}
       onSendKitchen={() => kitchenStep('send')}
       onServeLine={line => void kitchenStep('served', line)}
+      onCharge={order.addCharge}
       onBill={at => void askForBill(person, at)}
       onDropEmpty={tab => void dropEmptySlip(tab)}
     />

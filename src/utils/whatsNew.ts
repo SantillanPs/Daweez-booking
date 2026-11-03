@@ -23,6 +23,17 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-11-03b',
+    changes: [
+      {
+        where: 'Restaurant',
+        what: [
+          'An order slip can now take a charge that is not food, like corkage or a take-out box. Tap + Charge under the order, type what it is for and the price, then tap the tick. It goes on the bill but never to the kitchen.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-03',
     changes: [
       {

@@ -62,6 +62,7 @@ Laid out in the order the counter works (the owner picked this from three drawin
 ## The menu
 
 - **Orders are tapped, never typed.** A hand-written line hides behind "+ Something not on the menu" for the rare dish the menu lacks.
+- **A charge that is not food goes on the slip too** (Sebastian, 2026-11-03): corkage, a take-out box, a broken glass. He wanted just a label and a price, with no ready-made list, and the two boxes open on the slip's own "+ Charge" line rather than in a box over it ("the design size is too big than the content it contains. keep it clean and space efficient"). A charge never goes to the kitchen.
 - **It looks like the hotel's printed menu card:** *"Make it look more like a normal physical menu."* One scroll, no category buttons, name · dotted line · price, two columns.
 - **Staff hold the tablet in front of the guest**, so every dish is a tall row and the whole row is tappable. A dish already on the order slip shows its count.
 - **A "Find a dish" box sits above the card** because hunting one of 61 dishes is slow with a guest waiting.
