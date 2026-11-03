@@ -23,6 +23,19 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-11-03c',
+    changes: [
+      {
+        where: 'Cash Flow',
+        what: [
+          'Money in and Money out are easier to read. Each line has a small sign for what it is: a room, a venue, the restaurant, or what the money went on.',
+          'Money in shows the room or venue first and who paid under it, with how they paid (Cash, GCash) beside the amount. Money out shows your note first and the category under it.',
+          'On a computer, a line’s pencil shows when you point at the line.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-03b',
     changes: [
       {

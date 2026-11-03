@@ -1,5 +1,5 @@
-import { CSSProperties, FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import { BedDouble, Check, ChevronDown, Loader2, PenLine, Pencil, Plus, Search, UtensilsCrossed, X } from 'lucide-react'
+import { CSSProperties, FormEvent, ReactNode, createElement, useCallback, useEffect, useRef, useState } from 'react'
+import { Banknote, BedDouble, Check, ChevronDown, Droplet, Fuel, HandCoins, House, Loader2, PenLine, Pencil, Plus, Receipt, Search, ShoppingBasket, Trees, Users, UtensilsCrossed, Wrench, X, Zap, type LucideIcon } from 'lucide-react'
 import { Expense, ExpenseCategory, Handover } from '../../types/expense'
 import { CountPeso } from '../CountPeso'
 import { PaymentEdit } from './PaymentEdit'
@@ -107,11 +107,31 @@ export interface MoneyInInput {
   reference?: string
 }
 
+// How a line reads (C of the money lines mock, Sebastian, 2026-11-03): a sign for what kind it is on the
+// left, the one thing to read first in bold, the amount as the loudest figure, and the codes and times
+// faint in the corner. The pencil waits for the pointer on a PC; on a tablet it is always there.
+const TILE = 'row-span-2 w-[34px] h-[34px] grid place-items-center rounded-[11px]'
+const LINE = 'grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-2 -mx-2 px-2 rounded-lg text-[13px]'
+const AMOUNT = 'font-display font-extrabold tabular-nums inline-block'
+const PEN = 'w-7 h-7 -my-1 -mr-1 grid place-items-center rounded-lg text-gold-800 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-[.85] active:-rotate-[8deg] mouse:opacity-0 mouse:group-hover/line:opacity-100 mouse:focus-visible:opacity-100 mouse:aria-expanded:opacity-100 transition-[opacity,background-color,transform] cursor-pointer'
+
+/** A name typed in capitals reads in ordinary case; one typed any other way is left as it is. */
+const soft = (s: string) => (s && s === s.toUpperCase() && /[A-Z]/.test(s) ? { text: s.toLowerCase(), cls: ' capitalize' } : { text: s, cls: '' })
+
+// A sign for what the money went on, read from the category's own name; anything else is a receipt.
+const SPEND_ICONS: [RegExp, LucideIcon][] = [
+  [/salar|wage|payroll/i, Users], [/advance|vale/i, HandCoins], [/electric|power|meralco/i, Zap], [/water/i, Droplet],
+  [/gas|fuel|lpg|diesel/i, Fuel], [/repair|mainten/i, Wrench], [/resto|food|kitchen|market|grocer/i, ShoppingBasket],
+]
+const spendIcon = (name: string) => SPEND_ICONS.find(([re]) => re.test(name))?.[1] || Receipt
+/** A line's sign, drawn from the icon its kind was given. */
+const sign = (Icon: LucideIcon) => createElement(Icon, { 'aria-hidden': true, className: 'w-[17px] h-[17px]' })
+
 // One expense, drawn like a payment in Money in (B of the Money out mock, Sebastian, 2026-11-03: "make
-// the expenses consistent with the design similar to the money in"): what it was for on top with the
-// amount, the note and the time beneath, and a pencil where a payment has its own. The pencil opens the
-// same small slip a payment has (`ExpenseEdit`). Inside a group the category is said once above, so a
-// line there leads with its note.
+// the expenses consistent with the design similar to the money in"). The note leads, the category is
+// second and the time last (Sebastian, 2026-11-03: "the note should be the primary focus, category is
+// 2nd, everything else is tertiary"). The pencil opens the same small slip a payment has (`ExpenseEdit`).
+// Inside a group the category is said once above, so a line there is its note and its time.
 function ExpenseLine({ expense, time, edit }: {
   expense: Expense
   /** Inside a merged line: when it was written, so the repeats can be told apart. */
@@ -122,19 +142,37 @@ function ExpenseLine({ expense, time, edit }: {
   const editing = edit.editing === key
   const fresh = edit.fresh === key
   const at = expense.created_at ? new Date(expense.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
-  const note = (expense.notes || '').trim()
+  const note = soft((expense.notes || '').trim())
+  const name = edit.nameOf(expense.category_id)
+  const Icon = spendIcon(name)
+  const amount = <span key={expense.amount} className={'justify-self-end text-danger-600 ' + AMOUNT + (time ? ' text-[14px]' : ' text-[16px]') + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(expense.amount)}</span>
+  const pen = (
+    <button type="button" data-pay-pen aria-label={'Edit this expense, ' + peso(expense.amount)} aria-expanded={editing}
+      onClick={e => { e.stopPropagation(); edit.onEdit(editing ? null : key) }}
+      className={'justify-self-end ' + PEN}>
+      <Pencil aria-hidden="true" className="w-3.5 h-3.5" />
+    </button>
+  )
   return (
     <div className={editing ? 'relative z-20' : 'relative'}>
-      <div className={'relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
-        <span className={'min-w-0 truncate text-main ' + (time ? 'font-semibold' : 'font-bold')}>{time ? note || 'Expense' : edit.nameOf(expense.category_id)}</span>
-        <span key={expense.amount} className={'justify-self-end font-mono text-[14px] font-bold text-danger-600 inline-block' + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(expense.amount)}</span>
-        <span className="min-w-0 truncate text-[12px] text-muted">{time ? time : <>{note && <>{note}{at && ' · '}</>}{at}</>}</span>
-        <button type="button" data-pay-pen aria-label={'Edit this expense, ' + peso(expense.amount)} aria-expanded={editing}
-          onClick={e => { e.stopPropagation(); edit.onEdit(editing ? null : key) }}
-          className="justify-self-end w-7 h-7 -my-1 -mr-1 grid place-items-center rounded-lg text-gold-800 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-[.85] active:-rotate-[8deg] transition-[background-color,transform] cursor-pointer">
-          <Pencil aria-hidden="true" className="w-3.5 h-3.5" />
-        </button>
-      </div>
+      {time ? (
+        <div className={'group/line relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
+          <span className={'min-w-0 truncate font-semibold text-main' + note.cls}>{note.text || 'Expense'}</span>
+          {amount}
+          <span className="min-w-0 truncate text-[12px] text-muted">{time}</span>
+          {pen}
+        </div>
+      ) : (
+        <div className={'group/line relative ' + LINE + ' transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
+          <span className={TILE + ' bg-danger-50 text-danger-600'}>{sign(Icon)}</span>
+          <span className={'min-w-0 truncate text-[13.5px] font-bold text-main' + note.cls}>{note.text || name}</span>
+          {amount}
+          <span className="min-w-0 truncate text-[12px] text-muted">
+            {note.text && <span className="font-bold text-ink-600">{name}</span>}{note.text && at && ' · '}{at}
+          </span>
+          {pen}
+        </div>
+      )}
       {editing && (
         <ExpenseEdit expense={expense} categories={edit.categories} nameOf={edit.nameOf} today={edit.today}
           onClose={() => edit.onEdit(null)} onSave={change => edit.onSave(expense, change)} onRemove={() => edit.onRemove(expense)} />
@@ -146,33 +184,38 @@ function ExpenseLine({ expense, time, edit }: {
 // The same thing bought again and again is one line with how many times (Sebastian, 2026-10-28:
 // "if theres repeat expenses just merge them and show how many times it's merged"; design A of
 // the mock). It sits where the first one was, and a tap opens every one of them below it, each
-// with its own pencil; their notes are only seen there ("keep the notes inside the dropdown").
+// with its own pencil. Its notes lead, as a lone expense's does.
 function ExpenseGroup({ expenses, edit }: { expenses: Expense[]; edit: ExpenseEditing }) {
   const [open, setOpen] = useState(false)
   const name = edit.nameOf(expenses[0].category_id)
+  const Icon = spendIcon(name)
   const sum = expenses.reduce((s, e) => s + Number(e.amount || 0), 0)
   // The slip floats past the end of the group, so while it is up the group does not clip it.
   const floating = expenses.some(e => edit.editing === 'x:' + e.id)
   const timeOf = (e: Expense) => e.created_at ? new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
   const times = expenses.map(timeOf).filter(Boolean)
+  const span = times.length > 1 ? times[0] + '–' + times[times.length - 1] : times[0]
+  const notes = soft(expenses.map(e => (e.notes || '').trim()).filter(Boolean).join(' · '))
   return (
     <div>
       <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
-        className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 w-[calc(100%+1rem)] py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer">
-        <span className="min-w-0 truncate font-bold text-main">
-          {name}
+        className={'group ' + LINE + ' w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer'}>
+        <span className={TILE + ' bg-danger-50 text-danger-600'}>{sign(Icon)}</span>
+        <span className="min-w-0 truncate text-[13.5px] font-bold text-main">
+          <span className={notes.cls}>{notes.text || name}</span>
           <span key={expenses.length} className="ml-1.5 inline-grid place-items-center align-[1px] min-w-6 h-[19px] px-1.5 rounded-full bg-danger-50 text-danger-600 text-[11px] font-extrabold group-active:scale-90 transition-transform [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">×{expenses.length}</span>
         </span>
         <span className="flex items-center justify-end gap-1.5">
-          <span key={sum} className="font-mono text-[14px] font-bold text-danger-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(sum)}</span>
+          <span key={sum} className={'text-[16px] text-danger-600 ' + AMOUNT + ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(sum)}</span>
           <ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-gold-600 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
         </span>
-        <span className="min-w-0 truncate text-[12px] text-muted">{expenses.map(e => (e.notes || '').trim() || 'Expense').join(' · ')}</span>
-        <span className="justify-self-end font-mono text-[11px] text-muted">{times.length > 1 ? times[0] + '–' + times[times.length - 1] : times[0]}</span>
+        <span className="col-span-2 min-w-0 truncate text-[12px] text-muted">
+          {notes.text && <span className="font-bold text-ink-600">{name}</span>}{notes.text && span && ' · '}{span}
+        </span>
       </button>
       <div className={'grid transition-[grid-template-rows] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
         <div className={'min-h-0 ' + (floating ? 'overflow-visible' : 'overflow-hidden')}>
-          <div className="ml-1.5 mb-1 pl-3 border-l-2 border-paper-200">
+          <div className="ml-[17px] mb-1 pl-[27px] border-l-2 border-paper-200">
             {expenses.map((expense, i) => (
               <div key={expense.id} className={(open ? 'bw-rise ' : '') + (edit.editing === 'x:' + expense.id ? 'relative z-20' : '')} style={{ '--i': i } as CSSProperties}>
                 <ExpenseLine expense={expense} time={timeOf(expense)} edit={edit} />
@@ -520,18 +563,33 @@ const METHOD_DOT: Record<PaymentKind, string> = {
 }
 
 // **One payment, read as its receipt** (design A of the Money in mock, Sebastian, 2026-10-28: "it's a
-// payment receipt and for some reason it say OS"): who paid and where on top with the amount; what
-// for, how and when beneath with the receipt number. An order slip's number shows only on a diner's
-// payment, in gold like the restaurant's. A room's payment opens its bill right here, ready to
-// work on; a diner's opens its receipt, which reads its lines first, so the row shows it is on its way.
-// Inside a bill's group the guest and room are said once above, so a payment there leads with what it was for.
-// A payment on a cancelled booking stays on the day it came in, scratched off with the day it was
-// cancelled, and counts in no total (option B of the mock, Sebastian, 2026-10-29).
+// payment receipt and for some reason it say OS"). What it paid for leads — the room, the venue, the
+// restaurant — then who paid, and how they paid sits loud beside the amount (Sebastian, 2026-11-03:
+// "the primary should be for what like garden area, room, or venue, secondary should be who or from
+// what like name or table. payment type should be a bit louder"). A room's payment opens its bill
+// right here, ready to work on; a diner's opens its receipt, which reads its lines first, so the row
+// shows it is on its way. Inside a bill's group the room and guest are said once above, so a payment
+// there leads with what it was for. A payment on a cancelled booking stays on the day it came in,
+// scratched off with the day it was cancelled, and counts in no total (option B of the mock, Sebastian, 2026-10-29).
 const cancelChip = (day: string) => (
   <span className="ml-1.5 inline-block align-[1px] px-1.5 rounded-full ring-1 ring-inset ring-danger-300 text-danger-600 text-[10.5px] font-extrabold dm-pop">
     Cancelled {new Date(day + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
   </span>
 )
+
+const PayPill = ({ method }: { method: string }) => (
+  <span className="inline-flex items-center gap-[5px] h-[19px] pl-1.5 pr-2 rounded-full bg-paper-100 text-[11.5px] font-extrabold text-main whitespace-nowrap">
+    <i className={'w-1.5 h-1.5 rounded-full ' + METHOD_DOT[paymentKind(method)]} />{method}
+  </span>
+)
+
+/** What a payment leads with, who paid, and its sign. Plain money in written by hand is a slip with no number. */
+function payHead(line: MoneyInLine): { title: string; who: string; Icon: LucideIcon; tone: string } {
+  if (line.slip && line.place) return { title: 'Restaurant', who: line.who, Icon: UtensilsCrossed, tone: 'bg-gold-100 text-gold-800' }
+  if (line.slip) return { title: line.purpose || 'Money in', who: line.who === 'Order slip' ? '' : line.who, Icon: Banknote, tone: 'bg-emerald-50 text-emerald-600' }
+  const Icon = /^Rooms? /.test(line.place) ? BedDouble : /house|exclusive/i.test(line.place) ? House : Trees
+  return { title: line.place || line.who, who: line.place ? line.who : '', Icon, tone: 'bg-paper-100 text-main' }
+}
 
 function PaymentLine({ line, loading, onOpen, inGroup, today, edit }: {
   line: MoneyInLine
@@ -541,54 +599,54 @@ function PaymentLine({ line, loading, onOpen, inGroup, today, edit }: {
   today: string
   edit: PaymentEditing
 }) {
-  // Plain money in written by hand is a slip with no number, so it is not called one.
   const what = line.purpose || (line.slip && line.place ? 'Order slip' : '')
+  const head = payHead(line)
+  const who = soft(head.who)
   const key = lineKey(line)
   const editing = edit.editing === key
   // A scratched-off payment counts for nothing, so there is nothing to fix on it.
   const canEdit = !line.cancelled && !!line.recordId
   const fresh = edit.fresh === key
+  const hand = line.hand && <PenLine aria-label="Written by hand" className="ml-1.5 inline-block align-[-1px] w-3 h-3 text-gold-600" />
+  // What it was for and the slip's number, at the quiet end of the second line. Plain money in already leads with it.
+  const rest = [line.slip && !line.place ? '' : what, line.slip ? line.place : ''].filter(Boolean).join(' · ')
   const body = (
     <>
       {line.cancelled && <i aria-hidden="true" className="dm-scratch" />}
       {inGroup ? (
-        <span className="min-w-0 truncate font-semibold text-main">
-          {what || 'Payment'}
-          {line.hand && <PenLine aria-label="Written by hand" className="ml-1.5 inline-block align-[-1px] w-3 h-3 text-gold-600" />}
-        </span>
+        <span className="min-w-0 truncate font-semibold text-main">{what || 'Payment'}{hand}</span>
       ) : (
-      <span className="min-w-0 truncate font-bold text-main">
-        {line.who}
-        {line.place && (
-          <span className={'ml-1.5 inline-block align-[1px] px-1.5 rounded-md text-[10.5px] font-extrabold ' + (line.slip ? 'bg-gold-100 text-gold-800' : 'bg-paper-100 text-main')}>{line.place}</span>
-        )}
-        {line.bill && <span className="ml-1.5 inline-block align-[1px] px-1 rounded-md border border-paper-200 font-mono text-[10.5px] font-semibold text-muted">{line.bill}</span>}
-        {line.hand && <PenLine aria-label="Written by hand" className="ml-1.5 inline-block align-[-1px] w-3 h-3 text-gold-600" />}
-        {line.cancelled && cancelChip(line.cancelled)}
-      </span>
+        <>
+          <span className={TILE + ' ' + head.tone}>{sign(head.Icon)}</span>
+          <span className="min-w-0 truncate text-[13.5px] font-bold text-main">
+            {head.title}{hand}
+            {line.cancelled && cancelChip(line.cancelled)}
+          </span>
+        </>
       )}
-      <span className="flex items-center justify-end gap-1.5">
+      <span className="flex items-center justify-end gap-2">
         {loading && <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" />}
-        <span key={line.amount} className={'font-mono text-[14px] font-bold inline-block ' + (line.cancelled ? 'text-paper-400' : 'text-emerald-600') + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(line.amount)}</span>
+        <PayPill method={line.method} />
+        <span key={line.amount} className={AMOUNT + (inGroup ? ' text-[14px]' : ' text-[16px]') + (line.cancelled ? ' text-paper-400' : ' text-emerald-600') + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(line.amount)}</span>
       </span>
       <span className="min-w-0 truncate text-[12px] text-muted">
-        {what && !inGroup && <>{what} · </>}
-        <span className="inline-flex items-center gap-1"><i className={'w-1.5 h-1.5 rounded-full ' + METHOD_DOT[paymentKind(line.method)]} />{line.method}</span>
-        {line.paidAt && <> · {timeOf(line.paidAt)}</>}
+        {inGroup ? (line.paidAt && timeOf(line.paidAt)) : (
+          <>{who.text && <span className={'font-bold text-ink-600' + who.cls}>{who.text}</span>}{who.text && rest && ' · '}{rest}</>
+        )}
       </span>
-      <span className="justify-self-end flex items-center gap-1 font-mono text-[11px] text-muted">
-        {line.receipt}
+      <span className="justify-self-end flex items-center gap-1 font-mono text-[10.5px] text-paper-500">
+        {!inGroup && line.paidAt && <>{timeOf(line.paidAt)} · </>}{line.receipt}
         {canEdit && (
           <button type="button" data-pay-pen aria-label={'Edit this payment, ' + peso(line.amount)} aria-expanded={editing}
             onClick={e => { e.stopPropagation(); edit.onEdit(editing ? null : key) }}
-            className="w-7 h-7 -my-1 -mr-1 grid place-items-center rounded-lg text-gold-800 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-[.85] active:-rotate-[8deg] transition-[background-color,transform] cursor-pointer">
+            className={PEN}>
             <Pencil aria-hidden="true" className="w-3.5 h-3.5" />
           </button>
         )}
       </span>
     </>
   )
-  const grid = 'relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left' + (line.cancelled ? ' dm-struck' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')
+  const grid = 'group/line relative ' + (inGroup ? 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px]' : LINE) + ' text-left' + (line.cancelled ? ' dm-struck' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')
   // Not a <button>: the pencil is a button of its own and cannot sit inside one.
   const row = onOpen && openKey(line) ? (
     <div role="button" tabIndex={0} onClick={() => onOpen(line)} aria-busy={loading}
@@ -609,6 +667,8 @@ function PaymentLine({ line, loading, onOpen, inGroup, today, edit }: {
 function PaymentGroup({ lines, opening, onOpen, today, edit }: { lines: MoneyInLine[]; opening?: string | null; onOpen?: (line: MoneyInLine) => void; today: string; edit: PaymentEditing }) {
   const [open, setOpen] = useState(false)
   const first = lines[0]
+  const head = payHead(first)
+  const who = soft(head.who)
   // The slip floats past the end of the group, so while it is up the group does not clip it.
   const floating = lines.some(l => lineKey(l) === edit.editing)
   const whole = lines.reduce((s, l) => s + Number(l.amount || 0), 0)
@@ -619,25 +679,27 @@ function PaymentGroup({ lines, opening, onOpen, today, edit }: { lines: MoneyInL
   return (
     <div>
       <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
-        className={'group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 w-[calc(100%+1rem)] py-1.5 -mx-2 px-2 rounded-lg text-[13px] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (cancelled ? ' dm-struck' : '')}>
+        className={'group relative ' + LINE + ' w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (cancelled ? ' dm-struck' : '')}>
         {cancelled && <i aria-hidden="true" className="dm-scratch group-aria-expanded:opacity-0" />}
-        <span className="min-w-0 truncate font-bold text-main">
-          {first.who}
-          {first.place && <span className="ml-1.5 inline-block align-[1px] px-1.5 rounded-md text-[10.5px] font-extrabold bg-paper-100 text-main">{first.place}</span>}
+        <span className={TILE + ' ' + head.tone}>{sign(head.Icon)}</span>
+        <span className="min-w-0 truncate text-[13.5px] font-bold text-main">
+          {head.title}
           <span key={lines.length} className="ml-1.5 inline-grid place-items-center align-[1px] min-w-6 h-[19px] px-1.5 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold group-active:scale-90 transition-transform [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">×{lines.length}</span>
           {cancelled && cancelChip(cancelled)}
         </span>
         <span className="flex items-center justify-end gap-1.5">
           {loading && <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" />}
-          <span key={sum} className={'font-mono text-[14px] font-bold inline-block ' + (cancelled ? 'text-paper-400' : 'text-emerald-600') + ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(cancelled ? whole : sum)}</span>
+          <span key={sum} className={'text-[16px] ' + AMOUNT + (cancelled ? ' text-paper-400' : ' text-emerald-600') + ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(cancelled ? whole : sum)}</span>
           <ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-gold-600 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
         </span>
-        <span className="min-w-0 truncate text-[12px] text-muted">{lines.map(l => l.purpose || 'Payment').join(' · ')}</span>
-        <span className="justify-self-end font-mono text-[11px] text-muted">{first.bill}</span>
+        <span className="min-w-0 truncate text-[12px] text-muted">
+          {who.text && <span className={'font-bold text-ink-600' + who.cls}>{who.text}</span>}{who.text && ' · '}{lines.map(l => l.purpose || 'Payment').join(' · ')}
+        </span>
+        <span className="justify-self-end font-mono text-[10.5px] text-paper-500">{first.bill}</span>
       </button>
       <div className={'grid transition-[grid-template-rows] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
         <div className={'min-h-0 ' + (floating ? 'overflow-visible' : 'overflow-hidden')}>
-          <div className="ml-1.5 mb-1 pl-3 border-l-2 border-paper-200">
+          <div className="ml-[17px] mb-1 pl-[27px] border-l-2 border-paper-200">
             {lines.map((line, i) => (
               <div key={(line.receipt || line.label) + i} className={(open ? 'bw-rise ' : '') + (edit.editing === lineKey(line) ? 'relative z-20' : '')} style={{ '--i': i } as CSSProperties}>
                 <PaymentLine line={line} inGroup today={today} edit={edit} loading={!!opening && opening === openKey(line)} onOpen={onOpen} />
