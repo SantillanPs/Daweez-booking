@@ -187,10 +187,17 @@ function ExpenseLine({ expense, time, edit }: {
   )
 }
 
+/** How many a merged line holds, in words and quiet, so the amount stays the only coloured figure on it. */
+const ItemCount = ({ n }: { n: number }) => (
+  <span key={n} className="ml-1.5 inline-block text-[12.5px] font-semibold text-muted [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">· {n} items</span>
+)
+
 // The same thing bought again and again is one line with how many times (Sebastian, 2026-10-28:
 // "if theres repeat expenses just merge them and show how many times it's merged"; design A of
 // the mock). It sits where the first one was, and a tap opens every one of them below it, each
-// with its own pencil. Its notes lead, as a lone expense's does.
+// with its own pencil. Its title is what it was for and how many (Sebastian, 2026-11-06: "the grouped
+// title should just be the category and how many items there are", option B of the mock): the notes
+// joined together made the title longer with every repeat, so they live in the opened rows only.
 function ExpenseGroup({ expenses, edit }: { expenses: Expense[]; edit: ExpenseEditing }) {
   const [open, setOpen] = useState(false)
   const name = edit.nameOf(expenses[0].category_id)
@@ -201,22 +208,23 @@ function ExpenseGroup({ expenses, edit }: { expenses: Expense[]; edit: ExpenseEd
   const timeOf = (e: Expense) => e.created_at ? new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
   const times = expenses.map(timeOf).filter(Boolean)
   const span = times.length > 1 ? times[0] + '–' + times[times.length - 1] : times[0]
-  const notes = soft(expenses.map(e => (e.notes || '').trim()).filter(Boolean).join(' · '))
+  const title = soft(name)
   return (
     <div>
-      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
-        className={'group ' + LINE + ' w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer'}>
+      <button type="button" onClick={() => { setOpen(o => !o); markSeen('group-items') }} aria-expanded={open}
+        className={'group relative ' + LINE + ' w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer'}>
         <span className={TILE + ' bg-danger-50 text-danger-600'}>{sign(Icon)}</span>
+        <NewTag id="group-items" />
         <span className="min-w-0 truncate text-[13.5px] font-bold text-main">
-          <span className={notes.cls}>{notes.text || name}</span>
-          <span key={expenses.length} className="ml-1.5 inline-grid place-items-center align-[1px] min-w-6 h-[19px] px-1.5 rounded-full bg-danger-50 text-danger-600 text-[11px] font-extrabold group-active:scale-90 transition-transform [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">×{expenses.length}</span>
+          <span className={title.cls}>{title.text}</span>
+          <ItemCount n={expenses.length} />
         </span>
         <span className="flex items-center justify-end gap-1.5">
           <span key={sum} className={'text-[16px] text-danger-600 ' + AMOUNT + ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(sum)}</span>
           <ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-gold-600 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
         </span>
         <span className="col-span-2 min-w-0 truncate text-[12px] text-muted">
-          {notes.text && <span className="font-bold text-ink-600">{name}</span>}{notes.text && span && ' · '}{span}
+          {span}
         </span>
       </button>
       <div className={'grid transition-[grid-template-rows] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
@@ -682,17 +690,16 @@ function PaymentGroup({ lines, opening, onOpen, today, edit }: { lines: MoneyInL
   // A bill's payments share its booking, so a cancelled bill scratches off the whole group.
   const cancelled = lines.every(l => l.cancelled) ? first.cancelled : undefined
   const loading = !!opening && lines.some(l => openKey(l) === opening)
-  const table = first.slip && !first.bill
   return (
     <div>
-      <button type="button" onClick={() => { setOpen(o => !o); if (table) markSeen('table-groups') }} aria-expanded={open}
+      <button type="button" onClick={() => { setOpen(o => !o); markSeen('group-items') }} aria-expanded={open}
         className={'group relative ' + LINE + ' w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (cancelled ? ' dm-struck' : '')}>
         {cancelled && <i aria-hidden="true" className="dm-scratch group-aria-expanded:opacity-0" />}
         <span className={TILE + ' ' + head.tone}>{sign(head.Icon)}</span>
-        {table && <NewTag id="table-groups" />}
+        <NewTag id="group-items" />
         <span className="min-w-0 truncate text-[13.5px] font-bold text-main">
           {head.title}
-          <span key={lines.length} className="ml-1.5 inline-grid place-items-center align-[1px] min-w-6 h-[19px] px-1.5 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold group-active:scale-90 transition-transform [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">×{lines.length}</span>
+          <ItemCount n={lines.length} />
           {cancelled && cancelChip(cancelled)}
         </span>
         <span className="flex items-center justify-end gap-1.5">

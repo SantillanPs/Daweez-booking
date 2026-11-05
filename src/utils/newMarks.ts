@@ -16,8 +16,9 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
-  // A day's restaurant payments from one table are one line with a count under Money in (`PaymentGroup` in `DayMoney`).
-  { id: 'table-groups', since: '2026-11-06' },
+  // Today's money: a merged line says "N items", and a Money out one is titled by what it was for (`ExpenseGroup`,
+  // `PaymentGroup` in `DayMoney`). It took over 'table-groups' (a table's slips as one line, the same day).
+  { id: 'group-items', since: '2026-11-06' },
   // An agency's or institution's bill with money taken on it says what is left, not the whole Total (`NewBookingBill`).
   { id: 'agency-paid-due', since: '2026-11-05' },
   // Restaurant → History: each order slip's orders, serves and where its bill went (`RestaurantHistory`).
