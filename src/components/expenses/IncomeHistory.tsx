@@ -117,9 +117,15 @@ export function IncomeHistory({ payments, date, onOpenDay, onClose }: IncomeHist
             <RangeCalendar key={calendarKey} range={range} today={today} onPick={setRange} />
 
             <div className="w-full max-w-[420px] md:max-w-[252px] flex flex-col gap-2.5">
-              <div className="flex h-3 gap-0.5 rounded-md overflow-hidden bg-paper-100">
-                {types.map(([k]) => (
-                  <span key={k} className={'h-full min-w-0 grow-[var(--g)] transition-[flex-grow,opacity] duration-500 ' + SOLID[k] + (kind && kind !== k ? ' opacity-20' : '')} style={{ '--g': byKind.get(k) || 0 } as CSSProperties} />
+              {/* Sebastian, 2026-11-05: the bar's pieces "should also be clickable" — each one picks its way to pay,
+                  the same as the rows under it. The tap area reaches above and below so a thin piece can still be hit. */}
+              <div className="flex h-4 gap-0.5 rounded-lg bg-paper-100">
+                {types.map(([k, label]) => (
+                  <button
+                    key={k} type="button" aria-label={label + ' only'} aria-pressed={kind === k} onClick={() => setKind(kind === k ? '' : k)}
+                    className={'relative h-full min-w-0 grow-[var(--g)] first:rounded-l-lg last:rounded-r-lg cursor-pointer after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-[\'\'] hover:scale-y-125 active:scale-y-90 aria-pressed:scale-y-125 transition-[flex-grow,opacity,transform] duration-500 ' + SOLID[k] + (kind && kind !== k ? ' opacity-20' : '') + (byKind.get(k) ? '' : ' pointer-events-none')}
+                    style={{ '--g': byKind.get(k) || 0 } as CSSProperties}
+                  />
                 ))}
               </div>
               <div role="group" aria-label="Payment type" className="flex flex-col gap-1">
