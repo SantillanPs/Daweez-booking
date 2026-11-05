@@ -420,6 +420,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     return hourly.length === 0 ? [] : [{ h: 0, label: '1 day', price: kindsOf(key).find(k => k.key === (kinds[key] || ''))?.price || priceOf(key) },
       ...hourly.map(o => ({ h: o.hours, label: o.hours + ' hrs' + (o.aircon ? ' · aircon' : ''), price: o.price }))]
   }
+  // A venue sold by the hour (the Gazebo, the Garden) wears how long it is beside its name, like the
+  // Vacation House's kinds (Sebastian, 2026-11-05, option A of the "Gazebo: day or hours" mock: the desk
+  // booked the Gazebo for a day when the guest wanted 4 hours w/ aircon, and never found the "1" under No. of night).
+  const lenOnName = (key: string) => list.length === 1 && venues.some(v => v.id === unitOfLine(key)) && lengthsOf(key).length > 1
   // Whether these hours fit in that half of the day, beside the other bookings.
   const fits = (key: string, h: number, hf: 0 | 1) => {
     const id = unitOfLine(key), ci = units[0]?.[1].checkIn
@@ -689,6 +693,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           : words}
       </td>
     )
+    const lenChip = (id: string) => lenOnName(id) && (
+      <button type="button" data-len onClick={toggle('len', id)} aria-expanded={isOpen('len', id)} aria-label="How long"
+        className="group ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-px rounded-[3px] shadow-[inset_0_0_0_1px_#E5E5E5] text-[10px] font-bold text-ink-700 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">
+        {lengthsOf(id).find(l => l.h === (isShort ? hours : 0))?.label}<ChevronDown aria-hidden="true" className={CHEV} />
+      </button>
+    )
     // A room's price: tapped, a box floats under it to type a new one or go back to its own. A short stay's line uses it too (2026-10-24).
     const rateCell = (id: string, name: string, it: StatementLineItem) => (
       <td className={cell + ' text-right font-mono'}>
@@ -701,7 +711,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       const id = list[0][0]
       return (
         <tr key={id + it.amount} className={fresh === id ? 'bill-ink' : undefined}>
-          <td className={cell + ' pl-0 text-left whitespace-normal'}>{it.description}</td>
+          <td className={cell + ' pl-0 text-left whitespace-normal'}>{lenOnName(id) ? <>{unitName(id, list[0][1])}{lenChip(id)}</> : it.description}</td>
           {rateCell(id, it.description, it)}
           <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>
           <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>
@@ -761,6 +771,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                 {kindList.find(k => k.key === (kinds[id] || ''))?.label}<ChevronDown aria-hidden="true" className={CHEV} />
               </button>
             )}
+            {lenChip(id)}
           </td>
           {rateCell(id, name, it)}
           <td className={cell + ' text-right font-mono'}>
@@ -811,7 +822,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       </Floating>
     )
     if (p.kind === 'len') return (
-      <Floating key={p.kind + p.id} {...common} at={at} right label="How long">
+      <Floating key={p.kind + p.id} {...common} at={at} right={!lenOnName(p.id)} label="How long">
         <LengthList lengths={lengthsOf(p.id)} chosen={isShort ? hours : 0} half={half}
           fits={(h, hf) => fits(p.id, h, hf)} onPick={h => pickLength(p.id, h)}
           onHalf={hf => { setHalf(hf); setFresh(p.id); setPop(null) }} />
