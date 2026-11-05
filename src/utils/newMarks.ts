@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // Restaurant → History: each order slip's orders, serves and where its bill went (`RestaurantHistory`).
+  { id: 'restaurant-history', since: '2026-11-05' },
   // The day-or-hours chip beside a Gazebo or Garden on the bill (`NewBookingBill`).
   { id: 'venue-length', since: '2026-11-05' },
   // An agency's room and breakfast prices are changed on its bill and kept on the agency (`NewBookingBill`).

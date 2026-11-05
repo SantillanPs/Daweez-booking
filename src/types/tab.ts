@@ -56,6 +56,22 @@ export interface TabLine {
   created_at: string
 }
 
+/**
+ * One step in an order slip's life, for Restaurant → History (Sebastian, 2026-11-05: "track orders,
+ * and serves, the sent to front desk, and sent to room"). Written by the database's triggers as it
+ * happens (`tab_events`), never by the app. Taps close together are one step.
+ */
+export interface TabEvent {
+  id: string
+  tab_id: string
+  /** `back` is a bill the front desk sent back to the restaurant; `removed` a dish taken off. */
+  kind: 'order' | 'served' | 'removed' | 'desk' | 'room' | 'back'
+  items: { qty: number; name: string }[]
+  /** What the dishes came to, or the whole slip for a bill sent. Nothing for a serve. */
+  amount: number
+  at: string
+}
+
 // The staff call this an ORDER SLIP (their feedback, 2026-10-04): the paper an order is
 // written on and handed to the kitchen. It is opened by the first order and stays open
 // until it is paid; the next order after that starts a new slip, so a stay can hold

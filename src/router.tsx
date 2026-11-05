@@ -178,6 +178,13 @@ const menuRoute = createRoute({
   component: lazyRouteComponent(() => import('./components/MenuTab'), 'MenuTab')
 })
 
+// What happened to each order slip: ordered, served, sent to the front desk or a room (Sebastian, 2026-11-05).
+const restaurantHistoryRoute = createRoute({
+  getParentRoute: () => dashboardRoute,
+  path: '/restaurant/history',
+  component: lazyRouteComponent(() => import('./components/RestaurantHistory'), 'RestaurantHistory')
+})
+
 // 5. Construct Route Tree
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -195,6 +202,7 @@ const routeTree = rootRoute.addChildren([
     restaurantRoute,
     kitchenRoute,
     menuRoute,
+    restaurantHistoryRoute,
     dailyReportRoute
   ])
 ])

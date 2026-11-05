@@ -94,3 +94,10 @@ Food lines live in their own tables, never on the booking. Saving a small food l
 - **It follows how kitchen screens work in more developed countries**, which he asked me to look at first: a ticket is coloured by how long it has waited, one dish or the whole ticket can be marked, a wrong tap can be recalled, a sound says a new one has arrived, and everything still to cook is added up across the tickets.
 - **A card leads with the table**, because that is where the food is carried.
 - **The restaurant changes its own menu** (the owner, 2026-10-09: "allow the restaurant to add new items on the menu and edit the prices"). Restaurant → Menu. A dish taken off is hidden, not deleted, so old order slips keep it.
+
+## History
+
+- **Restaurant → History tracks what happened to each order slip** (Sebastian, 2026-11-05): *"track orders, and serves, the sent to front desk, and sent to room."* The database writes each step as it happens, so nobody records anything extra.
+- **The table and the actions must not look alike**: *"make the table and actions more distinguishable."* The table is a numbered square; each step is an icon with words.
+- **The latest step is at the top**: *"latest should be at the top, not bottom."*
+- **No new colour meanings.** *"I want to keep a consistent color signal meaning. so I don't want the staff to be confused of what a color means because we're using it so much on other things."* Gold already means "in the kitchen" and green means "ready" or "paid", so every step in History is plain ink with its own icon.

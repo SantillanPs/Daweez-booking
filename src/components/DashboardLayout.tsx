@@ -8,6 +8,8 @@ import {
 import logo from '../assets/logo.png'
 import { ToastHost } from './Toast'
 import { ConfirmHost } from './ConfirmDialog'
+import { NewTag } from './NewMark'
+import { markSeen } from '../utils/newMarks'
 
 /**
  * **Four tabs, and the screens inside each** (the owner's ruling, 2026-10-04 — it replaced the six-tab idea on
@@ -41,6 +43,7 @@ const TABS = [
       { label: 'Orders', to: '/restaurant' },
       { label: 'Kitchen', to: '/restaurant/kitchen' },
       { label: 'Menu', to: '/restaurant/menu' },
+      { label: 'History', to: '/restaurant/history', isNew: 'restaurant-history' },
     ],
   },
   {
@@ -233,9 +236,11 @@ export function DashboardLayout() {
                   return (
                     <Link key={s.to} to={s.to} activeOptions={{ exact: true }}
                       aria-current={isOn ? 'page' : undefined}
+                      onClick={() => { if ('isNew' in s && s.isNew) markSeen(s.isNew) }}
                       className={'fd-sub flex items-center h-11 mouse:h-10 text-[13px] sm:text-sm font-medium whitespace-nowrap ' +
                         (isOn ? 'text-main' : 'text-muted hover:text-main')}>
-                      {s.label}
+                      {/* A new screen is its own sub-tab, so the sub-tab is the feature and wears the tag. */}
+                      {'isNew' in s && s.isNew ? <span className="relative">{s.label}<NewTag id={s.isNew} /></span> : s.label}
                     </Link>
                   )
                 })}
