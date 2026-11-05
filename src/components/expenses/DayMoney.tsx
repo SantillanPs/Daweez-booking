@@ -2,6 +2,8 @@ import { CSSProperties, FormEvent, ReactNode, createElement, useCallback, useEff
 import { Banknote, BedDouble, Check, ChevronDown, Droplet, Fuel, HandCoins, House, Loader2, PenLine, Pencil, Plus, Receipt, Search, ShoppingBasket, Trees, Users, UtensilsCrossed, Wrench, X, Zap, type LucideIcon } from 'lucide-react'
 import { Expense, ExpenseCategory, Handover } from '../../types/expense'
 import { CountPeso } from '../CountPeso'
+import { NewTag } from '../NewMark'
+import { markSeen } from '../../utils/newMarks'
 import { PaymentEdit } from './PaymentEdit'
 import { ExpenseEdit, type ExpenseChange } from './ExpenseEdit'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
@@ -19,11 +21,15 @@ const byCategory = (list: Expense[]) => {
 
 // The day's payments in groups of one bill (design B of the Money in mock, Sebastian, 2026-10-29: "group up
 // the payments from the same billing statement like how we grouped the expenses"), each group where its
-// first payment was. A diner's slip has no bill and stands alone.
+// first payment was. A diner's slips are grouped by their table the same way (Sebastian, 2026-11-06: "if
+// it's for the same table, then keep them grouped") — a slip with no table and money in written by hand
+// stand alone.
+const groupKey = (l: MoneyInLine, i: number) =>
+  l.bill ? 'b:' + l.bill : l.slip && l.place && l.who && l.who !== 'Order slip' ? 't:' + l.who : 'x:' + i
 const byBill = (list: MoneyInLine[]) => {
   const groups = new Map<string, MoneyInLine[]>()
-  list.forEach((l, i) => { const k = l.bill ? 'b:' + l.bill : 'x:' + i; const g = groups.get(k); if (g) g.push(l); else groups.set(k, [l]) })
-  return [...groups.values()]
+  list.forEach((l, i) => { const k = groupKey(l, i); const g = groups.get(k); if (g) g.push(l); else groups.set(k, [l]) })
+  return [...groups.entries()]
 }
 
 const signed = (n: number) => n < 0 ? '(' + peso(-n) + ')' : peso(n)
@@ -614,7 +620,7 @@ function PaymentLine({ line, loading, onOpen, inGroup, today, edit }: {
     <>
       {line.cancelled && <i aria-hidden="true" className="dm-scratch" />}
       {inGroup ? (
-        <span className="min-w-0 truncate font-semibold text-main">{what || 'Payment'}{hand}</span>
+        <span className="min-w-0 truncate font-semibold text-main">{(line.slip ? [line.place, line.purpose].filter(Boolean).join(' · ') : what) || 'Payment'}{hand}</span>
       ) : (
         <>
           <span className={TILE + ' ' + head.tone}>{sign(head.Icon)}</span>
@@ -676,12 +682,14 @@ function PaymentGroup({ lines, opening, onOpen, today, edit }: { lines: MoneyInL
   // A bill's payments share its booking, so a cancelled bill scratches off the whole group.
   const cancelled = lines.every(l => l.cancelled) ? first.cancelled : undefined
   const loading = !!opening && lines.some(l => openKey(l) === opening)
+  const table = first.slip && !first.bill
   return (
     <div>
-      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
+      <button type="button" onClick={() => { setOpen(o => !o); if (table) markSeen('table-groups') }} aria-expanded={open}
         className={'group relative ' + LINE + ' w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (cancelled ? ' dm-struck' : '')}>
         {cancelled && <i aria-hidden="true" className="dm-scratch group-aria-expanded:opacity-0" />}
         <span className={TILE + ' ' + head.tone}>{sign(head.Icon)}</span>
+        {table && <NewTag id="table-groups" />}
         <span className="min-w-0 truncate text-[13.5px] font-bold text-main">
           {head.title}
           <span key={lines.length} className="ml-1.5 inline-grid place-items-center align-[1px] min-w-6 h-[19px] px-1.5 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold group-active:scale-90 transition-transform [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">×{lines.length}</span>
@@ -693,7 +701,7 @@ function PaymentGroup({ lines, opening, onOpen, today, edit }: { lines: MoneyInL
           <ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-gold-600 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
         </span>
         <span className="min-w-0 truncate text-[12px] text-muted">
-          {who.text && <span className={'font-bold text-ink-600' + who.cls}>{who.text}</span>}{who.text && ' · '}{lines.map(l => l.purpose || 'Payment').join(' · ')}
+          {who.text && <span className={'font-bold text-ink-600' + who.cls}>{who.text}</span>}{who.text && ' · '}{lines.map(l => (l.slip ? l.place : l.purpose) || 'Payment').join(' · ')}
         </span>
         <span className="justify-self-end font-mono text-[10.5px] text-paper-500">{first.bill}</span>
       </button>
@@ -768,8 +776,8 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
         <div className="p-4 flex flex-col">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money in</p>
           {report.moneyIn.length === 0 && <p className="text-[13px] text-muted">Nothing received yet.</p>}
-          {byBill(report.moneyIn).map((group, i) => group.length > 1 ? (
-            <PaymentGroup key={'g' + group[0].bill} lines={group} opening={opening} onOpen={onOpenPayment} today={today} edit={edit} />
+          {byBill(report.moneyIn).map(([k, group], i) => group.length > 1 ? (
+            <PaymentGroup key={k} lines={group} opening={opening} onOpen={onOpenPayment} today={today} edit={edit} />
           ) : (
             <PaymentLine key={(group[0].receipt || group[0].label) + i} line={group[0]} today={today} edit={edit} loading={!!opening && opening === openKey(group[0])} onOpen={onOpenPayment} />
           ))}
