@@ -23,6 +23,15 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-11-05c',
+    changes: [
+      {
+        where: 'Cash Flow → All income',
+        what: ['How each payment was made now stands out: every payment wears a bold coloured tag (green Cash, blue GCash, black Bank, gold Check), and the totals for each kind are in the same colours. Tap one to see only those payments.'],
+      },
+    ],
+  },
+  {
     id: '2026-11-05b',
     changes: [
       {

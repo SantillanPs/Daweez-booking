@@ -1,6 +1,6 @@
 import { CSSProperties, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Banknote, ChevronLeft, ChevronRight, FileText, Landmark, LucideIcon, Smartphone, Wallet, X } from 'lucide-react'
 import type { DatedMoneyIn } from '../../utils/dailyReport'
 import { dateToString } from '../../utils/helpers'
 import { PaymentKind, paymentKind } from '../../utils/paymentMethod'
@@ -39,9 +39,19 @@ function rangeName(r: Range) {
 }
 
 const KINDS: [PaymentKind, string][] = [['cash', 'Cash'], ['gcash', 'GCash'], ['bank', 'Bank'], ['check', 'Check'], ['other', 'Other']]
-const DOT: Record<PaymentKind, string> = {
-  cash: 'bg-emerald-600', gcash: 'bg-blue-700', bank: 'bg-ink-900', check: 'bg-paper-500', other: 'bg-paper-400',
+// Sebastian, 2026-11-05: how they paid "needs to be more visible and loud. not subtle" (A of the mock).
+// So each way to pay has its own solid colour, a tint of it and a sign: a payment wears a filled pill,
+// and the type rows under the calendar are tinted, the picked one filled. Check is deep gold, not pale grey.
+const SOLID: Record<PaymentKind, string> = {
+  cash: 'bg-emerald-600', gcash: 'bg-blue-700', bank: 'bg-ink-900', check: 'bg-gold-700', other: 'bg-paper-500',
 }
+const TINT: Record<PaymentKind, string> = {
+  cash: 'bg-emerald-100 text-emerald-700', gcash: 'bg-blue-100 text-blue-700', bank: 'bg-ink-200 text-ink-900', check: 'bg-gold-100 text-gold-800', other: 'bg-paper-100 text-main',
+}
+const PICKED: Record<PaymentKind, string> = {
+  cash: 'aria-pressed:bg-emerald-600', gcash: 'aria-pressed:bg-blue-700', bank: 'aria-pressed:bg-ink-900', check: 'aria-pressed:bg-gold-700', other: 'aria-pressed:bg-paper-500',
+}
+const SIGN: Record<PaymentKind, LucideIcon> = { cash: Banknote, gcash: Smartphone, bank: Landmark, check: FileText, other: Wallet }
 
 const SOURCES = ['Rooms & venues', 'Restaurant', 'Other'] as const
 /** Where a payment came from: a booking, a diner's numbered slip, or plain money in. */
@@ -109,21 +119,22 @@ export function IncomeHistory({ payments, date, onOpenDay, onClose }: IncomeHist
             <div className="w-full max-w-[420px] md:max-w-[252px] flex flex-col gap-2.5">
               <div className="flex h-3 gap-0.5 rounded-md overflow-hidden bg-paper-100">
                 {types.map(([k]) => (
-                  <span key={k} className={'h-full min-w-0 grow-[var(--g)] transition-[flex-grow,opacity] duration-500 ' + DOT[k] + (kind && kind !== k ? ' opacity-20' : '')} style={{ '--g': byKind.get(k) || 0 } as CSSProperties} />
+                  <span key={k} className={'h-full min-w-0 grow-[var(--g)] transition-[flex-grow,opacity] duration-500 ' + SOLID[k] + (kind && kind !== k ? ' opacity-20' : '')} style={{ '--g': byKind.get(k) || 0 } as CSSProperties} />
                 ))}
               </div>
               <div role="group" aria-label="Payment type" className="flex flex-col gap-1">
                 {types.map(([k, label]) => {
                   const amount = byKind.get(k) || 0
                   const none = !amount && kind !== k
+                  const Sign = SIGN[k]
                   return (
                     <button
                       key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(kind === k ? '' : k)}
-                      className={'min-h-11 px-3 grid grid-cols-[1fr_auto_2.6rem] items-center gap-2.5 rounded-xl bg-card text-left aria-pressed:shadow-[inset_0_0_0_2px_#1C1C1C] active:scale-[.97] transition-[box-shadow,transform,opacity] cursor-pointer ' + (none ? 'opacity-40 pointer-events-none' : '')}
+                      className={'group min-h-11 px-3 grid grid-cols-[1fr_auto_2.6rem] items-center gap-2.5 rounded-xl text-left aria-pressed:text-white active:scale-[.97] transition-[background-color,color,transform,opacity] cursor-pointer ' + TINT[k] + ' ' + PICKED[k] + (none ? ' opacity-40 pointer-events-none' : '') + (kind && kind !== k ? ' opacity-60' : '')}
                     >
-                      <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-main"><i className={'w-2 h-2 rounded-[3px] ' + DOT[k]} />{label}</span>
-                      <span className="font-mono text-[13.5px] font-bold text-main">{peso(amount)}</span>
-                      <span className="text-right text-[10.5px] font-bold text-muted">{all ? Math.round((amount / all) * 100) + '%' : '—'}</span>
+                      <span className="inline-flex items-center gap-2 text-[12.5px] font-bold"><Sign aria-hidden="true" className="w-4 h-4" />{label}</span>
+                      <span className="font-mono text-[13.5px] font-bold">{peso(amount)}</span>
+                      <span className="text-right text-[10.5px] font-bold opacity-75">{all ? Math.round((amount / all) * 100) + '%' : '—'}</span>
                     </button>
                   )
                 })}
@@ -175,25 +186,27 @@ export function IncomeHistory({ payments, date, onOpenDay, onClose }: IncomeHist
                   </div>
                   {list.map(line => {
                     const what = line.purpose || (line.slip && line.place ? 'Order slip' : '')
+                    const pk = paymentKind(line.method)
+                    const Sign = SIGN[pk]
                     return (
                       <button
                         key={(line.bookingId || line.tabId || '') + (line.receipt || line.recordId || line.label) + line.day}
                         type="button" onClick={() => onOpenDay(line.day)}
-                        className="w-full grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 px-[18px] py-2.5 border-b border-soft text-left hover:bg-page transition-colors cursor-pointer"
+                        className="w-full grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-0.5 px-[18px] py-2.5 border-b border-soft text-left hover:bg-page transition-colors cursor-pointer"
                       >
                         <span className="min-w-0 flex flex-wrap items-center gap-1.5 text-[13.5px] font-bold text-main">
                           <span>{line.who}</span>
                           {line.place && <span className={'px-1.5 rounded-md text-[10.5px] font-extrabold ' + (line.slip ? 'bg-gold-100 text-gold-800' : 'bg-paper-100 text-main')}>{line.place}</span>}
                           {line.bill && <span className="px-1 rounded-md border border-paper-200 font-mono text-[10.5px] font-semibold text-muted">{line.bill}</span>}
                         </span>
-                        <span className="justify-self-end font-mono text-[14.5px] font-extrabold text-emerald-600">{peso(line.amount)}</span>
-                        <span className="min-w-0 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-muted">
-                          <i className={'w-[7px] h-[7px] rounded-[2px] ' + DOT[paymentKind(line.method)]} />
-                          <span>{line.method}</span>
-                          {line.reference && <span>· Ref {line.reference}</span>}
-                          {what && <span>· {what}</span>}
+                        <span className={'row-span-2 col-start-2 row-start-1 inline-flex items-center gap-1.5 h-[26px] pl-2 pr-2.5 rounded-full text-[12px] font-extrabold text-white ' + SOLID[pk]}>
+                          <Sign aria-hidden="true" className="w-3.5 h-3.5" />{pk === 'other' ? line.method : KINDS.find(([k]) => k === pk)?.[1]}
                         </span>
-                        <span className="hidden sm:block justify-self-end self-center font-mono text-[10.5px] text-paper-400">{line.receipt}</span>
+                        <span className="row-span-2 col-start-3 row-start-1 justify-self-end font-mono text-[14.5px] font-extrabold text-emerald-600">{peso(line.amount)}</span>
+                        <span className="col-start-1 min-w-0 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-muted">
+                          {what && <span>{what}</span>}
+                          {line.reference && <span>{what ? '· ' : ''}Ref {line.reference}</span>}
+                        </span>
                       </button>
                     )
                   })}
