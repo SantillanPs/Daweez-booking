@@ -25,6 +25,8 @@ import { StatementChargesTable } from '../billing/StatementChargesTable'
 import { Floating, UnitList, UnitOption, KindList, LengthList, BreakfastList, MonthPick, MorningPick } from './BillRoomLines'
 import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
 import { venueHoursOf } from '../../utils/venueHours'
+import { markSeen as sawFeature } from '../../utils/newMarks'
+import { NewTag } from '../NewMark'
 import { getRateConfig } from '../../utils/rateConfig'
 import { withMoneyOf, holdsMoney } from '../../utils/roomTakenOff'
 import { ADD, AddCharge, Gut, PayInput, WritePayment } from '../billing/BillDesk'
@@ -694,9 +696,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       </td>
     )
     const lenChip = (id: string) => lenOnName(id) && (
-      <button type="button" data-len onClick={toggle('len', id)} aria-expanded={isOpen('len', id)} aria-label="How long"
-        className="group ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-px rounded-[3px] shadow-[inset_0_0_0_1px_#E5E5E5] text-[10px] font-bold text-ink-700 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">
+      <button type="button" data-len onClick={e => { sawFeature('venue-length'); toggle('len', id)(e) }} aria-expanded={isOpen('len', id)} aria-label="How long"
+        className="group relative ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-px rounded-[3px] shadow-[inset_0_0_0_1px_#E5E5E5] text-[10px] font-bold text-ink-700 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">
         {lengthsOf(id).find(l => l.h === (isShort ? hours : 0))?.label}<ChevronDown aria-hidden="true" className={CHEV} />
+        <NewTag id="venue-length" />
       </button>
     )
     // A room's price: tapped, a box floats under it to type a new one or go back to its own. A short stay's line uses it too (2026-10-24).

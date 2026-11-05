@@ -20,7 +20,8 @@ import { undoBookingCheck } from '../../utils/db'
 import { CountPeso } from '../CountPeso'
 import { clockLabel, shortStayOut, stayHoursOf } from '../../utils/shortStay'
 import { bookingHalves, clashIn } from '../../utils/halfDays'
-import { airconWords } from '../../utils/venueHours'
+import { airconWords, venueHoursOf } from '../../utils/venueHours'
+import { NewDotFor } from '../NewMark'
 import { BreakfastPicker } from './BreakfastPicker'
 import { useQueryClient } from '@tanstack/react-query'
 import { BreakfastMornings } from './BreakfastMornings'
@@ -818,9 +819,11 @@ export function ExtendStayModal({
                 printed. Gold while money is owed; quiet once it is not. */}
             {!isBlock && onOpenBill && (
               <button type="button" onClick={onOpenBill}
-                className={billDue > 0 ? BTN_GOLD + ' bw-shine flex items-center justify-center gap-2' : BTN + 'border-[1.5px] border-soft text-main hover:bg-softbg flex items-center justify-center gap-2'}>
+                className={billDue > 0 ? BTN_GOLD + ' relative bw-shine flex items-center justify-center gap-2' : BTN + 'relative border-[1.5px] border-soft text-main hover:bg-softbg flex items-center justify-center gap-2'}>
                 <Receipt aria-hidden="true" className="w-[18px] h-[18px]" />
                 Bill
+                {/* The day-or-hours chip is new on a Gazebo or Garden bill (`utils/newMarks.ts`). */}
+                {!booking.group_id && venueHoursOf(venues.find(v => v.id === booking.venue_id), getRateConfig()).length > 0 && <NewDotFor id="venue-length" inset />}
                 {booking.invoice_number && <span className="font-mono text-[12px] font-semibold opacity-60">{booking.invoice_number}</span>}
               </button>
             )}
