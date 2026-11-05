@@ -8,8 +8,6 @@ import {
 import logo from '../assets/logo.png'
 import { ToastHost } from './Toast'
 import { ConfirmHost } from './ConfirmDialog'
-import { NewDot } from './NewMark'
-import { useNewTabs } from '../utils/newMarks'
 
 /**
  * **Four tabs, and the screens inside each** (the owner's ruling, 2026-10-04 — it replaced the six-tab idea on
@@ -109,8 +107,6 @@ export function DashboardLayout() {
   // up Stock; the screen is the exact match, or the tab's first screen when the address names none.
   const here = location.pathname.replace(/\/+$/, '') || '/'
   const currentTab = TABS.find(tab => tab.screens.some(s => here === s.to || here.startsWith(s.to + '/')))
-  // A tab with a new feature under it wears a gold dot until the feature is tapped (`utils/newMarks.ts`).
-  const hasNew = useNewTabs()
   const currentScreen = currentTab?.screens.find(s => s.to === here) ?? currentTab?.screens[0]
   const subTabs = currentTab && currentTab.screens.length > 1 ? currentTab.screens : null
   const isCalendarTab = here === '/calendar' || here === '/'
@@ -200,7 +196,6 @@ export function DashboardLayout() {
                       (isOn ? 'text-ink-900' : 'text-muted hover:text-brand-text hover:bg-card')}>
                     <tab.Icon className="w-4 h-4" aria-hidden="true" />
                     {tab.label}
-                    <NewDot on={hasNew(tab.label)} />
                   </Link>
                 )
               })}
@@ -283,7 +278,7 @@ export function DashboardLayout() {
                   aria-current={isOn ? (currentScreen === tab.screens[0] ? 'page' : 'true') : undefined}
                   className={'flex-1 flex flex-col items-center justify-center gap-0.5 border-t-2 -mt-px text-xs transition-colors ' +
                     (isOn ? 'border-gold-600 font-semibold text-brand-text' : 'border-transparent font-medium text-muted')}>
-                  <span className="relative"><tab.Icon className="w-5 h-5" aria-hidden="true" /><NewDot on={hasNew(tab.label)} /></span>
+                  <tab.Icon className="w-5 h-5" aria-hidden="true" />
                   <span>{tab.label}</span>
                 </Link>
               )

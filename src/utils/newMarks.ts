@@ -1,8 +1,7 @@
 // New and changed features mark themselves where they live, in place of "What's new" (Sebastian,
 // 2026-11-05: "add indicators from now on for features with updates or new features instead of using
-// the what's new"; the "New feature marks" mock, option B in gold). The feature wears a NEW tag, the
-// tab and buttons on the way to it a gold dot, and one tap on the feature clears them all on this
-// device. The staff share devices and have no logins, so what a device has been shown is kept in its
+// the what's new"; the "New feature marks" mock, option B in gold, "only on the feature"). The feature
+// wears a NEW tag and one tap on it clears the tag on this device. The staff share devices and have no logins, so what a device has been shown is kept in its
 // localStorage.
 import { useSyncExternalStore } from 'react'
 
@@ -10,8 +9,6 @@ export interface NewFeature {
   id: string
   /** The day it went live, `YYYY-MM-DD`. Its marks go by themselves after `DAYS`, tapped or not. */
   since: string
-  /** The top-bar tab it lives under, as `TABS` in `DashboardLayout` names it. */
-  tab: string
 }
 
 /**
@@ -20,7 +17,7 @@ export interface NewFeature {
  */
 export const NEW_FEATURES: NewFeature[] = [
   // The day-or-hours chip beside a Gazebo or Garden on the bill (`NewBookingBill`).
-  { id: 'venue-length', since: '2026-11-05', tab: 'Front desk' },
+  { id: 'venue-length', since: '2026-11-05' },
 ]
 
 const KEY = 'daweez_new_seen'
@@ -45,7 +42,7 @@ function fresh(f: NewFeature): boolean {
   return new Date() < end
 }
 
-/** The feature was tapped: its tag and the dots leading to it go at once. */
+/** The feature was tapped: its tag goes at once. */
 export function markSeen(id: string): void {
   if (seen.has(id) || !NEW_FEATURES.some(f => f.id === id)) return
   seen = new Set(seen).add(id)
@@ -63,14 +60,8 @@ function useSeen(): Set<string> {
   )
 }
 
-/** Whether these features are still new here: one for a feature's tag, several for a dot on the way to them. */
-export function useIsNew(...ids: string[]): boolean {
+/** Whether this feature is still new here. */
+export function useIsNew(id: string): boolean {
   useSeen()
-  return NEW_FEATURES.some(f => ids.includes(f.id) && fresh(f))
-}
-
-/** Asks whether a top-bar tab has something new under it. */
-export function useNewTabs(): (tab: string) => boolean {
-  useSeen()
-  return tab => NEW_FEATURES.some(f => f.tab === tab && fresh(f))
+  return NEW_FEATURES.some(f => f.id === id && fresh(f))
 }
