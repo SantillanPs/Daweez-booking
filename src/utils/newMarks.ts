@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // An agency's or institution's bill with money taken on it says what is left, not the whole Total (`NewBookingBill`).
+  { id: 'agency-paid-due', since: '2026-11-05' },
   // Restaurant → History: each order slip's orders, serves and where its bill went (`RestaurantHistory`).
   { id: 'restaurant-history', since: '2026-11-05' },
   // The day-or-hours chip beside a Gazebo or Garden on the bill (`NewBookingBill`).

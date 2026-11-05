@@ -279,6 +279,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const received = editing ? (statement?.payments || []).reduce((a, x) => a + x.amount, 0) : paid?.amount ?? 0
   const due = Math.max(0, total - received)
   const paidUp = received > 0 && due === 0
+  // An agency's or institution's bill is "Total" only until money is taken on it at the desk; then
+  // the box says what is left, as the payment line above it does (a ₱1,900 bill with ₱950 paid read
+  // "Remaining balance ₱1,900", 2026-11-05). The paper copy stays Total only (`AgencyInvoiceDocument`).
+  const agencyTotal = !!to && received === 0
   // Folded payments open by themselves when one of them is the payment that was tapped.
   const [paysOpen, setPaysOpen] = useState(!!tapped)
   const [discOpen, setDiscOpen] = useState(false)
@@ -1201,12 +1205,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                   )}
                 </>
               )}
-              <div className="mt-1.5 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
-                <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">
-                  {to ? 'Total' : 'Amount due'}
+              <div onClick={to && !agencyTotal ? () => sawFeature('agency-paid-due') : undefined} className="mt-1.5 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
+                <span className="relative text-[9.5px] font-bold uppercase tracking-[0.1em]">
+                  {agencyTotal ? 'Total' : 'Amount due'}
+                  {to && !agencyTotal && <NewTag id="agency-paid-due" />}
                   {received > 0 && !paidUp && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px text-muted">Remaining balance</span>}
                 </span>
-                <span className="font-display text-[24px] font-extrabold leading-none"><CountPeso roll value={to ? total : due} /></span>
+                <span className="font-display text-[24px] font-extrabold leading-none"><CountPeso roll value={agencyTotal ? total : due} /></span>
               </div>
               {/* Nothing written and nobody else paying: said once, in blue, like the calendar's pill. */}
               {!to && received === 0 && !writing && <p className="mt-0.5 text-right text-[11px] font-bold text-sky-700 bw-rise">No deposit</p>}
@@ -1260,8 +1265,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             {received > 0 && <SlipFigure name="Paid" value={'−' + money(received)} tone="text-emerald-700" />}
             <span className="flex-1" />
             <div className="flex items-baseline gap-2 px-3 py-[5px] bg-card border-2 border-ink-900">
-              <span className="text-[9px] font-extrabold uppercase tracking-[0.1em]">{to ? 'Total' : 'Due'}</span>
-              <span className="font-display text-[20px] font-extrabold tabular-nums leading-none"><CountPeso roll value={to ? total : due} /></span>
+              <span className="text-[9px] font-extrabold uppercase tracking-[0.1em]">{agencyTotal ? 'Total' : 'Due'}</span>
+              <span className="font-display text-[20px] font-extrabold tabular-nums leading-none"><CountPeso roll value={agencyTotal ? total : due} /></span>
             </div>
           </div>
         )}
