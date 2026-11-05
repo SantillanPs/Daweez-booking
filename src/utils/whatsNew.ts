@@ -23,6 +23,15 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-11-05b',
+    changes: [
+      {
+        where: 'Billing statement',
+        what: ['A Gazebo or Garden bill now shows how long the stay is beside the venue’s name: 1 day, 6 hrs, or 4 hrs · aircon. Tap it to change a day into hours or back. The price changes with it.'],
+      },
+    ],
+  },
+  {
     id: '2026-11-05',
     changes: [
       {
