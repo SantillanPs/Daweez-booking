@@ -20,6 +20,13 @@ import { AnimatedNumber } from './AnimatedNumber'
 // already says chosen or in the kitchen and green says ready or paid, so every step here is the same ink on
 // paper, told apart by its icon — the same icons the order slip uses (a tick for served, a minus for one off).
 //
+// **Icons you can see without hunting** (his comments on the mock, same day: "make the icons more visible",
+// then "D · Stronger" — darker, bigger and thicker, still no colour). A row shows only its three latest steps
+// ("the icons should only show the 3 most recent"); what came before is a count, "+3", not "…", so it says how
+// many more there are. **Everything sits on one set of columns** ("make sure the text, icons, and everything
+// is aligned or centered to make sure that it looks solid and structured"): time · table · what · where ·
+// amount for the row, and the same columns for its steps, the icon centred under the table.
+//
 // Nothing here is typed in: the steps are written by the database as they happen (`tab_events`), and the
 // screen follows the other tablets live. Slips from before 2026-11-05 have no serve times: they were never kept.
 
@@ -128,9 +135,9 @@ export function RestaurantHistory() {
     if (!last || last.kind === 'back') return null
     const Icon = ICON[last.kind]
     return (
-      <span className="inline-flex items-center gap-1.5 h-[26px] pl-2 pr-2.5 rounded-full bg-page ring-1 ring-inset ring-soft text-[13px] font-bold text-main whitespace-nowrap">
-        <Icon className="w-[15px] h-[15px]" strokeWidth={2} />
-        {last.kind === 'room' ? roomOf(s.tab.booking_id) : 'Front desk'}
+      <span className="inline-flex items-center gap-1.5 max-w-full h-[26px] pl-2 pr-2.5 rounded-full bg-page ring-1 ring-inset ring-soft text-[13px] font-bold text-main whitespace-nowrap">
+        <Icon className="w-[18px] h-[18px] shrink-0 text-ink-900" strokeWidth={2.6} />
+        <span className="truncate">{last.kind === 'room' ? roomOf(s.tab.booking_id) : 'Front desk'}</span>
       </span>
     )
   }
@@ -164,44 +171,53 @@ export function RestaurantHistory() {
           {list.map(s => {
             const isOpen = open === s.tab.id
             const latestFirst = [...s.steps].reverse()
+            const dest = destination(s)
+            const recent = s.steps.slice(-3)
+            const earlier = s.steps.length - recent.length
             return (
               <div key={s.tab.id} className="border-t border-soft first:border-t-0">
                 <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : s.tab.id)}
-                  className={'w-full text-left grid grid-cols-[46px_minmax(0,1fr)_auto] sm:grid-cols-[4.5rem_46px_minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 px-4 py-2.5 min-h-[66px] cursor-pointer transition-colors hover:bg-page ' + (isOpen ? 'bg-page' : '')}>
+                  className={'w-full text-left grid grid-cols-[46px_minmax(0,1fr)_auto] sm:grid-cols-[4.5rem_46px_minmax(0,1fr)_9rem_5.5rem] items-center gap-x-3 gap-y-1.5 px-4 py-2.5 min-h-[66px] cursor-pointer transition-colors hover:bg-page ' + (isOpen ? 'bg-page' : '')}>
                   <span className="hidden sm:block font-mono text-[12px] text-muted">{timeOf(s.at)}</span>
-                  {square(s)}
-                  <span className="min-w-0 flex flex-col">
+                  <span className={'col-start-1 row-start-1 sm:col-start-2 sm:row-span-1 ' + (dest ? 'row-span-2' : '')}>{square(s)}</span>
+                  <span className="min-w-0 col-start-2 row-start-1 sm:col-start-3 flex flex-col justify-center gap-[3px]">
                     <span className="text-[14.5px] font-semibold text-main truncate">{gist(s)}</span>
-                    <span className="flex items-center gap-2 text-[12.5px] text-muted">
+                    <span className="flex items-center gap-2 text-[12.5px] text-muted leading-none">
                       <span className="tabular-nums">{slipNumber(s.tab)}</span>
                       <span className="sm:hidden">{timeOf(s.at)}</span>
-                      <span className="inline-flex gap-[3px]" aria-hidden="true">
-                        {s.steps.map(e => { const Icon = ICON[e.kind]; return <Icon key={e.id} className="w-3 h-3" strokeWidth={2.2} /> })}
+                      <span className="inline-flex items-center gap-px text-ink-900" aria-label={s.steps.length + ' steps'}>
+                        {earlier > 0 && (
+                          <span title={earlier + ' earlier'} className="mr-[3px] min-w-[22px] h-4 px-1 rounded-full ring-[1.5px] ring-inset ring-ink-900/45 grid place-items-center text-[10.5px] font-bold leading-none tabular-nums">+{earlier}</span>
+                        )}
+                        {recent.map(e => { const Icon = ICON[e.kind]; return <Icon key={e.id} className="w-3.5 h-3.5" strokeWidth={2.6} /> })}
                       </span>
                     </span>
                   </span>
-                  <span className="col-start-2 sm:col-start-auto justify-self-start sm:justify-self-auto empty:hidden sm:empty:block">{destination(s)}</span>
-                  <span className="row-start-1 col-start-3 sm:row-start-auto sm:col-start-auto text-right font-bold text-[14.5px] tabular-nums min-w-[4.5rem]">{fmtPeso(s.total)}</span>
+                  {dest && <span className="min-w-0 col-start-2 col-span-2 row-start-2 sm:col-start-4 sm:col-span-1 sm:row-start-1 justify-self-start">{dest}</span>}
+                  <span className="col-start-3 row-start-1 sm:col-start-5 text-right font-bold text-[14.5px] tabular-nums">{fmtPeso(s.total)}</span>
                 </button>
                 {/* It grows open from its own row rather than appearing (a grid row from 0fr to 1fr). */}
                 <div className={'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ' + (isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
                   <div className="overflow-hidden">
-                    <ol className="px-4 sm:pl-[calc(1rem+4.5rem+0.75rem)] pt-1 pb-3.5 grid">
+                    {/* The same columns as the row: its time under the row's time, its icon centred under the
+                        table, its words under the dish, its amount under the total. On a phone the time goes
+                        under the words. */}
+                    <ol className="px-4 pt-1 pb-3.5 grid">
                       {latestFirst.map((e, i) => {
                         const Icon = ICON[e.kind]
                         return (
                           <li key={e.id} style={{ '--d': isOpen ? 50 + i * 40 + 'ms' : '0ms' } as React.CSSProperties}
-                            className={'relative grid grid-cols-[4rem_18px_minmax(0,1fr)_auto] gap-2 items-start py-[5px] text-[13.5px] transition-[opacity,transform] [transition-delay:var(--d)] duration-300 motion-reduce:transition-none ' + (isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1')}>
-                            <span className="text-[12.5px] text-muted tabular-nums pt-px">{timeOf(e.at)}</span>
-                            <span className="relative w-[18px] h-[18px] grid place-items-center text-muted">
-                              <Icon className="w-[15px] h-[15px]" strokeWidth={2} />
-                              {i < latestFirst.length - 1 && <span aria-hidden="true" className="absolute left-[8px] top-[20px] w-0.5 h-[14px] bg-softbg" />}
+                            className={'relative grid grid-cols-[46px_minmax(0,1fr)_auto] sm:grid-cols-[4.5rem_46px_minmax(0,1fr)_5.5rem] gap-x-3 gap-y-px items-center py-1.5 text-[13.5px] leading-[1.3] transition-[opacity,transform] [transition-delay:var(--d)] duration-300 motion-reduce:transition-none ' + (isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1')}>
+                            <span className="col-start-2 row-start-2 sm:col-start-1 sm:row-start-1 text-[12px] sm:text-[12.5px] text-muted tabular-nums">{timeOf(e.at)}</span>
+                            <span className="col-start-1 row-start-1 row-span-2 sm:col-start-2 sm:row-span-1 justify-self-center relative w-[19px] h-[19px] grid place-items-center text-ink-900">
+                              <Icon className="w-[19px] h-[19px]" strokeWidth={2.6} />
+                              {i < latestFirst.length - 1 && <span aria-hidden="true" className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+2px)] w-0.5 h-[23px] sm:h-2 bg-softbg" />}
                             </span>
-                            <span className="min-w-0">
+                            <span className="min-w-0 col-start-2 row-start-1 sm:col-start-3">
                               <b className="font-bold text-main">{stepWord(e, s)}</b>
                               {e.items.length > 0 && <span className={'text-muted ' + (e.kind === 'removed' ? 'line-through' : '')}> {dishes(e.items)}</span>}
                             </span>
-                            <span className="tabular-nums text-main">{e.kind !== 'served' && e.kind !== 'back' && e.amount ? fmtPeso(Math.abs(e.amount)) : ''}</span>
+                            <span className="col-start-3 row-start-1 sm:col-start-4 text-right tabular-nums text-main">{e.kind !== 'served' && e.kind !== 'back' && e.amount ? fmtPeso(Math.abs(e.amount)) : ''}</span>
                           </li>
                         )
                       })}

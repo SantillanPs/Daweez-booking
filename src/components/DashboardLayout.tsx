@@ -43,7 +43,7 @@ const TABS = [
       { label: 'Orders', to: '/restaurant' },
       { label: 'Kitchen', to: '/restaurant/kitchen' },
       { label: 'Menu', to: '/restaurant/menu' },
-      { label: 'History', to: '/restaurant/history', isNew: 'restaurant-history' },
+      { label: 'History', to: '/restaurant/history', isNew: 'restaurant-history-2' },
     ],
   },
   {
