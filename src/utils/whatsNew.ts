@@ -23,6 +23,18 @@ export interface Update {
 /** Newest first. */
 export const UPDATES: Update[] = [
   {
+    id: '2026-11-05',
+    changes: [
+      {
+        where: 'Cash Flow → All income',
+        what: [
+          'All income opens on this month, with the calendar beside it. Tap a first day and a last day to see the money for any stretch of days.',
+          'The total is at the top, then how much came in by Cash, GCash, Bank and Check, then the payments, grouped by day with each day’s total. Tap Cash, GCash, Bank or Check to see only those.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-03c',
     changes: [
       {
