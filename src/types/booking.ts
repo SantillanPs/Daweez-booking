@@ -147,6 +147,12 @@ export interface EventAddons {
    * starting point, never an order: each morning is still confirmed on its own.
    */
   breakfast_plan?: BreakfastPlan
+  /**
+   * An agency's breakfast price, kept on the booking it was sold at (2026-11-05) the way its room
+   * price is kept in `contract_rate_override`, so the agency's price changing later does not
+   * re-price this stay. None is the room's own `breakfast_price`.
+   */
+  breakfast_price?: number
 }
 
 /** The food the guest would like, and when, in minutes after midnight. Neither is ever required. */
@@ -397,8 +403,15 @@ export interface PartnerDeal {
   vehicle_plate?: string
   breakfast_default: 'w/o' | 'with'
   contracted_rates: Record<string, number>
+  /** One price a breakfast for every room this agency books; none is the room's own (2026-11-05). */
+  breakfast_price?: number
+  /** Where each price was last changed on a bill: a room or venue id, or `breakfast`. */
+  price_from?: Record<string, PriceFrom>
   created_at: string
 }
+
+/** A price changed on a bill: which bill (none while it is a new booking) and the day. */
+export interface PriceFrom { bill: string | null; on: string }
 
 export interface SyncFeed {
   id: string

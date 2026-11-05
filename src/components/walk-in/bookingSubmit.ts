@@ -170,7 +170,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         // tapped that room's chip, and the charge is ₱150 × the room's beds.
         // Charges written on the bill go on the first unit, as on the bill itself.
         // The breakfast plan belongs to this room, so it goes on its own row.
-        eventAddons: ((c, plan) => (c || plan) && { ...existingBooking?.event_addons, ...c, ...(plan && { breakfast_plan: plan }) })(firstCharges(), p.formBreakfastPlans?.[key]),
+        // An agency's breakfast price rides on the room too, so its stay keeps the price it was sold at.
+        eventAddons: ((c, plan, bf) => (c || plan || bf !== undefined) ? { ...existingBooking?.event_addons, ...c, ...(plan && { breakfast_plan: plan }), ...(bf !== undefined && { breakfast_price: bf || undefined }) } : undefined)(firstCharges(), p.formBreakfastPlans?.[key], p.formBreakfastPrice),
         breakfastOrders: undefined,
         // The bill's switches decide; an agency that always has breakfast turns them all on
         // there, and the desk can turn one off (2026-10-25).

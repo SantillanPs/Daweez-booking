@@ -18,6 +18,10 @@ export interface NewFeature {
 export const NEW_FEATURES: NewFeature[] = [
   // The day-or-hours chip beside a Gazebo or Garden on the bill (`NewBookingBill`).
   { id: 'venue-length', since: '2026-11-05' },
+  // An agency's room and breakfast prices are changed on its bill and kept on the agency (`NewBookingBill`).
+  { id: 'agency-prices', since: '2026-11-05' },
+  // The agency's own breakfast price in Settings → Agencies (`DirectoryTab`).
+  { id: 'agency-breakfast', since: '2026-11-05' },
 ]
 
 const KEY = 'daweez_new_seen'

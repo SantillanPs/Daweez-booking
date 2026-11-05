@@ -2,7 +2,7 @@ import React, { startTransition, useCallback, useEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Building2, Check, ChevronDown, Coffee, Plus, Tag, X } from 'lucide-react'
-import { Booking, BillCharge, BreakfastPlan, Companion, EquipmentRental, EventAddons, Room, Venue } from '../../types/booking'
+import { Booking, BillCharge, BreakfastPlan, Companion, EquipmentRental, EventAddons, PartnerDeal, Room, Venue } from '../../types/booking'
 import { buildStatement, StatementLineItem, shortDate } from '../../utils/statement'
 import { dateToString, normalizeVenueId, randomUUID } from '../../utils/helpers'
 import { recomputeBalance } from '../../utils/bookingBalance'
@@ -123,7 +123,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   for (const b of editing || []) { const id = unitIdOf(b); keyOfRow.set(b.id, [...keyOfRow.values()].includes(id) ? id + '~' + b.id : id) }
   const keyOf = (b: Booking) => keyOfRow.get(b.id) || unitIdOf(b)
   const rowOf = (key: string) => editing?.find(b => keyOf(b) === key || key.endsWith('~' + b.id))
-  const { updateRoomBreakfastPrice, partnerDeals } = useDashboardData()
+  const { updateRoomBreakfastPrice, partnerDeals, savePartnerDeals } = useDashboardData()
   const [pricing, setPricing] = useState<string | null>(null)
   const [guestName, setGuestName] = useState(ed?.guest_name || '')
   const [guestPhone, setGuestPhone] = useState(ed?.guest_phone && ed.guest_phone !== 'None' ? ed.guest_phone : '')
@@ -190,9 +190,18 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // A rate typed on the line; an agency's own rate is not one.
   const [rates, setRates] = useState<Record<string, number>>(() => Object.fromEntries((editing || [])
     .filter(b => b.contract_rate_override != null && !b.partner_deal_id).map(b => [keyOf(b), Number(b.contract_rate_override)])))
+  // **An agency's stay keeps the prices it was sold at** (2026-11-05): the agency's prices now change
+  // from any bill, and an older bill opened again must not be re-priced by the newest one.
+  const [pinned] = useState<Record<string, number>>(() => Object.fromEntries((editing || [])
+    .filter(b => b.contract_rate_override != null && b.partner_deal_id).map(b => [keyOf(b), Number(b.contract_rate_override)])))
+  // The agency's breakfast price typed on this bill; none is the one the stay was sold at, then the agency's.
+  const [bfTyped, setBfTyped] = useState<number | null>(null)
+  // Where a price just went: the agency, with "Only this bill" to take it back (the "Agency prices" mock).
+  const [went, setWent] = useState<{ line: string; what: string; v: number; undo: () => void } | null>(null)
+  useEffect(() => { if (!went) return; const t = setTimeout(() => setWent(null), 7000); return () => clearTimeout(t) }, [went])
   // Everything tapped on the bill opens in one floating box (Sebastian, 2026-10-27, the "Bill pop-ups" mock);
   // `v` is the rate it opens on.
-  const [pop, setPop] = useState<{ kind: 'swap' | 'add' | 'kind' | 'len' | 'bf' | 'bfFrom' | 'bfTo' | 'in' | 'out' | 'rate' | 'disc' | 'staff' | 'to'; id: string; at: HTMLElement; v?: number } | null>(null)
+  const [pop, setPop] = useState<{ kind: 'swap' | 'add' | 'kind' | 'len' | 'bf' | 'bfFrom' | 'bfTo' | 'in' | 'out' | 'rate' | 'bfPrice' | 'disc' | 'staff' | 'to'; id: string; at: HTMLElement; v?: number } | null>(null)
   const [fresh, setFresh] = useState<string | null>(null)
   const [unitOff, setUnitOff] = useState<{ label: string; money: number; units: [string, Sel][]; breakfast: string[]; kinds: Record<string, string>; rates: Record<string, number> } | null>(null)
   // A room added asks for its own dates (decided 2026-10-24): its check-in month opens once it is drawn.
@@ -216,6 +225,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const first = list[0]?.[1]
   const firstRoomId = list.find(([, s]) => s.type === 'room')?.[0]
   const deal = partnerDeals.find(d => d.id === to?.dealId)
+  // The saved prices hold only while it is the same agency: another one brings its own.
+  const sameDeal = !!deal && deal.id === ed?.partner_deal_id
+  const agencyRate = (id: string) => rates[id] ?? (sameDeal ? pinned[id] : undefined) ?? deal?.contracted_rates[unitOfLine(id)]
+  const bfPrice = deal ? bfTyped ?? (sameDeal ? ed?.event_addons?.breakfast_price : undefined) ?? deal.breakfast_price : undefined
 
   // The rooms as bookings that do not exist yet, priced by the real statement builder — with
   // what the form would save on them: the agency's rate, the extras on the first room, the
@@ -224,6 +237,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const ea: EventAddons = {}
     if (kinds[id]) ea.venue_type = kinds[id]
     if (i === 0 && charges.length > 0) ea.charges = charges
+    if (bfPrice && s.type === 'room') ea.breakfast_price = bfPrice
     const unit = unitOfLine(id)
     const rentals: EquipmentRental | undefined = id === firstRoomId && !to
       ? { bigTableCount: 0, smallTableCount: 0, chairCount: 0, mineralWaterCount: 0, ...extras } : undefined
@@ -244,7 +258,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       ...(hrs[id]?.late != null && { late_check_out_hours: hrs[id].late }),
       event_addons: Object.keys(ea).length > 0 ? ea : undefined,
       equipment_rentals: rentals,
-      partner_deal_id: deal?.id, company_name: to?.name, contract_rate_override: rates[id] || deal?.contracted_rates[unit] || undefined,
+      partner_deal_id: deal?.id, company_name: to?.name, contract_rate_override: (deal ? agencyRate(id) : rates[id]) || undefined,
       // Every room holds the whole list, so a discount keeps its place; a flat amount counts once, on the first.
       applied_discount: given.length > 0 && !to ? discs.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.pct || i === 0 ? d.v : 0, note: d.note })) : undefined,
     } as Booking
@@ -441,9 +455,30 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     setUnits(u => u.map(([x, y], i): [string, Sel] => i === 0 ? [x, { ...y, checkOut: nextDay(y.checkIn) }] : [x, y]))
     setShort(true); setHours(h); setHalf(fits(key, h, half) ? half : half ? 0 : 1)
   }
+  // **A price changed on an agency's bill is the agency's price from then on** (Sebastian, 2026-11-05:
+  // "instead of constantly going to the settings… it should automatically update the custom price in
+  // the settings"). Saved behind at once; "Only this bill" under the line puts the agency's back.
+  const toAgency = (line: string, what: string, field: string, v: number, prev: number | undefined, put: (d: PartnerDeal, x: number | undefined) => PartnerDeal) => {
+    if (!deal) return
+    if (prev === v) { setWent(null); return }
+    const next = put({ ...deal, price_from: { ...deal.price_from, [field]: { bill: ed?.invoice_number || null, on: dateToString(new Date()) } } }, v)
+    const fail = () => showToast(deal.name + '’s price was not saved. It is still on this bill.', 'error')
+    savePartnerDeals([next]).catch(fail)
+    setWent({ line, what, v, undo: () => { setWent(null); savePartnerDeals([put({ ...next, price_from: deal.price_from }, prev)]).catch(fail) } })
+  }
   const keepRate = (id: string, raw: string) => {
     const v = Number(raw.replace(/\D/g, ''))
     if (!v) return
+    // A short stay's hours are not an agency's price a night.
+    if (deal && !isShort) {
+      const unit = unitOfLine(id), s = list.find(([x]) => x === id)?.[1]
+      setRates(r => ({ ...r, [id]: v })); setFresh(id)
+      toAgency(id, s ? unitName(id, s) : 'Rate', unit, v, deal.contracted_rates[unit], (d, x) => {
+        const c = { ...d.contracted_rates }; if (x == null) delete c[unit]; else c[unit] = x
+        return { ...d, contracted_rates: c }
+      })
+      return
+    }
     const kind = kindsOf(id).find(k => k.key === (kinds[id] || ''))
     // A short stay's own price is the room's board price for its hours.
     const room = isShort ? rooms.find(r => r.id === unitOfLine(id)) : undefined
@@ -494,7 +529,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       formPaymentMethod: ed ? ed.payment_method || '' : paid?.method || '', formPaymentReference: ed ? ed.payment_reference || '' : paid?.reference || '',
       formPaymentPlan: plan, formPaymentPurpose: paid?.purpose,
       formCharges: charges,
-      formRates: rates,
+      formRates: sameDeal ? { ...pinned, ...rates } : rates,
+      // An agency's breakfast price rides on each room; none takes it off (another guest, or no agency).
+      formBreakfastPrice: bfPrice ?? null,
       formHours: hrs,
       stay_hours: isShort ? hours : undefined,
       stay_half: isShort ? half : undefined,
@@ -573,7 +610,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     const anchor = active.find(b => ids.current.includes(b.id))
     return { rows: anchor ? groupOf(anchor, active) : editing || [], active, all }
   }
-  const sig = editing ? JSON.stringify([guestName, guestPhone, nationality, address, companions, short, hours, half, breakfast, bfDays, bfPlans, extras, charges, kinds, discs, to, preparedBy, units, rates, hrs]) : ''
+  const sig = editing ? JSON.stringify([guestName, guestPhone, nationality, address, companions, short, hours, half, breakfast, bfDays, bfPlans, extras, charges, kinds, discs, to, preparedBy, units, rates, hrs, bfTyped]) : ''
   const savedSig = useRef(sig)
   const latest = useRef(handleBook)
   useEffect(() => { latest.current = handleBook })
@@ -652,6 +689,22 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const CHEV = 'print:hidden w-3 h-3 text-gold-800 transition-transform duration-300 group-aria-expanded:rotate-180'
   const unRate = (id: string) => setRates(r => { const n = { ...r }; delete n[id]; return n })
 
+  // The agency's own price wears its building; a price kept for this bill alone says so.
+  const agencyMark = (theirs: boolean, line: string) => theirs
+    ? <Building2 key={'b' + line + (fresh === line ? 'n' : '')} aria-label={deal?.name + '’s price'} className={'print:hidden inline mr-1 -mt-0.5 w-3 h-3 text-gold-800' + (fresh === line ? ' bw-rise' : '')} />
+    : <span className="print:hidden mr-1 font-sans text-[9px] font-bold text-gold-800 bw-rise">only this bill</span>
+  // Under the line just changed: where its price went, and the way back.
+  const wentRow = (line: string) => went?.line === line && deal && (
+    <tr key={'went-' + line} className="print:hidden">
+      <td colSpan={6} className="pt-0 pb-1.5">
+        <div className="bw-rise flex flex-wrap items-center gap-1.5 rounded-[4px] bg-paper-50 px-2 py-1 text-[10.5px] font-semibold text-ink-900">
+          <Building2 aria-hidden="true" className="w-3 h-3 text-gold-800" />
+          {deal.name} · {went.what} <span className="font-extrabold text-gold-800">→</span> <span className="font-mono font-bold">{money(went.v)}</span>
+          <button type="button" onClick={went.undo} className="ml-auto font-bold text-muted underline underline-offset-2 hover:text-ink-900 cursor-pointer">Only this bill</button>
+        </div>
+      </td>
+    </tr>
+  )
   const renderLine = (it: StatementLineItem, cell: string): React.ReactNode | undefined => {
     // All the rooms' breakfasts are one line (Sebastian, 2026-10-24): every morning across them,
     // the first morning to the last; its name opens the rooms' switches.
@@ -661,14 +714,23 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       const count = bfLines.reduce((a, i) => a + Number(i.qty), 0)
       const amount = bfLines.reduce((a, i) => a + i.amount, 0)
       return (
-        <tr key={'bf-' + count + '-' + amount} className={fresh === 'bf' ? 'bill-ink' : undefined}>
+        <React.Fragment key={'bf-' + count + '-' + amount}>
+        <tr className={fresh === 'bf' ? 'bill-ink' : undefined}>
           <td className={cell + ' pl-0 text-left whitespace-normal'}>
             <button type="button" data-bf onClick={toggle('bf')} aria-expanded={isOpen('bf')} className={VAL + ' group inline-flex items-center gap-1 -ml-0.5'}>
               Breakfast · {on.length > 1 ? 'Rooms ' : 'Room '}{[...new Set(on.map(([id]) => rooms.find(r => r.id === unitOfLine(id))?.room_number))].join(', ')}
               <ChevronDown aria-hidden="true" className={CHEV} />
             </button>
           </td>
-          <td className={cell + ' text-right font-mono'}>{it.price ? money(it.price) : '—'}</td>
+          <td className={cell + ' text-right font-mono'}>
+            {/* An agency's breakfast price is changed right here, and kept on the agency (2026-11-05). */}
+            {deal && it.price ? <>
+              {agencyMark(bfPrice === deal.breakfast_price, 'bf')}
+              <button type="button" data-bf-price onClick={e => { sawFeature('agency-prices'); toggle('bfPrice')(e) }} aria-expanded={isOpen('bfPrice')} aria-label="Breakfast price" className={VAL + ' relative'}>
+                {money(it.price)}<NewTag id="agency-prices" />
+              </button>
+            </> : it.price ? money(it.price) : '—'}
+          </td>
           {/* The first and the last morning can be changed (Sebastian, 2026-10-29); the count and the money follow. */}
           <td className={cell + ' text-right font-mono'}>
             <button type="button" data-bf-from onClick={toggle('bfFrom')} aria-expanded={isOpen('bfFrom')} aria-label="First breakfast" className={VAL}>{shortDate(bfFrom)}</button>
@@ -679,6 +741,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           <td className={cell + ' text-right font-mono'}>{count}</td>
           <td className={cell + ' text-right font-mono font-bold'}>{money(amount)}</td>
         </tr>
+        {wentRow('bf')}
+        </React.Fragment>
       )
     }
     // The × slides its room's line away first, then takes it off (the snappy mock, 2026-10-30).
@@ -705,9 +769,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     // A room's price: tapped, a box floats under it to type a new one or go back to its own. A short stay's line uses it too (2026-10-24).
     const rateCell = (id: string, name: string, it: StatementLineItem) => (
       <td className={cell + ' text-right font-mono'}>
-        {rates[id] != null && <span className="print:hidden mr-1 font-sans text-[9px] font-bold text-gold-800 bw-rise">custom</span>}
-        <button type="button" aria-label={name + ' rate'} aria-expanded={isOpen('rate', id)} className={VAL}
-          onClick={e => { const at = e.currentTarget; setPop(p => p?.kind === 'rate' && p.id === id ? null : { kind: 'rate', id, at, v: it.price }) }}>{money(it.price)}</button>
+        {deal && !isShort ? agencyMark(agencyRate(id) === deal.contracted_rates[unitOfLine(id)], id)
+          : rates[id] != null && <span className="print:hidden mr-1 font-sans text-[9px] font-bold text-gold-800 bw-rise">custom</span>}
+        <button type="button" aria-label={name + ' rate'} aria-expanded={isOpen('rate', id)} className={VAL + ' relative'}
+          onClick={e => { const at = e.currentTarget; if (deal) sawFeature('agency-prices'); setPop(p => p?.kind === 'rate' && p.id === id ? null : { kind: 'rate', id, at, v: it.price }) }}>
+          {money(it.price)}{deal && !isShort && <NewTag id="agency-prices" />}
+        </button>
       </td>
     )
     if (isShort && it.key.endsWith('-stay')) {
@@ -759,7 +826,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
         <tr key={id + s.checkIn + s.checkOut + it.amount} className={'group/row' + (fresh === id ? ' bill-ink' : '')}>
           <td className={cell + ' pl-0 text-left whitespace-normal'}>
             <button type="button" onClick={toggle('swap', id)} aria-expanded={isOpen('swap', id)} className={VAL + ' group inline-flex items-center gap-1 -ml-0.5'}>
-              {name}{deal?.contracted_rates[unitOfLine(id)] && !rates[id] ? ' · corporate' : ''}<ChevronDown aria-hidden="true" className={CHEV} />
+              {name}<ChevronDown aria-hidden="true" className={CHEV} />
             </button>
             {list.length > 1 && (
               <button type="button" onClick={e => slideOff(e.currentTarget, () => takeOff(id, s))} aria-label={'Take ' + name + ' off the bill'}
@@ -786,6 +853,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           {lenCell(id, it.qty)}
           <td className={cell + ' text-right font-mono font-bold'}><span className={fresh === id ? 'bill-roll' : undefined}>{money(it.amount)}</span></td>
         </tr>
+        {wentRow(id)}
         {it.key === lastRoomKey && (
           <>
             {unitOff && (
@@ -837,7 +905,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           onPlan={(id, plan) => setBfPlans(d => ({ ...d, [id]: plan }))}
           rows={bfRooms.map(([id, us]) => {
             const room = rooms.find(r => r.id === unitOfLine(id))!
-            return { id, label: unitName(id, us), price: breakfastSellable(room) ? roomBreakfastPrice(room) : null, count: isShort ? 1 : countOf(us.checkIn, us.checkOut), on: breakfast.includes(id) }
+            return { id, label: unitName(id, us), price: bfPrice || (breakfastSellable(room) ? roomBreakfastPrice(room) : null), count: isShort ? 1 : countOf(us.checkIn, us.checkOut), on: breakfast.includes(id) }
           })}
           onToggle={id => {
             const next = breakfast.includes(id) ? breakfast.filter(x => x !== id) : [...breakfast, id]
@@ -862,9 +930,21 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     )
     if (p.kind === 'rate') return (
       <Floating key={p.kind + p.id} {...common} at={at} right label={(s ? unitName(p.id, s) : '') + ' rate'}>
-        <TypeIn money value={p.v ? p.v.toLocaleString() : ''} placeholder="950" label="Rate" onSave={v => { keepRate(p.id, v); setPop(null) }}>
-          {rates[p.id] != null && <button type="button" onClick={() => { unRate(p.id); setFresh(p.id); setPop(null) }} className={QUIET}>Back to its own price</button>}
+        <TypeIn money value={p.v ? p.v.toLocaleString() : ''} placeholder="950" label="Rate" onSave={v => { keepRate(p.id, v); setPop(null) }} agency={deal && !isShort ? deal.name : undefined}>
+          {!(deal && !isShort) && rates[p.id] != null && <button type="button" onClick={() => { unRate(p.id); setFresh(p.id); setPop(null) }} className={QUIET}>Back to its own price</button>}
         </TypeIn>
+      </Floating>
+    )
+    if (p.kind === 'bfPrice' && deal) return (
+      <Floating key={p.kind} {...common} at={() => sheet.current?.querySelector<HTMLElement>('[data-bf-price]') || p.at} right label="Breakfast price">
+        <TypeIn money value={bfPrice ? bfPrice.toLocaleString() : ''} placeholder="120" label="Breakfast price" agency={deal.name}
+          onSave={raw => {
+            setPop(null)
+            const v = Number(raw.replace(/\D/g, ''))
+            if (!v) return
+            setBfTyped(v); setFresh('bf')
+            toAgency('bf', 'Breakfast', 'breakfast', v, deal.breakfast_price, (d, x) => ({ ...d, breakfast_price: x }))
+          }} />
       </Floating>
     )
     if (p.kind === 'disc') {
@@ -1279,8 +1359,11 @@ function SlipFigure({ name, value, tone = '' }: { name: string; value: string; t
 }
 
 /** One thing typed in the floating box and saved with its ✓: a rate, a receptionist's name. */
-function TypeIn({ value, placeholder, label, money: isMoney, upper, onSave, children }: {
-  value: string; placeholder: string; label: string; money?: boolean; upper?: boolean; onSave: (v: string) => void; children?: React.ReactNode
+function TypeIn({ value, placeholder, label, money: isMoney, upper, agency, onSave, children }: {
+  value: string; placeholder: string; label: string; money?: boolean; upper?: boolean
+  /** The agency a price is kept on too: its building sits beside the tick (the "Agency prices" mock). */
+  agency?: string
+  onSave: (v: string) => void; children?: React.ReactNode
 }) {
   const [v, setV] = useState(value)
   const box = useRef<HTMLInputElement>(null)
@@ -1298,6 +1381,7 @@ function TypeIn({ value, placeholder, label, money: isMoney, upper, onSave, chil
         ) : (
           <input ref={box} value={v} placeholder={placeholder} aria-label={label} onChange={e => setV(upper ? e.target.value.toUpperCase() : e.target.value)} className={SLOT} />
         )}
+        {agency && <span title={'Kept as ' + agency + '’s price'} className="self-center inline-flex items-center gap-0.5 text-[9.5px] font-extrabold text-gold-800"><Building2 aria-hidden="true" className="w-3 h-3" />{agency.split(/\s+/)[0]}</span>}
         <button type="submit" aria-label="Save" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
       </div>
       {children}

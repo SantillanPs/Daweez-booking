@@ -23,6 +23,8 @@ function toRecord(d: PartnerDeal) {
     vehicle_plate: d.vehicle_plate || null,
     breakfast_default: d.breakfast_default,
     contracted_rates: d.contracted_rates,
+    breakfast_price: d.breakfast_price ?? null,
+    price_from: d.price_from || {},
     created_at: d.created_at
   }
 }
@@ -49,6 +51,8 @@ export async function getPartnerDeals(): Promise<PartnerDeal[]> {
         vehicle_plate: d.vehicle_plate || undefined,
         breakfast_default: d.breakfast_default as PartnerDeal['breakfast_default'],
         contracted_rates: d.contracted_rates || {},
+        breakfast_price: d.breakfast_price != null ? Number(d.breakfast_price) : undefined,
+        price_from: d.price_from || {},
         created_at: d.created_at
       }))
     }

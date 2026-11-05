@@ -547,7 +547,18 @@ export function useBookings() {
     mutationFn: async (deals: PartnerDeal[]) => {
       await syncEngine.savePartnerDeals(deals)
     },
-    onSuccess: () => {
+    // A price changed on a bill is the agency's at once (2026-11-05): the bill reads the agency
+    // from this cache, so it is laid over first and taken back if the save fails.
+    onMutate: async (deals: PartnerDeal[]) => {
+      await queryClient.cancelQueries({ queryKey: ['partnerDeals'] })
+      const before = queryClient.getQueryData<PartnerDeal[]>(['partnerDeals'])
+      queryClient.setQueryData<PartnerDeal[]>(['partnerDeals'], old => (old || []).map(d => deals.find(x => x.id === d.id) || d))
+      return { before }
+    },
+    onError: (_e, _d, ctx) => {
+      if (ctx?.before) queryClient.setQueryData(['partnerDeals'], ctx.before)
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['partnerDeals'] })
     }
   })

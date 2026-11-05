@@ -1,8 +1,11 @@
 import React, { useState } from 'react'
 import { useDashboardData } from './DashboardContext'
-import { PartnerDeal } from '../types/booking'
+import { PartnerDeal, PriceFrom } from '../types/booking'
+import { NumInput } from './NumInput'
+import { NewTag } from './NewMark'
+import { markSeen } from '../utils/newMarks'
 import * as syncEngine from '../utils/syncEngine'
-import { Plus, Trash2, Edit2, Save, X, Building, Coffee, Ban } from 'lucide-react'
+import { Plus, Trash2, Edit2, Save, X, Building, Coffee } from 'lucide-react'
 import { showToast } from '../utils/toast'
 import { askConfirm } from '../utils/confirm'
 
@@ -20,12 +23,14 @@ export function DirectoryTab() {
   const [pVehiclePlate, setPVehiclePlate] = useState('')
   const [pBreakfastDefault, setPBreakfastDefault] = useState<'w/o' | 'with'>('w/o')
   const [pRates, setPRates] = useState<Record<string, number>>({})
+  // The agency's own breakfast price (2026-11-05); 0 is the room's own.
+  const [pBfPrice, setPBfPrice] = useState(0)
   const [selectedUnits, setSelectedUnits] = useState<Set<string>>(new Set())
 
   const resetForm = () => {
     setPName(''); setPType('company'); setPTIN(''); setPAddress('')
     setPContactNo(''); setPEmail(''); setPVehiclePlate('')
-    setPBreakfastDefault('w/o'); setPRates({})
+    setPBreakfastDefault('w/o'); setPRates({}); setPBfPrice(0)
     setSelectedUnits(new Set())
     setEditingDealId(null); setIsAdding(false)
   }
@@ -37,6 +42,7 @@ export function DirectoryTab() {
     setPBreakfastDefault(deal.breakfast_default)
     const rates = deal.contracted_rates || {}
     setPRates(rates)
+    setPBfPrice(deal.breakfast_price || 0)
     setSelectedUnits(new Set(Object.keys(rates).filter(k => (rates[k] ?? 0) > 0)))
     setEditingDealId(deal.id); setIsAdding(true)
   }
@@ -61,13 +67,18 @@ export function DirectoryTab() {
     const cleanRates: Record<string, number> = {}
     Object.entries(pRates).forEach(([k, v]) => { if (v > 0) cleanRates[k] = Number(v) })
 
+    const was = partnerDeals.find(d => d.id === editingDealId)
+    // A price typed here is no longer the one a bill set: its "from" note goes.
+    const from: Record<string, PriceFrom> = Object.fromEntries(Object.entries(was?.price_from || {}).filter(([k]) =>
+      k === 'breakfast' ? (was?.breakfast_price || 0) === pBfPrice : was?.contracted_rates[k] === cleanRates[k]))
     const dealData: PartnerDeal = {
       id: editingDealId || `partner-${syncEngine.generateUUID()}`,
       name: pName, type: pType, tin: pTIN || undefined,
       address: pAddress || undefined, contact_no: pContactNo || undefined,
       email: pEmail || undefined, vehicle_plate: pVehiclePlate || undefined,
       breakfast_default: pBreakfastDefault,
-      contracted_rates: cleanRates, created_at: new Date().toISOString()
+      contracted_rates: cleanRates, breakfast_price: pBfPrice || undefined, price_from: from,
+      created_at: was?.created_at || new Date().toISOString()
     }
 
     try {
@@ -112,6 +123,7 @@ export function DirectoryTab() {
     other: 'bg-page text-muted border-soft',
   }
 
+  const editingDeal = partnerDeals.find(d => d.id === editingDealId)
   const inputCls = "w-full bg-brand-bg border border-soft text-main px-3 py-2.5 rounded-lg focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-[#B89251]/10 font-medium text-sm transition-all placeholder:text-muted placeholder:opacity-50"
   const labelCls = "text-[11px] text-muted font-semibold uppercase tracking-wide block mb-1.5"
 
@@ -192,35 +204,26 @@ export function DirectoryTab() {
                   </div>
                 </div>
 
-                {/* Breakfast — toggle */}
+                {/* Breakfast: on every stay or not, and the agency's own price (2026-11-05, the "Agency prices" mock).
+                    The price is also changed on the bill itself, and kept here. */}
                 <div>
-                  <label className={labelCls}>Breakfast Inclusions</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { value: 'with', icon: Coffee, title: 'Breakfast Included', sub: 'Built into custom price' },
-                      { value: 'w/o', icon: Ban, title: 'No Breakfast', sub: 'Ordered separately (₱150/night)' },
-                    ].map(opt => {
-                      const Icon = opt.icon
-                      const active = pBreakfastDefault === opt.value
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setPBreakfastDefault(opt.value as PartnerDeal['breakfast_default'])}
-                          className={`text-left p-2.5 rounded-lg border-2 transition-all cursor-pointer ${
-                            active
-                              ? 'border-brand-primary bg-brand-bg'
-                              : 'border-soft bg-card hover:border-soft'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <Icon className={`w-3.5 h-3.5 ${active ? 'text-brand-text' : 'text-muted'}`} />
-                            <span className={`text-xs font-bold ${active ? 'text-brand-text' : 'text-muted'}`}>{opt.title}</span>
-                          </div>
-                          <p className="text-[10px] text-muted leading-normal">{opt.sub}</p>
-                        </button>
-                      )
-                    })}
+                  <label className={labelCls}>Breakfast</label>
+                  <div className="relative flex flex-wrap items-center gap-3 rounded-lg bg-brand-bg px-3 py-2.5">
+                    <Coffee className="w-3.5 h-3.5 text-brand-text" />
+                    <button type="button" role="switch" aria-checked={pBreakfastDefault === 'with'} aria-label="Breakfast on every stay"
+                      onClick={() => setPBreakfastDefault(b => b === 'with' ? 'w/o' : 'with')}
+                      className={'relative w-[34px] h-5 rounded-full transition-colors cursor-pointer ' + (pBreakfastDefault === 'with' ? 'bg-emerald-600' : 'bg-paper-400')}>
+                      <span className={'absolute top-[3px] left-[3px] w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 ' + (pBreakfastDefault === 'with' ? 'translate-x-[14px]' : '')} />
+                    </button>
+                    <span className="text-xs font-semibold text-muted">Every stay</span>
+                    <label className="relative ml-auto flex items-baseline gap-1" onFocusCapture={() => markSeen('agency-breakfast')}>
+                      <NewTag id="agency-breakfast" />
+                      <span className="text-xs font-bold text-muted">₱</span>
+                      <NumInput value={pBfPrice} onChange={setPBfPrice} allowDecimal={false} placeholder="120" aria-label="Breakfast price"
+                        className="w-16 bg-transparent border-0 border-b-[1.5px] border-dashed border-gold-400 p-0 text-right font-display text-[16px] font-extrabold text-main focus:outline-none focus:border-solid" />
+                      <span className="text-[10px] font-semibold text-muted">each</span>
+                    </label>
+                    <FromTag from={editingDeal?.price_from?.breakfast} />
                   </div>
                 </div>
               </div>
@@ -269,6 +272,7 @@ export function DirectoryTab() {
                               <div className={`text-[9px] font-medium mb-2 ${included ? 'text-muted' : 'text-muted opacity-50'}`}>
                                 Std ₱{r.base_price.toLocaleString()}
                               </div>
+                              {included && <FromTag from={editingDeal?.price_from?.[r.id]} />}
                               {included && (
                                 <div className="relative" onClick={e => e.stopPropagation()}>
                                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">₱</span>
@@ -321,6 +325,7 @@ export function DirectoryTab() {
                               <div className={`text-[9px] font-medium mb-2 ${included ? 'text-muted' : 'text-muted opacity-50'}`}>
                                 Std ₱{v.base_price.toLocaleString()}
                               </div>
+                              {included && <FromTag from={editingDeal?.price_from?.[v.id]} />}
                               {included && (
                                 <div className="relative" onClick={e => e.stopPropagation()}>
                                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">₱</span>
@@ -425,6 +430,7 @@ export function DirectoryTab() {
                               No Breakfast
                             </span>
                           )}
+                          {d.breakfast_price ? <span className="ml-1.5 text-[10px] font-extrabold text-main">₱{d.breakfast_price.toLocaleString()} each</span> : null}
                         </td>
                         <td className="px-6 py-4 max-w-[400px]">
                           <div className="flex flex-wrap gap-1.5">
@@ -435,6 +441,7 @@ export function DirectoryTab() {
                                   <span>{typeof roomNum === 'number' ? `Rm ${roomNum}` : roomNum}</span>
                                   <span className="text-muted opacity-50">·</span>
                                   <span className="font-extrabold text-main">₱{Number(rate).toLocaleString()}</span>
+                                  {d.price_from?.[rid] && <span title={'Changed on ' + (d.price_from[rid].bill || 'a new booking')} className="w-1.5 h-1.5 rounded-full bg-gold-400" />}
                                 </span>
                               )
                             })}
@@ -469,5 +476,16 @@ export function DirectoryTab() {
         )}
       </div>
     </div>
+  )
+}
+
+/** A price last changed on a bill, marked where it shows (the "Agency prices" mock): which bill and the day. */
+function FromTag({ from }: { from?: PriceFrom }) {
+  if (!from) return null
+  const day = new Date(from.on + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return (
+    <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-px rounded-[4px] bg-gold-400 text-ink-900 text-[9px] font-extrabold bw-rise">
+      from {from.bill || 'a new booking'} · {day}
+    </span>
   )
 }

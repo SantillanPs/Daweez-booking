@@ -186,8 +186,10 @@ export function calculatePricing(params: {
   // the desk's own figure. A booking that already carries `breakfast_records` keeps exactly
   // what it was charged — those rows hold the price each breakfast was served at.
   const roomForBreakfast = roomId ? roomList.find(r => r.id === roomId) : undefined
-  // The room's own breakfast price, typed by the desk in Settings.
-  const roomBreakfastPrice = roomForBreakfast ? Number(roomForBreakfast.breakfast_price || 0) : 0
+  // The room's own breakfast price, typed by the desk in Settings — or the agency's, kept on the
+  // booking it was sold at (2026-11-05), which takes its place.
+  const agencyBreakfast = Number(eventAddons?.breakfast_price || 0)
+  const roomBreakfastPrice = agencyBreakfast > 0 ? agencyBreakfast : roomForBreakfast ? Number(roomForBreakfast.breakfast_price || 0) : 0
   if (brkRecords.length > 0) {
     // A booking made while breakfast was still recorded day by day keeps the
     // figure it was actually charged (the owner's rule: old bookings are left

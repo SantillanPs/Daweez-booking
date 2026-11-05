@@ -142,6 +142,9 @@ export interface BookingSubmitParams {
    * it is the whole truth: a unit missing from it is back on its own price, an older figure included.
    */
   formRates?: Record<string, number>
+  /** An agency's breakfast price for this stay, kept on each room (`event_addons.breakfast_price`).
+   *  `null` takes it off; left out keeps what the room holds. */
+  formBreakfastPrice?: number | null
   /** Early check-in and late checkout hours set on the bill, by line; a line left out keeps its saved hours. */
   formHours?: Record<string, { early?: number; late?: number }>
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>

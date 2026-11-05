@@ -55,6 +55,9 @@
 - **No room is ever selected for the desk.** Auto-ticking every contracted room was the "automatic booking" he rejected.
 - A new agency is created only from the "No saved agency" line. "Change" only swaps which agency is named, so it can never overwrite one.
 - There is no separate corporate form any more — one entrance, not two.
+- **An agency's prices are changed on its bill, and kept on the agency** (Sebastian, 2026-11-05: *"instead of constantly going to the settings when updating the agencies' prices, when booking it should always be changable while booking, after changing in booking, it should automatically update the custom price in the settings"*). The desk taps a room's price or the Breakfast price on an agency's bill; the new figure becomes the agency's price at once, and a note under the line offers "Only this bill" to keep it to this bill. Settings marks a price that came from a bill with that bill's number.
+- **Agencies have their own breakfast price** (the same day; he picked one price for every room over a price per room). None means each room's own breakfast price.
+- **A stay keeps the prices it was sold at.** Since prices now change from any bill, an older agency bill opened again keeps its room and breakfast prices; only a price typed on it changes them.
 - **An institution sits next to the agency** (the owner's note, 2026-10-20: *"add institution to the booking form, optional and hidden like the agency"*, beside "Add agency?"). Sebastian picked a saved list like the agencies' over a typed name. Unlike an agency it changes no price and bills nobody: its name is kept on the booking and printed under the guest on the bill.
 
 ## The calendar
