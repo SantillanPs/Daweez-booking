@@ -14,8 +14,6 @@ export interface DashboardDataContextValue {
   expenses: Expense[]
   expenseCategories: ExpenseCategory[]
   isLoading: boolean
-  isConfirming?: boolean
-  confirmBooking: (id: string) => Promise<void>
   /** Marks a booking Cancelled (a date block is simply removed). */
   cancelBooking: (id: string, note?: string) => Promise<void>
   /** Removes a row outright — only for a booking whose save was rolled back. */

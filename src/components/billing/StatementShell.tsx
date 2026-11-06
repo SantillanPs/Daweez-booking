@@ -138,15 +138,3 @@ export function SectionName({ children, bare = false }: { children: React.ReactN
     </span>
   )
 }
-
-/** One labelled line, like the paper form. A field the booking does not hold is skipped. */
-export function Line({ label, value, className = '' }: { label: string; value?: string; className?: string }) {
-  const shown = (value ?? '').toString().trim()
-  if (!shown) return null
-  return (
-    <div className={'flex items-end gap-2 border-b border-ink-300 pb-px ' + className}>
-      <span className="text-[11px] font-bold whitespace-nowrap text-main">{label}:</span>
-      <span className="flex-1 text-[13px] text-main min-h-[18px] break-words">{shown}</span>
-    </div>
-  )
-}

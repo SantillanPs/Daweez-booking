@@ -1,8 +1,8 @@
-import { priceBooking } from './pricing'
 import { Booking, Room, Venue } from '../types/booking'
 import { Expense } from '../types/expense'
 import { TabLine } from '../types/tab'
-import { dateToString } from './helpers'
+import { priceBooking } from './pricing'
+import { dateToString, addDays } from './helpers'
 
 /** A source of income on the Earnings report's Charts view: a room, a named venue, or the restaurant. */
 export interface Place {
@@ -25,15 +25,6 @@ export interface Ledger {
   roomCount: number
 }
 
-export const parseDay = (day: string) => {
-  const [y, m, d] = day.slice(0, 10).split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-export const addDays = (day: string, n: number) => {
-  const d = parseDay(day)
-  d.setDate(d.getDate() + n)
-  return dateToString(d)
-}
 
 // The named venues the report counts, matched the way useAnalyticsCalculations matches them. A venue not
 // named here (Pension House Exclusive) is not in the report's totals, so it is not a tile either.

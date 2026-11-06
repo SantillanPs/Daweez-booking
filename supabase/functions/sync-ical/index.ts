@@ -92,9 +92,9 @@ serve(async (req) => {
     for (const feed of masterOn ? (feeds || []) : []) {
       if (!feed.url) continue // Skip feeds that have no URL configured
 
-      // A room the desk switched off is left completely alone: not fetched, and — because the
-      // reconciliation below also DELETES sync rows the feed no longer lists — not tidied either. Off means
-      // off, and the desk's existing rows stay exactly as they are until they switch it back on.
+      // A room the desk switched off is left completely alone: not fetched, and not compared with
+      // its link either. Off means off, and the desk's existing rows stay exactly as they are until they
+      // switch it back on.
       if (offRooms[feed.room_id] === false) {
         skippedRooms++
         continue
@@ -105,75 +105,75 @@ serve(async (req) => {
         if (!response.ok) continue
 
         const icsString = await response.text()
-        const parsedEvents = parseiCal(icsString)
-        const sourceChannel = feed.channel === 'airbnb' ? 'airbnb' : 'booking_com'
+        // A login page or an error page is not an empty calendar: read as one, every stay on
+        // the room would be reported as gone.
+        if (!icsString.includes('BEGIN:VCALENDAR')) continue
 
-        // 3. Existing sync-managed rows for this room + channel only.
-        const { data: existingRows } = await supabase
+        const channel = feed.channel === 'airbnb' ? 'airbnb' : 'booking_com'
+        const prefix = `${channel}|${feed.room_id}|`
+        const refOf = (evt: Record<string, string>) => `${prefix}${evt.start}|${evt.end}`
+        // A stay already over needs nothing from anyone, and a link may drop it at any time.
+        const today = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10)
+        const events = parseiCal(icsString).filter(evt => evt.start < evt.end && evt.end > today)
+        const onLink = new Set(events.map(refOf))
+
+        // 3. What this link has already put on the calendar, wherever the desk has moved it since,
+        //    and what it has already asked the desk.
+        const { data: linked, error: linkedError } = await supabase
           .from('bookings')
-          .select('id, check_in, check_out')
-          .eq('room_id', feed.room_id)
-          .eq('source', sourceChannel)
+          .select('id, channel_ref, status, check_in')
+          .like('channel_ref', `${prefix}%`)
+        if (linkedError) throw linkedError
+        const { data: asked, error: askedError } = await supabase
+          .from('channel_alerts')
+          .select('id, ref, kind, status')
+          .like('ref', `${prefix}%`)
+        if (askedError) throw askedError
 
-        const existingByKey = new Map()
-        for (const row of existingRows || []) {
-          existingByKey.set(`${row.check_in}|${row.check_out}`, row)
-        }
-
-        // 4. Diff-based reconciliation:
-        //    a) Delete sync-managed rows that are no longer in the feed
-        //       (cancelled on the OTA). Manual/website bookings are untouched.
-        //    b) Insert feed events that aren't present yet, but ONLY if they do
-        //       not overlap any existing booking for the room.
-        const feedKeys = new Set(parsedEvents.map(evt => `${evt.start}|${evt.end}`))
-
-        for (const [key, row] of existingByKey) {
-          if (!feedKeys.has(key)) {
-            await supabase.from('bookings').delete().eq('id', row.id)
-          }
-        }
-
-        for (const evt of parsedEvents) {
-          const key = `${evt.start}|${evt.end}`
-          if (existingByKey.has(key)) continue // already synced — idempotent
-
-          // Collision check against ALL bookings for this room.
-          const { data: overlaps } = await supabase
-            .from('bookings')
-            .select('id')
-            .eq('room_id', feed.room_id)
-            .lt('check_in', evt.end)
-            .gt('check_out', evt.start)
-            .limit(1)
-
-          if (overlaps && overlaps.length > 0) {
-            totalSkipped++
-            console.warn(`Skipped OTA event for room ${feed.room_id} ${key}: overlaps an existing booking`)
+        // 4. The sync ADDS a stay and asks about the rest; it never changes or removes a booking
+        //    (Sebastian, 2026-10-20: the app must not change a booking by itself). This used to
+        //    delete whatever had left the link, money and all, and to drop a clash with one line in a log.
+        for (const evt of events) {
+          const ref = refOf(evt)
+          const rows = (linked || []).filter(b => b.channel_ref === ref)
+          if (rows.some(b => b.status !== 'cancelled')) {
+            // It is back on the link: the question of it being gone has gone too.
+            await supabase.from('channel_alerts').delete().eq('ref', ref).eq('kind', 'gone')
             continue
           }
+          // Cancelled here and still on the link: the desk has decided, so it does not come back.
+          if (rows.length > 0) continue
+          // The desk has answered "Sold twice" for this stay.
+          if ((asked || []).some(a => a.ref === ref && a.kind === 'clash' && a.status === 'done')) continue
 
-          try {
-            const { error: insertError } = await supabase.from('bookings').insert({
-              room_id: feed.room_id,
-              guest_name: evt.summary || 'External Synced Booking',
-              guest_email: 'sync@external.ota',
-              guest_phone: 'None',
-              check_in: evt.start,
-              check_out: evt.end,
-              source: sourceChannel,
-              status: 'confirmed'
-            })
-            if (insertError) {
-              // Exclusion constraint / race → skip rather than crash.
-              totalSkipped++
-              console.warn(`Skipped OTA event ${key}: ${insertError.message}`)
-              continue
-            }
-            totalSynced++
-          } catch (err) {
+          const { data: result, error: addError } = await supabase.rpc('add_channel_stay', {
+            p_channel: channel, p_ref: ref, p_room_id: feed.room_id, p_check_in: evt.start, p_check_out: evt.end,
+          })
+          if (addError) {
             totalSkipped++
-            console.warn(`Skipped OTA event ${key}: ${err instanceof Error ? err.message : String(err)}`)
+            console.warn(`Could not add ${ref}: ${addError.message}`)
+          } else if (result?.added) totalSynced++
+          else if (result?.clash_with) totalSkipped++
+        }
+
+        // A stay that left the link. Only one still to come is asked about.
+        for (const b of linked || []) {
+          if (onLink.has(b.channel_ref)) continue
+          if (b.status === 'cancelled') {
+            // Dealt with. Forgetting the link lets the same dates be sold again later.
+            await supabase.from('bookings').update({ channel_ref: null }).eq('id', b.id)
+            await supabase.from('channel_alerts').delete().eq('ref', b.channel_ref).eq('kind', 'gone')
+          } else if (b.check_in >= today) {
+            const [, , start, end] = b.channel_ref.split('|')
+            await supabase.from('channel_alerts').upsert(
+              { kind: 'gone', channel, ref: b.channel_ref, room_id: feed.room_id, check_in: start, check_out: end, booking_id: b.id },
+              { onConflict: 'ref,kind', ignoreDuplicates: true },
+            )
           }
+        }
+        // A sale that left the link is no longer sold twice.
+        for (const a of asked || []) {
+          if (a.kind === 'clash' && !onLink.has(a.ref)) await supabase.from('channel_alerts').delete().eq('id', a.id)
         }
 
         // Update feed timestamp

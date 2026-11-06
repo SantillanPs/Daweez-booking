@@ -9,8 +9,8 @@ import { ExpenseEdit, type ExpenseChange } from './ExpenseEdit'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
 import { DailyReport, MoneyInLine, forwardedLabel, openKey } from '../../utils/dailyReport'
 import { PAYMENT_METHODS, PaymentKind, methodNeedsReference, paymentKind } from '../../utils/paymentMethod'
+import { peso } from '../../utils/helpers'
 
-const peso = (n: number) => '₱' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
 
 // The day's expenses in groups of one category, each group where its first expense was.
 const byCategory = (list: Expense[]) => {

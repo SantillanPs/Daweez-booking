@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 import { randomUUID } from './helpers'
 
 /**
@@ -22,9 +22,6 @@ import { randomUUID } from './helpers'
  */
 
 export const STOCK_GROUPS = ['Food', 'Drinks', 'Linen', 'Toiletries', 'Other']
-
-/** Why stock moved. A short list, and the field that makes the log readable a month later. */
-export const STOCK_REASONS = ['Delivery', 'Used', 'Sold', 'Lost', 'Damaged', 'Count correction', 'Other']
 
 export interface StockItem {
   id: string
@@ -71,8 +68,6 @@ export interface StockMoveInput {
   sourceId?: string
 }
 
-const NO_DB = 'No database is connected, so the stock room was not changed.'
-
 const num = (v: unknown): number => {
   const n = Number(v)
   return Number.isFinite(n) ? n : 0
@@ -98,7 +93,6 @@ const toItem = (r: Record<string, unknown>): StockItem => ({
 
 /** Every stock item, by name. The screen filters; this reads the whole list once. */
 export async function getStockItems(): Promise<StockItem[]> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
   const { data, error } = await supabase.from('inventory_items').select('*').order('name')
   if (error) throw error
   return (data || []).map(toItem)
@@ -114,7 +108,6 @@ export async function getStockItems(): Promise<StockItem[]> {
  * `applyStockMovement`; a new item starts at 0.
  */
 export async function saveStockItem(item: Partial<StockItem> & { name: string }): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
   const fields = {
     name: item.name.trim(),
     category: item.category || 'Other',
@@ -131,7 +124,6 @@ export async function saveStockItem(item: Partial<StockItem> & { name: string })
 
 /** The movements log, newest first. */
 export async function getStockMovements(limit = 200): Promise<StockMovement[]> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
   const { data, error } = await supabase
     .from('stock_movements')
     .select('*')
@@ -148,7 +140,6 @@ export async function getStockMovements(limit = 200): Promise<StockMovement[]> {
  * disagree with the count.
  */
 export async function moveStock(input: StockMoveInput): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
   const { error } = await supabase.rpc('apply_stock_movement', {
     p_item_id: input.itemId,
     p_direction: input.direction,
@@ -166,7 +157,6 @@ export async function moveStock(input: StockMoveInput): Promise<void> {
 
 /** Every dish's recipe, read once for the whole menu. */
 export async function getAllDishStock(): Promise<DishStockLine[]> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
   const { data, error } = await supabase.from('menu_item_stock').select('*')
   if (error) throw error
   return (data || []) as DishStockLine[]
@@ -174,8 +164,6 @@ export async function getAllDishStock(): Promise<DishStockLine[]> {
 
 /** Replaces one dish's recipe with the lines given. */
 export async function saveDishStock(menuItemId: string, lines: { item_id: string; quantity: number }[]): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
-
   const { error: clearError } = await supabase.from('menu_item_stock').delete().eq('menu_item_id', menuItemId)
   if (clearError) throw clearError
 

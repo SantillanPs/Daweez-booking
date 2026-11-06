@@ -4,7 +4,7 @@ import { PartnerDeal, PriceFrom } from '../types/booking'
 import { NumInput } from './NumInput'
 import { NewTag } from './NewMark'
 import { markSeen } from '../utils/newMarks'
-import * as syncEngine from '../utils/syncEngine'
+import { randomUUID } from '../utils/helpers'
 import { Plus, Trash2, Edit2, Save, X, Building, Coffee } from 'lucide-react'
 import { showToast } from '../utils/toast'
 import { askConfirm } from '../utils/confirm'
@@ -72,7 +72,7 @@ export function DirectoryTab() {
     const from: Record<string, PriceFrom> = Object.fromEntries(Object.entries(was?.price_from || {}).filter(([k]) =>
       k === 'breakfast' ? (was?.breakfast_price || 0) === pBfPrice : was?.contracted_rates[k] === cleanRates[k]))
     const dealData: PartnerDeal = {
-      id: editingDealId || `partner-${syncEngine.generateUUID()}`,
+      id: editingDealId || `partner-${randomUUID()}`,
       name: pName, type: pType, tin: pTIN || undefined,
       address: pAddress || undefined, contact_no: pContactNo || undefined,
       email: pEmail || undefined, vehicle_plate: pVehiclePlate || undefined,

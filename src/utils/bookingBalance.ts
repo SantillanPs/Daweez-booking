@@ -1,5 +1,5 @@
-import { priceBooking } from './pricing'
 import { Booking, Room, Venue } from '../types/booking'
+import { priceBooking } from './pricing'
 import { paymentStatusFromMoney } from './bookingMoney'
 import { normalizeVenueId } from './helpers'
 

@@ -30,7 +30,6 @@ export const BOX = 'h-11 rounded-md border bg-card px-3 text-[15px] font-medium 
 export const FIELD = BOX + ' w-full border-soft'
 /** The same box when it shares a row and must take what is left of it. */
 export const FIELD_IN_ROW = BOX + ' flex-1 min-w-0 border-soft'
-export const FIELD_ERROR = BOX + ' w-full border-danger-400'
 export const SELECT = BOX + ' w-full border-soft cursor-pointer'
 
 /**
@@ -40,9 +39,6 @@ export const SELECT = BOX + ' w-full border-soft cursor-pointer'
  */
 export const FILL_BOX = 'h-11 rounded-[10px] border-[1.5px] border-transparent bg-softbg px-3 text-[15px] font-semibold text-main placeholder:font-medium placeholder:text-muted outline-none focus-visible:outline-none transition-[background-color,border-color,box-shadow] duration-200 focus:bg-card focus:border-gold-500 focus:ring-[3px] focus:ring-gold-400/20'
 export const FILL = FILL_BOX + ' w-full'
-export const FILL_IN_ROW = FILL_BOX + ' flex-1 min-w-0'
-export const FILL_ERROR = FILL_BOX + ' w-full !bg-card !border-danger-400'
-export const FILL_SELECT = FILL_BOX + ' w-full cursor-pointer'
 
 /** The words above a box or a row of choices. */
 export const LABEL = 'block text-[13px] font-medium text-muted'
@@ -82,8 +78,6 @@ export const optionPlus = (open: boolean) =>
 export const OPTION_BODY = 'sm:pl-[42px]'
 
 /** The correction block's own heading. */
-export const SECTION = 'space-y-3'
-export const SECTION_TITLE = GROUP_TITLE
 /** The quiet text actions inside an opened extra. */
 export const TEXT_ACTION = 'inline-flex items-center gap-1 h-11 text-[14px] font-semibold text-brand-text hover:underline cursor-pointer'
 

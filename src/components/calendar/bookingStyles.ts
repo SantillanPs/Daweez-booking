@@ -3,16 +3,12 @@ import { getPaymentView, hasPaymentRecorded, PaymentTone } from '../../utils/boo
 import { stayStage } from '../../utils/stayStage'
 import { leaveDay } from '../../utils/doorTimes'
 import { dateToString } from '../../utils/helpers'
+import { needsDetails } from '../../utils/channelStay'
 
 // Show the real room name (e.g. "Full Double Deluxe") instead of a bare
 // number, with "Room N" as the fallback when no name is set.
 export const roomDisplayName = (room?: Room): string =>
   room ? (room.name || 'Room ' + room.room_number) : 'Room'
-
-// For dropdowns where several rooms can share a name (e.g. three "Full
-// Double" rooms), include the number so staff can tell them apart.
-export const roomOptionLabel = (room: Room): string =>
-  room.name ? 'Room ' + room.room_number + ' · ' + room.name : 'Room ' + room.room_number
 
 /** Where a stay stands: still to come, in its dates, or over — read from the dates, never
  *  from a check-in (`stayStage`; the desk no longer checks guests in or out, 2026-10-20). */
@@ -54,16 +50,6 @@ export const pillInitials = (name: string): string => {
   return ((words[0]?.[0] || '') + (words[1]?.[0] || '')).toUpperCase()
 }
 
-// Titles the desk writes before a name, with or without a full stop ("Pastor is arriving" was the second try).
-const TITLES = new Set(['pastor', 'ptr', 'fr', 'father', 'sis', 'sister', 'bro', 'brother', 'engr', 'atty', 'dr', 'hon', 'mr', 'mrs', 'ms', 'sir', 'maam', 'rev', 'capt', 'gen', 'col', 'sgt', 'prof'])
-/** The name a guest is greeted by: the first word, or the first two when the first is a title
- *  like `Fr.`, `Engr.` or `Pastor` — "Welcome, FR.!" was the first try (the reward, 2026-10-18). */
-export const greetName = (name: string): string => {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  const title = !!words[1] && (words[0].endsWith('.') || TITLES.has(words[0].toLowerCase().replace(/[^a-z]/g, '')))
-  return (title ? words[0] + ' ' + words[1] : words[0]) || name
-}
-
 /** Whether a stay arrives or leaves today, from its dates. A short stay leaves on the day it came. */
 export const dueToday = (b: Booking, todayIso: string): 'in' | 'out' | null => {
   if (b.status === 'blocked') return null
@@ -90,6 +76,8 @@ export const dueToday = (b: Booking, todayIso: string): 'in' | 'out' | null => {
 // pills"). `pill` is the words alone, its colour still red or green; `text` keeps the figure
 // for the hover card, which is where the desk looks for how much.
 export const pillMoney = (b: Booking): { text: string; pill: string; className: string; noDeposit?: boolean } => {
+  // A stay from a calendar link has no name or price yet, so there is no money to speak of.
+  if (needsDetails(b)) return { text: 'Name needed', pill: 'Name needed', className: PILL_NO_DEPOSIT, noDeposit: true }
   const view = getPaymentView(b)
   const due = Number(b.balance_due || 0)
   const peso = '₱' + due.toLocaleString()

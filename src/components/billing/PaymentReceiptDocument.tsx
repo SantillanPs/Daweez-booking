@@ -4,9 +4,10 @@ import { Booking, PaymentRecord, Room, Venue } from '../../types/booking'
 import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
 import { receiptNumberFor, paymentBreakdown } from '../../utils/receiptNumber'
 import { formatRoomNumbers } from '../../utils/roomNumbers'
-import { fmtDay, money } from './receiptText'
+import { fmtDay } from './receiptText'
 import { guestEmailOf } from '../../utils/emailDocument'
-import { EmailBar, EmailButton } from './EmailBar'
+import { EmailBar, EmailButton } from './EmailBar'
+import { peso } from '../../utils/helpers'
 
 interface PaymentReceiptDocumentProps {
   booking: Booking
@@ -135,7 +136,7 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
             print sharp. The frame is a border because a browser drops backgrounds in print. */}
         <div className="my-2 border-[3px] border-black py-1.5 flex flex-col items-center">
           <span className={lab}>Payment received</span>
-          <span className="font-display text-[22px] font-extrabold leading-none mt-1">{money(amountPaid)}</span>
+          <span className="font-display text-[22px] font-extrabold leading-none mt-1">{peso(amountPaid)}</span>
         </div>
 
         <div className="space-y-[3px]">
@@ -159,10 +160,10 @@ export function PaymentReceiptDocument({ booking, record, rooms, venues, onClose
           <>
             <div className="border-t border-dashed border-black my-2" />
             <div className="space-y-[3px]">
-              <SlipRow label="Bill before" value={money(previousBalance)} mono />
+              <SlipRow label="Bill before" value={peso(previousBalance)} mono />
               <div className="flex items-baseline justify-between gap-2 border-t-2 border-black pt-1 mt-1 text-[11.5px] font-extrabold">
                 <span>Still to pay</span>
-                <span className="font-mono">{money(remainingAfter)}</span>
+                <span className="font-mono">{peso(remainingAfter)}</span>
               </div>
             </div>
             <div className="border-t border-dashed border-black my-2" />

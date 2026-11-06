@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { AnimatedNumber } from '../AnimatedNumber'
+import { AnimatedNumber } from '../AnimatedNumber'
+import { pesoWhole } from '../../utils/helpers'
 
 interface RoomRevenue {
   id: string
@@ -55,7 +56,6 @@ interface AnalyticsSpreadsheetViewProps {
 // Drawn as a ledger (the owner, 2026-10-14: the full-width list was "a bit hard to read"; chosen from a
 // mock): a line between places, every amount in one right-hand column, and a short share bar out of 100%
 // beside it, so the eye no longer crosses a bar the width of the screen to reach a figure.
-const peso = (n: number) => '₱' + Math.round(n).toLocaleString()
 
 type Part = [string, number]
 
@@ -100,13 +100,13 @@ export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> =
         </div>
         <div className="px-5 py-4 flex flex-col gap-1 border-t sm:border-t-0 sm:border-l border-soft">
           <span className="text-[13px] font-semibold text-muted">Money in</span>
-          <span className="font-mono text-[20px] font-extrabold text-main">{peso(c.totalRevenue)}</span>
+          <span className="font-mono text-[20px] font-extrabold text-main">{pesoWhole(c.totalRevenue)}</span>
         </div>
         <div className="px-5 py-4 flex flex-col gap-1 border-t border-l border-soft sm:border-t-0">
           <span className="text-[13px] font-semibold text-muted">Spent</span>
           {/* always red, as money going out (the owner, 2026-10-14); brackets only round an amount, never ₱0 */}
           <span className="font-mono text-[20px] font-extrabold text-danger-600">
-            {c.totalExpenses ? '(' + peso(c.totalExpenses) + ')' : peso(0)}
+            {c.totalExpenses ? '(' + pesoWhole(c.totalExpenses) + ')' : pesoWhole(0)}
           </span>
         </div>
       </div>
@@ -129,12 +129,12 @@ export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> =
                 {parts.length > 0 && (
                   <span className="flex flex-wrap gap-1.5">
                     {parts.map(([label, n]) => (
-                      <span key={label} className="text-[12.5px] text-main bg-page rounded-md px-2 py-0.5"><span className="text-muted mr-1">{label}</span>{peso(n)}</span>
+                      <span key={label} className="text-[12.5px] text-main bg-page rounded-md px-2 py-0.5"><span className="text-muted mr-1">{label}</span>{pesoWhole(n)}</span>
                     ))}
                   </span>
                 )}
               </span>
-              <span className={`font-mono text-[16px] font-extrabold text-right ${p.total ? 'text-emerald-600' : 'text-ink-300'}`}>{p.total ? peso(p.total) : '–'}</span>
+              <span className={`font-mono text-[16px] font-extrabold text-right ${p.total ? 'text-emerald-600' : 'text-ink-300'}`}>{p.total ? pesoWhole(p.total) : '–'}</span>
               {p.total > 0 ? <Share pct={pctOf(p.total, c.totalRevenue)} /> : <span className="hidden sm:block" />}
             </>
           )
@@ -154,7 +154,7 @@ export const AnalyticsSpreadsheetView: React.FC<AnalyticsSpreadsheetViewProps> =
                   {c.roomRevenues.map(r => (
                     <li key={r.id} className={`${grid} py-1.5 sm:pl-12`}>
                       <span className={`text-[13px] truncate ${r.total ? 'text-main font-medium' : 'text-ink-300'}`}>Room {r.room_number} · {r.name}</span>
-                      <span className={`font-mono text-[13px] font-bold text-right ${r.total ? 'text-main' : 'text-ink-300'}`}>{r.total ? peso(r.total) : '–'}</span>
+                      <span className={`font-mono text-[13px] font-bold text-right ${r.total ? 'text-main' : 'text-ink-300'}`}>{r.total ? pesoWhole(r.total) : '–'}</span>
                       {/* a room's share is of the Pension, so the ten add up to its 100% */}
                       {r.total > 0 ? <Share pct={pctOf(r.total, c.totalPension)} /> : <span className="hidden sm:block" />}
                     </li>

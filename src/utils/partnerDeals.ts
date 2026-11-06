@@ -1,5 +1,5 @@
 import { PartnerDeal } from '../types/booking'
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 
 // ── Partner Deals Operations ──
 //
@@ -8,8 +8,6 @@ import { supabase, isSupabaseConfigured } from './supabaseClient'
 // `insertPartnerDeal` / `deletePartnerDeal` now throw when the database refuses
 // the write, so the screen reports it instead of showing a saved agency that
 // only ever existed on that one machine.
-
-const NO_DB = 'No database is connected, so this agency was not saved.'
 
 function toRecord(d: PartnerDeal) {
   return {
@@ -30,8 +28,6 @@ function toRecord(d: PartnerDeal) {
 }
 
 export async function getPartnerDeals(): Promise<PartnerDeal[]> {
-  if (!isSupabaseConfigured) return []
-
   try {
     const { data, error } = await supabase
       .from('partner_deals')
@@ -64,22 +60,16 @@ export async function getPartnerDeals(): Promise<PartnerDeal[]> {
 }
 
 export async function savePartnerDeals(deals: PartnerDeal[]): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
-
   const { error } = await supabase.from('partner_deals').upsert(deals.map(toRecord))
   if (error) throw error
 }
 
 export async function insertPartnerDeal(deal: PartnerDeal): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
-
   const { error } = await supabase.from('partner_deals').insert(toRecord(deal))
   if (error) throw error
 }
 
 export async function deletePartnerDeal(dealId: string): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error('No database is connected, so this agency was not deleted.')
-
   const { error } = await supabase.from('partner_deals').delete().eq('id', dealId)
   if (error) throw error
 }

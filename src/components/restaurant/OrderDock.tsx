@@ -5,8 +5,8 @@ import { TabLine } from '../../types/tab'
 import { cookingCount, newCount, readyCount } from '../../utils/orderSlips'
 import { Served } from './served'
 import { TableButton } from './TablesPopup'
+import { peso } from '../../utils/helpers'
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 interface OrderDockProps {
   /** Who the desk is serving, or nobody. */
@@ -69,7 +69,7 @@ export function OrderDock({ person, number, lines, total, idleLabel, ready, tabl
             <>
               {/* On a phone the bar is narrow and the money matters more than the number. */}
               {number && <span className="hidden sm:inline">{number} · </span>}
-              {items} {items === 1 ? 'item' : 'items'} · <b className="font-bold text-main">{fmtPeso(total)}</b>
+              {items} {items === 1 ? 'item' : 'items'} · <b className="font-bold text-main">{peso(total)}</b>
               {toSend === 0 && toServe === 0 && cooking > 0 && ' · cooking'}
             </>
           )}

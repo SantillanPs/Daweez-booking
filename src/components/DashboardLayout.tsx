@@ -10,6 +10,7 @@ import { ToastHost } from './Toast'
 import { ConfirmHost } from './ConfirmDialog'
 import { NewTag } from './NewMark'
 import { markSeen } from '../utils/newMarks'
+import { ConnectionBand } from './ConnectionBand'
 
 /**
  * **Four tabs, and the screens inside each** (the owner's ruling, 2026-10-04 — it replaced the six-tab idea on
@@ -93,8 +94,8 @@ export function DashboardLayout() {
   const location = useLocation()
   const {
     rooms, venues, bookings, allBookings, feeds, partnerDeals, expenses, expenseCategories,
-    confirmBooking, cancelBooking, deleteBooking, createManualBooking, updateBooking,
-    triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, isLoading, isConfirmingBooking,
+    cancelBooking, deleteBooking, createManualBooking, updateBooking,
+    triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, isLoading,
     createPartnerDeal, savePartnerDeals, deletePartnerDeal,
     createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense
   } = useBookings()
@@ -157,13 +158,12 @@ export function DashboardLayout() {
   // calendar among them, redrew with it.
   const data = useMemo(() => ({
     rooms, venues, bookings, allBookings, feeds, partnerDeals, expenses, expenseCategories, isLoading,
-    isConfirming: isConfirmingBooking,
-    confirmBooking, cancelBooking, deleteBooking, createManualBooking, updateBooking,
+    cancelBooking, deleteBooking, createManualBooking, updateBooking,
     triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
     createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense,
     onLogout: handleLogout
-  }), [rooms, venues, bookings, allBookings, feeds, partnerDeals, expenses, expenseCategories, isLoading, isConfirmingBooking,
-    confirmBooking, cancelBooking, deleteBooking, createManualBooking, updateBooking,
+  }), [rooms, venues, bookings, allBookings, feeds, partnerDeals, expenses, expenseCategories, isLoading,
+    cancelBooking, deleteBooking, createManualBooking, updateBooking,
     triggerOTASync, updateFeedUrls, updateRoomRate, updateRoomBreakfastPrice, updateRoomHourPrices, createPartnerDeal, savePartnerDeals, deletePartnerDeal,
     createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, deleteExpense, handleLogout])
 
@@ -247,6 +247,9 @@ export function DashboardLayout() {
               </div>
             </nav>
           )}
+
+          {/* Only while the hotel's records can't be reached, and a moment after they are back. */}
+          <ConnectionBand />
 
           {/* Hangs under the header, however tall it is — with or without the sub-tabs. */}
           {syncSuccessMsg && (

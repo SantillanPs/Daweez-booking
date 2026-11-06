@@ -10,9 +10,9 @@ import { TabSettlePanel } from './TabSettlePanel'
 import { TabReceiptModal } from './TabReceiptModal'
 import { RunningTabSlip } from './RunningTabSlip'
 import { tableName } from './served'
-import { DiscountBox, Discount } from '../calendar/NewBookingBill'
+import { DiscountBox, Discount } from '../calendar/NewBookingBill'
+import { peso } from '../../utils/helpers'
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 const QUIET = 'min-h-11 inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-main transition-colors cursor-pointer disabled:opacity-50'
 
@@ -62,7 +62,7 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
   const stillTheSame = async () => {
     const now = await readTabTotal(slip.tab.id)
     if (Math.abs(now - slip.total) <= 0.005) { setChanged(''); return true }
-    setChanged('This order slip is now ' + fmtPeso(now) + '. Check it, then receive again.')
+    setChanged('This order slip is now ' + peso(now) + '. Check it, then receive again.')
     onChanged()
     return false
   }
@@ -95,7 +95,7 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
               <Banknote className="w-7 h-7" />
               <i /><i /><i /><i /><i /><i />
             </span>
-            <b className="font-display text-[19px] font-bold tracking-tight text-main">Paid {fmtPeso(toPay)}</b>
+            <b className="font-display text-[19px] font-bold tracking-tight text-main">Paid {peso(toPay)}</b>
             <span className="text-[13px] text-muted">{[table || who, slipNumber(slip.tab)].filter(Boolean).join(' · ')}</span>
           </div>
         )}
@@ -118,13 +118,13 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
                 <span className="min-w-0 text-main break-words">
                   <b className="tabular-nums">{Number(line.qty || 1)} ×</b> {line.description}
                 </span>
-                <span className="shrink-0 tabular-nums text-main">{fmtPeso(line.amount)}</span>
+                <span className="shrink-0 tabular-nums text-main">{peso(line.amount)}</span>
               </li>
             ))}
           </ul>
           {disc && (
             <div className="pt-2 border-t border-soft space-y-1">
-              <div className="flex items-baseline justify-between gap-2 text-[14px] text-muted"><span>Sub-total</span><span className="tabular-nums">{fmtPeso(slip.total)}</span></div>
+              <div className="flex items-baseline justify-between gap-2 text-[14px] text-muted"><span>Sub-total</span><span className="tabular-nums">{peso(slip.total)}</span></div>
               <div className="flex items-center justify-between gap-3 text-[14px] text-muted">
                 <span>Discount</span>
                 <div className="w-56"><DiscountBox disc={disc} onChange={setDisc} off={off} /></div>
@@ -135,8 +135,8 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
             <span className="text-[14px] font-medium text-muted">{off > 0 ? 'To pay' : 'Total'}</span>
             {/* The bill before the discount, struck through above what is paid (task #11). */}
             <span className="flex items-baseline gap-2">
-            {off > 0 && <span className="font-mono text-[13px] text-muted line-through bw-rise">{fmtPeso(slip.total)}</span>}
-            <span key={toPay} className="font-display text-[26px] leading-none font-extrabold tracking-tight tabular-nums text-main bw-rise">{fmtPeso(toPay)}</span>
+            {off > 0 && <span className="font-mono text-[13px] text-muted line-through bw-rise">{peso(slip.total)}</span>}
+            <span key={toPay} className="font-display text-[26px] leading-none font-extrabold tracking-tight tabular-nums text-main bw-rise">{peso(toPay)}</span>
             </span>
           </div>
           {!disc && (

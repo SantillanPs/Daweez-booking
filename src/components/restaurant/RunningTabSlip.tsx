@@ -1,8 +1,9 @@
 import React from 'react'
 import { TabLine } from '../../types/tab'
 import { Block, Row, Rule } from '../billing/receiptPrimitives'
-import { fmtDateTime, money } from '../billing/receiptText'
+import { fmtDateTime } from '../billing/receiptText'
 import { SlipModal } from '../billing/SlipModal'
+import { peso } from '../../utils/helpers'
 
 interface RunningTabSlipProps {
   /** `OS-0007`, when the slip has one. */
@@ -44,18 +45,18 @@ export function RunningTabSlip({ number, who, place, lines, total, discount, not
         <Row
           key={l.id}
           label={l.qty > 1 ? l.qty + ' × ' + l.description : l.description}
-          value={money(l.amount)}
+          value={peso(l.amount)}
         />
       ))}
       <Rule />
       {/* A discount given at the desk is on the paper the diner is shown (task #11). */}
       {discount ? (
         <>
-          <Row label="Sub-total" value={money(total)} />
-          <Row label={'Discount' + (discount.label ? ' ' + discount.label : '')} value={'−' + money(discount.amount)} />
-          <Row label="TO PAY" value={money(total - discount.amount)} strong />
+          <Row label="Sub-total" value={peso(total)} />
+          <Row label={'Discount' + (discount.label ? ' ' + discount.label : '')} value={'−' + peso(discount.amount)} />
+          <Row label="TO PAY" value={peso(total - discount.amount)} strong />
         </>
-      ) : <Row label="TOTAL" value={money(total)} strong />}
+      ) : <Row label="TOTAL" value={peso(total)} strong />}
       <Rule />
       <p className="text-center text-[10px] font-bold tracking-wide">NOT A RECEIPT</p>
       <p className="text-center text-[8.5px] mt-1">{note}</p>

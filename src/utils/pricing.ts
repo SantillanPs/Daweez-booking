@@ -3,7 +3,6 @@ import { Booking, EquipmentRental, EventAddons, BookingSource, Room, Venue, Appl
 import { normalizeVenueId } from './helpers'
 import { venueTypePrice } from './venueTypes'
 import { venueHoursOf } from './venueHours'
-import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 import { DEFAULT_RATE_CONFIG, getRateConfig } from './rateConfig'
 import { chargeableEarlyHours } from './checkInOut'
 import { breakfastMornings } from './breakfast'
@@ -61,8 +60,8 @@ export function calculatePricing(params: {
   let stayQuantity = 0
   let stayUnit = 'NIGHT'
 
-  const roomList = liveRooms && liveRooms.length > 0 ? liveRooms : DEFAULT_ROOMS
-  const venueList = liveVenues && liveVenues.length > 0 ? liveVenues : DEFAULT_VENUES
+  const roomList = liveRooms ?? []
+  const venueList = liveVenues ?? []
   const venue = venueId ? venueList.find(v => v.id === normalizeVenueId(venueId)) : undefined
   const isVenue = !!venueId
   const isDayBlockVenue = venue ? (venue.name === 'Gazebo' || venue.name === 'Garden Area') : false

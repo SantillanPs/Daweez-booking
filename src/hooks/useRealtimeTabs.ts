@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { supabase, isSupabaseConfigured } from '../utils/supabaseClient'
+import { supabase } from '../utils/supabaseClient'
 
 /**
  * Calls `onChange` when any order slip or any of its lines changes, on any tablet.
@@ -18,7 +18,6 @@ export function useRealtimeTabs(onChange: () => void, linesToo = true) {
   useEffect(() => { latest.current = onChange })
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return
     let timer: number | undefined
     const changed = () => {
       window.clearTimeout(timer)

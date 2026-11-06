@@ -14,7 +14,7 @@ import { paymentMethodLabel } from '../utils/paymentMethod'
 import { getRemovedPayments, takeBackPayment } from '../utils/removedPayments'
 import { asBill } from '../utils/bookingGroup'
 import { focusBookingAfterCreate } from '../utils/bookingFocus'
-import { dateToString, normalizeVenueId } from '../utils/helpers'
+import { dateToString, normalizeVenueId, shortDay, pesoWhole } from '../utils/helpers'
 import { showToast } from '../utils/toast'
 
 // BILLS & RECEIPTS (Sebastian, 2026-10-29: "a page specifically for billing statements, and receipts.
@@ -45,9 +45,7 @@ interface Event {
   slip?: { tab: Tab; rec: PaymentRecord }
 }
 
-const peso = (n: number) => '₱' + Math.round(n).toLocaleString()
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-const shortDay = (day: string) => new Date(day + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 const longDay = (day: string) => new Date(day + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 // A fix that changed the day it was paid says both days.
 const dayMoved = (f: { paid_at?: string }, now: { paid_at?: string }) => !!f.paid_at && !!now.paid_at && dateToString(new Date(f.paid_at)) !== dateToString(new Date(now.paid_at))
@@ -142,7 +140,7 @@ export function BillsReceipts() {
     for (const [key, p] of payments) {
       out.push({
         key: 'pay-' + key, at: p.rec.paid_at, kind: 'pay', amount: Number(p.rec.amount || 0),
-        title: peso(Number(p.rec.amount || 0)) + ' received · ' + roomsOf(p.holders),
+        title: pesoWhole(Number(p.rec.amount || 0)) + ' received · ' + roomsOf(p.holders),
         detail: join(who(p.holders[0]), paymentMethodLabel(p.rec.method), p.rec.receipt_number, p.rec.prepared_by && 'by ' + p.rec.prepared_by),
         booking: p.holders[0], payment: p,
       })
@@ -152,8 +150,8 @@ export function BillsReceipts() {
         const now = fixes[i + 1] || p.rec
         out.push({
           key: 'fix-' + key + '-' + i, at: f.at, kind: 'fixed', booking: p.holders[0],
-          was: peso(f.amount) + ' ' + paymentMethodLabel(f.method) + (f.purpose ? ' ' + f.purpose : '') + (dayMoved(f, now) ? ' ' + shortDay(dateToString(new Date(f.paid_at!))) : ''),
-          title: peso(Number(now.amount || 0)) + ' ' + paymentMethodLabel(now.method) + (now.purpose ? ' ' + now.purpose : '') + (dayMoved(f, now) ? ' ' + shortDay(dateToString(new Date(now.paid_at!))) : ''),
+          was: pesoWhole(f.amount) + ' ' + paymentMethodLabel(f.method) + (f.purpose ? ' ' + f.purpose : '') + (dayMoved(f, now) ? ' ' + shortDay(dateToString(new Date(f.paid_at!))) : ''),
+          title: pesoWhole(Number(now.amount || 0)) + ' ' + paymentMethodLabel(now.method) + (now.purpose ? ' ' + now.purpose : '') + (dayMoved(f, now) ? ' ' + shortDay(dateToString(new Date(now.paid_at!))) : ''),
           detail: join('Payment fixed', who(p.holders[0]), p.rec.receipt_number, 'paid ' + shortDay(dateToString(new Date(p.rec.paid_at)))),
         })
       })
@@ -165,7 +163,7 @@ export function BillsReceipts() {
         if (!rec.paid_at || payments.has(key)) continue
         out.push({
           key: 'slip-' + key, at: rec.paid_at, kind: 'pay', amount: Number(rec.amount || 0),
-          title: peso(Number(rec.amount || 0)) + ' received · ' + (slipNumber(t) || 'Order slip'),
+          title: pesoWhole(Number(rec.amount || 0)) + ' received · ' + (slipNumber(t) || 'Order slip'),
           detail: join(t.label || t.table_label || 'Diner', paymentMethodLabel(rec.method), rec.receipt_number, rec.prepared_by && 'by ' + rec.prepared_by),
           slip: { tab: t, rec },
         })
@@ -174,7 +172,7 @@ export function BillsReceipts() {
     for (const r of removed) {
       out.push({
         key: 'rm-' + r.id, at: r.removed_at, kind: 'removed', amount: r.amount,
-        title: peso(r.amount) + ' removed' + (r.rooms ? ' · ' + r.rooms : ''),
+        title: pesoWhole(r.amount) + ' removed' + (r.rooms ? ' · ' + r.rooms : ''),
         detail: join(r.guest_name, r.method && paymentMethodLabel(r.method), r.receipt_number, r.paid_at && 'paid ' + shortDay(dateToString(new Date(r.paid_at)))),
       })
     }
@@ -281,7 +279,7 @@ export function BillsReceipts() {
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="flex flex-col items-end gap-0.5">
-                    <span className="font-mono text-[13px] font-medium text-main whitespace-nowrap">{peso(b.total)}</span>
+                    <span className="font-mono text-[13px] font-medium text-main whitespace-nowrap">{pesoWhole(b.total)}</span>
                     <span className={`px-2 py-px rounded-full text-[11.5px] font-bold whitespace-nowrap ${STATUS_TONE[b.status]}`}>{b.status}</span>
                   </span>
                   <button type="button" onClick={() => setBillOf({ id: b.first.id })} className={act}>Open</button>
@@ -307,7 +305,7 @@ export function BillsReceipts() {
               <section key={d} className="bg-card border border-soft rounded-2xl overflow-hidden">
                 <div className="flex items-baseline justify-between gap-3 px-4 py-3 bg-page border-b border-soft">
                   <b className="text-[14px] text-main">{dayName(d)}</b>
-                  {received > 0 && <span className="text-[12.5px] text-muted">Received <span className="font-mono font-bold text-emerald-600">{peso(received)}</span></span>}
+                  {received > 0 && <span className="text-[12.5px] text-muted">Received <span className="font-mono font-bold text-emerald-600">{pesoWhole(received)}</span></span>}
                 </div>
                 {list.map(e => {
                   const { Icon, tone } = ICON[e.kind]
@@ -334,7 +332,7 @@ export function BillsReceipts() {
                       {ask && e.payment && (
                         <div className="col-span-full flex flex-wrap items-center justify-end gap-2 text-[13px]">
                           <span className="mr-auto text-main">
-                            Remove {peso(e.amount || 0)}?{' '}
+                            Remove {pesoWhole(e.amount || 0)}?{' '}
                             {e.payment.holders.length > 1 ? 'It paid for ' + e.payment.holders.length + ' rooms; each amount to pay goes back up.' : 'The amount to pay goes back up.'}
                           </span>
                           <button type="button" onClick={() => setAsking(null)} className="min-h-9 px-3.5 rounded-lg border border-soft bg-card text-main font-bold cursor-pointer">Keep</button>

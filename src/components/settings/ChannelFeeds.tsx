@@ -99,7 +99,9 @@ export function ChannelFeeds({ rooms, links, unsaved, onLink }: ChannelFeedsProp
           const isOpen = openRoomId === room.id
           const on = switches.enabled && switches.rooms[room.id] !== false
           const waiting = rf.some(f => f.id in unsaved)
-          const exportUrl = 'https://daweez-booking.vercel.app/api/ical/room/' + room.room_number + '.ics'
+          // Each site has its own link, so it is not told about a guest it sold itself.
+          const giveAir = 'https://daweez-booking.vercel.app/api/ical/room/' + room.room_number + '/airbnb.ics'
+          const giveBk = 'https://daweez-booking.vercel.app/api/ical/room/' + room.room_number + '/booking_com.ics'
           return (
             <div key={room.id}>
               {/* The switch sits OUTSIDE the expander: a button inside a button is invalid, and
@@ -124,8 +126,10 @@ export function ChannelFeeds({ rooms, links, unsaved, onLink }: ChannelFeedsProp
               </div>
               {isOpen && (
                 <div className={'pb-5 pt-1 space-y-3 ' + REVEAL}>
-                  <FeedRow label="Link to give Airbnb and Booking.com" value={exportUrl} readOnly
-                    copied={copied === 'export-' + room.id} onCopy={() => copy(exportUrl, 'export-' + room.id)} />
+                  <FeedRow label="Link to give Booking.com" value={giveBk} readOnly
+                    copied={copied === 'give-bk-' + room.id} onCopy={() => copy(giveBk, 'give-bk-' + room.id)} />
+                  <FeedRow label="Link to give Airbnb" value={giveAir} readOnly
+                    copied={copied === 'give-air-' + room.id} onCopy={() => copy(giveAir, 'give-air-' + room.id)} />
                   {air && <FeedRow label="Link from Airbnb" value={air.url} placeholder="Paste Airbnb’s calendar link"
                     copied={copied === 'air-' + room.id} onChange={v => onLink(air.id, v)} onCopy={() => copy(air.url, 'air-' + room.id)} />}
                   {bk && <FeedRow label="Link from Booking.com" value={bk.url} placeholder="Paste Booking.com’s calendar link"

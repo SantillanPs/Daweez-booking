@@ -17,15 +17,6 @@ export function isRoomAvailable(roomId: string, checkInStr: string, checkOutStr:
   return !clashIn(b => b.room_id, roomId, from, to, bookingsList, skipBookingId)
 }
 
-export function isVenueAvailable(venueId: string, eventDateStr: string, bookingsList: Booking[] = [], skipBookingId?: string): boolean {
-  return !bookingsList.some(booking => {
-    if (booking.venue_id !== venueId) return false
-    if (booking.id === skipBookingId) return false
-    if (booking.status === 'cancelled') return false
-    return booking.check_in === eventDateStr
-  })
-}
-
 export function isVenueRangeAvailable(venueId: string, checkInStr: string, checkOutStr: string, bookingsList: Booking[] = [], skipBookingId?: string, short?: ShortFacts): boolean {
   if (checkInStr >= checkOutStr) return false
   const [from, to] = spanOf(checkInStr, checkOutStr, short)

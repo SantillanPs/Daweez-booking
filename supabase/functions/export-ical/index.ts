@@ -1,11 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
+const CHANNELS = ['airbnb', 'booking_com']
+
 serve(async (req) => {
   try {
     const url = new URL(req.url)
     const roomId = url.searchParams.get('room_id')
     const roomNumberStr = url.searchParams.get('room_number')
+    // Who is asking, so a stay is not sent back to the site it came from (`channel_export`).
+    const forChannel = url.searchParams.get('for')
 
     if (!roomId && !roomNumberStr) {
       return new Response("Missing room_id or room_number query parameter", { status: 400 })
@@ -37,36 +41,39 @@ serve(async (req) => {
       actualRoomId = room.id
     }
 
-    // Fetch confirmed & blocked bookings for this room
-    const { data: bookings, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('room_id', actualRoomId)
-      .in('status', ['confirmed', 'blocked'])
+    // The nights this room cannot be sold, reservations waiting for money included: 14 of the 19
+    // pending stays on live were still to come when this link only listed confirmed ones.
+    const { data: rows, error } = await supabase.rpc('channel_export', {
+      p_room_id: actualRoomId,
+      p_for: forChannel && CHANNELS.includes(forChannel) ? forChannel : null,
+    })
 
     if (error) throw error
 
-    // Formulate RFC 5545 iCal response
+    // Formulate RFC 5545 iCal response. It says the dates are taken and nothing about who.
     const ics = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//L\'Etoile Central Channel Manager//Boutique Suite//EN',
+      'PRODID:-//Daweez Pension House//Calendar//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH'
     ]
 
-    bookings?.forEach(b => {
-      const dateStart = b.check_in.replace(/-/g, '')
-      const dateEnd = b.check_out.replace(/-/g, '')
-      const createdStr = b.created_at.replace(/[-:.]/g, '').split('T')[0] + 'T000000Z'
+    const dayAfter = (iso: string) => {
+      const d = new Date(iso + 'T00:00:00Z')
+      d.setUTCDate(d.getUTCDate() + 1)
+      return d.toISOString().slice(0, 10)
+    }
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
 
+    rows?.forEach((b: { id: string; first_night: string; last_night: string }) => {
       ics.push(
         'BEGIN:VEVENT',
-        `UID:${b.id}@letoile-hotel.com`,
-        `DTSTAMP:${createdStr}`,
-        `DTSTART;VALUE=DATE:${dateStart}`,
-        `DTEND;VALUE=DATE:${dateEnd}`,
-        `SUMMARY:${b.source.toUpperCase()} - Reserved`,
+        `UID:${b.id}@daweez-booking.vercel.app`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;VALUE=DATE:${b.first_night.replace(/-/g, '')}`,
+        `DTEND;VALUE=DATE:${dayAfter(b.last_night).replace(/-/g, '')}`,
+        'SUMMARY:Not available',
         'STATUS:CONFIRMED',
         'END:VEVENT'
       )

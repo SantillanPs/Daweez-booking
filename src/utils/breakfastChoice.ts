@@ -1,7 +1,7 @@
 import { Booking, BreakfastChoice, BreakfastPlan } from '../types/booking'
 import { breakfastMornings } from './breakfast'
 import { dateToString } from './helpers'
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 
 // BREAKFAST, EVERY MORNING (the owner, 2026-10-04): a guest who booked breakfast is
 // asked each morning what they want. This records the answer for the kitchen and for
@@ -31,13 +31,6 @@ export function wantsBreakfastToday(b: Booking, today: string): boolean {
 /** What was written down for this booking on `date`, or undefined when nobody has asked yet. */
 export function breakfastOn(b: Booking, date: string): BreakfastChoice | undefined {
   return (b.breakfast_choices || []).find(c => c.date === date)
-}
-
-/** `2 Bangsilog, 1 Hot Coffee` — or `Nothing today` when the guest skipped it. */
-export function breakfastSummary(choice: BreakfastChoice): string {
-  const items = choice.items.filter(i => i.qty > 0)
-  if (items.length === 0) return 'Nothing today'
-  return items.map(i => i.qty + ' ' + i.name).join(', ')
 }
 
 /** The booking's choices with `date` set to `items` (replacing that day's earlier answer). */
@@ -75,7 +68,6 @@ export function withBreakfastTime(b: Booking, time: number): Booking {
 
 /** Saves the choices through their own small writer, so no other booking field is touched. */
 export async function saveBreakfastChoices(bookingId: string, choices: BreakfastChoice[]): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error('No database is connected, so the breakfast choice was not saved.')
   const { error } = await supabase.rpc('set_booking_breakfast_choices', { p_booking_id: bookingId, p_choices: choices })
   if (error) throw error
 }

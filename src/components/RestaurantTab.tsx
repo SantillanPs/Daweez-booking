@@ -16,13 +16,12 @@ import { withChanges } from '../utils/orderChanges'
 import { MenuItem } from '../utils/restaurantMenu'
 import { OrderSlip, cookingCount, getSlipsForBooking, newCount, readBookingFoodTotal, readyCount, slipNumber } from '../utils/orderSlips'
 import { recomputeBalance } from '../utils/bookingBalance'
-import { takeFocusedGuestTab } from '../utils/restaurantFocus'
 import { askConfirm } from '../utils/confirm'
 import { useDashboardData } from './DashboardContext'
 import { showToast } from '../utils/toast'
-import { UtensilsCrossed } from 'lucide-react'
+import { UtensilsCrossed } from 'lucide-react'
+import { peso } from '../utils/helpers'
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 // The restaurant and bar (board cards k69 + k70), in the shape the owner picked.
 //
@@ -86,8 +85,6 @@ export function RestaurantTab() {
   const [tablesAt, setTablesAt] = useState<DOMRect | null>(null)
   // A dish tapped with nobody picked, by name: the tables ask which table it is for.
   const [askFor, setAskFor] = useState('')
-  // A guest sent here from their booking, picked once the bookings are loaded.
-  const [wantedGuest, setWantedGuest] = useState<string | null>(null)
 
   // The loader reads the latest bookings without being rebuilt every time one changes.
   const live = useRef({ bookings, rooms, venues, updateBooking })
@@ -104,22 +101,6 @@ export function RestaurantTab() {
     if (firstMoney.current) { firstMoney.current = false; return }
     queueMicrotask(() => void load())
   }, [moneyKey, load])
-
-  // The booking panel's "Take orders" lands here. Read once, off the effect body: the
-  // hand-off is consumed exactly once, so a second render can never swallow it.
-  useEffect(() => {
-    queueMicrotask(() => {
-      const id = takeFocusedGuestTab()
-      if (id) setWantedGuest(id)
-    })
-  }, [])
-  useEffect(() => {
-    if (!wantedGuest || !bookings.some(b => b.id === wantedGuest)) return
-    queueMicrotask(() => {
-      setSelectedKey('booking:' + wantedGuest)
-      setWantedGuest(null)
-    })
-  }, [wantedGuest, bookings])
 
   // Every open slip, and the room being served while it has none yet — handed over from
   // its booking's "Take orders". Which of them stand in the strip is `served`, below.
@@ -383,11 +364,11 @@ export function RestaurantTab() {
     // A slip that was started for a room already belongs to it.
     const ok = await askConfirm({
       title: 'Add this to ' + person.place + '’s bill?',
-      message: [slipNumber(bill.tab), person.name].filter(Boolean).join(' · ') + ' — ' + fmtPeso(bill.total) +
+      message: [slipNumber(bill.tab), person.name].filter(Boolean).join(' · ') + ' — ' + peso(bill.total) +
         '. It is paid at the front desk, any time before check-out. Nothing more can be ordered on this slip.',
       confirmLabel: 'Add to the bill',
     })
-    if (ok) closeBill(bill.tab.id, () => billOutTab(bill.tab.id), 'Added to ' + person.place + '’s bill · ' + fmtPeso(bill.total))
+    if (ok) closeBill(bill.tab.id, () => billOutTab(bill.tab.id), 'Added to ' + person.place + '’s bill · ' + peso(bill.total))
   }
 
   // The slip leaves the screen as the choice is made, and the bill is written behind it.
@@ -415,7 +396,7 @@ export function RestaurantTab() {
   const billToFrontDesk = () => {
     if (!billFor) return
     const bill = billFor
-    closeBill(bill.tab.id, () => billOutTab(bill.tab.id), 'Bill sent to the front desk · ' + fmtPeso(bill.total))
+    closeBill(bill.tab.id, () => billOutTab(bill.tab.id), 'Bill sent to the front desk · ' + peso(bill.total))
   }
 
   // Onto a room: it asks first, by room and by name — a bill on the wrong guest's room is
@@ -425,7 +406,7 @@ export function RestaurantTab() {
     const bill = billFor
     const ok = await askConfirm({
       title: 'Add this to ' + place + '’s bill?',
-      message: [bill.person.name, slipNumber(bill.tab)].filter(Boolean).join(' · ') + ' — ' + fmtPeso(bill.total) +
+      message: [bill.person.name, slipNumber(bill.tab)].filter(Boolean).join(' · ') + ' — ' + peso(bill.total) +
         ' goes on ' + (guest.guest_name || 'the guest') + '’s room. It is paid at the front desk, any time before check-out.',
       confirmLabel: 'Add to the bill',
     })
@@ -433,7 +414,7 @@ export function RestaurantTab() {
     closeBill(bill.tab.id, async () => {
       await billToRoom(bill.tab.id, guest.id)
       syncRoomBalance(guest.id)
-    }, 'Added to ' + place + '’s bill · ' + fmtPeso(bill.total))
+    }, 'Added to ' + place + '’s bill · ' + peso(bill.total))
   }
 
   // The guests in the hotel, by room: the ones a bill may go on.

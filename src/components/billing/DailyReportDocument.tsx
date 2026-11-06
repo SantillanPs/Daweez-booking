@@ -1,7 +1,7 @@
 import React from 'react'
 import { StatementShell, BrandHeader } from './StatementShell'
-import { money } from './receiptText'
-import { forwardedLabel, type DailyReport } from '../../utils/dailyReport'
+import { forwardedLabel, type DailyReport } from '../../utils/dailyReport'
+import { peso } from '../../utils/helpers'
 
 /**
  * **The Daily Report sheet** — the owner's design, approved 2026-09-29, and the paper the front desk prints
@@ -55,7 +55,7 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
           <span className="h-3 bg-paper-200 rounded-sm overflow-hidden">
             <span className="block h-full bg-ink-800" style={{ width: inWidth }} />
           </span>
-          <span className="font-mono text-[13px] font-extrabold">+ {money(report.totalIn)}</span>
+          <span className="font-mono text-[13px] font-extrabold">+ {peso(report.totalIn)}</span>
         </div>
         {/* A bar measuring ₱0 against something says nothing, so the OUT row is only drawn when there was
             money out — the same "a line prints only if it carries money" rule the sheet already follows. */}
@@ -65,7 +65,7 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
             <span className="h-3 bg-paper-200 rounded-sm overflow-hidden">
               <span className="block h-full bg-ink-400" style={{ width: outWidth }} />
             </span>
-            <span className="font-mono text-[13px] font-extrabold text-ink-700">({money(report.totalOut)})</span>
+            <span className="font-mono text-[13px] font-extrabold text-ink-700">({peso(report.totalOut)})</span>
           </div>
         )}
       </div>
@@ -86,36 +86,36 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
         <p className="text-[10px] font-extrabold tracking-[0.14em] uppercase text-ink-600 mb-1">Summary</p>
         <div className="flex justify-between gap-3">
           <span>Total Sales</span>
-          <span className="font-mono">{money(report.totalIn)}</span>
+          <span className="font-mono">{peso(report.totalIn)}</span>
         </div>
         <div className="flex justify-between gap-3">
           <span>Add: {forwardedLabel(report.date)}</span>
-          <span className="font-mono">{money(report.broughtForward)}</span>
+          <span className="font-mono">{peso(report.broughtForward)}</span>
         </div>
         {report.cashAdded.map((line, index) => (
           <div key={`${line.label}-${index}`} className="flex justify-between gap-3">
             <span className="truncate">Add: {line.label}</span>
-            <span className="font-mono shrink-0">{money(line.amount)}</span>
+            <span className="font-mono shrink-0">{peso(line.amount)}</span>
           </div>
         ))}
         <div className="flex justify-between gap-3 font-bold border-t border-ink-400 mt-0.5 pt-0.5">
           <span>Cash on hand</span>
-          <span className="font-mono">{money(report.cashOnHand)}</span>
+          <span className="font-mono">{peso(report.cashOnHand)}</span>
         </div>
         <div className="flex justify-between gap-3">
           <span>Total Expenses</span>
-          <span className="font-mono">({money(report.totalOut)})</span>
+          <span className="font-mono">({peso(report.totalOut)})</span>
         </div>
         {/* Money handed to the owner: printed only on a day it happened, like every line here. */}
         {report.handedOver.map((line, index) => (
           <div key={`${line.label}-${index}`} className="flex justify-between gap-3">
             <span className="truncate">Less: {line.label}</span>
-            <span className="font-mono shrink-0">({money(line.amount)})</span>
+            <span className="font-mono shrink-0">({peso(line.amount)})</span>
           </div>
         ))}
         <div className="flex justify-between items-baseline mt-1.5">
           <span className="text-[12px] font-extrabold tracking-[0.18em] uppercase">Total cash on hand</span>
-          <span className="font-mono text-[24px] font-extrabold leading-none">{money(report.balance)}</span>
+          <span className="font-mono text-[24px] font-extrabold leading-none">{peso(report.balance)}</span>
         </div>
       </div>
     </StatementShell>
@@ -135,12 +135,12 @@ function MoneyBlock({ title, lines, total }: { title: string; lines: { label: st
             {line.cancelled ? <s>{line.label}</s> : line.label}
             {line.cancelled && <span className="ml-1 text-[10px] font-extrabold">Cancelled {new Date(line.cancelled + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
           </span>
-          <span className="font-mono">{line.cancelled ? <s>{money(line.amount)}</s> : money(line.amount)}</span>
+          <span className="font-mono">{line.cancelled ? <s>{peso(line.amount)}</s> : peso(line.amount)}</span>
         </div>
       ))}
       <div className="flex justify-between gap-3 text-[13px] font-extrabold border-t border-ink-400 mt-1 pt-1">
         <span>Total</span>
-        <span className="font-mono">{money(total)}</span>
+        <span className="font-mono">{peso(total)}</span>
       </div>
     </div>
   )

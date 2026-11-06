@@ -1,8 +1,8 @@
 import React from 'react'
 import { AlertCircle } from 'lucide-react'
-import { Booking } from '../../types/booking'
+import { Booking } from '../../types/booking'
+import { peso } from '../../utils/helpers'
 
-const fmtPeso = (n: number) => '₱' + n.toLocaleString()
 
 interface ExtendStayFormProps {
   booking: Booking
@@ -58,7 +58,7 @@ export function ExtendStayForm({
           </div>
           <div className="flex justify-between font-bold border-t border-gold-200/70 pt-1">
             <span className="text-muted">New amount to pay</span>
-            <span className={newBalanceDue > 0 ? 'text-danger-600' : 'text-emerald-600'}>{fmtPeso(newBalanceDue)}</span>
+            <span className={newBalanceDue > 0 ? 'text-danger-600' : 'text-emerald-600'}>{peso(newBalanceDue)}</span>
           </div>
         </div>
       )}

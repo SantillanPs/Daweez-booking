@@ -2,9 +2,9 @@ import React, { useRef, useState } from 'react'
 import { Room } from '../../types/booking'
 import { GROUP_TITLE } from '../walk-in/formStyles'
 import { RoomDraft, roomDraft } from './roomDraft'
-import { Figure, FieldGrid, SubHead } from './parts'
+import { Figure, FieldGrid, SubHead } from './parts'
+import { peso } from '../../utils/helpers'
 
-const money = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 interface RoomRatesEditorProps {
   rooms: Room[]
@@ -82,7 +82,7 @@ export function RoomRatesEditor({ rooms, edits, onEdit, loading = false }: RoomR
               </span>
               <span className="flex items-center gap-2 shrink-0">
                 {touched && <span className="w-1.5 h-1.5 rounded-full bg-gold-500" title="Changed, not saved yet" />}
-                <span className="text-[15px] font-semibold tabular-nums text-main">{money(d.price)}</span>
+                <span className="text-[15px] font-semibold tabular-nums text-main">{peso(d.price)}</span>
               </span>
             </button>
           )
@@ -114,7 +114,7 @@ export function RoomRatesEditor({ rooms, edits, onEdit, loading = false }: RoomR
               <Figure label="12 hours" placeholder="Not sold" value={draft.hour12} onChange={v => onEdit(selected.id, { hour12: v })} />
             </FieldGrid>
             <p className="mt-3 text-[13px] text-muted">
-              22 hours is the night price · <span className="font-semibold tabular-nums text-main">{money(draft.price)}</span>
+              22 hours is the night price · <span className="font-semibold tabular-nums text-main">{peso(draft.price)}</span>
             </p>
           </div>
         </div>

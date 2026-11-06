@@ -26,7 +26,7 @@ import { BreakfastPicker } from './BreakfastPicker'
 import { useQueryClient } from '@tanstack/react-query'
 import { BreakfastMornings } from './BreakfastMornings'
 import { withBreakfastTime } from '../../utils/breakfastChoice'
-import { dateToString, normalizeVenueId } from '../../utils/helpers'
+import { dateToString, normalizeVenueId, peso } from '../../utils/helpers'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 import { asBill, groupOf } from '../../utils/bookingGroup'
 import { BillRooms } from './BillRooms'
@@ -35,7 +35,11 @@ const CANCEL_REASONS = ['Changed plans', 'No show', 'Booked by mistake']
 import { ExtendStayForm } from './ExtendStayForm'
 import { venueTypeOf } from '../../utils/venueTypes'
 import { showToast } from '../../utils/toast'
+import { askConfirm } from '../../utils/confirm'
 import { StatementLineItem } from '../../utils/statementLines'
+import { channelOf, needsDetails, ChannelAlert, CHANNEL_NAME } from '../../utils/channelStay'
+import { ChannelDetails } from './ChannelDetails'
+import { ChannelMark } from './ChannelMark'
 
 interface ExtendStayModalProps {
   booking: Booking
@@ -61,6 +65,10 @@ interface ExtendStayModalProps {
   unseen?: boolean
   /** Opens another booking's panel in place of this one (a room on the same bill). */
   onOpenBooking?: (b: Booking) => void
+  /** This stay has left the booking site's calendar, and the desk has not answered yet. */
+  goneAlert?: ChannelAlert
+  /** The stay goes on anyway: the question is closed and the booking is left as it is. */
+  onKeepStay?: (alert: ChannelAlert) => void
 }
 
 export interface PanelDesk {
@@ -71,7 +79,6 @@ export interface PanelDesk {
 }
 
 const fmtShort = (d: string) => (d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—')
-const fmtPeso = (n: number) => '₱' + n.toLocaleString()
 
 // One loud button for the next step, one quiet one for the step that is not open yet.
 const BTN = 'w-full min-h-[54px] px-4 rounded-xl text-[16px] font-bold transition-[background-color,border-color,transform] duration-200 active:scale-[0.98] cursor-pointer '
@@ -127,6 +134,8 @@ export function ExtendStayModal({
   onCancelBooking,
   onDeleteBooking,
   onUpdateBooking,
+  goneAlert,
+  onKeepStay,
   onOpenBill,
   deskRef,
   onOpenBooking,
@@ -360,7 +369,7 @@ export function ExtendStayModal({
   const receiveAmount = receiptAmount ?? dueNow
   const payingSlip = unpaid.find(s => s.total === receiveAmount && s.total < due)
 
-  // Inline required-field validation for the extend-stay form (mirrors LogOldBookingModal).
+  // Inline required-field validation for the block's dates form.
   const fieldErrors = {
     extendCheckoutDate: !extendCheckoutDate
       ? 'Check-out date is required.'
@@ -586,7 +595,7 @@ export function ExtendStayModal({
     // The money is marked at once; then the seal fades, the green bar fills where it can be
     // seen, and only then does the receipt rise in. It once opened at 1.05 s, over the seal's
     // sparks, while the bar filled unseen behind it (the owner, 2026-10-15: "weird or broken").
-    mark({ title: remaining <= 0 ? 'Paid' : 'Received', sub: fmtPeso(amount) + ' · ' + method, icon: 'paid' })
+    mark({ title: remaining <= 0 ? 'Paid' : 'Received', sub: peso(amount) + ' · ' + method, icon: 'paid' })
     const sealSeen = new Promise(resolve => window.setTimeout(resolve, SEAL_MS + FILL_MS))
     try {
       await onUpdateBooking?.(updated)
@@ -682,11 +691,11 @@ export function ExtendStayModal({
   const figure: { label: string; value: number | null; tone: string } | null =
     billedToAgency && due > 0 ? { label: 'Agency owes', value: due, tone: 'text-blue-700' }
       : billRows.length > 1 ? (billDue > 0 ? { label: 'Left to pay', value: billDue, tone: 'text-danger-600' }
-        : billTotal > 0 ? { label: 'Total ' + fmtPeso(billTotal), value: null, tone: 'text-emerald-700' } : null)
+        : billTotal > 0 ? { label: 'Total ' + peso(billTotal), value: null, tone: 'text-emerald-700' } : null)
       : due > 0 ? (dueNow < due
-        ? { label: 'Deposit · of ' + fmtPeso(totalCharge), value: dueNow, tone: 'text-danger-600' }
+        ? { label: 'Deposit · of ' + peso(totalCharge), value: dueNow, tone: 'text-danger-600' }
         : { label: 'Left to pay', value: due, tone: 'text-danger-600' })
-        : totalCharge > 0 ? { label: 'Total ' + fmtPeso(totalCharge), value: null, tone: 'text-emerald-700' } : null
+        : totalCharge > 0 ? { label: 'Total ' + peso(totalCharge), value: null, tone: 'text-emerald-700' } : null
   const [openedPaid] = useState(figure?.value === null)
   // Something done behind a seal shows once the seal has faded.
   const wait = { '--wait': '1.1s' } as React.CSSProperties
@@ -701,6 +710,28 @@ export function ExtendStayModal({
     catch { setLocalBooking(before); showToast('Could not save the breakfast time. Please try again.', 'error') }
   }
   const hasBreakfast = !!localBooking.room_id && localBooking.breakfast_included === true && !localBooking.stay_hours && localBooking.status !== 'blocked' && localBooking.status !== 'cancelled'
+
+  // A stay from a booking site's calendar link: the desk types what the link could not say. The
+  // boxes stay for as long as this panel is open, and the money and the Bill join them once there is a name.
+  const channel = channelOf(localBooking)
+  const nameNeeded = needsDetails(localBooking)
+  const [detailsOpen] = useState(nameNeeded)
+  const saveDetails = (patch: Partial<Booking>) => {
+    const before = localBooking
+    const updated = withRecomputedBalance(localBooking, patch)
+    layout(() => setLocalBooking(updated))
+    onUpdateBooking?.(updated).catch(() => {
+      layout(() => setLocalBooking(before))
+      showToast('Could not save that. Please try again.', 'error')
+    })
+  }
+  const [goneMore, setGoneMore] = useState(false)
+  // Asks only when money is on it: that money stays on record, and the desk should know before it goes.
+  const cancelGone = async () => {
+    if (paidSoFar > 0 && !(await askConfirm({ title: 'Cancel the bill?', message: peso(paidSoFar) + ' received stays on record.', confirmLabel: 'Cancel the bill' }))) return
+    onCancelBooking?.(booking.id, 'Dates gone from ' + CHANNEL_NAME[channel || 'booking_com'])
+    onClose()
+  }
 
   const modalContent = (
     <div className={'fixed inset-0 z-50 flex items-center justify-center p-4 ' + (unseen ? 'hidden ' : '') + (closing ? 'pointer-events-none' : '')}>
@@ -732,6 +763,7 @@ export function ExtendStayModal({
               <h3 className="font-display font-bold text-[18px] leading-tight text-main break-words min-w-0">
                 <span className="sr-only">{place} · </span>{who}
               </h3>
+              {channel && <ChannelMark channel={channel} />}
               {isBlock && <span className="shrink-0 text-[12px] font-bold text-muted bg-softbg border border-soft rounded-md px-2 py-0.5">Blocked</span>}
             </div>
             <p className="text-[12px] text-muted mt-0.5">{subLine}</p>
@@ -747,10 +779,27 @@ export function ExtendStayModal({
         {isBlock && <div aria-hidden="true" className="bw-hatch mt-2 shrink-0" />}
         <div className="px-5 overflow-y-auto flex-1">
           <div className="pt-3 pb-5 flex flex-col gap-[22px] empty:hidden">
+            {/* The stay has left the site's calendar. The desk decides: a link can drop a stay for
+                reasons of its own, so nothing is cancelled by itself (the mock, 2026-10-31). */}
+            {goneAlert && (
+              <div className="grid gap-2 bw-arrive">
+                <span className="justify-self-start -rotate-2 rounded border-2 border-danger-600 px-2 py-0.5 font-display text-[13px] font-extrabold tracking-[0.08em] text-danger-600">CANCELLED</span>
+                <p className="text-[13px] text-muted">Dates gone from {CHANNEL_NAME[goneAlert.channel]}. Reason not given.</p>
+                <button type="button" onClick={() => void cancelGone()} className={BTN_GOLD}>Cancel the bill</button>
+                {goneMore ? (
+                  <button type="button" onClick={() => { onKeepStay?.(goneAlert); onClose() }} className="bw-arrive w-full min-h-11 rounded-lg border-[1.5px] border-soft px-3 text-left text-[13px] font-semibold text-main hover:bg-softbg active:scale-[0.98] transition-[background-color,transform] cursor-pointer">The guest is still coming</button>
+                ) : (
+                  <button type="button" onClick={() => setGoneMore(true)} className="min-h-9 text-[13px] font-semibold text-muted hover:text-main cursor-pointer">More</button>
+                )}
+              </div>
+            )}
+
+            {detailsOpen && !goneAlert && <ChannelDetails booking={localBooking} onSave={saveDetails} />}
+
             {/* LEVEL 1 — the answer: what is owed, biggest, and where the stay is under it. */}
             {!isBlock && (
               <div className="space-y-2">
-                {figure && (
+                {figure && !nameNeeded && (
                   <>
                     <p className="text-[13px] font-bold text-muted flex items-center gap-1.5">
                       {figure.label}
@@ -770,7 +819,7 @@ export function ExtendStayModal({
                   </>
                 )}
                 {/* How much of the bill is in: green for what is paid, and it fills as money is received. */}
-                {billTotal > 0 && billDue > 0 && !billedToAgency && (
+                {billTotal > 0 && billDue > 0 && !billedToAgency && !nameNeeded && (
                   <div aria-hidden="true" className={'relative h-1.5 rounded-full overflow-hidden ' + (billPaid > 0 ? 'bg-danger-200' : 'bg-paper-300')}>
                     {/* The money in the Receive box, striped ahead of the fill: what the bar will be once it is saved. */}
                     {receiveOpen && receiveAmount > 0 && (
@@ -816,7 +865,7 @@ export function ExtendStayModal({
                     <p className="flex-1 text-[12px] font-semibold text-brand-text leading-snug">
                       Early check-in {earlyHoursRecorded} hour{earlyHoursRecorded > 1 ? 's' : ''}
                       {earlyHoursRecorded > getRateConfig().lateEarlyCapHours ? ' (past the ' + getRateConfig().lateEarlyCapHours + '-hour cap)' : ''}
-                      {' — '}{fmtPeso(pendingEarly)} goes on the bill at check-out.
+                      {' — '}{peso(pendingEarly)} goes on the bill at check-out.
                     </p>
                     {/* Not on the bill yet, so it is taken off here (2026-10-20). */}
                     {onUpdateBooking && (
@@ -844,7 +893,7 @@ export function ExtendStayModal({
                 everything"): the pencil, Receive, Print bill and the folded bill were four ways into
                 two bills. Now one button opens the one bill, where everything is changed, paid and
                 printed. Gold while money is owed; quiet once it is not. */}
-            {!isBlock && onOpenBill && (
+            {!isBlock && onOpenBill && !nameNeeded && !goneAlert && (
               <button type="button" onClick={onOpenBill}
                 className={billDue > 0 ? BTN_GOLD + ' bw-shine flex items-center justify-center gap-2' : BTN + 'border-[1.5px] border-soft text-main hover:bg-softbg flex items-center justify-center gap-2'}>
                 <Receipt aria-hidden="true" className="w-[18px] h-[18px]" />
@@ -861,12 +910,13 @@ export function ExtendStayModal({
               <div className="space-y-2">
                 {removed && (
                   <div role="status" key={removed.label} className="bw-arrive relative overflow-hidden flex items-center gap-2 h-11 my-1.5 rounded-lg bg-ink-900 text-white pl-3 pr-1.5 text-[13px] font-semibold">
-                    <span className="flex-1 min-w-0 truncate">{removed.label} removed · {fmtPeso(Math.abs(removed.amount))}</span>
+                    <span className="flex-1 min-w-0 truncate">{removed.label} removed · {peso(Math.abs(removed.amount))}</span>
                     <button type="button" onClick={() => void undoRemove()}
                       className="h-8 px-3.5 rounded-md bg-gold-400 text-ink-900 text-[13px] font-bold cursor-pointer active:scale-95 transition-transform">Undo</button>
                     <span aria-hidden="true" style={{ '--ms': '5000ms' } as React.CSSProperties} className="fd-drain absolute left-0 bottom-0 h-[3px] w-full bg-gold-400" />
                   </div>
                 )}
+
               </div>
             )}
 
@@ -919,7 +969,7 @@ export function ExtendStayModal({
           <div className="border-t border-soft px-4 py-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 shrink-0 bw-ask">
             <span className="text-[12px] font-bold text-danger-600">
               {'Delete ' + booking.guest_name + "'s booking" + (billRows.length > 1 ? ' in ' + unitName : '') + ' for good?'
-                + (paidSoFar > 0 ? ' ' + fmtPeso(paidSoFar) + ' received goes too.' : '')}
+                + (paidSoFar > 0 ? ' ' + peso(paidSoFar) + ' received goes too.' : '')}
             </span>
             <span className="flex items-center gap-1">
               <button type="button"
@@ -940,7 +990,7 @@ export function ExtendStayModal({
         ) : toolAsk ? (
           <div className="border-t border-soft px-3 py-2 grid gap-1.5 shrink-0 bw-ask">
             <span className="text-[11.5px] font-bold text-danger-600 truncate">
-              {'Cancel ' + booking.guest_name + "'s booking?" + (paidSoFar > 0 ? ' ' + fmtPeso(paidSoFar) + ' received stays on record.' : '')}
+              {'Cancel ' + booking.guest_name + "'s booking?" + (paidSoFar > 0 ? ' ' + peso(paidSoFar) + ' received stays on record.' : '')}
             </span>
             <div className="flex gap-1.5 overflow-x-auto -mx-3 px-3 [scrollbar-width:none]">
               {CANCEL_REASONS.map(r => (
@@ -984,7 +1034,7 @@ export function ExtendStayModal({
             {/* Not offered once the stay's dates are over: cancelling a finished stay would
                 take its money out of the Earnings Report. During them it is how a no-show is
                 written down, as on paper. */}
-            {onCancelBooking && (isBlock || stayStage(localBooking, todayKey) !== 'after') && (
+            {onCancelBooking && !goneAlert && (isBlock || stayStage(localBooking, todayKey) !== 'after') && (
               <button type="button" onClick={() => askTool('cancel')} className={TOOL + ' !text-danger-400 hover:!text-danger-600'}>
                 <XCircle data-i="x" className="w-3.5 h-3.5" />
                 {isBlock ? 'Remove block' : 'Cancel booking'}

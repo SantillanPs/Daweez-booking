@@ -1,5 +1,5 @@
 import { Booking, MovedFrom } from '../types/booking'
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 import { dateToString } from './helpers'
 
 // RESCHEDULED (Sebastian, 2026-10-29: "I forgot to add 'rescheduled'" to Bills & receipts' Show
@@ -22,7 +22,7 @@ export function movedFrom(saved: Booking, checkIn: string): MovedFrom | undefine
 /** Saves the move after the bill's dates were saved; returns what the booking now holds. */
 export async function noteMove(saved: Booking, checkIn: string): Promise<MovedFrom | undefined> {
   const next = movedFrom(saved, checkIn)
-  if (JSON.stringify(next) === JSON.stringify(saved.moved_from) || !isSupabaseConfigured) return saved.moved_from
+  if (JSON.stringify(next) === JSON.stringify(saved.moved_from)) return saved.moved_from
   const { error } = await supabase.rpc('set_booking_moved_from', { p_booking_id: saved.id, p_moved: next ?? null })
   // The dates are saved already; a lost note only leaves the booking out of "Rescheduled".
   if (error) { console.error('Could not note the reschedule:', error); return saved.moved_from }

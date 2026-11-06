@@ -1,22 +1,24 @@
 import React from 'react'
-import { Ban, Coffee, FilePlus, LogIn, LogOut, Plus } from 'lucide-react'
+import { Ban, Coffee, FilePlus, LogIn, LogOut, Plus, WifiOff } from 'lucide-react'
 import { Booking, PartnerDeal, Room, Venue } from '../../types/booking'
 import { AskCup } from './BreakfastParts'
 import { isBilledToAgency } from '../../utils/bookingMoney'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { dueToday, getBookingStyle, roomDisplayName } from './bookingStyles'
-import { dateToString } from '../../utils/helpers'
+import { dateToString, parseDay } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
 import { asBill } from '../../utils/bookingGroup'
 import { stayStage } from '../../utils/stayStage'
 import { leaveDay } from '../../utils/doorTimes'
 import { TimelineDayInfo } from './timelineDays'
-import { rememberFormOrigin } from '../../utils/bookingFocus'
 import { useDashboardData } from '../DashboardContext'
 import { PriceBox } from '../PriceBox'
 import { showToast } from '../../utils/toast'
 import { venueHoursOf } from '../../utils/venueHours'
+import { ChannelAlert } from '../../utils/channelStay'
+import { ChannelMark } from './ChannelMark'
 import { getRateConfig, saveRateConfig } from '../../utils/rateConfig'
+import { useConnection } from '../../utils/connection'
 
 export type { TimelineDayInfo }
 
@@ -59,8 +61,6 @@ interface TimelineGridProps {
   onClearSelection: () => void
   /** Moves a single pick to the morning or the afternoon of its day. */
   onPickHalf: (half: 0 | 1) => void
-  /** The rooms have not arrived from the database yet. */
-  loading?: boolean
   /** The guest to ask about breakfast this morning, per room id — only the rooms that have
    *  breakfast today and have not been asked yet. */
   breakfastToAsk?: Record<string, Booking>
@@ -72,6 +72,10 @@ interface TimelineGridProps {
   timeUp?: Record<string, boolean>
   /** The desk has brought that breakfast to the room. */
   onBreakfastServed?: (booking: Booking) => void
+  /** What the calendar links are asking the desk: a stay sold twice gets a lane under its room,
+   *  and a stay gone from the site says so on its pill. */
+  channelAlerts?: ChannelAlert[]
+  onSoldTwice?: (alert: ChannelAlert) => void
 }
 
 // One room's row and one day's column, in one place: the header, the rows and the cells
@@ -175,21 +179,6 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
     }
     setBarPos(prev => (prev && prev.center === next.center && prev.top === next.top && prev.width === next.width && prev.minLeft === next.minLeft && prev.maxRight === next.maxRight ? prev : next))
   }, [barAnchor])
-  // Where the picked stay is on screen, so the booking form can grow out of it rather than
-  // appear from nowhere (the booking moments mock, Sebastian, 2026-10-16).
-  const rememberPick = () => {
-    const scroller = scrollRef.current
-    if (!barAnchor || !scroller) return
-    const cellAt = (iso: string) => scroller.querySelector('[data-unit="' + barAnchor.unitId + '"][data-day="' + iso + '"]') as HTMLTableCellElement | null
-    const a = cellAt(barAnchor.iso)
-    if (!a) return
-    const b = barAnchor.outIso ? cellAt(barAnchor.outIso) : null
-    const ra = a.getBoundingClientRect()
-    const rb = b ? b.getBoundingClientRect() : null
-    const left = ra.left + (a.colSpan > 1 ? ra.width / 2 : 0)
-    const right = b && rb ? rb.left + (b.colSpan > 1 ? rb.width / 2 : rb.width) : ra.right
-    rememberFormOrigin({ x: left, y: ra.top, w: Math.max(8, right - left), h: ra.height })
-  }
   // After every render, before the screen is painted: the bar's own width is only known
   // once it is on screen, and it changes when it goes from one day to a range. Nothing
   // is set when nothing moved, so this settles at once.
@@ -287,7 +276,7 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
 
       {hasRange ? (
         <>
-          <button type="button" onClick={() => { rememberPick(); onNewBooking() }}
+          <button type="button" onClick={onNewBooking}
             className="shrink-0 inline-flex items-center gap-1 h-7 px-3.5 rounded-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold transition-colors active:scale-[0.98] cursor-pointer">
             <Plus className="w-3.5 h-3.5" /> New booking
           </button>
@@ -314,13 +303,12 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
                 onSave={p => {
                   setPricing(null)
                   save(p).catch(() => showToast('The ' + label + ' price for ' + unitName + ' was not saved. Try again.', 'error'))
-                  rememberPick()
                   onNewShortStay(h)
                 }} />
             )
             return (
               <button key={h} type="button"
-                onClick={() => { if (sellable) { rememberPick(); onNewShortStay(h) } else setPricing({ h, pick }) }}
+                onClick={() => { if (sellable) onNewShortStay(h); else setPricing({ h, pick }) }}
                 title={sellable
                   ? 'A ' + h + '-hour stay — ₱' + price.toLocaleString() + ' — takes ' + unitName + ' ' + (h >= 12 ? (single?.half ? 'into the night' : 'all day') : 'for the ' + (single?.half ? 'afternoon' : 'morning'))
                   : 'No ' + label + ' price for ' + unitName + ' yet — tap to set it'}
@@ -391,16 +379,18 @@ export const TimelineGrid = React.memo(
     onNewShortStay,
     onClearSelection,
     onPickHalf,
-    loading = false,
     breakfastToAsk,
     onBreakfast,
     breakfastReady,
     onBreakfastServed,
     timeUp,
+    channelAlerts,
+    onSoldTwice,
   }: TimelineGridProps) {
     const scrollRef = React.useRef<HTMLDivElement>(null)
     // Every stay, so a room booked with others can show its whole bill's money (`asBill`).
     const { bookings } = useDashboardData()
+    const offline = useConnection() === 'off'
 
     // ── the action bar, pinned to the cell that was picked ────────────────────
     // The owner's complaint about the first build: it lined up with the DATE but sat
@@ -523,6 +513,37 @@ export const TimelineGrid = React.memo(
       return () => { document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', esc) }
     }, [spot, counts])
 
+    const goneIds = React.useMemo(() => new Set((channelAlerts || []).filter(a => a.kind === 'gone' && a.booking_id).map(a => a.booking_id as string)), [channelAlerts])
+
+    // **A room sold twice has a second lane** (the mock, Sebastian, 2026-10-31). The sale cannot be a
+    // booking while the room is taken, so it is drawn on a row of its own under the room, on its half-days.
+    const soldTwiceRows = (room: Room) => {
+      const start = daysList[0]
+      if (!start) return null
+      const width = daysList.length * 2
+      const halfOf = (iso: string) => {
+        return Math.round((parseDay(iso).getTime() - start.time) / 86400000) * 2 + 1
+      }
+      return (channelAlerts || []).filter(a => a.kind === 'clash' && a.room_id === room.id).map(a => {
+        const from = Math.max(0, halfOf(a.check_in)), to = Math.min(width, halfOf(a.check_out))
+        if (to <= from) return null
+        return (
+          <tr key={a.id}>
+            <td className={UNIT_CELL}><span className="block text-center w-6 font-display text-[15px] font-bold tabular-nums text-danger-600">{room.room_number}</span></td>
+            {from > 0 && <td colSpan={from} className="h-12 border-b border-soft" />}
+            <td colSpan={to - from} className="h-12 border-b border-soft p-0">
+              <button type="button" onClick={() => onSoldTwice?.(a)}
+                className="bw-arrive mx-0.5 w-[calc(100%-4px)] h-10 rounded-md border-[1.5px] border-dashed border-danger-500 bg-danger-50 px-1 flex flex-col items-center justify-center text-center cursor-pointer select-none transition-[filter,transform] duration-200 hover:brightness-95 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]">
+                <span className="flex items-center gap-1 max-w-full text-[13px] font-bold leading-4 text-main"><ChannelMark channel={a.channel} /><span className="truncate">Sold twice</span></span>
+                <span className="max-w-full truncate text-[12px] font-semibold leading-4 text-danger-600">Room taken</span>
+              </button>
+            </td>
+            {to < width && <td colSpan={width - to} className="h-12 border-b border-soft" />}
+          </tr>
+        )
+      })
+    }
+
     const agencyNameOf = (b: Booking) =>
       isBilledToAgency(b) ? ((b.company_name || '').trim() || agencyNames[b.partner_deal_id || ''] || '') : ''
 
@@ -546,7 +567,7 @@ export const TimelineGrid = React.memo(
           const todayFrom = Math.max(k, todayAt * 2)
           const todayTo = todayAt < 0 ? 0 : Math.min(k + span, todayAt * 2 + 2)
           cells.push(
-            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} bill={asBill(booking, bookings)} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} agencyName={agencyNameOf(booking)} due={dueToday(booking, todayIso)} timeUp={!!timeUp?.[booking.id]} todayFrom={todayTo > todayFrom ? todayFrom - k : -1} todayHalves={Math.max(0, todayTo - todayFrom)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
+            <TimelineCell key={k} date={dayInfo.date} isoStr={dayInfo.isoStr} id={id} type={type} booking={booking} gone={goneIds.has(booking.id)} bill={asBill(booking, bookings)} span={span} closesDay={(k + span) % 2 === 0} isCheckIn={false} isContinuation={!!booking.check_in && booking.check_in < daysList[0].isoStr} isWeekend={dayInfo.isWeekend} isToday={dayInfo.isToday} agencyName={agencyNameOf(booking)} due={dueToday(booking, todayIso)} timeUp={!!timeUp?.[booking.id]} todayFrom={todayTo > todayFrom ? todayFrom - k : -1} todayHalves={Math.max(0, todayTo - todayFrom)} getBookingStyle={getBookingStyle} onCellClick={handleCellClick} setSelectedExtendBooking={setSelectedExtendBooking} setExtendCheckoutDate={setExtendCheckoutDate} setExtendError={setExtendError} />
           )
           k += span
           continue
@@ -586,7 +607,9 @@ export const TimelineGrid = React.memo(
         {/* Every cell draws its own rules (`border-separate`). In a collapsed table the
             rules belong to the table, and the pinned header and room column — which
             paint over it — lost theirs on an ordinary screen. */}
-        <table className="w-full table-fixed border-separate border-spacing-0">
+        {/* While the records can't be reached, what is shown may be old, so it fades back a little
+            (the band under the top bar says why). */}
+        <table className={'w-full table-fixed border-separate border-spacing-0 transition-[opacity,filter] duration-500 ' + (offline ? 'opacity-80 saturate-50' : '')}>
           {/* The widths live on the columns: the day headers span two of them. */}
           <colgroup>
             <col className={UNIT_COL} />
@@ -634,7 +657,20 @@ export const TimelineGrid = React.memo(
           <tbody>
             {/* The grid's own shape while the rooms are on their way, so nothing jumps
                 when they land. */}
-            {loading && rooms.length === 0 && [0, 1, 2, 3, 4, 5, 6, 7].map(i => (
+            {/* Opened with no connection: the rooms never came, so say so calmly. They fill in by
+                themselves once it is back (`ConnectionBand` reads everything again). */}
+            {offline && rooms.length === 0 && (
+              <tr>
+                <td colSpan={daysList.length * 2 + 1} className="py-16">
+                  <div className="sticky left-0 mx-auto flex max-w-xs flex-col items-center gap-2.5 text-center">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-softbg text-muted"><WifiOff className="h-5 w-5" aria-hidden="true" /></span>
+                    <b className="font-display text-[15px] text-main">Can’t reach the hotel’s records</b>
+                    <span className="text-[13px] text-muted">Check the Wi-Fi. The calendar fills in by itself once it’s back.</span>
+                  </div>
+                </td>
+              </tr>
+            )}
+            {!offline && rooms.length === 0 && [0, 1, 2, 3, 4, 5, 6, 7].map(i => (
               <tr key={'wait-' + i} aria-hidden="true">
                 <td className={UNIT_CELL}>
                   <span className="block h-3 w-28 rounded bg-softbg animate-pulse" />
@@ -647,7 +683,8 @@ export const TimelineGrid = React.memo(
             {/* A room is its NUMBER first — it is what the desk says aloud — then its
                 kind and its price. No tile behind the number: the row is the box. */}
             {rooms.map(room => (
-              <tr key={room.id} className={'group hover:bg-paper-50/50'}>
+              <React.Fragment key={room.id}>
+              <tr className={'group hover:bg-paper-50/50'}>
                 <td className={occupied[room.id] ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
                   <div className="flex items-center gap-2.5">
                     <span className="w-6 shrink-0 text-center font-display text-[15px] font-bold tabular-nums text-main">{room.room_number}</span>
@@ -685,6 +722,8 @@ export const TimelineGrid = React.memo(
                 </td>
                 {buildRowCells(room.id, 'room')}
               </tr>
+              {soldTwiceRows(room)}
+              </React.Fragment>
             ))}
 
             {venues.length > 0 && (

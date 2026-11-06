@@ -5,8 +5,8 @@ import {
 } from 'lucide-react'
 import { MenuCategory, MenuItem, getMenu } from '../../utils/restaurantMenu'
 import { getAllTabLines } from '../../utils/tabs'
+import { peso } from '../../utils/helpers'
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 // One icon per food group. The icon carries the meaning: a hand finds "Drinks"
 // by the cup long before it reads the word, and a till has to be read at a glance
@@ -102,7 +102,7 @@ function MenuColumn({ categories, onPick, busy, counts, best }: {
                   <span className="flex items-baseline gap-2">
                     <span className={isBest ? 'font-display text-[15.5px] font-bold tracking-tight text-main' : 'text-[15px] font-bold text-main'}>{item.name}</span>
                     <span className="flex-1 border-b border-dotted border-paper-400 translate-y-[-4px]" />
-                    <span className="font-display text-[15px] font-bold tabular-nums text-main">{fmtPeso(item.price)}</span>
+                    <span className="font-display text-[15px] font-bold tabular-nums text-main">{peso(item.price)}</span>
                   </span>
                   {isBest && <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-gold-800">Best seller</span>}
                   {item.note && <span className="block text-[12px] italic text-muted mt-0.5">{item.note}</span>}

@@ -3,9 +3,9 @@ import { Plus } from 'lucide-react'
 import { STOCK_GROUPS, fmtQty, type StockItem, type StockMovement } from '../../utils/stock'
 import { ReceiveStockForm } from './ReceiveStockForm'
 import { StockItemForm } from './StockItemForm'
-import { StockMovementsLog } from './StockMovementsLog'
+import { StockMovementsLog } from './StockMovementsLog'
+import { peso } from '../../utils/helpers'
 
-const fmtMoney = (n: number) => '₱' + (Math.round(n * 100) / 100).toLocaleString()
 
 /**
  * **The stock room** (board card k71, part 1) — one shelf for the kitchen and the hotel.
@@ -51,7 +51,7 @@ export function StockRoom({ items, movements, loading, error, onReceive, onSaveI
         <div>
           <h3 className="text-sm font-semibold text-main">Stock room</h3>
           <p className="text-xs text-muted mt-1">
-            {items.length} items · shelf worth {fmtMoney(worth)}
+            {items.length} items · shelf worth {peso(worth)}
             {lowCount > 0 ? ' · ' + lowCount + ' below par' : ''}
           </p>
         </div>
@@ -144,8 +144,8 @@ export function StockRoom({ items, movements, loading, error, onReceive, onSaveI
                     <td className={'px-3 py-2 text-right font-mono ' + (isLow(i) ? 'text-rose-500 font-bold' : 'text-muted')}>
                       {i.par_level > 0 ? fmtQty(i.par_level) : '—'}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-muted">{fmtMoney(i.price)}</td>
-                    <td className="px-3 py-2 text-right font-mono text-main">{fmtMoney(i.quantity * i.price)}</td>
+                    <td className="px-3 py-2 text-right font-mono text-muted">{peso(i.price)}</td>
+                    <td className="px-3 py-2 text-right font-mono text-main">{peso(i.quantity * i.price)}</td>
                     <td className="px-3 py-2 text-right">
                       <button onClick={() => { setReceiving(i); setEditing(null); setAdding(false) }}
                         className="px-2.5 py-1 rounded-md border border-soft text-xs font-medium text-muted hover:bg-softbg hover:text-main cursor-pointer">

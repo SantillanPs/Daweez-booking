@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 import { Tab, TabLine } from '../types/tab'
 import { Booking, Room, Venue } from '../types/booking'
 import { tabTotal } from './tabs'
@@ -11,8 +11,6 @@ import { normalizeVenueId } from './helpers'
 // what the app calls it. A slip stays open until it is paid; the next order after that
 // starts a new slip with its own number. So a stay holds several slips, and the bill
 // shows each one as its number, its total and whether it is paid — never the dishes.
-
-const NO_DB = 'No database is connected, so this was not saved.'
 
 /** One order slip as the bill and the booking panel show it. */
 export interface OrderSlip {
@@ -61,7 +59,7 @@ export function unpaidSlips(slips: OrderSlip[]): OrderSlip[] {
  */
 export async function getSlipsByBooking(bookingIds: string[]): Promise<Record<string, OrderSlip[]>> {
   const out: Record<string, OrderSlip[]> = {}
-  if (bookingIds.length === 0 || !isSupabaseConfigured) return out
+  if (bookingIds.length === 0) return out
 
   const { data, error } = await supabase.from('tabs').select('*, tab_lines(*)')
     .in('booking_id', bookingIds)
@@ -85,7 +83,6 @@ export async function getSlipsForBooking(bookingId: string): Promise<OrderSlip[]
 
 /** What a stay's food comes to across all its slips, read fresh. Thrown on failure. */
 export async function readBookingFoodTotal(bookingId: string): Promise<number> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
   return slipsTotal(await getSlipsForBooking(bookingId))
 }
 
@@ -95,7 +92,6 @@ export async function readBookingFoodTotal(bookingId: string): Promise<number> {
  */
 export async function markSlipsPaid(tabIds: string[], receiptNumber?: string): Promise<void> {
   if (tabIds.length === 0) return
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
   const now = new Date().toISOString()
 
   const closed = await supabase.from('tabs').update({ status: 'closed', closed_at: now }).in('id', tabIds).eq('status', 'open')
@@ -106,7 +102,7 @@ export async function markSlipsPaid(tabIds: string[], receiptNumber?: string): P
 
 /** A payment was taken back: the slips it paid are unpaid again. They stay closed. */
 export async function unpaySlipsOfReceipt(receiptNumber: string): Promise<void> {
-  if (!receiptNumber || !isSupabaseConfigured) return
+  if (!receiptNumber) return
   const { error } = await supabase.from('tabs')
     .update({ paid_at: null, paid_receipt_number: null })
     .eq('paid_receipt_number', receiptNumber)

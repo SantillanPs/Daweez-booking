@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { supabase, isSupabaseConfigured } from '../utils/supabaseClient'
+import { supabase } from '../utils/supabaseClient'
 import { markLinesReady } from '../utils/tabs'
 import { slipNumber } from '../utils/orderSlips'
 import { useRealtimeTabs } from './useRealtimeTabs'
@@ -94,11 +94,9 @@ export function useKitchenQueue(onArrived: () => void) {
 
       let read: QueueRow[] = []
       try {
-        if (isSupabaseConfigured) {
-          const { data, error } = await supabase.from('kitchen_queue').select('*')
-          if (error) throw error
-          read = (data || []) as QueueRow[]
-        }
+        const { data, error } = await supabase.from('kitchen_queue').select('*')
+        if (error) throw error
+        read = (data || []) as QueueRow[]
       } catch (err) {
         // The screen keeps what it had; the next change on any device reads again.
         console.error('Could not read the kitchen’s orders:', err)

@@ -5,9 +5,9 @@ import { PaymentRecord } from '../../types/booking'
 import { settleTab } from '../../utils/tabs'
 import { slipNumber } from '../../utils/orderSlips'
 import { PAYMENT_METHODS, methodNeedsReference, paymentKind } from '../../utils/paymentMethod'
-import { showToast } from '../../utils/toast'
+import { showToast } from '../../utils/toast'
+import { peso } from '../../utils/helpers'
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 interface TabSettlePanelProps {
   tab: Tab
@@ -54,7 +54,7 @@ export function TabSettlePanel({ tab, total, onSettled, quiet = false, ready, di
       if (ready && !(await ready())) return
       const receipt = await settleTab({ tab, amount: total, method, reference, discount })
       setReference('')
-      showToast(fmtPeso(total) + ' received · ' + (slipNumber(tab) || 'order slip') + ' paid.', 'success')
+      showToast(peso(total) + ' received · ' + (slipNumber(tab) || 'order slip') + ' paid.', 'success')
       await onSettled(receipt)
     } catch (err) {
       setError('Could not record the payment — ' + (err instanceof Error ? err.message : String(err)))
@@ -102,7 +102,7 @@ export function TabSettlePanel({ tab, total, onSettled, quiet = false, ready, di
           (quiet ? 'bg-card border border-soft text-main hover:border-gold-400 hover:bg-gold-100' : 'bg-gold-400 hover:bg-gold-600 text-ink-900')}
       >
         <Check className="w-4 h-4" />
-        {busy ? 'Receiving…' : 'Receive ' + fmtPeso(total)}
+        {busy ? 'Receiving…' : 'Receive ' + peso(total)}
       </button>
     </div>
   )

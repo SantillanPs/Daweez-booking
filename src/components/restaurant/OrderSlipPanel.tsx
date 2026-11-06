@@ -4,9 +4,9 @@ import { Tab, TabLine } from '../../types/tab'
 import { OrderSlip, slipNumber } from '../../utils/orderSlips'
 import { Served } from './served'
 import { TabBill } from './TabBill'
-import { TableButton } from './TablesPopup'
+import { TableButton } from './TablesPopup'
+import { peso } from '../../utils/helpers'
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 interface OrderSlipPanelProps {
   person: Served
@@ -100,7 +100,7 @@ export function OrderSlipPanel({
               <li key={s.tab.id} className="flex items-baseline justify-between gap-3 py-1">
                 <span className="font-semibold text-main">{slipNumber(s.tab)}</span>
                 <span className="flex items-baseline gap-3">
-                  <span className="tabular-nums text-main">{fmtPeso(s.total)}</span>
+                  <span className="tabular-nums text-main">{peso(s.total)}</span>
                   <span className={'w-16 text-right font-semibold ' + (s.paid ? 'text-emerald-700' : 'text-danger-600')}>
                     {s.paid ? 'Paid' : 'Not paid'}
                   </span>

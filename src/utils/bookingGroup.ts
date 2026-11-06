@@ -31,11 +31,6 @@ export function groupOf(booking: Booking, list: Booking[]): Booking[] {
     .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || (a.invoice_number || '').localeCompare(b.invoice_number || ''))
 }
 
-/** True when the booking is one of several rooms booked together. */
-export function isGrouped(booking: Booking, list: Booking[]): boolean {
-  return groupOf(booking, list).length > 1
-}
-
 /**
  * **The booking as its bill sees its money** (Sebastian, 2026-10-20: *"if a group of
  * reservations share a single guest billing, then it should share amount due … every single

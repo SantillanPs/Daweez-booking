@@ -3,8 +3,7 @@ import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { BreakfastPlan } from '../../types/booking'
 import { BreakfastPlanLinks } from './BreakfastParts'
-import { addDays } from '../../utils/dailyLedger'
-import { dateToString } from '../../utils/helpers'
+import { dateToString, addDays, pesoWhole } from '../../utils/helpers'
 import { PriceBox } from '../PriceBox'
 
 /**
@@ -93,7 +92,6 @@ export function Floating({ at, sheet, right, width, label, nested, grows, onClos
 
 const LI = 'w-full flex items-center gap-2 px-2 py-[7px] border-b border-dotted border-ink-200 last:border-b-0 text-left text-[11.5px] font-semibold text-ink-900 whitespace-nowrap cursor-pointer hover:text-gold-800 focus-visible:text-gold-800 focus-visible:outline-none active:scale-[0.98] transition-[background-color,transform] bw-rise'
 const AMT = 'ml-auto font-mono text-[10.5px] font-medium text-ink-700'
-const peso = (n: number) => '₱' + Math.round(n).toLocaleString()
 
 /** `taken`: the first night someone else has it on those dates ("10/29"), '' when free. `mine`: it is on this bill already. */
 export interface UnitOption { id: string; label: string; rate: number; count: number; diff: number; venue: boolean; taken: string; mine?: boolean }
@@ -113,9 +111,9 @@ export function UnitList({ options, adding, onPick }: { options: UnitOption[]; a
               : o.taken
               ? <span className="px-1.5 rounded border border-ink-200 text-[9.5px] font-bold text-muted">Taken {o.taken}</span>
               : <span className={'px-1.5 py-px rounded text-[9.5px] font-bold ' + (o.diff > 0 ? 'bg-gold-100 text-gold-800' : o.diff < 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-ink-100 text-muted')}>
-                {o.diff === 0 ? 'Same price' : (o.diff > 0 ? '+' : '−') + peso(Math.abs(o.diff))}
+                {o.diff === 0 ? 'Same price' : (o.diff > 0 ? '+' : '−') + pesoWhole(Math.abs(o.diff))}
               </span>}
-            <span className={AMT + ' shrink-0' + (o.taken ? ' !text-muted' : '')}>{peso(o.rate)} × {o.count}</span>
+            <span className={AMT + ' shrink-0' + (o.taken ? ' !text-muted' : '')}>{pesoWhole(o.rate)} × {o.count}</span>
           </button>
         </React.Fragment>
       ))}
@@ -130,7 +128,7 @@ export function KindList({ kinds, chosen, onPick }: { kinds: { key: string; labe
     <div role="radiogroup">
       {kinds.map((k, i) => (
         <button key={k.key} type="button" role="radio" aria-checked={k.key === chosen} onClick={() => onPick(k.key)} style={{ '--i': i } as React.CSSProperties} className={LI + ' group'}>
-          {k.label}<span className={AMT}>{peso(k.price)} a day</span>
+          {k.label}<span className={AMT}>{pesoWhole(k.price)} a day</span>
           <span aria-hidden="true" className="w-3.5 text-center opacity-0 scale-50 group-aria-checked:opacity-100 group-aria-checked:scale-100 transition-[opacity,transform] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)]">✓</span>
         </button>
       ))}
@@ -160,7 +158,7 @@ export function LengthList({ lengths, chosen, half, fits, onPick, onHalf }: {
             <button key={l.h + l.label} type="button" role="radio" aria-checked={l.h === chosen} disabled={off} onClick={() => onPick(l.h)}
               style={{ '--i': i } as React.CSSProperties} className={LI + ' group disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent'}>
               <span aria-hidden="true" className="w-3 text-center opacity-0 scale-50 group-aria-checked:opacity-100 group-aria-checked:scale-100 transition-[opacity,transform] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)]">✓</span>
-              {l.label}<span className={AMT}>{off ? 'Taken' : peso(l.price)}</span>
+              {l.label}<span className={AMT}>{off ? 'Taken' : pesoWhole(l.price)}</span>
             </button>
           )
         })}
@@ -206,7 +204,7 @@ export function BreakfastList({ rows, pricing, plans, onPlan, onToggle, onPrice,
           <button type="button" role="switch" aria-checked={r.on} style={{ '--i': i } as React.CSSProperties}
             onClick={() => (r.price === null && !r.on ? onPrice(r.id) : onToggle(r.id))} className={LI}>
             {r.label}
-            <span className={AMT + ' mr-1'}>{r.price === null ? 'Set price' : peso(r.price) + ' × ' + r.count}</span>
+            <span className={AMT + ' mr-1'}>{r.price === null ? 'Set price' : pesoWhole(r.price) + ' × ' + r.count}</span>
             <span aria-hidden="true" className="br-sw" />
           </button>
           {r.on && (

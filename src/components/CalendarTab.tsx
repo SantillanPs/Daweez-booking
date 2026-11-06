@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { Booking, PaymentRecord } from '../types/booking'
-import * as syncEngine from '../utils/syncEngine'
-import { dateToString, normalizeVenueId } from '../utils/helpers'
+import { isRoomAvailable, isVenueRangeAvailable } from '../utils/availability'
+import { dateToString, normalizeVenueId, parseDay, shortDay } from '../utils/helpers'
 import { breakfastOn, isConfirmed, wantsBreakfastToday, withBreakfastTime, saveBreakfastChoices, breakfastAskOpen, BREAKFAST_ASK_UNTIL } from '../utils/breakfastChoice'
 import { useQueryClient } from '@tanstack/react-query'
 import { extendStay } from '../utils/bookingBalance'
-import { clearStayHours } from '../utils/db'
+import { clearStayHours, getBookings } from '../utils/db'
 import { takeFocusedBooking } from '../utils/bookingFocus'
 import { ExtendStayModal, PanelDesk } from './calendar/ExtendStayModal'
 import { TimelineGrid } from './calendar/TimelineGrid'
@@ -27,6 +27,10 @@ import { shortStayOut, shortStayTimeUp } from '../utils/shortStay'
 import { recomputeBalance } from '../utils/bookingBalance'
 import { readBookingFoodTotal } from '../utils/orderSlips'
 import { ShortStayAlerts } from './calendar/ShortStayAlerts'
+import { ChannelBell } from './calendar/ChannelBell'
+import { SoldTwicePanel } from './calendar/SoldTwicePanel'
+import { useChannelAlerts } from '../hooks/useChannelAlerts'
+import { ChannelAlert, closeChannelAlert, needsDetails } from '../utils/channelStay'
 import { clashIn, dayHalf } from '../utils/halfDays'
 
 // The bills are only fetched when needed, so the calendar itself loads faster. Both are
@@ -44,7 +48,7 @@ type UnitSel = { checkIn: string; checkOut: string; type: 'room' | 'venue' }
 
 
 export function CalendarTab() {
-  const { rooms, venues, bookings, allBookings, partnerDeals, isLoading, createManualBooking, cancelBooking, deleteBooking, updateBooking } = useDashboardData()
+  const { rooms, venues, bookings, allBookings, partnerDeals, createManualBooking, cancelBooking, deleteBooking, updateBooking } = useDashboardData()
 
   // ── Month / timeline state ──
   // The anchor IS the day the 31-day window starts on (card k154 follow-up): Today
@@ -88,9 +92,8 @@ export function CalendarTab() {
     return () => window.clearTimeout(id)
   }, [])
 
-  // The desk is mid-task (a panel or form open): "What's new" is told, so it never opens by
-  // itself over a panel. (A short stay's panel used to open by itself when its hours ran out;
-  // the app no longer does anything on its own — Sebastian, 2026-10-20.)
+  // The desk is mid-task (a panel or form open): the update check is told, so it never
+  // reloads under a panel (`appUpdate.ts`).
   const deskBusy = showManualForm || showLogOld || !!selectedExtendBooking || !!blockTarget || !!billOf
   React.useEffect(() => {
     setDeskBusy(deskBusy)
@@ -116,8 +119,7 @@ export function CalendarTab() {
       const id = takeFocusedBooking()
       const wanted = id ? bookingsRef.current.find(b => b.id === id) : undefined
       if (!wanted) return
-      const [y, m, d] = wanted.check_in.split('-').map(Number)
-      const start = new Date(y, m - 1, d)
+      const start = parseDay(wanted.check_in)
       const first = new Date(); first.setHours(0, 0, 0, 0)
       const last = new Date(first); last.setDate(last.getDate() + 30)
       if (start < first || start > last) setMonthAnchor(start)
@@ -253,8 +255,8 @@ export function CalendarTab() {
     }
 
     const isFree = (from: Date, to: Date) => type === 'room'
-      ? syncEngine.isRoomAvailable(id, dateToString(from), dateToString(to), bookingsRef.current)
-      : syncEngine.isVenueRangeAvailable(id, dateToString(from), dateToString(to), bookingsRef.current)
+      ? isRoomAvailable(id, dateToString(from), dateToString(to), bookingsRef.current)
+      : isVenueRangeAvailable(id, dateToString(from), dateToString(to), bookingsRef.current)
     const unitLabel = () => (type === 'room' ? 'Room' : 'Venue') + ' ' + (type === 'room' ? roomDisplayName(roomsRef.current.find(r => r.id === id)) : (venuesRef.current.find(v => v.id === id)?.name ?? id))
 
     // A night can only BEGIN on a day whose afternoon and next morning are free, but since
@@ -297,10 +299,10 @@ export function CalendarTab() {
     try {
       const isRoom = !!selectedExtendBooking.room_id
       const availOk = isRoom
-        ? syncEngine.isRoomAvailable(selectedExtendBooking.room_id!, selectedExtendBooking.check_in, extendCheckoutDate, bookings, selectedExtendBooking.id)
-        : syncEngine.isVenueRangeAvailable(selectedExtendBooking.venue_id!, selectedExtendBooking.check_in, extendCheckoutDate, bookings, selectedExtendBooking.id)
+        ? isRoomAvailable(selectedExtendBooking.room_id!, selectedExtendBooking.check_in, extendCheckoutDate, bookings, selectedExtendBooking.id)
+        : isVenueRangeAvailable(selectedExtendBooking.venue_id!, selectedExtendBooking.check_in, extendCheckoutDate, bookings, selectedExtendBooking.id)
       if (!availOk) { setExtendError('Overlap collision — already reserved.'); return }
-      const current = await syncEngine.getBookings()
+      const current = await getBookings()
       const target = current.find(b => b.id === selectedExtendBooking.id) || selectedExtendBooking
       await updateBooking(extendStay(target, extendCheckoutDate, { rooms, venues, tabTotal }))
       if (target.stay_hours) await clearStayHours(target.id)
@@ -401,7 +403,7 @@ export function CalendarTab() {
         let checkOut = blockTarget.checkOut
         if (openEnded) {
           const next = bookings
-            .filter(b => (u.type === 'room' ? b.room_id === u.id : syncEngine.normalizeVenueId(b.venue_id) === syncEngine.normalizeVenueId(u.id)))
+            .filter(b => (u.type === 'room' ? b.room_id === u.id : normalizeVenueId(b.venue_id) === normalizeVenueId(u.id)))
             .filter(b => b.check_in > blockTarget.checkIn)
             .sort((a, b) => a.check_in.localeCompare(b.check_in))[0]
           checkOut = next ? next.check_in : OPEN_END
@@ -472,8 +474,7 @@ export function CalendarTab() {
   // A booking found by the search: the calendar moves to its dates when they are off screen,
   // its pill pulses so the desk sees where it is, then its panel opens.
   const openFound = (b: Booking) => {
-    const [y, m, d] = b.check_in.split('-').map(Number)
-    const start = new Date(y, m - 1, d)
+    const start = parseDay(b.check_in)
     const last = new Date(monthAnchor); last.setDate(last.getDate() + 30)
     if (start < monthAnchor || start > last) setMonthAnchor(start)
     setTimeout(() => {
@@ -489,15 +490,38 @@ export function CalendarTab() {
       setSelectedExtendBooking(b)
     }, 450)
   }
+  // What the booking sites' calendar links need from the desk: the bell, the second lane and the panels.
+  const channel = useChannelAlerts()
+  const [soldTwice, setSoldTwice] = useState<ChannelAlert | null>(null)
+  const namesNeeded = useMemo(() => {
+    const today = dateToString(new Date())
+    // A stay the site has dropped is already on the bell once, as cancelled.
+    const gone = new Set(channel.alerts.map(a => a.booking_id))
+    return bookings.filter(b => needsDetails(b) && b.check_out >= today && !gone.has(b.id))
+  }, [bookings, channel.alerts])
+  const openChannelAlert = (a: ChannelAlert) => {
+    if (a.kind === 'clash') return setSoldTwice(a)
+    const b = bookings.find(x => x.id === a.booking_id)
+    if (b) openFound(b)
+  }
+  const keepGoneStay = (a: ChannelAlert) => {
+    channel.answered(a.id)
+    closeChannelAlert(a.id).catch(() => { channel.refresh(); showToast('Could not save that. Please try again.', 'error') })
+  }
+  // A guest moved off a room sold twice: their panel opens once the new row has reached the calendar.
+  const [placedId, setPlacedId] = useState<string | null>(null)
+  useEffect(() => {
+    const b = placedId ? bookings.find(x => x.id === placedId) : null
+    if (b) queueMicrotask(() => { setPlacedId(null); openFound(b) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placedId, bookings])
+
   const clearSelection = useCallback(() => { setTimelineSelection(null); setGroupSelection(null) }, [])
   /** The bar's Morning / Afternoon: which half of the picked day a short stay takes. */
   const pickHalf = useCallback((half: 0 | 1) => setTimelineSelection(s => (s ? { ...s, half } : s)), [])
   const askBreakfast = useCallback((b: Booking) => setBreakfastForId(b.id), [])
 
-  const fmtBlockDate = (iso: string) => {
-    const [y, m, d] = iso.split('-').map(Number)
-    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
+  const fmtBlockDate = shortDay
 
   const closeManualForm = () => {
     setShowManualForm(false); setFormSelections({}); setFormStayHours(null)
@@ -528,6 +552,7 @@ export function CalendarTab() {
           <CalendarSearch allBookings={allBookings} rooms={rooms} venues={venues}
             onBooking={openFound} onBill={b => { openFound(b); setBillOf(b) }} onReceipt={(booking, record, covered) => setFoundReceipt({ booking, record, covered })} />
           <TodayStrip />
+          <ChannelBell stays={namesNeeded} alerts={channel.alerts} rooms={rooms} onStay={openFound} onAlert={openChannelAlert} />
         </CalendarToolbar>
         <TimelineGrid
           rooms={rooms}
@@ -547,14 +572,20 @@ export function CalendarTab() {
           onNewShortStay={confirmShortStay}
           onClearSelection={clearSelection}
           onPickHalf={pickHalf}
-          loading={isLoading}
           breakfastToAsk={breakfastToAsk}
           onBreakfast={askBreakfast}
           breakfastReady={breakfastReady}
           onBreakfastServed={serveBreakfast}
           timeUp={timeUp}
+          channelAlerts={channel.alerts}
+          onSoldTwice={setSoldTwice}
         />
       </div>
+
+      {soldTwice && (
+        <SoldTwicePanel alert={soldTwice} rooms={rooms} bookings={bookings} onClose={() => setSoldTwice(null)}
+          onAnswered={channel.answered} onFailed={channel.refresh} onPlaced={setPlacedId} />
+      )}
 
       <ShortStayAlerts due={timeUpDue} rooms={rooms} venues={venues} onOut={timeUpOut} onMore={timeUpMore} />
 
@@ -578,6 +609,8 @@ export function CalendarTab() {
           onCancelBooking={cancelBooking}
           onDeleteBooking={deleteBooking}
           onUpdateBooking={updateBooking}
+          goneAlert={channel.alerts.find(a => a.kind === 'gone' && a.booking_id === liveExtendBooking.id)}
+          onKeepStay={keepGoneStay}
           onOpenBill={() => setBillOf(liveExtendBooking)}
           deskRef={deskRef}
           onOpenBooking={b => setSelectedExtendBooking(b)}

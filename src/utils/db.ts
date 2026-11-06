@@ -1,8 +1,7 @@
 import { Room, Venue, Booking, SyncFeed, BookingSource, BookingStatus } from '../types/booking'
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 import { randomUUID, isValidUUID } from './helpers'
 import { billNumber } from './billNumber'
-import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 
 // The browser stores that used to sit here (`l_etoile_bookings_db`,
 // `l_etoile_feeds_db`, plus `initDB`'s first-run seed) are gone: the database is
@@ -11,33 +10,25 @@ import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
 // hotel's room prices were typed, shown on every screen and never written
 // (found 2026-09-28).
 
+// A failed read throws, so the page keeps the rooms it already had. It used to show a
+// built-in sample list instead, with made-up prices (taken out 2026-11-06).
 export async function getRooms(): Promise<Room[]> {
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.from('rooms').select('*').order('room_number')
-      if (error) throw error
-      if (data && data.length > 0) {
-        const rooms = data.map(r => ({
-          id: r.id,
-          room_number: r.room_number,
-          name: r.name,
-          base_price: Number(r.base_price),
-          promo_price: r.promo_price != null ? Number(r.promo_price) : null,
-          breakfast_price: r.breakfast_price != null ? Number(r.breakfast_price) : null,
-          hour3_price: r.hour3_price != null ? Number(r.hour3_price) : null,
-          hour6_price: r.hour6_price != null ? Number(r.hour6_price) : null,
-          hour12_price: r.hour12_price != null ? Number(r.hour12_price) : null,
-          capacity: r.capacity,
-          description: r.description || undefined,
-          image_url: r.image_url || undefined
-        })) as Room[]
-        return rooms
-      }
-    } catch (err) {
-      console.error('Supabase getRooms Error, falling back to defaults:', err)
-    }
-  }
-  return DEFAULT_ROOMS
+  const { data, error } = await supabase.from('rooms').select('*').order('room_number')
+  if (error) throw error
+  return (data || []).map(r => ({
+    id: r.id,
+    room_number: r.room_number,
+    name: r.name,
+    base_price: Number(r.base_price),
+    promo_price: r.promo_price != null ? Number(r.promo_price) : null,
+    breakfast_price: r.breakfast_price != null ? Number(r.breakfast_price) : null,
+    hour3_price: r.hour3_price != null ? Number(r.hour3_price) : null,
+    hour6_price: r.hour6_price != null ? Number(r.hour6_price) : null,
+    hour12_price: r.hour12_price != null ? Number(r.hour12_price) : null,
+    capacity: r.capacity,
+    description: r.description || undefined,
+    image_url: r.image_url || undefined
+  })) as Room[]
 }
 
 /**
@@ -56,10 +47,6 @@ export async function getRooms(): Promise<Room[]> {
 export async function updateRoomRate(roomId: string, basePrice: number, promoPrice?: number | null): Promise<Room | null> {
   const base = Math.max(0, Math.round(basePrice))
   const promo = promoPrice != null && promoPrice > 0 ? Math.round(promoPrice) : null
-
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so this room price was not saved.')
-  }
 
   // **ONE PRICE — both columns get the same figure** (the owner's ruling, 2026-09-29: *"the promo price
   // should be the new original price"*). The desk types one number, so both columns are written with it.
@@ -88,10 +75,6 @@ export async function updateRoomRate(roomId: string, basePrice: number, promoPri
 export async function updateRoomBreakfastPrice(roomId: string, price: number): Promise<void> {
   const amount = Math.max(0, Math.round(price))
 
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so this breakfast price was not saved.')
-  }
-
   const { error } = await supabase.rpc('set_room_breakfast_price', { p_room_id: roomId, p_price: amount })
   if (error) throw error
 }
@@ -116,137 +99,126 @@ export async function updateRoomHourPrices(
   const h6 = Math.max(0, Math.round(hour6 || 0))
   const h12 = Math.max(0, Math.round(hour12 || 0))
 
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so these short-stay prices were not saved.')
-  }
-
   const { error } = await supabase.rpc('set_room_hour_prices', {
     p_room_id: roomId, p_hour3: h3, p_hour6: h6, p_hour12: h12,
   })
   if (error) throw error
 }
 
-export async function getVenues(): Promise<Venue[]> {  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.from('venues').select('*').order('name')
-      if (error) throw error
-      if (data && data.length > 0) {
-        return data.map(v => ({
-          id: v.id,
-          name: v.name,
-          base_price: Number(v.base_price),
-          promo_price: v.promo_price != null ? Number(v.promo_price) : null,
-          capacity: v.capacity,
-          description: v.description || undefined,
-          image_url: v.image_url || undefined,
-          details: v.details || undefined
-        })) as Venue[]
-      }
-    } catch (err) {
-      console.error('Supabase getVenues Error, falling back to defaults:', err)
-    }
-  }
-  return DEFAULT_VENUES
+export async function getVenues(): Promise<Venue[]> {
+  const { data, error } = await supabase.from('venues').select('*').order('name')
+  if (error) throw error
+  return (data || []).map(v => ({
+    id: v.id,
+    name: v.name,
+    base_price: Number(v.base_price),
+    promo_price: v.promo_price != null ? Number(v.promo_price) : null,
+    capacity: v.capacity,
+    description: v.description || undefined,
+    image_url: v.image_url || undefined,
+    details: v.details || undefined
+  })) as Venue[]
 }
 
 export async function getBookings(): Promise<Booking[]> {
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*')
-      if (error) throw error
+  try {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+    if (error) throw error
 
-      if (data) {
-        const now = new Date()
-        const activeRecords = data.filter(b => {
-          if (b.status === 'pending' && b.expires_at) {
-            const expires = new Date(b.expires_at)
-            return expires > now
-          }
-          return true
-        })
+    if (data) {
+      const now = new Date()
+      const activeRecords = data.filter(b => {
+        if (b.status === 'pending' && b.expires_at) {
+          const expires = new Date(b.expires_at)
+          return expires > now
+        }
+        return true
+      })
 
-        // Remove abandoned 30-min locks via RPC (anon no longer has DELETE). Not waited on:
-        // the expired ones are already filtered out above, and the read had to wait a whole
-        // extra trip to the database for it.
-        supabase.rpc('cleanup_expired_pending').then(undefined, () => { /* non-fatal */ })
+      // Remove abandoned 30-min locks via RPC (anon no longer has DELETE). Not waited on:
+      // the expired ones are already filtered out above, and the read had to wait a whole
+      // extra trip to the database for it.
+      supabase.rpc('cleanup_expired_pending').then(undefined, () => { /* non-fatal */ })
 
-        return activeRecords.map(b => ({
-          id: b.id,
-          room_id: b.room_id || undefined,
-          venue_id: b.venue_id || undefined,
-          guest_name: b.guest_name,
-          guest_email: b.guest_email,
-          guest_phone: b.guest_phone,
-          guest_gender: b.guest_gender || undefined,
-          guest_nationality: b.guest_nationality || undefined,
-          guest_address: b.guest_address || undefined,
-          birthdate: b.birthdate || undefined,
-          check_in: b.check_in,
-          check_out: b.check_out,
-          source: b.source as BookingSource,
-          status: b.status as BookingStatus,
-          payment_status: (b as { payment_status?: Booking['payment_status'] }).payment_status || undefined,
-          payment_method: b.payment_method || undefined,
-          payment_reference: b.payment_reference || undefined,
-          payment_plan: (b as { payment_plan?: Booking['payment_plan'] }).payment_plan || undefined,
-          downpayment_paid: Number(b.downpayment_paid || 0),
-          balance_due: Number(b.balance_due || 0),
-          security_deposit: Number(b.security_deposit || 0),            promo_applied: (b as { promo_applied?: boolean }).promo_applied ?? undefined,          breakfast_orders: b.breakfast_orders || undefined,
-          equipment_rentals: b.equipment_rentals || undefined,
-          event_addons: b.event_addons || undefined,
-          companions: b.companions || undefined,
-          venue_excess_hours: b.venue_excess_hours ? Number(b.venue_excess_hours) : undefined,
-          created_at: b.created_at,
-          expires_at: b.expires_at || null,
-          partner_deal_id: b.partner_deal_id || undefined,
-          company_name: b.company_name || undefined,
-          institution: b.institution || undefined,
-          vehicle_plate: b.vehicle_plate || undefined,
-          invoice_number: b.invoice_number || undefined,
-          invoice_type: b.invoice_type || undefined,
-          breakfast_included: !!b.breakfast_included,
-          contract_rate_override: b.contract_rate_override ? Number(b.contract_rate_override) : undefined,
-          applied_discount: (b as { applied_discount?: Booking['applied_discount'] }).applied_discount || undefined,
-          early_check_in_hours: b.early_check_in_hours != null ? Number(b.early_check_in_hours) : undefined,
-          late_check_out_hours: b.late_check_out_hours != null ? Number(b.late_check_out_hours) : undefined,
-          actual_check_in: b.actual_check_in || undefined,
-          actual_check_out: b.actual_check_out || undefined,
-          cancelled_at: b.cancelled_at || undefined,
-          cancel_note: b.cancel_note || undefined,
-          moved_from: (b as { moved_from?: Booking['moved_from'] }).moved_from || undefined,
-          group_id: b.group_id || undefined,
-          notes: b.notes || undefined,
-          prepared_by: b.prepared_by || undefined,
-          reference_number: b.reference_number || undefined,
-          registered_on: b.registered_on || undefined,
-          payment_records: (b as { payment_records?: Booking['payment_records'] }).payment_records || undefined,
-          venue_day_blocks: b.venue_day_blocks != null ? Number(b.venue_day_blocks) : undefined,
-          breakfast_days: (b as { breakfast_days?: string[] }).breakfast_days || undefined,
-          breakfast_records: (b as { breakfast_records?: Booking['breakfast_records'] }).breakfast_records || undefined,
-          breakfast_choices: (b as { breakfast_choices?: Booking['breakfast_choices'] }).breakfast_choices || undefined,
-          // SHORT STAY: this mapping used to stop at `breakfast_records`, so every short
-          // stay arrived in the app WITHOUT its hours — the quick view read it as an
-          // ordinary overnight booking (`Sep 24 → Sep 25 · 1 night`), priced it as a whole
-          // night, and the ₱800 already taken on a ₱650 twelve-hour stay made it look
-          // **partly paid**. The database still held `stay_hours` (that writer refuses a
-          // blank), which is why the row and the screen disagreed. The realtime mapper
-          // always carried this field; this read path must carry it too.
-          stay_hours: b.stay_hours != null ? Number(b.stay_hours) : undefined,
-          stay_half: b.stay_half != null ? (Number(b.stay_half) as 0 | 1) : undefined,
-          // Saved by its own small writer and, until 2026-10-04, never read back — so a
-          // Custom deposit figure was forgotten the moment the page was reloaded.
-          agreed_deposit: b.agreed_deposit != null ? Number(b.agreed_deposit) : undefined,
-        }))
-      }
-    } catch (err) {
-      console.error('Supabase getBookings Error:', err)
+      return activeRecords.map(b => ({
+        id: b.id,
+        room_id: b.room_id || undefined,
+        venue_id: b.venue_id || undefined,
+        guest_name: b.guest_name,
+        guest_email: b.guest_email,
+        guest_phone: b.guest_phone,
+        guest_gender: b.guest_gender || undefined,
+        guest_nationality: b.guest_nationality || undefined,
+        guest_address: b.guest_address || undefined,
+        birthdate: b.birthdate || undefined,
+        check_in: b.check_in,
+        check_out: b.check_out,
+        source: b.source as BookingSource,
+        channel_ref: b.channel_ref || undefined,
+        status: b.status as BookingStatus,
+        payment_status: (b as { payment_status?: Booking['payment_status'] }).payment_status || undefined,
+        payment_method: b.payment_method || undefined,
+        payment_reference: b.payment_reference || undefined,
+        payment_plan: (b as { payment_plan?: Booking['payment_plan'] }).payment_plan || undefined,
+        downpayment_paid: Number(b.downpayment_paid || 0),
+        balance_due: Number(b.balance_due || 0),
+        security_deposit: Number(b.security_deposit || 0),            promo_applied: (b as { promo_applied?: boolean }).promo_applied ?? undefined,          breakfast_orders: b.breakfast_orders || undefined,
+        equipment_rentals: b.equipment_rentals || undefined,
+        event_addons: b.event_addons || undefined,
+        companions: b.companions || undefined,
+        venue_excess_hours: b.venue_excess_hours ? Number(b.venue_excess_hours) : undefined,
+        created_at: b.created_at,
+        expires_at: b.expires_at || null,
+        partner_deal_id: b.partner_deal_id || undefined,
+        company_name: b.company_name || undefined,
+        institution: b.institution || undefined,
+        vehicle_plate: b.vehicle_plate || undefined,
+        invoice_number: b.invoice_number || undefined,
+        invoice_type: b.invoice_type || undefined,
+        breakfast_included: !!b.breakfast_included,
+        contract_rate_override: b.contract_rate_override ? Number(b.contract_rate_override) : undefined,
+        applied_discount: (b as { applied_discount?: Booking['applied_discount'] }).applied_discount || undefined,
+        early_check_in_hours: b.early_check_in_hours != null ? Number(b.early_check_in_hours) : undefined,
+        late_check_out_hours: b.late_check_out_hours != null ? Number(b.late_check_out_hours) : undefined,
+        actual_check_in: b.actual_check_in || undefined,
+        actual_check_out: b.actual_check_out || undefined,
+        cancelled_at: b.cancelled_at || undefined,
+        cancel_note: b.cancel_note || undefined,
+        moved_from: (b as { moved_from?: Booking['moved_from'] }).moved_from || undefined,
+        group_id: b.group_id || undefined,
+        notes: b.notes || undefined,
+        prepared_by: b.prepared_by || undefined,
+        reference_number: b.reference_number || undefined,
+        registered_on: b.registered_on || undefined,
+        payment_records: (b as { payment_records?: Booking['payment_records'] }).payment_records || undefined,
+        venue_day_blocks: b.venue_day_blocks != null ? Number(b.venue_day_blocks) : undefined,
+        breakfast_days: (b as { breakfast_days?: string[] }).breakfast_days || undefined,
+        breakfast_records: (b as { breakfast_records?: Booking['breakfast_records'] }).breakfast_records || undefined,
+        breakfast_choices: (b as { breakfast_choices?: Booking['breakfast_choices'] }).breakfast_choices || undefined,
+        // SHORT STAY: this mapping used to stop at `breakfast_records`, so every short
+        // stay arrived in the app WITHOUT its hours — the quick view read it as an
+        // ordinary overnight booking (`Sep 24 → Sep 25 · 1 night`), priced it as a whole
+        // night, and the ₱800 already taken on a ₱650 twelve-hour stay made it look
+        // **partly paid**. The database still held `stay_hours` (that writer refuses a
+        // blank), which is why the row and the screen disagreed. The realtime mapper
+        // always carried this field; this read path must carry it too.
+        stay_hours: b.stay_hours != null ? Number(b.stay_hours) : undefined,
+        stay_half: b.stay_half != null ? (Number(b.stay_half) as 0 | 1) : undefined,
+        // Saved by its own small writer and, until 2026-10-04, never read back — so a
+        // Custom deposit figure was forgotten the moment the page was reloaded.
+        agreed_deposit: b.agreed_deposit != null ? Number(b.agreed_deposit) : undefined,
+      }))
     }
+  } catch (err) {
+    // A failed read throws, so the calendar keeps the bookings it already had. It used to
+    // return an empty list, and a dropped connection cleared every booking off the calendar,
+    // every room looking free (found 2026-11-06).
+    console.error('Supabase getBookings Error:', err)
+    throw err
   }
 
-  // No browser copy any more. If the database could not be read, the screen
-  // shows no bookings rather than a stale store that was never the truth.
   return []
 }
 
@@ -395,28 +367,8 @@ async function nextInvoiceNumber(): Promise<string> {
   return billNumber(await getBookings())
 }
 
-export async function saveBookings(bookings: Booking[]): Promise<void> {
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so these bookings were not saved.')
-  }
-
-  // Per-row insert/update through the RPCs (whole-array upsert is no longer
-  // permitted for anon and would cause lost updates between tabs).
-  const existing = await getBookings()
-  for (const b of bookings) {
-    if (existing.some(x => x.id === b.id)) {
-      await updateBooking(b)
-    } else {
-      await insertBooking(b)
-    }
-  }
-}
 
 export async function insertBooking(booking: Booking): Promise<Booking> {
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so this booking was not saved.')
-  }
-
   // The DB id column is UUID-typed; legacy ids ('manual-abc') would silently
   // fail on Supabase, so normalize to a real UUID before writing.
   const dbId = isValidUUID(booking.id) ? booking.id! : randomUUID()
@@ -464,10 +416,6 @@ export async function insertBooking(booking: Booking): Promise<Booking> {
 }
 
 export async function updateBooking(booking: Booking): Promise<Booking> {
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so this booking was not saved.')
-  }
-
   // bookings.id is a TEXT column that may hold non-UUID ids (manual-…, imported-…).
   // The update_booking RPC takes text ids, so call it for every id in online mode.
   const { data, error } = await supabase.rpc('update_booking', { p_booking: toBookingRecord(booking) })
@@ -479,10 +427,6 @@ export async function updateBooking(booking: Booking): Promise<Booking> {
 }
 
 export async function deleteBooking(bookingId: string): Promise<void> {
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so this booking was not deleted.')
-  }
-
   // bookings.id is TEXT and may be a non-UUID id (manual-…, imported-…); delete_booking takes text.
   const { error } = await supabase.rpc('delete_booking', { p_booking_id: bookingId })
   if (error) throw error
@@ -494,51 +438,31 @@ export async function deleteBooking(bookingId: string): Promise<void> {
  * should never have existed — a date block, or a booking whose save was rolled back.
  */
 export async function cancelBooking(bookingId: string, note?: string): Promise<void> {
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so this booking was not cancelled.')
-  }
   const { error } = await supabase.rpc('cancel_booking', { p_booking_id: bookingId, p_note: note?.trim() || null })
   if (error) throw error
 }
 
-export async function confirmBooking(bookingId: string): Promise<Booking> {
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so this booking was not confirmed.')
-  }
-
-  // bookings.id is TEXT and may be a non-UUID id (manual-…, imported-…); confirm_booking takes text.
-  const { data, error } = await supabase.rpc('confirm_booking', { p_booking_id: bookingId })
-  if (error) throw error
-  return data as unknown as Booking
-}
-
 export async function getFeeds(): Promise<SyncFeed[]> {
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.from('ical_feeds').select('*')
-      if (error) throw error
-      if (data) {
-        return data.map(f => ({
-          id: f.id,
-          room_id: f.room_id,
-          channel: f.channel,
-          url: f.url,
-          last_synced: f.last_synced
-        }))
-      }
-    } catch (err) {
-      console.error('Supabase getFeeds Error:', err)
+  try {
+    const { data, error } = await supabase.from('ical_feeds').select('*')
+    if (error) throw error
+    if (data) {
+      return data.map(f => ({
+        id: f.id,
+        room_id: f.room_id,
+        channel: f.channel,
+        url: f.url,
+        last_synced: f.last_synced
+      }))
     }
+  } catch (err) {
+    console.error('Supabase getFeeds Error:', err)
   }
 
   return []
 }
 
 export async function saveFeeds(feeds: SyncFeed[]): Promise<void> {
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so these channel links were not saved.')
-  }
-
   // **A feed with no address is not stored** (2026-09-30). The Channels screen draws two empty boxes for every
   // room, and saving them all wrote a row per room per channel — 20 rows for a hotel with 2 real links, 11 of
   // them blank, which made the screen look connected to Booking.com when it was not. Clearing a box now

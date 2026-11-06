@@ -6,7 +6,7 @@ import { SlipStory, getSlipHistory } from '../utils/slipHistory'
 import { slipNumber } from '../utils/orderSlips'
 import { useRealtimeTabs } from '../hooks/useRealtimeTabs'
 import { guestPlace } from './restaurant/served'
-import { dateToString } from '../utils/helpers'
+import { dateToString, peso } from '../utils/helpers'
 import { AnimatedNumber } from './AnimatedNumber'
 
 // RESTAURANT → HISTORY (Sebastian, 2026-11-05, task #2: "track orders, and serves, the sent to front desk,
@@ -32,7 +32,6 @@ import { AnimatedNumber } from './AnimatedNumber'
 
 const PAGE_DAYS = 14
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
 const ICON: Record<TabEvent['kind'], typeof Check> = {
@@ -194,7 +193,7 @@ export function RestaurantHistory() {
                     </span>
                   </span>
                   {dest && <span className="min-w-0 col-start-2 col-span-2 row-start-2 sm:col-start-4 sm:col-span-1 sm:row-start-1 justify-self-start">{dest}</span>}
-                  <span className="col-start-3 row-start-1 sm:col-start-5 text-right font-bold text-[14.5px] tabular-nums">{fmtPeso(s.total)}</span>
+                  <span className="col-start-3 row-start-1 sm:col-start-5 text-right font-bold text-[14.5px] tabular-nums">{peso(s.total)}</span>
                 </button>
                 {/* It grows open from its own row rather than appearing (a grid row from 0fr to 1fr). */}
                 <div className={'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ' + (isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
@@ -217,7 +216,7 @@ export function RestaurantHistory() {
                               <b className="font-bold text-main">{stepWord(e, s)}</b>
                               {e.items.length > 0 && <span className={'text-muted ' + (e.kind === 'removed' ? 'line-through' : '')}> {dishes(e.items)}</span>}
                             </span>
-                            <span className="col-start-3 row-start-1 sm:col-start-4 text-right tabular-nums text-main">{e.kind !== 'served' && e.kind !== 'back' && e.amount ? fmtPeso(Math.abs(e.amount)) : ''}</span>
+                            <span className="col-start-3 row-start-1 sm:col-start-4 text-right tabular-nums text-main">{e.kind !== 'served' && e.kind !== 'back' && e.amount ? peso(Math.abs(e.amount)) : ''}</span>
                           </li>
                         )
                       })}

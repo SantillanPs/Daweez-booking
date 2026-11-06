@@ -1,5 +1,5 @@
-import { priceBooking } from './pricing'
 import { Booking, Room, Venue } from '../types/booking'
+import { priceBooking } from './pricing'
 import { normalizeVenueId, dateToString } from './helpers'
 import { chargeableEarlyHours } from './checkInOut'
 import { roomDisplayName } from '../components/calendar/bookingStyles'

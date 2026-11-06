@@ -10,6 +10,7 @@ import { StatementChargesTable } from './StatementChargesTable'
 import { StatementGuestStay } from './StatementGuestStay'
 import { StatementShell, BrandHeader, SectionName } from './StatementShell'
 import { CancelledStamp } from './CancelledStamp'
+import { peso } from '../../utils/helpers'
 
 interface InvoiceDocumentProps {
   primaryBooking: Booking
@@ -21,7 +22,6 @@ interface InvoiceDocumentProps {
   embedded?: boolean
 }
 
-const money = (n: number) => '₱' + n.toLocaleString()
 const shortDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
 
 // The printable "Guest Billing Statement" for an ordinary booking — the paper form
@@ -47,7 +47,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
   // like it is asking for the whole stay when only a deposit was agreed. A CUSTOM plan
   // names the figure itself — `Deposit · ₱1,000 now` (it was `Custom` until 2026-10-21) — because the word alone says nothing.
   const planLabel = statement.paymentPlan === 'custom'
-    ? 'Deposit · ' + money(statement.downpaymentPaid > 0 ? statement.downpaymentPaid : statement.amountDue) + ' now'
+    ? 'Deposit · ' + peso(statement.downpaymentPaid > 0 ? statement.downpaymentPaid : statement.amountDue) + ' now'
     : paymentPlanLabel(statement.paymentPlan || undefined)
   // Money received with no numbered receipt behind it (old and imported bookings).
   const earlierPaid = Math.max(0, statement.downpaymentPaid - statement.payments.reduce((sum, p) => sum + p.amount, 0))
@@ -116,7 +116,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
 
         <div className="relative col-start-2 flex flex-col gap-0.5">
           <CancelledStamp booking={b} />
-          <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(statement.subTotal)}</span></div>
+          <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{peso(statement.subTotal)}</span></div>
           {/* The bill lists the payments already received (the staff, 2026-10-04: it showed
               what was still to pay but not what had been paid). Money received before
               receipts were numbered has no line of its own, so it keeps its single figure. */}
@@ -130,22 +130,22 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
                   {p.purpose && <> · <span className="font-bold text-ink-900">{p.purpose}</span></>}
                     {p.receipt && <span className="whitespace-nowrap"> · {p.receipt}</span>}
                   </span>
-                  <span className={figure + ' shrink-0'}>−{money(p.amount)}</span>
+                  <span className={figure + ' shrink-0'}>−{peso(p.amount)}</span>
                 </div>
               ))}
             </div>
           )}
           {earlierPaid > 0 && (
-            <div className="flex justify-between gap-2.5"><span className={label}>Less: downpayment / deposit</span><span className={figure}>−{money(earlierPaid)}</span></div>
+            <div className="flex justify-between gap-2.5"><span className={label}>Less: downpayment / deposit</span><span className={figure}>−{peso(earlierPaid)}</span></div>
           )}
           {statement.partialPayment > 0 && (
-            <div className="flex justify-between gap-2.5"><span className={label}>Less: partial payment</span><span className={figure}>−{money(statement.partialPayment)}</span></div>
+            <div className="flex justify-between gap-2.5"><span className={label}>Less: partial payment</span><span className={figure}>−{peso(statement.partialPayment)}</span></div>
           )}
           {statement.other > 0 && (
-            <div className="flex justify-between gap-2.5"><span className={label}>Less: other</span><span className={figure}>−{money(statement.other)}</span></div>
+            <div className="flex justify-between gap-2.5"><span className={label}>Less: other</span><span className={figure}>−{peso(statement.other)}</span></div>
           )}
           {statement.securityDeposit > 0 && (
-            <div className="flex justify-between gap-2.5"><span className={label}>Add: security deposit</span><span className={figure}>{money(statement.securityDeposit)}</span></div>
+            <div className="flex justify-between gap-2.5"><span className={label}>Add: security deposit</span><span className={figure}>{peso(statement.securityDeposit)}</span></div>
           )}
           {/* THE CONCLUSION: one framed band, the largest thing on the page. It reaches 12px
               past the column on both sides so its words and its figure line up with the
@@ -157,7 +157,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
               Amount due
               {dueLabel && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px">{dueLabel}</span>}
             </span>
-            <span className="font-display text-[24px] font-extrabold leading-none">{money(statement.amountDue)}</span>
+            <span className="font-display text-[24px] font-extrabold leading-none">{peso(statement.amountDue)}</span>
           </div>
         </div>
       </div>

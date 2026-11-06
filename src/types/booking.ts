@@ -252,6 +252,9 @@ export interface Booking {
   check_in: string // YYYY-MM-DD
   check_out: string // YYYY-MM-DD
   source: BookingSource
+  /** Which stay on a booking site's calendar link this is. Only the sync and `move_channel_ref` write it,
+   *  and `update_booking` does not name it, so it is not in `toBookingRecord`. */
+  channel_ref?: string
   status: BookingStatus
   payment_status?: 'unpaid' | 'downpayment' | 'paid'
   downpayment_paid: number // 50% downpayment
@@ -419,12 +422,4 @@ export interface SyncFeed {
   channel: 'airbnb' | 'booking_com'
   url: string
   last_synced: string | null // ISO date-time
-}
-
-export interface GuestRecord {
-  email: string
-  name: string
-  phone: string
-  visit_count: number
-  last_visit: string
 }

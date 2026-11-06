@@ -4,8 +4,8 @@ import { ChevronDown, ConciergeBell, Flame, Plus } from 'lucide-react'
 import { Field } from '../walk-in/Field'
 import { FIELD } from '../walk-in/formStyles'
 import { Served } from './served'
+import { peso } from '../../utils/helpers'
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 // ponytail: twelve numbered tables, fixed. Any other table ("Bar") goes through "Other".
 // Move the count to app_settings if the restaurant asks for more squares.
@@ -111,7 +111,7 @@ export function TablesPopup({ anchor, served, selectedKey, totals, kitchen, askF
         {big}
         {k.ready > 0 ? <span className={NOTE + 'text-emerald-700'}><ConciergeBell className="w-3 h-3" />ready</span>
           : k.fresh > 0 ? <span className={NOTE + 'text-gold-800'}>not sent</span>
-            : <span className={NOTE + (k.cooking > 0 ? 'text-gold-800' : 'text-muted')}>{k.cooking > 0 && <Flame className="w-3 h-3" />}{fmtPeso(totals[person.key] || 0)}</span>}
+            : <span className={NOTE + (k.cooking > 0 ? 'text-gold-800' : 'text-muted')}>{k.cooking > 0 && <Flame className="w-3 h-3" />}{peso(totals[person.key] || 0)}</span>}
       </button>
     )
   }

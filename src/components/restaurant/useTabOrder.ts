@@ -2,12 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { TabLine } from '../../types/tab'
 import { MenuItem } from '../../utils/restaurantMenu'
 import { OrderChange, saveOrderChanges, squash, withChanges } from '../../utils/orderChanges'
-import { randomUUID } from '../../utils/helpers'
+import { randomUUID, peso } from '../../utils/helpers'
 import { askConfirm } from '../../utils/confirm'
 import { Served } from './served'
 import { OpenSlipsStore } from './useOpenSlips'
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 // How long the till waits after a tap before it saves, so taps made close together go
 // to the database in one trip.
@@ -199,7 +198,7 @@ export function useTabOrder(
     // own dialog, never a browser popup.
     const ok = await askConfirm({
       title: 'Remove “' + (qty > 1 ? qty + ' × ' : '') + line.description + '” from the order slip?',
-      message: fmtPeso(line.amount) + ' comes off the bill.',
+      message: peso(line.amount) + ' comes off the bill.',
       confirmLabel: 'Remove',
       tone: 'danger',
     })

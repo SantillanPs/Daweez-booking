@@ -1,11 +1,12 @@
 import { Booking, EventAddons, PaymentRecord } from '../../types/booking'
-import * as syncEngine from '../../utils/syncEngine'
+import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
 import { recordBookingPayment } from './bookingPayment'
 import { BookingSubmitParams, BookingSubmitResult } from './bookingSubmitTypes'
 import { editedMoney } from './bookingEditMoney'
-import { generateUUID } from '../../utils/helpers'
+import { randomUUID } from '../../utils/helpers'
 import { splitDiscounts } from './discountSplit'
 import { unitOfLine } from '../../utils/bookingGroup'
+import { moveChannelRef } from '../../utils/channelStay'
 
 // The param and result shapes live in `bookingSubmitTypes`, and the payment logic in
 // `bookingPayment` — both split out to keep this file inside the 300-line limit.
@@ -36,12 +37,12 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
     const row = p.editingBookings?.find(eb => (rowId ? eb.id === rowId : (isRoom ? eb.room_id : eb.venue_id) === id))
     const facts = { ...p, actual_check_out: row?.actual_check_out }
     if (isRoom) {
-      if (!syncEngine.isRoomAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings, undefined, facts)) {
+      if (!isRoomAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings, undefined, facts)) {
         const roomNum = p.rooms.find(r => r.id === id)?.room_number || id
         return { ok: false, error: `Room ${roomNum} is already booked for the selected dates.` }
       }
     } else {
-      if (!syncEngine.isVenueRangeAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings, undefined, facts)) {
+      if (!isVenueRangeAvailable(id, sel.checkIn, sel.checkOut, p.activeBookings, undefined, facts)) {
         const venueName = p.venues.find(v => v.id === id)?.name || id
         return { ok: false, error: `Venue ${venueName} is already reserved for the selected dates.` }
       }
@@ -84,7 +85,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
   // starts one.
   const severalUnits = Object.keys(p.unitSelections).length > 1
   const groupId = p.editingBookings?.find(eb => eb.group_id)?.group_id
-    || (severalUnits ? 'grp-' + generateUUID() : undefined)
+    || (severalUnits ? 'grp-' + randomUUID() : undefined)
   // Each room has its OWN invoice number (the database requires them unique). The form
   // shows one number box, so on a several-room correction every room keeps its own —
   // sending the first room's number to all of them was refused as a duplicate.
@@ -267,7 +268,12 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
             // A room taken off the booking: kept as Cancelled when money was recorded
             // on it (the receipt must survive), simply removed when it held none.
             const heldMoney = Number(eb.downpayment_paid || 0) > 0 || (eb.payment_records || []).length > 0
-            if (heldMoney) await p.cancelBooking(eb.id)
+            // A booking site's stay swapped to another room is the same stay: the link goes with
+            // it, or the next sync would add it a second time.
+            const swappedTo = eb.channel_ref ? createdBookings.find(b => !p.editingBookings?.some(e => e.id === b.id) && !b.channel_ref) : undefined
+            if (swappedTo) { await moveChannelRef(eb.id, swappedTo.id); swappedTo.channel_ref = eb.channel_ref }
+            // Taken off with nowhere to go, it is kept as Cancelled so the sync does not bring it back.
+            if (heldMoney || (eb.channel_ref && !swappedTo)) await p.cancelBooking(eb.id)
             else await p.deleteBooking(eb.id)
           } catch (err) {
             console.error('Failed to cancel removed booking:', eb.id, err)

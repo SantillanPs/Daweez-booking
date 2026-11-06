@@ -8,8 +8,8 @@ import { guestEmailOf } from '../../utils/emailDocument'
 import { StatementChargesTable } from './StatementChargesTable'
 import { StatementGuestStay } from './StatementGuestStay'
 import { StatementShell, BrandHeader, SectionName } from './StatementShell'
+import { peso } from '../../utils/helpers'
 
-const money = (n: number) => '₱' + n.toLocaleString()
 
 /**
  * The **agency's** Guest Billing Statement — the owner's own document (2026-09), read line
@@ -85,7 +85,7 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
         {/* A frame, not a solid black band, to save ink (the owner, 2026-10-24). */}
         <div className="px-3 py-2 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
           <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">Total</span>
-          <span className="font-display text-[22px] font-extrabold leading-none">{money(statement.subTotal)}</span>
+          <span className="font-display text-[22px] font-extrabold leading-none">{peso(statement.subTotal)}</span>
         </div>
         </div>
       </div>

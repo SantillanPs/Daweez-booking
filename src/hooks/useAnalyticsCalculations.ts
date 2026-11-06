@@ -1,11 +1,11 @@
-import { priceBooking } from '../utils/pricing'
 import { useMemo } from 'react'
 import { Booking, Room, Venue } from '../types/booking'
 import { TabLine } from '../types/tab'
 import { Expense } from '../types/expense'
+import { priceBooking } from '../utils/pricing'
 import { getRateConfig } from '../utils/rateConfig'
 import { foodMoneyIn } from '../utils/tabRevenue'
-import { dateToString } from '../utils/helpers'
+import { dateToString, parseDay, shortDay } from '../utils/helpers'
 
 // Helper: check if a date is within start and end strings (YYYY-MM-DD)
 function isDateBetween(dStr: string, startStr: string, endStr: string): boolean {
@@ -323,16 +323,14 @@ export function useAnalyticsCalculations({
       ? Math.round(totalPensionRevenue / totalAvailableRoomNights) 
       : 0
 
-    const parseISO = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d) }
-    const fmtMdy = (iso: string) => parseISO(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     // One day is said in full, as Today's money says it.
     const periodLabel = dateRange.start === dateRange.end
-      ? parseISO(dateRange.start).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+      ? parseDay(dateRange.start).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
       : timeframe === 'monthly'
-      ? parseISO(dateRange.start).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      ? parseDay(dateRange.start).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
       : timeframe === 'yearly'
         ? dateRange.start.slice(0, 4)
-        : `${fmtMdy(dateRange.start)} – ${fmtMdy(dateRange.end)}, ${dateRange.end.slice(0, 4)}`
+        : `${shortDay(dateRange.start)} – ${shortDay(dateRange.end)}, ${dateRange.end.slice(0, 4)}`
 
     const cfg = getRateConfig()
     const pensionExtras = cfg.accommodationExtras

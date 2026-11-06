@@ -14,10 +14,3 @@ export const fmtTime = (t?: string) => {
   const label = hh + ':' + String(m).padStart(2, '0') + period
   return h === 12 && m === 0 ? label.replace('pm', 'nn') : label
 }
-
-// Check-in/out TIMES aren't planned — they're recorded at the actual check-in/out.
-// Show the recorded actual time (date + time) when present, else just the date.
-export const fmtStayTime = (dateStr?: string, actual?: string) =>
-  actual
-    ? new Date(actual).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-    : fmtDate(dateStr)

@@ -1,9 +1,3 @@
-// Helper: Generate UUID
-export function generateUUID(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
-}
-
-
 // Helper: Real RFC-4122 UUID (for Supabase UUID primary keys)
 export function randomUUID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {

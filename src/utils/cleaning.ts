@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 
 export interface CleaningTask {
   id: string
@@ -22,8 +22,6 @@ export interface CleaningTask {
 export const CLEANING_ITEMS = ['Pillows', 'Blankets', 'Foam', 'Soap', 'Toothbrush', 'Toothpaste', 'Tissue', 'Pillow case', 'Bed sheet', 'Towel', 'Slippers', 'Hanger', 'Mirror', 'Trash can']
 
 export async function getCleaningTasks(): Promise<CleaningTask[]> {
-  if (!isSupabaseConfigured) return []
-
   try {
     const { data, error } = await supabase.from('cleaning_checklist').select('*').order('created_at', { ascending: false })
     if (error) throw error
@@ -38,10 +36,6 @@ export async function getCleaningTasks(): Promise<CleaningTask[]> {
 }
 
 export async function saveCleaningTasks(tasks: CleaningTask[]): Promise<void> {
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so the cleaning checklist was not saved.')
-  }
-
   const { error } = await supabase.from('cleaning_checklist').upsert(tasks)
   if (error) throw error
 }

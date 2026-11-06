@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 import { Tab, TabLine } from '../types/tab'
 
 // An order reaches the database in one trip (the developer's report, 2026-10-04:
@@ -9,8 +9,6 @@ import { Tab, TabLine } from '../types/tab'
 // A tap is now a CHANGE: the slip on screen shows it at once (`withChanges`), and the
 // changes made close together are handed to the database together (`saveOrderChanges`),
 // where one function opens the slip, writes the rows and moves the stock.
-
-const NO_DB = 'No database is connected, so this was not saved.'
 
 // Money is kept to whole centavos so a long slip never drifts.
 const money = (value: number) => Math.round(Number(value || 0) * 100) / 100
@@ -138,8 +136,6 @@ export async function saveOrderChanges(input: {
   /** Whoever is at the till. Written on the stock movement, so the log says who sold it. */
   movedBy?: string
 }): Promise<SavedSlip> {
-  if (!isSupabaseConfigured) throw new Error(NO_DB)
-
   const { data, error } = await supabase.rpc('apply_order_changes', {
     p_tab_id: input.tabId,
     p_changes: input.changes.map(c => ({

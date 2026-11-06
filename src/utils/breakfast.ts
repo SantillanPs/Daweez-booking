@@ -1,5 +1,5 @@
 import { Room } from '../types/booking'
-import { dateToString } from './helpers'
+import { addDays } from './helpers'
 
 /** The room's own breakfast price, typed by the desk in Settings (card k140). */
 export function roomBreakfastPrice(room: Room): number {
@@ -15,7 +15,7 @@ export function breakfastSellable(room: Room): boolean {
   return roomBreakfastPrice(room) > 0
 }
 
-const dayAfter = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return dateToString(new Date(y, m - 1, d + 1)) }
+const dayAfter = (iso: string) => addDays(iso, 1)
 
 /** Every morning of a stay: the day after check-in through the check-out day. */
 export function stayMornings(checkIn: string, checkOut: string): string[] {

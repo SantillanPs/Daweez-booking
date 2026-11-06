@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Booking } from '../../types/booking'
-import { addDays } from '../../utils/dailyLedger'
 import { clockLabel, shortStayOut, stayHoursOf } from '../../utils/shortStay'
 import { stayStage } from '../../utils/stayStage'
-import { Door, doorDay, doorIso, doorTime, leftEarly, minutesLabel, usualMinutes } from '../../utils/doorTimes'
+import { Door, doorDay, doorIso, doorTime, leftEarly, minutesLabel, usualMinutes } from '../../utils/doorTimes'
+import { addDays } from '../../utils/helpers'
 
 const fmtDay = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 

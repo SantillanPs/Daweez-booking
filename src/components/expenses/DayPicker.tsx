@@ -1,16 +1,9 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
-import { dateToString } from '../../utils/helpers'
+import { dateToString, parseDay, addDays } from '../../utils/helpers'
 
-const parse = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-const shift = (iso: string, days: number) => {
-  const d = parse(iso)
-  d.setDate(d.getDate() + days)
-  return dateToString(d)
-}
+const parse = parseDay
+const shift = addDays
 const pretty = (iso: string) => parse(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
 const STEP = 'w-7 h-7 grid place-items-center rounded-lg text-muted hover:bg-card hover:text-main active:scale-90 disabled:opacity-25 disabled:pointer-events-none transition-[background-color,color,transform] cursor-pointer'

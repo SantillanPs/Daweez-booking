@@ -2,7 +2,7 @@ import { CSSProperties, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Banknote, ChevronLeft, ChevronRight, FileText, Landmark, LucideIcon, Smartphone, Wallet, X } from 'lucide-react'
 import type { DatedMoneyIn } from '../../utils/dailyReport'
-import { dateToString } from '../../utils/helpers'
+import { dateToString, parseDay, peso } from '../../utils/helpers'
 import { PaymentKind, paymentKind } from '../../utils/paymentMethod'
 import { rangeOf, step } from './periods'
 
@@ -18,11 +18,7 @@ interface IncomeHistoryProps {
 
 type Range = { from: string; to: string }
 
-const peso = (n: number) => '₱' + n.toLocaleString(undefined, { maximumFractionDigits: 2 })
-const parse = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
+const parse = parseDay
 const fmt = (iso: string, o: Intl.DateTimeFormatOptions) => parse(iso).toLocaleDateString('en-US', o)
 const monthOf = (day: string): Range => {
   const { from, to } = rangeOf('month', day)

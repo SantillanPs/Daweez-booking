@@ -290,6 +290,17 @@
 /* Sync done: the button itself says so for a moment. */
 @keyframes fd-pop { 50% { scale: 1.08; } }
 .fd-pop { animation: fd-pop 0.4s cubic-bezier(0.34, 1.4, 0.64, 1); }
+/* The connection band (ConnectionBand): opens down under the top bar, its tick draws when the
+   connection is back, and it folds away. */
+.cb-band { overflow: hidden; animation: cb-open 0.3s cubic-bezier(0.3, 1.2, 0.5, 1); transition: background-color .3s, color .3s; }
+.cb-close { animation: cb-close 0.32s ease-in forwards; }
+@keyframes cb-open { from { max-height: 0; } to { max-height: 48px; } }
+@keyframes cb-close { from { max-height: 48px; } to { max-height: 0; } }
+.cb-tick path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: cb-draw 0.4s 0.1s ease-out forwards; }
+@keyframes cb-draw { to { stroke-dashoffset: 0; } }
+.cb-spin { animation: cb-spin 0.8s linear; }
+@keyframes cb-spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .cb-band, .cb-close, .cb-tick path, .cb-spin { animation: none; stroke-dashoffset: 0; } }
 
 /* The day arrows nudge the way they go. */
 .fd-step svg { transition: translate 0.25s cubic-bezier(0.34, 1.4, 0.64, 1); }
@@ -622,10 +633,8 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
   animation: day-lit 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
 @keyframes day-lit { 35% { transform: scale(1.06) translateY(-2px); } }
 
-/* ── Log old booking: the paper's own marks ── a tick draws itself into its box, and the
-   hours taken are circled by hand (design B of the mock, 2026-10-17). */
-.lo-tick path { stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
-.lo-tick[aria-checked="true"] path { stroke-dashoffset: 0; }
+/* ── The paper's own mark ── the hours taken and the receptionist are circled by hand
+   (design B of the Log old booking mock, 2026-10-17). */
 .lo-circ path { stroke-dasharray: 260; stroke-dashoffset: 260; transition: stroke-dashoffset 0.5s ease-out; }
 .lo-circ[aria-pressed="true"] path { stroke-dashoffset: 0; }
 
@@ -639,7 +648,7 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
   .bk-go::before { transition: none; }
   .bk-hi { transition: none; }
   .bk-seal path { stroke-dashoffset: 0; }
-  .lo-tick path, .lo-circ path { transition: none; }
+  .lo-circ path { transition: none; }
   [data-lit] { animation: none; }
 }
 

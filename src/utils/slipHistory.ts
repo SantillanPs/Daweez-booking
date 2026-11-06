@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 import { Tab, TabEvent } from '../types/tab'
 
 // Restaurant → History: every order slip with the steps that happened to it (`tab_events`,
@@ -22,7 +22,6 @@ function handWritten(tab: Tab): boolean {
 
 /** The slips with a step since `since`, newest first. Thrown on failure. */
 export async function getSlipHistory(since: Date): Promise<SlipStory[]> {
-  if (!isSupabaseConfigured) return []
   const from = since.toISOString()
   const [ev, tb] = await Promise.all([
     supabase.from('tab_events').select('*').gte('at', from).order('at', { ascending: true }),

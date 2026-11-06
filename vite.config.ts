@@ -39,20 +39,6 @@ export default defineConfig({
       ],
     },
   },
-  // Pre-bundle chart deps at server startup. They are only reachable through the
-  // lazy /analytics route, so Vite otherwise discovers them on first navigation
-  // and answers 504 "Outdated Optimize Dep", which fails the dynamic import as
-  // "Failed to fetch dynamically imported module".
-  optimizeDeps: {
-    include: [
-      '@tanstack/charts',
-      '@tanstack/charts/polar',
-      '@tanstack/charts/react',
-      '@tanstack/charts/scales/band',
-      '@tanstack/charts/scales/linear',
-      '@tanstack/charts/scales/ordinal',
-    ],
-  },
   build: {
     chunkSizeWarningLimit: 600,
     rollupOptions: {

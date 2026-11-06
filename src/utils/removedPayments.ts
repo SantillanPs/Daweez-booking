@@ -1,5 +1,5 @@
 import { Booking, PaymentRecord } from '../types/booking'
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 import { withoutPayment } from '../components/walk-in/bookingPayment'
 import { unpaySlipsOfReceipt } from './orderSlips'
 
@@ -20,14 +20,12 @@ export interface RemovedPayment {
 }
 
 export async function getRemovedPayments(): Promise<RemovedPayment[]> {
-  if (!isSupabaseConfigured) return []
   const { data, error } = await supabase.from('removed_payments').select('*').order('removed_at')
   if (error) throw error
   return (data || []).map(row => ({ ...row, amount: Number(row.amount) })) as RemovedPayment[]
 }
 
 export async function logRemovedPayment(row: Omit<RemovedPayment, 'id' | 'removed_at'>): Promise<void> {
-  if (!isSupabaseConfigured) return
   const { error } = await supabase.from('removed_payments').insert(row)
   if (error) throw error
 }

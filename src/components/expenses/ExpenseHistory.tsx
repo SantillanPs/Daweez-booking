@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react'
 import { Expense, ExpenseCategory } from '../../types/expense'
-import { dateToString } from '../../utils/helpers'
+import { dateToString, peso } from '../../utils/helpers'
 import { PERIODS, type Period, fmtDay, inThis, rangeOf, step } from './periods'
 
 interface ExpenseHistoryProps {
@@ -15,7 +15,6 @@ interface ExpenseHistoryProps {
   onClose: () => void
 }
 
-const peso = (n: number) => '₱' + n.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
 // The expenses for a day, week, month or year (Sebastian, 2026-10-14, choosing "totals for a week, month or
 // year" over repeating expenses; the day added 2026-10-31): how much went out, a bar for each kind of expense

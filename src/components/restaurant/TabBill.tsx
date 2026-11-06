@@ -4,8 +4,8 @@ import { TabLine } from '../../types/tab'
 import { cookingCount, newCount, readyCount } from '../../utils/orderSlips'
 import { AnimatedNumber } from '../AnimatedNumber'
 import { useLateFocus, want } from '../billing/want'
+import { peso } from '../../utils/helpers'
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 interface TabBillProps {
   lines: TabLine[]
@@ -121,7 +121,7 @@ export function TabBill({ lines, total, onQty, emptyText, onSendKitchen, onServe
             <Check className="w-4 h-4" /> Serve
           </button>
         ) : (
-          <span className={'shrink-0 text-[13.5px] tabular-nums ' + (done ? 'text-ink-500' : 'text-muted')}>{fmtPeso(n * Number(line.unit_price || 0))}</span>
+          <span className={'shrink-0 text-[13.5px] tabular-nums ' + (done ? 'text-ink-500' : 'text-muted')}>{peso(n * Number(line.unit_price || 0))}</span>
         )}
       </li>
     )
@@ -145,7 +145,7 @@ export function TabBill({ lines, total, onQty, emptyText, onSendKitchen, onServe
           <Minus className="absolute w-4 h-4 opacity-0 scale-50 transition-[opacity,transform] duration-150 group-hover/less:opacity-100 group-hover/less:scale-100" />
         </button>
         <span className="min-w-0 flex-1 text-[14.5px] font-semibold text-main break-words">{line.description}</span>
-        <span className="shrink-0 text-[13.5px] tabular-nums text-muted">{fmtPeso(n * Number(line.unit_price || 0))}</span>
+        <span className="shrink-0 text-[13.5px] tabular-nums text-muted">{peso(n * Number(line.unit_price || 0))}</span>
       </li>
     )
   }

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarDays, FileText, ReceiptText, Search } from 'lucide-react'
 import { Booking, PaymentRecord, Room, Venue } from '../../types/booking'
 import { asBill } from '../../utils/bookingGroup'
-import { dateToString, normalizeVenueId } from '../../utils/helpers'
+import { dateToString, normalizeVenueId, shortDay, peso } from '../../utils/helpers'
 import { paymentMethodLabel } from '../../utils/paymentMethod'
 import { pillMoney } from './bookingStyles'
 
@@ -14,11 +14,7 @@ type Hit =
 /** At most this many under each heading; the count beside it says how many matched. */
 const SHOW = 6
 
-const fmtDay = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-const peso = (n: number) => '₱' + n.toLocaleString()
+const fmtDay = shortDay
 
 /**
  * **Find a bill, a receipt or a booking from the calendar** (Sebastian's todo "Search by

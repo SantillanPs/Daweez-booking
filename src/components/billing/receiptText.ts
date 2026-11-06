@@ -5,7 +5,6 @@
 // and plain functions breaks React Fast Refresh (react-refresh/only-export-components),
 // which is what a shared primitives file would otherwise trip on.
 
-export const money = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 export const fmtDateTime = (d?: string) =>
   d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''

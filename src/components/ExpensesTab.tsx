@@ -3,8 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowDownLeft, ArrowUpRight, Coins, List, Printer, Tag, Wallet } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
-import { generateUUID } from '../utils/syncEngine'
-import { dateToString, normalizeVenueId } from '../utils/helpers'
+import { dateToString, normalizeVenueId, randomUUID, shortDay } from '../utils/helpers'
 import { getTabs, handSale, saveHandSale, saveTabFix, saveTabRemoval, withFixedTabPayment, withoutTabPayment } from '../utils/tabs'
 import { withFixedPayment, withoutPayment, type PaymentPatch } from './walk-in/bookingPayment'
 import { logRemovedPayment, takeBackPayment } from '../utils/removedPayments'
@@ -34,10 +33,6 @@ import { hotelDay, openKey, type MoneyInLine } from '../utils/dailyReport'
 import type { Booking, PaymentRecord } from '../types/booking'
 import type { Tab, TabLine } from '../types/tab'
 
-const shortDay = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
 
 // THE DAY'S MONEY, on one screen (the owner's ask, 2026-10-04).
 //
@@ -126,7 +121,7 @@ export function ExpensesTab() {
   // Written on the card at once and saved behind it; taken off again if the save fails.
   const addExpense = async (input: { amount: number; categoryId: string; notes?: string }) => {
     const row = {
-      id: 'exp-' + generateUUID(),
+      id: 'exp-' + randomUUID(),
       amount: input.amount,
       category_id: input.categoryId,
       expense_date: date,
@@ -353,7 +348,7 @@ export function ExpensesTab() {
   const handOver = (input: { amount: number; handedBy?: string; notes?: string }) => {
     const kind = handingOver === 'in' ? 'in' : 'out'
     const row: Handover = {
-      id: 'ho-' + generateUUID(),
+      id: 'ho-' + randomUUID(),
       amount: input.amount,
       handover_date: date,
       handed_by: input.handedBy,
@@ -384,7 +379,7 @@ export function ExpensesTab() {
   }
 
   const addCategory = async (name: string) => {
-    try { await createExpenseCategory({ id: 'cat-' + generateUUID(), name }) }
+    try { await createExpenseCategory({ id: 'cat-' + randomUUID(), name }) }
     catch { showToast('Could not add the category.', 'error') }
   }
 

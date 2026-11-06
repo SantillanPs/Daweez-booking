@@ -1,6 +1,7 @@
 import React from 'react'
-import { Building2, Coffee, LogIn, LogOut } from 'lucide-react'
+import { Bell, Building2, Coffee, LogIn, LogOut } from 'lucide-react'
 import { AskCup } from './BreakfastParts'
+import { ChannelMark } from './ChannelMark'
 
 // The key to the calendar: **every sign on it, and what it means, in one place** (Sebastian,
 // 2026-10-08: *"move all of the instructions there so that all the calendar is showing is
@@ -38,6 +39,11 @@ export function CalendarGuide() {
             <Row sign={<span className="text-[11px] font-bold text-gold-800">Time's up</span>}>A short stay's hours are over: a bell drops in at the top until you answer it</Row>
             <Row sign={<Pill className="bg-paper-200/60 border-paper-300" />}>Blocked</Row>
             <Row sign={<Building2 className="w-4 h-4" />}>Agency reservation</Row>
+            <Row sign={<ChannelMark channel="booking_com" />}>From Booking.com</Row>
+            <Row sign={<span className="text-[11px] font-bold leading-3 text-blue-700">Name needed</span>}>Tap it and type the guest's name from Booking.com's message</Row>
+            <Row sign={<Pill className="border-[1.5px] border-dashed border-danger-500 bg-danger-50" />}>Sold twice: Booking.com sold a room already taken. Tap it</Row>
+            <Row sign={<span className="text-[11px] font-bold text-danger-600">Cancelled</span>}>Gone from Booking.com: tap it to cancel the bill</Row>
+            <Row sign={<span className="inline-flex h-6 items-center gap-1 rounded-full bg-ink-900 px-1.5 text-[11px] font-bold text-white"><Bell className="w-3 h-3" />1</span>}>The booking sites need something. Red when it is urgent</Row>
             <Row sign={<span className="font-display text-[13px] font-bold text-blue-700">AB</span>}>Blue initials: no deposit</Row>
             <Row sign={<span className="font-display font-bold"><span className="text-danger-600">₱</span> <span className="text-emerald-700">₱</span></span>}>Red to pay, green paid · hover for how much</Row>
           </Section>

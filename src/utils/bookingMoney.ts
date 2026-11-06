@@ -10,19 +10,6 @@ export interface PaymentView {
   amount: number
 }
 
-// Colors for the payment badge: money owed is the first thing staff scan for.
-// `reserved` is deliberately NEUTRAL — a reservation is a promise, not a debt, and a
-// red badge would put a trusted guest's name in the chase list (the owner, 2026-09-28).
-export const PAYMENT_BADGE_CLASSES: Record<PaymentTone, string> = {
-  paid: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
-  partial: 'bg-amber-100 text-amber-800 border border-amber-200',
-  owes: 'bg-rose-100 text-rose-700 border border-rose-200',
-  reserved: 'bg-ink-100 text-ink-800 border border-ink-200',
-  // Money an agency will send later is expected, not chased — so it is not red either,
-  // and it has no colour of its own: it reads like a reservation (2026-10-06).
-  billed: 'bg-ink-100 text-ink-800 border border-ink-200',
-}
-
 /**
  * A **reservation** (the owner's ruling, 2026-09-28): a room held for somebody the staff
  * personally know and trust, with nothing paid and nothing agreed. The desk decides who
@@ -87,24 +74,6 @@ export function getPaymentView(booking: Booking): PaymentView {
   return { tone: 'owes', label: 'Not paid', amount: 0 }
 }
 
-// True when a booking still has money left to collect (blocks don't owe, and a
-// reservation whose guest has not arrived is a promise rather than a debt).
-export function isOwed(booking: Booking): boolean {
-  if (booking.status === 'blocked' || booking.status === 'cancelled') return false
-  if (isReservationAwaitingArrival(booking)) return false
-  // What an agency owes is its own list — it is not chased at the desk.
-  if (isBilledToAgency(booking)) return false
-  return booking.payment_status !== 'paid'
-}
-
-// True when the guest still has an unpaid balance. Blocks never owe, and a
-// booking marked paid is settled even if a stale balance_due survived.
-export function hasOutstandingBalance(booking: Booking): boolean {
-  if (booking.status === 'blocked' || booking.status === 'cancelled') return false
-  if (booking.payment_status === 'paid') return false
-  return Number(booking.balance_due || 0) > 0
-}
-
 // True when the guest has already handed money over. Once they have, the
 // booking's agreed deposit has been settled, so what remains is the checkout
 // balance — staff collect that at check-out, not at the desk.
@@ -142,19 +111,6 @@ export function amountToPayNow(booking: Booking, tabTotal = 0): number {
   }
   return owed
 }
-
-// Just the status word, with no amount in it. For places that already show the
-// money as its own big number, repeating it in the badge reads as two different
-// figures when it is really the same one.
-export function paymentStatusWord(booking: Booking): string {
-  const tone = getPaymentView(booking).tone
-  if (tone === 'paid') return 'Paid'
-  if (tone === 'partial') return 'Partial'
-  if (tone === 'reserved') return 'Reserved'
-  if (tone === 'billed') return 'Billed'
-  return 'Owes'
-}
-
 
 // Plain label for the agreed payment plan, or '' when nothing was agreed.
 // `custom` names the figure on the paper instead — `Deposit · ₱1,000 now` — because a

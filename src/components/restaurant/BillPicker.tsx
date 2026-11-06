@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BedDouble, ChevronLeft, ChevronRight, ConciergeBell } from 'lucide-react'
 import { Booking } from '../../types/booking'
+import { peso } from '../../utils/helpers'
 
-const fmtPeso = (n: number) => '₱' + Number(n || 0).toLocaleString()
 
 interface BillPickerProps {
   /** The "Send bill" button it opens above. */
@@ -72,7 +72,7 @@ export function BillPicker({ anchor, title, total, guests, onFrontDesk, onRoom, 
             <p className="px-0.5 font-display text-[15px] font-bold tracking-tight text-main">
               Send the bill to
               <span className="block font-sans text-[12.5px] font-medium tracking-normal text-muted truncate">
-                {title} · <b className="font-bold text-main tabular-nums">{fmtPeso(total)}</b>
+                {title} · <b className="font-bold text-main tabular-nums">{peso(total)}</b>
               </span>
             </p>
             <button type="button" onClick={onFrontDesk} className={ROW}>

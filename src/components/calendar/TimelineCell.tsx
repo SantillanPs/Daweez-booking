@@ -6,6 +6,8 @@ import { doorDay, doorTime, minutesLabel } from '../../utils/doorTimes'
 import { bookingStage, pillInitials, pillMoney } from './bookingStyles'
 import { clockLabel, shortStayOut } from '../../utils/shortStay'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
+import { channelOf, needsDetails } from '../../utils/channelStay'
+import { ChannelMark } from './ChannelMark'
 
 export interface TimelineCellProps {
   date: Date
@@ -13,6 +15,8 @@ export interface TimelineCellProps {
   id: string
   type: 'room' | 'venue'
   booking: Booking | null
+  /** The stay has left the booking site's calendar: the desk has yet to cancel its bill. */
+  gone?: boolean
   /** The booking's money as its bill sees it (`asBill`): a room booked with others shows the
    *  whole bill's words and figure. The booking itself when it is alone. */
   bill?: Booking | null
@@ -228,6 +232,7 @@ export const TimelineCell = React.memo(
     id,
     type,
     booking,
+    gone = false,
     bill,
     span,
     halfOf,
@@ -294,6 +299,7 @@ export const TimelineCell = React.memo(
       // the check-in is noted it shows only its hours.
       const freeAt = booking.stay_hours && !booking.actual_check_out ? shortStayOut(booking) : null
       const narrow = span < 2
+      const channel = channelOf(booking)
       return (
         <td
           colSpan={span}
@@ -338,7 +344,7 @@ export const TimelineCell = React.memo(
             className={'relative overflow-hidden mx-0.5 h-10 rounded-md border cursor-pointer select-none transition-[filter,transform,border-color,background-color,color,box-shadow,opacity] duration-300 hover:brightness-95 hover:-translate-y-0.5 hover:shadow-soft active:translate-y-0 active:shadow-none active:scale-[0.98] flex flex-col justify-center animate-in fade-in zoom-in-95 motion-reduce:animate-none ' +
               // The words sit in the middle of the pill (Sebastian, on the ripple mock, 2026-10-18).
               'text-center ' + (narrow ? 'items-center px-0 ' : 'px-2 ') +
-              getBookingStyle(booking)}
+              (gone ? 'bg-ink-100 text-ink-500 border-ink-200' : getBookingStyle(booking))}
           >
             {/* THE GREEN OF A GUEST WHO IS IN. It is a wash inside the pill, not the pill's
                 own colour, so checking in is seen: it crosses from the left. Checking out
@@ -358,7 +364,7 @@ export const TimelineCell = React.memo(
                 IN). The full name is on the hover card and in the panel. */}
             {narrow ? (<>
               <span className={'relative font-display text-[13px] font-bold leading-4' + (money.noDeposit && !isBlock ? ' text-blue-700' : '')}>
-                {isBlock ? '' : pillInitials(pillName)}
+                {isBlock ? '' : needsDetails(booking) && channel ? <ChannelMark channel={channel} /> : pillInitials(pillName)}
                 {askIn && <AskDoor k="in" className="absolute -left-2.5 -top-2" />}
                 {askOut && <AskDoor k="out" className="absolute -right-2.5 -top-2" />}
               </span>
@@ -378,7 +384,8 @@ export const TimelineCell = React.memo(
             <span className="relative flex items-center justify-center gap-1 min-w-0 text-[13px] font-bold leading-4">
               {askIn && <AskDoor k="in" className="shrink-0" />}
               {agencyName && !isBlock && <Building2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
-              <span className="min-w-0 truncate">
+              {channel && <ChannelMark channel={channel} />}
+              <span className={'min-w-0 truncate' + (gone ? ' line-through' : '')}>
                 {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
                 {pillWords}
               </span>
@@ -386,7 +393,7 @@ export const TimelineCell = React.memo(
                   guest leaving today whose check-out is not noted has a question mark. */}
               {askOut && <AskDoor k="out" className="shrink-0" />}
             </span>
-            {!isBlock && (booking.stay_hours ? (
+            {gone ? <span className="relative text-[12px] font-semibold truncate leading-4 text-danger-600">Cancelled</span> : !isBlock && (booking.stay_hours ? (
               <span className={'relative text-[12px] font-semibold truncate leading-4 ' + money.className}>
                 {timeUp && freeAt
                   ? <span key="up" className="inline-block animate-pop text-gold-800 font-bold">Time's up</span>
@@ -492,6 +499,8 @@ export const TimelineCell = React.memo(
       prevProps.booking?.check_in === nextProps.booking?.check_in &&
       prevProps.booking?.check_out === nextProps.booking?.check_out &&
       prevProps.booking?.guest_name === nextProps.booking?.guest_name &&
+      prevProps.booking?.channel_ref === nextProps.booking?.channel_ref &&
+      prevProps.gone === nextProps.gone &&
       // A block's pill reads its reason.
       prevProps.booking?.notes === nextProps.booking?.notes &&
       prevProps.booking?.stay_hours === nextProps.booking?.stay_hours &&

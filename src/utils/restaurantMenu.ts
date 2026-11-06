@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 
 // The restaurant and bar menu (board card k70, fed by card k69's tabs).
 //
@@ -99,35 +99,33 @@ export const DEFAULT_MENU: MenuCategory[] = RAW.map(([name, note, items]) => ({
 // the printed card. The browser copy that used to sit between them is gone
 // (2026-09-28) — a menu edit that the database refused was showing as saved.
 export async function getMenu(): Promise<MenuCategory[]> {
-  if (isSupabaseConfigured) {
-    try {
-      const [cats, items] = await Promise.all([
-        supabase.from('menu_categories').select('*').order('sort_order', { ascending: true }),
-        supabase.from('menu_items').select('*').eq('active', true).order('sort_order', { ascending: true }),
-      ])
-      if (cats.error) throw cats.error
-      if (items.error) throw items.error
-      if (cats.data && cats.data.length > 0 && items.data) {
-        const menu: MenuCategory[] = cats.data
-          .map(c => ({
-            id: String(c.id),
-            name: String(c.name),
-            note: c.note ? String(c.note) : undefined,
-            items: items.data!
-              .filter(i => i.category_id === c.id)
-              .map(i => ({
-                id: String(i.id),
-                name: String(i.name),
-                price: Number(i.price),
-                note: i.note ? String(i.note) : undefined,
-              })),
-          }))
-          .filter(c => c.items.length > 0)
-        if (menu.length > 0) return menu
-      }
-    } catch (err) {
-      console.error('Supabase getMenu Error:', err)
+  try {
+    const [cats, items] = await Promise.all([
+      supabase.from('menu_categories').select('*').order('sort_order', { ascending: true }),
+      supabase.from('menu_items').select('*').eq('active', true).order('sort_order', { ascending: true }),
+    ])
+    if (cats.error) throw cats.error
+    if (items.error) throw items.error
+    if (cats.data && cats.data.length > 0 && items.data) {
+      const menu: MenuCategory[] = cats.data
+        .map(c => ({
+          id: String(c.id),
+          name: String(c.name),
+          note: c.note ? String(c.note) : undefined,
+          items: items.data!
+            .filter(i => i.category_id === c.id)
+            .map(i => ({
+              id: String(i.id),
+              name: String(i.name),
+              price: Number(i.price),
+              note: i.note ? String(i.note) : undefined,
+            })),
+        }))
+        .filter(c => c.items.length > 0)
+      if (menu.length > 0) return menu
     }
+  } catch (err) {
+    console.error('Supabase getMenu Error:', err)
   }
 
   return DEFAULT_MENU
@@ -140,7 +138,6 @@ export const newMenuItemId = (categoryId: string): string =>
 
 /** Adds a dish, or writes its new name and price (Restaurant → Menu). */
 export async function saveMenuItem(categoryId: string, item: MenuItem, sortOrder: number): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error('No database is connected, so the menu was not saved.')
   const { error } = await supabase.from('menu_items').upsert({
     id: item.id, category_id: categoryId, name: item.name, price: item.price, note: item.note ?? null, sort_order: sortOrder, active: true,
   })
@@ -150,17 +147,12 @@ export async function saveMenuItem(categoryId: string, item: MenuItem, sortOrder
 /** Takes a dish off the menu. It is hidden, not deleted: order slips and what a dish uses
  *  from the stock room still point at it. */
 export async function removeMenuItem(id: string): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error('No database is connected, so the menu was not saved.')
   const { error } = await supabase.from('menu_items').update({ active: false }).eq('id', id)
   if (error) throw error
 }
 
 /** Writes the whole menu — prices included — for every device to read. */
 export async function saveMenu(menu: MenuCategory[]): Promise<void> {
-  if (!isSupabaseConfigured) {
-    throw new Error('No database is connected, so the menu was not saved.')
-  }
-
   const cats = menu.map((c, i) => ({ id: c.id, name: c.name, note: c.note ?? null, sort_order: i + 1 }))
   const items = menu.flatMap(c =>
     c.items.map((it, j) => ({

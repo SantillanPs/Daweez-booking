@@ -44,7 +44,10 @@
 - **A master switch and one switch per room.** The owner asked for a toggle to turn the connections on and off. The switch is enforced on the server, so an old tab on another PC cannot sync a room that was switched off.
 - **One calendar address lives on one room.** The same Airbnb address was once on nine rooms, so one Airbnb stay blocked nine rooms for the same night. The screen refuses a repeat and names the rooms.
 - An empty link box is not saved at all — empty rows used to make the screen look connected to Booking.com when it was not.
-- A calendar event that clashes with an existing booking is skipped, never forced in.
+- **Calendar links for now, a channel manager maybe later** (Sebastian, 2026-10-31, after listing the hotel on Booking.com and comparing the two in a mock): the links are free. They give dates only, so the desk types the guest's name, phone and price from the site's message.
+- **The link adds a stay and asks about the rest; it never changes or removes a booking** (the rule of 2026-10-20: the app must not change a booking by itself). A stay gone from the link used to be deleted, money and all, and a clash was one line in a log. Now a clash asks "Sold twice" and a stay gone from the link asks whether to cancel the bill.
+- **It works unseen, so it announces itself:** a bell that is there only while something waits, and rings when something lands.
+- **The staff's dates go out with reservations included.** The export used to send confirmed stays only, so a reservation waiting for its deposit could be sold again on the site.
 
 ## The tabs
 

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { supabase, isSupabaseConfigured } from '../utils/supabaseClient'
+import { supabase } from '../utils/supabaseClient'
 import { Booking } from '../types/booking'
 import { BookingSource, BookingStatus } from '../types/booking'
 
@@ -29,6 +29,7 @@ function rowToBooking(b: Record<string, unknown>): Booking {
     check_in: b.check_in as string,
     check_out: b.check_out as string,
     source: b.source as BookingSource,
+    channel_ref: (b.channel_ref as string) || undefined,
     status: b.status as BookingStatus,
     payment_status: (b.payment_status as Booking['payment_status']) || undefined,
     promo_applied: (b.promo_applied as boolean) || undefined,
@@ -91,8 +92,6 @@ export function useRealtimeBookings() {
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return
-
     const channel = supabase
       .channel('bookings-realtime')
       .on(

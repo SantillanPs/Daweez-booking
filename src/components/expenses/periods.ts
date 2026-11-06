@@ -1,15 +1,12 @@
-import { dateToString } from '../../utils/helpers'
+import { dateToString, parseDay, shortDay } from '../../utils/helpers'
 
 // The stretches All expenses and All income can show (Sebastian, 2026-10-31: "add daily in the all
 // expenses and all income", which brings back the Day the owner left out on 2026-10-14).
 export type Period = 'day' | 'week' | 'month' | 'year'
 export const PERIODS: [Period, string][] = [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['year', 'Year']]
 
-const parse = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-export const shortDay = (iso: string) => parse(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+const parse = parseDay
+export { shortDay }
 export const fmtDay = (iso: string) => parse(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
 /** `on this day`, `in this month`: how an empty list names its period. */

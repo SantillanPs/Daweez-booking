@@ -5,8 +5,8 @@ import { Tab, TabLine } from '../../types/tab'
 import { PaymentRecord } from '../../types/booking'
 import { paymentKind, paymentMethodLabel } from '../../utils/paymentMethod'
 import { slipNumber } from '../../utils/orderSlips'
-import { money } from '../billing/receiptText'
 import { useSlipPage } from '../billing/useSlipPage'
+import { peso } from '../../utils/helpers'
 
 interface TabReceiptModalProps {
   tab: Tab
@@ -85,7 +85,7 @@ export function TabReceiptModal({ tab, lines, record, onClose }: TabReceiptModal
           <div className="my-2 border-[3px] border-black py-1.5 flex flex-col items-center">
             <span className={lab}>Payment received</span>
             {/* Money in written by hand with nothing linked has no lines, so its own amount is the figure. */}
-            <span className="font-display text-[22px] font-extrabold leading-none mt-1">{money(lines.length ? total - (record.discount || 0) : record.amount)}</span>
+            <span className="font-display text-[22px] font-extrabold leading-none mt-1">{peso(lines.length ? total - (record.discount || 0) : record.amount)}</span>
           </div>
 
           <div className="space-y-[3px]">
@@ -100,12 +100,12 @@ export function TabReceiptModal({ tab, lines, record, onClose }: TabReceiptModal
 
           <div className="space-y-[3px]">
             {lines.map(l => (
-              <Row key={l.id} label={l.qty > 1 ? l.qty + ' × ' + l.description : l.description} value={money(l.amount)} mono />
+              <Row key={l.id} label={l.qty > 1 ? l.qty + ' × ' + l.description : l.description} value={peso(l.amount)} mono />
             ))}
             {record.discount ? (
               <>
-                <div className="border-t border-black pt-[3px] mt-[2px]"><Row label="Sub-total" value={money(total)} mono /></div>
-                <Row label="Discount" value={'−' + money(record.discount)} mono />
+                <div className="border-t border-black pt-[3px] mt-[2px]"><Row label="Sub-total" value={peso(total)} mono /></div>
+                <Row label="Discount" value={'−' + peso(record.discount)} mono />
               </>
             ) : null}
           </div>

@@ -7,6 +7,10 @@
 - **Two bookings cannot overlap on one room or venue** — the database itself refuses it.
 - Menu, stock, cleaning, tabs, expenses and agencies are written directly.
 
+## When it can't be reached
+
+Sebastian, 2026-11-06: *"if the database isn't reachable, then at least add something for the staff to know what the problem is if it happens."* Before, a dropped connection said nothing: a read came back empty (the calendar could lose every booking and show every room free) or a save failed on its own. Now a band under the top bar says "No connection. Nothing saves until it's back." with Try again, the calendar fades back a little, and a moment of green says when it is back. He picked the band over a small chip from the mock. The app no longer has a mode without a database, so a copy built without its settings says "This copy isn't set up".
+
 ## Ids are text
 
 Rooms, bookings, venues, agencies, expenses and stock items use readable ids like `room-3` and `partner-…`. **Any id that reaches a database function must be treated as text, never as a uuid.** This one mistake caused four separate outages: bookings that would not save, room prices that never reached the database, agencies that could not be added, and a week where every booking update failed.

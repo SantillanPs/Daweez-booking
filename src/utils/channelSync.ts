@@ -67,17 +67,3 @@ export async function saveChannelSync(next: ChannelSyncSettings): Promise<void> 
   current = clean
 }
 
-/** True when the master switch is on. */
-export function isChannelSyncOn(): boolean {
-  return current.enabled
-}
-
-/**
- * True when this room's feed should be fetched.
- *
- * One rule for every reader, so the switch on the Settings screen and the edge function's own check can never
- * mean different things: the master must be on, and the room must not be one of the exceptions.
- */
-export function isRoomSynced(roomId: string): boolean {
-  return current.enabled && current.rooms[roomId] !== false
-}

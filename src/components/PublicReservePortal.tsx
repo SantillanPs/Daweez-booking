@@ -2,9 +2,11 @@ import React, { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Calendar, User, Mail, Phone, CheckCircle2, Users, ArrowRight, Info, AlertCircle } from 'lucide-react'
 import { Booking, Room, Venue, Companion, PaymentRecord } from '../types/booking'
-import * as syncEngine from '../utils/syncEngine'
+import { isRoomAvailable, isVenueRangeAvailable } from '../utils/availability'
+import { getBookings, getRooms, getVenues, insertBooking } from '../utils/db'
+import { calculatePricing } from '../utils/pricing'
 import { getEffectiveNightlyPrice } from '../utils/promoMode'
-import { dateToString } from '../utils/helpers'
+import { dateToString, randomUUID } from '../utils/helpers'
 import { getPaymentAccounts } from '../utils/paymentAccounts'
 import { freshReceiptNumber, nextReceiptNumber } from '../utils/receiptNumber'
 import { roomDisplayName } from './calendar/bookingStyles'
@@ -36,17 +38,17 @@ export function PublicReservePortal() {
   // fetch, and availability stays fresh after staff confirm/cancel bookings.
   const { data: bookings = [], isLoading: isLoadingBookings } = useQuery<Booking[]>({
     queryKey: ['bookings'],
-    queryFn: () => syncEngine.getBookings(),
+    queryFn: () => getBookings(),
     staleTime: 30_000,
   })
   const { data: rooms = [] } = useQuery<Room[]>({
     queryKey: ['rooms'],
-    queryFn: () => syncEngine.getRooms(),
+    queryFn: () => getRooms(),
     staleTime: 5 * 60 * 1000,
   })
   const { data: venues = [] } = useQuery<Venue[]>({
     queryKey: ['venues'],
-    queryFn: () => syncEngine.getVenues(),
+    queryFn: () => getVenues(),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -64,7 +66,7 @@ export function PublicReservePortal() {
     const map: Record<string, boolean> = {}
     rooms.forEach(r => {
       map[r.id] = (nights > 0 && checkIn && checkOut)
-        ? syncEngine.isRoomAvailable(r.id, checkIn, checkOut, bookings)
+        ? isRoomAvailable(r.id, checkIn, checkOut, bookings)
         : true
     })
     return map
@@ -74,7 +76,7 @@ export function PublicReservePortal() {
     const map: Record<string, boolean> = {}
     venues.forEach(v => {
       map[v.id] = (nights > 0 && checkIn && checkOut)
-        ? syncEngine.isVenueRangeAvailable(v.id, checkIn, checkOut, bookings)
+        ? isVenueRangeAvailable(v.id, checkIn, checkOut, bookings)
         : true
     })
     return map
@@ -92,7 +94,7 @@ export function PublicReservePortal() {
   // charges — no sale mode to be in or out of.
   const pricing = useMemo(() => {
     if (!selectedUnit || nights <= 0) return null
-    return syncEngine.calculatePricing({
+    return calculatePricing({
       roomId: selectedUnitType === 'room' ? selectedUnitId : undefined,
       venueId: selectedUnitType === 'venue' ? selectedUnitId : undefined,
       checkIn,
@@ -143,11 +145,11 @@ export function PublicReservePortal() {
       // 1. Final collision check against the shared cache. (The server-side RPC
       //    + exclusion constraint are the hard backstop if two guests race.)
       if (selectedUnitType === 'room') {
-        if (!syncEngine.isRoomAvailable(selectedUnitId, checkIn, checkOut, bookings)) {
+        if (!isRoomAvailable(selectedUnitId, checkIn, checkOut, bookings)) {
           throw new Error('This room was just booked by another guest. Please select a different room.')
         }
       } else {
-        if (!syncEngine.isVenueRangeAvailable(selectedUnitId, checkIn, checkOut, bookings)) {
+        if (!isVenueRangeAvailable(selectedUnitId, checkIn, checkOut, bookings)) {
           throw new Error('This venue was just booked by another guest. Please select a different date or venue.')
         }
       }
@@ -156,7 +158,7 @@ export function PublicReservePortal() {
       //    expire and free the room, plus the unified pricing model.
       const now = new Date()
       const newBooking: Booking = {
-        id: `direct-${syncEngine.generateUUID()}`,
+        id: `direct-${randomUUID()}`,
         room_id: selectedUnitType === 'room' ? selectedUnitId : undefined,
         venue_id: selectedUnitType === 'venue' ? selectedUnitId : undefined,
         guest_name: guestName,
@@ -190,7 +192,7 @@ export function PublicReservePortal() {
       // numbered from the bookings on hand as before.
       const receiptNumber = await freshReceiptNumber(newBooking, bookings).catch(() => nextReceiptNumber(newBooking, bookings))
       const onlinePayment: PaymentRecord = {
-        id: 'rcpt-' + syncEngine.generateUUID(),
+        id: 'rcpt-' + randomUUID(),
         amount: Number(pricing.downpayment) || 0,
         method: 'GCash',
         reference: paymentRef,
@@ -208,7 +210,7 @@ export function PublicReservePortal() {
       }
 
       // 3. Save via the shared layer and reflect it in the shared cache.
-      const saved = await syncEngine.insertBooking(newBooking)
+      const saved = await insertBooking(newBooking)
       queryClient.setQueryData<Booking[]>(['bookings'], old =>
         old ? [...old.filter(b => !b.id.startsWith('__optimistic__')), saved] : [saved]
       )
