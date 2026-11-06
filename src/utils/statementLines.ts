@@ -1,7 +1,6 @@
+import { priceBooking } from './pricing'
 import { Booking, Room, Venue } from '../types/booking'
-import * as syncEngine from './syncEngine'
 import { normalizeVenueId, dateToString } from './helpers'
-import { getRateConfig } from './rateConfig'
 import { chargeableEarlyHours } from './checkInOut'
 import { roomDisplayName } from '../components/calendar/bookingStyles'
 import { OrderSlip, slipNumber, slipsTotal } from './orderSlips'
@@ -136,42 +135,6 @@ const unitName = (b: Booking, rooms: Room[], venues: Venue[]): string => {
   return venue ? venue.name : 'Event Venue'
 }
 
-// Same charge inputs the pricing engine uses, so the printed table always matches
-// the real invoice.
-export function bookingPricing(b: Booking, o: {
-  rooms: Room[]
-  venues: Venue[]
-  bookingsList: Booking[]
-}) {
-  return syncEngine.calculatePricing({
-    roomId: b.room_id,
-    venueId: b.venue_id,
-    checkIn: b.check_in,
-    checkOut: b.check_out,
-    guestEmail: b.guest_email,
-    // What the booking holds: this room has breakfast (card k140).
-    breakfastIncluded: b.breakfast_included === true,
-    breakfastDays: b.breakfast_days,
-    equipmentRentals: b.equipment_rentals,
-    eventAddons: b.event_addons,
-    bookingsList: o.bookingsList,
-    contractRateOverride: b.contract_rate_override,
-    appliedDiscount: b.applied_discount,
-    // Early check-in is collected at check-out, so it stays off the bill until then —
-    // the paper and the screen must never disagree (see `chargeableEarlyHours`).
-    earlyCheckInHours: chargeableEarlyHours(b),
-    lateCheckOutHours: b.late_check_out_hours,
-    venueDayBlocks: b.venue_day_blocks,
-    breakfastRecords: b.breakfast_records,
-    rooms: o.rooms,
-    venues: o.venues,
-    // The hours the room was sold for: without them the printed bill charges the whole
-    // night for a 3-hour stay (the screen said ₱550, the paper printed ₱850).
-    shortStayHours: b.stay_hours,
-    rates: getRateConfig(),
-  })
-}
-
 /**
  * Every charge on one booking, banded. The rows add up to exactly
  * `pricing.grandTotal + <its food tab>`, which is what `statement.ts` puts in Sub-Total:
@@ -186,7 +149,7 @@ export function bookingLines(b: Booking, o: {
   slipsByBooking?: Record<string, OrderSlip[]>
 }): { items: StatementLineItem[]; tabTotal: number } {
   const items: StatementLineItem[] = []
-  const pricing = bookingPricing(b, o)
+  const pricing = priceBooking(b, o)
   const { rooms, venues } = o
   const isRoom = !!b.room_id
   const nights = nightsFor(b)

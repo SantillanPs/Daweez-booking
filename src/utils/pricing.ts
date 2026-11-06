@@ -4,7 +4,8 @@ import { normalizeVenueId } from './helpers'
 import { venueTypePrice } from './venueTypes'
 import { venueHoursOf } from './venueHours'
 import { DEFAULT_ROOMS, DEFAULT_VENUES } from './defaultData'
-import { DEFAULT_RATE_CONFIG } from './rateConfig'
+import { DEFAULT_RATE_CONFIG, getRateConfig } from './rateConfig'
+import { chargeableEarlyHours } from './checkInOut'
 import { breakfastMornings } from './breakfast'
 
 function diffDays(a: string, b: string): number {
@@ -283,4 +284,40 @@ export function calculatePricing(params: {
     downpayment,
     balanceDue
   }
+}
+
+/**
+ * **The one way to price a saved booking**, whatever it is — a room, a venue, a short stay, an
+ * agency's stay. Every reader (the balance, the bill, Today's money's ledger, the report) calls
+ * this, so a fact added here reaches all of them. Before 2026-11-06 each one listed the facts
+ * itself and the lists drifted: the ledger and the report left out a venue's day blocks, its
+ * extra hours, late hours, the discounts and the live rates, so a venue counted differently
+ * there than on its bill. Add a new booking fact HERE, never at a caller.
+ */
+export function priceBooking(b: Booking, o: { rooms: Room[]; venues: Venue[]; includeEarlyHours?: boolean }) {
+  return calculatePricing({
+    roomId: b.room_id,
+    venueId: b.venue_id,
+    checkIn: b.check_in,
+    checkOut: b.check_out,
+    guestEmail: b.guest_email,
+    equipmentRentals: b.equipment_rentals,
+    eventAddons: b.event_addons,
+    contractRateOverride: b.contract_rate_override,
+    venueExcessHours: b.venue_excess_hours,
+    appliedDiscount: b.applied_discount,
+    // Early hours are billable only once the stay is checked out (`chargeableEarlyHours`),
+    // unless the caller asks what the bill WILL be — see `pendingEarlyCharge`.
+    earlyCheckInHours: o.includeEarlyHours ? Number(b.early_check_in_hours || 0) : chargeableEarlyHours(b),
+    lateCheckOutHours: b.late_check_out_hours,
+    venueDayBlocks: b.venue_day_blocks,
+    breakfastRecords: b.breakfast_records,
+    breakfastIncluded: b.breakfast_included === true,
+    breakfastDays: b.breakfast_days,
+    // A short stay is priced for its hours, or a 3-hour stay costs a whole night.
+    shortStayHours: b.stay_hours,
+    rooms: o.rooms,
+    venues: o.venues,
+    rates: getRateConfig(),
+  })
 }

@@ -55,7 +55,7 @@ There is **no test suite**. Verify changes by running the app against the develo
 
 ### Money
 
-- **One pricing rule:** `calculatePricing` in `utils/pricing.ts`. Everything that re-prices a booking must pass every fact about it (breakfast, short-stay hours, discount, agency rate) or screens disagree. `recomputeBalance` in `utils/bookingBalance.ts` is the one place "what is owed" is worked out: stay + food tab − money received.
+- **One pricing rule:** `calculatePricing` in `utils/pricing.ts`. A **saved** booking is priced only through `priceBooking` (same file) — the balance, the bill, the ledger and the report all call it, so a fact added there reaches rooms, venues, short stays and agencies at once; `scripts/check_one_pricing.cjs` fails if another file calls `calculatePricing` (only a not-yet-saved form may: the booking save, the public page, `discountSplit`). `recomputeBalance` in `utils/bookingBalance.ts` is the one place "what is owed" is worked out: stay + food tab − money received.
 - Payment status is derived from recorded payments, never typed. Payments live in `bookings.payment_records` (JSON), each with a stored receipt number `PR-YYYYMM-NNN` that must be unique across all bookings and tabs.
 - One payment for several rooms is stored on **every** room with the full `amount`; each room's own slice is `share` / `downpayment_paid`.
 - Dates are built from **local** time parts (`dateToString`), never `toISOString()` — the hotel is UTC+8.

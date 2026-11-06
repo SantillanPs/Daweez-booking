@@ -1,8 +1,6 @@
+import { priceBooking } from './pricing'
 import { Booking, Room, Venue } from '../types/booking'
-import * as syncEngine from './syncEngine'
-import { getRateConfig } from './rateConfig'
 import { paymentStatusFromMoney } from './bookingMoney'
-import { chargeableEarlyHours } from './checkInOut'
 import { normalizeVenueId } from './helpers'
 
 // The balance rule for a stay with a food tab (board card k69):
@@ -36,33 +34,7 @@ export function recomputeBalance(
       : true
   if (!unitKnown) return base
 
-  const pricing = syncEngine.calculatePricing({
-    roomId: base.room_id,
-    venueId: base.venue_id,
-    checkIn: base.check_in,
-    checkOut: base.check_out,
-    guestEmail: base.guest_email,
-    equipmentRentals: base.equipment_rentals,
-    eventAddons: base.event_addons,
-    contractRateOverride: base.contract_rate_override,
-    venueExcessHours: base.venue_excess_hours,
-    appliedDiscount: base.applied_discount,
-    // Early hours are billable only once the stay is checked out (`chargeableEarlyHours`),
-    // unless the caller is asking what the bill WILL be — see `pendingEarlyCharge`.
-    earlyCheckInHours: opts.includeEarlyHours ? Number(base.early_check_in_hours || 0) : chargeableEarlyHours(base),
-    lateCheckOutHours: base.late_check_out_hours,
-    venueDayBlocks: base.venue_day_blocks,
-    breakfastRecords: base.breakfast_records,
-    breakfastIncluded: base.breakfast_included === true,
-    breakfastDays: base.breakfast_days,
-    // SHORT STAY: the hours must reach the pricing rule or a 3-hour stay is re-priced
-    // as a whole night (the room's normal price instead of its 3-hour figure). Every
-    // reader that re-prices a booking has to pass this — see `docs/why/money.md`.
-    shortStayHours: base.stay_hours,
-    rooms: opts.rooms,
-    venues: opts.venues,
-    rates: getRateConfig(),
-  })
+  const pricing = priceBooking(base, { rooms: opts.rooms, venues: opts.venues, includeEarlyHours: opts.includeEarlyHours })
   const paid = Number(base.downpayment_paid || 0)
   const remaining = Math.max(0, pricing.grandTotal + (opts.tabTotal || 0) - paid)
   return { ...base, balance_due: remaining, payment_status: paymentStatusFromMoney(paid, remaining) }

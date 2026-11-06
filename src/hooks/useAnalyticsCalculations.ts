@@ -1,8 +1,8 @@
+import { priceBooking } from '../utils/pricing'
 import { useMemo } from 'react'
 import { Booking, Room, Venue } from '../types/booking'
 import { TabLine } from '../types/tab'
 import { Expense } from '../types/expense'
-import { calculatePricing } from '../utils/syncEngine'
 import { getRateConfig } from '../utils/rateConfig'
 import { foodMoneyIn } from '../utils/tabRevenue'
 import { dateToString } from '../utils/helpers'
@@ -229,23 +229,7 @@ export function useAnalyticsCalculations({
     // Process each booking — honors whatever the booking actually charged (promo_applied).
     relevantBookings.forEach(b => {
       // 1. Calculate pricing details — use the booking's stored choice (promo vs. regular)
-      const priceResult = calculatePricing({
-        roomId: b.room_id,
-        venueId: b.venue_id,
-        checkIn: b.check_in,
-        checkOut: b.check_out,
-        guestEmail: b.guest_email,
-        equipmentRentals: b.equipment_rentals,
-        eventAddons: b.event_addons,
-        bookingsList: bookings,
-        breakfastIncluded: b.breakfast_included === true,
-        breakfastDays: b.breakfast_days,
-        contractRateOverride: b.contract_rate_override,
-        // A short stay earns its hours price, not a night's.
-        shortStayHours: b.stay_hours,
-        rooms,
-        venues
-      })
+      const priceResult = priceBooking(b, { rooms, venues })
 
       // Stay details
       const stayDates = getStayDates(b.check_in, b.check_out)
