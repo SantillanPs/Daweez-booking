@@ -1,7 +1,7 @@
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Banknote, Building2, Check, ChevronDown, Coffee, Plus, Tag, X } from 'lucide-react'
+import { Banknote, Building2, Check, ChevronDown, Coffee, Plus, Tag, Trash2, X } from 'lucide-react'
 import { Booking, BillCharge, BreakfastPlan, Companion, EquipmentRental, EventAddons, PartnerDeal, Room, Venue } from '../../types/booking'
 import { buildStatement, StatementLineItem, shortDate } from '../../utils/statement'
 import { dateToString, normalizeVenueId, randomUUID, addDays, parseDay, pesoWhole } from '../../utils/helpers'
@@ -889,10 +889,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             <button type="button" onClick={toggle('swap', id)} aria-expanded={isOpen('swap', id)} className={VAL + ' group inline-flex items-center gap-1 -ml-0.5'}>
               {name}<ChevronDown aria-hidden="true" className={CHEV} />
             </button>
+            {/* A trash can that is always there (Sebastian, 2026-11-06): the faint ×, hidden on a PC until
+                hovered, went unseen, and the desk added Room 6 three times to one bill instead of taking it off. */}
             {list.length > 1 && (
-              <button type="button" onClick={e => slideOff(e.currentTarget, () => takeOff(id, s))} aria-label={'Take ' + name + ' off the bill'}
-                className="print:hidden -my-1 ml-0.5 p-1 align-middle rounded text-muted opacity-50 mouse:opacity-0 mouse:group-hover/row:opacity-50 focus-visible:!opacity-100 hover:!opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer">
-                <X className="w-3 h-3" />
+              <button type="button" onClick={e => { sawFeature('room-trash'); slideOff(e.currentTarget, () => takeOff(id, s)) }} aria-label={'Take ' + name + ' off the bill'}
+                className="print:hidden relative -my-1 ml-1 p-1 align-middle rounded-[5px] text-ink-600 hover:text-danger-600 hover:bg-danger-50 active:scale-90 transition-[color,background-color,transform] cursor-pointer">
+                <Trash2 aria-hidden="true" className="w-3.5 h-3.5" />
+                {id === list[0][0] && <NewTag id="room-trash" />}
               </button>
             )}
             {/* Only the kind it is shows (the owner: "make it more contextual"); the others float under it. */}

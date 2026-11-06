@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // A room on the bill is taken off by the trash can beside its name, always shown (`NewBookingBill`).
+  { id: 'room-trash', since: '2026-11-06' },
   // A group's printed bill fits one A5 sheet: alike rooms on one row, one Dates column, the extras beside
   // the totals, the discount and payments grouped by them (`foldAlikeRooms`, `PaperExtras`, `InvoiceDocument`).
   { id: 'bill-paper-tight', since: '2026-11-06' },
