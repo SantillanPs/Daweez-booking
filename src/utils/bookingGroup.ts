@@ -23,7 +23,11 @@ export function groupOf(booking: Booking, list: Booking[]): Booking[] {
     : booking.invoice_number
       ? list.filter(b => !b.group_id && b.invoice_number === booking.invoice_number)
       : []
-  const rows = together.some(b => b.id === booking.id) ? together : [booking, ...together]
+  // A cancelled room of a bill that still has live rooms opens that bill without itself: put back
+  // on it, its old share of a flat discount was added in (₱7,860 typed read back as ₱8,906,
+  // 2026-11-06). A bill cancelled whole is still just the booking asked for.
+  const rows = together.some(b => b.id === booking.id) || (booking.status === 'cancelled' && together.length > 0)
+    ? together : [booking, ...together]
   return rows
     .map(b => (b.id === booking.id ? booking : b))
     // Booked first leads, then the number: a new-style number ("202610-…") sorts before an old
