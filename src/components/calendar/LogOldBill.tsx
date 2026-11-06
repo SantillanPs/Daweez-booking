@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Coffee, Plus, X } from 'lucide-react'
+import { Banknote, Check, Coffee, Plus, X } from 'lucide-react'
 import { Booking, BillCharge, Companion, EventAddons, PaymentRecord } from '../../types/booking'
 import { buildStatement, StatementLineItem } from '../../utils/statement'
-import { dateToString, generateUUID } from '../../utils/helpers'
+import { dateToString, addDays, parseDay, shortDay, pesoWhole } from '../../utils/helpers'
 import { breakfastSellable, roomBreakfastPrice } from '../../utils/breakfast'
 import { venueTypes } from '../../utils/venueTypes'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
@@ -13,20 +13,47 @@ import { StatementShell, BrandHeader, SectionName } from '../billing/StatementSh
 import { StatementChargesTable } from '../billing/StatementChargesTable'
 import { ADD, AddCharge, WritePayment } from '../billing/BillDesk'
 import { want } from '../billing/want'
-import { PayRow } from '../billing/FixPayment'
+import { GoneLine, LINE as TOT, PayRow } from '../billing/FixPayment'
 import { randomUUID } from '../../utils/helpers'
 import { NationalityInput } from '../NationalityInput'
 import { CountPeso } from '../CountPeso'
 import { PriceBox } from '../PriceBox'
 import { useDashboardData } from '../DashboardContext'
 import { showToast } from '../../utils/toast'
-import { Circled, LogOldBookingModal, Sel } from './LogOldBookingModal'
+import { Circled, Sel } from './Circled'
+import { Room, Venue } from '../../types/booking'
+
+export type CreateManual = (p: {
+  roomId?: string; venueId?: string; guestName: string; guestEmail: string; guestPhone: string
+  guestAddress?: string; guestNationality?: string; companions?: Companion[]
+  checkIn: string; checkOut: string; source: 'manual'; status: 'confirmed'
+  referenceNumber?: string; registeredOn?: string
+  paymentMethod?: string; downpaymentPaid?: number; balanceDue?: number
+  paymentStatus?: 'unpaid' | 'downpayment' | 'paid'; paymentRecords?: Booking['payment_records']
+  preparedBy?: string; breakfastIncluded?: boolean; stayHours?: number; stayHalf?: 0 | 1; groupId?: string
+  eventAddons?: EventAddons; actualCheckIn?: string; actualCheckOut?: string
+}) => Promise<Booking>
+
+interface LogOldBillProps {
+  rooms: Room[]
+  venues: Venue[]
+  /** Every booking, for the receptionists' names written on them before. */
+  bookings: Booking[]
+  createManualBooking: CreateManual
+  onClose: () => void
+  // Calendar selection (room/venue + dates) to pre-fill, like the other booking forms.
+  initialSelections?: Record<string, Sel>
+  /** One day was picked on the calendar — the pick a short stay starts from — so the paper
+   *  is a short stay and only its hours are asked (Sebastian, 2026-10-17: "even though I
+   *  clicked short stay on the calendar, it didn't choose it immediately in the form"). */
+  shortStay?: boolean
+  /** The half of the day picked for it: 0 the morning, 1 the afternoon. */
+  shortHalf?: 0 | 1
+}
 
 const HOURS = [3, 6, 12, 22] as const
-const money = (n: number) => '₱' + Math.round(n).toLocaleString()
-const nextDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return dateToString(new Date(y, m - 1, d + 1)) }
-const fmtDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) }
-const shortDay = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }
+const nextDay = (iso: string) => addDays(iso, 1)
+const fmtDay = (iso: string) => parseDay(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 
 interface Paid { id: string; amount: number; method: string; reference: string; date: string; purpose: string }
 
@@ -36,10 +63,9 @@ interface Paid { id: string; amount: number; method: string; reference: string; 
  * on it: the paper's No. and date where the Bill no. sits, the guest on blank lines, the charges
  * table priced by the real statement builder, payments written on the bill's own blank line with
  * the day they were paid, and the receptionist circled on "Prepared by". **Nothing is saved
- * until Log booking**, so a paper left halfway leaves nothing behind. The paper form stays as the
- * other choice in Settings → Front desk.
+ * until Log booking**, so a paper left halfway leaves nothing behind.
  */
-export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClose, initialSelections, shortStay, shortHalf }: React.ComponentProps<typeof LogOldBookingModal>) {
+export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClose, initialSelections, shortStay, shortHalf }: LogOldBillProps) {
   const { updateRoomBreakfastPrice } = useDashboardData()
   // The room whose breakfast is being priced in its blank.
   const [pricing, setPricing] = useState<string | null>(null)
@@ -58,6 +84,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
   // A charge just taken off, which Undo puts back as it was.
   const [removed, setRemoved] = useState<{ label: string; breakfast: string[]; addons: Record<string, EventAddons> } | null>(null)
   const [paid, setPaid] = useState<Paid[]>([])
+  const [struck, setStruck] = useState<{ p: Paid; at: number }[]>([])
   const [writing, setWriting] = useState(false)
   const [preparedBy, setPreparedBy] = useState(lastReceptionist)
   const [staffNames, setStaffNames] = useState(() => staffNamesOf(bookings))
@@ -123,7 +150,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
     // The receptionist on duty stays: the next paper is usually from the same shift.
     setRegNo(''); setRegOn(''); setGuestName(''); setGuestPhone(''); setNationality(''); setAddress('')
     setCompanions([]); setMore(false); setHours(3); setBreakfast([]); setAddons({}); setRemoved(null)
-    setPaid([]); setWriting(false); setError(''); setLogged(false)
+    setPaid([]); setStruck([]); setWriting(false); setError(''); setLogged(false)
   }
 
   const handleSave = async () => {
@@ -152,11 +179,11 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
         row.forEach((v, i) => { sofar[i] += v })
         return row
       })
-      const groupId = n > 1 ? 'grp-' + generateUUID() : undefined
+      const groupId = n > 1 ? 'grp-' + randomUUID() : undefined
       const cleaned = companions.filter(c => c.name.trim())
       // A stay that is already over is logged as over: checked in and out at the standard times.
       const today = dateToString(new Date())
-      const at = (iso: string, h: number) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d, h).toISOString() }
+      const at = (iso: string, h: number) => { const d = parseDay(iso); d.setHours(h); return d.toISOString() }
       for (let i = 0; i < n; i++) {
         const [id, s] = list[i]
         const down = shares.reduce((a, row) => a + row[i], 0)
@@ -216,7 +243,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
           </span>
           <h3 className="font-display font-bold text-[20px] text-main">Logged</h3>
           <p className="text-[14px] text-muted">
-            {guestName.trim()} · {list.map(([id, s]) => unitName(id, s).split(' · ')[0]).join(', ')}{isShort ? ' · ' + hours + ' hours' : ''} · {paidTotal > 0 ? money(paidTotal) + ' paid' : 'nothing paid'}
+            {guestName.trim()} · {list.map(([id, s]) => unitName(id, s).split(' · ')[0]).join(', ')}{isShort ? ' · ' + hours + ' hours' : ''} · {paidTotal > 0 ? pesoWhole(paidTotal) + ' paid' : 'nothing paid'}
           </p>
           <button type="button" onClick={reset}
             className="w-full max-w-xs min-h-[54px] mt-2 rounded-xl bg-gold-400 hover:bg-gold-600 text-ink-900 text-[16px] font-bold cursor-pointer active:scale-[0.98] transition-[background-color,transform] bw-shine">
@@ -229,9 +256,8 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
     )
   }
 
-  // The page's three kinds of text, as on the bill: a grey label, black information, a figure.
+  // The page's text, as on the bill: a grey label, black information.
   const label = 'text-[10px] text-muted'
-  const figure = 'font-mono text-[11.5px] font-bold text-ink-900'
   // A blank to write on: the bill's own dashed gold line.
   const LINE = 'w-full min-w-0 bg-transparent border-0 border-b-[1.5px] border-dashed border-gold-400 rounded-none px-0.5 py-px text-ink-900 placeholder:text-paper-400 placeholder:font-medium focus:outline-none focus:border-solid focus:bg-gold-100 transition-colors'
   const info = LINE + ' text-[11px] font-semibold mt-1'
@@ -301,7 +327,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
                           <button key={o.key} type="button" role="radio" aria-checked={o.key === chosen} onClick={() => setKind(id, o.key)}
                             className={'px-2 py-0.5 rounded-md text-[10.5px] font-bold border-[1.5px] cursor-pointer active:scale-95 transition-[border-color,background-color,transform] ' +
                               (o.key === chosen ? 'border-ink-900 bg-ink-900 text-white' : 'border-paper-200 text-ink-700 hover:border-gold-400')}>
-                            {o.label} <span className="font-mono font-semibold opacity-70">{money(o.price)}</span>
+                            {o.label} <span className="font-mono font-semibold opacity-70">{pesoWhole(o.price)}</span>
                           </button>
                         ))}
                       </div>
@@ -366,7 +392,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
                     className={ADD}>
                     <Coffee aria-hidden="true" className="w-3.5 h-3.5 group-hover:[animation:bk-hop_0.5s_cubic-bezier(0.34,1.56,0.64,1)]" />
                     {name}
-                    <span className="font-mono text-[10px] font-semibold text-muted">{priced ? money(roomBreakfastPrice(room)) + (isShort ? '' : ' a night') : 'Set price'}</span>
+                    <span className="font-mono text-[10px] font-semibold text-muted">{priced ? pesoWhole(roomBreakfastPrice(room)) + (isShort ? '' : ' a night') : 'Set price'}</span>
                   </button>
                 )
               })} />
@@ -377,32 +403,44 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
           <div className="grid grid-cols-[1fr_236px] gap-6 items-start">
             <div />
             <div className="relative flex flex-col gap-[3px]">
-              <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{money(subTotal)}</span></div>
-              {/* The bill written in ink, like the one bill (the Paper mock, Sebastian, 2026-10-29): the
-                  payments are one ledger line with their amount in green, each one under it, and the "+"
-                  that writes one hangs in the margin beside it. */}
+              {/* The same grid as the one bill (`LINE`, Sebastian, 2026-11-06): icon, name and details,
+                  amount, its button. One payment is its own line; two or more fold under "Paid" with a count. */}
+              <div className={TOT}>
+                <span className="col-start-2 text-[9px] font-bold uppercase tracking-[0.12em] text-muted">Sub-total</span>
+                <span className="justify-self-end font-mono text-[11.5px] font-bold text-muted tabular-nums">{pesoWhole(subTotal)}</span>
+              </div>
+              <div className="ml-[22px] mb-1 border-t border-ink-200" />
               <div className="relative">
                 {first && (
                   <WritePayment key={paid.length} sheet={sheetEl} open={writing} onOpen={setWriting} gone={!(due > 0)} paidOn={first.checkIn}
                     onPay={p => setPaid(ps => [...ps, { id: 'rcpt-' + Date.now(), ...p }])} />
                 )}
-                <div className="flex items-baseline py-[3px] border-b border-dotted border-ink-200 text-[10px] font-medium text-ink-900">
-                  <span className="flex-1">Less: payments{paid.length > 0 && <span key={paid.length} className="ml-1 text-muted bill-bump">({paid.length})</span>}</span>
-                  <span key={paidTotal} className={'w-[62px] text-right font-mono text-[11.5px] font-bold bw-rise ' + (paidTotal > 0 ? 'text-emerald-700' : 'text-muted')}>{paidTotal > 0 ? '−' + money(paidTotal) : '—'}</span>
-                </div>
+                {paid.length !== 1 && (
+                  <div className={TOT}>
+                    <Banknote aria-hidden="true" className="justify-self-center w-3 h-3 text-muted" />
+                    <span className="flex items-center gap-1.5"><b className="text-[11px] font-bold text-ink-900">Paid</b>
+                      {paid.length > 1 && <span key={paid.length} className="inline-grid place-items-center min-w-4 h-4 px-1 rounded-full bg-gold-100 text-[9px] font-extrabold text-gold-800 bill-bump">{paid.length}</span>}</span>
+                    <span key={paidTotal} className={'justify-self-end font-mono text-[11.5px] font-bold tabular-nums bw-rise ' + (paidTotal > 0 ? 'text-emerald-700' : 'text-muted')}>{paidTotal > 0 ? '−' + pesoWhole(paidTotal) : '—'}</span>
+                  </div>
+                )}
+                {paid.map(p => (
+                  <div key={p.id} className="bill-ink">
+                    <PayRow head={paid.length === 1 ? 'Paid' : undefined} kid={paid.length > 1} purpose={p.purpose}
+                      method={paymentMethodLabel(p.method).replace('Bank transfer', 'Bank')} amount={'−' + pesoWhole(p.amount)} under={shortDay(p.date)} tag={paid[0] === p}
+                      onRemove={() => { const at = paid.indexOf(p); setPaid(ps => ps.filter(x => x.id !== p.id)); setStruck(g => [...g, { p, at }]) }} />
+                  </div>
+                ))}
               </div>
-              {paid.map(p => (
-                <div key={p.id} className="bill-ink">
-                  <PayRow purpose={<>{p.purpose}
-                    <button type="button" onClick={() => setPaid(ps => ps.filter(x => x.id !== p.id))} aria-label={'Take the ' + p.purpose + ' payment off'}
-                      className="ml-0.5 p-0.5 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button></>}
-                    method={paymentMethodLabel(p.method).replace('Bank transfer', 'Bank')} amount={'−' + money(p.amount)} under={shortDay(p.date)} />
-                </div>
+              {/* Taken off: struck through with its Undo until the bill closes, as on the one bill. */}
+              {struck.map(({ p, at }) => (
+                <GoneLine key={p.id} icon={<Banknote className="w-3 h-3" />} name={p.purpose || 'Payment'}
+                  detail={[shortDay(p.date), paymentMethodLabel(p.method).replace('Bank transfer', 'Bank')].filter(Boolean).join(' · ')} amount={'−' + pesoWhole(p.amount)}
+                  onUndo={() => { setPaid(ps => { const c = [...ps]; c.splice(Math.min(at, c.length), 0, p); return c }); setStruck(g => g.filter(x => x.p.id !== p.id)) }} />
               ))}
               {paidUp && (
                 <span className="bill-paid self-end mt-1.5 mb-0.5 px-[9px] py-0.5 border-2 border-emerald-700 rounded text-[11px] font-extrabold uppercase tracking-[0.1em] text-emerald-700">✓ Paid in full</span>
               )}
-              <div className="mt-1.5 -mx-3 px-3 py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
+              <div className="mt-2.5 pl-[19.5px] pr-[25.5px] py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
                 <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">
                   Amount due
                   {paidTotal > 0 && !paidUp && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px text-muted">Remaining balance</span>}
@@ -436,10 +474,8 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
               </div>
               <p className={label + ' mt-0.5'}>Prepared by</p>
             </div>
-            <div>
-              <p className="h-6 border-b border-ink-900" />
-              <p className={label + ' mt-0.5'}>Guest signature</p>
-            </div>
+            {/* The guest signs on paper only (Sebastian, 2026-11-06): `InvoiceDocument` prints the line. */}
+            <div />
           </div>
 
           {error && <p className="p-2.5 bg-danger-50 border border-danger-200 text-danger-600 text-[13px] rounded-lg bw-nope">{error}</p>}

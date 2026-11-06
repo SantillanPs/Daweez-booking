@@ -43,3 +43,23 @@ export function dateToString(d: Date): string {
   const day = String(d.getDate()).padStart(2, '0')
   return y + '-' + m + '-' + day
 }
+
+/** A YYYY-MM-DD day as a LOCAL date, the other way round from `dateToString`. One copy for the
+ *  whole app: the same three lines were written out in some twenty files (2026-11-06). */
+export const parseDay = (day: string) => {
+  const [y, m, d] = day.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+export const addDays = (day: string, n: number) => {
+  const d = parseDay(day)
+  d.setDate(d.getDate() + n)
+  return dateToString(d)
+}
+/** "Nov 6" */
+export const shortDay = (day: string) => parseDay(day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+/** Money as the staff read it, "₱1,250.50": up to 2 decimals, none when it is whole. One copy for the
+ *  whole app: some thirty screens had their own, and they disagreed on decimals (2026-11-06). */
+export const peso = (n: number) => '₱' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
+/** Rounded to the whole peso, "₱1,251": the bill's and the reports' figures. */
+export const pesoWhole = (n: number) => '₱' + Math.round(Number(n || 0)).toLocaleString()

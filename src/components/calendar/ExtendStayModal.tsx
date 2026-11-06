@@ -9,6 +9,7 @@ import { statusAfterPayment } from '../../utils/bookingStatus'
 import { amountToPayNow, isBilledToAgency } from '../../utils/bookingMoney'
 import { methodNeedsReference } from '../../utils/paymentMethod'
 import { freshReceiptNumber } from '../../utils/receiptNumber'
+import { takeBackPayment } from '../../utils/removedPayments'
 import { withFixedPayment, PaymentPatch } from '../walk-in/bookingPayment'
 import { recomputeBalance, pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
 import { useBookingSlips } from '../../hooks/useBookingSlips'
@@ -65,6 +66,7 @@ interface ExtendStayModalProps {
 export interface PanelDesk {
   onPay: (p: { amount: number; method: string; reference: string; date: string; purpose: string }) => Promise<void>
   onFix: (key: string, patch: PaymentPatch) => Promise<void>
+  onRemove: (key: string) => Promise<void>
   onReceipt: (receipt: string, start?: 'print' | 'email') => void
 }
 
@@ -395,6 +397,31 @@ export function ExtendStayModal({
     }
   }
 
+  // A payment can be taken off on the bill again (Sebastian, 2026-11-06, the bill totals mock): the
+  // same steps as Bills & receipts — every room it paid gives back its share, its slips are unpaid,
+  // and the removal is logged. The bill holds it struck through with Undo until it closes, then calls this.
+  const removePayment = async (key: string) => {
+    const rows = [localBooking, ...billRows.filter(b => b.id !== localBooking.id)]
+    const rec = rows.flatMap(b => b.payment_records || []).find(r => r.id === key)
+    if (!rec) return
+    const holders = rec.receipt_number
+      ? [localBooking, ...(coveredBookings[rec.receipt_number] || []).filter(b => b.id !== localBooking.id)]
+          .filter(b => (b.payment_records || []).some(r => r.receipt_number === rec.receipt_number))
+      : [localBooking]
+    // Read fresh from the cache: the bill calls this as it closes, after saving its own changes, and this
+    // panel's copy may not have caught up yet — writing it would undo what the bill just saved.
+    const cached = queryClient.getQueryData<Booking[]>(['bookings']) || []
+    const fresh = holders.map(b => cached.find(c => c.id === b.id) || b)
+    const place = fresh.map(b => { const r = rooms.find(x => x.id === b.room_id); return r ? 'Room ' + r.room_number : venues.find(v => v.id === b.venue_id)?.name || '' }).filter(Boolean).join(', ')
+    try {
+      await takeBackPayment(rec, fresh, async b => { await onUpdateBooking?.(b) }, { guest: booking.company_name || booking.guest_name || 'Guest', rooms: place })
+      void queryClient.invalidateQueries({ queryKey: ['removed-payments'] })
+      void queryClient.invalidateQueries({ queryKey: ['tabs'] })
+    } catch {
+      showToast('Could not remove the payment. Please try again.', 'error')
+    }
+  }
+
   // Recompute the balance after early/late hours are applied, using the
   // booking's own charges + current rates + the guest's food, so the amount
   // owed stays correct. The rule itself lives in utils/bookingBalance.ts.
@@ -624,6 +651,7 @@ export function ExtendStayModal({
     deskRef.current = {
       onPay: p => handleAddReceipt(p),
       onFix: (key, patch) => fixPayment(key, patch),
+      onRemove: key => removePayment(key),
       onReceipt: (number, start) => {
         const rec = receiptRecords.find(x => x.receipt_number === number)
         if (rec) { setReceiptFor(rec); setReceiptStart(start); setShowReceipt(true) }

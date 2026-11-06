@@ -16,6 +16,11 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // A discount or payment is taken off on the bill by its bin, and stays struck through with Undo until
+  // the bill closes; one alone is one plain line, the totals on one grid (`RemoveBin`, `GoneLine` in `FixPayment`).
+  { id: 'bill-remove', since: '2026-11-06' },
+  // A payment's receipt on the bill shows only its number, the ref. no., Print and Email (`FixPayment`).
+  { id: 'receipt-slim', since: '2026-11-06' },
   // Today's money: a merged line says "N items", and a Money out one is titled by what it was for (`ExpenseGroup`,
   // `PaymentGroup` in `DayMoney`). It took over 'table-groups' (a table's slips as one line, the same day).
   { id: 'group-items', since: '2026-11-06' },

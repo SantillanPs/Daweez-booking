@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, Mail, Printer, Trash2, Undo2 } from 'lucide-react'
 import { Floating } from '../calendar/BillRoomLines'
+import { NewTag } from '../NewMark'
+import { markSeen } from '../../utils/newMarks'
 import { PAYMENT_METHODS, methodNeedsReference, paymentMethodChoice, paymentMethodLabel } from '../../utils/paymentMethod'
 import type { StatementPayment } from '../../utils/statement'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
-import { dateToString } from '../../utils/helpers'
+import { dateToString, peso } from '../../utils/helpers'
 
 type Part = 'purpose' | 'method' | 'amount' | 'day'
 
 const digits = (v: string) => Number(v.replace(/[^0-9]/g, '')) || 0
-const money = (n: number) => '₱' + n.toLocaleString()
 const shortDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
 const short = (m: string) => (m === 'Bank transfer' ? 'Bank' : m)
 
@@ -20,21 +21,83 @@ const PART = 'px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dashed border-go
 const SLOT = 'min-w-0 flex-1 bg-transparent border-0 border-b-[1.5px] border-dashed border-gold-400 rounded-none px-0.5 py-px text-[12.5px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-solid'
 const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-[3px] text-gold-800 shadow-[inset_0_0_0_1.5px_#D0AB60] hover:bg-gold-100 active:scale-90 transition-[background-color,transform] cursor-pointer'
 const LI = 'w-full flex items-center gap-2 px-2 py-[7px] border-b border-dotted border-ink-200 last:border-b-0 text-left text-[11.5px] font-semibold text-ink-900 cursor-pointer hover:text-gold-800 focus-visible:text-gold-800 focus-visible:outline-none active:scale-[0.98] transition-[color,transform] bw-rise group'
-// One payment is one line of the ledger: a slot for its receipt, what for, the day, how, and the amount
-// in green (Sebastian, 2026-10-29, the Paper mock: "I don't like how each item is a dropdown inside a
-// dropdown"; gold is what can be changed, green a payment's amount).
-const ROW = 'grid grid-cols-[14px_minmax(0,1fr)_auto_auto_62px] gap-x-2 items-baseline py-1 pl-3.5 text-[10.5px]'
-const AMOUNT = 'justify-self-center font-mono text-[11px] font-bold text-emerald-700'
+// **The bill's totals sit on one grid** (Sebastian, 2026-11-06, the "Bill One-Line Totals" mock: "make
+// sure all of the text and icons and buttons are aligned to make it look structured"): an icon, the
+// name with its details, the amount, and the line's own button — the same four columns on every line,
+// so names, figures and buttons each run down one edge. Gold underlines are still what can be changed.
+export const LINE = 'relative grid grid-cols-[16px_minmax(0,1fr)_68px_22px] gap-x-1.5 items-center min-h-[24px] text-left'
+/** The name column of a line opened out of a folded one hangs from a soft gold thread. */
+export const KID = 'self-stretch flex items-center gap-1.5 min-w-0 ml-1 pl-2 border-l-2 border-gold-100'
+const NAME = 'flex items-center gap-1.5 min-w-0'
+const AMOUNT = 'justify-self-end font-mono text-[11.5px] font-bold text-emerald-700 tabular-nums'
+
+/**
+ * **A line can be taken off** (Sebastian, 2026-11-06: "add a way to delete discount and payments in the
+ * bill"). The bin turns into a red Remove over the line's figure, so a stray tap takes nothing away.
+ */
+// `tag`: only the bill's first bin wears the NEW tag, so a column of bins is not a column of tags.
+export function RemoveBin({ what, onRemove, tag }: { what: string; onRemove: () => void; tag?: boolean }) {
+  const [asking, setAsking] = useState(false)
+  if (asking) return (
+    <>
+      <span />
+      <button type="button" autoFocus onBlur={() => setAsking(false)} onClick={() => { setAsking(false); onRemove() }}
+        className="print:hidden absolute right-0 top-1/2 -translate-y-1/2 w-[96px] h-[22px] rounded-[4px] bg-danger-600 text-white text-[10.5px] font-extrabold active:scale-95 transition-transform cursor-pointer bw-rise">
+        Remove
+      </button>
+    </>
+  )
+  return (
+    <button type="button" aria-label={'Remove ' + what} onClick={() => { markSeen('bill-remove'); setAsking(true) }}
+      className="print:hidden relative justify-self-center w-[22px] h-[22px] grid place-items-center rounded-[5px] text-paper-400 hover:text-danger-600 hover:bg-danger-50 active:scale-90 transition-[color,background-color,transform] cursor-pointer">
+      <Trash2 aria-hidden="true" className="w-3 h-3" />
+      {tag && <NewTag id="bill-remove" />}
+    </button>
+  )
+}
+
+/**
+ * **What was taken off stays on the bill, struck through, until the bill closes** (Sebastian,
+ * 2026-11-06: "I want the undo to be part of the bill somewhere but disappears after closing the
+ * bill"). Its arrow puts it back. Screen only: the paper never shows it.
+ */
+export function GoneLine({ icon, name, detail, amount, onUndo }: { icon?: React.ReactNode; name: string; detail?: string; amount: string; onUndo: () => void }) {
+  return (
+    <div data-screen className={LINE + ' print:hidden bw-rise'}>
+      <span className="justify-self-center text-paper-400">{icon}</span>
+      <span className={NAME + ' text-muted line-through decoration-danger-600'}>
+        <b className="shrink-0 text-[11px] font-bold">{name}</b>
+        {detail && <span className="min-w-0 truncate text-[10px] font-medium">{detail}</span>}
+      </span>
+      <span className="justify-self-end font-mono text-[11.5px] font-bold text-muted line-through decoration-danger-600 tabular-nums">{amount}</span>
+      <button type="button" aria-label={'Put back ' + name} onClick={onUndo}
+        className="justify-self-center w-[22px] h-[22px] grid place-items-center rounded-[5px] text-gold-800 hover:bg-gold-100 active:scale-90 transition-[background-color,transform] cursor-pointer">
+        <Undo2 aria-hidden="true" className="w-3.5 h-3.5" strokeWidth={2.4} />
+      </button>
+    </div>
+  )
+}
 
 /** A payment's line where it cannot be changed: a new booking's first payment, a bill opened away from the desk. */
-export function PayRow({ purpose, method, amount, under }: { purpose: React.ReactNode; method: React.ReactNode; amount: React.ReactNode; under?: React.ReactNode }) {
+export function PayRow({ purpose, method, amount, under, head, kid, onRemove, tag }: {
+  purpose: React.ReactNode; method: React.ReactNode; amount: React.ReactNode; under?: React.ReactNode
+  /** The line's own name when it is the only payment ("Paid"). */
+  head?: string
+  kid?: boolean
+  onRemove?: () => void
+  tag?: boolean
+}) {
   return (
-    <div className={ROW}>
-      <span />
-      <span className="min-w-0 truncate font-bold text-ink-900">{purpose}</span>
-      <span className="font-medium text-muted tabular-nums">{under}</span>
-      <span className="font-medium text-muted">{method}</span>
+    <div className={LINE + ' text-[10px]'}>
+      <span className="justify-self-center text-muted"><Slip /></span>
+      <span className={kid ? KID : NAME}>
+        {head && <b className="shrink-0 text-[11px] font-bold text-ink-900">{head}</b>}
+        <span className={'min-w-0 truncate ' + (head ? 'font-medium text-muted' : 'font-semibold text-ink-900')}>{purpose}</span>
+        <span className="shrink-0 font-medium text-muted tabular-nums">{under}</span>
+        <span className="shrink-0 font-medium text-muted">{method}</span>
+      </span>
       <span className={AMOUNT}>{amount}</span>
+      {onRemove ? <RemoveBin what={typeof purpose === 'string' ? purpose : 'the payment'} onRemove={onRemove} tag={tag} /> : <span />}
     </div>
   )
 }
@@ -49,12 +112,18 @@ const Slip = () => (
 /**
  * **A payment on the bill, fixed where it is wrong** (Sebastian, 2026-10-24, the "Fixing a payment"
  * mock): each part of its line is its own tap, and a small box floats over the bill under it and
- * never pushes it. Taking a payment back stays on the booking panel ("i don't like the take back the
- * whole payment"). The paper keeps the plain line. The receipt is the slip at the start of the line
+ * never pushes it. Its bin takes it off (2026-11-06; it had stayed on the booking panel since
+ * 2026-10-24, and then nowhere). The paper keeps the plain line. The receipt is the slip at the start of the line
  * (2026-10-29, "what about the payment receipt and ref no.?"): its number, the ref. no., Print and Email.
  */
-export function FixPayment({ p, sheet, onFix, onReceipt }: {
+export function FixPayment({ p, sheet, onFix, onReceipt, head, kid, onRemove, tag }: {
   p: StatementPayment
+  /** The line's own name when it is the only payment ("Paid"); its parts follow it, quieter. */
+  head?: string
+  /** Opened out of the folded payments line: hangs from the gold thread. */
+  kid?: boolean
+  onRemove?: () => void
+  tag?: boolean
   /** What the boxes float in (the bill's money column). */
   sheet: HTMLElement | null
   onFix: (patch: PaymentPatch) => void
@@ -79,32 +148,34 @@ export function FixPayment({ p, sheet, onFix, onReceipt }: {
   const ref = methodNeedsReference(method) ? p.reference : ''
   return (
     <div data-screen className="print:hidden">
-      <div className={ROW}>
+      <div className={LINE + ' text-[10px]'}>
         {p.receipt && onReceipt ? (
           <button ref={el => { chips.current.receipt = el }} type="button" aria-expanded={open === 'receipt'} aria-label={'Receipt ' + p.receipt}
-            onClick={() => setOpen(o => (o === 'receipt' ? null : 'receipt'))}
-            className="self-center -m-0.5 w-[18px] h-[18px] grid place-items-center rounded-[5px] text-gold-800 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-[0.88] transition-[background-color,transform] cursor-pointer"><Slip /></button>
-        ) : <span />}
-        {part('purpose', 'what it was for', p.purpose || '', 'justify-self-start max-w-full truncate font-bold text-ink-900')}
-        {part('day', 'the day it was paid', shortDay(p.paidAt), 'justify-self-start whitespace-nowrap font-medium text-muted tabular-nums')}
-        {part('method', 'how they paid', short(method || paymentMethodLabel(p.method)), 'justify-self-start whitespace-nowrap font-medium text-muted')}
-        {part('amount', 'the amount', '−' + money(p.amount), AMOUNT)}
+            onClick={() => { markSeen('receipt-slim'); setOpen(o => (o === 'receipt' ? null : 'receipt')) }}
+            className="relative justify-self-center w-[18px] h-[18px] grid place-items-center rounded-[5px] text-gold-800 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-[0.88] transition-[background-color,transform] cursor-pointer"><Slip /><NewTag id="receipt-slim" /></button>
+        ) : <span className="justify-self-center text-muted"><Slip /></span>}
+        <span className={kid ? KID : NAME}>
+          {head && <b className="shrink-0 text-[11px] font-bold text-ink-900">{head}</b>}
+          {part('purpose', 'what it was for', p.purpose || '', 'min-w-0 truncate ' + (head ? 'font-medium text-muted' : 'font-semibold text-ink-900'))}
+          {part('day', 'the day it was paid', shortDay(p.paidAt), 'shrink-0 whitespace-nowrap font-medium text-muted tabular-nums')}
+          {part('method', 'how they paid', short(method || paymentMethodLabel(p.method)), 'shrink-0 whitespace-nowrap font-medium text-muted')}
+        </span>
+        {part('amount', 'the amount', '−' + peso(p.amount), AMOUNT)}
+        {onRemove ? <RemoveBin what={p.purpose || 'the payment'} onRemove={onRemove} tag={tag} /> : <span />}
       </div>
+      {/* Only what the line does not already say (Sebastian, 2026-11-06: "this looks redundant", the
+          "Payment receipt" mock, option A): the receipt's number, the ref. no. when there is one, and
+          Print and Email. What it was for, the day, how and the amount are on the line above it. */}
       {open === 'receipt' && sheet && onReceipt && (
         <Floating at={at} sheet={sheet} label={'Receipt ' + p.receipt} onClose={close}>
-          <div className="bill-tear-b w-[200px] flex flex-col gap-[5px] px-2.5 pt-2 pb-3 bg-card">
-            <div className="flex justify-between items-baseline pb-1 border-b border-dashed border-ink-200 text-[10px] text-muted">
-              <b className="font-mono text-[11px] font-bold text-ink-900">{p.receipt}</b>{shortDay(p.paidAt)}
-            </div>
-            <div className="flex justify-between items-baseline gap-2 text-[11.5px] font-bold text-ink-900">
-              <span className="min-w-0 truncate">{p.purpose || 'Payment'}</span>
-              <span className="font-display text-[16px] font-extrabold text-emerald-700">{money(p.amount)}</span>
-            </div>
-            <div className="text-[10px] text-muted">{paymentMethodLabel(p.method)}{ref && <> · Ref <span className="font-mono text-ink-900">{ref}</span></>}</div>
-            <div className="flex gap-1.5 mt-0.5">
+          <div className="bill-tear-b w-[176px] flex flex-col gap-[7px] px-[9px] pt-2 pb-3 bg-card">
+            <b className="font-mono text-[11px] font-bold text-ink-900 bw-rise">{p.receipt}</b>
+            {ref && <div className="text-[10px] text-muted bw-rise" style={{ '--i': 1 } as React.CSSProperties}>Ref <span className="font-mono font-bold text-ink-900">{ref}</span></div>}
+            <div className="flex gap-1.5 bw-rise" style={{ '--i': ref ? 2 : 1 } as React.CSSProperties}>
               {(['print', 'email'] as const).map(how => (
                 <button key={how} type="button" onClick={() => { setOpen(null); onReceipt(p.receipt, how) }}
-                  className="flex-1 h-7 rounded-[3px] shadow-[inset_0_0_0_1.5px_#E3C68C] text-[11px] font-bold text-gold-800 hover:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">
+                  className="flex-1 h-7 inline-flex items-center justify-center gap-[5px] rounded-[3px] shadow-[inset_0_0_0_1.5px_#E3C68C] text-[11px] font-bold text-gold-800 hover:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">
+                  {how === 'print' ? <Printer aria-hidden="true" className="w-[13px] h-[13px]" /> : <Mail aria-hidden="true" className="w-[13px] h-[13px]" />}
                   {how === 'print' ? 'Print' : 'Email'}
                 </button>
               ))}
