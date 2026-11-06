@@ -11,6 +11,7 @@ import { focusBookingAfterCreate } from '../../utils/bookingFocus'
 import { breakfastSellable, roomBreakfastPrice, stayMornings } from '../../utils/breakfast'
 import { venueTypes } from '../../utils/venueTypes'
 import { discountsOf } from '../../utils/discounts'
+import { splitDiscounts } from '../walk-in/discountSplit'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { paymentMethodLabel } from '../../utils/paymentMethod'
 import { getSlipsByBooking, OrderSlip } from '../../utils/orderSlips'
@@ -233,6 +234,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // The rooms as bookings that do not exist yet, priced by the real statement builder — with
   // what the form would save on them: the agency's rate, the extras on the first room, the
   // charges on the first unit, the discount (a flat amount once, on the first).
+  // A flat amount is shared out between the rooms the way saving does (`splitDiscounts`). It sat
+  // whole on the first room, which caps it at its own stay: ₱7,860 off a ₱69,160 bill took off ₱4,200.
+  const discShares = given.length > 0 && !to
+    ? splitDiscounts(discs.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.v, note: d.note })),
+        list.map(([id, s]) => ({ id, type: s.type, checkIn: s.checkIn, checkOut: s.checkOut, venueType: kinds[id] })),
+        { rooms, venues, venueDayBlocks: ed?.venue_day_blocks || undefined, shortStayHours: isShort ? hours : undefined })
+    : {}
   const draftOf = (id: string, s: Sel, i: number): Booking => {
     const ea: EventAddons = {}
     if (kinds[id]) ea.venue_type = kinds[id]
@@ -259,8 +267,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       event_addons: Object.keys(ea).length > 0 ? ea : undefined,
       equipment_rentals: rentals,
       partner_deal_id: deal?.id, company_name: to?.name, contract_rate_override: (deal ? agencyRate(id) : rates[id]) || undefined,
-      // Every room holds the whole list, so a discount keeps its place; a flat amount counts once, on the first.
-      applied_discount: given.length > 0 && !to ? discs.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.pct || i === 0 ? d.v : 0, note: d.note })) : undefined,
+      // Every room holds the whole list, so a discount keeps its place; a flat amount is its share.
+      applied_discount: discShares[id],
     } as Booking
   }
   const drafts = list.map(([id, s], i) => draftOf(id, s, i))
