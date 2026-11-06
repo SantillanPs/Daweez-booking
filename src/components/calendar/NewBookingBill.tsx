@@ -1,7 +1,7 @@
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Banknote, Building2, Check, ChevronDown, Coffee, Plus, Tag, Trash2, X } from 'lucide-react'
+import { Banknote, Building2, Check, ChevronDown, Coffee, Plus, Tag, Trash2, Undo2, X } from 'lucide-react'
 import { Booking, BillCharge, BreakfastPlan, Companion, EquipmentRental, EventAddons, PartnerDeal, Room, Venue } from '../../types/booking'
 import { buildStatement, StatementLineItem, shortDate } from '../../utils/statement'
 import { dateToString, normalizeVenueId, randomUUID, addDays, parseDay, pesoWhole } from '../../utils/helpers'
@@ -207,7 +207,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // `v` is the rate it opens on.
   const [pop, setPop] = useState<{ kind: 'swap' | 'add' | 'kind' | 'len' | 'bf' | 'bfFrom' | 'bfTo' | 'in' | 'out' | 'rate' | 'bfPrice' | 'disc' | 'staff' | 'to'; id: string; at: HTMLElement; v?: number } | null>(null)
   const [fresh, setFresh] = useState<string | null>(null)
-  const [unitOff, setUnitOff] = useState<{ label: string; money: number; units: [string, Sel][]; breakfast: string[]; kinds: Record<string, string>; rates: Record<string, number> } | null>(null)
+  // The room whose trash was tapped once and now asks "Remove".
+  const [asking, setAsking] = useState<string | null>(null)
+  const [unitOff, setUnitOff] = useState<{ label: string; amount: number; money: number; units: [string, Sel][]; breakfast: string[]; kinds: Record<string, string>; rates: Record<string, number> } | null>(null)
   // A room added asks for its own dates (decided 2026-10-24): its check-in month opens once it is drawn.
   const [askIn, setAskIn] = useState<string | null>(null)
   useEffect(() => {
@@ -439,7 +441,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   }
   const takeOff = (id: string, s: Sel) => {
     const saved = rowOf(id)
-    setUnitOff({ label: unitName(id, s), money: saved && holdsMoney(saved) ? Number(saved.downpayment_paid || 0) : 0, units, breakfast, kinds, rates })
+    setUnitOff({ label: unitName(id, s), amount: lineOf(id)?.amount || 0, money: saved && holdsMoney(saved) ? Number(saved.downpayment_paid || 0) : 0, units, breakfast, kinds, rates })
     setUnits(u => u.filter(([x]) => x !== id)); setBreakfast(b => b.filter(x => x !== id)); setPop(null)
   }
   const putBack = () => {
@@ -891,13 +893,18 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             </button>
             {/* A trash can that is always there (Sebastian, 2026-11-06): the faint ×, hidden on a PC until
                 hovered, went unseen, and the desk added Room 6 three times to one bill instead of taking it off. */}
-            {list.length > 1 && (
-              <button type="button" onClick={e => { sawFeature('room-trash'); slideOff(e.currentTarget, () => takeOff(id, s)) }} aria-label={'Take ' + name + ' off the bill'}
-                className="print:hidden relative -my-1 ml-1 p-1 align-middle rounded-[5px] text-ink-600 hover:text-danger-600 hover:bg-danger-50 active:scale-90 transition-[color,background-color,transform] cursor-pointer">
-                <Trash2 aria-hidden="true" className="w-3.5 h-3.5" />
-                {id === list[0][0] && <NewTag id="room-trash" />}
-              </button>
-            )}
+            {/* …and it asks first (Sebastian, 2026-11-06: "at least have an are you sure?"): the can turns into a
+                red Remove, the bill's other bins do the same; tapping anywhere else keeps the room. */}
+            {list.length > 1 && (asking === id
+              ? <button type="button" autoFocus onBlur={() => setAsking(null)} onClick={e => { setAsking(null); slideOff(e.currentTarget, () => takeOff(id, s)) }}
+                  className="print:hidden -my-1 ml-1 px-2 py-0.5 align-middle rounded-[4px] bg-danger-600 text-white text-[10.5px] font-extrabold active:scale-95 transition-transform cursor-pointer bw-rise">
+                  Remove
+                </button>
+              : <button type="button" onClick={() => { sawFeature('room-trash'); setAsking(id) }} aria-label={'Take ' + name + ' off the bill'}
+                  className="print:hidden relative -my-1 ml-1 p-1 align-middle rounded-[5px] text-ink-600 hover:text-danger-600 hover:bg-danger-50 active:scale-90 transition-[color,background-color,transform] cursor-pointer">
+                  <Trash2 aria-hidden="true" className="w-3.5 h-3.5" />
+                  {id === list[0][0] && <NewTag id="room-trash" />}
+                </button>)}
             {/* Only the kind it is shows (the owner: "make it more contextual"); the others float under it. */}
             {kindList.length > 0 && (
               <button type="button" onClick={toggle('kind', id)} aria-expanded={isOpen('kind', id)} aria-label={name + ' type'}
@@ -920,11 +927,19 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
         {wentRow(id)}
         {it.key === lastRoomKey && (
           <>
+            {/* The room taken off stays as its own struck line with a gold Undo until the bill closes
+                (Sebastian, 2026-11-06: "make the undo more visible"); it was a small grey sentence. */}
             {unitOff && (
-              <tr key={'off-' + unitOff.label}>
-                <td colSpan={6} className="pt-1 text-[10.5px] font-semibold text-muted bw-rise">
-                  {unitOff.label} taken off{unitOff.money > 0 && <> · the {pesoWhole(unitOff.money)} paid stays on the bill</>} · <button type="button" onClick={putBack} className="font-bold text-gold-800 underline underline-offset-2 cursor-pointer">Undo</button>
+              <tr key={'off-' + unitOff.label} className="print:hidden bw-rise">
+                <td colSpan={5} className={cell + ' pl-0 text-left whitespace-normal'}>
+                  <span className="text-muted line-through decoration-danger-600 font-semibold">{unitOff.label}</span>
+                  {unitOff.money > 0 && <span className="ml-1.5 text-[10.5px] font-semibold text-muted">the {pesoWhole(unitOff.money)} paid stays on the bill</span>}
+                  <button type="button" onClick={putBack} aria-label={'Put back ' + unitOff.label}
+                    className="-my-1 ml-2 inline-flex items-center gap-1 px-2 py-0.5 align-middle rounded-[4px] bg-gold-100 text-gold-800 text-[10.5px] font-extrabold hover:bg-gold-200 active:scale-95 transition-[background-color,transform] cursor-pointer">
+                    <Undo2 aria-hidden="true" className="w-3 h-3" strokeWidth={2.6} />Undo
+                  </button>
                 </td>
+                <td className={cell + ' text-right font-mono font-bold text-muted line-through decoration-danger-600'}>{pesoWhole(unitOff.amount)}</td>
               </tr>
             )}
           </>
