@@ -6,7 +6,9 @@ import { paymentKind, paymentMethodLabel, shortBankName } from '../../utils/paym
 import { paymentPlanLabel } from '../../utils/bookingMoney'
 import { HOTEL_POLICY } from '../../utils/hotelPolicy'
 import { guestEmailOf } from '../../utils/emailDocument'
-import { StatementChargesTable } from './StatementChargesTable'
+import React from 'react'
+import { StatementChargesTable, PaperExtras } from './StatementChargesTable'
+import { foldAlikeRooms } from '../../utils/statementLines'
 import { StatementGuestStay } from './StatementGuestStay'
 import { StatementShell, BrandHeader, SectionName } from './StatementShell'
 import { CancelledStamp } from './CancelledStamp'
@@ -60,7 +62,14 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
   // and a black figure.
   const label = 'text-[10px] text-muted'
   const info = 'text-[11.5px] font-semibold text-ink-900'
-  const figure = 'font-mono text-[11.5px] font-bold text-ink-900'
+  const figure = 'font-mono text-[11.5px] font-bold text-ink-900 tabular-nums whitespace-nowrap'
+  const group = 'mt-1 pb-px border-b border-ink-200 text-[8.5px] font-extrabold uppercase tracking-[0.12em] text-ink-900'
+  const item = 'min-w-0 truncate text-[10.5px] font-semibold text-ink-900 leading-snug'
+
+  // Alike rooms share a row on paper, and the discounts leave the table for the totals.
+  const lines = foldAlikeRooms(statement.lineItems)
+  const discounts = lines.filter(i => i.band === 'discount')
+  const discountOff = -discounts.reduce((s, d) => s + d.amount, 0)
 
   return (
     <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}
@@ -73,14 +82,17 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
 
       {/* No name over the table: he found a lone `Charges` *"out of place … taking so much
           space for itself"* (2026-10-13). Its column names say what it is. */}
-      <StatementChargesTable items={statement.lineItems} />
+      <StatementChargesTable items={lines} paper />
 
       {/* PAYMENT beside the totals, always two columns (card k144: A5 never reaches `sm`).
           The page's one rule holds here too: a grey label, then the black information. */}
       {/* PAYMENT, the Pension Policies and the signatures are for the paper (Sebastian,
           2026-10-20: *"This should only show up when printed"*); on screen the totals, where
-          the desk works, stand alone. The emailed copy is the paper (`data-paper`). */}
-      <div className="grid grid-cols-[1fr_236px] gap-6 items-start">
+          the desk works, stand alone. The emailed copy is the paper (`data-paper`). The extras
+          sit above Payment, in the room the totals leave beside it (the long-bill mock). */}
+      <div className="grid grid-cols-[1fr_262px] gap-6 items-start">
+        <div className="flex flex-col gap-2">
+        <PaperExtras items={lines} />
         <div data-paper className="hidden print:block">
           <SectionName>Payment</SectionName>
           <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-2.5 gap-y-[3px]">
@@ -113,27 +125,52 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
             )}
           </div>
         </div>
+        </div>
 
-        <div className="relative col-start-2 flex flex-col gap-0.5">
+        {/* THE TOTALS IN THREE STEPS (Sebastian, 2026-11-06, the long-bill mock: "add some visual
+            hierarchy … I want the payments and discount to be easily readable"): what it came to,
+            what was taken off, what was paid. A small capital name over each group, the item in ink,
+            the date and receipt quiet, every figure in one right-hand column. */}
+        <div className="relative col-start-2 flex flex-col gap-px">
           <CancelledStamp booking={b} />
-          <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{peso(statement.subTotal)}</span></div>
-          {/* The bill lists the payments already received (the staff, 2026-10-04: it showed
-              what was still to pay but not what had been paid). Money received before
-              receipts were numbered has no line of its own, so it keeps its single figure. */}
-          {statement.payments.length > 0 && (
-            <div>
-              <p className={label}>Less: payments received</p>
-              {statement.payments.map(p => (
-                <div key={p.key} className="flex justify-between items-baseline gap-2.5">
-                  <span className={label + ' min-w-0'}>
-                    {shortDay(p.paidAt)} · {paymentMethodLabel(p.method)}
-                  {p.purpose && <> · <span className="font-bold text-ink-900">{p.purpose}</span></>}
-                    {p.receipt && <span className="whitespace-nowrap"> · {p.receipt}</span>}
-                  </span>
-                  <span className={figure + ' shrink-0'}>−{peso(p.amount)}</span>
+          <div className="flex justify-between gap-2.5"><span className={label}>Sub-total</span><span className={figure}>{peso(statement.subTotal + discountOff)}</span></div>
+          {discounts.length > 0 && (
+            <>
+              <span className={group}>Discount</span>
+              {discounts.map(d => (
+                <div key={d.key} className="flex justify-between items-baseline gap-2.5">
+                  <span className={item}>{d.description}</span><span className={figure}>{peso(d.amount)}</span>
                 </div>
               ))}
-            </div>
+            </>
+          )}
+          {/* The bill lists the payments already received (the staff, 2026-10-04: it showed
+              what was still to pay but not what had been paid). Money received before
+              receipts were numbered has no line of its own, so it keeps its single figure.
+              How it was paid shows only when it is not the bill's own Paid by. */}
+          {statement.payments.length > 0 && (
+            <>
+              <span className={group}>Payments <span className="ml-0.5 font-bold text-muted">{statement.payments.length}</span></span>
+              <div className="grid grid-cols-[auto_1fr_auto_auto] items-baseline gap-x-2">
+                {statement.payments.map(p => (
+                  <React.Fragment key={p.key}>
+                    <span className="font-mono text-[9.5px] text-muted whitespace-nowrap">{shortDay(p.paidAt)}</span>
+                    <span className={item}>
+                      {p.purpose || paymentMethodLabel(p.method)}
+                      {p.purpose && p.method && p.method !== method && <span className="font-medium text-muted"> · {paymentMethodLabel(p.method)}</span>}
+                    </span>
+                    <span className="font-mono text-[8.5px] text-muted whitespace-nowrap">{p.receipt}</span>
+                    <span className={figure + ' justify-self-end'}>−{peso(p.amount)}</span>
+                  </React.Fragment>
+                ))}
+              </div>
+              {statement.payments.length > 1 && (
+                <div className="mt-0.5 pt-0.5 flex justify-between gap-2.5 border-t-[1.5px] border-ink-900">
+                  <span className="text-[10px] font-bold text-ink-900">Total paid</span>
+                  <span className={figure}>−{peso(statement.payments.reduce((s, p) => s + p.amount, 0))}</span>
+                </div>
+              )}
+            </>
           )}
           {earlierPaid > 0 && (
             <div className="flex justify-between gap-2.5"><span className={label}>Less: downpayment / deposit</span><span className={figure}>−{peso(earlierPaid)}</span></div>
@@ -166,7 +203,9 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
           guest must read the same text on the bill as on the form they signed. */}
       <div data-paper className="hidden print:block pt-1.5 border-t border-ink-200 text-[9px] text-ink-800 leading-tight">
         <SectionName bare>Pension Policies</SectionName>
-        <p>{HOTEL_POLICY}</p>
+        {/* The signing line ends the policies' last line instead of taking a row of its own: a
+            group's bill was 15px past one A5 sheet (the long-bill check, 2026-11-06). */}
+        <p>{HOTEL_POLICY} <span className="text-[8.5px] text-ink-600 italic">By signing this form, I understand and agree to the Pension Policies.</span></p>
       </div>
 
       <div data-paper className="hidden print:block"><div className="grid grid-cols-2 gap-6">
@@ -180,7 +219,6 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
         </div>
       </div>
       </div>
-      <p data-paper className="hidden print:block text-[8.5px] text-ink-600 italic">By signing this form, I understand and agree to the Pension Policies.</p>
     </StatementShell>
   )
 }

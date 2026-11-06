@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react'
 import { CalendarDays, Printer, X } from 'lucide-react'
 import { EmailTarget } from '../../utils/emailDocument'
 import { EmailBar, EmailButton } from './EmailBar'
+import { NewTag } from '../NewMark'
+import { markSeen } from '../../utils/newMarks'
 
 /**
  * The frame both bills are printed in: the on-screen control bar (hidden when printing)
@@ -47,9 +49,10 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, onBooki
           )}
           {email && <EmailButton tone="ink" onClick={() => setEmailing(open => !open)} />}
           {onPrint && (
-            <button onClick={onPrint} className="bg-white hover:bg-slate-100 text-ink-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
+            <button onClick={() => { markSeen('bill-paper-tight'); onPrint() }} className="relative bg-white hover:bg-slate-100 text-ink-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
               <Printer className="w-3.5 h-3.5" />
               Print
+              <NewTag id="bill-paper-tight" />
             </button>
           )}
           <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer" aria-label="Close">

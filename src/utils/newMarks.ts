@@ -16,6 +16,9 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // A group's printed bill fits one A5 sheet: alike rooms on one row, one Dates column, the extras beside
+  // the totals, the discount and payments grouped by them (`foldAlikeRooms`, `PaperExtras`, `InvoiceDocument`).
+  { id: 'bill-paper-tight', since: '2026-11-06' },
   // A discount or payment is taken off on the bill by its bin, and stays struck through with Undo until
   // the bill closes; one alone is one plain line, the totals on one grid (`RemoveBin`, `GoneLine` in `FixPayment`).
   { id: 'bill-remove', since: '2026-11-06' },

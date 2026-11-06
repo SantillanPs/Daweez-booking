@@ -2,7 +2,6 @@ import { Booking, Room, Venue } from '../types/booking'
 import { priceBooking } from './pricing'
 import { normalizeVenueId, dateToString } from './helpers'
 import { chargeableEarlyHours } from './checkInOut'
-import { roomDisplayName } from '../components/calendar/bookingStyles'
 import { OrderSlip, slipNumber, slipsTotal } from './orderSlips'
 import { venueTypeOf, venueTypeTitle } from './venueTypes'
 import { airconWords } from './venueHours'
@@ -48,6 +47,10 @@ export interface StatementLineItem {
   nights?: number
   /** A room's breakfast row only: the room's number, so the rooms' rows can be joined into one. */
   room?: string
+  /** A room's stay row only: its number, so alike rooms can share one row on paper (`foldAlikeRooms`). */
+  roomNo?: number
+  /** How many rooms one folded row stands for, printed `×3` beside its name. */
+  times?: number
   /** Discount rows only: its place in the bill's list of discounts, the same on every room. */
   slot?: number
   /** Order slip rows only: `Paid` or `Not paid`, printed beside the slip's number. */
@@ -120,16 +123,51 @@ export function mergeBreakfastRows(items: StatementLineItem[]): StatementLineIte
   })
 }
 
+/**
+ * **Rooms of one kind on the same dates and price are one row on paper** — `Rooms 2, 3, 4 · Full
+ * Double` ×3 (Sebastian, 2026-11-06, the long-bill mock: James Hermosada's nine rooms ran the bill
+ * past page 1). Only the printed and emailed copy folds them: the bill being worked on keeps a row
+ * per room, since each is changed on its own.
+ */
+export function foldAlikeRooms(items: StatementLineItem[]): StatementLineItem[] {
+  // What the row says after its number: ` · Full Double`, ` · Full Double · corporate`.
+  const kind = (i: StatementLineItem) => i.description.replace(/^Rooms? [\d, ]+/, '')
+  const numbers = new Map<StatementLineItem, number[]>()
+  const out: StatementLineItem[] = []
+  for (const i of items) {
+    const twin = i.band === 'room' && i.roomNo != null
+      ? out.find(o => numbers.has(o) && kind(o) === kind(i) && o.price === i.price && o.qty === i.qty
+        && o.unit === i.unit && o.checkIn === i.checkIn && o.checkOut === i.checkOut)
+      : undefined
+    if (!twin) {
+      const row = { ...i }
+      if (i.band === 'room' && i.roomNo != null) numbers.set(row, [i.roomNo])
+      out.push(row)
+      continue
+    }
+    const nos = numbers.get(twin)!
+    nos.push(i.roomNo!)
+    twin.times = nos.length
+    twin.amount += i.amount
+    twin.description = 'Rooms ' + nos.join(', ') + kind(i)
+  }
+  return out
+}
+
 /** The nights a booking is charged for (a short stay is one day). */
 export const nightsFor = (b: Booking): number =>
   b.check_in && b.check_out
     ? Math.max(1, Math.ceil((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / 86400000))
     : 1
 
+// A room's row leads with its number — `Room 6 · Deluxe` — so the staff can tell two rooms
+// of one type apart on the paper (Sebastian, 2026-11-06); it printed only the type.
 const unitName = (b: Booking, rooms: Room[], venues: Venue[]): string => {
   if (b.room_id) {
     const room = rooms.find(r => r.id === b.room_id)
-    return room ? roomDisplayName(room) : 'Room'
+    if (!room) return 'Room'
+    const no = 'Room ' + room.room_number
+    return room.name && room.name !== no ? no + ' · ' + room.name : no
   }
   const venue = venues.find(v => v.id === normalizeVenueId(b.venue_id || ''))
   return venue ? venue.name : 'Event Venue'
@@ -183,6 +221,7 @@ export function bookingLines(b: Booking, o: {
     checkIn,
     checkOut,
     nights: stayQty,
+    roomNo: isRoom ? rooms.find(r => r.id === b.room_id)?.room_number : undefined,
   })
 
   // Each staff discount as its own row, with what it is for (several since 2026-10-29).
@@ -213,7 +252,7 @@ export function bookingLines(b: Booking, o: {
     items.push({
       key: b.id + '-breakfast',
       band: 'breakfast',
-      description: unitName(b, rooms, venues) + ' · Breakfast',
+      description: 'Room ' + (rooms.find(r => r.id === b.room_id)?.room_number ?? '') + ' · Breakfast',
       qty: String(pricing.breakfastNights || 1),
       unit: pricing.breakfastNights ? 'NIGHT' : 'PC',
       price: Math.round(pricing.breakfastTotal / (pricing.breakfastNights || 1)),

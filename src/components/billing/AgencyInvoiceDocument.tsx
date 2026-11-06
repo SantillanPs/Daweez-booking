@@ -5,7 +5,8 @@ import { getPaymentAccounts } from '../../utils/paymentAccounts'
 import { getRateConfig } from '../../utils/rateConfig'
 import { shortBankName } from '../../utils/paymentMethod'
 import { guestEmailOf } from '../../utils/emailDocument'
-import { StatementChargesTable } from './StatementChargesTable'
+import { StatementChargesTable, PaperExtras } from './StatementChargesTable'
+import { foldAlikeRooms } from '../../utils/statementLines'
 import { StatementGuestStay } from './StatementGuestStay'
 import { StatementShell, BrandHeader, SectionName } from './StatementShell'
 import { peso } from '../../utils/helpers'
@@ -48,6 +49,7 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
   ]
 
   const label = 'text-[10px] text-muted'
+  const lines = foldAlikeRooms(statement.lineItems)
 
   return (
     <StatementShell label="Billing statement" invoiceNumber={statement.invoiceNumber} onClose={onClose} onPrint={onPrint} embedded={embedded}
@@ -64,7 +66,9 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
           ],
         }} />
 
-      <StatementChargesTable items={statement.lineItems} dates={false} />
+      {/* The paper's tight table, alike rooms on one row (the long-bill mock, 2026-11-06). The agency's
+          discount stays in its table, since its money line is Total alone; its extras sit over the Total. */}
+      <StatementChargesTable items={lines} dates={false} paper away={['extras']} />
 
       <div className="grid grid-cols-[1fr_200px] gap-6 items-start">
         <div>
@@ -82,6 +86,7 @@ export function AgencyInvoiceDocument({ primaryBooking, rooms, venues, statement
         {/* TOTAL — the whole stay, the one figure the office pays. `print-color-adjust` keeps
             the band black on paper. */}
         <div className="mt-[18px] flex flex-col gap-2">
+        <PaperExtras items={lines} />
         {/* A frame, not a solid black band, to save ink (the owner, 2026-10-24). */}
         <div className="px-3 py-2 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
           <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">Total</span>

@@ -161,7 +161,12 @@ export function buildStatement(o: StatementInput): Statement {
     .filter(b => !b.room_id && b.venue_id)
     .map(b => venues.find(v => v.id === normalizeVenueId(b.venue_id || ''))?.name)
     .filter((n): n is string => !!n)
-  const roomsLabel = relatedBookings.length > 1 ? stayUnitsLabel(roomNumbers, venueNames) : ''
+  // More than three rooms are counted, not listed: every room's number is on its own row below,
+  // and the list ran to three lines on a group's bill (the long-bill mock, 2026-11-06).
+  const roomCount = new Set(roomNumbers).size
+  const roomsLabel = relatedBookings.length < 2 ? ''
+    : roomCount > 3 ? [roomCount + ' rooms', ...new Set(venueNames)].join(' · ')
+    : stayUnitsLabel(roomNumbers, venueNames)
 
   const invoiceNumber = primaryBooking.invoice_number || (
     primaryBooking.check_in.substring(0, 7).replace('-', '') + '-PREVIEW'
