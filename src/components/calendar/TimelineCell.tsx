@@ -8,6 +8,7 @@ import { clockLabel, shortStayOut } from '../../utils/shortStay'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 import { channelOf, needsDetails } from '../../utils/channelStay'
 import { ChannelMark } from './ChannelMark'
+import { isExclusive } from '../../utils/availability'
 
 export interface TimelineCellProps {
   date: Date
@@ -344,7 +345,10 @@ export const TimelineCell = React.memo(
             className={'relative overflow-hidden mx-0.5 h-10 rounded-md border cursor-pointer select-none transition-[filter,transform,border-color,background-color,color,box-shadow,opacity] duration-300 hover:brightness-95 hover:-translate-y-0.5 hover:shadow-soft active:translate-y-0 active:shadow-none active:scale-[0.98] flex flex-col justify-center animate-in fade-in zoom-in-95 motion-reduce:animate-none ' +
               // The words sit in the middle of the pill (Sebastian, on the ripple mock, 2026-10-18).
               'text-center ' + (narrow ? 'items-center px-0 ' : 'px-2 ') +
-              (gone ? 'bg-ink-100 text-ink-500 border-ink-200' : getBookingStyle(booking))}
+              (gone ? 'bg-ink-100 text-ink-500 border-ink-200' : getBookingStyle(booking)) +
+              // THE EXCLUSIVE'S PILL IS THE TOP OF ITS ROOF (fade mock B, Sebastian, 2026-11-07):
+              // no bottom edge and no lift, so its colour runs on down into the stripes (`ExclusiveRoof`).
+              (isExclusive(booking) ? ' !rounded-b-none !border-b-0 hover:!translate-y-0 hover:!shadow-none' : '')}
           >
             {/* THE GREEN OF A GUEST WHO IS IN. It is a wash inside the pill, not the pill's
                 own colour, so checking in is seen: it crosses from the left. Checking out

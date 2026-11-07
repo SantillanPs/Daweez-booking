@@ -16,7 +16,7 @@ const short = (m: string) => (m === 'Bank transfer' ? 'Bank' : m)
 
 // A part of the line that opens its fix: the bill's own dashed-gold tap (the room lines' VAL), always
 // showing — on a tablet nothing hovers (Sebastian, 2026-10-25: "they aren't very obvious they are editable").
-const PART = 'px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dashed border-gold-400 hover:bg-gold-100 aria-expanded:border-solid aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,border-color,transform] cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400'
+export const PART = 'px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dashed border-gold-400 hover:bg-gold-100 aria-expanded:border-solid aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,border-color,transform] cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400'
 // The paper's boxes: a blank to write on is a gold dashed line, ✓ a gold outline (the Paper mock, 2026-10-29).
 const SLOT = 'min-w-0 flex-1 bg-transparent border-0 border-b-[1.5px] border-dashed border-gold-400 rounded-none px-0.5 py-px text-[12.5px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-solid'
 const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-[3px] text-gold-800 shadow-[inset_0_0_0_1.5px_#D0AB60] hover:bg-gold-100 active:scale-90 transition-[background-color,transform] cursor-pointer'
@@ -25,11 +25,39 @@ const LI = 'w-full flex items-center gap-2 px-2 py-[7px] border-b border-dotted 
 // sure all of the text and icons and buttons are aligned to make it look structured"): an icon, the
 // name with its details, the amount, and the line's own button — the same four columns on every line,
 // so names, figures and buttons each run down one edge. Gold underlines are still what can be changed.
-export const LINE = 'relative grid grid-cols-[16px_minmax(0,1fr)_68px_22px] gap-x-1.5 items-center min-h-[24px] text-left'
+// The amount column is wide enough for a ranked line's −₱10,000.
+export const LINE = 'relative grid grid-cols-[16px_minmax(0,1fr)_76px_22px] gap-x-1.5 items-center min-h-[24px] text-left'
 /** The name column of a line opened out of a folded one hangs from a soft gold thread. */
 export const KID = 'self-stretch flex items-center gap-1.5 min-w-0 ml-1 pl-2 border-l-2 border-gold-100'
+
+// **Ranked lines** (Sebastian, 2026-11-06, the "Bill Sub-total Row" mock, "lines ranked"): what it was for
+// leads, the facts sit under it smaller with a coloured word for what kind of line it is, and the figure
+// is the loudest thing on the line. Every such line is one height with everything on its middle ("keep
+// everything aligned, or centered to make it look more structured and consistent"); a fact a tap can
+// change keeps a paler dashed line, so it does not compete with the headline.
+// 34px a line, so many payments or discounts still fit ("make it a bit more compact").
+export const RANK = 'h-[34px]'
+export const STACK = 'flex flex-col justify-center items-start min-w-0'
+/** A ranked line opened out of a folded one, on the gold thread. */
+export const KID_STACK = STACK + ' self-stretch ml-1 pl-2 border-l-2 border-gold-100'
+export const HEAD = 'max-w-full truncate text-[12px] leading-[15px] font-bold text-ink-900'
+export const FACTS = 'flex items-center gap-[5px] max-w-full min-w-0 text-[10px] leading-[12px] font-medium text-muted'
+export const EYEBROW = 'shrink-0 text-[8.5px] font-extrabold uppercase tracking-[0.12em]'
+export const BIG = 'justify-self-end font-display text-[13.5px] leading-[16px] font-extrabold tabular-nums'
+export const Dot = () => <span aria-hidden="true" className="text-paper-400">·</span>
+export const PALE = ' !border-gold-200'
+/** The count beside a folded line's name, bumping when it changes. */
+export const Count = ({ n }: { n: number }) => <span key={n} className="inline-grid place-items-center min-w-4 h-4 px-1 rounded-full bg-gold-100 text-[9px] font-extrabold text-gold-800 bill-bump">{n}</span>
+export const FOLD = 'justify-self-center w-3 h-3 text-gold-800 transition-transform duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] group-aria-expanded:rotate-180'
+/** What a folded totals line opens to: it grows from the line instead of jumping. */
+export function Unfold({ open, children }: { open: boolean; children: React.ReactNode }) {
+  return (
+    <div className={'grid transition-[grid-template-rows] duration-[180ms] ease-[cubic-bezier(.2,.9,.3,1.15)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+      <div className="overflow-hidden" inert={!open || undefined}>{open && children}</div>
+    </div>
+  )
+}
 const NAME = 'flex items-center gap-1.5 min-w-0'
-const AMOUNT = 'justify-self-end font-mono text-[11.5px] font-bold text-emerald-700 tabular-nums'
 
 /**
  * **A line can be taken off** (Sebastian, 2026-11-06: "add a way to delete discount and payments in the
@@ -88,22 +116,24 @@ export function PayRow({ purpose, method, amount, under, head, kid, onRemove, ta
   tag?: boolean
 }) {
   return (
-    <div className={LINE + ' text-[10px]'}>
-      <span className="justify-self-center text-muted"><Slip /></span>
-      <span className={kid ? KID : NAME}>
-        {head && <b className="shrink-0 text-[11px] font-bold text-ink-900">{head}</b>}
-        <span className={'min-w-0 truncate ' + (head ? 'font-medium text-muted' : 'font-semibold text-ink-900')}>{purpose}</span>
-        <span className="shrink-0 font-medium text-muted tabular-nums">{under}</span>
-        <span className="shrink-0 font-medium text-muted">{method}</span>
+    <div className={LINE + ' ' + RANK}>
+      <span className="justify-self-center text-gold-800"><Slip /></span>
+      <span className={kid ? KID_STACK : STACK}>
+        <span className={HEAD}>{purpose}</span>
+        <span className={FACTS}>
+          {head && <><b className={EYEBROW + ' text-emerald-700'}>{head}</b><Dot /></>}
+          {under && <><span className="shrink-0 tabular-nums">{under}</span><Dot /></>}
+          <span className="shrink-0">{method}</span>
+        </span>
       </span>
-      <span className={AMOUNT}>{amount}</span>
+      <span className={BIG + ' text-emerald-700'}>{amount}</span>
       {onRemove ? <RemoveBin what={typeof purpose === 'string' ? purpose : 'the payment'} onRemove={onRemove} tag={tag} /> : <span />}
     </div>
   )
 }
 
 // The receipt: a small slip, as it comes off the roll.
-const Slip = () => (
+export const Slip = () => (
   <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
     <path d="M5 2v20l2.5-1.5L10 22l2-1.5 2 1.5 2.5-1.5L19 22V2l-2.5 1.5L14 2l-2 1.5L10 2 7.5 3.5z" /><path d="M9 8h6M9 12h6" />
   </svg>
@@ -148,19 +178,22 @@ export function FixPayment({ p, sheet, onFix, onReceipt, head, kid, onRemove, ta
   const ref = methodNeedsReference(method) ? p.reference : ''
   return (
     <div data-screen className="print:hidden">
-      <div className={LINE + ' text-[10px]'}>
+      <div className={LINE + ' ' + RANK}>
         {p.receipt && onReceipt ? (
           <button ref={el => { chips.current.receipt = el }} type="button" aria-expanded={open === 'receipt'} aria-label={'Receipt ' + p.receipt}
             onClick={() => { markSeen('receipt-slim'); setOpen(o => (o === 'receipt' ? null : 'receipt')) }}
             className="relative justify-self-center w-[18px] h-[18px] grid place-items-center rounded-[5px] text-gold-800 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-[0.88] transition-[background-color,transform] cursor-pointer"><Slip /><NewTag id="receipt-slim" /></button>
-        ) : <span className="justify-self-center text-muted"><Slip /></span>}
-        <span className={kid ? KID : NAME}>
-          {head && <b className="shrink-0 text-[11px] font-bold text-ink-900">{head}</b>}
-          {part('purpose', 'what it was for', p.purpose || '', 'min-w-0 truncate ' + (head ? 'font-medium text-muted' : 'font-semibold text-ink-900'))}
-          {part('day', 'the day it was paid', shortDay(p.paidAt), 'shrink-0 whitespace-nowrap font-medium text-muted tabular-nums')}
-          {part('method', 'how they paid', short(method || paymentMethodLabel(p.method)), 'shrink-0 whitespace-nowrap font-medium text-muted')}
+        ) : <span className="justify-self-center text-gold-800"><Slip /></span>}
+        <span className={kid ? KID_STACK : STACK}>
+          {part('purpose', 'what it was for', p.purpose || '', HEAD)}
+          <span className={FACTS}>
+            {head && <><b className={EYEBROW + ' text-emerald-700'}>{head}</b><Dot /></>}
+            {part('day', 'the day it was paid', shortDay(p.paidAt), 'shrink-0 whitespace-nowrap tabular-nums' + PALE)}
+            <Dot />
+            {part('method', 'how they paid', short(method || paymentMethodLabel(p.method)), 'shrink-0 whitespace-nowrap' + PALE)}
+          </span>
         </span>
-        {part('amount', 'the amount', '−' + peso(p.amount), AMOUNT)}
+        {part('amount', 'the amount', '−' + peso(p.amount), BIG + ' text-emerald-700' + PALE)}
         {onRemove ? <RemoveBin what={p.purpose || 'the payment'} onRemove={onRemove} tag={tag} /> : <span />}
       </div>
       {/* Only what the line does not already say (Sebastian, 2026-11-06: "this looks redundant", the

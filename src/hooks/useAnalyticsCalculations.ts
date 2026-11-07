@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { Booking, Room, Venue } from '../types/booking'
 import { TabLine } from '../types/tab'
 import { Expense } from '../types/expense'
-import { priceBooking } from '../utils/pricing'
+import { priceBooking, billStays } from '../utils/pricing'
+import { groupOf } from '../utils/bookingGroup'
 import { getRateConfig } from '../utils/rateConfig'
 import { foodMoneyIn } from '../utils/tabRevenue'
 import { dateToString, parseDay, shortDay } from '../utils/helpers'
@@ -229,7 +230,7 @@ export function useAnalyticsCalculations({
     // Process each booking — honors whatever the booking actually charged (promo_applied).
     relevantBookings.forEach(b => {
       // 1. Calculate pricing details — use the booking's stored choice (promo vs. regular)
-      const priceResult = priceBooking(b, { rooms, venues })
+      const priceResult = priceBooking(b, { rooms, venues, stays: billStays(b, groupOf(b, bookings), { rooms, venues }) })
 
       // Stay details
       const stayDates = getStayDates(b.check_in, b.check_out)

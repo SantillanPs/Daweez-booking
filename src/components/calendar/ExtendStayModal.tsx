@@ -11,10 +11,10 @@ import { methodNeedsReference } from '../../utils/paymentMethod'
 import { freshReceiptNumber } from '../../utils/receiptNumber'
 import { takeBackPayment } from '../../utils/removedPayments'
 import { withFixedPayment, PaymentPatch } from '../walk-in/bookingPayment'
-import { recomputeBalance, pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
+import { pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
 import { useBookingSlips } from '../../hooks/useBookingSlips'
 import { markSlipsPaid, slipNumber, unpaidSlips } from '../../utils/orderSlips'
-import { payOnBill, paySlipsIfCleared } from '../../utils/billPayment'
+import { payOnBill, paySlipsIfCleared, resettleWith } from '../../utils/billPayment'
 import { BookingStageLine } from './BookingStageLine'
 import { stayStage } from '../../utils/stayStage'
 import { undoBookingCheck } from '../../utils/db'
@@ -306,6 +306,7 @@ export function ExtendStayModal({
     booking: localBooking,
     rooms,
     venues,
+    bookings,
     setBooking: setLocalBooking,
     onUpdateBooking,
   })
@@ -339,17 +340,17 @@ export function ExtendStayModal({
   const nights = booking.check_in && booking.check_out
     ? Math.max(1, Math.ceil((new Date(booking.check_out).getTime() - new Date(booking.check_in).getTime()) / 86400000))
     : 1
-  const due = Number(localBooking.balance_due || 0)
-  const paidSoFar = Number(localBooking.downpayment_paid || 0)
-  const totalCharge = paidSoFar + due
   // **Rooms on one bill share one figure** (Sebastian, 2026-10-20: every reservation of the
-  // guest billing shows the bill's amount due). What this room stores is still its own; what the
-  // panel says is the bill's (`asBill`). A room booked alone is its own bill.
+  // guest billing shows the bill's amount due). The bill's money lives on its first room
+  // (`settleBill`); what the panel says is the bill's (`asBill`). A room booked alone is its own bill.
   const billRows = groupOf(localBooking, bookings)
   const billView = asBill(localBooking, bookings)
   const billDue = Number(billView.balance_due || 0)
   const billPaid = Number(billView.downpayment_paid || 0)
   const billTotal = billDue + billPaid
+  const due = billDue
+  const paidSoFar = billPaid
+  const totalCharge = billTotal
   // Early check-in money that is recorded but deliberately NOT billed yet (the owner:
   // *"just add it to their bill for when they checkout"*). Shown as its own pending line
   // so the desk can see what the guest will owe without the money word flipping and
@@ -364,7 +365,7 @@ export function ExtendStayModal({
   // 2026-10-04): an amount that is exactly one order slip's total pays that slip, and the
   // box says so. The deposit is agreed on the STAY alone, so the food is taken out of it
   // (`amountToPayNow`).
-  const dueNow = amountToPayNow(localBooking, tabAmount)
+  const dueNow = amountToPayNow(billView, tabAmount)
   const unpaid = unpaidSlips(slips)
   const receiveAmount = receiptAmount ?? dueNow
   const payingSlip = unpaid.find(s => s.total === receiveAmount && s.total < due)
@@ -434,8 +435,13 @@ export function ExtendStayModal({
   // Recompute the balance after early/late hours are applied, using the
   // booking's own charges + current rates + the guest's food, so the amount
   // owed stays correct. The rule itself lives in utils/bookingBalance.ts.
-  const withRecomputedBalance = (base: Booking, patch: Partial<Booking>): Booking =>
-    recomputeBalance({ ...base, ...patch }, { rooms, venues, tabTotal: tabAmount })
+  // A change to this room prices the whole bill again (`resettle`): its money is on the bill's first
+  // room. Hands back this room and every row to save, this one always.
+  const withBill = async (base: Booking, patch: Partial<Booking>): Promise<{ mine: Booking; save: Booking[] }> => {
+    const save = await resettleWith(base, patch, bookings, { rooms, venues })
+    return { mine: save.find(b => b.id === base.id) || { ...base, ...patch }, save }
+  }
+  const saveAll = async (rows: Booking[]) => { for (const b of rows) await onUpdateBooking?.(b) }
 
   // **A charge can be taken off** (the owner's note, 2026-10-20). It goes at once and is
   // saved behind; Undo puts the booking back as it was for five seconds (the plan he approved).
@@ -445,12 +451,14 @@ export function ExtendStayModal({
   const removeCharge = async (line: StatementLineItem) => {
     if (!line.remove) return
     const before = localBooking
-    const updated = withRecomputedBalance(localBooking, line.remove)
-    layout(() => { setLocalBooking(updated); setRemoved({ label: line.description, amount: line.amount, before }) })
+    const patch = line.remove
+    layout(() => { setLocalBooking({ ...before, ...patch }); setRemoved({ label: line.description, amount: line.amount, before }) })
     window.clearTimeout(removedTimer.current)
     removedTimer.current = window.setTimeout(() => setRemoved(null), 5000)
     try {
-      await onUpdateBooking?.(updated)
+      const { mine, save } = await withBill(before, patch)
+      setLocalBooking(mine)
+      await saveAll(save)
     } catch {
       layout(() => { setLocalBooking(before); setRemoved(null) })
       showToast('Could not remove ' + line.description + '. Please try again.', 'error')
@@ -489,7 +497,8 @@ export function ExtendStayModal({
   // early hours go on the bill once it is checked out (`chargeableEarlyHours`).
   const noteDoor = async (k: 'in' | 'out', at: string | undefined) => {
     const before = localBooking
-    const updated = withRecomputedBalance(localBooking, k === 'in' ? { actual_check_in: at } : { actual_check_out: at })
+    const patch: Partial<Booking> = k === 'in' ? { actual_check_in: at } : { actual_check_out: at }
+    const updated = { ...localBooking, ...patch }
     // **A short stay checked in late keeps its hours** (Sebastian, 2026-10-25: "ship it"): the
     // stay then reaches the next half or two, and when another booking is there the time is
     // not saved — the desk settles it with the guest (fewer hours, or that booking moved);
@@ -521,7 +530,9 @@ export function ExtendStayModal({
       // `update_booking` keeps the old time when it is sent blank, so a time taken off is
       // cleared first; it clears the hours with it, and the save after it writes them back.
       if (!at) await undoBookingCheck(localBooking.id, k === 'in' ? 'check_in' : 'check_out')
-      await onUpdateBooking?.(updated)
+      const { mine, save } = await withBill(before, patch)
+      setLocalBooking(mine)
+      await saveAll(save)
     } catch {
       setLocalBooking(before)
       showToast('Could not save the time. Please try again.', 'error')
@@ -532,7 +543,7 @@ export function ExtendStayModal({
     window.clearTimeout(removedTimer.current)
     const { before } = removed
     layout(() => { setLocalBooking(before); setRemoved(null) })
-    try { await onUpdateBooking?.(before) } catch { showToast('Could not put the charge back. Please try again.', 'error') }
+    try { await saveAll((await withBill(before, {})).save) } catch { showToast('Could not put the charge back. Please try again.', 'error') }
   }
 
   const billedToAgency = isBilledToAgency(localBooking)
@@ -546,7 +557,11 @@ export function ExtendStayModal({
   // `written` is a payment written on the bill (`BillDesk`): it carries its own amount, way and
   // day, and its receipt is printed from its line there, not pushed up over the bill.
   const handleAddReceipt = async (written?: { amount: number; method: string; reference: string; date: string; purpose?: string }) => {
-    if (written && billRows.length > 1) { await payBill(written); return }
+    // A bill of several rooms: the payment goes on its first room, whole (`payOnBill`).
+    if (billRows.length > 1) {
+      await payBill(written || { amount: Number(receiveAmount) || 0, method: receiptMethod, reference: receiptRef, date: todayKey })
+      return
+    }
     const method = written ? written.method : receiptMethod
     const reference = methodNeedsReference(method) ? (written ? written.reference : receiptRef).trim() : ''
     const amount = Number(written ? written.amount : receiveAmount) || 0
@@ -718,9 +733,8 @@ export function ExtendStayModal({
   const [detailsOpen] = useState(nameNeeded)
   const saveDetails = (patch: Partial<Booking>) => {
     const before = localBooking
-    const updated = withRecomputedBalance(localBooking, patch)
-    layout(() => setLocalBooking(updated))
-    onUpdateBooking?.(updated).catch(() => {
+    layout(() => setLocalBooking({ ...before, ...patch }))
+    withBill(before, patch).then(({ mine, save }) => { setLocalBooking(mine); return saveAll(save) }).catch(() => {
       layout(() => setLocalBooking(before))
       showToast('Could not save that. Please try again.', 'error')
     })

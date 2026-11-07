@@ -1,6 +1,6 @@
 import {
   Booking, BookingSource, Room, Venue, PartnerDeal, Companion,
-  EquipmentRental, BreakfastOrder, AppliedDiscount, PaymentRecord, EventAddons, BillCharge, BreakfastPlan,
+  EquipmentRental, BreakfastOrder, AppliedDiscount, EventAddons, BillCharge, BreakfastPlan,
 } from '../../types/booking'
 
 /**
@@ -72,7 +72,6 @@ export interface BookingSubmitParams {
   partnerDeals: PartnerDeal[]
   formPartnerDealId: string
   bookingType: 'individual' | 'partner'
-  formStatus: 'confirmed' | 'blocked'
   bookingStatus: 'pending' | 'confirmed' | 'blocked' | 'cancelled'
   formAgreedDeposit?: number
   formGuestName: string
@@ -155,5 +154,5 @@ export interface BookingSubmitParams {
 }
 
 export type BookingSubmitResult =
-  | { ok: true; bookings: Booking[]; payAmount: string; receipt?: PaymentRecord }
+  | { ok: true; bookings: Booking[] }
   | { ok: false; error: string }

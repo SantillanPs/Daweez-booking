@@ -2,7 +2,8 @@ import { supabase } from './supabaseClient'
 import { Tab, TabLine } from '../types/tab'
 import { Booking, Room, Venue } from '../types/booking'
 import { tabTotal } from './tabs'
-import { recomputeBalance } from './bookingBalance'
+import { settleBill } from './bookingBalance'
+import { groupOf } from './bookingGroup'
 import { normalizeVenueId } from './helpers'
 
 // A stay's order slips (the staff's feedback, 2026-10-04).
@@ -123,7 +124,7 @@ export async function unpaySlipsOfReceipt(receiptNumber: string): Promise<void> 
 export async function settleSlipsOfPaidStay(
   booking: Booking,
   slips: OrderSlip[],
-  opts: { rooms: Room[]; venues: Venue[] },
+  opts: { rooms: Room[]; venues: Venue[]; bookings?: Booking[] },
 ): Promise<boolean> {
   const open = unpaidSlips(slips)
   if (open.length === 0) return false
@@ -134,9 +135,13 @@ export async function settleSlipsOfPaidStay(
     : opts.venues.some(v => v.id === normalizeVenueId(booking.venue_id))
   if (!unitKnown) return false
 
-  const owed = Number(recomputeBalance(booking, { ...opts, tabTotal: slipsTotal(slips) }).balance_due || 0)
-  if (owed > 0) return false
-  const records = booking.payment_records || []
+  // The whole bill: its money lives on its first room, and the other rooms' food counts too.
+  const rows = opts.bookings ? groupOf(booking, opts.bookings) : [booking]
+  const others = rows.length > 1 ? await getSlipsByBooking(rows.filter(b => b.id !== booking.id).map(b => b.id)) : {}
+  const food = Object.fromEntries(rows.map(b => [b.id, slipsTotal(b.id === booking.id ? slips : others[b.id] || [])]))
+  const bill = settleBill(rows, { ...opts, food })
+  if (Number(bill[0]?.balance_due || 0) > 0) return false
+  const records = bill[0]?.payment_records || []
   await markSlipsPaid(open.map(s => s.tab.id), records[records.length - 1]?.receipt_number)
   return true
 }

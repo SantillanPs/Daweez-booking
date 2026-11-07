@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Banknote, Check, Coffee, Plus, X } from 'lucide-react'
+import { Banknote, Check, ChevronDown, Coffee, Plus, X } from 'lucide-react'
 import { Booking, BillCharge, Companion, EventAddons, PaymentRecord } from '../../types/booking'
 import { buildStatement, StatementLineItem } from '../../utils/statement'
 import { dateToString, addDays, parseDay, shortDay, pesoWhole } from '../../utils/helpers'
@@ -13,7 +13,7 @@ import { StatementShell, BrandHeader, SectionName } from '../billing/StatementSh
 import { StatementChargesTable } from '../billing/StatementChargesTable'
 import { ADD, AddCharge, WritePayment } from '../billing/BillDesk'
 import { want } from '../billing/want'
-import { GoneLine, LINE as TOT, PayRow } from '../billing/FixPayment'
+import { BIG, Count, Dot, EYEBROW, FACTS, FOLD, GoneLine, HEAD, LINE as TOT, PayRow, RANK, STACK, Slip, Unfold } from '../billing/FixPayment'
 import { randomUUID } from '../../utils/helpers'
 import { NationalityInput } from '../NationalityInput'
 import { CountPeso } from '../CountPeso'
@@ -84,6 +84,15 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
   // A charge just taken off, which Undo puts back as it was.
   const [removed, setRemoved] = useState<{ label: string; breakfast: string[]; addons: Record<string, EventAddons> } | null>(null)
   const [paid, setPaid] = useState<Paid[]>([])
+  const [paysOpen, setPaysOpen] = useState(false)
+  // One payment is its own line; two or more open out of the folded "Payments" line on the gold thread.
+  const payRow = (p: Paid) => (
+    <div key={p.id} className="bill-ink">
+      <PayRow head={paid.length === 1 ? 'Paid' : undefined} kid={paid.length > 1} purpose={p.purpose}
+        method={paymentMethodLabel(p.method).replace('Bank transfer', 'Bank')} amount={'−' + pesoWhole(p.amount)} under={shortDay(p.date)} tag={paid[0] === p}
+        onRemove={() => { const at = paid.indexOf(p); setPaid(ps => ps.filter(x => x.id !== p.id)); setStruck(g => [...g, { p, at }]) }} />
+    </div>
+  )
   const [struck, setStruck] = useState<{ p: Paid; at: number }[]>([])
   const [writing, setWriting] = useState(false)
   const [preparedBy, setPreparedBy] = useState(lastReceptionist)
@@ -161,24 +170,9 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
     if (preparedBy.trim()) rememberReceptionist(preparedBy)
     try {
       const n = list.length
-      const own = drafts.map(d => buildStatement({ primaryBooking: d, relatedBookings: [d], rooms, venues, bookingsList: bookings }).subTotal)
-      // Each payment is split across the rooms by what each still owes, and stored on EVERY room
-      // it paid for with that room's slice as `share` (the owner's ruling, 2026-09-30). Split by
-      // what is left, not by each room's whole bill: rounding each payment on its own put a peso
-      // on the wrong room, so a bill paid in full left one room "₱1 owed" (2026-10-23).
-      const sofar = own.map(() => 0)
-      const shares = paid.map(p => {
-        const rest = own.map((o, i) => Math.max(0, o - sofar[i]))
-        const restTotal = rest.reduce((a, b) => a + b, 0)
-        const pay = Math.min(p.amount, restTotal)
-        const row = rest.map(r => (restTotal > 0 ? Math.floor(pay * r / restTotal) : 0))
-        let left = pay - row.reduce((a, b) => a + b, 0)
-        for (let i = 0; i < n && left > 0; i++) { const add = Math.min(rest[i] - row[i], left); row[i] += add; left -= add }
-        // More than the bill: the extra sits on the first room.
-        row[0] += p.amount - pay
-        row.forEach((v, i) => { sofar[i] += v })
-        return row
-      })
+      // The bill's money lives on its first room (2026-11-07): every payment, whole, and what is left.
+      const bal = Math.max(0, subTotal - paidTotal)
+      const status = bal <= 0 ? 'paid' as const : paidTotal > 0 ? 'downpayment' as const : 'unpaid' as const
       const groupId = n > 1 ? 'grp-' + randomUUID() : undefined
       const cleaned = companions.filter(c => c.name.trim())
       // A stay that is already over is logged as over: checked in and out at the standard times.
@@ -186,13 +180,10 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
       const at = (iso: string, h: number) => { const d = parseDay(iso); d.setHours(h); return d.toISOString() }
       for (let i = 0; i < n; i++) {
         const [id, s] = list[i]
-        const down = shares.reduce((a, row) => a + row[i], 0)
-        const bal = Math.max(0, own[i] - down)
-        const records: PaymentRecord[] = paid.map((p, j) => ({
+        const records: PaymentRecord[] = i > 0 ? [] : paid.map(p => ({
           id: p.id, amount: p.amount, method: p.method, paid_at: new Date(p.date + 'T12:00:00').toISOString(),
           purpose: p.purpose, ...(p.reference ? { reference: p.reference } : {}),
           ...(preparedBy.trim() ? { prepared_by: preparedBy.trim() } : {}),
-          ...(n > 1 ? { share: shares[j][i] } : {}),
         }))
         const ea = addons[id]
         await createManualBooking({
@@ -213,9 +204,9 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
           stayHours: isShort ? hours : undefined,
           stayHalf: isShort ? shortHalf : undefined,
           paymentMethod: paid.length > 0 ? paid[paid.length - 1].method : undefined,
-          downpaymentPaid: down,
-          balanceDue: bal,
-          paymentStatus: bal <= 0 ? 'paid' : down > 0 ? 'downpayment' : 'unpaid',
+          downpaymentPaid: i === 0 ? paidTotal : 0,
+          balanceDue: i === 0 ? bal : 0,
+          paymentStatus: status,
           paymentRecords: records.length > 0 ? records : undefined,
           preparedBy: preparedBy.trim() || undefined,
           ...((isShort ? s.checkIn < today : s.checkOut < today) ? {
@@ -367,7 +358,17 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
                   </td>
                 </tr>
               )}
-              <AddCharge sheet={sheetEl} onCharge={addCharge} cols={6} beside={noBreakfast.map(([id]) => {
+              <AddCharge sheet={sheetEl} onCharge={addCharge} cols={6}
+                // The Sub-total, bold, at the end of the add line, as on the one bill (Sebastian, 2026-11-06).
+                end={
+                  <div className={TOT}>
+                    <span className="col-start-2 col-span-2 flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-900">Sub-total</span>
+                      <span key={subTotal} className="font-display text-[19px] leading-[22px] font-extrabold text-ink-900 tabular-nums bill-roll">{pesoWhole(subTotal)}</span>
+                    </span>
+                  </div>
+                }
+                beside={noBreakfast.map(([id]) => {
                 const room = rooms.find(r => r.id === id)!
                 const name = 'Breakfast' + (list.length > 1 ? ' · Room ' + room.room_number : '')
                 // A room never priced asks for its price right here, as the paper form does
@@ -405,31 +406,33 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
             <div className="relative flex flex-col gap-[3px]">
               {/* The same grid as the one bill (`LINE`, Sebastian, 2026-11-06): icon, name and details,
                   amount, its button. One payment is its own line; two or more fold under "Paid" with a count. */}
-              <div className={TOT}>
-                <span className="col-start-2 text-[9px] font-bold uppercase tracking-[0.12em] text-muted">Sub-total</span>
-                <span className="justify-self-end font-mono text-[11.5px] font-bold text-muted tabular-nums">{pesoWhole(subTotal)}</span>
-              </div>
-              <div className="ml-[22px] mb-1 border-t border-ink-200" />
               <div className="relative">
                 {first && (
                   <WritePayment key={paid.length} sheet={sheetEl} open={writing} onOpen={setWriting} gone={!(due > 0)} paidOn={first.checkIn}
                     onPay={p => setPaid(ps => [...ps, { id: 'rcpt-' + Date.now(), ...p }])} />
                 )}
-                {paid.length !== 1 && (
+                {paid.length === 0 && (
                   <div className={TOT}>
                     <Banknote aria-hidden="true" className="justify-self-center w-3 h-3 text-muted" />
-                    <span className="flex items-center gap-1.5"><b className="text-[11px] font-bold text-ink-900">Paid</b>
-                      {paid.length > 1 && <span key={paid.length} className="inline-grid place-items-center min-w-4 h-4 px-1 rounded-full bg-gold-100 text-[9px] font-extrabold text-gold-800 bill-bump">{paid.length}</span>}</span>
-                    <span key={paidTotal} className={'justify-self-end font-mono text-[11.5px] font-bold tabular-nums bw-rise ' + (paidTotal > 0 ? 'text-emerald-700' : 'text-muted')}>{paidTotal > 0 ? '−' + pesoWhole(paidTotal) : '—'}</span>
+                    <b className="text-[11px] font-bold text-ink-900">Paid</b>
+                    <span className="justify-self-end font-mono text-[11.5px] font-bold text-muted">—</span>
                   </div>
                 )}
-                {paid.map(p => (
-                  <div key={p.id} className="bill-ink">
-                    <PayRow head={paid.length === 1 ? 'Paid' : undefined} kid={paid.length > 1} purpose={p.purpose}
-                      method={paymentMethodLabel(p.method).replace('Bank transfer', 'Bank')} amount={'−' + pesoWhole(p.amount)} under={shortDay(p.date)} tag={paid[0] === p}
-                      onRemove={() => { const at = paid.indexOf(p); setPaid(ps => ps.filter(x => x.id !== p.id)); setStruck(g => [...g, { p, at }]) }} />
-                  </div>
-                ))}
+                {/* Two or more fold into one ranked "Payments" line, as on the one bill (2026-11-06). */}
+                {paid.length > 1 && (
+                  <button type="button" onClick={() => setPaysOpen(o => !o)} aria-expanded={paysOpen} aria-label="The payments" className={TOT + ' ' + RANK + ' w-full cursor-pointer group active:scale-[0.98] transition-transform'}>
+                    <span className="justify-self-center text-gold-800"><Slip /></span>
+                    <span className={STACK}>
+                      <span className={HEAD + ' flex items-center gap-1.5'}>Payments<Count n={paid.length} /></span>
+                      <span className={FACTS}><b className={EYEBROW + ' text-emerald-700'}>Paid</b><Dot />
+                        <span className="min-w-0 truncate tabular-nums">{[...new Set([paid[0].date, paid[paid.length - 1].date].filter(Boolean).map(shortDay))].join(' – ')}</span></span>
+                    </span>
+                    <span key={paidTotal} className={BIG + ' text-emerald-700 bw-rise'}>−{pesoWhole(paidTotal)}</span>
+                    <ChevronDown aria-hidden="true" className={FOLD} />
+                  </button>
+                )}
+                {paid.length === 1 && payRow(paid[0])}
+                <Unfold open={paysOpen && paid.length > 1}>{paid.length > 1 && paid.map(payRow)}</Unfold>
               </div>
               {/* Taken off: struck through with its Undo until the bill closes, as on the one bill. */}
               {struck.map(({ p, at }) => (

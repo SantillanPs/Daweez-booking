@@ -2,6 +2,7 @@ import { Booking, Room, Venue, PartnerDeal } from '../types/booking'
 import { normalizeVenueId } from './helpers'
 import { stayUnitsLabel } from './roomNumbers'
 import { amountToPayNow } from './bookingMoney'
+import { billStays } from './pricing'
 import { OrderSlip } from './orderSlips'
 import { paymentShare } from '../components/walk-in/bookingPayment'
 import { bookingLines, mergeDiscountRows, mergeBreakfastRows, StatementLineItem, StatementBand } from './statementLines'
@@ -98,8 +99,8 @@ export function buildStatement(o: StatementInput): Statement {
   let subTotal = 0
   let downpaymentPaid = 0
   let securityDeposit = 0
-  let amountDue = 0
-  let balanceAfter = 0
+  let owedAll = 0
+  let foodAll = 0
   let paymentMethod = ''
   const payments: StatementPayment[] = []
 
@@ -122,20 +123,16 @@ export function buildStatement(o: StatementInput): Statement {
       venues,
       bookingsList: o.bookingsList,
       slipsByBooking: o.slipsByBooking,
+      stays: billStays(b, relatedBookings, { rooms, venues }),
     })
     collected.push(...items)
     // The rows add up to exactly this: rooms (gross) − the staff discount + breakfast +
     // extras + the food tab.
     subTotal += items.reduce((sum, item) => sum + item.amount, 0)
     downpaymentPaid += Number(b.downpayment_paid || 0)
+    owedAll += Number(b.balance_due || 0)
+    foodAll += tabTotal
     securityDeposit += Number(b.security_deposit || 0)
-    // What to pay NOW, from the guest's own choice: the agreed 50% deposit while
-    // nothing has been paid, otherwise what is left. Using `balance_due` alone
-    // printed the whole stay as due, which contradicted a deposit booking. The tab
-    // is passed in so the deposit is still worked out from the STAY alone.
-    const payNow = amountToPayNow(b, tabTotal)
-    amountDue += payNow
-    balanceAfter += Math.max(0, Number(b.balance_due || 0) - payNow)
     if (b.payment_method) paymentMethod = b.payment_method
 
     // A payment for several rooms sits on every one of them with its full amount, so it
@@ -151,6 +148,11 @@ export function buildStatement(o: StatementInput): Statement {
     })
   })
   payments.sort((a, b) => (a.paidAt || '').localeCompare(b.paidAt || ''))
+  // What to pay NOW, from the guest's own choice, for the bill as one (its money is on its first
+  // room): the agreed deposit while nothing has been paid, otherwise what is left. The food is
+  // passed in so the deposit is still worked out from the STAY alone.
+  const amountDue = amountToPayNow({ ...primaryBooking, downpayment_paid: downpaymentPaid, balance_due: owedAll, payment_records: relatedBookings.flatMap(b => b.payment_records || []) }, foodAll)
+  const balanceAfter = Math.max(0, owedAll - amountDue)
 
   // Several rooms on one bill: the stay details name all of them, not just the first.
   const roomNumbers = relatedBookings

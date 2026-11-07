@@ -40,6 +40,10 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: 'agency-prices', since: '2026-11-05' },
   // The agency's own breakfast price in Settings → Agencies (`DirectoryTab`).
   { id: 'agency-breakfast', since: '2026-11-05' },
+  // The bill's one "Add" for a discount or a payment, beside the totals (`AddMoney` in `BillDesk`).
+  { id: 'bill-add-one', since: '2026-11-06' },
+  // Pension House Exclusive is the whole house: its row is on top and its roof covers every room and venue (`ExclusiveRoof`).
+  { id: 'exclusive-roof', since: '2026-11-07' },
 ]
 
 const KEY = 'daweez_new_seen'

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Ban, Coffee, FilePlus, LogIn, LogOut, Plus, WifiOff } from 'lucide-react'
+import { ArrowRight, Ban, Coffee, FilePlus, House, LogIn, LogOut, Plus, WifiOff } from 'lucide-react'
 import { Booking, PartnerDeal, Room, Venue } from '../../types/booking'
 import { AskCup } from './BreakfastParts'
 import { isBilledToAgency } from '../../utils/bookingMoney'
@@ -19,6 +19,11 @@ import { ChannelAlert } from '../../utils/channelStay'
 import { ChannelMark } from './ChannelMark'
 import { getRateConfig, saveRateConfig } from '../../utils/rateConfig'
 import { useConnection } from '../../utils/connection'
+import { EXCLUSIVE_ID, roofClashes } from '../../utils/availability'
+import { bookingHalves } from '../../utils/halfDays'
+import { ExclusiveRoof } from './ExclusiveRoof'
+import { NewTag } from '../NewMark'
+import { markSeen } from '../../utils/newMarks'
 
 export type { TimelineDayInfo }
 
@@ -112,13 +117,19 @@ function DayCount({ n, title, className, on, onTap, children }: { n: number; tit
 
 type BarAnchor = { unitId: string; iso: string; outIso: string }
 
+/** `Room 4`, `Gazebo` — what the desk calls the place a booking holds. */
+const unitWords = (b: Booking, rooms: Room[], venues: Venue[]) => {
+  const room = b.room_id ? rooms.find(r => r.id === b.room_id) : undefined
+  return room ? 'Room ' + room.room_number : venues.find(v => v.id === b.venue_id)?.name || b.venue_id || 'Room'
+}
+
 /**
  * The action bar, in a component of its own: placing it reads its own width back after it
  * is drawn, and while it lived in the grid every one of those reads redrew all ~400 cells
  * again — four times a click, which the desk felt as a delay on every tap (Sebastian,
  * 2026-10-16: "when I click on a cell in the calendar there's a short delay").
  */
-function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection, selectionName, rooms, venues, barRoom, onNewBooking, onBlockDates, onLogOldBooking, onNewShortStay, onClearSelection, onPickHalf }: {
+function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection, selectionName, rooms, venues, barRoom, taken, onOpenTaken, onNewBooking, onBlockDates, onLogOldBooking, onNewShortStay, onClearSelection, onPickHalf }: {
   scrollRef: React.RefObject<HTMLDivElement | null>
   barAnchor: BarAnchor | null
   timelineSelection: TimelineGridProps['timelineSelection']
@@ -127,6 +138,9 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
   rooms: Room[]
   venues: Venue[]
   barRoom: Room | null
+  /** What is booked under the Exclusive being picked. */
+  taken: Booking[]
+  onOpenTaken: (b: Booking) => void
 } & Pick<TimelineGridProps, 'onNewBooking' | 'onBlockDates' | 'onLogOldBooking' | 'onNewShortStay' | 'onClearSelection' | 'onPickHalf'>) {
   // Where the bar goes: the middle of the picked dates, its row, how wide it is, and how far
   // left and right it may reach. The width is the bar's own, read back once it is on screen.
@@ -274,7 +288,21 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
         </span>
       ))}
 
-      {hasRange ? (
+      {hasRange && taken.length > 0 ? (
+        /* THE EXCLUSIVE IS THE WHOLE HOUSE (the roof mock, 2026-11-07): what is booked under it
+           is named here, each a tap away from its own panel, where it is moved (on its bill).
+           New booking comes back once nothing is in the way. */
+        <>
+          {taken.slice(0, 3).map(b => (
+            <button key={b.id} type="button" onClick={() => onOpenTaken(b)}
+              title={'Open ' + unitWords(b, rooms, venues) + ' to move it'}
+              className="bp-up shrink-0 whitespace-nowrap inline-flex items-center gap-1 h-7 px-3 rounded-full bg-danger-50 text-danger-600 hover:bg-danger-100 text-[13px] font-bold transition-[background-color,transform] active:scale-95 cursor-pointer">
+              {unitWords(b, rooms, venues)} <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          ))}
+          {taken.length > 3 && <span className="shrink-0 h-5 px-2 rounded-full bg-danger-50 text-danger-600 text-[12px] font-bold leading-5 tabular-nums">+{taken.length - 3}</span>}
+        </>
+      ) : hasRange ? (
         <>
           <button type="button" onClick={onNewBooking}
             className="shrink-0 inline-flex items-center gap-1 h-7 px-3.5 rounded-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold transition-colors active:scale-[0.98] cursor-pointer">
@@ -483,7 +511,7 @@ export const TimelineGrid = React.memo(
       Object.entries(halves).forEach(([unitId, row]) => row.forEach(b => {
         if (!b || b.status === 'blocked' || seen[b.id]) return
         seen[b.id] = true
-        if (stayStage(b, todayIso) === 'during') occupied[unitId] = true
+        if (stayStage(b, todayIso) === 'during') occupied[unitId === EXCLUSIVE_ID ? '*' : unitId] = true
         at(b.check_in).arrive.push(b.id)
         at(leaveDay(b)).leave.push(b.id)
       }))
@@ -512,6 +540,23 @@ export const TimelineGrid = React.memo(
       document.addEventListener('keydown', esc)
       return () => { document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', esc) }
     }, [spot, counts])
+
+    // ── the Exclusive: its row goes first, its bookings hang the roof ─────────────────────
+    const exclusiveVenue = venues.find(v => v.id === EXCLUSIVE_ID)
+    const otherVenues = React.useMemo(() => venues.filter(v => v.id !== EXCLUSIVE_ID), [venues])
+    const roofs = React.useMemo(() => {
+      const seen = new Map<string, Booking>()
+      ;(halves[EXCLUSIVE_ID] || []).forEach(b => { if (b && !seen.has(b.id)) seen.set(b.id, b) })
+      return [...seen.values()]
+    }, [halves])
+    const exPick = groupSelection?.[EXCLUSIVE_ID]
+    const roofPick = React.useMemo(() => exPick ? { from: dateToString(exPick.checkIn), to: dateToString(exPick.checkOut) } : null, [exPick])
+    const taken = React.useMemo(() => roofPick ? roofClashes(true, ...bookingHalves({ check_in: roofPick.from, check_out: roofPick.to }), bookings) : [], [roofPick, bookings])
+    const openBooking = React.useCallback((b: Booking) => {
+      setSelectedExtendBooking(b)
+      setExtendCheckoutDate(b.check_out)
+      setExtendError('')
+    }, [setSelectedExtendBooking, setExtendCheckoutDate, setExtendError])
 
     const goneIds = React.useMemo(() => new Set((channelAlerts || []).filter(a => a.kind === 'gone' && a.booking_id).map(a => a.booking_id as string)), [channelAlerts])
 
@@ -601,8 +646,9 @@ export const TimelineGrid = React.memo(
             desk picked, so it is beside both the room and the date and it travels
             with the grid. */}
         <SelectionBar scrollRef={scrollRef} barAnchor={barAnchor} timelineSelection={timelineSelection} groupSelection={groupSelection}
-          selectionName={selectionName} rooms={rooms} venues={venues} barRoom={barRoom} onNewBooking={onNewBooking}
+          selectionName={selectionName} rooms={rooms} venues={venues} barRoom={barRoom} taken={taken} onOpenTaken={openBooking} onNewBooking={onNewBooking}
           onBlockDates={onBlockDates} onLogOldBooking={onLogOldBooking} onNewShortStay={onNewShortStay} onClearSelection={onClearSelection} onPickHalf={onPickHalf} />
+        <ExclusiveRoof scrollRef={scrollRef} roofs={roofs} pick={roofPick} taken={taken} onOpen={b => { markSeen('exclusive-roof'); openBooking(b) }} />
 
         {/* Every cell draws its own rules (`border-separate`). In a collapsed table the
             rules belong to the table, and the pinned header and room column — which
@@ -623,7 +669,7 @@ export const TimelineGrid = React.memo(
           <thead>
             <tr>
               <th className={'sticky top-0 left-0 z-30 bg-card border-b border-r border-soft px-3.5 text-left align-bottom pb-2 text-[13px] font-medium text-muted ' + UNIT_COL}>
-                Room
+                {/* No "Room" here: the rooms have their own separator under the Exclusive (Sebastian, 2026-11-07). */}
               </th>
               {daysList.map((dayInfo, i) => (
                 <th key={i} colSpan={2} data-day={dayInfo.isoStr} className={'sticky top-0 z-10 border-b border-soft px-0 pt-1.5 pb-0 text-center ' + (dayInfo.isToday ? 'bg-gold-100' : 'bg-card') + (dayInfo.monthLabel ? ' border-l-2 border-l-gold-300' : '') + ' data-[hover]:!bg-gold-200/70'}>
@@ -680,12 +726,38 @@ export const TimelineGrid = React.memo(
               </tr>
             ))}
 
+            {/* PENSION HOUSE EXCLUSIVE FIRST: it is the whole house, so its row sits over every
+                room and venue it covers, and its roof hangs down from there (2026-11-07). */}
+            {exclusiveVenue && rooms.length > 0 && (
+              <tr className="group hover:bg-paper-50/50">
+                <td className={(occupied['*'] ? UNIT_CELL_OCCUPIED : UNIT_CELL) + ' !bg-gold-100'} onClick={() => markSeen('exclusive-roof')}>
+                  <div className="flex items-center gap-2.5">
+                    <House className="w-6 shrink-0 h-[18px] text-gold-800" aria-hidden="true" />
+                    <span className="relative min-w-0 flex-1"><NewTag id="exclusive-roof" />
+                      <span className="block truncate text-[13px] font-semibold leading-4 text-main">{exclusiveVenue.name}</span>
+                      <span className="block text-[12px] leading-4 tabular-nums text-muted">₱{displayPriceFor(exclusiveVenue).toLocaleString()}/day</span>
+                    </span>
+                  </div>
+                </td>
+                {buildRowCells(exclusiveVenue.id, 'venue')}
+              </tr>
+            )}
+            {/* The rooms get the same separator as the venues once the Exclusive sits over them
+                (Sebastian, on the roof mock, 2026-11-07). */}
+            {exclusiveVenue && rooms.length > 0 && (
+              <tr>
+                <td colSpan={daysList.length * 2 + 1} className="relative z-[6] border-b border-soft bg-paper-50 p-0">
+                  <span className="sticky left-0 inline-flex h-8 items-center px-3.5 text-[13px] font-semibold text-main">Rooms</span>
+                </td>
+              </tr>
+            )}
+
             {/* A room is its NUMBER first — it is what the desk says aloud — then its
                 kind and its price. No tile behind the number: the row is the box. */}
             {rooms.map(room => (
               <React.Fragment key={room.id}>
               <tr className={'group hover:bg-paper-50/50'}>
-                <td className={occupied[room.id] ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
+                <td className={occupied[room.id] || occupied['*'] ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
                   <div className="flex items-center gap-2.5">
                     <span className="w-6 shrink-0 text-center font-display text-[15px] font-bold tabular-nums text-main">{room.room_number}</span>
                     <span className="min-w-0 flex-1">
@@ -726,17 +798,17 @@ export const TimelineGrid = React.memo(
               </React.Fragment>
             ))}
 
-            {venues.length > 0 && (
+            {otherVenues.length > 0 && (
               <tr>
-                <td colSpan={daysList.length * 2 + 1} className="border-b border-soft bg-paper-50 p-0">
+                <td colSpan={daysList.length * 2 + 1} className="relative z-[6] border-b border-soft bg-paper-50 p-0">
                   <span className="sticky left-0 inline-flex h-8 items-center px-3.5 text-[13px] font-semibold text-main">Event venues</span>
                 </td>
               </tr>
             )}
 
-            {venues.map(venue => (
+            {otherVenues.map(venue => (
               <tr key={venue.id} className={'group hover:bg-paper-50/50'}>
-                <td className={occupied[venue.id] ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
+                <td className={occupied[venue.id] || occupied['*'] ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
                   <span className="block truncate text-[13px] font-semibold leading-4 text-main">{venue.name}</span>
                   <span className="block text-[12px] leading-4 tabular-nums text-muted">₱{displayPriceFor(venue).toLocaleString()}/day</span>
                 </td>

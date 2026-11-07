@@ -1,6 +1,9 @@
-import React, { useRef, useState } from 'react'
-import { Check, ChevronDown, Plus } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Check, ChevronDown, Plus, Tag } from 'lucide-react'
 import { Floating } from '../calendar/BillRoomLines'
+import { NewTag } from '../NewMark'
+import { markSeen } from '../../utils/newMarks'
+import { Slip } from './FixPayment'
 import { PAYMENT_METHODS, methodNeedsReference } from '../../utils/paymentMethod'
 import { dateToString, shortDay } from '../../utils/helpers'
 import { useLateFocus, want } from './want'
@@ -28,16 +31,69 @@ export const ADD = 'group inline-flex items-center gap-1 px-2.5 first:pl-0 py-px
  * name of the button when hovered"); `gone`, it fades away (nothing is owed).
  * Its line must be `relative`.
  */
-export function Gut({ name, onClick, expanded, gone, btnRef }: {
+export function Gut({ name, onClick, expanded, gone, btnRef, label, children }: {
   name: string; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; expanded?: boolean; gone?: boolean; btnRef?: React.Ref<HTMLButtonElement>
+  label?: string; children?: React.ReactNode
 }) {
   return (
-    <button ref={btnRef} type="button" onClick={onClick} aria-expanded={expanded} aria-label={'Add a ' + name.toLowerCase()} tabIndex={gone ? -1 : undefined}
+    <button ref={btnRef} type="button" onClick={onClick} aria-expanded={expanded} aria-label={label ?? 'Add a ' + name.toLowerCase()} tabIndex={gone ? -1 : undefined}
       className={'group/gut print:hidden absolute right-[calc(100%+6px)] top-1/2 h-[22px] px-[5px] flex items-center gap-[3px] rounded-full text-[10.5px] font-bold text-gold-800 whitespace-nowrap hover:bg-gold-100 focus-visible:bg-gold-100 aria-expanded:bg-gold-100 transition-[background-color,opacity,transform] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] cursor-pointer '
         + (gone ? 'opacity-0 pointer-events-none -translate-y-1/2 scale-50' : '-translate-y-1/2 active:scale-90')}>
       <span>{name}</span>
       <Plus aria-hidden="true" className="w-3 h-3 shrink-0 group-hover/gut:rotate-90 group-aria-expanded/gut:!rotate-45 transition-transform duration-300 ease-[cubic-bezier(.34,1.56,.64,1)]" strokeWidth={3} />
+      {children}
     </button>
+  )
+}
+
+/**
+ * **One "Add" in the bill's margin** (Sebastian, 2026-11-06, the "Bill Sub-total Row" mock: "can we merge
+ * these two?" — the Discount + and Payment + beside the totals). It opens to what can be added now: its +
+ * turns to ×, and the two drop out under it. With only one of them left it names that one and opens it at
+ * once; with neither it fades away. A choice is handed the line the pill sits on, so its box opens there.
+ */
+export function AddMoney({ onDiscount, onPayment, expanded }: {
+  /** Absent: no discount can be given here (an agency's bill). */
+  onDiscount?: (line: HTMLElement) => void
+  /** Absent: nothing is owed, or no payment can be taken here. */
+  onPayment?: (line: HTMLElement) => void
+  /** A discount or payment box is open from it. */
+  expanded?: boolean
+}) {
+  const [menu, setMenu] = useState(false)
+  const pill = useRef<HTMLButtonElement>(null)
+  const picks = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!menu) return
+    const away = (e: PointerEvent) => { if (!pill.current?.contains(e.target as Node) && !picks.current?.contains(e.target as Node)) setMenu(false) }
+    document.addEventListener('pointerdown', away)
+    return () => document.removeEventListener('pointerdown', away)
+  }, [menu])
+  const line = () => pill.current!.parentElement as HTMLElement
+  const one = onDiscount && !onPayment ? 'Discount' : onPayment && !onDiscount ? 'Payment' : ''
+  if (!onDiscount && !onPayment) return <Gut name="Payment" onClick={() => {}} gone />
+  if (one) return <Gut btnRef={pill} name={one} expanded={expanded} onClick={() => (onDiscount ?? onPayment)!(line())} />
+  const choices = [
+    { name: 'Discount', icon: <Tag aria-hidden="true" className="w-3 h-3 text-danger-600" strokeWidth={2.4} />, go: onDiscount! },
+    { name: 'Payment', icon: <span className="text-gold-800"><Slip /></span>, go: onPayment! },
+  ]
+  return (
+    <>
+      <Gut btnRef={pill} name="Add" label="Add a discount or a payment" expanded={menu || expanded}
+        onClick={() => { markSeen('bill-add-one'); setMenu(m => !m) }}>
+        <NewTag id="bill-add-one" />
+      </Gut>
+      {menu && (
+        <div ref={picks} className="print:hidden absolute right-[calc(100%+6px)] top-[calc(50%+15px)] z-20 flex flex-col items-end gap-1">
+          {choices.map((c, i) => (
+            <button key={c.name} type="button" style={{ '--i': i } as React.CSSProperties} onClick={() => { setMenu(false); c.go(line()) }}
+              className="h-[30px] pl-2 pr-2.5 inline-flex items-center gap-1.5 rounded-full bg-card shadow-[inset_0_0_0_1.5px_#E3C68C] text-[11.5px] font-bold text-ink-900 whitespace-nowrap hover:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer bw-rise">
+              {c.icon}{c.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   )
 }
 const MONEY_IN = 'min-w-0 w-20 bg-transparent border-0 p-0 text-right font-display text-[16px] font-extrabold text-ink-900 placeholder:text-paper-400 focus:outline-none'
@@ -51,10 +107,12 @@ const MONEY_IN = 'min-w-0 w-20 bg-transparent border-0 p-0 text-right font-displ
  * mistake `paymentMethodChoice` was written against. The day is today, except on a paper booking.
  * `open` is the bill's, so the payments above can fold away while one is written.
  */
-export function WritePayment({ open, onOpen, onPay, paidOn, fills, sheet, gone }: {
+export function WritePayment({ open, onOpen, onPay, paidOn, fills, sheet, gone, noGut }: {
   open: boolean; onOpen: (open: boolean) => void; onPay: (p: PayInput) => void
   /** Nothing is owed: the + fades away. */
   gone?: boolean
+  /** The bill's one "Add" (`AddMoney`) opens it, so it hangs no "+" of its own. */
+  noGut?: boolean
   /** **Quick fills** — the booking form's deposit choices on a new booking's bill (Deposit, Full
    *  pay): a tap writes what for and how much. */
   fills?: { label: string; amount: number }[]
@@ -72,6 +130,7 @@ export function WritePayment({ open, onOpen, onPay, paidOn, fills, sheet, gone }
   const [reference, setReference] = useState('')
   const [miss, setMiss] = useState('')
   const blank = useRef<HTMLButtonElement>(null)
+  const spot = useRef<HTMLSpanElement>(null)
   const forBox = useRef<HTMLInputElement>(null)
   const amountBox = useRef<HTMLInputElement>(null)
   const way = useRef<HTMLButtonElement>(null)
@@ -93,9 +152,9 @@ export function WritePayment({ open, onOpen, onPay, paidOn, fills, sheet, gone }
   }
   return (
     <>
-      <Gut btnRef={blank} name="Payment" onClick={() => (open ? shut() : onOpen(true))} expanded={open} gone={gone} />
+      {noGut ? <span ref={spot} hidden /> : <Gut btnRef={blank} name="Payment" onClick={() => (open ? shut() : onOpen(true))} expanded={open} gone={gone} />}
       {open && sheet && (
-        <Floating at={() => blank.current!.parentElement!} sheet={sheet} right label="A payment" onClose={shut}>
+        <Floating at={() => ((noGut ? spot.current : blank.current)!.parentElement!)} sheet={sheet} right label="A payment" onClose={shut}>
           <form onSubmit={e => { e.preventDefault(); record() }} className="w-[236px] flex flex-col gap-1.5 p-1">
             {fills && fills.length > 0 && (
               <div className="flex gap-1">
@@ -165,10 +224,12 @@ export function WritePayment({ open, onOpen, onPay, paidOn, fills, sheet, gone }
  * to add a bill in the billing statement. for example: DINNER - 300 pesos"*): what for and
  * how much, and it goes under Extras. Written in a box that floats over the bill (2026-10-27).
  */
-export function AddCharge({ onCharge, cols, beside, presets, sheet }: {
+export function AddCharge({ onCharge, cols, beside, end, presets, sheet }: {
   onCharge: (name: string, amount: number) => void; cols: number
   /** Blanks that sit to its left — a logged paper's Breakfast. */
   beside?: React.ReactNode
+  /** What sits at the line's right end, over the totals — the Sub-total. */
+  end?: React.ReactNode
   /** Ready-priced extras offered as chips when it opens (a new booking's Foam, Pillow…); each tap
    *  adds one more. "Something else" is the ordinary name and price. */
   presets?: { label: string; price: number; onPick: () => void }[]
@@ -196,11 +257,17 @@ export function AddCharge({ onCharge, cols, beside, presets, sheet }: {
       {/* Room, Breakfast and Charge are one ruled line of gold words (the Paper mock, 2026-10-29: "I
           don't like the buttons to have their own row of space"). */}
       <td colSpan={cols} className="p-0">
-        <div className="flex flex-wrap items-center py-[3px] border-b border-dotted border-ink-200 [&>*+*]:border-l [&>*+*]:border-ink-200">
-          {beside}
-          <button ref={blank} type="button" onClick={() => (open ? shut() : setOpen(true))} aria-expanded={open} aria-label="Add a charge" className={ADD}>
-            <Plus aria-hidden="true" className="w-3 h-3" strokeWidth={3} />Charge
-          </button>
+        {/* The Sub-total sits at the right end of this same line, over the totals column (Sebastian,
+            2026-11-06, the "Bill Sub-total Row" mock: "the sub total should be on a grid next to the
+            room, breakfast, and charge buttons to get more space"). */}
+        <div className="grid grid-cols-[1fr_236px] gap-6 items-center py-[3px] border-b border-dotted border-ink-200">
+          <div className="flex flex-wrap items-center [&>*+*]:border-l [&>*+*]:border-ink-200">
+            {beside}
+            <button ref={blank} type="button" onClick={() => (open ? shut() : setOpen(true))} aria-expanded={open} aria-label="Add a charge" className={ADD}>
+              <Plus aria-hidden="true" className="w-3 h-3" strokeWidth={3} />Charge
+            </button>
+          </div>
+          {end}
         </div>
         {open && sheet && (
           <Floating at={() => blank.current!} sheet={sheet} label="Add a charge" onClose={shut}>

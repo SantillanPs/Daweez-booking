@@ -7,6 +7,7 @@ import { venueTypeOf, venueTypeTitle } from './venueTypes'
 import { airconWords } from './venueHours'
 import { breakfastMornings } from './breakfast'
 import { discountsOf, discountLabel } from './discounts'
+import { EXCLUSIVE_ID } from './availability'
 
 /**
  * The rows of the printed Guest Billing Statement, one per charge.
@@ -185,6 +186,8 @@ export function bookingLines(b: Booking, o: {
   venues: Venue[]
   bookingsList: Booking[]
   slipsByBooking?: Record<string, OrderSlip[]>
+  /** The bill's stays, when this room holds its discounts (`billStays`). */
+  stays?: number
 }): { items: StatementLineItem[]; tabTotal: number } {
   const items: StatementLineItem[] = []
   const pricing = priceBooking(b, o)
@@ -210,7 +213,8 @@ export function bookingLines(b: Booking, o: {
   items.push({
     key: b.id + '-stay',
     band: 'room',
-    description: (kindTitle || unitName(b, rooms, venues)) + (isShortStay ? ' · ' + stayHours + ' hours' + airconWords(b.venue_id, stayHours) : '') + rateLabel,
+    // The Exclusive is the whole house, so its line says so (2026-11-07).
+    description: (kindTitle || unitName(b, rooms, venues)) + (normalizeVenueId(b.venue_id || '') === EXCLUSIVE_ID ? ' · every room and venue' : '') + (isShortStay ? ' · ' + stayHours + ' hours' + airconWords(b.venue_id, stayHours) : '') + rateLabel,
     // A short stay is ONE charge, but the column must read the hours bought (`12 hrs`):
     // the charge count printed `1 hrs` on every short stay, whatever its length.
     qty: isShortStay ? String(stayHours) : String(stayQty),

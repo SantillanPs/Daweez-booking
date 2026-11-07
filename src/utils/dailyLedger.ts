@@ -1,7 +1,8 @@
 import { Booking, Room, Venue } from '../types/booking'
 import { Expense } from '../types/expense'
 import { TabLine } from '../types/tab'
-import { priceBooking } from './pricing'
+import { priceBooking, billStays } from './pricing'
+import { groupOf } from './bookingGroup'
 import { dateToString, addDays } from './helpers'
 
 /** A source of income on the Earnings report's Charts view: a room, a named venue, or the restaurant. */
@@ -74,7 +75,7 @@ export function buildLedger(params: {
     const nights: string[] = []
     for (let d = b.check_in.slice(0, 10); d < b.check_out.slice(0, 10); d = addDays(d, 1)) nights.push(d)
     if (!nights.length) continue
-    const price = priceBooking(b, { rooms, venues })
+    const price = priceBooking(b, { rooms, venues, stays: billStays(b, groupOf(b, bookings), { rooms, venues }) })
     // What the report's totals count: a room's rate and breakfast, a venue's whole day.
     const perNight = (b.room_id ? price.subtotal + price.breakfastTotal : price.grandTotal) / nights.length
     for (const day of nights) {

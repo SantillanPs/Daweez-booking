@@ -1,16 +1,15 @@
-import { Booking, PaymentRecord } from '../types/booking'
-import { allocatePayment } from '../components/walk-in/bookingPayment'
+import { Booking, PaymentRecord, Room, Venue } from '../types/booking'
+import { changedRows, onLead, settleBill } from './bookingBalance'
+import { groupOf } from './bookingGroup'
 import { paymentStatusFromMoney } from './bookingMoney'
 import { statusAfterPayment } from './bookingStatus'
 import { methodNeedsReference } from './paymentMethod'
-import { getSlipsByBooking, markSlipsPaid, unpaidSlips } from './orderSlips'
+import { getSlipsByBooking, markSlipsPaid, slipsTotal, unpaidSlips } from './orderSlips'
 
 /**
- * **One payment on a bill of several rooms** (the owner's ruling, 2026-09-30, as the booking
- * form already does it — `recordBookingPayment`): the same receipt on every room, each room
- * keeping its share of it, shared out by what each still owes. Every room's figure is the
- * bill's, so they all go down together. The booking panel's bill and Cash Flow's "Write money
- * in" (a payment written there long after, #19) both write it this way.
+ * **One payment on a bill** (2026-11-07): stored once, whole, on the bill's first room, which holds
+ * what the bill has received and still owes (`onLead`). Before, the same receipt sat on every room
+ * with each room's slice of it. The booking panel's bill and Cash Flow's "Write money in" both write it.
  */
 export function payOnBill(rows: Booking[], w: {
   amount: number
@@ -24,26 +23,38 @@ export function payOnBill(rows: Booking[], w: {
   /** Written in Cash Flow rather than on the bill (`PaymentRecord.by_hand`). */
   byHand?: boolean
 }): Booking[] {
-  const owed = rows.map(b => Math.max(0, Number(b.balance_due || 0)))
-  const amount = Math.min(w.amount, owed.reduce((a, b) => a + b, 0)) || w.amount
-  const shares = allocatePayment(owed, amount)
-  const id = 'rcpt-' + Date.now()
+  const led = onLead(rows)
+  if (led.length === 0) return led
+  const owed = Math.max(0, Number(led[0].balance_due || 0))
+  const amount = Math.min(w.amount, owed) || w.amount
   const reference = methodNeedsReference(w.method) ? (w.reference || '').trim() : ''
-  return rows.map((b, i): Booking => {
-    const paid = Number(b.downpayment_paid || 0) + shares[i]
-    const balance = Math.max(0, owed[i] - shares[i])
-    const rec: PaymentRecord = {
-      id: id + '-' + i, amount, method: w.method, reference: reference || undefined, paid_at: w.paidAt,
-      prepared_by: b.prepared_by, receipt_number: w.number, share: shares[i],
-      ...(w.purpose ? { purpose: w.purpose } : {}),
-      ...(w.byHand ? { by_hand: true } : {}),
-    }
-    return {
-      ...b, payment_records: [...(b.payment_records || []), rec], downpayment_paid: paid, balance_due: balance,
-      payment_status: paymentStatusFromMoney(paid, balance), status: statusAfterPayment(b.status),
-      payment_method: w.method, payment_reference: reference || b.payment_reference,
-    }
-  })
+  const rec: PaymentRecord = {
+    id: 'rcpt-' + Date.now(), amount, method: w.method, reference: reference || undefined, paid_at: w.paidAt,
+    prepared_by: led[0].prepared_by, receipt_number: w.number,
+    ...(w.purpose ? { purpose: w.purpose } : {}),
+    ...(w.byHand ? { by_hand: true } : {}),
+  }
+  const paid = Number(led[0].downpayment_paid || 0) + amount
+  const balance = Math.max(0, owed - amount)
+  const status = paymentStatusFromMoney(paid, balance)
+  return led.map((b, i): Booking => ({
+    ...b, payment_status: status, status: statusAfterPayment(b.status),
+    payment_method: w.method, payment_reference: reference || b.payment_reference,
+    ...(i === 0 ? { payment_records: [...(b.payment_records || []), rec], downpayment_paid: paid, balance_due: balance } : {}),
+  }))
+}
+
+/** The bill priced again with every room's food read fresh (`settleBill`). */
+export async function resettle(rows: Booking[], o: { rooms: Room[]; venues: Venue[] }): Promise<Booking[]> {
+  const map = await getSlipsByBooking(rows.map(b => b.id))
+  return settleBill(rows, { ...o, food: Object.fromEntries(rows.map(b => [b.id, slipsTotal(map[b.id] || [])])) })
+}
+
+/** One room changed by `patch`: its bill priced again. Every row to save comes back, that room always. */
+export async function resettleWith(b: Booking, patch: Partial<Booking>, list: Booking[], o: { rooms: Room[]; venues: Venue[] }): Promise<Booking[]> {
+  const before = groupOf(b, list)
+  const after = await resettle(before.map(r => (r.id === b.id ? { ...r, ...patch } : r)), o)
+  return after.filter((r, i) => r.id === b.id || changedRows([before[i]], [r]).length > 0)
 }
 
 /** Nothing left on the bill: every room's order slips are paid by the payment that cleared it. */

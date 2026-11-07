@@ -633,6 +633,21 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
   animation: day-lit 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
 @keyframes day-lit { 35% { transform: scale(1.06) translateY(-2px); } }
 
+/* ── The Exclusive's roof (the roof mock, 2026-11-07): it drops down from its pill over every
+   room and venue; picking the Exclusive lights the rows the same way, and what is booked in the
+   way wears a dashed red edge that breathes. */
+/* The pill's own colour runs down out of it and fades into the stripes (fade mock B, 2026-11-07). It stays solid for
+   the first 37px, the "Rooms" separator it passes under, so the fade shows on the rooms. */
+.ex-roof { background: linear-gradient(#F5EAD1 37px, rgb(245 234 209 / 0) 140px), repeating-linear-gradient(135deg, rgb(208 171 96 / 0.2) 0 6px, rgb(208 171 96 / 0) 6px 12px), rgb(252 248 238 / 0.9);
+  animation: ex-drop 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.ex-roof.ex-in { background: linear-gradient(#ECFDF5 37px, rgb(236 253 245 / 0) 140px), repeating-linear-gradient(135deg, rgb(5 150 105 / 0.12) 0 6px, rgb(5 150 105 / 0) 6px 12px), rgb(246 252 249 / 0.9); }
+.ex-roof.ex-sign { background: linear-gradient(#F5EAD1 4px, rgb(245 234 209 / 0) 18px), repeating-linear-gradient(135deg, rgb(208 171 96 / 0.2) 0 4px, rgb(208 171 96 / 0) 4px 8px), rgb(252 248 238 / 0.9); }
+@keyframes ex-drop { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+.ex-pick { animation: ex-drop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+[data-taken] { z-index: 6; outline: 1.5px dashed #BE3A2B; outline-offset: 1px; animation: ex-throb 1.4s ease-in-out infinite; }
+@keyframes ex-throb { 50% { box-shadow: 0 0 0 4px rgb(190 58 43 / 0.18); } }
+@media (prefers-reduced-motion: reduce) { .ex-roof, .ex-pick, [data-taken] { animation: none; } }
+
 /* ── The paper's own mark ── the hours taken and the receptionist are circled by hand
    (design B of the Log old booking mock, 2026-10-17). */
 .lo-circ path { stroke-dasharray: 260; stroke-dashoffset: 260; transition: stroke-dashoffset 0.5s ease-out; }

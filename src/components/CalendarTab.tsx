@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { Booking, PaymentRecord } from '../types/booking'
-import { isRoomAvailable, isVenueRangeAvailable } from '../utils/availability'
+import { isRoomAvailable, isVenueRangeAvailable, EXCLUSIVE_ID } from '../utils/availability'
 import { dateToString, normalizeVenueId, parseDay, shortDay } from '../utils/helpers'
 import { breakfastOn, isConfirmed, wantsBreakfastToday, withBreakfastTime, saveBreakfastChoices, breakfastAskOpen, BREAKFAST_ASK_UNTIL } from '../utils/breakfastChoice'
 import { useQueryClient } from '@tanstack/react-query'
@@ -24,14 +24,13 @@ import { showToast } from '../utils/toast'
 import { OPEN_END, isOpenEnded } from '../utils/openBlock'
 import { groupOf } from '../utils/bookingGroup'
 import { shortStayOut, shortStayTimeUp } from '../utils/shortStay'
-import { recomputeBalance } from '../utils/bookingBalance'
-import { readBookingFoodTotal } from '../utils/orderSlips'
+import { resettleWith } from '../utils/billPayment'
 import { ShortStayAlerts } from './calendar/ShortStayAlerts'
 import { ChannelBell } from './calendar/ChannelBell'
 import { SoldTwicePanel } from './calendar/SoldTwicePanel'
 import { useChannelAlerts } from '../hooks/useChannelAlerts'
 import { ChannelAlert, closeChannelAlert, needsDetails } from '../utils/channelStay'
-import { clashIn, dayHalf } from '../utils/halfDays'
+import { bookingHalves, clashIn, dayHalf } from '../utils/halfDays'
 
 // The bills are only fetched when needed, so the calendar itself loads faster. Both are
 // fetched a moment after the calendar opens, so the first "New booking" still opens at once.
@@ -204,13 +203,12 @@ export function CalendarTab() {
     const at = shortStayOut(b)?.getTime() ?? 0
     setAnswered(a => ({ ...a, [b.id]: at }))
     try {
-      const tabTotal = await readBookingFoodTotal(b.id)
-      await updateBooking(recomputeBalance({ ...b, ...patch }, { rooms, venues, tabTotal }))
+      for (const row of await resettleWith(b, patch, bookings, { rooms, venues })) await updateBooking(row)
     } catch {
       setAnswered(a => { const rest = { ...a }; delete rest[b.id]; return rest })
       showToast(failed, 'error')
     }
-  }, [rooms, venues, updateBooking])
+  }, [rooms, venues, bookings, updateBooking])
   const timeUpOut = useCallback((b: Booking) => void answerTimeUp(b, { actual_check_out: new Date().toISOString() }, 'Could not note the check-out. Please try again.'), [answerTimeUp])
   const timeUpMore = useCallback((b: Booking) => void answerTimeUp(b, { late_check_out_hours: Number(b.late_check_out_hours || 0) + 1 }, 'Could not add the hour. Please try again.'), [answerTimeUp])
 
@@ -254,9 +252,15 @@ export function CalendarTab() {
       return
     }
 
+    const exclusive = type === 'venue' && normalizeVenueId(id) === EXCLUSIVE_ID
+    // The Exclusive is picked even when rooms are booked under it: the action bar names
+    // each one in the way, and New booking shows once they have all been moved (the roof
+    // mock, Sebastian, 2026-11-07). Only another Exclusive stops the pick.
     const isFree = (from: Date, to: Date) => type === 'room'
       ? isRoomAvailable(id, dateToString(from), dateToString(to), bookingsRef.current)
-      : isVenueRangeAvailable(id, dateToString(from), dateToString(to), bookingsRef.current)
+      : exclusive
+        ? !clashIn(b => normalizeVenueId(b.venue_id), EXCLUSIVE_ID, ...bookingHalves({ check_in: dateToString(from), check_out: dateToString(to) }), bookingsRef.current)
+        : isVenueRangeAvailable(id, dateToString(from), dateToString(to), bookingsRef.current)
     const unitLabel = () => (type === 'room' ? 'Room' : 'Venue') + ' ' + (type === 'room' ? roomDisplayName(roomsRef.current.find(r => r.id === id)) : (venuesRef.current.find(v => v.id === id)?.name ?? id))
 
     // A night can only BEGIN on a day whose afternoon and next morning are free, but since
@@ -288,7 +292,8 @@ export function CalendarTab() {
         setTimelineSelection(null)
         return
       }
-      setGroupSelection(prev => ({ ...(prev || {}), [id]: { checkIn: curTimeline.checkIn, checkOut: date, type } }))
+      // The Exclusive is the whole house, so it is never picked together with a room.
+      setGroupSelection(prev => ({ ...(exclusive || prev?.[EXCLUSIVE_ID] ? {} : prev || {}), [id]: { checkIn: curTimeline.checkIn, checkOut: date, type } }))
       setTimelineSelection(null)
     }
   }, [])

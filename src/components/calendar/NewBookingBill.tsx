@@ -5,13 +5,12 @@ import { Banknote, Building2, Check, ChevronDown, Coffee, Plus, Tag, Trash2, Und
 import { Booking, BillCharge, BreakfastPlan, Companion, EquipmentRental, EventAddons, PartnerDeal, Room, Venue } from '../../types/booking'
 import { buildStatement, StatementLineItem, shortDate } from '../../utils/statement'
 import { dateToString, normalizeVenueId, randomUUID, addDays, parseDay, pesoWhole } from '../../utils/helpers'
-import { recomputeBalance } from '../../utils/bookingBalance'
-import { readBookingFoodTotal } from '../../utils/orderSlips'
+import { changedRows, onLead, settleBill } from '../../utils/bookingBalance'
+import { resettle } from '../../utils/billPayment'
 import { focusBookingAfterCreate } from '../../utils/bookingFocus'
 import { breakfastSellable, roomBreakfastPrice, stayMornings } from '../../utils/breakfast'
 import { venueTypes } from '../../utils/venueTypes'
 import { discountsOf } from '../../utils/discounts'
-import { splitDiscounts } from '../walk-in/discountSplit'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { paymentMethodLabel } from '../../utils/paymentMethod'
 import { getSlipsByBooking, OrderSlip } from '../../utils/orderSlips'
@@ -29,11 +28,11 @@ import { venueHoursOf } from '../../utils/venueHours'
 import { markSeen as sawFeature } from '../../utils/newMarks'
 import { NewTag } from '../NewMark'
 import { getRateConfig } from '../../utils/rateConfig'
-import { withMoneyOf, holdsMoney } from '../../utils/roomTakenOff'
-import { ADD, AddCharge, Gut, PayInput, WritePayment } from '../billing/BillDesk'
+import { holdsMoney } from '../../utils/roomTakenOff'
+import { ADD, AddCharge, AddMoney, PayInput, WritePayment } from '../billing/BillDesk'
 import { useLateFocus } from '../billing/want'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
-import { FixPayment, GoneLine, KID, LINE as TOT, PayRow, RemoveBin } from '../billing/FixPayment'
+import { BIG, Count, Dot, FOLD, EYEBROW, FACTS, FixPayment, GoneLine, HEAD, KID_STACK, LINE as TOT, PALE, PART, PayRow, RANK, RemoveBin, STACK, Slip, Unfold } from '../billing/FixPayment'
 import type { StatementPayment } from '../../utils/statement'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { CancelledStamp } from '../billing/CancelledStamp'
@@ -239,13 +238,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // The rooms as bookings that do not exist yet, priced by the real statement builder — with
   // what the form would save on them: the agency's rate, the extras on the first room, the
   // charges on the first unit, the discount (a flat amount once, on the first).
-  // A flat amount is shared out between the rooms the way saving does (`splitDiscounts`). It sat
-  // whole on the first room, which caps it at its own stay: ₱7,860 off a ₱69,160 bill took off ₱4,200.
-  const discShares = given.length > 0 && !to
-    ? splitDiscounts(discs.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.v, note: d.note })),
-        list.map(([id, s]) => ({ id, type: s.type, checkIn: s.checkIn, checkOut: s.checkOut, venueType: kinds[id] })),
-        { rooms, venues, venueDayBlocks: ed?.venue_day_blocks || undefined, shortStayHours: isShort ? hours : undefined })
-    : {}
+  // The discounts sit whole on the first room and come off every stay on the bill (2026-11-07).
+  const discList = to ? [] : discs.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.v, note: d.note }))
   const draftOf = (id: string, s: Sel, i: number): Booking => {
     const ea: EventAddons = {}
     if (kinds[id]) ea.venue_type = kinds[id]
@@ -272,14 +266,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       event_addons: Object.keys(ea).length > 0 ? ea : undefined,
       equipment_rentals: rentals,
       partner_deal_id: deal?.id, company_name: to?.name, contract_rate_override: (deal ? agencyRate(id) : rates[id]) || undefined,
-      // Every room holds the whole list, so a discount keeps its place; a flat amount is its share.
-      applied_discount: discShares[id],
+      applied_discount: i === 0 ? discList : [],
     } as Booking
   }
   const drafts = list.map(([id, s], i) => draftOf(id, s, i))
   // Taken off, a room's money stays on the bill: shown on the first room, where saving puts it.
   const gone = (editing || []).filter(b => holdsMoney(b) && !list.some(([id]) => rowOf(id) === b))
-  if (gone.length > 0 && drafts[0]) drafts[0] = withMoneyOf(drafts[0], gone)
+  if (gone.length > 0 && drafts[0]) drafts[0] = { ...onLead([drafts[0], ...gone])[0], applied_discount: drafts[0].applied_discount }
   const statement = drafts.length > 0
     ? buildStatement({ primaryBooking: drafts[0], relatedBookings: drafts, rooms, venues, bookingsList: bookings,
         slipsByBooking: Object.fromEntries(list.map(([id]) => ['draft-' + id, slips[rowOf(id)?.id || ''] || []])) })
@@ -530,7 +523,6 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       activeBookings: editing ? bookingsNow.filter(b => !editing.some(e => e.id === b.id)) : bookingsNow,
       formPartnerDealId: deal?.id || '',
       bookingType: to ? 'partner' : 'individual',
-      formStatus: 'confirmed',
       // As the form: an agency's stay is confirmed by its contract, a guest's by the money.
       // A correction keeps the status the booking already had (the form's rule).
       // A cancelled bill stays cancelled while it is worked on: saving it once brought the booking back.
@@ -576,20 +568,19 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       // what is owed too, so each room is priced again: stay + food − money received.
       try {
         // A room taken off with money on it was kept as Cancelled by the save. Its money moves onto the
-        // bill's first room ("Money stays on the bill", 2026-10-24), what the save did not already keep,
-        // and the cancelled copy goes once the money has landed, or it would count twice.
+        // bill's first room ("Money stays on the bill", 2026-10-24) and the cancelled copy goes once the
+        // money has landed, or it would count twice. Its old discount stays behind with it.
         const left = editing.filter(b => holdsMoney(b) && !result.bookings.some(r => r.id === b.id))
         const saved = [...result.bookings]
         // Hours turned back into a day: `update_booking` keeps hours it is sent none of, so they come off here.
         for (const [i, b] of saved.entries()) if (!isShort && b.stay_hours) { await clearStayHours(b.id); saved[i] = { ...b, stay_hours: undefined, stay_half: undefined } }
-        if (left.length > 0 && saved[0]) {
-          const held = editing.reduce((a, b) => a + Number(b.downpayment_paid || 0), 0)
-          const kept = saved.reduce((a, b) => a + Number(b.downpayment_paid || 0), 0)
-          saved[0] = { ...withMoneyOf(saved[0], left), downpayment_paid: Number(saved[0].downpayment_paid || 0) + Math.max(0, held - kept) }
-        }
-        for (const [i, b] of saved.entries()) {
-          const priced = recomputeBalance(b, { rooms, venues, tabTotal: await readBookingFoodTotal(b.id) })
-          if (b !== result.bookings[i] || priced.balance_due !== b.balance_due || priced.payment_status !== b.payment_status) await updateBooking(priced)
+        // Saving never changes what the bill has received: it is all on the first room, then priced again.
+        const held = editing.reduce((a, b) => a + Number(b.downpayment_paid || 0), 0)
+        const led = onLead([...saved, ...left.map(b => ({ ...b, applied_discount: [] }))]).slice(0, saved.length)
+        if (led[0]) led[0] = { ...led[0], downpayment_paid: held }
+        const settled = await resettle(led, { rooms, venues })
+        for (const [i, b] of settled.entries()) {
+          if (saved[i] !== result.bookings[i] || changedRows([result.bookings[i]], [b]).length > 0) await updateBooking(b)
         }
         for (const b of left) await deleteBooking(b.id)
       } catch {
@@ -610,6 +601,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       }
       onSaved?.(result.bookings)
       return
+    }
+    // A new bill priced as one: its discounts and its payment are on its first room (2026-11-07).
+    try {
+      const settled = settleBill(result.bookings, { rooms, venues })
+      for (const b of changedRows(result.bookings, settled)) await updateBooking(b)
+    } catch {
+      showToast('The booking is saved, but its balance was not worked out. Open the bill and try again.', 'error')
     }
     setSaving(false)
     if (preparedBy.trim()) rememberReceptionist(preparedBy)
@@ -1027,13 +1025,14 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       </Floating>
     )
     if (p.kind === 'disc') {
-      const i = Number(p.id)
+      // `3` is a new discount (the whole coupon); `3:note` / `3:v` / `3:amt` is one part of a written one.
+      const [slot, part] = p.id.split(':') as [string, 'note' | 'v' | 'amt' | undefined]
+      const i = Number(slot)
       const d = discs[i] || { pct: true, v: 0, note: '' }
-      const done = () => { setPop(null); if (d.v > 0) setLanded(n => n + 1); setDiscs(ds => ds.filter(x => x.v > 0)) }
+      const done = () => { setPop(null); if (!part && d.v > 0) setLanded(n => n + 1); setDiscs(ds => ds.filter(x => x.v > 0)) }
       return (
-        <Floating key={p.kind + p.id} at={at} sheet={sheetEl} right label="A discount" onClose={done}>
-          <DiscountPop disc={d} off={offOf(i)} onChange={n => setDiscs(ds => { const c = [...ds]; c[i] = n; return c })} onDone={done}
-            onNone={d.v > 0 ? () => { setPop(null); setDiscs(ds => ds.filter((x, k) => k !== i && x.v > 0)) } : undefined} />
+        <Floating key={p.kind + p.id} at={at} sheet={sheetEl} right={!part || part === 'amt'} label={part === 'note' ? 'What the discount is for' : 'A discount'} onClose={done}>
+          <DiscountPop disc={d} off={offOf(i)} part={part === 'amt' ? 'v' : part} onChange={n => setDiscs(ds => { const c = [...ds]; c[i] = n; return c })} onDone={done} />
         </Floating>
       )
     }
@@ -1067,13 +1066,43 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // "+ Discount" in the margin: a blank one on the end of the list, its coupon open under the line.
   // Pressed again while its coupon is open, it puts the coupon away (Sebastian, 2026-10-29: "pressing
   // discount twice doesn't close the discount").
-  const addDisc = (e: React.MouseEvent<HTMLElement>) => {
-    if (pop?.kind === 'disc') { setPop(null); if (discs.some((d, k) => k >= given.length && d.v > 0)) setLanded(n => n + 1); setDiscs(ds => ds.filter(d => d.v > 0)); return }
-    const at = e.currentTarget.parentElement as HTMLElement
+  const addDisc = (at: HTMLElement) => {
+    if (pop?.kind === 'disc' && !pop.id.includes(':')) { setPop(null); if (discs.some((d, k) => k >= given.length && d.v > 0)) setLanded(n => n + 1); setDiscs(ds => ds.filter(d => d.v > 0)); return }
     setDiscs(ds => [...ds.filter(d => d.v > 0), { pct: true, v: 0, note: '' }])
     setDiscOpen(true)
     setPop({ kind: 'disc', id: String(given.length), at })
   }
+  // **A discount is fixed like a payment** (Sebastian, 2026-11-06, the "Bill Sub-total Row" mock: "make
+  // editing the discount more consistent with everything else"): each part of its line is its own tap —
+  // what it is for, how much (% or ₱), what it takes off — and a small box opens under that part only.
+  const discLine = (d: Discount, i: number, kid: boolean) => {
+    const part = (which: 'note' | 'v' | 'amt', name: string, look: string, body: React.ReactNode) => (
+      <button type="button" onClick={toggle('disc', i + ':' + which)} aria-expanded={isOpen('disc', i + ':' + which)} aria-label={'Change ' + name} className={PART + ' ' + look}>{body}</button>
+    )
+    return (
+      <>
+        {kid ? <span /> : <Tag aria-hidden="true" className="justify-self-center w-3 h-3 text-danger-600" />}
+        <span className={kid ? KID_STACK : STACK}>
+          {part('note', 'what the discount is for', HEAD, d.note?.trim() || <span className="text-gold-800">What for?</span>)}
+          <span className={FACTS}>
+            <b className={EYEBROW + ' text-danger-600'}>Discount</b><Dot />
+            {part('v', 'how much the discount is', 'shrink-0 whitespace-nowrap tabular-nums' + PALE, d.pct ? d.v + '%' : pesoWhole(d.v))}
+          </span>
+        </span>
+        {part('amt', 'what the discount takes off', BIG + ' text-danger-600' + PALE, <span key={offOf(i)} className="bw-rise">−{pesoWhole(offOf(i))}</span>)}
+        <RemoveBin what={d.note?.trim() || 'the discount'} onRemove={() => removeDisc(i)} tag={i === 0} />
+      </>
+    )
+  }
+  // The bill's one "Add" (Sebastian, 2026-11-06, the "Bill Sub-total Row" mock: "merge the payment and
+  // discount button"). It hangs on the discount line once there is one, else on the payment line.
+  const canPay = editing ? !!desk && due > 0 : !paid && total > 0
+  const discHere = !to && given.length > 0
+  const addMoney = (
+    <AddMoney expanded={(pop?.kind === 'disc' && Number(pop.id) >= given.length) || writing}
+      onDiscount={to ? undefined : addDisc}
+      onPayment={canPay ? () => { if (writing) { setWriting(false); return } setWriting(true); if (editing) void save() } : undefined} />
+  )
   // The paper copy follows the saved booking, not each key typed: drawn again only once a change
   // is saved (typing on the bill was slow, 2026-10-29).
   const paperCopy = useMemo(() => ed && <PrintInvoiceModal booking={ed} rooms={rooms} venues={venues} bookingsList={bookings} onClose={() => {}} embedded />, [ed, rooms, venues, bookings])
@@ -1180,6 +1209,16 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                 </tr>
               )}
               <AddCharge sheet={sheetEl} onCharge={addCharge} cols={6}
+                // The Sub-total, bold, at the end of the add line (Sebastian, 2026-11-06, the "Bill Sub-total
+                // Row" mock: "I want the sub total to be more visible"). An agency's paper is Total only.
+                end={!to && (
+                  <div className={TOT}>
+                    <span className="col-start-2 col-span-2 flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-900">Sub-total</span>
+                      <span key={total + discOff} className="font-display text-[19px] leading-[22px] font-extrabold text-ink-900 tabular-nums bill-roll">{pesoWhole(total + discOff)}</span>
+                    </span>
+                  </div>
+                )}
                 beside={<>
                   {list.length > 0 && <button type="button" onClick={toggle('add')} aria-expanded={isOpen('add')} aria-label="Add a room or venue" className={ADD}><Plus aria-hidden="true" className="w-3 h-3" strokeWidth={3} />Room</button>}
                   {bfRooms.length > 0 && bfLines.length === 0 && (
@@ -1202,60 +1241,32 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                       2026-10-29, the Paper mock: "I don't like the buttons to have their own row of space").
                       With no discount yet, its "+" waits beside the Sub-total. Every line below sits on the
                       one grid (`LINE`, here `TOT`): icon, name and details, amount, its button (2026-11-06). */}
-                  {!to && (
-                    <>
-                      <div className={TOT}>
-                        {given.length === 0 && <Gut name="Discount" onClick={addDisc} expanded={pop?.kind === 'disc' && Number(pop.id) >= given.length} />}
-                        <span className="col-start-2 text-[9px] font-bold uppercase tracking-[0.12em] text-muted">Sub-total</span>
-                        <span key={total + discOff} className="justify-self-end font-mono text-[11.5px] font-bold text-muted tabular-nums bill-roll">{pesoWhole(total + discOff)}</span>
-                      </div>
-                      <div className="ml-[22px] mb-1 border-t border-ink-200" />
-                    </>
-                  )}
                   {/* One discount is its own line: "Discount", its note and %, what it takes off; a tap opens
                       its coupon. Two or more fold into one line with a count (Sebastian, 2026-11-06: "if
                       there's only 1 discount currently added, then no need to become a drop down"). */}
                   {!to && given.length === 1 && (
                     <div className="relative">
-                      <Gut name="Discount" onClick={addDisc} expanded={pop?.kind === 'disc' && Number(pop.id) >= given.length} />
-                      <div key={landed} className={TOT + (landed ? ' bill-land' : '')}>
-                        <Tag aria-hidden="true" className="justify-self-center w-3 h-3 text-muted" />
-                        <button type="button" onClick={toggle('disc', '0')} aria-expanded={isOpen('disc', '0')} aria-label={'Change the ' + (given[0].note?.trim() || 'discount')}
-                          className="min-w-0 flex items-center gap-1.5 text-left cursor-pointer group">
-                          <b className="shrink-0 text-[11px] font-bold text-ink-900">Discount</b>
-                          <span className="min-w-0 truncate px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dashed border-gold-400 text-[10px] font-medium text-muted group-hover:bg-gold-100 group-aria-expanded:bg-gold-100 transition-colors">
-                            {[given[0].note?.trim(), given[0].pct ? given[0].v + '%' : ''].filter(Boolean).join(' · ') || 'Note'}
-                          </span>
-                        </button>
-                        <span key={discOff} className="justify-self-end font-mono text-[11.5px] font-bold text-danger-600 tabular-nums bw-rise">−{pesoWhole(discOff)}</span>
-                        <RemoveBin what="the discount" onRemove={() => removeDisc(0)} tag />
-                      </div>
+                      {addMoney}
+                      <div key={landed} className={TOT + ' ' + RANK + (landed ? ' bill-land' : '')}>{discLine(given[0], 0, false)}</div>
                     </div>
                   )}
                   {!to && given.length > 1 && (
                     <>
                       <div className="relative">
-                        <Gut name="Discount" onClick={addDisc} expanded={pop?.kind === 'disc' && Number(pop.id) >= given.length} />
-                        <button key={landed} type="button" onClick={() => setDiscOpen(o => !o)} aria-expanded={discOpen} aria-label="The discounts" className={TOT + ' w-full cursor-pointer group active:scale-[0.98] transition-transform' + (landed ? ' bill-land' : '')}>
-                          <Tag aria-hidden="true" className="justify-self-center w-3 h-3 text-muted" />
-                          <span className="flex items-center gap-1.5"><b className="text-[11px] font-bold text-ink-900">Discounts</b>
-                            <span key={given.length} className="inline-grid place-items-center min-w-4 h-4 px-1 rounded-full bg-gold-100 text-[9px] font-extrabold text-gold-800 bill-bump">{given.length}</span></span>
-                          <span key={discOff} className="justify-self-end font-mono text-[11.5px] font-bold text-danger-600 tabular-nums bw-rise">−{pesoWhole(discOff)}</span>
+                        {addMoney}
+                        <button key={landed} type="button" onClick={() => setDiscOpen(o => !o)} aria-expanded={discOpen} aria-label="The discounts" className={TOT + ' ' + RANK + ' w-full cursor-pointer group active:scale-[0.98] transition-transform' + (landed ? ' bill-land' : '')}>
+                          <Tag aria-hidden="true" className="justify-self-center w-3 h-3 text-danger-600" />
+                          <span className={STACK}>
+                            <span className={HEAD + ' flex items-center gap-1.5'}>Discounts<Count n={given.length} /></span>
+                            <span className={FACTS}><b className={EYEBROW + ' text-danger-600'}>Discount</b></span>
+                          </span>
+                          <span key={discOff} className={BIG + ' text-danger-600 bw-rise'}>−{pesoWhole(discOff)}</span>
                           <ChevronDown aria-hidden="true" className={FOLD} />
                         </button>
                       </div>
                       <Unfold open={discOpen}>
                         {given.map((d, i) => (
-                          <div key={i} className={TOT + ' bw-rise'} style={{ '--i': i } as React.CSSProperties}>
-                            <span />
-                            <button type="button" onClick={toggle('disc', String(i))} aria-expanded={isOpen('disc', String(i))} aria-label={'Change the ' + (d.note?.trim() || 'discount')}
-                              className={KID + ' text-left cursor-pointer group'}>
-                              <b className="min-w-0 truncate px-0.5 -mx-0.5 rounded-sm border-b-[1.5px] border-dashed border-gold-400 text-[10.5px] font-semibold text-ink-900 group-hover:bg-gold-100 group-aria-expanded:bg-gold-100 transition-colors">{d.note?.trim() || 'Discount'}</b>
-                              {d.pct && <span className="shrink-0 text-[10px] font-medium text-muted">{d.v}%</span>}
-                            </button>
-                            <span className="justify-self-end font-mono text-[11.5px] font-bold text-danger-600 tabular-nums">−{pesoWhole(offOf(i))}</span>
-                            <RemoveBin what={d.note?.trim() || 'the discount'} onRemove={() => removeDisc(i)} tag={i === 0} />
-                          </div>
+                          <div key={i} className={TOT + ' ' + RANK + ' bw-rise'} style={{ '--i': i } as React.CSSProperties}>{discLine(d, i, true)}</div>
                         ))}
                       </Unfold>
                     </>
@@ -1267,15 +1278,16 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                       fix), its amount in green; two or more fold into one line with a count. Writing one is the
                       "+" beside it, gone once nothing is owed. Its bin takes it off (2026-11-06). */}
                   <div className="relative">
+                    {!discHere && addMoney}
                     {editing && desk && (
-                      <WritePayment key={pays.length} sheet={sheetEl} open={writing} onOpen={o => { setWriting(o); if (o) void save() }} gone={!(due > 0)}
+                      <WritePayment noGut key={pays.length} sheet={sheetEl} open={writing} onOpen={o => { setWriting(o); if (o) void save() }} gone={!(due > 0)}
                         // Deposit only until money is in, and never on a short stay; Full pay is what is still owed.
                         fills={[...(pays.length || isShort ? [] : [{ label: 'Deposit', amount: Math.round(total / 2) }]), { label: 'Full pay', amount: due }]}
                         onPay={p => { setPaysOpen(true); behind(() => desk.onPay(p)) }} />
                     )}
                     {/* One payment at booking — what the guest hands over now. */}
                     {!editing && (
-                      <WritePayment sheet={sheetEl} open={writing} onOpen={setWriting} gone={!!paid || !(total > 0)}
+                      <WritePayment noGut sheet={sheetEl} open={writing} onOpen={setWriting} gone={!!paid || !(total > 0)}
                         fills={[{ label: 'Deposit', amount: Math.round(total / 2) }, { label: 'Full pay', amount: total }]}
                         onPay={p => { setPaysOpen(true); setPaid({ amount: p.amount, method: p.method, reference: p.reference, purpose: p.purpose }) }} />
                     )}
@@ -1288,11 +1300,14 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                     )}
                     {payCount === 1 && payLine(pays[0], false)}
                     {payCount > 1 && (
-                      <button type="button" onClick={() => setPaysOpen(o => !o)} aria-expanded={paysOpen} aria-label="The payments" className={TOT + ' w-full cursor-pointer group active:scale-[0.98] transition-transform'}>
-                        <Banknote aria-hidden="true" className="justify-self-center w-3 h-3 text-muted" />
-                        <span className="flex items-center gap-1.5"><b className="text-[11px] font-bold text-ink-900">Paid</b>
-                          <span key={payCount} className="inline-grid place-items-center min-w-4 h-4 px-1 rounded-full bg-gold-100 text-[9px] font-extrabold text-gold-800 bill-bump">{payCount}</span></span>
-                        <span key={received} className="justify-self-end font-mono text-[11.5px] font-bold text-emerald-700 tabular-nums bw-rise">−{pesoWhole(received)}</span>
+                      <button type="button" onClick={() => setPaysOpen(o => !o)} aria-expanded={paysOpen} aria-label="The payments" className={TOT + ' ' + RANK + ' w-full cursor-pointer group active:scale-[0.98] transition-transform'}>
+                        <span className="justify-self-center text-gold-800"><Slip /></span>
+                        <span className={STACK}>
+                          <span className={HEAD + ' flex items-center gap-1.5'}>Payments<Count n={payCount} /></span>
+                          <span className={FACTS}><b className={EYEBROW + ' text-emerald-700'}>Paid</b>
+                            {pays.length > 1 && <><Dot /><span className="min-w-0 truncate tabular-nums">{[...new Set([shortDay(pays[0].paidAt), shortDay(pays[pays.length - 1].paidAt)])].join(' – ')}</span></>}</span>
+                        </span>
+                        <span key={received} className={BIG + ' text-emerald-700 bw-rise'}>−{pesoWhole(received)}</span>
                         <ChevronDown aria-hidden="true" className={FOLD} />
                       </button>
                     )}
@@ -1446,16 +1461,8 @@ const OK = 'shrink-0 w-[30px] h-7 grid place-items-center rounded-[3px] text-gol
 const SLOT = 'min-w-0 w-40 bg-transparent border-0 border-b-[1.5px] border-dashed border-gold-400 rounded-none px-0.5 py-px text-[16px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none focus:border-solid'
 const PICK = 'w-full flex items-center gap-2 px-2 py-[6px] border-b border-dotted border-ink-200 last:border-b-0 text-left text-[11.5px] font-semibold text-ink-900 whitespace-nowrap cursor-pointer hover:text-gold-800 focus-visible:text-gold-800 focus-visible:outline-none active:scale-[0.98] transition-[color,transform] bw-rise'
 // The ⌄ that says a totals line opens.
-const FOLD = 'justify-self-center w-3 h-3 text-gold-800 transition-transform duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] group-aria-expanded:rotate-180'
-
-/** What a folded totals line opens to: it grows from the line instead of jumping. */
-function Unfold({ open, children }: { open: boolean; children: React.ReactNode }) {
-  return (
-    <div className={'grid transition-[grid-template-rows] duration-[180ms] ease-[cubic-bezier(.2,.9,.3,1.15)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
-      <div className="overflow-hidden" inert={!open || undefined}>{open && children}</div>
-    </div>
-  )
-}
+// A payment's day as the bill writes it ("Nov 2").
+const shortDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
 
 /** One figure on the pinned money slip. */
 function SlipFigure({ name, value, tone = '' }: { name: string; value: string; tone?: string }) {
@@ -1510,21 +1517,25 @@ const STUB = 84
  * so it does not jump at the first key, and the note's line keeps one width (2026-10-29). It changes the
  * bill as it is typed, like the box it replaced.
  */
-function DiscountPop({ disc: start, off, onChange, onDone, onNone }: {
+function DiscountPop({ disc: start, off, part, onChange, onDone, onNone }: {
   disc: Discount; off: number; onChange: (d: Discount) => void; onDone: () => void; onNone?: () => void
+  /** A written discount's one part: only its note, or only how much (2026-11-06, like `FixPayment`). */
+  part?: 'note' | 'v'
 }) {
   // The coupon keeps its own copy, so a key shows at once; the bill behind it follows when it can.
   // It was the one box that drew the whole bill again on every key, and felt slower (2026-10-29).
   const [disc, setDisc] = useState(start)
   const change = (n: Discount) => { setDisc(n); startTransition(() => onChange(n)) }
   const box = useRef<HTMLInputElement>(null)
-  useLateFocus(box)
+  const noteBox = useRef<HTMLInputElement>(null)
+  useLateFocus(part === 'note' ? noteBox : box)
   const amount = disc.v ? disc.v.toLocaleString() : ''
+  const ok = <button type="submit" aria-label="Done" className="shrink-0 w-8 h-8 grid place-items-center rounded-[3px] text-gold-800 shadow-[inset_0_0_0_1.5px_#D0AB60] hover:bg-gold-100 active:scale-90 transition-[background-color,transform] cursor-pointer"><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
   return (
     <form onSubmit={e => { e.preventDefault(); onDone() }} className="flex flex-col gap-1 p-0.5">
       <div className="flex bg-card shadow-[inset_0_0_0_1px_#E5E5E5]">
-        <div className="flex flex-col gap-2 py-2.5 px-3">
-          <div className="flex items-center gap-2">
+        <div className={'flex flex-col gap-2 py-2.5 px-3' + (part ? ' !flex-row items-center' : '')}>
+          {part !== 'note' && <div className="flex items-center gap-2">
             <input ref={box} inputMode="numeric" placeholder={disc.pct ? '10' : '200'} aria-label="Discount" value={amount}
               onChange={e => { const n = Number(e.target.value.replace(/\D/g, '')) || 0; change({ ...disc, v: disc.pct ? Math.min(n, 100) : n }) }}
               style={{ width: Math.max((disc.pct ? '10' : '200').length, amount.length) + 0.4 + 'ch' }}
@@ -1536,19 +1547,20 @@ function DiscountPop({ disc: start, off, onChange, onDone, onNone }: {
                   className={'relative w-[26px] h-6 font-mono text-[12px] font-bold transition-colors duration-200 cursor-pointer ' + (disc.pct === p ? 'text-white' : 'text-muted hover:text-ink-900')}>{p ? '%' : '₱'}</button>
               ))}
             </div>
-          </div>
+          </div>}
           {/* What it is for, printed on the bill (Sebastian, 2026-10-29: "include notes in discounts"). */}
-          <label className="flex items-center gap-1.5 py-1 border-b-[1.5px] border-dashed border-gold-400 focus-within:border-solid text-gold-800 cursor-text">
+          {part !== 'v' && <label className="flex items-center gap-1.5 py-1 border-b-[1.5px] border-dashed border-gold-400 focus-within:border-solid text-gold-800 cursor-text">
             <Tag className="w-3 h-3 shrink-0" strokeWidth={2.4} />
-            <input placeholder="Senior" aria-label="What it is for" value={disc.note || ''}
+            <input ref={noteBox} placeholder="Senior" aria-label="What it is for" value={disc.note || ''}
               onChange={e => change({ ...disc, note: e.target.value })}
               className="flex-1 min-w-0 w-[13ch] bg-transparent border-0 p-0 text-[13px] font-semibold text-ink-900 placeholder:text-paper-400 focus:outline-none" />
-          </label>
+          </label>}
+          {part && ok}
         </div>
-        <div className="shrink-0 flex flex-col items-center justify-between gap-2 py-2.5 border-l-[1.5px] border-dashed border-ink-200" style={{ width: STUB }}>
+        {!part && <div className="shrink-0 flex flex-col items-center justify-between gap-2 py-2.5 border-l-[1.5px] border-dashed border-ink-200" style={{ width: STUB }}>
           <span className={'font-mono text-[12.5px] font-extrabold tabular-nums whitespace-nowrap transition-colors ' + (off > 0 ? 'text-danger-600' : 'text-gold-200')}><span key={off} className={off > 0 ? 'bill-punch' : undefined}>−₱{off.toLocaleString()}</span></span>
-          <button type="submit" aria-label="Done" className="shrink-0 w-8 h-8 grid place-items-center rounded-[3px] text-gold-800 shadow-[inset_0_0_0_1.5px_#D0AB60] hover:bg-gold-100 active:scale-90 transition-[background-color,transform] cursor-pointer"><Check className="w-3.5 h-3.5" strokeWidth={3.2} /></button>
-        </div>
+          {ok}
+        </div>}
       </div>
       {onNone && <button type="button" onClick={onNone} className={QUIET}>Take this one off</button>}
     </form>

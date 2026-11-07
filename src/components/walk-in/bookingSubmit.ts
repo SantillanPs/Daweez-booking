@@ -1,10 +1,9 @@
-import { Booking, EventAddons, PaymentRecord } from '../../types/booking'
+import { Booking, EventAddons } from '../../types/booking'
 import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
 import { recordBookingPayment } from './bookingPayment'
 import { BookingSubmitParams, BookingSubmitResult } from './bookingSubmitTypes'
 import { editedMoney } from './bookingEditMoney'
 import { randomUUID } from '../../utils/helpers'
-import { splitDiscounts } from './discountSplit'
 import { unitOfLine } from '../../utils/bookingGroup'
 import { moveChannelRef } from '../../utils/channelStay'
 
@@ -60,16 +59,11 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
   const isEdit = !!p.editingBookings
   const given = p.discounts.filter(d => d.value > 0)
   const appliedDiscounts = given.length > 0 ? given : isEdit ? [] : undefined
-  // Each unit is saved as its own row, so a flat amount off is SHARED OUT between them
-  // (see `discountSplit`): handed whole to every row it was taken off once per unit.
-  const bookedDeal = p.partnerDeals.find(d => d.id === p.formPartnerDealId)
-  const discounts = splitDiscounts(
-    appliedDiscounts,
-    Object.entries(p.unitSelections)
-      .filter(([id]) => p.formRoomIds.has(id) || p.formVenueIds.has(id))
-      .map(([id, sel]) => ({ id, type: sel.type, checkIn: sel.checkIn, checkOut: sel.checkOut, contractRate: bookedDeal?.contracted_rates[unitOfLine(id)] || undefined, venueType: sel.type === 'venue' ? p.formVenueTypes[id] : undefined })),
-    { rooms: p.rooms, venues: p.venues, venueDayBlocks: p.venueDayBlocks, shortStayHours: p.stay_hours },
-  )
+  // The bill's discounts sit whole on its first row and come off every stay on it (`settleBill`,
+  // 2026-11-07); the other rows hold none.
+  const firstKey = [...p.formRoomIds, ...p.formVenueIds][0]
+  const discounts: Record<string, typeof appliedDiscounts> = { [firstKey]: appliedDiscounts }
+  const discountOf = (key: string) => discounts[key] ?? (appliedDiscounts ? [] : undefined)
   const companions = p.bookingType === 'partner'
     ? undefined
     : (p.formCompanions.length > 0 ? p.formCompanions : (isEdit ? [] : undefined))
@@ -153,7 +147,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         guestAddress: p.formGuestAddress || undefined,
         birthdate: p.formBirthdate || undefined,
         preparedBy: p.formPreparedBy || undefined,
-        appliedDiscount: discounts[key],
+        appliedDiscount: discountOf(key),
         venueDayBlocks: p.venueDayBlocks,
         notes: p.formBlockNotes.trim() || undefined,
         checkIn: sel.checkIn,
@@ -231,7 +225,7 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         birthdate: p.formBirthdate || undefined,
         preparedBy: p.formPreparedBy || undefined,
         eventAddons,
-        appliedDiscount: discounts[key],
+        appliedDiscount: discountOf(key),
         venueDayBlocks: p.venueDayBlocks,
         notes: p.formBlockNotes.trim() || undefined,
         checkIn: sel.checkIn,
@@ -299,7 +293,6 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
     //    the form can never finish on a booking whose payment did not land.
     const takesMoney = p.receivedAmount > 0 && p.bookingStatus !== 'blocked' && !p.editingBookings
     let finalBookings = createdBookings
-    let receipt: PaymentRecord | undefined
 
     if (takesMoney) {
       const recorded = await recordBookingPayment({
@@ -313,16 +306,10 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
         purpose: p.formPaymentPurpose,
         updateBooking: p.updateBooking,
       })
-      finalBookings = recorded.bookings
-      receipt = recorded.receipt
+      finalBookings = recorded
     }
 
-    return {
-      ok: true,
-      bookings: finalBookings,
-      payAmount: String(finalBookings.reduce((a, b) => a + (b.balance_due || 0), 0)),
-      receipt,
-    }
+    return { ok: true, bookings: finalBookings }
   } catch (err: unknown) {
     // Rollback successfully created bookings on failure
     for (const b of createdBookings) {

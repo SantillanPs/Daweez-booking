@@ -14,12 +14,14 @@ import { useOpenSlips } from './restaurant/useOpenSlips'
 import { billOutTab, billToRoom, closeTab, markLinesSent, markLinesServed, openTab, tabTotal } from '../utils/tabs'
 import { withChanges } from '../utils/orderChanges'
 import { MenuItem } from '../utils/restaurantMenu'
-import { OrderSlip, cookingCount, getSlipsForBooking, newCount, readBookingFoodTotal, readyCount, slipNumber } from '../utils/orderSlips'
-import { recomputeBalance } from '../utils/bookingBalance'
+import { OrderSlip, cookingCount, getSlipsForBooking, newCount, readyCount, slipNumber } from '../utils/orderSlips'
+import { changedRows } from '../utils/bookingBalance'
+import { resettleWith } from '../utils/billPayment'
 import { askConfirm } from '../utils/confirm'
 import { useDashboardData } from './DashboardContext'
 import { showToast } from '../utils/toast'
-import { UtensilsCrossed } from 'lucide-react'
+import { UtensilsCrossed } from 'lucide-react'
+
 import { peso } from '../utils/helpers'
 
 
@@ -154,10 +156,9 @@ export function RestaurantTab() {
       const booking = hotel.bookings.find(b => b.id === bookingId)
       if (!booking) return
       try {
-        const synced = recomputeBalance(booking, { rooms: hotel.rooms, venues: hotel.venues, tabTotal: await readBookingFoodTotal(bookingId) })
-        if (Math.abs(Number(synced.balance_due || 0) - Number(booking.balance_due || 0)) > 0.005) {
-          await hotel.updateBooking(synced)
-        }
+        // The whole bill is priced again: its money is on its first room (`settleBill`).
+        const rows = await resettleWith(booking, {}, hotel.bookings, { rooms: hotel.rooms, venues: hotel.venues })
+        for (const b of rows) if (b.id !== booking.id || changedRows([booking], [b]).length > 0) await hotel.updateBooking(b)
       } catch {
         setError('The order is on the slip, but the room’s balance was not updated. Open the booking to put it right.')
       }

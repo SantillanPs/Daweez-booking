@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Booking, Room, Venue } from '../types/booking'
-import { OrderSlip, getSlipsForBooking, settleSlipsOfPaidStay, slipsTotal } from '../utils/orderSlips'
-import { recomputeBalance } from '../utils/bookingBalance'
+import { OrderSlip, getSlipsByBooking, getSlipsForBooking, settleSlipsOfPaidStay, slipsTotal } from '../utils/orderSlips'
+import { changedRows, settleBill } from '../utils/bookingBalance'
+import { groupOf } from '../utils/bookingGroup'
 import { useRealtimeTabs } from './useRealtimeTabs'
 import { showToast } from '../utils/toast'
 
@@ -10,6 +11,8 @@ interface UseBookingSlipsParams {
   booking: Booking
   rooms: Room[]
   venues: Venue[]
+  /** Every booking, to find the rest of the bill. */
+  bookings: Booking[]
   /** Writes the recomputed booking back into the panel's local state. */
   setBooking: (booking: Booking) => void
   onUpdateBooking?: (booking: Booking) => Promise<void>
@@ -31,10 +34,10 @@ interface UseBookingSlipsParams {
  * booking field except the recomputed balance, and a failed read changes nothing — an
  * empty answer would take the guest's food off their bill.
  */
-export function useBookingSlips({ booking, rooms, venues, setBooking, onUpdateBooking }: UseBookingSlipsParams) {
+export function useBookingSlips({ booking, rooms, venues, bookings, setBooking, onUpdateBooking }: UseBookingSlipsParams) {
   const [slips, setSlips] = useState<OrderSlip[]>([])
-  const latest = useRef({ booking, rooms, venues })
-  useEffect(() => { latest.current = { booking, rooms, venues } })
+  const latest = useRef({ booking, rooms, venues, bookings })
+  useEffect(() => { latest.current = { booking, rooms, venues, bookings } })
 
   const sync = async (announce: boolean): Promise<void> => {
     let read: OrderSlip[]
@@ -49,11 +52,19 @@ export function useBookingSlips({ booking, rooms, venues, setBooking, onUpdateBo
     }
     setSlips(read)
     const now = latest.current
-    const synced = recomputeBalance(now.booking, { rooms: now.rooms, venues: now.venues, tabTotal: slipsTotal(read) })
-    if (Math.abs(Number(synced.balance_due || 0) - Number(now.booking.balance_due || 0)) <= 0.005) return
-    setBooking(synced)
+    // The whole bill is priced again: its money is on its first room. The other rooms' food is read too.
+    const rows = groupOf(now.booking, now.bookings)
+    let food: Record<string, number>
     try {
-      await onUpdateBooking?.(synced)
+      const others = rows.length > 1 ? await getSlipsByBooking(rows.filter(b => b.id !== now.booking.id).map(b => b.id)) : {}
+      food = Object.fromEntries(rows.map(b => [b.id, slipsTotal(b.id === now.booking.id ? read : others[b.id] || [])]))
+    } catch { return }
+    const changed = changedRows(rows, settleBill(rows, { rooms: now.rooms, venues: now.venues, food }))
+    if (changed.length === 0) return
+    const mine = changed.find(b => b.id === now.booking.id)
+    if (mine) setBooking(mine)
+    try {
+      for (const b of changed) await onUpdateBooking?.(b)
     } catch {
       if (announce) showToast('Could not update the bill. Please try again.', 'error')
     }

@@ -3,7 +3,7 @@
 // room, venue, short stay or agency's stay is priced reaches every screen at once. Only these
 // files may call `calculatePricing` itself, because they price a form that is not a booking yet.
 const fs = require('fs'), path = require('path')
-const allowed = new Set(['utils/pricing.ts', 'components/PublicReservePortal.tsx', 'components/walk-in/discountSplit.ts', 'hooks/useBookings.ts', 'components/calendar/LogOldBookingModal.tsx'])
+const allowed = new Set(['utils/pricing.ts', 'components/PublicReservePortal.tsx', 'hooks/useBookings.ts', 'components/calendar/LogOldBookingModal.tsx'])
 const src = path.join(__dirname, '..', 'src'), bad = []
 const walk = d => fs.readdirSync(d, { withFileTypes: true }).forEach(e => {
   const p = path.join(d, e.name)

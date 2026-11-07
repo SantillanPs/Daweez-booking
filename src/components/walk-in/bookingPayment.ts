@@ -1,5 +1,6 @@
 import { Booking, PaymentRecord } from '../../types/booking'
 import { freshReceiptNumber } from '../../utils/receiptNumber'
+import { onLead } from '../../utils/bookingBalance'
 
 /**
  * Taking the money **in the booking form** (the owner's ruling, 2026-09-29, from what the
@@ -13,35 +14,6 @@ import { freshReceiptNumber } from '../../utils/receiptNumber'
  *
  * Split out of `bookingSubmit` when that file crossed its 300-line limit.
  */
-
-/**
- * Divide one payment across the units it covers, in proportion to what each still owes.
- *
- * A group booking is **one payment for the set** — the guest hands over a single amount —
- * but each room carries its own balance, so the money has to land on each of them for the
- * two to agree. The rounding remainder goes to the earliest units that still have room for
- * it, so the shares always add back up to exactly what the guest paid: never a peso short,
- * never a peso over. The same allocation the old-paper-log backfill uses.
- */
-export function allocatePayment(owed: number[], received: number): number[] {
-  const shares = owed.map(() => 0)
-  const owedTotal = owed.reduce((a, b) => a + b, 0)
-  if (owedTotal <= 0) {
-    // Nothing owed — which should not happen for a priced booking. Put it all on the first
-    // rather than dropping money the guest has already handed over.
-    if (shares.length > 0) shares[0] = received
-    return shares
-  }
-  const raw = owed.map(o => Math.floor(received * o / owedTotal))
-  let diff = received - raw.reduce((a, b) => a + b, 0)
-  for (let i = 0; i < raw.length && diff !== 0; i++) {
-    const room = owed[i] - raw[i]
-    const add = Math.min(room, diff)
-    raw[i] += add
-    diff -= add
-  }
-  return raw
-}
 
 export interface RecordBookingPaymentParams {
   /** The bookings just created, in order. The first carries the receipt handed over. */
@@ -63,68 +35,37 @@ export interface RecordBookingPaymentParams {
 }
 
 /**
- * Write the payment onto the booking set and return the updated rows plus the receipt to hand over.
- *
- * **The receipt is written onto EVERY room the payment covered** (the owner's ruling, 2026-09-30, after
- * he named the real problem: *"if there are more than one rooms booked at the same time, the staff would
- * need to find the room that holds the payment receipt"*). It used to land on the first booking only, so
- * a guest in Room 7 asking for their receipt sent the desk opening room after room until they found it —
- * and every other room held money with no receipt at all.
- *
- * So the same receipt — **one number, one amount, one payment** — is stored on all of them, and each
- * booking carries **its own share** in `downpayment_paid`, because that is what settles its own bill. The
- * share and the payment are different numbers on purpose: a reprint from Room 7 must show the ₱9,200 the
- * guest actually handed over, never Room 7's ₱1,100 slice of it.
- *
- * Stored on every room, **printed once** — the guest still gets one piece of paper.
- *
- * Recording the money is also what **confirms** a walk-in, which is the rule the quick view has always
- * used — it now simply happens at the moment the booking is made.
+ * Write the payment onto the booking set and return the updated rows.
+ * One receipt, one amount, stored once on the bill's first room, which holds the bill's money
+ * (2026-11-07; before, the same receipt sat on every room with each room's slice of it). Recording
+ * the money is also what **confirms** a walk-in.
  */
 export async function recordBookingPayment(
   p: RecordBookingPaymentParams
-): Promise<{ bookings: Booking[]; receipt?: PaymentRecord }> {
+): Promise<Booking[]> {
   const received = Math.max(0, Math.round(p.received || 0))
-  if (received <= 0 || p.bookings.length === 0) return { bookings: p.bookings }
+  if (received <= 0 || p.bookings.length === 0) return p.bookings
 
-  const owed = p.bookings.map(b => Math.max(0, Number(b.balance_due || 0)))
-  const shares = allocatePayment(owed, received)
   const paidAt = new Date().toISOString()
   // **One number for the whole payment**, decided once — not once per booking.
   const receiptNumber = await freshReceiptNumber(p.bookings[0], p.allBookings || [])
-
-  let receipt: PaymentRecord | undefined
+  const reference = p.reference.trim() || undefined
+  // Stored once, whole, on the bill's first room (2026-11-07); the save prices the bill after (`settleBill`).
+  const receipt: PaymentRecord = {
+    id: 'rcpt-' + Date.now(), amount: received, method: p.method, reference, paid_at: paidAt,
+    prepared_by: p.bookings[0].prepared_by, receipt_number: receiptNumber,
+    ...(p.purpose ? { purpose: p.purpose } : {}),
+  }
+  const led = onLead(p.bookings)
+  const balance = Math.max(0, Number(led[0].balance_due || 0) - received)
   const updated: Booking[] = []
-
-  for (let i = 0; i < p.bookings.length; i++) {
-    const b = p.bookings[i]
-    const down = shares[i]
-    const balance = Math.max(0, owed[i] - down)
-
-    // The SAME receipt on every room — its own id, so two rooms never share a record, but one number
-    // and one amount, because the desk took the money once.
-    const record: PaymentRecord = {
-      id: 'rcpt-' + Date.now() + '-' + i,
-      amount: received,
-      method: p.method,
-      reference: p.reference.trim() || undefined,
-      paid_at: paidAt,
-      prepared_by: b.prepared_by,
-      receipt_number: receiptNumber,
-      ...(p.purpose ? { purpose: p.purpose } : {}),
-      // This room's slice of it — what removing the payment must take back off this room.
-      share: p.bookings.length > 1 ? down : undefined,
-    }
-    if (i === 0) receipt = record
-
+  for (const [i, b] of led.entries()) {
     const row: Booking = {
       ...b,
-      payment_records: [...(b.payment_records || []), record],
-      downpayment_paid: down,
-      balance_due: balance,
+      ...(i === 0 ? { payment_records: [...(b.payment_records || []), receipt], downpayment_paid: received, balance_due: balance } : {}),
       payment_status: balance <= 0 ? 'paid' : 'downpayment',
       payment_method: p.method || b.payment_method,
-      payment_reference: p.reference.trim() || b.payment_reference,
+      payment_reference: reference || b.payment_reference,
       payment_plan: p.plan,
       status: 'confirmed',
     }
@@ -134,7 +75,7 @@ export async function recordBookingPayment(
     updated.push(row)
   }
 
-  return { bookings: updated, receipt }
+  return updated
 }
 
 /**
