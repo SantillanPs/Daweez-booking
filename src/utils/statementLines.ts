@@ -44,7 +44,7 @@ export interface StatementLineItem {
   /** Room rows only: the dates the paper's own `Date` columns print. */
   checkIn?: string
   checkOut?: string
-  /** Room rows only: the number in the `No. of Night` column. */
+  /** Room rows only: the number in the `Nights` column. */
   nights?: number
   /** A room's breakfast row only: the room's number, so the rooms' rows can be joined into one. */
   room?: string

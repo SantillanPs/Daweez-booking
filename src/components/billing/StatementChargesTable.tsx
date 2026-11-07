@@ -43,7 +43,7 @@ export function PaperExtras({ items }: { items: StatementLineItem[] }) {
 /**
  * The charges table of the printed Guest Billing Statement — **the paper's own table**
  * (the owner's ruling, 2026-09, taken from the hotel's real PGO bill, and applied to BOTH
- * bills): `Room / Particulars · Rate · Date (Check In | Check Out) · No. of Night · Total`,
+ * bills): `Room / Particulars · Rate · Date (Check In | Check Out) · Nights · Total`,
  * with the charges grouped under bands, the way the paper groups them under
  * `Room Accommodation:`.
  *
@@ -116,7 +116,7 @@ export function StatementChargesTable({ items, dates = true, paper = false, away
             {oneDates && <th className={head + ' text-right w-[84px] border-b-[1.5px] border-ink-900'}>Dates</th>}
             {dates && !oneDates && <th className={head + ' text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check In</th>}
             {dates && !oneDates && <th className={head + ' text-right w-[72px] border-b-[1.5px] border-ink-900'}>Check Out</th>}
-            <th className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>{dates ? 'No. of Night' : 'Qty'}</th>
+            <th className={head + ' text-right w-16 border-b-[1.5px] border-ink-900'}>{dates ? 'Nights' : 'Qty'}</th>
             <th className={head + ' text-right w-20 border-b-[1.5px] border-ink-900'}>Total</th>
           </tr>
         </thead>

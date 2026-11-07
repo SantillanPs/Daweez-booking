@@ -794,7 +794,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       return (
         <React.Fragment key={'bf-' + count + '-' + amount}>
         <tr className={fresh === 'bf' ? 'bill-ink' : undefined}>
-          <td className={cell + ' pl-0 text-left whitespace-normal'}>
+          <td className={cell + ' pl-0 text-left !whitespace-normal'}>
             <button type="button" data-bf onClick={toggle('bf')} aria-expanded={isOpen('bf')} className={VAL + ' group inline-flex items-center gap-1 -ml-0.5'}>
               Breakfast · {on.length > 1 ? 'Rooms ' : 'Room '}{[...new Set(on.map(([id]) => rooms.find(r => r.id === unitOfLine(id))?.room_number))].join(', ')}
               <ChevronDown aria-hidden="true" className={CHEV} />
@@ -859,7 +859,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       const id = list[0][0]
       return (
         <tr key={id + it.amount} className={fresh === id ? 'bill-ink' : undefined}>
-          <td className={cell + ' pl-0 text-left whitespace-normal'}>{lenOnName(id) ? <>{unitName(id, list[0][1])}{lenChip(id)}</> : it.description}</td>
+          <td className={cell + ' pl-0 text-left !whitespace-normal'}>{lenOnName(id) ? <>{unitName(id, list[0][1])}{lenChip(id)}</> : it.description}</td>
           {rateCell(id, it.description, it)}
           <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>
           <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>
@@ -875,7 +875,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       const k = hrLine[2] as 'early' | 'late'
       return (
         <tr key={it.key}>
-          <td className={cell + ' pl-0 text-left whitespace-normal'}>
+          <td className={cell + ' pl-0 text-left !whitespace-normal'}>
             {k === 'early' ? 'Early check-in' : 'Late checkout'}
             <button type="button" onClick={() => removeLine(it)} aria-label={'Take ' + it.description + ' off the bill'}
               className="print:hidden -my-1 ml-0.5 p-1 align-middle rounded text-muted opacity-50 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer">
@@ -902,8 +902,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       <>
         {/* A line changed lands like ink, the same as a charge just written. */}
         <tr key={id + s.checkIn + s.checkOut + it.amount} className={'group/row' + (fresh === id ? ' bill-ink' : '')}>
-          <td className={cell + ' pl-0 text-left whitespace-normal'}>
-            <button type="button" onClick={toggle('swap', id)} aria-expanded={isOpen('swap', id)} className={VAL + ' group inline-flex items-center gap-1 -ml-0.5'}>
+          {/* `!`: `cell`'s whitespace-nowrap comes later in Tailwind's CSS and won, so "Vacation House & Garden"
+              sat beside the name and pushed the amounts out of sight (2026-11-07). */}
+          <td className={cell + ' pl-0 text-left !whitespace-normal'}>
+            <button type="button" onClick={toggle('swap', id)} aria-expanded={isOpen('swap', id)} className={VAL + ' group inline-flex items-center gap-1 -ml-0.5 whitespace-nowrap'}>
               {name}<ChevronDown aria-hidden="true" className={CHEV} />
             </button>
             {/* A trash can that is always there (Sebastian, 2026-11-06): the faint ×, hidden on a PC until
@@ -923,7 +925,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             {/* Only the kind it is shows (the owner: "make it more contextual"); the others float under it. */}
             {kindList.length > 0 && (
               <button type="button" onClick={toggle('kind', id)} aria-expanded={isOpen('kind', id)} aria-label={name + ' type'}
-                className="group ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-px rounded-[3px] shadow-[inset_0_0_0_1px_#E5E5E5] text-[10px] font-bold text-ink-700 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">
+                className="group ml-1.5 inline-flex items-center whitespace-nowrap gap-0.5 px-1.5 py-px rounded-[3px] shadow-[inset_0_0_0_1px_#E5E5E5] text-[10px] font-bold text-ink-700 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-95 transition-[background-color,transform] cursor-pointer">
                 {kindList.find(k => k.key === (kinds[id] || ''))?.label}<ChevronDown aria-hidden="true" className={CHEV} />
               </button>
             )}
@@ -946,7 +948,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                 (Sebastian, 2026-11-06: "make the undo more visible"); it was a small grey sentence. */}
             {unitOff && (
               <tr key={'off-' + unitOff.label} className="print:hidden bw-rise">
-                <td colSpan={5} className={cell + ' pl-0 text-left whitespace-normal'}>
+                <td colSpan={5} className={cell + ' pl-0 text-left !whitespace-normal'}>
                   <span className="text-muted line-through decoration-danger-600 font-semibold">{unitOff.label}</span>
                   {unitOff.money > 0 && <span className="ml-1.5 text-[10.5px] font-semibold text-muted">the {pesoWhole(unitOff.money)} paid stays on the bill</span>}
                   <button type="button" onClick={putBack} aria-label={'Put back ' + unitOff.label}
