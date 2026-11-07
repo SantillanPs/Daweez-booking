@@ -153,7 +153,16 @@ export interface EventAddons {
    * re-price this stay. None is the room's own `breakfast_price`.
    */
   breakfast_price?: number
+  /**
+   * Pension House Exclusive only: the rooms and venues already taken on its days, which stay and
+   * come off its price (Sebastian, 2026-11-07: "if room 2 is occupied, then it should deduct 950
+   * from the 20k"). Worked out on the bill (`exclusiveLess`) and kept, like a price agreed.
+   */
+  exclusive_less?: ExclusiveLess[]
 }
+
+/** One room or venue that stayed under an Exclusive: its price a night (or day) × the nights shared. */
+export interface ExclusiveLess { unit: string; name: string; nights: number; price: number }
 
 /** The food the guest would like, and when, in minutes after midnight. Neither is ever required. */
 export interface BreakfastPlan {

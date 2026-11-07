@@ -258,6 +258,8 @@ export function calculatePricing(params: {
     if (eventAddons.ledWall) addonsTotal += 5000
     // What the desk wrote on the bill (`BillCharge`) — at the figure it typed.
     for (const c of eventAddons.charges || []) addonsTotal += Number(c.amount || 0)
+    // What stayed under an Exclusive comes off it (2026-11-07), as the bill worked it out.
+    for (const l of eventAddons.exclusive_less || []) addonsTotal -= Number(l.price || 0) * Number(l.nights || 0)
   }
 
   const securityDeposit = 0

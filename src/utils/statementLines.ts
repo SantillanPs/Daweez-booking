@@ -214,7 +214,7 @@ export function bookingLines(b: Booking, o: {
     key: b.id + '-stay',
     band: 'room',
     // The Exclusive is the whole house, so its line says so (2026-11-07).
-    description: (kindTitle || unitName(b, rooms, venues)) + (normalizeVenueId(b.venue_id || '') === EXCLUSIVE_ID ? ' · every room and venue' : '') + (isShortStay ? ' · ' + stayHours + ' hours' + airconWords(b.venue_id, stayHours) : '') + rateLabel,
+    description: (kindTitle || unitName(b, rooms, venues)) + (normalizeVenueId(b.venue_id || '') === EXCLUSIVE_ID ? (kind ? ' · every room and venue' : ' · every room and the Gazebo') : '') + (isShortStay ? ' · ' + stayHours + ' hours' + airconWords(b.venue_id, stayHours) : '') + rateLabel,
     // A short stay is ONE charge, but the column must read the hours bought (`12 hrs`):
     // the charge count printed `1 hrs` on every short stay, whatever its length.
     qty: isShortStay ? String(stayHours) : String(stayQty),
@@ -227,6 +227,15 @@ export function bookingLines(b: Booking, o: {
     nights: stayQty,
     roomNo: isRoom ? rooms.find(r => r.id === b.room_id)?.room_number : undefined,
   })
+
+  // Each room or venue that stayed under the Exclusive, taken off its price (2026-11-07): `Less: Room 2 occupied`.
+  for (const l of b.event_addons?.exclusive_less || []) {
+    items.push({
+      key: b.id + '-less-' + l.unit, band: 'room', description: 'Less: ' + l.name + ' occupied',
+      qty: String(l.nights), unit: l.unit.startsWith('venue-') ? 'DAY' : 'NIGHT',
+      price: -l.price, discount: 0, amount: -l.price * l.nights,
+    })
+  }
 
   // Each staff discount as its own row, with what it is for (several since 2026-10-29).
   const discountList = discountsOf(b.applied_discount)

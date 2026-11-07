@@ -1,11 +1,11 @@
 import React from 'react'
-import { ArrowRight, Ban, Coffee, FilePlus, House, LogIn, LogOut, Plus, WifiOff } from 'lucide-react'
+import { Ban, Coffee, FilePlus, House, LogIn, LogOut, Plus, WifiOff } from 'lucide-react'
 import { Booking, PartnerDeal, Room, Venue } from '../../types/booking'
 import { AskCup } from './BreakfastParts'
 import { isBilledToAgency } from '../../utils/bookingMoney'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { dueToday, getBookingStyle, roomDisplayName } from './bookingStyles'
-import { dateToString, parseDay } from '../../utils/helpers'
+import { dateToString, parseDay, pesoWhole } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
 import { asBill } from '../../utils/bookingGroup'
 import { stayStage } from '../../utils/stayStage'
@@ -19,7 +19,7 @@ import { ChannelAlert } from '../../utils/channelStay'
 import { ChannelMark } from './ChannelMark'
 import { getRateConfig, saveRateConfig } from '../../utils/rateConfig'
 import { useConnection } from '../../utils/connection'
-import { EXCLUSIVE_ID, roofClashes } from '../../utils/availability'
+import { EXCLUSIVE_ID, GROUNDS, exclusiveCovers, exclusiveLess, underRoof, ExclusiveLess } from '../../utils/availability'
 import { bookingHalves } from '../../utils/halfDays'
 import { ExclusiveRoof } from './ExclusiveRoof'
 import { NewTag } from '../NewMark'
@@ -117,19 +117,13 @@ function DayCount({ n, title, className, on, onTap, children }: { n: number; tit
 
 type BarAnchor = { unitId: string; iso: string; outIso: string }
 
-/** `Room 4`, `Gazebo` — what the desk calls the place a booking holds. */
-const unitWords = (b: Booking, rooms: Room[], venues: Venue[]) => {
-  const room = b.room_id ? rooms.find(r => r.id === b.room_id) : undefined
-  return room ? 'Room ' + room.room_number : venues.find(v => v.id === b.venue_id)?.name || b.venue_id || 'Room'
-}
-
 /**
  * The action bar, in a component of its own: placing it reads its own width back after it
  * is drawn, and while it lived in the grid every one of those reads redrew all ~400 cells
  * again — four times a click, which the desk felt as a delay on every tap (Sebastian,
  * 2026-10-16: "when I click on a cell in the calendar there's a short delay").
  */
-function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection, selectionName, rooms, venues, barRoom, taken, onOpenTaken, onNewBooking, onBlockDates, onLogOldBooking, onNewShortStay, onClearSelection, onPickHalf }: {
+function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection, selectionName, rooms, venues, barRoom, stays, onNewBooking, onBlockDates, onLogOldBooking, onNewShortStay, onClearSelection, onPickHalf }: {
   scrollRef: React.RefObject<HTMLDivElement | null>
   barAnchor: BarAnchor | null
   timelineSelection: TimelineGridProps['timelineSelection']
@@ -139,8 +133,8 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
   venues: Venue[]
   barRoom: Room | null
   /** What is booked under the Exclusive being picked. */
-  taken: Booking[]
-  onOpenTaken: (b: Booking) => void
+  /** What stays under the Exclusive being picked, and what each comes off its price. */
+  stays: ExclusiveLess[]
 } & Pick<TimelineGridProps, 'onNewBooking' | 'onBlockDates' | 'onLogOldBooking' | 'onNewShortStay' | 'onClearSelection' | 'onPickHalf'>) {
   // Where the bar goes: the middle of the picked dates, its row, how wide it is, and how far
   // left and right it may reach. The width is the bar's own, read back once it is on screen.
@@ -288,21 +282,14 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
         </span>
       ))}
 
-      {hasRange && taken.length > 0 ? (
-        /* THE EXCLUSIVE IS THE WHOLE HOUSE (the roof mock, 2026-11-07): what is booked under it
-           is named here, each a tap away from its own panel, where it is moved (on its bill).
-           New booking comes back once nothing is in the way. */
-        <>
-          {taken.slice(0, 3).map(b => (
-            <button key={b.id} type="button" onClick={() => onOpenTaken(b)}
-              title={'Open ' + unitWords(b, rooms, venues) + ' to move it'}
-              className="bp-up shrink-0 whitespace-nowrap inline-flex items-center gap-1 h-7 px-3 rounded-full bg-danger-50 text-danger-600 hover:bg-danger-100 text-[13px] font-bold transition-[background-color,transform] active:scale-95 cursor-pointer">
-              {unitWords(b, rooms, venues)} <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          ))}
-          {taken.length > 3 && <span className="shrink-0 h-5 px-2 rounded-full bg-danger-50 text-danger-600 text-[12px] font-bold leading-5 tabular-nums">+{taken.length - 3}</span>}
-        </>
-      ) : hasRange ? (
+      {hasRange && stays.map(x => (
+        /* A GUEST ALREADY THERE STAYS (Sebastian, 2026-11-07): the Exclusive is booked around them and their
+           room comes off its price, at the room's own price a night. */
+        <span key={x.unit} className="bp-up shrink-0 whitespace-nowrap h-7 px-3 inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-[13px] font-bold tabular-nums">
+          {x.name} stays · −{pesoWhole(x.price * x.nights)}
+        </span>
+      ))}
+      {hasRange ? (
         <>
           <button type="button" onClick={onNewBooking}
             className="shrink-0 inline-flex items-center gap-1 h-7 px-3.5 rounded-full bg-gold-400 hover:bg-gold-600 text-ink-900 text-[13px] font-bold transition-colors active:scale-[0.98] cursor-pointer">
@@ -511,7 +498,8 @@ export const TimelineGrid = React.memo(
       Object.entries(halves).forEach(([unitId, row]) => row.forEach(b => {
         if (!b || b.status === 'blocked' || seen[b.id]) return
         seen[b.id] = true
-        if (stayStage(b, todayIso) === 'during') occupied[unitId === EXCLUSIVE_ID ? '*' : unitId] = true
+        // The Exclusive in its dates makes every name it covers read occupied: `*`, and `**` with the Vacation House & Garden.
+        if (stayStage(b, todayIso) === 'during') { occupied[unitId === EXCLUSIVE_ID ? '*' : unitId] = true; if (unitId === EXCLUSIVE_ID && b.event_addons?.venue_type === GROUNDS) occupied['**'] = true }
         at(b.check_in).arrive.push(b.id)
         at(leaveDay(b)).leave.push(b.id)
       }))
@@ -543,7 +531,8 @@ export const TimelineGrid = React.memo(
 
     // ── the Exclusive: its row goes first, its bookings hang the roof ─────────────────────
     const exclusiveVenue = venues.find(v => v.id === EXCLUSIVE_ID)
-    const otherVenues = React.useMemo(() => venues.filter(v => v.id !== EXCLUSIVE_ID), [venues])
+    // The Gazebo first: the Exclusive always takes it, so its roof stops on it when the Vacation House & Garden are left out.
+    const otherVenues = React.useMemo(() => venues.filter(v => v.id !== EXCLUSIVE_ID).sort((a, b) => Number(b.id === 'venue-gazebo') - Number(a.id === 'venue-gazebo')), [venues])
     const roofs = React.useMemo(() => {
       const seen = new Map<string, Booking>()
       ;(halves[EXCLUSIVE_ID] || []).forEach(b => { if (b && !seen.has(b.id)) seen.set(b.id, b) })
@@ -551,7 +540,14 @@ export const TimelineGrid = React.memo(
     }, [halves])
     const exPick = groupSelection?.[EXCLUSIVE_ID]
     const roofPick = React.useMemo(() => exPick ? { from: dateToString(exPick.checkIn), to: dateToString(exPick.checkOut) } : null, [exPick])
-    const taken = React.useMemo(() => roofPick ? roofClashes(true, ...bookingHalves({ check_in: roofPick.from, check_out: roofPick.to }), bookings) : [], [roofPick, bookings])
+    // What stays under the pick (it comes off the price, the action bar says how much) and under each roof.
+    const stays = React.useMemo(() => roofPick ? exclusiveLess({ id: '', check_in: roofPick.from, check_out: roofPick.to }, bookings, rooms, venues) : [], [roofPick, bookings, rooms, venues])
+    const under = React.useMemo(() => [
+      ...(roofPick ? underRoof({}, ...bookingHalves({ check_in: roofPick.from, check_out: roofPick.to }), bookings) : []),
+      ...roofs.flatMap(r => underRoof(r, ...bookingHalves(r), bookings)),
+    ], [roofPick, roofs, bookings])
+    const reach = React.useCallback((b: Booking | null) =>
+      [...rooms.map(r => r.id), ...otherVenues.filter(v => exclusiveCovers(b || {}, { venue_id: v.id })).map(v => v.id)], [rooms, otherVenues])
     const openBooking = React.useCallback((b: Booking) => {
       setSelectedExtendBooking(b)
       setExtendCheckoutDate(b.check_out)
@@ -646,9 +642,9 @@ export const TimelineGrid = React.memo(
             desk picked, so it is beside both the room and the date and it travels
             with the grid. */}
         <SelectionBar scrollRef={scrollRef} barAnchor={barAnchor} timelineSelection={timelineSelection} groupSelection={groupSelection}
-          selectionName={selectionName} rooms={rooms} venues={venues} barRoom={barRoom} taken={taken} onOpenTaken={openBooking} onNewBooking={onNewBooking}
+          selectionName={selectionName} rooms={rooms} venues={venues} barRoom={barRoom} stays={stays} onNewBooking={onNewBooking}
           onBlockDates={onBlockDates} onLogOldBooking={onLogOldBooking} onNewShortStay={onNewShortStay} onClearSelection={onClearSelection} onPickHalf={onPickHalf} />
-        <ExclusiveRoof scrollRef={scrollRef} roofs={roofs} pick={roofPick} taken={taken} onOpen={b => { markSeen('exclusive-roof'); openBooking(b) }} />
+        <ExclusiveRoof scrollRef={scrollRef} roofs={roofs} pick={roofPick} under={under} reach={reach} onOpen={b => { markSeen('exclusive-roof'); openBooking(b) }} />
 
         {/* Every cell draws its own rules (`border-separate`). In a collapsed table the
             rules belong to the table, and the pinned header and room column — which
@@ -756,7 +752,7 @@ export const TimelineGrid = React.memo(
                 kind and its price. No tile behind the number: the row is the box. */}
             {rooms.map(room => (
               <React.Fragment key={room.id}>
-              <tr className={'group hover:bg-paper-50/50'}>
+              <tr data-row={room.id} className={'group hover:bg-paper-50/50'}>
                 <td className={occupied[room.id] || occupied['*'] ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
                   <div className="flex items-center gap-2.5">
                     <span className="w-6 shrink-0 text-center font-display text-[15px] font-bold tabular-nums text-main">{room.room_number}</span>
@@ -807,8 +803,8 @@ export const TimelineGrid = React.memo(
             )}
 
             {otherVenues.map(venue => (
-              <tr key={venue.id} className={'group hover:bg-paper-50/50'}>
-                <td className={occupied[venue.id] || occupied['*'] ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
+              <tr key={venue.id} data-row={venue.id} className={'group hover:bg-paper-50/50'}>
+                <td className={occupied[venue.id] || (occupied['*'] && exclusiveCovers({ event_addons: occupied['**'] ? { venue_type: GROUNDS } : undefined }, { venue_id: venue.id })) ? UNIT_CELL_OCCUPIED : UNIT_CELL}>
                   <span className="block truncate text-[13px] font-semibold leading-4 text-main">{venue.name}</span>
                   <span className="block text-[12px] leading-4 tabular-nums text-muted">₱{displayPriceFor(venue).toLocaleString()}/day</span>
                 </td>

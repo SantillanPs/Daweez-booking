@@ -209,7 +209,8 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
       const contractedPrice = deal?.contracted_rates[venueId]
       const kind = withVenueType(existingBooking?.event_addons, p.formVenueTypes[key])
       const charges = firstCharges()
-      const eventAddons = charges ? { ...kind, ...charges } : kind
+      const less = p.formExclusiveLess?.[key]
+      const eventAddons = less ? { ...kind, ...charges, exclusive_less: less } : charges ? { ...kind, ...charges } : kind
 
       const b = await p.createManualBooking({
         id: existingBooking?.id,

@@ -38,8 +38,8 @@ export function CalendarGuide() {
             <Row sign={<Pill className="bg-ink-100 border-ink-200 text-white"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-ink-900 font-display text-[9px] font-extrabold leading-none">?</span></Pill>}>Left today: check-out not noted yet</Row>
             <Row sign={<span className="text-[11px] font-bold text-gold-800">Time's up</span>}>A short stay's hours are over: a bell drops in at the top until you answer it</Row>
             <Row sign={<Pill className="bg-paper-200/60 border-paper-300" />}>Blocked</Row>
-            <Row sign={<span className="ex-roof ex-sign relative flex h-6 w-[30px] flex-col rounded border border-gold-400"><House className="m-auto w-3 h-3 text-gold-800" /></span>}>Pension House Exclusive: every room and venue is taken. Tap it to open the booking</Row>
-            <Row sign={<Pill className="bg-gold-100 border-gold-400 outline outline-[1.5px] outline-dashed outline-danger-500 outline-offset-1" />}>In the way of the Exclusive you are picking. Tap its name on the bar to move it</Row>
+            <Row sign={<span className="ex-roof ex-sign relative flex h-6 w-[30px] flex-col rounded border border-gold-400"><House className="m-auto w-3 h-3 text-gold-800" /></span>}>Pension House Exclusive: every room and the Gazebo (the Vacation House &amp; Garden when added). Tap it to open the booking</Row>
+            <Row sign={<Pill className="bg-emerald-50 border-emerald-600 shadow-[0_0_0_3px_#fff]" />}>A guest who was there first stays under the Exclusive; their room comes off its price</Row>
             <Row sign={<Building2 className="w-4 h-4" />}>Agency reservation</Row>
             <Row sign={<ChannelMark channel="booking_com" />}>From Booking.com</Row>
             <Row sign={<span className="text-[11px] font-bold leading-3 text-blue-700">Name needed</span>}>Tap it and type the guest's name from Booking.com's message</Row>

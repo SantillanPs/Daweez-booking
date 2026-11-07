@@ -2,7 +2,7 @@ import React, { startTransition, useCallback, useEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Banknote, Building2, Check, ChevronDown, Coffee, Plus, Tag, Trash2, Undo2, X } from 'lucide-react'
-import { Booking, BillCharge, BreakfastPlan, Companion, EquipmentRental, EventAddons, PartnerDeal, Room, Venue } from '../../types/booking'
+import { Booking, BillCharge, BreakfastPlan, Companion, EquipmentRental, EventAddons, ExclusiveLess, PartnerDeal, Room, Venue } from '../../types/booking'
 import { buildStatement, StatementLineItem, shortDate } from '../../utils/statement'
 import { dateToString, normalizeVenueId, randomUUID, addDays, parseDay, pesoWhole } from '../../utils/helpers'
 import { changedRows, onLead, settleBill } from '../../utils/bookingBalance'
@@ -23,7 +23,7 @@ import { getInstitutions, insertInstitution } from '../../utils/institutions'
 import { StatementShell, BrandHeader, SectionName } from '../billing/StatementShell'
 import { StatementChargesTable } from '../billing/StatementChargesTable'
 import { Floating, UnitList, UnitOption, KindList, LengthList, BreakfastList, MonthPick, MorningPick } from './BillRoomLines'
-import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
+import { EXCLUSIVE_ID, exclusiveLess, isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
 import { venueHoursOf } from '../../utils/venueHours'
 import { markSeen as sawFeature } from '../../utils/newMarks'
 import { NewTag } from '../NewMark'
@@ -240,9 +240,21 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // charges on the first unit, the discount (a flat amount once, on the first).
   // The discounts sit whole on the first room and come off every stay on the bill (2026-11-07).
   const discList = to ? [] : discs.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.v, note: d.note }))
+  // What stays under the Exclusive and comes off its price (Sebastian, 2026-11-07). A saved bill keeps
+  // what it agreed while its days and kind are the same, so a guest leaving later changes nothing.
+  const lessOf = (id: string, s: Sel): ExclusiveLess[] | undefined => {
+    if (unitOfLine(id) !== EXCLUSIVE_ID || isShort) return undefined
+    const saved = rowOf(id)
+    if (saved?.event_addons?.exclusive_less && saved.check_in === s.checkIn && saved.check_out === s.checkOut
+      && (saved.event_addons.venue_type || '') === (kinds[id] || '')) return saved.event_addons.exclusive_less
+    return exclusiveLess({ id: saved?.id || '', check_in: s.checkIn, check_out: s.checkOut, event_addons: kinds[id] ? { venue_type: kinds[id] } : undefined },
+      bookings.filter(b => !editing?.some(e => e.id === b.id)), rooms, venues)
+  }
   const draftOf = (id: string, s: Sel, i: number): Booking => {
     const ea: EventAddons = {}
     if (kinds[id]) ea.venue_type = kinds[id]
+    const less = lessOf(id, s)
+    if (less?.length) ea.exclusive_less = less
     if (i === 0 && charges.length > 0) ea.charges = charges
     if (bfPrice && s.type === 'room') ea.breakfast_price = bfPrice
     const unit = unitOfLine(id)
@@ -540,6 +552,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       formVenueExcessHours: ed?.venue_excess_hours || 0, formBlockNotes: ed?.notes || '', venueDayBlocks: ed?.venue_day_blocks || undefined,
       discounts: to ? [] : given.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.v, note: d.note?.trim() || undefined })),
       formVenueTypes: kinds,
+      formExclusiveLess: Object.fromEntries(list.flatMap(([id, s]) => { const l = lessOf(id, s); return l ? [[id, l]] : [] })),
       formPaymentMethod: ed ? ed.payment_method || '' : paid?.method || '', formPaymentReference: ed ? ed.payment_reference || '' : paid?.reference || '',
       formPaymentPlan: plan, formPaymentPurpose: paid?.purpose,
       formCharges: charges,

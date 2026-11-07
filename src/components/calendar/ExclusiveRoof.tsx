@@ -9,17 +9,20 @@ import { bookingStage } from './bookingStyles'
  * over every row below it for its days. Nothing can be sold under it (`no_overlap_exclusive`),
  * and a tap anywhere on it opens the Exclusive's panel.
  *
- * While the Exclusive is being PICKED, the same shape lights every row under the picked days,
- * and whatever is booked there is marked on its pill (`data-taken`) for the action bar to name.
+ * While the Exclusive is being PICKED, the same shape lights the rows it covers under the picked
+ * days. A guest already there stays (Sebastian, 2026-11-07), so their pill sits on top of it.
  *
  * Drawn over the table, measured off the pills and cells after every render: a table cannot
  * span one cell down through rows that each have their own cells.
  */
-export function ExclusiveRoof({ scrollRef, roofs, pick, taken, onOpen }: {
+export function ExclusiveRoof({ scrollRef, roofs, pick, under, reach, onOpen }: {
   scrollRef: React.RefObject<HTMLDivElement | null>
   roofs: Booking[]
   pick: { from: string; to: string } | null
-  taken: Booking[]
+  /** What stays under a roof or the pick: its pill sits on top (`data-under`). */
+  under: Booking[]
+  /** The rows an Exclusive covers (the pick's are the plain kind's): the roof stops at the last. */
+  reach: (b: Booking | null) => string[]
   onOpen: (b: Booking) => void
 }) {
   type Shape = { left: number; top: number; width: number; height: number }
@@ -34,13 +37,14 @@ export function ExclusiveRoof({ scrollRef, roofs, pick, taken, onOpen }: {
       const r = el.getBoundingClientRect()
       return { l: r.left - s.left + scroller.scrollLeft, r: r.right - s.left + scroller.scrollLeft, t: r.top - s.top + scroller.scrollTop, b: r.bottom - s.top + scroller.scrollTop }
     }
-    const bottom = box(table).b
+    // Down to the last row it covers: the Vacation House and the Garden only with their kind (2026-11-07).
+    const bottomOf = (ids: string[]) => Math.max(0, ...ids.map(id => scroller.querySelector('tr[data-row="' + id + '"]')).filter((r): r is HTMLTableRowElement => !!r).map(r => box(r).b)) || box(table).b
     const next = {
       roofs: roofs.flatMap(b => {
         const pill = scroller.querySelector('[data-pill="' + b.id + '"]')
         if (!pill) return []
         const p = box(pill)
-        return [{ id: b.id, left: p.l, width: p.r - p.l, top: p.b, height: Math.max(0, bottom - p.b - 4) }]
+        return [{ id: b.id, left: p.l, width: p.r - p.l, top: p.b, height: Math.max(0, bottomOf(reach(b)) - p.b - 4) }]
       }),
       pick: null as Shape | null,
     }
@@ -52,11 +56,11 @@ export function ExclusiveRoof({ scrollRef, roofs, pick, taken, onOpen }: {
         const A = box(a), Z = box(z)
         const left = a.colSpan > 1 ? (A.l + A.r) / 2 : A.l
         const right = z.colSpan > 1 ? (Z.l + Z.r) / 2 : Z.r
-        next.pick = { left, width: right - left, top: A.b, height: bottom - A.b }
+        next.pick = { left, width: right - left, top: A.b, height: bottomOf(reach(null)) - A.b }
       }
     }
     setShapes(prev => JSON.stringify(prev) === JSON.stringify(next) ? prev : next)
-  }, [scrollRef, roofs, pick])
+  }, [scrollRef, roofs, pick, reach])
 
   React.useLayoutEffect(() => { measure() })
   React.useEffect(() => {
@@ -64,14 +68,14 @@ export function ExclusiveRoof({ scrollRef, roofs, pick, taken, onOpen }: {
     return () => window.removeEventListener('resize', measure)
   }, [measure])
 
-  // What is in the way wears a dashed red edge on its own pill.
-  const takenKey = taken.map(b => b.id).join(',')
+  // What stays under it keeps its pill on top, where it can still be tapped.
+  const takenKey = under.map(b => b.id).join(',')
   React.useEffect(() => {
     const scroller = scrollRef.current
     if (!scroller || !takenKey) return
     const pills = takenKey.split(',').map(id => scroller.querySelector('[data-pill="' + id + '"]')).filter((el): el is Element => !!el)
-    pills.forEach(el => el.setAttribute('data-taken', ''))
-    return () => pills.forEach(el => el.removeAttribute('data-taken'))
+    pills.forEach(el => el.setAttribute('data-under', ''))
+    return () => pills.forEach(el => el.removeAttribute('data-under'))
   }, [scrollRef, takenKey])
 
   const PLACE = ' [left:var(--ex-l)] [top:var(--ex-t)] [width:var(--ex-w)] [height:var(--ex-h)]'

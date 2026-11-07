@@ -644,9 +644,9 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 .ex-roof.ex-sign { background: linear-gradient(#F5EAD1 4px, rgb(245 234 209 / 0) 18px), repeating-linear-gradient(135deg, rgb(208 171 96 / 0.2) 0 4px, rgb(208 171 96 / 0) 4px 8px), rgb(252 248 238 / 0.9); }
 @keyframes ex-drop { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
 .ex-pick { animation: ex-drop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
-[data-taken] { z-index: 6; outline: 1.5px dashed #BE3A2B; outline-offset: 1px; animation: ex-throb 1.4s ease-in-out infinite; }
-@keyframes ex-throb { 50% { box-shadow: 0 0 0 4px rgb(190 58 43 / 0.18); } }
-@media (prefers-reduced-motion: reduce) { .ex-roof, .ex-pick, [data-taken] { animation: none; } }
+/* A guest who was there before the Exclusive stays, on top of its roof, ringed in white to stand off the stripes. */
+[data-under] { z-index: 6; box-shadow: 0 0 0 3px #fff; }
+@media (prefers-reduced-motion: reduce) { .ex-roof, .ex-pick { animation: none; } }
 
 /* ── The paper's own mark ── the hours taken and the receptionist are circled by hand
    (design B of the Log old booking mock, 2026-10-17). */

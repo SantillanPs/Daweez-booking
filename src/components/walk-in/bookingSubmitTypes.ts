@@ -1,6 +1,6 @@
 import {
   Booking, BookingSource, Room, Venue, PartnerDeal, Companion,
-  EquipmentRental, BreakfastOrder, AppliedDiscount, EventAddons, BillCharge, BreakfastPlan,
+  EquipmentRental, BreakfastOrder, AppliedDiscount, EventAddons, BillCharge, BreakfastPlan, ExclusiveLess,
 } from '../../types/booking'
 
 /**
@@ -106,6 +106,8 @@ export interface BookingSubmitParams {
   discounts: AppliedDiscount[]
   /** The kind chosen for each venue (`VenueType.key`, by venue id). */
   formVenueTypes: Record<string, string>
+  /** Pension House Exclusive only: what stayed under it, by line (`event_addons.exclusive_less`). */
+  formExclusiveLess?: Record<string, ExclusiveLess[]>
   venueDayBlocks?: number
   editingBookings?: Booking[]
   formPaymentMethod: string
