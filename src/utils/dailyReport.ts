@@ -270,6 +270,11 @@ export function allMoneyIn({ bookings, tabs = [], rooms = [], venues = [] }: Pic
   return Array.from(gatherPayments(bookings, tabs, rooms, venues).values()).map(payment => ({ ...toLine(payment), day: payment.day }))
 }
 
+// The staff's paper ledger forwarded ₱1,107 into 1 Oct 2026, and the carried balance starts there
+// (the staff, 2026-11-07): nothing dated before that day reaches a later day's balance.
+const LEDGER_START = '2026-10-01'
+const OPENING_BALANCE = 1107
+
 /**
  * Build one day's sheet. Pure: every figure comes from the records handed in, so the screen, the printed
  * paper and any later reader of the same day cannot disagree.
@@ -312,13 +317,17 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
   const totalIn = moneyIn.reduce((sum, line) => (line.cancelled ? sum : sum + line.amount), 0)
   const totalOut = moneyOut.reduce((sum, line) => sum + line.amount, 0)
 
-  // `YYYY-MM-DD` sorts as text, so "before this day" is a plain comparison.
-  const inBefore = Array.from(payments.values()).reduce((sum, p) => (p.day < date && !p.cancelled ? sum + p.amount : sum), 0)
-  const outBefore = expenses.reduce((sum, e) => (e.expense_date < date ? sum + e.amount : sum), 0)
+  // `YYYY-MM-DD` sorts as text, so "before this day" is a plain comparison. From the ledger's first day
+  // on, only what came after it counts, on top of the balance the paper forwarded into it.
+  const from = date >= LEDGER_START ? LEDGER_START : ''
+  const counts = (day: string) => day >= from && day < date
+  const inBefore = Array.from(payments.values()).reduce((sum, p) => (counts(p.day) && !p.cancelled ? sum + p.amount : sum), 0)
+    + (from ? OPENING_BALANCE : 0)
+  const outBefore = expenses.reduce((sum, e) => (counts(e.expense_date) ? sum + e.amount : sum), 0)
   // Money handed to the owner is gone from the hotel, so it comes off what is carried over — but it
   // is never in `moneyOut`: the hotel earned it, it did not spend it.
   // Cash added (`kind: 'in'`) is the same row the other way round, so it counts as a hand-over taken back.
-  const handedBefore = handovers.reduce((sum, h) => (h.handover_date < date ? sum + (h.kind === 'in' ? -h.amount : h.amount) : sum), 0)
+  const handedBefore = handovers.reduce((sum, h) => (counts(h.handover_date) ? sum + (h.kind === 'in' ? -h.amount : h.amount) : sum), 0)
   const handedOver: DailyReportLine[] = handovers
     .filter(h => h.handover_date === date && h.kind !== 'in')
     .map(h => ({
