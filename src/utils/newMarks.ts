@@ -44,6 +44,8 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: 'bill-add-one', since: '2026-11-06' },
   // Pension House Exclusive is the whole house: its row is on top and its roof covers every room and venue (`ExclusiveRoof`).
   { id: 'exclusive-roof', since: '2026-11-07' },
+  // GCash, bank and cheque money comes off before Cash on hand in Today's money's summary (`DayMoney`).
+  { id: 'cash-not-gcash', since: '2026-11-07' },
 ]
 
 const KEY = 'daweez_new_seen'

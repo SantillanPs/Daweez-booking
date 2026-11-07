@@ -1,6 +1,6 @@
 import React from 'react'
 import { StatementShell, BrandHeader } from './StatementShell'
-import { forwardedLabel, type DailyReport } from '../../utils/dailyReport'
+import { forwardedLabel, type DailyReport } from '../../utils/dailyReport'
 import { peso } from '../../utils/helpers'
 
 /**
@@ -98,6 +98,12 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
             <span className="font-mono shrink-0">{peso(line.amount)}</span>
           </div>
         ))}
+        {report.totalNotCash > 0 && (
+          <div className="flex justify-between gap-3">
+            <span>Less: GCash, bank &amp; cheque</span>
+            <span className="font-mono">({peso(report.totalNotCash)})</span>
+          </div>
+        )}
         <div className="flex justify-between gap-3 font-bold border-t border-ink-400 mt-0.5 pt-0.5">
           <span>Cash on hand</span>
           <span className="font-mono">{peso(report.cashOnHand)}</span>

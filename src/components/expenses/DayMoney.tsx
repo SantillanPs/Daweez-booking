@@ -851,6 +851,13 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
             </span>
           </div>
         ))}
+        {/* GCash, bank and cheque money is sold but not in the drawer, so it comes off here (only on a day it came). */}
+        {report.totalNotCash > 0 && (
+          <div className="flex justify-between gap-3 py-0.5" onClick={() => markSeen('cash-not-gcash')}>
+            <span className="relative"><span className="text-muted">Less:</span> GCash, bank &amp; cheque<NewTag id="cash-not-gcash" /></span>
+            <span className="font-mono font-bold">({peso(report.totalNotCash)})</span>
+          </div>
+        )}
         <div className="flex justify-between gap-3 border-t border-soft mt-1 pt-1.5 font-bold">
           <span>Cash on hand</span>
           <span className="font-mono">{signed(report.cashOnHand)}</span>

@@ -26,7 +26,7 @@ import type { Booking, PaymentRecord, Room, Venue } from '../types/booking'
 import { slipNumber } from './orderSlips'
 import type { Expense, ExpenseCategory, Handover } from '../types/expense'
 import type { Tab } from '../types/tab'
-import { paymentMethodLabel } from './paymentMethod'
+import { paymentKind, paymentMethodLabel } from './paymentMethod'
 import { formatRoomNumbers } from './roomNumbers'
 import { normalizeVenueId } from './helpers'
 import { groupOf } from './bookingGroup'
@@ -94,7 +94,9 @@ export interface DailyReport {
   /** Cash put into the hotel on this day (`kind: 'in'`). It adds to the money in the hotel but was not earned. */
   cashAdded: DailyReportLine[]
   totalAdded: number
-  /** `broughtForward + totalIn + totalAdded`: the paper's "Cash on hand" line. */
+  /** Of `totalIn`, what came by GCash, bank or cheque: earned, but not in the drawer. */
+  totalNotCash: number
+  /** `broughtForward + totalIn − totalNotCash + totalAdded`: the paper's "Cash on hand" line. */
   cashOnHand: number
   /** What the hotel holds at the end of this day: `cashOnHand − totalOut − totalHandedOver`. Tomorrow begins with it. */
   balance: number
@@ -275,6 +277,8 @@ export function allMoneyIn({ bookings, tabs = [], rooms = [], venues = [] }: Pic
 const LEDGER_START = '2026-10-01'
 const OPENING_BALANCE = 1107
 
+const notCash = (method?: string) => { const kind = paymentKind(method); return kind === 'gcash' || kind === 'bank' || kind === 'check' }
+
 /**
  * Build one day's sheet. Pure: every figure comes from the records handed in, so the screen, the printed
  * paper and any later reader of the same day cannot disagree.
@@ -315,13 +319,16 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
     })
 
   const totalIn = moneyIn.reduce((sum, line) => (line.cancelled ? sum : sum + line.amount), 0)
+  // GCash, bank and cheque money is sales but never cash on hand: it sits in the bank or the e-wallet,
+  // or is a cheque still to be cashed, not notes in the drawer (Sebastian, 2026-11-07). It stays in Total Sales and comes off before Cash on hand.
+  const totalNotCash = moneyIn.reduce((sum, line) => (!line.cancelled && notCash(line.method) ? sum + line.amount : sum), 0)
   const totalOut = moneyOut.reduce((sum, line) => sum + line.amount, 0)
 
   // `YYYY-MM-DD` sorts as text, so "before this day" is a plain comparison. From the ledger's first day
   // on, only what came after it counts, on top of the balance the paper forwarded into it.
   const from = date >= LEDGER_START ? LEDGER_START : ''
   const counts = (day: string) => day >= from && day < date
-  const inBefore = Array.from(payments.values()).reduce((sum, p) => (counts(p.day) && !p.cancelled ? sum + p.amount : sum), 0)
+  const inBefore = Array.from(payments.values()).reduce((sum, p) => (counts(p.day) && !p.cancelled && !notCash(p.method) ? sum + p.amount : sum), 0)
     + (from ? OPENING_BALANCE : 0)
   const outBefore = expenses.reduce((sum, e) => (counts(e.expense_date) ? sum + e.amount : sum), 0)
   // Money handed to the owner is gone from the hotel, so it comes off what is carried over — but it
@@ -356,8 +363,9 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
     totalHandedOver,
     cashAdded,
     totalAdded,
-    cashOnHand: Math.round((broughtForward + totalIn + totalAdded) * 100) / 100,
-    balance: Math.round((broughtForward + totalIn + totalAdded - totalOut - totalHandedOver) * 100) / 100,
+    totalNotCash,
+    cashOnHand: Math.round((broughtForward + totalIn - totalNotCash + totalAdded) * 100) / 100,
+    balance: Math.round((broughtForward + totalIn - totalNotCash + totalAdded - totalOut - totalHandedOver) * 100) / 100,
     undatedMoney,
     undatedCount,
   }
