@@ -5,7 +5,7 @@ import { AskCup } from './BreakfastParts'
 import { isBilledToAgency } from '../../utils/bookingMoney'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
 import { dueToday, getBookingStyle, roomDisplayName } from './bookingStyles'
-import { dateToString, parseDay, pesoWhole } from '../../utils/helpers'
+import { dateToString, parseDay } from '../../utils/helpers'
 import { TimelineCell } from './TimelineCell'
 import { asBill } from '../../utils/bookingGroup'
 import { stayStage } from '../../utils/stayStage'
@@ -19,7 +19,7 @@ import { ChannelAlert } from '../../utils/channelStay'
 import { ChannelMark } from './ChannelMark'
 import { getRateConfig, saveRateConfig } from '../../utils/rateConfig'
 import { useConnection } from '../../utils/connection'
-import { EXCLUSIVE_ID, GROUNDS, exclusiveCovers, exclusiveLess, underRoof, ExclusiveLess } from '../../utils/availability'
+import { EXCLUSIVE_ID, GROUNDS, exclusiveCovers, underRoof } from '../../utils/availability'
 import { bookingHalves } from '../../utils/halfDays'
 import { ExclusiveRoof } from './ExclusiveRoof'
 import { NewTag } from '../NewMark'
@@ -123,7 +123,7 @@ type BarAnchor = { unitId: string; iso: string; outIso: string }
  * again — four times a click, which the desk felt as a delay on every tap (Sebastian,
  * 2026-10-16: "when I click on a cell in the calendar there's a short delay").
  */
-function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection, selectionName, rooms, venues, barRoom, stays, onNewBooking, onBlockDates, onLogOldBooking, onNewShortStay, onClearSelection, onPickHalf }: {
+function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection, selectionName, rooms, venues, barRoom, onNewBooking, onBlockDates, onLogOldBooking, onNewShortStay, onClearSelection, onPickHalf }: {
   scrollRef: React.RefObject<HTMLDivElement | null>
   barAnchor: BarAnchor | null
   timelineSelection: TimelineGridProps['timelineSelection']
@@ -133,8 +133,6 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
   venues: Venue[]
   barRoom: Room | null
   /** What is booked under the Exclusive being picked. */
-  /** What stays under the Exclusive being picked, and what each comes off its price. */
-  stays: ExclusiveLess[]
 } & Pick<TimelineGridProps, 'onNewBooking' | 'onBlockDates' | 'onLogOldBooking' | 'onNewShortStay' | 'onClearSelection' | 'onPickHalf'>) {
   // Where the bar goes: the middle of the picked dates, its row, how wide it is, and how far
   // left and right it may reach. The width is the bar's own, read back once it is on screen.
@@ -282,13 +280,6 @@ function SelectionBar({ scrollRef, barAnchor, timelineSelection, groupSelection,
         </span>
       ))}
 
-      {hasRange && stays.map(x => (
-        /* A GUEST ALREADY THERE STAYS (Sebastian, 2026-11-07): the Exclusive is booked around them and their
-           room comes off its price, at the room's own price a night. */
-        <span key={x.unit} className="bp-up shrink-0 whitespace-nowrap h-7 px-3 inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-[13px] font-bold tabular-nums">
-          {x.name} stays · −{pesoWhole(x.price * x.nights)}
-        </span>
-      ))}
       {hasRange ? (
         <>
           <button type="button" onClick={onNewBooking}
@@ -540,8 +531,7 @@ export const TimelineGrid = React.memo(
     }, [halves])
     const exPick = groupSelection?.[EXCLUSIVE_ID]
     const roofPick = React.useMemo(() => exPick ? { from: dateToString(exPick.checkIn), to: dateToString(exPick.checkOut) } : null, [exPick])
-    // What stays under the pick (it comes off the price, the action bar says how much) and under each roof.
-    const stays = React.useMemo(() => roofPick ? exclusiveLess({ id: '', check_in: roofPick.from, check_out: roofPick.to }, bookings, rooms, venues) : [], [roofPick, bookings, rooms, venues])
+    // What stays under the pick (it comes off the price, on the bill) and under each roof.
     const under = React.useMemo(() => [
       ...(roofPick ? underRoof({}, ...bookingHalves({ check_in: roofPick.from, check_out: roofPick.to }), bookings) : []),
       ...roofs.flatMap(r => underRoof(r, ...bookingHalves(r), bookings)),
@@ -642,7 +632,7 @@ export const TimelineGrid = React.memo(
             desk picked, so it is beside both the room and the date and it travels
             with the grid. */}
         <SelectionBar scrollRef={scrollRef} barAnchor={barAnchor} timelineSelection={timelineSelection} groupSelection={groupSelection}
-          selectionName={selectionName} rooms={rooms} venues={venues} barRoom={barRoom} stays={stays} onNewBooking={onNewBooking}
+          selectionName={selectionName} rooms={rooms} venues={venues} barRoom={barRoom} onNewBooking={onNewBooking}
           onBlockDates={onBlockDates} onLogOldBooking={onLogOldBooking} onNewShortStay={onNewShortStay} onClearSelection={onClearSelection} onPickHalf={onPickHalf} />
         <ExclusiveRoof scrollRef={scrollRef} roofs={roofs} pick={roofPick} under={under} reach={reach} onOpen={b => { markSeen('exclusive-roof'); openBooking(b) }} />
 
