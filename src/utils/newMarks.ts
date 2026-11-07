@@ -46,6 +46,8 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: 'exclusive-roof', since: '2026-11-07' },
   // GCash, bank and cheque money comes off before Cash on hand in Today's money's summary (`DayMoney`).
   { id: 'cash-not-gcash', since: '2026-11-07' },
+  // A bill that has received more than it comes to shows its Amount due below zero, in green (`over` in `NewBookingBill`).
+  { id: 'bill-overpaid', since: '2026-11-07' },
 ]
 
 const KEY = 'daweez_new_seen'

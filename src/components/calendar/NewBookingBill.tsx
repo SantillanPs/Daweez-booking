@@ -303,6 +303,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const received = editing ? pays.reduce((a, x) => a + x.amount, 0) : paid?.amount ?? 0
   const due = Math.max(0, total - received)
   const paidUp = received > 0 && due === 0
+  // **More received than the bill comes to** (Sebastian, 2026-11-07, Erwin Cagampang's bill: ₱52,000 of
+  // receipts on a ₱43,000 bill read only ₱0): the Amount due goes below zero, in green ("just make it
+  // negative green if it's gone over"), so the desk checks the receipts against the paper.
+  const over = !to && total > 0 && ed?.status !== 'cancelled' ? Math.max(0, received - total) : 0
   // An agency's or institution's bill is "Total" only until money is taken on it at the desk; then
   // the box says what is left, as the payment line above it does (a ₱1,900 bill with ₱950 paid read
   // "Remaining balance ₱1,900", 2026-11-05). The paper copy stays Total only (`AgencyInvoiceDocument`).
@@ -1194,7 +1198,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               {first && (
                 <>
                   {isShort ? (
-                    // The hours are picked on the line's length, under No. of night.
+                    // The hours are picked on the line's length, under Nights.
                     <p key={hours + '-' + half} className="text-[10.5px] font-medium text-ink-900 bw-rise">{hours} hours · {half ? 'Afternoon' : 'Morning'}</p>
                   ) : (
                     <p className="text-[10.5px] font-medium text-ink-900">{nights} {list.every(([, s]) => s.type === 'venue') ? 'day' : 'night'}{nights === 1 ? '' : 's'}</p>
@@ -1338,13 +1342,14 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               )}
               {/* The box starts at the icon column, so its label stands on the names' edge and its figure
                   ends on the amounts' (the border's 2.5px taken off each side). */}
-              <div onClick={to && !agencyTotal ? () => sawFeature('agency-paid-due') : undefined} className={'mt-2.5 pl-[19.5px] pr-[25.5px] py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900' + (!to || desk ? '' : ' -mx-3 px-3')}>
+              <div onClick={to && !agencyTotal ? () => sawFeature('agency-paid-due') : over > 0 ? () => sawFeature('bill-overpaid') : undefined} className={'mt-2.5 pl-[19.5px] pr-[25.5px] py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900' + (!to || desk ? '' : ' -mx-3 px-3')}>
                 <span className="relative text-[9.5px] font-bold uppercase tracking-[0.1em]">
                   {agencyTotal ? 'Total' : 'Amount due'}
                   {to && !agencyTotal && <NewTag id="agency-paid-due" />}
+                  {over > 0 && <NewTag id="bill-overpaid" />}
                   {received > 0 && !paidUp && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px text-muted">Remaining balance</span>}
                 </span>
-                <span className="font-display text-[24px] font-extrabold leading-none"><CountPeso roll value={agencyTotal ? total : due} /></span>
+                <span className={'font-display text-[24px] font-extrabold leading-none' + (over > 0 ? ' text-emerald-700' : '')}>{over > 0 && '−'}<CountPeso roll value={agencyTotal ? total : over > 0 ? over : due} /></span>
               </div>
               {/* Nothing written and nobody else paying: said once, in blue, like the calendar's pill. */}
               {!to && received === 0 && !writing && <p className="mt-0.5 text-right text-[11px] font-bold text-sky-700 bw-rise">No deposit</p>}
