@@ -731,9 +731,13 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 }
 .print-root { display: none; }
 .print-root .print-slip {
-  width: 100% !important;
-  max-width: 58mm !important;
-  margin: 0 !important;
+  /* Always the 48 mm the head prints, in the middle of whatever page the driver names
+     (the new printer, the owner's photo, 2026-11-07: its driver names the whole 58 mm roll
+     again, so a full-width slip lost ~5 mm off both sides). On a 48 mm page this is the
+     whole page; on a 58 mm one it sits in the printed middle. */
+  width: 48mm !important;
+  max-width: 100% !important;
+  margin: 0 auto !important;
   /* 2 mm left, 4 mm right. It was 5 mm each side for a driver that named the whole 58 mm
      roll as its page while the head prints only the middle 48 mm (at 1 mm the start of every
      line was cut off — "EST" for GUEST, the owner's photo, 2026-10-12). The XP-58H's driver
