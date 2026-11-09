@@ -13,8 +13,12 @@ import { useRealtimeBookings } from './useRealtimeBookings'
 import { useCallback, useEffect, useMemo } from 'react'
 import { supabase } from '../utils/supabaseClient'
 import { noteMove } from '../utils/movedFrom'
+import { billKey, billLeads, getPayments, PaymentRow, withBillPayments, withPayments } from '../utils/payments'
+import { groupOf } from '../utils/bookingGroup'
+import { changedRows, onLead } from '../utils/bookingBalance'
+import { resettle } from '../utils/billPayment'
 
-type MutationContext = { previous: Booking[] | undefined }
+type MutationContext = { previous: Booking[] | undefined; pays?: PaymentRow[] }
 
 export function useBookings() {
   const queryClient = useQueryClient()
@@ -41,6 +45,22 @@ export function useBookings() {
     },
     staleTime: Infinity, // Realtime handles freshness; don't re-fetch on focus/mount
   })
+
+  // Every bill's payments (`utils/payments.ts`). Each change is laid onto the bookings' cache, on each
+  // bill's leading room, so every screen keeps reading a booking's payments where it always did.
+  const { data: payments, isLoading: isLoadingPayments } = useQuery<PaymentRow[]>({
+    queryKey: ['payments'],
+    queryFn: getPayments,
+    staleTime: Infinity,
+  })
+  useEffect(() => {
+    if (payments) queryClient.setQueryData<Booking[]>(['bookings'], list => list && withPayments(list, payments))
+  }, [payments, queryClient])
+  // A list put in the cache gets the payments laid on it again: a row back from the database holds none.
+  const attach = useCallback((list: Booking[]) => {
+    const pays = queryClient.getQueryData<PaymentRow[]>(['payments'])
+    return pays ? withPayments(list, pays) : list
+  }, [queryClient])
 
   // `bookings` is what every screen works with: the stays that still hold a room. A
   // cancelled booking is kept (its payments and receipts are real) but it has given its
@@ -100,6 +120,9 @@ export function useBookings() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'venues' }, () => {
         queryClient.invalidateQueries({ queryKey: ['venues'] })
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['payments'] })
+      })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [queryClient])
@@ -110,16 +133,19 @@ export function useBookings() {
     mutationFn: async ({ bookingId, note }) => {
       const target = allBookings.find(b => b.id === bookingId)
       if (target?.status === 'blocked') await deleteBookingDb(bookingId)
-      else await cancelBookingDb(bookingId, note)
+      else {
+        await cancelBookingDb(bookingId, note)
+        if (target) await settleWithout(target)
+      }
     },
     onMutate: async ({ bookingId, note }) => {
       await queryClient.cancelQueries({ queryKey: ['bookings'] })
       const previous = queryClient.getQueryData<Booking[]>(['bookings'])
-      queryClient.setQueryData<Booking[]>(['bookings'], old => old?.flatMap(b =>
+      queryClient.setQueryData<Booking[]>(['bookings'], old => old && attach(old.flatMap(b =>
         b.id !== bookingId ? [b]
           : b.status === 'blocked' ? []
             : [{ ...b, status: 'cancelled' as const, cancelled_at: new Date().toISOString(), cancel_note: note?.trim() || undefined }]
-      ))
+      )))
       return { previous }
     },
     onError: (_err, _vars, ctx) => {
@@ -132,12 +158,14 @@ export function useBookings() {
   // (2026-10-30). A stay that has not ended is cancelled, never deleted.
   const deleteBookingMutation = useMutation<void, Error, string, MutationContext>({
     mutationFn: async (bookingId: string) => {
+      const target = allBookings.find(b => b.id === bookingId)
       await deleteBookingDb(bookingId)
+      if (target) await settleWithout(target)
     },
     onMutate: async (bookingId) => {
       await queryClient.cancelQueries({ queryKey: ['bookings'] })
       const previous = queryClient.getQueryData<Booking[]>(['bookings'])
-      queryClient.setQueryData<Booking[]>(['bookings'], old => old?.filter(b => b.id !== bookingId))
+      queryClient.setQueryData<Booking[]>(['bookings'], old => old && attach(old.filter(b => b.id !== bookingId)))
       return { previous }
     },
     onError: (_err, _vars, ctx) => {
@@ -340,8 +368,9 @@ export function useBookings() {
     onSuccess: (newBooking) => {
       // Swap the optimistic placeholder with the real booking — still no refetch
       queryClient.setQueryData<Booking[]>(['bookings'], old =>
-        old ? [...old.filter(b => !b.id.startsWith('__optimistic__') && b.id !== newBooking.id), newBooking] : [newBooking]
+        attach(old ? [...old.filter(b => !b.id.startsWith('__optimistic__') && b.id !== newBooking.id), newBooking] : [newBooking])
       )
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
     }
   })
 
@@ -384,15 +413,35 @@ export function useBookings() {
     onMutate: async (updatedBooking) => {
       await queryClient.cancelQueries({ queryKey: ['bookings'] })
       const previous = queryClient.getQueryData<Booking[]>(['bookings'])
-      queryClient.setQueryData<Booking[]>(['bookings'], old => 
-        old?.map(b => b.id === updatedBooking.id ? updatedBooking : b)
-      )
-      return { previous }
+      const pays = queryClient.getQueryData<PaymentRow[]>(['payments'])
+      // The bill's leading room carries its payments: what it is saved with is the bill's, at once.
+      const list = (previous || []).map(b => b.id === updatedBooking.id ? updatedBooking : b)
+      if (pays && billLeads(list).get(billKey(updatedBooking)) === updatedBooking.id) {
+        queryClient.setQueryData<PaymentRow[]>(['payments'], withBillPayments(pays, updatedBooking))
+      }
+      queryClient.setQueryData<Booking[]>(['bookings'], previous && attach(list))
+      return { previous, pays }
     },
     onError: (_err, _vars, ctx) => {
       queryClient.setQueryData(['bookings'], ctx?.previous)
+      if (ctx?.pays) queryClient.setQueryData(['payments'], ctx.pays)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
     }
   })
+
+  // A room leaves its bill (cancelled, or a finished stay taken off): the payments stay with the bill
+  // (`utils/payments.ts`), its discounts go onto the room that leads now, and the bill is priced again
+  // there — or what it still owes stayed on the room that left (Sebastian, 2026-11-09).
+  async function settleWithout(gone: Booking) {
+    if (gone.status === 'blocked') return
+    const rest = groupOf(gone, allBookings).filter(b => b.id !== gone.id && b.status !== 'cancelled')
+    if (rest.length === 0) return
+    const moved = onLead([...rest, gone]).slice(0, rest.length)
+    const after = await resettle(moved, { rooms, venues })
+    for (const r of changedRows(rest, after)) await updateBookingMutation.mutateAsync(r)
+  }
 
   // 9. Mutation: ask the booking sites' calendar links for new stays now. Nothing is read
   // again afterwards: what it adds reaches the calendar through Realtime.
@@ -564,7 +613,7 @@ export function useBookings() {
     partnerDeals,
     expenseCategories,
     expenses,
-    isLoading: isLoadingRooms || isLoadingVenues || isLoadingBookings || isLoadingFeeds || isLoadingPartners || isLoadingExpenseCategories || isLoadingExpenses,
+    isLoading: isLoadingRooms || isLoadingVenues || isLoadingBookings || isLoadingPayments || isLoadingFeeds || isLoadingPartners || isLoadingExpenseCategories || isLoadingExpenses,
 
     // Mutations
     cancelBooking: (bookingId: string, note?: string) => cancelBookingMutation.mutateAsync({ bookingId, note }),

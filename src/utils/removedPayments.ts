@@ -2,6 +2,7 @@ import { Booking, PaymentRecord } from '../types/booking'
 import { supabase } from './supabaseClient'
 import { withoutPayment } from '../components/walk-in/bookingPayment'
 import { unpaySlipsOfReceipt } from './orderSlips'
+import { removePayment } from './payments'
 
 // PAYMENTS TAKEN BACK (Sebastian, 2026-10-14). Removing a payment takes its receipt off every booking it
 // paid for, so this table is the only trace left. The Front desk's History shows each one struck through.
@@ -41,6 +42,8 @@ export async function takeBackPayment(
   updateBooking: (b: Booking) => Promise<void>,
   label: { guest: string; rooms: string },
 ): Promise<void> {
+  // The payment leaves the bill first (`payments`, 2026-11-09): saving a room no longer removes one.
+  await removePayment(rec.id)
   const shared = holders.length > 1
   for (const b of holders) {
     const theirs = (b.payment_records || []).find(r => (rec.receipt_number ? r.receipt_number === rec.receipt_number : r.id === rec.id))

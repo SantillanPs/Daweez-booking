@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../utils/supabaseClient'
 import { Booking } from '../types/booking'
+import { PaymentRow, withPayments } from '../utils/payments'
 import { BookingSource, BookingStatus } from '../types/booking'
 
 /** Map a raw Supabase row to the app's Booking shape.
@@ -100,7 +101,10 @@ export function useRealtimeBookings() {
         (payload) => {
           const { eventType, new: newRow, old: oldRow } = payload
 
-          queryClient.setQueryData<Booking[]>(['bookings'], (prev = []) => {
+          // A row from the database holds no payments: they are laid on again (`utils/payments.ts`).
+          const pays = queryClient.getQueryData<PaymentRow[]>(['payments'])
+          const attach = (list: Booking[]) => (pays ? withPayments(list, pays) : list)
+          queryClient.setQueryData<Booking[]>(['bookings'], (prev = []) => attach((() => {
             // Remove optimistic placeholders so the real row replaces them cleanly
             const withoutOptimistic = prev.filter(b => !b.id.startsWith('__optimistic__'))
 
@@ -122,7 +126,7 @@ export function useRealtimeBookings() {
             }
 
             return withoutOptimistic
-          })
+          })()))
         }
       )
       .subscribe()

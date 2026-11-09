@@ -52,15 +52,18 @@ export function nextReceiptNumber(booking: Booking, otherBookings: Booking[] = [
  * `null` on most rows.
  */
 export async function usedReceiptNumbers(): Promise<string[]> {
-  const [tabs, bookings] = await Promise.all([
+  // A booking's payments are in `payments` since 2026-11-09, taken-back ones included, so no number is
+  // handed out twice.
+  const [tabs, payments] = await Promise.all([
     supabase.from('tabs').select('payment_records'),
-    supabase.from('bookings').select('payment_records'),
+    supabase.from('payments').select('receipt_number'),
   ])
   if (tabs.error) throw tabs.error
-  if (bookings.error) throw bookings.error
-  return [...(tabs.data || []), ...(bookings.data || [])]
+  if (payments.error) throw payments.error
+  return [...(tabs.data || [])]
     .flatMap(row => (row.payment_records as PaymentRecord[] | null) || [])
     .map(r => r.receipt_number || '')
+    .concat((payments.data || []).map(p => p.receipt_number || ''))
 }
 
 /**

@@ -2,6 +2,7 @@ import { Room, Venue, Booking, SyncFeed, BookingSource, BookingStatus } from '..
 import { supabase } from './supabaseClient'
 import { randomUUID, isValidUUID } from './helpers'
 import { billNumber } from './billNumber'
+import { getPayments, withPayments } from './payments'
 
 // The browser stores that used to sit here (`l_etoile_bookings_db`,
 // `l_etoile_feeds_db`, plus `initDB`'s first-run seed) are gone: the database is
@@ -122,9 +123,8 @@ export async function getVenues(): Promise<Venue[]> {
 
 export async function getBookings(): Promise<Booking[]> {
   try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*')
+    // Each bill's payments are read beside the bookings and handed to the bill's leading room (`withPayments`).
+    const [{ data, error }, pays] = await Promise.all([supabase.from('bookings').select('*'), getPayments()])
     if (error) throw error
 
     if (data) {
@@ -142,7 +142,7 @@ export async function getBookings(): Promise<Booking[]> {
       // extra trip to the database for it.
       supabase.rpc('cleanup_expired_pending').then(undefined, () => { /* non-fatal */ })
 
-      return activeRecords.map(b => ({
+      return withPayments(activeRecords.map(b => ({
         id: b.id,
         room_id: b.room_id || undefined,
         venue_id: b.venue_id || undefined,
@@ -209,7 +209,7 @@ export async function getBookings(): Promise<Booking[]> {
         // Saved by its own small writer and, until 2026-10-04, never read back — so a
         // Custom deposit figure was forgotten the moment the page was reloaded.
         agreed_deposit: b.agreed_deposit != null ? Number(b.agreed_deposit) : undefined,
-      }))
+      })), pays)
     }
   } catch (err) {
     // A failed read throws, so the calendar keeps the bookings it already had. It used to
