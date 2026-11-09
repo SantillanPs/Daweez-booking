@@ -1,13 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowRightToLine, BedDouble, Check, Minus, ReceiptText, Undo2, UtensilsCrossed } from 'lucide-react'
+import { ArrowRightToLine, Banknote, BedDouble, Check, Minus, ReceiptText, Undo2, UtensilsCrossed } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
-import { TabEvent } from '../types/tab'
+import { Tab, TabEvent, TabLine } from '../types/tab'
 import { SlipStory, getSlipHistory } from '../utils/slipHistory'
 import { slipNumber } from '../utils/orderSlips'
 import { useRealtimeTabs } from '../hooks/useRealtimeTabs'
 import { guestPlace } from './restaurant/served'
 import { dateToString, peso } from '../utils/helpers'
 import { AnimatedNumber } from './AnimatedNumber'
+import { TabReceiptModal } from './restaurant/TabReceiptModal'
+import { readTabLines } from '../utils/tabs'
+import { showToast } from '../utils/toast'
+import { PaymentRecord } from '../types/booking'
+import { NewTag } from './NewMark'
+import { markSeen } from '../utils/newMarks'
+import { paymentMethodLabel } from '../utils/paymentMethod'
 
 // RESTAURANT → HISTORY (Sebastian, 2026-11-05, task #2: "track orders, and serves, the sent to front desk,
 // and sent to room"). Chosen from the mock as "E · Slip steps": one line for each order slip, which opens to
@@ -34,6 +41,12 @@ const PAGE_DAYS = 14
 
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
+/** A payment taken on a later day than the slip's says which day; on the slip's own day, only the time. */
+const whenPaid = (iso: string, slipAt: string) =>
+  dateToString(new Date(iso)) === dateToString(new Date(slipAt))
+    ? timeOf(iso)
+    : new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\n' + timeOf(iso)
+
 const ICON: Record<TabEvent['kind'], typeof Check> = {
   order: ReceiptText,
   served: Check,
@@ -53,6 +66,25 @@ export function RestaurantHistory() {
   const [failed, setFailed] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [receipt, setReceipt] = useState<{ tab: Tab; lines: TabLine[]; record: PaymentRecord } | null>(null)
+
+  // A diner's slip paid at the front desk opens its receipt here (Sebastian, 2026-11-07: "add a way to open
+  // the receipt in the restaurant history"), the same paper Cash Flow opens. Chosen from the mock as
+  // "A · Paid step" (2026-11-09): the payment is a step of its own, among the others by its time, and its
+  // receipt number is the link — no button of its own. A slip on a room's bill has no receipt of its own
+  // (its money is on the room's bill), so it has no Paid step.
+  const openReceipt = (tab: Tab, record: PaymentRecord) => {
+    markSeen('history-receipt')
+    readTabLines(tab.id)
+      .then(lines => setReceipt({ tab, lines, record }))
+      .catch(() => showToast('Could not open the receipt. Please try again.', 'error'))
+  }
+
+  /** The slip's steps with its payments put in among them by time, latest first. */
+  const withPaid = (s: SlipStory, latestFirst: TabEvent[]) => {
+    const paid = (s.tab.payment_records || []).filter(r => r.receipt_number && r.paid_at).map(r => ({ r, at: r.paid_at! }))
+    return [...paid, ...latestFirst.map(e => ({ e, at: e.at }))].sort((a, b) => b.at.localeCompare(a.at))
+  }
 
   // Read again whenever a slip or a line changes on any tablet.
   const [tick, setTick] = useState(0)
@@ -202,7 +234,31 @@ export function RestaurantHistory() {
                         table, its words under the dish, its amount under the total. On a phone the time goes
                         under the words. */}
                     <ol className="px-4 pt-1 pb-3.5 grid">
-                      {latestFirst.map((e, i) => {
+                      {withPaid(s, latestFirst).map((step, i, all) => {
+                        if ('r' in step) {
+                          const r = step.r
+                          return (
+                            <li key={'paid-' + r.id} style={{ '--d': isOpen ? 50 + i * 40 + 'ms' : '0ms' } as React.CSSProperties}
+                              className={'relative grid grid-cols-[46px_minmax(0,1fr)_auto] sm:grid-cols-[4.5rem_46px_minmax(0,1fr)_5.5rem] gap-x-3 gap-y-px items-center py-1.5 text-[13.5px] leading-[1.3] transition-[opacity,transform] [transition-delay:var(--d)] duration-300 motion-reduce:transition-none ' + (isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1')}>
+                              <span className="col-start-2 row-start-2 sm:col-start-1 sm:row-start-1 text-[12px] sm:text-[12.5px] text-muted tabular-nums whitespace-pre-line sm:leading-tight">{whenPaid(r.paid_at!, s.at)}</span>
+                              <span className="col-start-1 row-start-1 row-span-2 sm:col-start-2 sm:row-span-1 justify-self-center relative w-[19px] h-[19px] grid place-items-center text-ink-900">
+                                <Banknote className="w-[19px] h-[19px]" strokeWidth={2.6} />
+                                {i < all.length - 1 && <span aria-hidden="true" className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+2px)] w-0.5 h-[23px] sm:h-2 bg-softbg" />}
+                              </span>
+                              <span className="min-w-0 col-start-2 row-start-1 sm:col-start-3">
+                                <b className="font-bold text-main">Paid</b>
+                                <span className="text-muted"> {paymentMethodLabel(r.method || '')} · </span>
+                                <button type="button" onClick={() => openReceipt(s.tab, r)} tabIndex={isOpen ? 0 : -1}
+                                  className="relative font-mono text-[12px] text-main underline decoration-dotted decoration-ink-900/45 underline-offset-[3px] hover:decoration-solid cursor-pointer py-2 -my-2 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
+                                  {r.receipt_number}
+                                  <NewTag id="history-receipt" />
+                                </button>
+                              </span>
+                              <span className="col-start-3 row-start-1 sm:col-start-4 text-right tabular-nums text-main">{peso(Number(r.amount || 0))}</span>
+                            </li>
+                          )
+                        }
+                        const e = step.e
                         const Icon = ICON[e.kind]
                         return (
                           <li key={e.id} style={{ '--d': isOpen ? 50 + i * 40 + 'ms' : '0ms' } as React.CSSProperties}
@@ -210,7 +266,7 @@ export function RestaurantHistory() {
                             <span className="col-start-2 row-start-2 sm:col-start-1 sm:row-start-1 text-[12px] sm:text-[12.5px] text-muted tabular-nums">{timeOf(e.at)}</span>
                             <span className="col-start-1 row-start-1 row-span-2 sm:col-start-2 sm:row-span-1 justify-self-center relative w-[19px] h-[19px] grid place-items-center text-ink-900">
                               <Icon className="w-[19px] h-[19px]" strokeWidth={2.6} />
-                              {i < latestFirst.length - 1 && <span aria-hidden="true" className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+2px)] w-0.5 h-[23px] sm:h-2 bg-softbg" />}
+                              {i < all.length - 1 && <span aria-hidden="true" className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+2px)] w-0.5 h-[23px] sm:h-2 bg-softbg" />}
                             </span>
                             <span className="min-w-0 col-start-2 row-start-1 sm:col-start-3">
                               <b className="font-bold text-main">{stepWord(e, s)}</b>
@@ -228,6 +284,8 @@ export function RestaurantHistory() {
           })}
         </section>
       ))}
+
+      {receipt && <TabReceiptModal tab={receipt.tab} lines={receipt.lines} record={receipt.record} onClose={() => setReceipt(null)} />}
 
       {slips && (
         <div className="flex justify-center">
