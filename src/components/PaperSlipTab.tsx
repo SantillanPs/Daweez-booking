@@ -362,7 +362,7 @@ export function PaperSlipTab() {
               {/* The day it was paid, for a slip copied in the next morning; a guest's bill needs no day. */}
               {!room && (
                 <label className="relative text-[12.5px] font-semibold text-main border-b-[1.5px] border-dashed border-gold-400 cursor-pointer">
-                  {day === today() ? 'Today' : dayOf(day)}
+                  {dayOf(day)}
                   <input ref={dayRef} type="date" value={day} max={today()} aria-label="Day it was paid" onChange={e => e.target.value && setDay(e.target.value)}
                     onClick={() => dayRef.current?.showPicker?.()} className="absolute inset-0 opacity-0 cursor-pointer" />
                 </label>
