@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // The bill's Discounts say each thing once: the names when folded, no "Discount" on every line (`NewBookingBill`).
+  { id: 'bill-discounts-lean', since: '2026-11-11' },
   // Restaurant → History: a diner's paid slip has a Paid step whose receipt number opens its receipt (`RestaurantHistory`).
   { id: 'history-receipt', since: '2026-11-09' },
   // A room on the bill is taken off by the trash can beside its name, always shown (`NewBookingBill`).

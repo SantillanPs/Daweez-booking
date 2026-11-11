@@ -32,7 +32,7 @@ import { holdsMoney } from '../../utils/roomTakenOff'
 import { ADD, AddCharge, AddMoney, PayInput, WritePayment } from '../billing/BillDesk'
 import { useLateFocus } from '../billing/want'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
-import { BIG, Count, Dot, FOLD, EYEBROW, FACTS, FixPayment, GoneLine, HEAD, KID_STACK, LINE as TOT, PALE, PART, PayRow, RANK, RemoveBin, STACK, Slip, Unfold } from '../billing/FixPayment'
+import { BIG, Count, Dot, FOLD, EYEBROW, FACTS, FixPayment, GoneLine, HEAD, KID_STACK, LINE as TOT, ONE, PALE, PART, PayRow, RANK, RemoveBin, STACK, Slip, Unfold } from '../billing/FixPayment'
 import type { StatementPayment } from '../../utils/statement'
 import { PrintInvoiceModal } from '../billing/PrintInvoiceModal'
 import { CancelledStamp } from '../billing/CancelledStamp'
@@ -1094,19 +1094,32 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // **A discount is fixed like a payment** (Sebastian, 2026-11-06, the "Bill Sub-total Row" mock: "make
   // editing the discount more consistent with everything else"): each part of its line is its own tap —
   // what it is for, how much (% or ₱), what it takes off — and a small box opens under that part only.
+  // **Said once** (Sebastian, 2026-11-11, the "Bill Discounts Lines" mock, option A: "removing
+  // redundancies"): under "Discounts" a line no longer says Discount again, and a flat amount is not
+  // written beside the same figure taken off. The second row is there only when it says something the
+  // figure does not: a percentage and what it is of, or what was typed when the bill had less left.
+  const discExtra = (d: Discount, i: number) => d.pct || offOf(i) < d.v
   const discLine = (d: Discount, i: number, kid: boolean) => {
     const part = (which: 'note' | 'v' | 'amt', name: string, look: string, body: React.ReactNode) => (
       <button type="button" onClick={toggle('disc', i + ':' + which)} aria-expanded={isOpen('disc', i + ':' + which)} aria-label={'Change ' + name} className={PART + ' ' + look}>{body}</button>
     )
+    const extra = d.pct
+      ? <>{part('v', 'how much the discount is', 'shrink-0 whitespace-nowrap tabular-nums' + PALE, d.v + '%')}<Dot /><span className="min-w-0 truncate tabular-nums">of {pesoWhole(total + discOff)}</span></>
+      : offOf(i) < d.v
+        ? <>{part('v', 'how much the discount is', 'shrink-0 whitespace-nowrap tabular-nums line-through decoration-paper-400' + PALE, pesoWhole(d.v))}{offOf(i) === 0 && <><Dot /><span className="truncate">nothing left</span></>}</>
+        : null
     return (
       <>
         {kid ? <span /> : <Tag aria-hidden="true" className="justify-self-center w-3 h-3 text-danger-600" />}
         <span className={kid ? KID_STACK : STACK}>
           {part('note', 'what the discount is for', HEAD, d.note?.trim() || <span className="text-gold-800">What for?</span>)}
-          <span className={FACTS}>
-            <b className={EYEBROW + ' text-danger-600'}>Discount</b><Dot />
-            {part('v', 'how much the discount is', 'shrink-0 whitespace-nowrap tabular-nums' + PALE, d.pct ? d.v + '%' : pesoWhole(d.v))}
-          </span>
+          {(!kid || extra) && (
+            <span className={FACTS}>
+              {!kid && <b className={EYEBROW + ' text-danger-600'}>Discount</b>}
+              {!kid && extra && <Dot />}
+              {extra}
+            </span>
+          )}
         </span>
         {part('amt', 'what the discount takes off', BIG + ' text-danger-600' + PALE, <span key={offOf(i)} className="bw-rise">−{pesoWhole(offOf(i))}</span>)}
         <RemoveBin what={d.note?.trim() || 'the discount'} onRemove={() => removeDisc(i)} tag={i === 0} />
@@ -1273,11 +1286,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                     <>
                       <div className="relative">
                         {addMoney}
-                        <button key={landed} type="button" onClick={() => setDiscOpen(o => !o)} aria-expanded={discOpen} aria-label="The discounts" className={TOT + ' ' + RANK + ' w-full cursor-pointer group active:scale-[0.98] transition-transform' + (landed ? ' bill-land' : '')}>
+                        <button key={landed} type="button" onClick={() => { sawFeature('bill-discounts-lean'); setDiscOpen(o => !o) }} aria-expanded={discOpen} aria-label="The discounts" className={TOT + ' ' + (discOpen ? ONE : RANK) + ' w-full cursor-pointer group active:scale-[0.98] transition-[transform,height]' + (landed ? ' bill-land' : '')}>
                           <Tag aria-hidden="true" className="justify-self-center w-3 h-3 text-danger-600" />
                           <span className={STACK}>
-                            <span className={HEAD + ' flex items-center gap-1.5'}>Discounts<Count n={given.length} /></span>
-                            <span className={FACTS}><b className={EYEBROW + ' text-danger-600'}>Discount</b></span>
+                            <span className={HEAD + ' relative flex items-center gap-1.5'}>Discounts<Count n={given.length} /><NewTag id="bill-discounts-lean" /></span>
+                            {/* Folded, it says which they are; open, the lines under it do. */}
+                            {!discOpen && <span className={FACTS + ' bw-rise'}><span className="min-w-0 truncate">{given.map(d => d.note?.trim() || 'What for?').join(' · ')}</span></span>}
                           </span>
                           <span key={discOff} className={BIG + ' text-danger-600 bw-rise'}>−{pesoWhole(discOff)}</span>
                           <ChevronDown aria-hidden="true" className={FOLD} />
@@ -1285,7 +1299,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                       </div>
                       <Unfold open={discOpen}>
                         {given.map((d, i) => (
-                          <div key={i} className={TOT + ' ' + RANK + ' bw-rise'} style={{ '--i': i } as React.CSSProperties}>{discLine(d, i, true)}</div>
+                          <div key={i} className={TOT + ' ' + (discExtra(d, i) ? RANK : ONE) + ' bw-rise'} style={{ '--i': i } as React.CSSProperties}>{discLine(d, i, true)}</div>
                         ))}
                       </Unfold>
                     </>

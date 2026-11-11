@@ -37,6 +37,8 @@ export const KID = 'self-stretch flex items-center gap-1.5 min-w-0 ml-1 pl-2 bor
 // change keeps a paler dashed line, so it does not compete with the headline.
 // 34px a line, so many payments or discounts still fit ("make it a bit more compact").
 export const RANK = 'h-[34px]'
+/** A ranked line with nothing to say under its name (the "Bill Discounts Lines" mock, 2026-11-11). */
+export const ONE = 'h-[26px]'
 export const STACK = 'flex flex-col justify-center items-start min-w-0'
 /** A ranked line opened out of a folded one, on the gold thread. */
 export const KID_STACK = STACK + ' self-stretch ml-1 pl-2 border-l-2 border-gold-100'
