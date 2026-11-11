@@ -1,3 +1,4 @@
+import { saveOrderChanges } from './orderChanges'
 import { supabase } from './supabaseClient'
 import { randomUUID } from './helpers'
 import { Tab, TabLine } from '../types/tab'
@@ -284,13 +285,15 @@ export async function settleTab(input: {
   preparedBy?: string
   /** Pesos taken off the slip at the desk; `amount` is already less it. */
   discount?: number
+  /** A paper slip logged on a later day is paid on the day it was written (`savePaperSlip`). */
+  paidAt?: string
 }): Promise<PaymentRecord> {
   const record: PaymentRecord = {
     id: randomUUID(),
     amount: money(input.amount),
     method: input.method,
     reference: input.reference?.trim() || undefined,
-    paid_at: new Date().toISOString(),
+    paid_at: input.paidAt || new Date().toISOString(),
     prepared_by: input.preparedBy?.trim() || undefined,
     receipt_number: nextTabReceiptNumber(await usedReceiptNumbers()),
     discount: input.discount ? money(input.discount) : undefined,
@@ -417,4 +420,41 @@ export async function saveHandSale(sale: { tab: Tab; line: TabLine | null }): Pr
   }
   const { data } = await supabase.from('tabs').select('*').eq('id', tab.id).single()
   return (data as Tab) || tab
+}
+/**
+ * **A paper order slip copied in after the fact** (Sebastian, 2026-11-11: the restaurant takes orders on
+ * paper and the staff record them later). It is a real order slip, saved the way the tablet saves one
+ * (`apply_order_changes`, so a menu dish takes its stock off the shelf and the slip gets its OS number),
+ * then counted as given, cooked and served at once — the food is long eaten. It ends one of two ways:
+ * paid now (a receipt, like a diner paying at the desk) or onto a guest's bill (like "Send bill" → room).
+ */
+export async function savePaperSlip(input: {
+  label: string
+  dishes: { menuItemId?: string | null; name: string; price: number; qty: number }[]
+  /** Paid now: how, and the moment it counts as paid. */
+  paid?: { method: string; at: string }
+  /** Or onto this booking's bill. */
+  bookingId?: string
+}): Promise<{ tab: Tab; total: number; receipt?: string }> {
+  const at = new Date().toISOString()
+  // Opened first, as a table is: `apply_order_changes` writes only to a slip that is there.
+  const tab = await openTab({ label: input.label })
+  const saved = await saveOrderChanges({
+    tabId: tab.id,
+    changes: input.dishes.map(d => ({
+      lineId: randomUUID(), menuItemId: d.menuItemId || null, description: d.name, unitPrice: d.price, delta: d.qty, at,
+    })),
+  }).catch(async e => { await closeTab(tab.id).catch(() => {}); throw e })   // no empty slip left open on the tables
+  // ponytail: three trips, so the kitchen's screen may show the dishes for a blink before they count as cooked.
+  // One database function that writes them served in one go, if the cook ever notices.
+  await markLinesSent(saved.lines)
+  await markLinesReady(saved.lines.map(l => ({ id: l.id, qty: Number(l.qty || 0) })))
+  await markLinesServed(saved.lines.map(l => ({ ...l, ready_qty: l.qty })))
+  const total = tabTotal(saved.lines)
+  if (input.bookingId) {
+    await billToRoom(saved.tab.id, input.bookingId)
+    return { tab: saved.tab, total }
+  }
+  const record = await settleTab({ tab: saved.tab, amount: total, method: input.paid?.method || 'Cash', paidAt: input.paid?.at })
+  return { tab: saved.tab, total, receipt: record.receipt_number }
 }

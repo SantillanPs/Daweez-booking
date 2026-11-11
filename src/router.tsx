@@ -185,6 +185,13 @@ const restaurantHistoryRoute = createRoute({
   component: lazyRouteComponent(() => import('./components/RestaurantHistory'), 'RestaurantHistory')
 })
 
+// A paper order slip copied in after the fact (Sebastian, 2026-11-11).
+const paperSlipRoute = createRoute({
+  getParentRoute: () => dashboardRoute,
+  path: '/restaurant/paper',
+  component: lazyRouteComponent(() => import('./components/PaperSlipTab'), 'PaperSlipTab')
+})
+
 // 5. Construct Route Tree
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -203,6 +210,7 @@ const routeTree = rootRoute.addChildren([
     kitchenRoute,
     menuRoute,
     restaurantHistoryRoute,
+    paperSlipRoute,
     dailyReportRoute
   ])
 ])

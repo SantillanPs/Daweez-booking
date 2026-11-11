@@ -104,3 +104,9 @@ Food lines live in their own tables, never on the booking. Saving a small food l
 - **Icons strong enough to read at a glance, still without colour.** After it went live he asked to *"make the icons more visible"*. Of the mock's options he took the one that is only darker, bigger and thicker, not the violet ones.
 - **A row shows its three latest steps**: *"the icons should only show the 3 most recent and add a ... or something to show that there a more things that happened previously"*. The earlier ones are a count ("+3") rather than "…", because a count says how many.
 - **Everything lines up**: *"make sure the text, icons, and everything is aligned or centered to make sure that it looks solid and structured."* Rows and their steps share one set of columns, with the step's icon centred under the table.
+
+## How the restaurant really works (2026-11-09)
+
+- **The staff take orders on paper, not on the Restaurant screen.** Sebastian, 2026-11-09: *"the flow they usually have is just take orders, write them by hand and give it to the chef, that's it."* They type the slip into the system afterwards, when they have time. On live, most slips went from opened to paid in about 30 seconds, and 5 sat served but never billed.
+- **The screen added steps the paper never had**: *"I think the restaurant system is adding too many unnecessary steps and adding more bottleneck to their workflow."* Writing by hand is faster, so about a quarter of restaurant payments (29 of 110 in 30 days) were typed as an amount only in Cash Flow, with no dishes.
+- **The menu is for customers, not staff**: *"the menu is worthless for the staff since menu's are supposed to be for the customers."*

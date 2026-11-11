@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // Restaurant → Paper slip: a paper order slip copied in after the fact, paid now or onto a guest's bill (`PaperSlipTab`).
+  { id: 'paper-slip', since: '2026-11-11' },
   // The bill's Discounts say each thing once: the names when folded, no "Discount" on every line (`NewBookingBill`).
   { id: 'bill-discounts-lean', since: '2026-11-11' },
   // Restaurant → History: a diner's paid slip has a Paid step whose receipt number opens its receipt (`RestaurantHistory`).

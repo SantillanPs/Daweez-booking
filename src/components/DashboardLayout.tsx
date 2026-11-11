@@ -42,6 +42,7 @@ const TABS = [
     label: 'Restaurant', Icon: Utensils,
     screens: [
       { label: 'Orders', to: '/restaurant' },
+      { label: 'Paper slip', to: '/restaurant/paper', isNew: 'paper-slip' },
       { label: 'Kitchen', to: '/restaurant/kitchen' },
       { label: 'Menu', to: '/restaurant/menu' },
       { label: 'History', to: '/restaurant/history', isNew: 'restaurant-history-2' },
