@@ -46,9 +46,9 @@ export function calculatePricing(params: {
   shortStayHours?: number
   appliedDiscount?: AppliedDiscount | AppliedDiscount[]
   /**
-   * The stays of the whole bill, when this is its first room: a bill's discounts are taken off all its
-   * stays together and held by that room (2026-11-07), so they are worked out on this figure, not on
-   * this room's own stay, and may take off more than it costs.
+   * The whole bill before discounts, when this is its first room: a bill's discounts are taken off its
+   * total and held by that room (2026-11-07), so they are worked out on this figure, not on this
+   * room's own, and may take off more than it costs.
    */
   discountBase?: number
   earlyCheckInHours?: number
@@ -166,11 +166,6 @@ export function calculatePricing(params: {
     discountPercent = Math.round(((undiscountedBasePrice - basePrice) / undiscountedBasePrice) * 100)
   }
 
-  // Every discount on the stay, each worked out on its own (several since 2026-10-29).
-  const appliedDiscountLines = discountOffs(discountsOf(appliedDiscount), discountBase ?? subtotal)
-  const appliedDiscountAmount = appliedDiscountLines.reduce((a, n) => a + n, 0)
-  const stayTotal = discountBase != null ? subtotal - appliedDiscountAmount : Math.max(0, subtotal - appliedDiscountAmount)
-
   const earlyRate = isVenue ? rates.venueHourlyRate : rates.lateEarlyRatePesos
   const perStayNight = stayQuantity > 0 ? basePrice : 0
   const earlyCharge = earlyLateCharge(earlyCheckInHours, earlyRate, rates.lateEarlyCapHours, perStayNight, isVenue)
@@ -262,6 +257,14 @@ export function calculatePricing(params: {
     for (const l of eventAddons.exclusive_less || []) addonsTotal -= Number(l.price || 0) * Number(l.nights || 0)
   }
 
+  // Every discount, each worked out on its own (several since 2026-10-29), off the BILL'S TOTAL like
+  // a payment (Sebastian, 2026-11-11: a ₱100 Senior read −₱0 on a Gazebo whose ₱4,000 another discount
+  // had used up, with ₱32,100 of extras still on the bill). They were taken off the stays only.
+  const appliedDiscountLines = discountOffs(discountsOf(appliedDiscount), discountBase ?? (subtotal + earlyLateTotal + breakfastTotal + rentalsTotal + addonsTotal))
+  const appliedDiscountAmount = appliedDiscountLines.reduce((a, n) => a + n, 0)
+  // May go below 0: what is left over comes off the extras, and `discountOffs` never takes off more than the bill.
+  const stayTotal = subtotal - appliedDiscountAmount
+
   const securityDeposit = 0
   const calculatedGrand = stayTotal + earlyLateTotal + breakfastTotal + rentalsTotal + addonsTotal
   const downpayment = Math.round(calculatedGrand * 0.50)
@@ -331,13 +334,16 @@ export function priceBooking(b: Booking, o: { rooms: Room[]; venues: Venue[]; in
 }
 
 /**
- * **What a bill's discounts are taken off: every stay on it** (2026-11-07). The bill's money lives on
- * its first room (`settleBill`), so the room holding the discounts is priced against all the rooms'
- * stays. Undefined when the booking holds no discount, which prices it as itself.
+ * **What a bill's discounts are taken off: its whole total, like a payment** (2026-11-07; Sebastian,
+ * 2026-11-11: "all type of charges … from the venues, extras, extra hour stay, restaurant"). Every
+ * room's `grandTotal` (stay, breakfast, early and late hours, rentals, add-ons, the desk's charges) and
+ * its food, by booking id. The bill's money lives on its first room (`settleBill`), so the room holding
+ * the discounts is priced against this. Undefined when the booking holds no discount, which prices it
+ * as itself. `scripts/check_bill_total.cjs` fails if a line on the statement is left out of it.
  */
-export function billStays(b: Booking, rows: Booking[], o: { rooms: Room[]; venues: Venue[] }): number | undefined {
+export function billStays(b: Booking, rows: Booking[], o: { rooms: Room[]; venues: Venue[]; food?: Record<string, number> }): number | undefined {
   if (discountsOf(b.applied_discount).length === 0) return undefined
   // A bill saved before then holds a slice of each discount on every room: each is its own room's.
   if (rows.some(r => r.id !== b.id && discountsOf(r.applied_discount).length > 0)) return undefined
-  return rows.reduce((t, r) => t + priceBooking({ ...r, applied_discount: [] }, o).subtotal, 0)
+  return rows.reduce((t, r) => t + priceBooking({ ...r, applied_discount: [] }, o).grandTotal + (o.food?.[r.id] || 0), 0)
 }

@@ -69,7 +69,7 @@ export function settleBill(
     : b.venue_id ? opts.venues.some(v => v.id === normalizeVenueId(b.venue_id)) : true
   if (rows.length === 0 || rows.some(b => b.status === 'blocked' || !known(b))) return rows
   const led = onLead(rows)
-  const stays = billStays(led[0], led, opts)
+  const stays = billStays(led[0], led, opts) // opts.food: the discounts come off the food too
   const cost = led.reduce((t, b, i) => t + stayCost(b, { ...opts, tabTotal: opts.food?.[b.id], stays: i === 0 ? stays : undefined }), 0)
   const paid = Number(led[0].downpayment_paid || 0)
   const owed = Math.max(0, cost - paid)

@@ -3,7 +3,7 @@ import { normalizeVenueId } from './helpers'
 import { stayUnitsLabel } from './roomNumbers'
 import { amountToPayNow } from './bookingMoney'
 import { billStays } from './pricing'
-import { OrderSlip } from './orderSlips'
+import { OrderSlip, slipsTotal } from './orderSlips'
 import { paymentShare } from '../components/walk-in/bookingPayment'
 import { bookingLines, mergeDiscountRows, mergeBreakfastRows, StatementLineItem, StatementBand } from './statementLines'
 
@@ -117,13 +117,15 @@ export function buildStatement(o: StatementInput): Statement {
   const companyContact = (agency?.contact_no || '').trim()
   const companyTin = (agency?.tin || '').trim()
 
+  // Each room's food, so the bill's discounts come off it too (2026-11-11).
+  const food = Object.fromEntries(relatedBookings.map(b => [b.id, slipsTotal(o.slipsByBooking?.[b.id] || [])]))
   relatedBookings.forEach(b => {
     const { items, tabTotal } = bookingLines(b, {
       rooms,
       venues,
       bookingsList: o.bookingsList,
       slipsByBooking: o.slipsByBooking,
-      stays: billStays(b, relatedBookings, { rooms, venues }),
+      stays: billStays(b, relatedBookings, { rooms, venues, food }),
     })
     collected.push(...items)
     // The rows add up to exactly this: rooms (gross) − the staff discount + breakfast +
