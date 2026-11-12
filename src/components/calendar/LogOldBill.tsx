@@ -448,7 +448,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
                   Amount due
                   {paidTotal > 0 && !paidUp && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px text-muted">Remaining balance</span>}
                 </span>
-                <span className="font-display text-[24px] font-extrabold leading-none"><CountPeso roll value={due} /></span>
+                <span className="font-display text-[24px] font-extrabold leading-none"><CountPeso value={due} /></span>
               </div>
             </div>
           </div>

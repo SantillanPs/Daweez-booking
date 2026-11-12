@@ -1370,7 +1370,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                   {over > 0 && <NewTag id="bill-overpaid" />}
                   {received > 0 && !paidUp && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px text-muted">Remaining balance</span>}
                 </span>
-                <span className={'font-display text-[24px] font-extrabold leading-none' + (over > 0 ? ' text-emerald-700' : '')}>{over > 0 && '−'}<CountPeso roll value={agencyTotal ? total : over > 0 ? over : due} /></span>
+                <span className={'font-display text-[24px] font-extrabold leading-none' + (over > 0 ? ' text-emerald-700' : '')}>{over > 0 && '−'}<CountPeso value={agencyTotal ? total : over > 0 ? over : due} /></span>
               </div>
               {/* Nothing written and nobody else paying: said once, in blue, like the calendar's pill. */}
               {!to && received === 0 && !writing && <p className="mt-0.5 text-right text-[11px] font-bold text-sky-700 bw-rise">No deposit</p>}
@@ -1425,7 +1425,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             <span className="flex-1" />
             <div className="flex items-baseline gap-2 px-3 py-[5px] bg-card border-2 border-ink-900">
               <span className="text-[9px] font-extrabold uppercase tracking-[0.1em]">{agencyTotal ? 'Total' : 'Due'}</span>
-              <span className="font-display text-[20px] font-extrabold tabular-nums leading-none"><CountPeso roll value={agencyTotal ? total : due} /></span>
+              <span className="font-display text-[20px] font-extrabold tabular-nums leading-none"><CountPeso value={agencyTotal ? total : due} /></span>
             </div>
           </div>
         )}

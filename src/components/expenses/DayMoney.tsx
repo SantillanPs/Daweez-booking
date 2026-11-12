@@ -886,8 +886,8 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
             </span>
           </div>
         ))}
-        <div className="flex items-baseline justify-between gap-3 border-t border-soft mt-2 pt-2.5">
-          <span className="text-[12px] font-extrabold uppercase tracking-[0.14em]">Total cash on hand</span>
+        <div className="flex items-baseline justify-between gap-3 border-t border-soft mt-2 pt-2.5" onClick={() => markSeen('rolling-totals')}>
+          <span className="relative text-[12px] font-extrabold uppercase tracking-[0.14em]">Total cash on hand<NewTag id="rolling-totals" /></span>
           <span className={'font-mono text-[26px] font-extrabold leading-none ' + (report.balance < 0 ? 'text-danger-600' : 'text-emerald-600')}>
             {report.balance < 0 && '('}<CountPeso value={Math.abs(report.balance)} />{report.balance < 0 && ')'}
           </span>
