@@ -814,3 +814,7 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 @keyframes nm-pop { from { transform: scale(0); } 70% { transform: scale(1.12); } }
 .nm-pop { animation: nm-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 @media (prefers-reduced-motion: reduce) { .nm-pop { animation: none; } }
+
+/* "Remove all orders": each row of the slip slides off before the slip empties (`removeAll` in useTabOrder). */
+.slip-leave { animation: slip-leave 260ms cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes slip-leave { to { opacity: 0; transform: translateX(-24px); } }

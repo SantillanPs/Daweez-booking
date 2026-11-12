@@ -221,6 +221,13 @@ export function useTabOrder(
       tone: 'danger',
     })
     if (!ok) return false
+    // The rows slide off one after another before they go (the "Remove all orders" mock, 2026-11-12):
+    // the desk sees the slip empty, not blink empty. The save waits only for that.
+    const rows = [...document.querySelectorAll<HTMLElement>('[data-slip-line]')]
+    if (rows.length > 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      rows.forEach((r, i) => { r.style.animationDelay = i * 60 + 'ms'; r.classList.add('slip-leave') })
+      await new Promise(done => window.setTimeout(done, rows.length * 60 + 260))
+    }
     for (const l of lines) {
       add({ lineId: l.id, menuItemId: l.menu_item_id, description: l.description, unitPrice: Number(l.unit_price || 0), delta: 0, remove: true })
     }
