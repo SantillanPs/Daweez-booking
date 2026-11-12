@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, FileText, ReceiptText, Search } from 'lucide-react'
+import { CalendarDays, FileText, ReceiptText, Search, X } from 'lucide-react'
 import { Booking, PaymentRecord, Room, Venue } from '../../types/booking'
 import { asBill } from '../../utils/bookingGroup'
 import { dateToString, normalizeVenueId, shortDay, peso } from '../../utils/helpers'
 import { paymentMethodLabel } from '../../utils/paymentMethod'
 import { pillMoney } from './bookingStyles'
+import { NewTag } from '../NewMark'
+import { markSeen } from '../../utils/newMarks'
 
 type Hit =
   | { kind: 'booking'; key: string; booking: Booking }
@@ -18,8 +20,8 @@ const fmtDay = shortDay
 
 /**
  * **Find a bill, a receipt or a booking from the calendar** (Sebastian's todo "Search by
- * billing/receipt no.", the calendar search mock, 2026-10-24). A search button on the top line
- * opens a field over it; what matches drops under it in three groups. A booking opens its
+ * billing/receipt no.", the calendar search mock, 2026-10-24). An open field on the top line,
+ * never a button to open one first (Sebastian, 2026-11-12); what matches drops under it in three groups. A booking opens its
  * panel on the calendar, a billing statement opens the statement, a receipt opens the slip.
  * Part of a number is enough ("137" finds 202610-137-12). Cancelled bookings are found too,
  * so an old receipt is never lost; they open their bill, since the calendar no longer shows them.
@@ -92,7 +94,8 @@ export function CalendarSearch({ allBookings, rooms, venues, onBooking, onBill, 
     ...found.receipts.slice(0, SHOW).map(([no, r]) => ({ kind: 'receipt' as const, key: 'r-' + no, booking: r.holders[0], record: r.record, covered: r.holders })),
   ]
 
-  const close = () => { setOpen(false); setQuery(''); setAt(0) }
+  // `open` is whether the results show; the field itself is always there.
+  const close = () => { setOpen(false); setQuery(''); setAt(0); input.current?.blur() }
   const choose = (h: Hit) => {
     close()
     if (h.kind === 'receipt') onReceipt(h.booking, h.record, h.covered)
@@ -100,16 +103,15 @@ export function CalendarSearch({ allBookings, rooms, venues, onBooking, onBill, 
     else onBooking(h.booking)
   }
 
-  // "/" opens the search from anywhere on the calendar, unless the desk is typing somewhere.
+  // "/" jumps into the search from anywhere on the calendar, unless the desk is typing somewhere.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const typing = e.target instanceof HTMLElement && (e.target.closest('input, textarea, select, [contenteditable]'))
-      if (e.key === '/' && !typing && !open) { e.preventDefault(); setOpen(true) }
+      if (e.key === '/' && !typing) { e.preventDefault(); input.current?.focus() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open])
-  useEffect(() => { if (open) input.current?.focus() }, [open])
+  }, [])
   // A tap anywhere else puts it away. Not on blur: a tap on a result blurs the field first,
   // and the result would be gone before the tap landed on it.
   useEffect(() => {
@@ -138,7 +140,7 @@ export function CalendarSearch({ allBookings, rooms, venues, onBooking, onBill, 
   }
 
   let n = -1
-  const row = (h: Hit, icon: React.ReactNode, main: React.ReactNode, sub: string, end: { text: string; className: string }) => {
+  const row = (h: Hit, icon: React.ReactNode, main: React.ReactNode, sub: React.ReactNode, end: { text: string; className: string }) => {
     n += 1
     const i = n
     return (
@@ -161,26 +163,26 @@ export function CalendarSearch({ allBookings, rooms, venues, onBooking, onBill, 
   )
 
   return (
-    <>
-      <button type="button" onClick={() => setOpen(true)} title="Search (/)" aria-label="Search bills, receipts and bookings"
-        className="w-9 h-9 mr-1 inline-flex items-center justify-center rounded-md bg-ink-900 text-white hover:bg-ink-700 transition-[background-color,transform] duration-150 active:scale-95 cursor-pointer">
-        <Search className="w-4 h-4" strokeWidth={2.4} />
-      </button>
-      {open && (
-        <div ref={box} className="absolute inset-x-2.5 top-1.5 z-40" onKeyDown={onKeyDown}>
-          <div className="cs-open flex items-center gap-2 h-10 pl-3 pr-1.5 rounded-[11px] bg-card shadow-[inset_0_0_0_2px_#1C1C1C]">
-            <Search className="w-4 h-4 shrink-0 text-main" strokeWidth={2.4} aria-hidden="true" />
-            <input ref={input} type="search" value={query} autoComplete="off"
-              onChange={e => { setQuery(e.target.value); setAt(0) }}
-              placeholder="Bill no., receipt no., guest or room" aria-label="Search bills, receipts and bookings"
-              className="flex-1 min-w-0 h-full bg-transparent outline-none focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden text-base font-semibold text-main placeholder:font-medium placeholder:text-muted" />
-            <button type="button" onClick={close} className="px-2 py-1.5 rounded-lg text-[13px] font-semibold text-muted hover:text-main hover:bg-softbg cursor-pointer">Close</button>
-          </div>
-          {q && (
-            <div role="listbox" className="cs-list mt-1.5 max-h-[min(440px,70vh)] overflow-y-auto rounded-[14px] bg-card p-1.5 shadow-[0_0_0_1px_#E6DFD0,0_18px_40px_-18px_rgba(60,45,20,0.28)]">
+    <div ref={box} className="relative mr-1" onKeyDown={onKeyDown}>
+      <div className="flex items-center gap-1.5 h-9 w-[240px] pl-2.5 pr-1 rounded-md border border-soft bg-card transition-colors duration-200 focus-within:border-gold-500 focus-within:ring-2 focus-within:ring-gold-400/30">
+        <Search className="w-4 h-4 shrink-0 text-muted" strokeWidth={2.4} aria-hidden="true" />
+        <input ref={input} type="search" value={query} autoComplete="off"
+          onChange={e => { setQuery(e.target.value); setAt(0); setOpen(true) }}
+          onFocus={() => { setOpen(true); markSeen('search-field') }}
+          placeholder="Bill, receipt, guest or room" aria-label="Search bills, receipts and bookings" title="Search (/)"
+          className="flex-1 min-w-0 h-full bg-transparent outline-none focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden text-base sm:text-[13px] font-medium text-main placeholder:text-muted" />
+        {query && (
+          <button type="button" onClick={close} aria-label="Clear search" className="w-7 h-7 shrink-0 grid place-items-center rounded-md text-muted hover:text-main hover:bg-softbg cursor-pointer">
+            <X className="w-3.5 h-3.5" strokeWidth={2.4} />
+          </button>
+        )}
+      </div>
+      <NewTag id="search-field" />
+          {open && q && (
+            <div role="listbox" className="cs-list absolute left-0 top-full z-40 w-[min(420px,calc(100vw-32px))] mt-1.5 max-h-[min(440px,70vh)] overflow-y-auto rounded-[14px] bg-card p-1.5 shadow-[0_0_0_1px_#E6DFD0,0_18px_40px_-18px_rgba(60,45,20,0.28)]">
               {hits.length === 0 && <div className="px-3 py-6 text-center text-[13.5px] text-muted">Nothing matches “{query.trim()}”.</div>}
               {found.bookings.length > 0 && head('Bookings', found.bookings.length)}
-              {hits.filter(h => h.kind === 'booking').map(h => row(h, <CalendarDays className="w-4 h-4" />, mark(who(h.booking)), mark(unit(h.booking)) + ' · ' + dates(h.booking), moneyOf(h.booking)))}
+              {hits.filter(h => h.kind === 'booking').map(h => row(h, <CalendarDays className="w-4 h-4" />, mark(who(h.booking)), <>{mark(unit(h.booking))} · {dates(h.booking)}</>, moneyOf(h.booking)))}
               {found.bills.length > 0 && head('Billing statements', found.bills.length)}
               {hits.filter(h => h.kind === 'bill').map(h => row(h, <FileText className="w-4 h-4" />, mark(h.booking.invoice_number || ''), who(h.booking) + ' · ' + unit(h.booking) + ' · ' + dates(h.booking), moneyOf(h.booking)))}
               {found.receipts.length > 0 && head('Receipts', found.receipts.length)}
@@ -189,8 +191,6 @@ export function CalendarSearch({ allBookings, rooms, venues, onBooking, onBill, 
                 { text: peso(Number(h.record.amount || 0)), className: 'text-emerald-700' }))}
             </div>
           )}
-        </div>
-      )}
-    </>
+    </div>
   )
 }

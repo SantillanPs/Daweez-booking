@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // The calendar's search is an open field on its top line, not a button that opens one (`CalendarSearch`).
+  { id: 'search-field', since: '2026-11-12' },
   // Restaurant → Orders: "Remove all orders" under a table's slip takes every dish off at once (`OrderSlipPanel`).
   { id: 'remove-all-orders', since: '2026-11-12' },
   // The big figures (Total cash on hand, the bill's Amount due, the booking panel's) roll digit by digit (`CountPeso`).
