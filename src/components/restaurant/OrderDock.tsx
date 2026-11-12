@@ -5,6 +5,7 @@ import { TabLine } from '../../types/tab'
 import { cookingCount, newCount, readyCount } from '../../utils/orderSlips'
 import { Served } from './served'
 import { TableButton } from './TablesPopup'
+import { PaperSlipButton } from './PaperSlipButton'
 import { peso } from '../../utils/helpers'
 
 
@@ -29,6 +30,8 @@ interface OrderDockProps {
   onServed: () => void
   /** The guest has finished, or asks for the bill. Handed where the button is. */
   onBill: (at: DOMRect) => void
+  /** Opens the paper slip; offered only while nobody is being served. */
+  onPaper: () => void
 }
 
 // The order, docked under the menu (Sebastian, 2026-10-04: the Restaurant screen "is
@@ -40,13 +43,14 @@ interface OrderDockProps {
 // menu has the screen, and the order is this one bar a thumb can reach: whose it is (a tap
 // there opens the tables), how much it has come to, and the one thing to do next. A tap on
 // the middle opens the whole slip.
-export function OrderDock({ person, number, lines, total, idleLabel, ready, tablesOpen, onTables, onOpen, onSendKitchen, onServed, onBill }: OrderDockProps) {
+export function OrderDock({ person, number, lines, total, idleLabel, ready, tablesOpen, onTables, onOpen, onSendKitchen, onServed, onBill, onPaper }: OrderDockProps) {
   const bar = 'wide:hidden shrink-0 z-10 sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] tall:static flex items-stretch gap-1.5 p-1.5 pl-4 rounded-xl bg-card border border-soft shadow-soft'
 
   if (!person) {
     return (
-      <div data-slip-dock className={bar}>
+      <div data-slip-dock className={bar + ' justify-between items-center pr-2'}>
         <TableButton label={idleLabel} ready={ready} open={tablesOpen} onOpen={onTables} />
+        <PaperSlipButton onOpen={onPaper} />
       </div>
     )
   }

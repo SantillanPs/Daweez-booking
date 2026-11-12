@@ -8,6 +8,8 @@ import { OrderSlipPanel } from './restaurant/OrderSlipPanel'
 import { OrderDock, OrderSheet } from './restaurant/OrderDock'
 import { BillPicker } from './restaurant/BillPicker'
 import { TableButton, TablesPopup } from './restaurant/TablesPopup'
+import { PaperSlip } from './restaurant/PaperSlip'
+import { PaperSlipButton } from './restaurant/PaperSlipButton'
 import { flyDot } from './restaurant/flyDot'
 import { useTabOrder } from './restaurant/useTabOrder'
 import { useOpenSlips } from './restaurant/useOpenSlips'
@@ -85,6 +87,7 @@ export function RestaurantTab() {
   const [billFor, setBillFor] = useState<{ person: Served; tab: Tab; total: number; at: DOMRect } | null>(null)
   // The tables, open and hung from the button at this place.
   const [tablesAt, setTablesAt] = useState<DOMRect | null>(null)
+  const [paperOpen, setPaperOpen] = useState(false)
   // A dish tapped with nobody picked, by name: the tables ask which table it is for.
   const [askFor, setAskFor] = useState('')
 
@@ -498,7 +501,10 @@ export function RestaurantTab() {
         <section className="relative hidden wide:flex wide:order-last flex-col gap-3 min-h-[320px] self-start tall:max-h-full wide:sticky wide:top-[114px] bg-card border border-soft rounded-xl p-5">
           {selected ? slipPanel(selected, () => pick(null)) : (
             <>
-              <div className="shrink-0"><TableButton label={opening || 'Pick a table'} ready={readyAll} open={!!tablesAt} onOpen={setTablesAt} /></div>
+              <div className="shrink-0 flex items-start justify-between gap-2">
+                <TableButton label={opening || 'Pick a table'} ready={readyAll} open={!!tablesAt} onOpen={setTablesAt} />
+                <PaperSlipButton onOpen={() => setPaperOpen(true)} />
+              </div>
               <div className="flex-1 grid place-content-center justify-items-center gap-2 py-8 text-[14px] text-muted">
                 <UtensilsCrossed className="w-12 h-12 text-paper-400" strokeWidth={1.2} />
                 Tap a dish on the menu
@@ -559,7 +565,9 @@ export function RestaurantTab() {
         onSendKitchen={() => void kitchenStep('send').then(sent => { if (sent) showToast('Sent to the kitchen.', 'success') })}
         onServed={() => void kitchenStep('served')}
         onBill={at => { if (selected) void askForBill(selected, at) }}
+        onPaper={() => setPaperOpen(true)}
       />
+      {paperOpen && <PaperSlip onClose={() => setPaperOpen(false)} />}
       {sheetOpen && selected && (
         <OrderSheet onClose={() => setSheetOpen(false)}>
           {slipPanel(selected, () => setSheetOpen(false))}

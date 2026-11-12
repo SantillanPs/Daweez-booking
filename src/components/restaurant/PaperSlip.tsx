@@ -1,23 +1,27 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BedDouble, Banknote, Check, Plus, Search, User } from 'lucide-react'
-import { useDashboardData } from './DashboardContext'
-import { Booking } from '../types/booking'
-import { MenuItem, getMenu } from '../utils/restaurantMenu'
-import { getAllTabLines, savePaperSlip } from '../utils/tabs'
-import { OrderSlip, getSlipsByBooking } from '../utils/orderSlips'
-import { SlipStory, getSlipHistory } from '../utils/slipHistory'
-import { groupOf } from '../utils/bookingGroup'
-import { stayStage } from '../utils/stayStage'
-import { resettleWith } from '../utils/billPayment'
-import { changedRows } from '../utils/bookingBalance'
-import { useRealtimeTabs } from '../hooks/useRealtimeTabs'
-import { dateToString, peso, randomUUID } from '../utils/helpers'
-import { showToast } from '../utils/toast'
-import { AnimatedNumber } from './AnimatedNumber'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { BedDouble, Banknote, Check, FileText, Plus, Search, User, X } from 'lucide-react'
+import { useDashboardData } from '../DashboardContext'
+import { Booking } from '../../types/booking'
+import { MenuItem, getMenu } from '../../utils/restaurantMenu'
+import { savePaperSlip } from '../../utils/tabs'
+import { OrderSlip, getSlipsByBooking } from '../../utils/orderSlips'
+import { groupOf } from '../../utils/bookingGroup'
+import { stayStage } from '../../utils/stayStage'
+import { resettleWith } from '../../utils/billPayment'
+import { changedRows } from '../../utils/bookingBalance'
+import { dateToString, peso, randomUUID } from '../../utils/helpers'
+import { showToast } from '../../utils/toast'
+import { AnimatedNumber } from '../AnimatedNumber'
 
-// RESTAURANT → PAPER SLIP (Sebastian, 2026-11-11). The restaurant takes orders on paper and the staff copy
+// THE PAPER SLIP (Sebastian, 2026-11-11). The restaurant takes orders on paper and the staff copy
 // them in later, so the tablet's flow (table, kitchen, serve, send bill) is steps they never take. This is
 // the paper copied line for line: who, what they ate, and how it was settled.
+//
+// **A popup over Restaurant → Orders, opened from the top right of the empty slip** (2026-11-12). It was
+// its own sub-tab first; he asked for it to be "part of the restaurant orders", then, of it folded into
+// the slip panel, "this is bugging out. so just make it into a popup". The quick-add dishes and the list
+// of today's slips went with it ("remove this"): a logged slip is in Restaurant → History and Today's money.
 //
 // **The name first, the dishes second, the rest last** (his comment on the mock: "the primary should be
 // name/search, 2nd is the orders, 3rd is the rest"). The switch beside the name is two icons with a sliding
@@ -29,15 +33,13 @@ import { AnimatedNumber } from './AnimatedNumber'
 // so the same paper slip is not logged twice.
 //
 // A dish is typed the way it is written: "2 adobo" is two Chicken Adobo. A dish not on the menu is still
-// taken, with its price typed on its line.
+// taken, with its price typed on its line. Only ✕ closes it: a tap outside would lose a half-copied slip.
 
 const METHODS = [['Cash', 'bg-emerald-700'], ['GCash', 'bg-blue-700'], ['Bank transfer', 'bg-gold-800']] as const
 
 interface Line { key: string; item?: MenuItem; name: string; price: number; qty: number }
-interface Pending { key: string; who: string; room: boolean; how: string; items: string; total: number; at: string }
 
 const today = () => dateToString(new Date())
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 const dayOf = (iso: string) => new Date(iso + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 const focusOn = (id: string) => document.getElementById(id)?.focus()
 const slipItems = (lines: { qty: number; description: string }[]) => lines.map(l => Number(l.qty) + ' ' + l.description).join(' · ')
@@ -48,10 +50,9 @@ function parseDish(text: string): { qty: number; query: string } {
   return { qty: m ? Math.max(1, Number(m[1])) : 1, query: (m ? m[2] : text).trim() }
 }
 
-export function PaperSlipTab() {
+export function PaperSlip({ onClose }: { onClose: () => void }) {
   const { bookings, rooms, venues, updateBooking } = useDashboardData()
   const [menu, setMenu] = useState<MenuItem[]>([])
-  const [often, setOften] = useState<MenuItem[]>([])
   const [room, setRoom] = useState(false)
   const [name, setName] = useState('')
   const [guest, setGuest] = useState<Booking | null>(null)
@@ -62,31 +63,14 @@ export function PaperSlipTab() {
   const [day, setDay] = useState(today())
   const [open, setOpen] = useState<'' | 'name' | 'dish'>('')
   const [hint, setHint] = useState('')
-  const [slips, setSlips] = useState<SlipStory[]>([])
-  const [pending, setPending] = useState<Pending[]>([])
+  const [logged, setLogged] = useState(0)
   const dayRef = useRef<HTMLInputElement>(null)
 
-  // The menu, and the four dishes ordered most, summed from every order line (as the menu's Best seller is).
   useEffect(() => {
     let alive = true
-    void (async () => {
-      const items = (await getMenu()).flatMap(c => c.items)
-      if (!alive) return
-      setMenu(items)
-      const counts = new Map<string, number>()
-      for (const l of await getAllTabLines()) counts.set(l.description, (counts.get(l.description) || 0) + Number(l.qty || 1))
-      if (alive) setOften(items.filter(i => counts.has(i.name)).sort((a, b) => counts.get(b.name)! - counts.get(a.name)!).slice(0, 4))
-    })()
+    void getMenu().then(c => { if (alive) setMenu(c.flatMap(x => x.items)) }).catch(() => {})
     return () => { alive = false }
   }, [])
-
-  // Today's slips, from the same story Restaurant → History reads; it follows the other tablets live.
-  const loadToday = useCallback(async () => {
-    const start = new Date(); start.setHours(0, 0, 0, 0)
-    try { setSlips((await getSlipHistory(start)).filter(s => s.at >= start.toISOString())) } catch { /* the list keeps what it had */ }
-  }, [])
-  useEffect(() => { queueMicrotask(() => void loadToday()) }, [loadToday])
-  useRealtimeTabs(() => void loadToday())
 
   // A guest's bill: one entry per bill, not per room — a booking of three rooms is one name.
   const stays = useMemo(() => {
@@ -102,14 +86,14 @@ export function PaperSlipTab() {
     return out
   }, [bookings])
 
-  // What is already on the picked guest's bill.
+  // What is already on the picked guest's bill (read again after each slip logged).
   useEffect(() => {
     if (!guest) return
     let alive = true
     const ids = groupOf(guest, bookings).map(b => b.id)
     void getSlipsByBooking(ids).then(r => { if (alive) setBillOf({ id: guest.id, slips: ids.flatMap(id => r[id] || []) }) }).catch(() => {})
     return () => { alive = false }
-  }, [guest, bookings, slips])
+  }, [guest, bookings, logged])
 
   const { qty, query } = parseDish(dish)
   const onBill = guest && billOf.id === guest.id ? billOf.slips : []
@@ -163,10 +147,8 @@ export function PaperSlipTab() {
     if (room && !guest) { setHint('Pick the guest.'); focusOn('paper-name'); setOpen('name'); return }
     const who = name.trim() || 'Walk-in'
     const kept = { lines, name, guest, room, method }
-    // The slip lands in today's list at once and is saved behind it; a failed save puts the form back.
-    const key = randomUUID()
+    // The form clears at once for the next paper slip and the save runs behind it; a failed save puts it back.
     const paidAt = day === today() ? new Date().toISOString() : new Date(day + 'T12:00').toISOString()
-    setPending(p => [{ key, who, room, how: room ? 'On bill' : method, items: slipItems(lines.map(l => ({ qty: l.qty, description: l.name }))), total, at: new Date().toISOString() }, ...p])
     setLines([]); setName(''); setGuest(null); setRoom(false); setMethod('Cash'); setHint(''); setDay(today())
     focusOn('paper-name')
     void (async () => {
@@ -177,7 +159,7 @@ export function PaperSlipTab() {
           dishes: kept.lines.map(l => ({ menuItemId: l.item?.id, name: l.name, price: l.price, qty: l.qty })),
           ...(bookingId ? { bookingId } : { paid: { method: kept.method, at: paidAt } }),
         })
-        showToast(kept.room ? peso(saved.total) + ' on ' + who + '’s bill' : peso(saved.total) + ' · ' + kept.method)
+        showToast(kept.room ? peso(saved.total) + ' on ' + who + '’s bill' : peso(saved.total) + ' · ' + kept.method, 'success')
         if (bookingId) {
           // The bill is priced again with the food on it, as when a table's bill goes on a room.
           const booking = bookings.find(b => b.id === bookingId)
@@ -190,39 +172,37 @@ export function PaperSlipTab() {
             }
           }
         }
-        await loadToday()
+        setLogged(n => n + 1)
       } catch {
         setLines(kept.lines); setName(kept.name); setGuest(kept.guest); setRoom(kept.room); setMethod(kept.method)
         showToast('The slip was not saved. It is back in the form — try again.', 'error')
-      } finally {
-        setPending(p => p.filter(x => x.key !== key))
       }
     })()
   }
 
-  const rows = [
-    ...pending.map(p => ({ ...p, fresh: true })),
-    ...slips.map(s => ({
-      key: s.tab.id, fresh: false, who: s.tab.label || 'Walk-in', room: !!s.tab.booking_id,
-      how: s.tab.booking_id ? 'On bill' : s.tab.paid_at ? (s.tab.payment_records?.[0]?.method || 'Paid') : 'Not paid',
-      items: s.steps.filter(e => e.kind === 'order').flatMap(e => e.items).map(i => i.qty + ' ' + i.name).join(' · '),
-      total: s.total, at: s.at,
-    })),
-  ]
-  const dayTotal = rows.reduce((s, r) => s + r.total, 0)
-
   const opt = 'w-full min-h-[46px] flex items-center gap-2.5 px-2 py-1.5 rounded-[10px] text-left text-[14px] font-semibold text-main hover:bg-gold-100 cursor-pointer'
 
-  return (
-    <div className="max-w-[640px] mx-auto px-4 py-5 grid gap-4 font-sans">
-      <div className="bg-card border border-soft rounded-[18px] p-[18px] grid gap-3.5">
+  return createPortal(
+    <div className="fixed inset-0 z-[70] grid place-items-center p-4 bg-ink-900/35 font-sans animate-in fade-in duration-200 motion-reduce:animate-none">
+      <div role="dialog" aria-modal="true" aria-label="Paper slip"
+        className="w-[480px] max-w-full max-h-[calc(100dvh-32px)] overflow-y-auto overscroll-contain bg-card rounded-[18px] p-[18px] grid gap-3.5 content-start shadow-softLg animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
+
+        <div className="flex items-center justify-between gap-2 -mt-1">
+          <span className="inline-flex items-center gap-2 font-display text-[19px] font-bold tracking-tight text-main">
+            <FileText className="w-[18px] h-[18px] text-gold-800" />Paper slip
+          </span>
+          <button type="button" aria-label="Close" onClick={onClose}
+            className="w-11 h-11 -mr-2.5 grid place-items-center rounded-[10px] text-muted hover:bg-softbg hover:text-main cursor-pointer active:scale-90 transition-transform">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         {/* 1 · Who */}
         <div className="relative">
           <div className="flex items-center gap-3">
             <label className={'flex-1 min-w-0 flex items-center gap-2 border-b-2 py-1 transition-colors focus-within:border-gold-400 ' + (room ? 'border-gold-400' : 'border-paper-200')}>
               {room ? <Search className="w-5 h-5 shrink-0 text-gold-800 animate-in zoom-in-50 duration-300" /> : <User className="w-5 h-5 shrink-0 text-muted" />}
-              <input id="paper-name" value={name} autoComplete="off" aria-label={room ? 'Find the guest' : 'Name on the slip'}
+              <input id="paper-name" autoFocus value={name} autoComplete="off" aria-label={room ? 'Find the guest' : 'Name on the slip'}
                 placeholder={room ? 'Guest’s name, e.g. Reyes' : 'Name, e.g. Mang Ben'}
                 onFocus={() => room && !guest && setOpen('name')}
                 onChange={e => { setName(e.target.value); if (guest) setGuest(null); if (room) setOpen('name') }}
@@ -233,7 +213,7 @@ export function PaperSlipTab() {
                   if (room && !guest && name.trim() && nameHits[0]) pickGuest(nameHits[0].booking)
                   else { setOpen(''); focusOn('paper-dish') }
                 }}
-                className="flex-1 min-w-0 bg-transparent outline-none py-1 font-display text-[26px] font-bold tracking-tight text-main placeholder:text-paper-400 placeholder:font-semibold" />
+                className="flex-1 min-w-0 bg-transparent outline-none py-1 font-display text-[24px] font-bold tracking-tight text-main placeholder:text-paper-400 placeholder:font-semibold" />
               {guest && <Check className="w-5 h-5 shrink-0 text-emerald-700 animate-in zoom-in-50 duration-300" strokeWidth={3} />}
             </label>
             {/* Paid now, or on a guest's bill: two icons and a thumb that slides between them. */}
@@ -284,7 +264,7 @@ export function PaperSlipTab() {
         {/* 2 · What they ordered */}
         <div>
           {lines.map(l => (
-            <div key={l.key} className={'grid grid-cols-[auto_minmax(0,1fr)_auto] gap-2.5 items-center min-h-[52px] border-b border-soft animate-in fade-in slide-in-from-top-2 duration-300 '}>
+            <div key={l.key} className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-2.5 items-center min-h-[52px] border-b border-soft animate-in fade-in slide-in-from-top-2 duration-300">
               <span className="inline-flex items-center rounded-xl bg-softbg">
                 <button type="button" aria-label="One less" onClick={() => step(l.key, -1)} className="w-9 h-11 text-[18px] font-bold text-muted cursor-pointer active:scale-90">−</button>
                 <b key={l.qty} className="min-w-5 text-center font-display text-[15px] font-extrabold animate-in zoom-in-125 duration-300">{l.qty}</b>
@@ -331,16 +311,6 @@ export function PaperSlipTab() {
                 </div>
             )}
           </div>
-          {!dish.trim() && often.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2.5">
-              {often.map(d => (
-                <button key={d.id} type="button" onClick={() => addDish(d, d.name, 1)}
-                  className="min-h-9 px-3 rounded-full bg-softbg text-[12.5px] font-semibold text-main cursor-pointer active:scale-[.93] transition-transform">
-                  {d.name}<em className="not-italic font-medium text-muted ml-1">{peso(d.price)}</em>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* 3 · The rest */}
@@ -378,28 +348,7 @@ export function PaperSlipTab() {
           </button>
         </div>
       </div>
-
-      {/* Today's slips */}
-      <div className="bg-card border border-soft rounded-[18px] px-4 py-1.5">
-        <div className="flex justify-between items-baseline pt-2.5 pb-2 text-[12.5px] font-semibold text-muted">
-          <span>Today · {rows.length} {rows.length === 1 ? 'slip' : 'slips'}</span>
-          <b className="font-display text-[16px] font-extrabold text-main tabular-nums"><AnimatedNumber value={dayTotal} prefix="₱" duration={450} /></b>
-        </div>
-        {rows.length === 0 && <p className="py-3 border-t border-soft text-[13px] text-muted">No slips yet today.</p>}
-        {rows.map(r => (
-          <div key={r.key} className={'grid grid-cols-[62px_minmax(0,1fr)_auto] gap-2.5 items-center py-2.5 border-t border-soft ' + (r.fresh ? 'animate-in fade-in slide-in-from-top-3 duration-500' : '')}>
-            <span className="font-mono text-[11.5px] text-muted">{timeOf(r.at)}</span>
-            <span className="min-w-0">
-              <b className="text-[14px]">{r.who}</b>
-              <span className="inline-flex items-center gap-1 ml-1.5 text-[11px] font-bold text-muted">
-                {r.room ? <BedDouble className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}{r.how}
-              </span>
-              <span className="block truncate text-[12px] text-muted">{r.items}</span>
-            </span>
-            <span className="text-[14.5px] font-bold tabular-nums">{peso(r.total)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -185,11 +185,13 @@ const restaurantHistoryRoute = createRoute({
   component: lazyRouteComponent(() => import('./components/RestaurantHistory'), 'RestaurantHistory')
 })
 
-// A paper order slip copied in after the fact (Sebastian, 2026-11-11).
+// The paper slip was a sub-tab for a day; since 2026-11-12 it is a popup on Orders, so the address goes there.
 const paperSlipRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/restaurant/paper',
-  component: lazyRouteComponent(() => import('./components/PaperSlipTab'), 'PaperSlipTab')
+  beforeLoad: () => {
+    throw redirect({ to: '/restaurant' })
+  }
 })
 
 // 5. Construct Route Tree
