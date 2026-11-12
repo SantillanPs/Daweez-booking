@@ -19,6 +19,7 @@ export const NEW_FEATURES: NewFeature[] = [
   // The big figures (Total cash on hand, the bill's Amount due, the booking panel's) roll digit by digit (`CountPeso`).
   { id: 'rolling-totals', since: '2026-11-12' },
   // An agency's bill takes discounts like a guest's, from its "Add" (`NewBookingBill`).
+  { id: 'diner-discount-note', since: '2026-11-12' },
   { id: 'agency-discount', since: '2026-11-12' },
   // Restaurant → Orders → Paper slip: a paper order slip copied in after the fact, paid now or onto a guest's bill (`PaperSlip`).
   { id: 'paper-slip', since: '2026-11-12' },

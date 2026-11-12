@@ -58,6 +58,7 @@
 ## Lessons that cost real money
 
 - **An agency's bill takes discounts too** (Sebastian, 2026-11-12: *"let's not forget to allow discounts for agencies"*). It is given the way a guest's is, from the bill's "Add", and its paper prints it as a row above the Total.
+- **A diner's slip takes its discount the way the bill does** (Sebastian, 2026-11-12, the "Discount cleanup" mock: *"remove redundancies"*). One line: what it is for, the percentage, what it takes off; the sub-total is said once, and the receipt prints `Senior citizen (20%)`.
 - **Every place that re-prices a booking must be handed every fact about it** — breakfast, short-stay hours, discount, agency rate. Each time one was left out, a screen charged a different stay than the one stored (a 3-hour stay billed as a night; a booking stored ₱600 short).
 - **A report of money must never lose money in silence.** Money with no dated receipt is shown separately, not dropped.
 - **One receipt number, one payment, across rooms and the restaurant.** Room receipts were numbered from the bookings alone and a diner's slip from both, so a room payment kept taking a number a slip already had. Today's money joins lines that share a number (one payment on several rooms), so each pair became one line and the slip's money left the day: 27 slips, ₱7,695, 14–24 Oct 2026 on live (found 2026-10-28). Room receipts now read every used number from the database first, and Today's money never joins a slip with a booking.

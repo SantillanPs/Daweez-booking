@@ -220,6 +220,8 @@ export interface PaymentRecord {
   // Pesos the front desk took off a diner's order slip before taking the money (Sebastian,
   // 2026-10-24). `amount` is what was paid; the slip's lines keep their own prices.
   discount?: number
+  // What the discount was for, as the bill words it: `Senior citizen (20%)` (2026-11-12).
+  discount_note?: string
   // A payment typed wrong and fixed on the bill (Sebastian, 2026-10-24, the "Fixing a payment" mock's B):
   // what it said before each fix, so History can still show it. The receipt keeps its number and its day.
   fixes?: PaymentFix[]

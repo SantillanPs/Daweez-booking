@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Banknote, Printer, Undo2, Utensils, X } from 'lucide-react'
+import { Banknote, Printer, Tag, Undo2, Utensils, X } from 'lucide-react'
 import { Tab, TabLine } from '../../types/tab'
 import { PaymentRecord } from '../../types/booking'
 import { OrderSlip, slipNumber } from '../../utils/orderSlips'
@@ -10,7 +10,13 @@ import { TabSettlePanel } from './TabSettlePanel'
 import { TabReceiptModal } from './TabReceiptModal'
 import { RunningTabSlip } from './RunningTabSlip'
 import { tableName } from './served'
-import { DiscountBox, Discount } from '../calendar/NewBookingBill'
+import { DiscountPop, Discount } from '../calendar/NewBookingBill'
+import { Floating } from '../calendar/BillRoomLines'
+import { BIG, FACTS, GoneLine, HEAD, LINE, PALE, PART, RANK, RemoveBin, STACK } from '../billing/FixPayment'
+import { discountLabel } from '../../utils/discounts'
+import { NewTag } from '../NewMark'
+import { markSeen } from '../../utils/newMarks'
+
 import { peso } from '../../utils/helpers'
 
 
@@ -41,8 +47,22 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
   // **A discount on a diner's bill** (Sebastian, 2026-10-24: "when a bill is sent to the front desk
   // from the restaurant, being able to add discounts is needed"). Taken off at the desk, the way the
   // booking bill's "+ Discount" is; the slip's lines keep their prices and the receipt shows it.
+  // **Written like the bill's** (Sebastian, 2026-11-12, the "Discount cleanup" mock, c): one line with
+  // what it is for, how much and what it takes off, each its own tap; the sub-total and the word
+  // Discount are said once ("remove redundancies").
   const [disc, setDisc] = useState<Discount | null>(null)
+  const [pop, setPop] = useState<{ part?: 'note' | 'v'; at: HTMLElement; right?: boolean } | null>(null)
+  const [gone, setGone] = useState<{ disc: Discount; off: number } | null>(null)
+  const [card, setCard] = useState<HTMLDivElement | null>(null)
   const off = !disc ? 0 : Math.min(slip.total, disc.pct ? Math.round(slip.total * disc.v / 100) : disc.v)
+  const given = disc && disc.v > 0 ? disc : null
+  const words = given ? discountLabel({ type: given.pct ? 'percent' : 'flat', value: given.v, note: given.note?.trim() || undefined }) : ''
+  const closePop = () => { setPop(null); setDisc(d => (d && d.v > 0 ? d : null)) }
+  const part = (which: 'note' | 'v', name: string, look: string, body: React.ReactNode, right = false) => (
+    <button type="button" aria-label={'Change ' + name} aria-expanded={pop?.part === which && pop.right === right}
+      onClick={e => { const at = e.currentTarget; setPop(p => (p?.at === at ? null : { part: which, at, right })) }}
+      className={PART + ' ' + look}>{body}</button>
+  )
   const toPay = slip.total - off
   // **The money is sealed before the receipt opens** (the owner, 2026-10-15: animations
   // for the table payments). The same seal as the booking panel's (`mark` in
@@ -88,7 +108,7 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
     <>
       {createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-ink-900/50 font-sans bp-dim" onClick={onClose}>
-      <div className="relative w-full max-w-sm bg-card rounded-xl border border-soft shadow-softLg overflow-hidden bp-rise motion-reduce:[animation:none]" onClick={e => e.stopPropagation()}>
+      <div ref={setCard} className="relative w-full max-w-sm bg-card rounded-xl border border-soft shadow-softLg overflow-hidden bp-rise motion-reduce:[animation:none]" onClick={e => e.stopPropagation()}>
         {sealed && (
           <div role="status" className={'absolute inset-0 z-10 bg-card grid place-content-center justify-items-center gap-2.5 pointer-events-none ' + (sealed === 'leaving' ? 'bp-gone' : 'bp-dim')}>
             <span className="relative w-16 h-16 grid place-items-center rounded-full bg-ink-900 text-gold-400 bp-seal">
@@ -122,25 +142,47 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
               </li>
             ))}
           </ul>
-          {disc && (
+          {(given || gone) && (
             <div className="pt-2 border-t border-soft space-y-1">
               <div className="flex items-baseline justify-between gap-2 text-[14px] text-muted"><span>Sub-total</span><span className="tabular-nums">{peso(slip.total)}</span></div>
-              <div className="flex items-center justify-between gap-3 text-[14px] text-muted">
-                <span>Discount</span>
-                <div className="w-56"><DiscountBox disc={disc} onChange={setDisc} off={off} /></div>
-              </div>
+              {given && (
+                <div className={LINE + ' ' + RANK + ' bw-rise'}>
+                  <Tag aria-hidden="true" className="justify-self-center w-3 h-3 text-danger-600" />
+                  <span className={STACK}>
+                    {part('note', 'what the discount is for', HEAD, given.note?.trim() || <span className="text-gold-800">What for?</span>)}
+                    {/* The second row says only what the figure does not: the percentage, or a ₱ the slip had too little for. */}
+                    {(given.pct || off < given.v) && (
+                      <span className={FACTS}>
+                        {part('v', 'how much the discount is', 'shrink-0 whitespace-nowrap tabular-nums' + PALE + (given.pct ? '' : ' line-through decoration-paper-400'), given.pct ? given.v + '%' : peso(given.v))}
+                      </span>
+                    )}
+                  </span>
+                  {part('v', 'what the discount takes off', BIG + ' text-danger-600' + PALE, <span key={off} className="bw-rise">−{peso(off)}</span>, true)}
+                  <RemoveBin what={given.note?.trim() || 'the discount'} onRemove={() => { setGone({ disc: given, off }); setDisc(null); setPop(null) }} />
+                </div>
+              )}
+              {gone && !given && (
+                <GoneLine icon={<Tag className="w-3 h-3" />} name={gone.disc.note?.trim() || 'Discount'} detail={gone.disc.pct ? gone.disc.v + '%' : ''}
+                  amount={'−' + peso(gone.off)} onUndo={() => { setDisc(gone.disc); setGone(null) }} />
+              )}
             </div>
           )}
           <div className="flex items-baseline justify-between gap-2 pt-3 border-t border-soft">
             <span className="text-[14px] font-medium text-muted">{off > 0 ? 'To pay' : 'Total'}</span>
-            {/* The bill before the discount, struck through above what is paid (task #11). */}
-            <span className="flex items-baseline gap-2">
-            {off > 0 && <span className="font-mono text-[13px] text-muted line-through bw-rise">{peso(slip.total)}</span>}
             <span key={toPay} className="font-display text-[26px] leading-none font-extrabold tracking-tight tabular-nums text-main bw-rise">{peso(toPay)}</span>
-            </span>
           </div>
-          {!disc && (
-            <button type="button" onClick={() => setDisc({ pct: true, v: 0 })} className="mt-1 text-[13px] font-bold text-gold-800 hover:underline cursor-pointer">+ Discount</button>
+          {!given && (
+            <span className="relative inline-block">
+              <button type="button" aria-expanded={!!pop && !pop.part}
+                onClick={e => { markSeen('diner-discount-note'); const at = e.currentTarget; if (pop && !pop.part) { closePop(); return } setGone(null); setDisc({ pct: true, v: 0, note: '' }); setPop({ at }) }}
+                className="mt-1 text-[13px] font-bold text-gold-800 hover:underline cursor-pointer">+ Discount</button>
+              <NewTag id="diner-discount-note" />
+            </span>
+          )}
+          {pop && disc && card && (
+            <Floating at={() => pop.at} sheet={card} right={pop.right} label={pop.part === 'note' ? 'What the discount is for' : 'A discount'} onClose={closePop}>
+              <DiscountPop disc={disc} off={off} part={pop.part} onChange={setDisc} onDone={closePop} />
+            </Floating>
           )}
           {changed && <p role="alert" className="mt-2 text-[13px] font-semibold text-danger-600">{changed}</p>}
 
@@ -148,6 +190,7 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
             tab={slip.tab}
             total={toPay}
             discount={off || undefined}
+            discountNote={words || undefined}
             ready={stillTheSame}
             onSettled={record => {
               onChanged()
@@ -183,7 +226,7 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
           place={slip.tab.table_label ? { label: 'Table', value: slip.tab.table_label } : undefined}
           lines={slip.lines}
           total={slip.total}
-          discount={off ? { label: disc?.pct ? disc.v + '%' : '', amount: off } : undefined}
+          discount={off ? { label: words, amount: off } : undefined}
           note="To be paid at the front desk."
           onClose={() => setPrinting(false)}
         />

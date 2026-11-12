@@ -14,7 +14,7 @@ interface RunningTabSlipProps {
   place?: { label: string; value: string }
   lines: TabLine[]
   total: number
-  /** A discount given at the front desk, printed under the lines. */
+  /** A discount given at the front desk, printed under the lines; `label` is its words, `Senior citizen (20%)`. */
   discount?: { label: string; amount: number }
   /** What happens with this paper next — everybody pays at the front desk. */
   note: string
@@ -53,7 +53,7 @@ export function RunningTabSlip({ number, who, place, lines, total, discount, not
       {discount ? (
         <>
           <Row label="Sub-total" value={peso(total)} />
-          <Row label={'Discount' + (discount.label ? ' ' + discount.label : '')} value={'−' + peso(discount.amount)} />
+          <Row label={discount.label || 'Discount'} value={'−' + peso(discount.amount)} />
           <Row label="TO PAY" value={peso(total - discount.amount)} strong />
         </>
       ) : <Row label="TOTAL" value={peso(total)} strong />}

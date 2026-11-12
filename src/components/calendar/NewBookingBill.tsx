@@ -1443,35 +1443,6 @@ const extrasOf = (e: Extras) => ({
   formExtraFoam: e.extraFoamCount, formExtraPillow: e.extraPillowCount, formExtraBlanket: e.extraBlanketCount, formExtraTowel: e.extraTowelCount,
 })
 
-/** "+ Discount" on a diner's slip: % or ₱, and what it takes off in pesos beside it as it is typed (Sebastian, 2026-10-24, task #11: "show how much was discounted"). */
-export function DiscountBox({ disc, onChange, off }: { disc: Discount; onChange: (d: Discount | null) => void; off?: number }) {
-  return (
-    <div className="flex items-center gap-1.5 my-0.5 bw-unfold">
-      <div role="group" aria-label="Discount by" className="relative grid grid-cols-2 p-0.5 rounded-md bg-card shadow-[inset_0_0_0_1.5px_#1C1C1C]">
-        <span aria-hidden="true" style={{ '--i': disc.pct ? 0 : 1 } as React.CSSProperties}
-          className="absolute top-0.5 bottom-0.5 left-0.5 w-[calc((100%-4px)/2)] rounded bg-ink-900 translate-x-[calc(var(--i)*100%)] transition-transform duration-300 ease-[cubic-bezier(.34,1.4,.64,1)]" />
-        {[true, false].map(p => (
-          <button key={String(p)} type="button" aria-pressed={disc.pct === p} onClick={() => onChange({ ...disc, pct: p })}
-            className={'relative w-7 min-h-6 text-[11px] font-bold transition-colors cursor-pointer ' + (disc.pct === p ? 'text-white' : 'text-ink-900')}>{p ? '%' : '₱'}</button>
-        ))}
-      </div>
-      <label className="flex-1 flex items-baseline gap-0.5 border-b-2 border-ink-900 focus-within:border-gold-400 transition-colors">
-        {!disc.pct && <span className="font-display text-[11px] font-extrabold text-muted bw-rise">₱</span>}
-        <input autoFocus inputMode="numeric" placeholder={disc.pct ? '10' : '200'} aria-label="Discount"
-          value={disc.v ? disc.v.toLocaleString() : ''}
-          onChange={e => { const n = Number(e.target.value.replace(/\D/g, '')) || 0; onChange({ ...disc, v: disc.pct ? Math.min(n, 100) : n }) }}
-          className="min-w-0 w-full bg-transparent border-0 p-0 text-right font-mono text-[13px] font-bold text-ink-900 placeholder:text-paper-400 focus:outline-none" />
-        {disc.pct && <span className="font-mono text-[12px] font-bold text-muted bw-rise">%</span>}
-      </label>
-      <button type="button" onClick={() => onChange(null)} aria-label="No discount"
-        className="p-0.5 rounded text-muted opacity-60 hover:opacity-100 hover:text-danger-600 active:scale-90 transition cursor-pointer"><X className="w-3 h-3" /></button>
-      {off !== undefined && (
-        <span key={off} className="shrink-0 min-w-[52px] text-right font-mono text-[12px] font-bold text-danger-600 bw-rise">{off ? '−₱' + off.toLocaleString() : '—'}</span>
-      )}
-    </div>
-  )
-}
-
 // The boxes over the bill are written in ink like it (the Paper mock, 2026-10-29): a gold dashed line to
 // write on, ✓ a gold outline, a list ruled in dots, and a way back as a quiet dotted word.
 const QUIET = 'self-start mt-1 px-1 py-0.5 text-[10.5px] font-semibold text-muted border-b-[1.5px] border-dotted border-paper-400 hover:text-danger-600 hover:border-danger-600 transition-colors cursor-pointer bw-rise'
@@ -1535,7 +1506,7 @@ const STUB = 84
  * so it does not jump at the first key, and the note's line keeps one width (2026-10-29). It changes the
  * bill as it is typed, like the box it replaced.
  */
-function DiscountPop({ disc: start, off, part, onChange, onDone, onNone }: {
+export function DiscountPop({ disc: start, off, part, onChange, onDone, onNone }: {
   disc: Discount; off: number; onChange: (d: Discount) => void; onDone: () => void; onNone?: () => void
   /** A written discount's one part: only its note, or only how much (2026-11-06, like `FixPayment`). */
   part?: 'note' | 'v'

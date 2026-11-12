@@ -285,6 +285,8 @@ export async function settleTab(input: {
   preparedBy?: string
   /** Pesos taken off the slip at the desk; `amount` is already less it. */
   discount?: number
+  /** What the discount was for: `Senior citizen (20%)`. */
+  discountNote?: string
   /** A paper slip logged on a later day is paid on the day it was written (`savePaperSlip`). */
   paidAt?: string
 }): Promise<PaymentRecord> {
@@ -297,6 +299,7 @@ export async function settleTab(input: {
     prepared_by: input.preparedBy?.trim() || undefined,
     receipt_number: nextTabReceiptNumber(await usedReceiptNumbers()),
     discount: input.discount ? money(input.discount) : undefined,
+    discount_note: input.discount && input.discountNote ? input.discountNote : undefined,
   }
   const records = [...(input.tab.payment_records || []), record]
   const closed_at = new Date().toISOString()

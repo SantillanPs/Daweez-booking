@@ -105,7 +105,7 @@ export function TabReceiptModal({ tab, lines, record, onClose }: TabReceiptModal
             {record.discount ? (
               <>
                 <div className="border-t border-black pt-[3px] mt-[2px]"><Row label="Sub-total" value={peso(total)} mono /></div>
-                <Row label="Discount" value={'−' + peso(record.discount)} mono />
+                <Row label={record.discount_note || 'Discount'} value={'−' + peso(record.discount)} mono />
               </>
             ) : null}
           </div>
