@@ -205,5 +205,27 @@ export function useTabOrder(
     if (ok) add({ ...row, delta: 0, remove: true })
   }
 
-  return { waiting, error, setError, saveError, pickItem, addWritten, addCharge, changeQty, finish, showOther, setShowOther }
+  /**
+   * Every row off the slip at once (Sebastian, 2026-11-12: "allow removing orders in the tables"; notes #21).
+   * Each row goes the way one row does — its stock back on the shelf, a "taken off" step in History — so
+   * nothing new is written to the database. It asks first, once, with what comes off. True when removed.
+   */
+  const removeAll = async (place: string): Promise<boolean> => {
+    const lines = shownNow()
+    if (lines.length === 0) return true
+    const total = lines.reduce((s, l) => s + Number(l.amount || 0), 0)
+    const ok = await askConfirm({
+      title: 'Remove every order on ' + place + '?',
+      message: lines.length + (lines.length === 1 ? ' line' : ' lines') + ' · ' + peso(total) + ' comes off the bill.',
+      confirmLabel: 'Remove all',
+      tone: 'danger',
+    })
+    if (!ok) return false
+    for (const l of lines) {
+      add({ lineId: l.id, menuItemId: l.menu_item_id, description: l.description, unitPrice: Number(l.unit_price || 0), delta: 0, remove: true })
+    }
+    return true
+  }
+
+  return { waiting, error, setError, saveError, pickItem, addWritten, addCharge, changeQty, removeAll, finish, showOther, setShowOther }
 }

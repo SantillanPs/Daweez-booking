@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // Restaurant → Orders: "Remove all orders" under a table's slip takes every dish off at once (`OrderSlipPanel`).
+  { id: 'remove-all-orders', since: '2026-11-12' },
   // The big figures (Total cash on hand, the bill's Amount due, the booking panel's) roll digit by digit (`CountPeso`).
   { id: 'rolling-totals', since: '2026-11-12' },
   // An agency's bill takes discounts like a guest's, from its "Add" (`NewBookingBill`).

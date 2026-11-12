@@ -110,3 +110,7 @@ Food lines live in their own tables, never on the booking. Saving a small food l
 - **The staff take orders on paper, not on the Restaurant screen.** Sebastian, 2026-11-09: *"the flow they usually have is just take orders, write them by hand and give it to the chef, that's it."* They type the slip into the system afterwards, when they have time. On live, most slips went from opened to paid in about 30 seconds, and 5 sat served but never billed.
 - **The screen added steps the paper never had**: *"I think the restaurant system is adding too many unnecessary steps and adding more bottleneck to their workflow."* Writing by hand is faster, so about a quarter of restaurant payments (29 of 110 in 30 days) were typed as an amount only in Cash Flow, with no dishes.
 - **The menu is for customers, not staff**: *"the menu is worthless for the staff since menu's are supposed to be for the customers."*
+
+## Removing a table's orders (2026-11-12)
+
+- Sebastian, 2026-11-12: *"add a feature that allow removing orders in the tables that are in the restaurant."* One dish could already be taken off; a whole table could not (notes #21).

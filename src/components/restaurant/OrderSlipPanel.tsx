@@ -1,10 +1,12 @@
 import React from 'react'
-import { X } from 'lucide-react'
+import { Trash2, X } from 'lucide-react'
+import { NewTag } from '../NewMark'
+import { markSeen } from '../../utils/newMarks'
 import { Tab, TabLine } from '../../types/tab'
 import { OrderSlip, slipNumber } from '../../utils/orderSlips'
 import { Served } from './served'
 import { TabBill } from './TabBill'
-import { TableButton } from './TablesPopup'
+import { TableButton } from './TablesPopup'
 import { peso } from '../../utils/helpers'
 
 
@@ -34,6 +36,8 @@ interface OrderSlipPanelProps {
   onBill: (at: DOMRect) => void
   /** A diner who sat down and ordered nothing: the empty slip is taken off the screen. */
   onDropEmpty: (tab: Tab) => void
+  /** Every order on the slip taken off; asks first. */
+  onRemoveAll: () => void
 }
 
 // One person's order slip: who it is for, what is on it, and what happens next.
@@ -49,7 +53,7 @@ interface OrderSlipPanelProps {
 // height, and only the rows give way and scroll — the total and its buttons never move.
 export function OrderSlipPanel({
   person, number, lines, total, earlier, errors, ready, tablesOpen,
-  onTables, onClose, onQty, onSendKitchen, onServeLine, onCharge, onBill, onDropEmpty,
+  onTables, onClose, onQty, onSendKitchen, onServeLine, onCharge, onBill, onDropEmpty, onRemoveAll,
 }: OrderSlipPanelProps) {
   return (
     <>
@@ -89,6 +93,14 @@ export function OrderSlipPanel({
         <button type="button" onClick={() => onDropEmpty(person.tab as Tab)}
           className="shrink-0 self-start min-h-11 text-[14px] font-semibold text-muted hover:text-danger-600 transition-colors cursor-pointer">
           Remove this order slip
+        </button>
+      )}
+      {/* Rare, so it is quiet: plain words under the slip, never beside Send to kitchen. */}
+      {lines.length > 0 && (
+        <button type="button" onClick={() => { markSeen('remove-all-orders'); onRemoveAll() }}
+          className="relative shrink-0 self-start min-h-11 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-muted hover:text-danger-600 transition-colors cursor-pointer active:scale-[.97]">
+          <Trash2 className="w-4 h-4" />Remove all orders
+          <NewTag id="remove-all-orders" />
         </button>
       )}
 

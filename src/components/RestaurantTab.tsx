@@ -484,6 +484,11 @@ export function RestaurantTab() {
       onCharge={order.addCharge}
       onBill={at => void askForBill(person, at)}
       onDropEmpty={tab => void dropEmptySlip(tab)}
+      onRemoveAll={() => void (async () => {
+        if (!(await order.removeAll(person.name))) return
+        // A table's emptied slip is closed, as an empty one is; a room's stays with the room.
+        if (!person.booking && person.tab) await dropEmptySlip(person.tab)
+      })()}
     />
   )
 
