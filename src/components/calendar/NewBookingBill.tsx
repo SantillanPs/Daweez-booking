@@ -239,7 +239,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // what the form would save on them: the agency's rate, the extras on the first room, the
   // charges on the first unit, the discount (a flat amount once, on the first).
   // The discounts sit whole on the first room and come off every stay on the bill (2026-11-07).
-  const discList = to ? [] : discs.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.v, note: d.note }))
+  // An agency's bill takes discounts too (Sebastian, 2026-11-12: "let's not forget to allow discounts for agencies").
+  const discList = discs.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.v, note: d.note }))
   // What stays under the Exclusive and comes off its price (Sebastian, 2026-11-07). A saved bill keeps
   // what it agreed while its days and kind are the same, so a guest leaving later changes nothing.
   const lessOf = (id: string, s: Sel): ExclusiveLess[] | undefined => {
@@ -554,7 +555,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       // What the bill does not show is sent back as saved, or the save would blank it.
       formChairs: venueKit?.chairCount || 0, formEventTable: venueKit?.tableCount || 0, formEventTent: venueKit?.tentCount || 0,
       formVenueExcessHours: ed?.venue_excess_hours || 0, formBlockNotes: ed?.notes || '', venueDayBlocks: ed?.venue_day_blocks || undefined,
-      discounts: to ? [] : given.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.v, note: d.note?.trim() || undefined })),
+      discounts: given.map(d => ({ type: d.pct ? 'percent' as const : 'flat' as const, value: d.v, note: d.note?.trim() || undefined })),
       formVenueTypes: kinds,
       formExclusiveLess: Object.fromEntries(list.flatMap(([id, s]) => { const l = lessOf(id, s); return l ? [[id, l]] : [] })),
       formPaymentMethod: ed ? ed.payment_method || '' : paid?.method || '', formPaymentReference: ed ? ed.payment_reference || '' : paid?.reference || '',
@@ -1129,12 +1130,14 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   // The bill's one "Add" (Sebastian, 2026-11-06, the "Bill Sub-total Row" mock: "merge the payment and
   // discount button"). It hangs on the discount line once there is one, else on the payment line.
   const canPay = editing ? !!desk && due > 0 : !paid && total > 0
-  const discHere = !to && given.length > 0
-  const addMoney = (
+  const discHere = given.length > 0
+  const addMoney = (<>
     <AddMoney expanded={(pop?.kind === 'disc' && Number(pop.id) >= given.length) || writing}
-      onDiscount={to ? undefined : addDisc}
-      onPayment={canPay ? () => { if (writing) { setWriting(false); return } setWriting(true); if (editing) void save() } : undefined} />
-  )
+      onDiscount={at => { if (to) sawFeature('agency-discount'); addDisc(at) }}
+      // A new agency booking takes no payment on the bill: the agency pays later.
+      onPayment={canPay && (!to || desk) ? () => { if (writing) { setWriting(false); return } setWriting(true); if (editing) void save() } : undefined} />
+    {to && <NewTag id="agency-discount" />}
+  </>)
   // The paper copy follows the saved booking, not each key typed: drawn again only once a change
   // is saved (typing on the bill was slow, 2026-10-29).
   const paperCopy = useMemo(() => ed && <PrintInvoiceModal booking={ed} rooms={rooms} venues={venues} bookingsList={bookings} onClose={() => {}} embedded />, [ed, rooms, venues, bookings])
@@ -1232,7 +1235,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               Breakfast and Charge sit right under the rooms (the Paper mock, 2026-10-29). The paper
               still prints a row for each discount. */}
           {statement && (
-            <StatementChargesTable items={to ? statement.lineItems : statement.lineItems.filter(l => l.band !== 'discount')} onRemove={removeLine} isNew={() => false} renderLine={renderLine}>
+            <StatementChargesTable items={statement.lineItems.filter(l => l.band !== 'discount')} onRemove={removeLine} isNew={() => false} renderLine={renderLine}>
               {removed && (
                 <tr key={removed.label}>
                   <td colSpan={6} className="pt-1 text-[10.5px] font-semibold text-muted bw-rise">
@@ -1243,7 +1246,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               <AddCharge sheet={sheetEl} onCharge={addCharge} cols={6}
                 // The Sub-total, bold, at the end of the add line (Sebastian, 2026-11-06, the "Bill Sub-total
                 // Row" mock: "I want the sub total to be more visible"). An agency's paper is Total only.
-                end={!to && (
+                end={(!to || discHere) && (
                   <div className={TOT}>
                     <span className="col-start-2 col-span-2 flex items-center justify-between gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-900">Sub-total</span>
@@ -1267,8 +1270,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           <div ref={totalsBox} className="grid grid-cols-[1fr_236px] gap-6 items-start">
             <div />
             <div className="relative flex flex-col gap-[3px]">
-              {(!to || desk) && (
-                <>
+              <>
                   {/* The lines that add to the money hang a "+" in the margin beside them (Sebastian,
                       2026-10-29, the Paper mock: "I don't like the buttons to have their own row of space").
                       With no discount yet, its "+" waits beside the Sub-total. Every line below sits on the
@@ -1276,13 +1278,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                   {/* One discount is its own line: "Discount", its note and %, what it takes off; a tap opens
                       its coupon. Two or more fold into one line with a count (Sebastian, 2026-11-06: "if
                       there's only 1 discount currently added, then no need to become a drop down"). */}
-                  {!to && given.length === 1 && (
+                  {given.length === 1 && (
                     <div className="relative">
                       {addMoney}
                       <div key={landed} className={TOT + ' ' + RANK + (landed ? ' bill-land' : '')}>{discLine(given[0], 0, false)}</div>
                     </div>
                   )}
-                  {!to && given.length > 1 && (
+                  {given.length > 1 && (
                     <>
                       <div className="relative">
                         {addMoney}
@@ -1307,6 +1309,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                   {struck.filter(g => g.kind === 'disc').map(g => (
                     <GoneLine key={g.key} icon={<Tag className="w-3 h-3" />} name={g.name} detail={g.detail} amount={'−' + pesoWhole(g.amount)} onUndo={() => unstrike(g)} />
                   ))}
+                  {/* A new agency booking shows no payments, so its "Add" (a discount only) stands on its own. */}
+                  {to && !desk && !discHere && <div className="relative min-h-[22px]">{addMoney}</div>}
+                  {(!to || desk) && (<>
                   {/* One payment is its own line too ("Paid", then what for, the day, how — each still a tap to
                       fix), its amount in green; two or more fold into one line with a count. Writing one is the
                       "+" beside it, gone once nothing is owed. Its bin takes it off (2026-11-06). */}
@@ -1354,8 +1359,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                   {paidUp && ed?.status !== 'cancelled' && (
                     <span className="bill-paid self-end mt-1.5 mb-0.5 px-[9px] py-0.5 border-2 border-emerald-700 rounded text-[11px] font-extrabold uppercase tracking-[0.1em] text-emerald-700">✓ Paid in full</span>
                   )}
-                </>
-              )}
+                  </>)}
+              </>
               {/* The box starts at the icon column, so its label stands on the names' edge and its figure
                   ends on the amounts' (the border's 2.5px taken off each side). */}
               <div onClick={to && !agencyTotal ? () => sawFeature('agency-paid-due') : over > 0 ? () => sawFeature('bill-overpaid') : undefined} className={'mt-2.5 pl-[19.5px] pr-[25.5px] py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900' + (!to || desk ? '' : ' -mx-3 px-3')}>
@@ -1414,8 +1419,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             mock, Sebastian, 2026-10-29). */}
         {statement && (
           <div aria-hidden={totalsSeen} className={'bill-slip bill-tear-t print:hidden sticky bottom-2.5 z-20 w-full max-w-xl mx-auto -mt-16 mb-2.5 flex items-center gap-3.5 pl-4 pr-3 pt-[13px] pb-[9px] rounded-b-md bg-paper-50 border-b-[1.5px] border-ink-900 text-ink-900' + (totalsSeen ? ' away' : '')}>
-            {!to && <SlipFigure name="Sub-total" value={pesoWhole(total + discOff)} />}
-            {!to && discOff > 0 && <SlipFigure name="Discount" value={'−' + pesoWhole(discOff)} tone="text-danger-600" />}
+            {(!to || discOff > 0) && <SlipFigure name="Sub-total" value={pesoWhole(total + discOff)} />}
+            {discOff > 0 && <SlipFigure name="Discount" value={'−' + pesoWhole(discOff)} tone="text-danger-600" />}
             {received > 0 && <SlipFigure name="Paid" value={'−' + pesoWhole(received)} tone="text-emerald-700" />}
             <span className="flex-1" />
             <div className="flex items-baseline gap-2 px-3 py-[5px] bg-card border-2 border-ink-900">
