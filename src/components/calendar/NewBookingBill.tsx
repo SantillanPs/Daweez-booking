@@ -85,7 +85,7 @@ export interface Discount { pct: boolean; v: number; note?: string }
  * the booking form's own `submitBookingForm`, so the rooms, prices, receipt and rollback are the
  * form's; nothing is saved until Book.
  */
-export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, initialStayHalf, editing, desk, mark: tapped, onSaved, onBooked, onBooking, onClose }: {
+export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, initialStayHalf, initialGuest, editing, desk, mark: tapped, onSaved, onBooked, onBooking, onClose }: {
   rooms: Room[]; venues: Venue[]; bookings: Booking[]; allBookings: Booking[]
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>
   updateBooking: (b: Booking) => Promise<void>
@@ -95,6 +95,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   initialStayHours?: number
   /** The half of the day picked for a short stay: 0 the morning, 1 the afternoon. */
   initialStayHalf?: 0 | 1
+  /** A guest's request being booked: their name and number are already written in. */
+  initialGuest?: { name: string; phone: string }
   /**
    * A booking being corrected (its whole group): the same bill, filled in from what is saved
    * (Sebastian, 2026-10-23: "if it's on the bill, then editing should also be on the bill").
@@ -128,8 +130,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const rowOf = (key: string) => editing?.find(b => keyOf(b) === key || key.endsWith('~' + b.id))
   const { updateRoomBreakfastPrice, partnerDeals, savePartnerDeals } = useDashboardData()
   const [pricing, setPricing] = useState<string | null>(null)
-  const [guestName, setGuestName] = useState(ed?.guest_name || '')
-  const [guestPhone, setGuestPhone] = useState(ed?.guest_phone && ed.guest_phone !== 'None' ? ed.guest_phone : '')
+  const [guestName, setGuestName] = useState(ed?.guest_name || initialGuest?.name || '')
+  const [guestPhone, setGuestPhone] = useState(ed?.guest_phone && ed.guest_phone !== 'None' ? ed.guest_phone : initialGuest?.phone || '')
   const [nationality, setNationality] = useState(ed?.guest_nationality || '')
   const [address, setAddress] = useState(ed?.guest_address || '')
   const [companions, setCompanions] = useState<Companion[]>(ed?.companions || [])
@@ -154,16 +156,10 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const [charges, setCharges] = useState<BillCharge[]>(() => (editing || []).flatMap(b => b.event_addons?.charges || []))
   const [kinds, setKinds] = useState<Record<string, string>>(() =>
     Object.fromEntries((editing || []).filter(b => b.venue_id && b.event_addons?.venue_type).map(b => [keyOf(b), b.event_addons!.venue_type!])))
-  // As the form reads it back: a flat amount is what the rooms' shares add up to. Every room
-  // holds the bill's list in the same order, so a place in it is one discount (2026-10-29).
-  const [discs, setDiscs] = useState<Discount[]>(() => {
-    const lists = (editing || []).map(b => discountsOf(b.applied_discount))
-    const longest = lists.reduce((a, l) => (l.length > a.length ? l : a), [] as ReturnType<typeof discountsOf>)
-    return longest.map((d, i) => ({
-      pct: d.type === 'percent', note: d.note || '',
-      v: d.type === 'percent' ? Number(d.value) || 0 : lists.reduce((a, l) => a + (l[i]?.type === 'flat' ? Number(l[i].value) || 0 : 0), 0),
-    })).filter(d => d.v > 0)
-  })
+  // The bill's discounts live on one room, its first (2026-11-07), each with its note (2026-10-29).
+  const [discs, setDiscs] = useState<Discount[]>(() =>
+    ((editing || []).map(b => discountsOf(b.applied_discount)).find(l => l.length > 0) || [])
+      .map(d => ({ pct: d.type === 'percent', note: d.note || '', v: Number(d.value) || 0 })).filter(d => d.v > 0))
   const given = discs.filter(d => d.v > 0)
   // Early check-in and late checkout hours changed on the bill, by line; a line not here keeps the saved hours.
   // Before, the bill only read them from the saved row, so their × did nothing and the hours could not be typed.
@@ -1447,27 +1443,10 @@ const extrasOf = (e: Extras) => ({
   formExtraFoam: e.extraFoamCount, formExtraPillow: e.extraPillowCount, formExtraBlanket: e.extraBlanketCount, formExtraTowel: e.extraTowelCount,
 })
 
-/** "+ Discount" opened: % or ₱, the sign on the side it is read (the mock: % after, ₱ before). */
-/**
- * **How much it takes off is said in pesos** (Sebastian, 2026-10-24, task #11: "show how much was
- * discounted"): `off` stands beside the box as it is typed, so 10% reads as −₱220. With `fold`, a
- * box that is left folds into the bill's own line, `Less: discount 10% −₱220`, which is tapped to
- * change it.
- */
-export function DiscountBox({ disc, onChange, off, fold = false }: { disc: Discount; onChange: (d: Discount | null) => void; off?: number; fold?: boolean }) {
-  const [open, setOpen] = useState(!fold || !disc.v)
-  if (!open) {
-    return (
-      <button type="button" onClick={() => setOpen(true)} aria-label="Change the discount"
-        className="w-full -mx-0.5 px-0.5 flex justify-between items-baseline gap-2.5 rounded text-left hover:bg-gold-100 transition-colors cursor-pointer bw-rise">
-        <span className="text-[10px] text-muted">Less: discount{disc.pct && <b className="ml-1 font-bold text-ink-900">{disc.v}%</b>}</span>
-        <span className="font-mono text-[11.5px] font-bold text-danger-600">−₱{(off || 0).toLocaleString()}</span>
-      </button>
-    )
-  }
+/** "+ Discount" on a diner's slip: % or ₱, and what it takes off in pesos beside it as it is typed (Sebastian, 2026-10-24, task #11: "show how much was discounted"). */
+export function DiscountBox({ disc, onChange, off }: { disc: Discount; onChange: (d: Discount | null) => void; off?: number }) {
   return (
-    <div className="flex items-center gap-1.5 my-0.5 bw-unfold"
-      onBlur={e => { if (fold && disc.v && !e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false) }}>
+    <div className="flex items-center gap-1.5 my-0.5 bw-unfold">
       <div role="group" aria-label="Discount by" className="relative grid grid-cols-2 p-0.5 rounded-md bg-card shadow-[inset_0_0_0_1.5px_#1C1C1C]">
         <span aria-hidden="true" style={{ '--i': disc.pct ? 0 : 1 } as React.CSSProperties}
           className="absolute top-0.5 bottom-0.5 left-0.5 w-[calc((100%-4px)/2)] rounded bg-ink-900 translate-x-[calc(var(--i)*100%)] transition-transform duration-300 ease-[cubic-bezier(.34,1.4,.64,1)]" />

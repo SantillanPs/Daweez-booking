@@ -343,7 +343,5 @@ export function priceBooking(b: Booking, o: { rooms: Room[]; venues: Venue[]; in
  */
 export function billStays(b: Booking, rows: Booking[], o: { rooms: Room[]; venues: Venue[]; food?: Record<string, number> }): number | undefined {
   if (discountsOf(b.applied_discount).length === 0) return undefined
-  // A bill saved before then holds a slice of each discount on every room: each is its own room's.
-  if (rows.some(r => r.id !== b.id && discountsOf(r.applied_discount).length > 0)) return undefined
   return rows.reduce((t, r) => t + priceBooking({ ...r, applied_discount: [] }, o).grandTotal + (o.food?.[r.id] || 0), 0)
 }

@@ -65,38 +65,6 @@ export interface StatementLineItem {
 }
 
 /**
- * **One discount row for the whole bill** (Sebastian, 2026-10-06: *"there's more than one
- * bookings, the discount usually has its own row for each room that has a discount, so just
- * use 1 row for the discount and just show the total of the discount for all"*).
- *
- * A booking of several rooms is one row per room, and each room that was given a discount
- * printed its own `Discount` line. They are joined into one that shows what all of them come
- * to. It keeps the percentage in its words only when every room was given the same one.
- */
-export function mergeDiscountRows(items: StatementLineItem[]): StatementLineItem[] {
-  const discounts = items.filter(i => i.band === 'discount')
-  if (discounts.length < 2) return items
-  // A bill can hold several discounts (2026-10-29): the rooms' rows are joined for each one.
-  const slotOf = (i: StatementLineItem) => i.slot ?? 0
-  const merged = new Map<number, StatementLineItem>()
-  discounts.forEach(i => {
-    const m = merged.get(slotOf(i))
-    if (!m) { merged.set(slotOf(i), { ...i }); return }
-    m.price += i.amount
-    m.amount += i.amount
-    if (m.description !== i.description) m.description = 'Discount'
-  })
-  // Where each discount's first row stood — the table groups by band, so this is only its order.
-  const placed = new Set<number>()
-  return items.flatMap(i => {
-    if (i.band !== 'discount') return [i]
-    if (placed.has(slotOf(i))) return []
-    placed.add(slotOf(i))
-    return [merged.get(slotOf(i))!]
-  })
-}
-
-/**
  * **One breakfast row for the whole bill** (Sebastian, 2026-10-24 on the screen, 2026-10-25 on
  * paper and on an agency's bill too: four breakfast lines "take too much space"). The rooms'
  * breakfast rows are joined into `Breakfast · Rooms 1, 2, 3, 5`: every morning across them,

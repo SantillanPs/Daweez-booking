@@ -1,4 +1,4 @@
-import { AppliedDiscount, Booking, PaymentRecord, Room, Venue } from '../types/booking'
+import { Booking, PaymentRecord, Room, Venue } from '../types/booking'
 import { discountsOf } from './discounts'
 import { priceBooking, billStays } from './pricing'
 import { paymentStatusFromMoney } from './bookingMoney'
@@ -18,15 +18,6 @@ import { normalizeVenueId } from './helpers'
 //
 // The DEPOSIT is deliberately not part of this: `amountToPayNow(booking, tabTotal)` takes the tab out
 // again before working out the 50%, because the deposit was agreed on the stay alone.
-
-/** One discount list from the rooms': a bill saved before 2026-11-07 held a slice of each flat amount on every room. */
-function mergedDiscounts(rows: Booking[]): AppliedDiscount[] {
-  const lists = rows.map(b => discountsOf(b.applied_discount)).filter(l => l.length > 0)
-  if (lists.length < 2) return lists[0] || []
-  return lists[0].map((d, i) => d.type === 'flat'
-    ? { ...d, value: lists.reduce((t, l) => t + (Number(l[i]?.value) || 0), 0) }
-    : d)
-}
 
 /**
  * Every room's money moved onto the first: its payments (each receipt once, whole), its discounts, what
@@ -49,7 +40,7 @@ export function onLead(rows: Booking[]): Booking[] {
   const owed = rows.reduce((t, b) => t + Number(b.balance_due || 0), 0)
   const status = paymentStatusFromMoney(paid, owed)
   return rows.map((b, i) => i === 0
-    ? { ...b, payment_records: records, applied_discount: mergedDiscounts(rows), downpayment_paid: paid, balance_due: owed, payment_status: status }
+    ? { ...b, payment_records: records, applied_discount: rows.map(b => discountsOf(b.applied_discount)).find(l => l.length > 0) || [], downpayment_paid: paid, balance_due: owed, payment_status: status }
     : { ...b, payment_records: [], applied_discount: [], downpayment_paid: 0, balance_due: 0, payment_status: status })
 }
 

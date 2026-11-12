@@ -5,7 +5,7 @@ import { amountToPayNow } from './bookingMoney'
 import { billStays } from './pricing'
 import { OrderSlip, slipsTotal } from './orderSlips'
 import { paymentShare } from '../components/walk-in/bookingPayment'
-import { bookingLines, mergeDiscountRows, mergeBreakfastRows, StatementLineItem, StatementBand } from './statementLines'
+import { bookingLines, mergeBreakfastRows, StatementLineItem, StatementBand } from './statementLines'
 
 // Builds the structured data for the printable "Guest Billing Statement"
 // (the form staff fill in by hand for walk-ins / Facebook calls). It turns a
@@ -179,8 +179,7 @@ export function buildStatement(o: StatementInput): Statement {
   return {
     invoiceNumber,
     dateIssued: primaryBooking.created_at ? new Date(primaryBooking.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '',
-    // One discount row for all the rooms, however many were given one.
-    lineItems: mergeBreakfastRows(mergeDiscountRows(collected)),
+    lineItems: mergeBreakfastRows(collected),
     subTotal,
     downpaymentPaid,
     payments,

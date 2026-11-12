@@ -3,8 +3,7 @@ import { AppliedDiscount } from '../types/booking'
 /**
  * **A bill's discounts, as a list** (Sebastian, 2026-10-29: "I should be able to add more than 1
  * discount", each with a note). `applied_discount` held one before; a row saved since holds a list.
- * The list keeps its places even where a room's share of a flat amount is 0, so the same place is the
- * same discount on every room of the bill (the statement joins the rooms' rows by it).
+ * The bill's first room holds the whole list (2026-11-07).
  */
 export function discountsOf(v: AppliedDiscount | AppliedDiscount[] | null | undefined): AppliedDiscount[] {
   if (!v) return []
