@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Banknote, Printer, Tag, Undo2, Utensils, X } from 'lucide-react'
+import { Banknote, Printer, Tag, Trash2, Undo2, Utensils, X } from 'lucide-react'
 import { Tab, TabLine } from '../../types/tab'
 import { PaymentRecord } from '../../types/booking'
 import { OrderSlip, slipNumber } from '../../utils/orderSlips'
 import { readTabTotal, sendBackTab } from '../../utils/tabs'
 import { showToast } from '../../utils/toast'
+import { askConfirm } from '../../utils/confirm'
+import { saveOrderChanges } from '../../utils/orderChanges'
 import { TabSettlePanel } from './TabSettlePanel'
 import { TabReceiptModal } from './TabReceiptModal'
 import { RunningTabSlip } from './RunningTabSlip'
@@ -54,7 +56,15 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
   const [pop, setPop] = useState<{ part?: 'note' | 'v'; at: HTMLElement; right?: boolean } | null>(null)
   const [gone, setGone] = useState<{ disc: Discount; off: number } | null>(null)
   const [card, setCard] = useState<HTMLDivElement | null>(null)
-  const off = !disc ? 0 : Math.min(slip.total, disc.pct ? Math.round(slip.total * disc.v / 100) : disc.v)
+  // **The front desk takes orders off too** (Sebastian, 2026-11-12: "allow the front desk to also delete
+  // orders"): a row by its bin, or every row at once. A row goes at once and is saved behind; a failed
+  // save puts it back. `apply_order_changes` takes removals on a diner's bill sent to the desk, never more.
+  const [leaving, setLeaving] = useState<Set<string>>(new Set())
+  const [taken, setTaken] = useState<Set<string>>(new Set())
+  const saving = useRef<Promise<unknown>>(Promise.resolve())
+  const lines = slip.lines.filter(l => !taken.has(l.id))
+  const total = lines.reduce((s, l) => s + Number(l.amount || 0), 0)
+  const off = !disc ? 0 : Math.min(total, disc.pct ? Math.round(total * disc.v / 100) : disc.v)
   const given = disc && disc.v > 0 ? disc : null
   const words = given ? discountLabel({ type: given.pct ? 'percent' : 'flat', value: given.v, note: given.note?.trim() || undefined }) : ''
   const closePop = () => { setPop(null); setDisc(d => (d && d.v > 0 ? d : null)) }
@@ -63,7 +73,7 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
       onClick={e => { const at = e.currentTarget; setPop(p => (p?.at === at ? null : { part: which, at, right })) }}
       className={PART + ' ' + look}>{body}</button>
   )
-  const toPay = slip.total - off
+  const toPay = total - off
   // **The money is sealed before the receipt opens** (the owner, 2026-10-15: animations
   // for the table payments). The same seal as the booking panel's (`mark` in
   // ExtendStayModal): it stamps over the slip, fades for its last 300 ms, then the receipt
@@ -80,8 +90,9 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
   // is only taken for the amount the desk was shown: a slip that has grown says so and is
   // read again first.
   const stillTheSame = async () => {
+    await saving.current
     const now = await readTabTotal(slip.tab.id)
-    if (Math.abs(now - slip.total) <= 0.005) { setChanged(''); return true }
+    if (Math.abs(now - total) <= 0.005) { setChanged(''); return true }
     setChanged('This order slip is now ' + peso(now) + '. Check it, then receive again.')
     onChanged()
     return false
@@ -98,6 +109,38 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
       setChanged('Could not send it back. Please try again.')
       setBusy(false)
     }
+  }
+
+  const takeOff = (gone: TabLine[]) => {
+    const ids = gone.map(l => l.id)
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    setLeaving(s => new Set([...s, ...ids]))
+    window.setTimeout(() => setTaken(s => new Set([...s, ...ids])), reduce ? 0 : 260)
+    const empty = gone.length === lines.length
+    saving.current = saveOrderChanges({
+      tabId: slip.tab.id,
+      changes: gone.map(l => ({ lineId: l.id, menuItemId: l.menu_item_id, description: l.description, unitPrice: Number(l.unit_price || 0), delta: 0, remove: true, at: new Date().toISOString() })),
+    }).then(() => {
+      onChanged()
+      // Nothing left to pay: the slip drops off "Diners to pay" by itself, and the window goes.
+      if (empty) { showToast((slipNumber(slip.tab) || 'The order slip') + ' has no orders left.', 'success'); onClose() }
+    }).catch(err => {
+      console.error('Could not take orders off the slip:', err)
+      setLeaving(s => new Set([...s].filter(id => !ids.includes(id))))
+      setTaken(s => new Set([...s].filter(id => !ids.includes(id))))
+      setChanged('Not removed: ' + gone.map(l => l.description).join(', ') + '. Please try again.')
+    })
+  }
+
+  const removeAll = async () => {
+    if (lines.length === 0) return
+    const ok = await askConfirm({
+      title: 'Remove every order on ' + (slipNumber(slip.tab) || 'this order slip') + '?',
+      message: lines.length + (lines.length === 1 ? ' line' : ' lines') + ' · ' + peso(total) + ' comes off the bill.',
+      confirmLabel: 'Remove all',
+      tone: 'danger',
+    })
+    if (ok) takeOff(lines)
   }
 
   const who = slip.tab.label || 'Walk-in'
@@ -133,18 +176,20 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
 
         <div className="px-4 pt-3 pb-3">
           <ul className="max-h-[38vh] overflow-y-auto divide-y divide-soft text-[14px]">
-            {slip.lines.map((line, i) => (
-              <li key={line.id} style={{ '--i': Math.min(i, 8) } as React.CSSProperties} className="bp-row motion-reduce:[animation:none] py-1.5 flex items-baseline justify-between gap-3">
+            {lines.map((line, i) => (
+              <li key={line.id} style={{ '--i': Math.min(i, 8), animationDelay: leaving.has(line.id) ? Math.min(i, 8) * 60 + 'ms' : undefined } as React.CSSProperties}
+                className={'relative py-1.5 grid grid-cols-[1fr_auto_22px] items-center gap-x-3 motion-reduce:[animation:none] ' + (leaving.has(line.id) ? 'slip-leave' : 'bp-row')}>
                 <span className="min-w-0 text-main break-words">
                   <b className="tabular-nums">{Number(line.qty || 1)} ×</b> {line.description}
                 </span>
-                <span className="shrink-0 tabular-nums text-main">{peso(line.amount)}</span>
+                <span className="tabular-nums text-main">{peso(line.amount)}</span>
+                <RemoveBin what={line.description} onRemove={() => { markSeen('desk-remove-orders'); takeOff([line]) }} />
               </li>
             ))}
           </ul>
           {(given || gone) && (
             <div className="pt-2 border-t border-soft space-y-1">
-              <div className="flex items-baseline justify-between gap-2 text-[14px] text-muted"><span>Sub-total</span><span className="tabular-nums">{peso(slip.total)}</span></div>
+              <div className="flex items-baseline justify-between gap-2 text-[14px] text-muted"><span>Sub-total</span><span className="tabular-nums">{peso(total)}</span></div>
               {given && (
                 <div className={LINE + ' ' + RANK + ' bw-rise'}>
                   <Tag aria-hidden="true" className="justify-self-center w-3 h-3 text-danger-600" />
@@ -197,7 +242,7 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
               setSealed('on')
               sealTimer.current = window.setTimeout(() => setSealed('leaving'), 1000)
               return new Promise<void>(done => {
-                sealTimer.current = window.setTimeout(() => { setReceipt({ tab: slip.tab, lines: slip.lines, record }); done() }, 1300)
+                sealTimer.current = window.setTimeout(() => { setReceipt({ tab: slip.tab, lines, record }); done() }, 1300)
               })
             }}
           />
@@ -213,6 +258,12 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
                 <Undo2 className="w-4 h-4" /> Send back to the restaurant
               </button>
             )}
+            {lines.length > 1 && (
+              <button type="button" onClick={() => { markSeen('desk-remove-orders'); void removeAll() }} className={'relative ' + QUIET + ' hover:!text-danger-600'}>
+                <Trash2 className="w-4 h-4" /> Remove all orders
+                <NewTag id="desk-remove-orders" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -224,8 +275,8 @@ export function DinerPayModal({ slip, onClose, onChanged }: DinerPayModalProps) 
           number={slipNumber(slip.tab)}
           who={who}
           place={slip.tab.table_label ? { label: 'Table', value: slip.tab.table_label } : undefined}
-          lines={slip.lines}
-          total={slip.total}
+          lines={lines}
+          total={total}
           discount={off ? { label: words, amount: off } : undefined}
           note="To be paid at the front desk."
           onClose={() => setPrinting(false)}

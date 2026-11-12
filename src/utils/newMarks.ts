@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // Diners to pay: the front desk takes orders off a diner's slip, one by its bin or all at once (`DinerPayModal`).
+  { id: 'desk-remove-orders', since: '2026-11-13' },
   // The calendar's search is an open field on its top line, not a button that opens one (`CalendarSearch`).
   { id: 'search-field', since: '2026-11-12' },
   // Restaurant → Orders: "Remove all orders" under a table's slip takes every dish off at once (`OrderSlipPanel`).

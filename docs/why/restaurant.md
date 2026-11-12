@@ -114,3 +114,4 @@ Food lines live in their own tables, never on the booking. Saving a small food l
 ## Removing a table's orders (2026-11-12)
 
 - Sebastian, 2026-11-12: *"add a feature that allow removing orders in the tables that are in the restaurant."* One dish could already be taken off; a whole table could not (notes #21).
+- Sebastian, 2026-11-13, on the front desk's order slip window: *"allow the front desk to also delete orders."* A diner's bill sent to the desk can lose a dish or all of them there, without sending it back to the restaurant.
