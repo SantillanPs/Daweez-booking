@@ -1,5 +1,5 @@
-import { CSSProperties, FormEvent, ReactNode, createElement, useCallback, useEffect, useRef, useState } from 'react'
-import { Banknote, BedDouble, Check, ChevronDown, Droplet, Fuel, HandCoins, House, Loader2, PenLine, Pencil, Plus, Receipt, Search, ShoppingBasket, Trees, Users, UtensilsCrossed, Wrench, X, Zap, type LucideIcon } from 'lucide-react'
+import { CSSProperties, FormEvent, ReactNode, createElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ArrowUp, Banknote, BedDouble, Check, Coins, FileText, Landmark, Smartphone, ChevronDown, Droplet, Fuel, HandCoins, House, Loader2, PenLine, Pencil, Plus, Receipt, Search, ShoppingBasket, Trees, Users, UtensilsCrossed, Wrench, X, Zap, type LucideIcon } from 'lucide-react'
 import { Expense, ExpenseCategory, Handover } from '../../types/expense'
 import { CountPeso } from '../CountPeso'
 import { NewTag } from '../NewMark'
@@ -162,7 +162,7 @@ function ExpenseLine({ expense, time, edit }: {
   return (
     <div className={editing ? 'relative z-20' : 'relative'}>
       {time ? (
-        <div className={'group/line relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px] transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
+        <div className={'group/line relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 min-h-8 py-1 -mx-2 px-2 rounded-lg text-[13px] transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
           <span className={'min-w-0 truncate font-semibold text-main' + note.cls}>{note.text || 'Expense'}</span>
           {amount}
           <span className="min-w-0 truncate text-[12px] text-muted">{time}</span>
@@ -358,7 +358,7 @@ function ExpenseBlank({ categories, another, pastDay, onAdd }: {
   if (!open) {
     return (
       <button type="button" onClick={() => { setOpen(true); setPicking(true) }}
-        className="w-full mt-1.5 flex items-center gap-1.5 px-2 py-[5px] rounded-md border-[1.5px] border-dashed border-ink-200 text-[11px] font-bold text-gold-800 hover:border-gold-400 hover:bg-gold-100/40 active:scale-[0.99] transition-[background-color,border-color,transform] cursor-pointer [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">
+        className="w-full mt-2 flex items-center gap-1.5 h-8 px-2 rounded-md border-[1.5px] border-dashed border-ink-200 text-[11px] font-bold text-gold-800 hover:border-gold-400 hover:bg-gold-100/40 active:scale-[0.99] transition-[background-color,border-color,transform] cursor-pointer [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">
         <Plus aria-hidden="true" className="w-3.5 h-3.5" />{another ? 'Another expense' : 'Write an expense'}{pastDay ? ' for ' + pastDay : ''}
       </button>
     )
@@ -470,7 +470,7 @@ function MoneyInBlank({ bills, pastDay, onAddIn }: { bills: BillChoice[]; pastDa
   if (!open) {
     return (
       <button type="button" onClick={() => { setOpen(true); setTimeout(() => noteRef.current?.focus()) }}
-        className="w-full mt-1.5 flex items-center gap-1.5 px-2 py-[5px] rounded-md border-[1.5px] border-dashed border-ink-200 text-[11px] font-bold text-gold-800 hover:border-gold-400 hover:bg-gold-100/40 active:scale-[0.99] transition-[background-color,border-color,transform] cursor-pointer [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">
+        className="w-full mt-2 flex items-center gap-1.5 h-8 px-2 rounded-md border-[1.5px] border-dashed border-ink-200 text-[11px] font-bold text-gold-800 hover:border-gold-400 hover:bg-gold-100/40 active:scale-[0.99] transition-[background-color,border-color,transform] cursor-pointer [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">
         <Plus aria-hidden="true" className="w-3.5 h-3.5" />Write money in{pastDay ? ' for ' + pastDay : ''}
       </button>
     )
@@ -573,37 +573,63 @@ function MoneyInBlank({ bills, pastDay, onAddIn }: { bills: BillChoice[]; pastDa
 }
 
 const METHOD_DOT: Record<PaymentKind, string> = {
-  cash: 'bg-emerald-600', gcash: 'bg-blue-700', bank: 'bg-ink-900', check: 'bg-paper-500', other: 'bg-paper-400',
+  cash: 'bg-emerald-600', gcash: 'bg-blue-700', bank: 'bg-ink-900', check: 'bg-gold-700', other: 'bg-paper-400',
 }
 
-// **One payment, read as its receipt** (design A of the Money in mock, Sebastian, 2026-10-28: "it's a
-// payment receipt and for some reason it say OS"). What it paid for leads — the room, the venue, the
-// restaurant — then who paid, and how they paid sits loud beside the amount (Sebastian, 2026-11-03:
-// "the primary should be for what like garden area, room, or venue, secondary should be who or from
-// what like name or table. payment type should be a bit louder"). A room's payment opens its bill
-// right here, ready to work on; a diner's opens its receipt, which reads its lines first, so the row
-// shows it is on its way. Inside a bill's group the room and guest are said once above, so a payment
-// there leads with what it was for. A payment on a cancelled booking stays on the day it came in,
-// scratched off with the day it was cancelled, and counts in no total (option B of the mock, Sebastian, 2026-10-29).
+// **Money in is a ledger: one line each, in columns** (the Money in mock, Sebastian, 2026-11-13: layout A,
+// "Ledger", and option 2, "Ink"). Where it came from, how it was paid and the amount come first; who paid and
+// what for second; the time and the receipt last (Sebastian: "the primary should be from where, and the
+// amount, and what payment method. 2nd, is the extra details, 3rd is the rest"). How it was paid is no
+// longer a grey tag: the amount itself is written in its way's colour beside its sign (Sebastian: "I don't
+// like tags for the payment type. I want … a more visible or louder indication"; "keep the amount color the
+// same as the method color"). A room's payment opens its bill right here, ready to work on; a diner's opens
+// its receipt. A payment on a cancelled booking stays on the day it came in, scratched off with the day it
+// was cancelled, and counts in no total (option B of the mock, Sebastian, 2026-10-29).
 const cancelChip = (day: string) => (
   <span className="ml-1.5 inline-block align-[1px] px-1.5 rounded-full ring-1 ring-inset ring-danger-300 text-danger-600 text-[10.5px] font-extrabold dm-pop">
     Cancelled {new Date(day + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
   </span>
 )
 
-const PayPill = ({ method }: { method: string }) => (
-  <span className="inline-flex items-center gap-[5px] h-[19px] pl-1.5 pr-2 rounded-full bg-paper-100 text-[11.5px] font-extrabold text-main whitespace-nowrap">
-    <i className={'w-1.5 h-1.5 rounded-full ' + METHOD_DOT[paymentKind(method)]} />{method}
-  </span>
-)
+/** Each way to pay: its colour (the amount is written in it), its sign and its short name. */
+const WAYS: Record<PaymentKind, { ink: string; Icon: LucideIcon; name: string }> = {
+  cash: { ink: 'text-emerald-600', Icon: Banknote, name: 'Cash' },
+  gcash: { ink: 'text-blue-700', Icon: Smartphone, name: 'GCash' },
+  bank: { ink: 'text-ink-900', Icon: Landmark, name: 'Bank' },
+  check: { ink: 'text-gold-700', Icon: FileText, name: 'Check' },
+  other: { ink: 'text-paper-500', Icon: Coins, name: 'Other' },
+}
+const WAY_ORDER: PaymentKind[] = ['cash', 'gcash', 'bank', 'check', 'other']
+const wayOf = (line: MoneyInLine) => paymentKind(line.method)
+
+const WaySign = ({ kind }: { kind: PaymentKind }) => {
+  const w = WAYS[kind]
+  return <w.Icon aria-label={w.name} role="img" className={'w-[15px] h-[15px] shrink-0 ' + w.ink} />
+}
+
+/** `9:12a`: the time, short enough for the ledger's margin. */
+const clock = (iso?: string) => {
+  if (!iso) return ''
+  const t = new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return t.replace(' AM', 'a').replace(' PM', 'p')
+}
+const FAINT = 'font-mono text-[10.5px] text-paper-500 whitespace-nowrap'
 
 /** What a payment leads with, who paid, and its sign. Plain money in written by hand is a slip with no number. */
-function payHead(line: MoneyInLine): { title: string; who: string; Icon: LucideIcon; tone: string } {
-  if (line.slip && line.place) return { title: 'Restaurant', who: line.who, Icon: UtensilsCrossed, tone: 'bg-gold-100 text-gold-800' }
-  if (line.slip) return { title: line.purpose || 'Money in', who: line.who === 'Order slip' ? '' : line.who, Icon: Banknote, tone: 'bg-emerald-50 text-emerald-600' }
+function payHead(line: MoneyInLine): { title: string; who: string; Icon: LucideIcon } {
+  if (line.slip && line.place) return { title: 'Restaurant', who: line.who, Icon: UtensilsCrossed }
+  if (line.slip) return { title: line.purpose || 'Money in', who: line.who === 'Order slip' ? '' : line.who, Icon: Banknote }
   const Icon = /^Rooms? /.test(line.place) ? BedDouble : /house|exclusive/i.test(line.place) ? House : Trees
-  return { title: line.place || line.who, who: line.place ? line.who : '', Icon, tone: 'bg-paper-100 text-main' }
+  return { title: line.place || line.who, who: line.place ? line.who : '', Icon }
 }
+
+const PenButton = ({ line, editing, edit, keyOf }: { line: MoneyInLine; editing: boolean; edit: PaymentEditing; keyOf: string }) => (
+  <button type="button" data-pay-pen aria-label={'Edit this payment, ' + peso(line.amount)} aria-expanded={editing}
+    onClick={e => { e.stopPropagation(); edit.onEdit(editing ? null : keyOf) }}
+    className={PEN}>
+    <Pencil aria-hidden="true" className="w-3.5 h-3.5" />
+  </button>
+)
 
 function PaymentLine({ line, loading, onOpen, inGroup, today, edit }: {
   line: MoneyInLine
@@ -621,46 +647,38 @@ function PaymentLine({ line, loading, onOpen, inGroup, today, edit }: {
   // A scratched-off payment counts for nothing, so there is nothing to fix on it.
   const canEdit = !line.cancelled && !!line.recordId
   const fresh = edit.fresh === key
+  const kind = wayOf(line)
   const hand = line.hand && <PenLine aria-label="Written by hand" className="ml-1.5 inline-block align-[-1px] w-3 h-3 text-gold-600" />
-  // What it was for and the slip's number, at the quiet end of the second line. Plain money in already leads with it.
+  // What it was for and the slip's number. Plain money in already leads with what it was for.
   const rest = [line.slip && !line.place ? '' : what, line.slip ? line.place : ''].filter(Boolean).join(' · ')
+  const receipt = line.receipt && <span className={FAINT + ' ml-1.5'} title={line.receipt}>{line.receipt.slice(-3)}</span>
   const body = (
     <>
       {line.cancelled && <i aria-hidden="true" className="dm-scratch" />}
+      <span className={FAINT}>{clock(line.paidAt)}</span>
       {inGroup ? (
-        <span className="min-w-0 truncate font-semibold text-main">{(line.slip ? [line.place, line.purpose].filter(Boolean).join(' · ') : what) || 'Payment'}{hand}</span>
+        <span className="min-w-0 truncate font-semibold text-main">
+          {(line.slip ? [line.place, line.purpose].filter(Boolean).join(' · ') : what) || 'Payment'}{hand}{receipt}
+        </span>
       ) : (
         <>
-          <span className={TILE + ' ' + head.tone}>{sign(head.Icon)}</span>
-          <span className="min-w-0 truncate text-[13.5px] font-bold text-main">
-            {head.title}{hand}
-            {line.cancelled && cancelChip(line.cancelled)}
+          <span className="min-w-0 flex items-center gap-1.5 text-[14px] font-extrabold text-main">
+            <head.Icon aria-hidden="true" className="w-[15px] h-[15px] shrink-0 text-muted" />
+            <span className="min-w-0 truncate">{head.title}{hand}{line.cancelled && cancelChip(line.cancelled)}</span>
+          </span>
+          <span className="mi-who min-w-0 truncate text-[12.5px] font-medium text-ink-600">
+            {who.text && <span className={who.cls}>{who.text}</span>}{who.text && rest && ' · '}{rest}{receipt}
           </span>
         </>
       )}
-      <span className="flex items-center justify-end gap-2">
-        {loading && <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" />}
-        <PayPill method={line.method} />
-        <span key={line.amount} className={AMOUNT + (inGroup ? ' text-[14px]' : ' text-[16px]') + (line.cancelled ? ' text-paper-400' : ' text-emerald-600') + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(line.amount)}</span>
+      <span className="flex justify-end">
+        {loading ? <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" /> : <WaySign kind={kind} />}
       </span>
-      <span className="min-w-0 truncate text-[12px] text-muted">
-        {inGroup ? (line.paidAt && timeOf(line.paidAt)) : (
-          <>{who.text && <span className={'font-bold text-ink-600' + who.cls}>{who.text}</span>}{who.text && rest && ' · '}{rest}</>
-        )}
-      </span>
-      <span className="justify-self-end flex items-center gap-1 font-mono text-[10.5px] text-paper-500">
-        {!inGroup && line.paidAt && <>{timeOf(line.paidAt)} · </>}{line.receipt}
-        {canEdit && (
-          <button type="button" data-pay-pen aria-label={'Edit this payment, ' + peso(line.amount)} aria-expanded={editing}
-            onClick={e => { e.stopPropagation(); edit.onEdit(editing ? null : key) }}
-            className={PEN}>
-            <Pencil aria-hidden="true" className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </span>
+      <span key={line.amount} className={AMOUNT + ' text-right ' + (inGroup ? 'text-[14px] ' : 'text-[15px] ') + (line.cancelled ? 'text-paper-400' : WAYS[kind].ink) + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(line.amount)}</span>
+      <span className="flex justify-end">{canEdit && <PenButton line={line} editing={editing} edit={edit} keyOf={key} />}</span>
     </>
   )
-  const grid = 'group/line relative ' + (inGroup ? 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-1.5 -mx-2 px-2 rounded-lg text-[13px]' : LINE) + ' text-left' + (line.cancelled ? ' dm-struck' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')
+  const grid = 'group/line relative ' + (inGroup ? 'mi-row mi-kid py-1 text-[13px]' : 'mi-row min-h-8 py-1 text-[13px]') + ' -mx-2 px-2 rounded-lg text-left' + (line.cancelled ? ' dm-struck' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')
   // Not a <button>: the pencil is a button of its own and cannot sit inside one.
   const row = onOpen && openKey(line) ? (
     <div role="button" tabIndex={0} onClick={() => onOpen(line)} aria-busy={loading}
@@ -690,31 +708,35 @@ function PaymentGroup({ lines, opening, onOpen, today, edit }: { lines: MoneyInL
   // A bill's payments share its booking, so a cancelled bill scratches off the whole group.
   const cancelled = lines.every(l => l.cancelled) ? first.cancelled : undefined
   const loading = !!opening && lines.some(l => openKey(l) === opening)
+  // A bill paid one way wears that way's colour; paid two ways, its total stays in ink and each way shows its sign.
+  const kinds = WAY_ORDER.filter(k => lines.some(l => wayOf(l) === k))
+  const ink = cancelled ? 'text-paper-400' : kinds.length === 1 ? WAYS[kinds[0]].ink : 'text-main'
   return (
     <div>
       <button type="button" onClick={() => { setOpen(o => !o); markSeen('group-items') }} aria-expanded={open}
-        className={'group relative ' + LINE + ' w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (cancelled ? ' dm-struck' : '')}>
+        className={'group relative mi-row min-h-8 py-1 -mx-2 px-2 rounded-lg text-[13px] w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (cancelled ? ' dm-struck' : '')}>
         {cancelled && <i aria-hidden="true" className="dm-scratch group-aria-expanded:opacity-0" />}
-        <span className={TILE + ' ' + head.tone}>{sign(head.Icon)}</span>
         <NewTag id="group-items" />
-        <span className="min-w-0 truncate text-[13.5px] font-bold text-main">
-          {head.title}
-          <ItemCount n={lines.length} />
-          {cancelled && cancelChip(cancelled)}
+        <span className={FAINT}>{clock(first.paidAt)}</span>
+        <span className="min-w-0 flex items-center gap-1.5 text-[14px] font-extrabold text-main">
+          <head.Icon aria-hidden="true" className="w-[15px] h-[15px] shrink-0 text-muted" />
+          <span className="min-w-0 truncate">{head.title}<ItemCount n={lines.length} />{cancelled && cancelChip(cancelled)}</span>
         </span>
-        <span className="flex items-center justify-end gap-1.5">
-          {loading && <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" />}
-          <span key={sum} className={'text-[16px] ' + AMOUNT + (cancelled ? ' text-paper-400' : ' text-emerald-600') + ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(cancelled ? whole : sum)}</span>
+        <span className="mi-who min-w-0 truncate text-[12.5px] font-medium text-ink-600">
+          {who.text && <span className={who.cls}>{who.text}</span>}{who.text && ' · '}{lines.map(l => (l.slip ? l.place : l.purpose) || 'Payment').join(', ')}
+          {first.bill && <span className={FAINT + ' ml-1.5'}>{first.bill}</span>}
+        </span>
+        <span className="flex justify-end gap-1">
+          {loading ? <Loader2 className="w-3.5 h-3.5 text-gold-600 animate-spin" /> : kinds.map(k => <WaySign key={k} kind={k} />)}
+        </span>
+        <span key={sum} className={'text-[15px] text-right ' + AMOUNT + ' ' + ink + ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(cancelled ? whole : sum)}</span>
+        <span className="flex justify-end">
           <ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-gold-600 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
         </span>
-        <span className="min-w-0 truncate text-[12px] text-muted">
-          {who.text && <span className={'font-bold text-ink-600' + who.cls}>{who.text}</span>}{who.text && ' · '}{lines.map(l => (l.slip ? l.place : l.purpose) || 'Payment').join(' · ')}
-        </span>
-        <span className="justify-self-end font-mono text-[10.5px] text-paper-500">{first.bill}</span>
       </button>
       <div className={'grid transition-[grid-template-rows] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
         <div className={'min-h-0 ' + (floating ? 'overflow-visible' : 'overflow-hidden')}>
-          <div className="ml-[17px] mb-1 pl-[27px] border-l-2 border-paper-200">
+          <div className="ml-[17px] mb-1 pl-3 border-l-2 border-paper-200">
             {lines.map((line, i) => (
               <div key={(line.receipt || line.label) + i} className={(open ? 'bw-rise ' : '') + (edit.editing === lineKey(line) ? 'relative z-20' : '')} style={{ '--i': i } as CSSProperties}>
                 <PaymentLine line={line} inGroup today={today} edit={edit} loading={!!opening && opening === openKey(line)} onOpen={onOpen} />
@@ -723,6 +745,73 @@ function PaymentGroup({ lines, opening, onOpen, today, edit }: { lines: MoneyInL
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// **The ledger's columns sort it** (Sebastian, 2026-11-13: "add column names like time, where it came from,
+// payment method, and amount. so that it can be sorted"). Sorting takes a bill's payments apart, so each
+// one sorts by itself ("sorting should ungroup payments so that it can cleanly be sorted"); "Group bills"
+// puts them back in the order they came.
+type SortKey = 'time' | 'where' | 'how' | 'amount'
+export interface MoneyInSort { by: SortKey; dir: 1 | -1 }
+const SORTS: Record<SortKey, (l: MoneyInLine) => string | number> = {
+  time: l => l.paidAt || '',
+  where: l => payHead(l).title.toLowerCase(),
+  how: l => WAY_ORDER.indexOf(wayOf(l)),
+  amount: l => Number(l.amount || 0),
+}
+const sortLines = (list: MoneyInLine[], { by, dir }: MoneyInSort) => [...list].sort((a, b) => {
+  const x = SORTS[by](a), y = SORTS[by](b)
+  return (x < y ? -1 : x > y ? 1 : (a.paidAt || '').localeCompare(b.paidAt || '')) * dir
+})
+
+function SortHeads({ sort, onSort }: { sort: MoneyInSort | null; onSort: (by: SortKey) => void }) {
+  const head = (by: SortKey, label: string, right?: boolean) => {
+    const on = sort?.by === by
+    return (
+      <span className={right ? 'flex justify-end' : ''}>
+        <button type="button" onClick={() => onSort(by)} aria-pressed={on} aria-label={'Sort by ' + label.toLowerCase() + (on ? (sort!.dir > 0 ? ', A to Z' : ', reversed') : '')}
+          className={'inline-flex items-center gap-0.5 -mx-1 px-1 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-page transition-colors cursor-pointer ' + (on ? 'text-gold-800' : 'text-paper-500 hover:text-ink-600')}>
+          {label}
+          <ArrowUp aria-hidden="true" className={'w-2.5 h-2.5 transition-[transform,opacity] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] ' + (on ? 'opacity-100' : 'opacity-0') + (on && sort!.dir < 0 ? ' rotate-180' : '')} />
+        </button>
+      </span>
+    )
+  }
+  return (
+    <div className="relative mi-row mi-head h-6 -mx-2 px-2 border-b border-paper-100">
+      <NewTag id="money-in-ledger" />
+      {head('time', 'Time')}
+      {head('where', 'From')}
+      <span className="mi-who" />
+      {head('how', 'Paid by', true)}
+      {head('amount', 'Amount', true)}
+      <span />
+    </div>
+  )
+}
+
+/** Each way's total for the day, side by side, every one in its own colour (Sebastian, 2026-11-13: "find a place
+ *  for the payment type total"; "split the totals into 4 columns"; "keep it vertically compact"; each total right
+ *  against its name and the room shared out evenly). A scratched-off payment counts in none. */
+function WayTotals({ lines }: { lines: MoneyInLine[] }) {
+  const by = new Map<PaymentKind, number>()
+  lines.forEach(l => { if (!l.cancelled) by.set(wayOf(l), (by.get(wayOf(l)) || 0) + Number(l.amount || 0)) })
+  // The four ways always show, at ₱0 on a day nobody paid that way (Sebastian, 2026-11-13); anything else only when it came.
+  const kinds = WAY_ORDER.filter(k => k !== 'other' || by.get(k))
+  return (
+    <div className="mi-ways mb-3 grid" style={{ '--n': kinds.length } as CSSProperties}>
+      {kinds.map((k, i) => {
+        const w = WAYS[k]
+        return (
+          <div key={k} className={'mi-way h-8 flex items-center justify-center gap-1.5 min-w-0 whitespace-nowrap text-[12px] font-bold bw-rise ' + w.ink} style={{ '--i': i } as CSSProperties}>
+            <w.Icon aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
+            <span>{w.name}</span>
+            <span key={by.get(k)} className={AMOUNT + ' text-[13.5px] [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(by.get(k) || 0)}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -777,28 +866,81 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
     today,
   }
 
+  // The list starts grouped by bill, in the order the money came; a tapped column sorts it, one payment
+  // a line. A sort belongs to its day, so another day opens grouped again.
+  const [sortOf, setSortOf] = useState<(MoneyInSort & { date: string }) | null>(null)
+  const sort = sortOf?.date === report.date ? sortOf : null
+  // The rows glide to their new places: where each was is read just before the change and played back after.
+  const listRef = useRef<HTMLDivElement>(null)
+  const before = useRef<Map<string, number> | null>(null)
+  const resort = (next: MoneyInSort | null) => {
+    const at = new Map<string, number>()
+    listRef.current?.querySelectorAll<HTMLElement>(':scope > [data-k]').forEach(el => {
+      const top = el.getBoundingClientRect().top
+      ;(el.dataset.k || '').split(' ').forEach(k => at.set(k, top))
+    })
+    before.current = at
+    setSortOf(next && { ...next, date: report.date })
+  }
+  const onSort = (by: MoneyInSort['by']) => {
+    markSeen('money-in-ledger')
+    resort(sort?.by === by ? { by, dir: sort.dir > 0 ? -1 : 1 } : { by, dir: by === 'amount' ? -1 : 1 })
+  }
+  useLayoutEffect(() => {
+    const at = before.current
+    before.current = null
+    if (!at || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    listRef.current?.querySelectorAll<HTMLElement>(':scope > [data-k]').forEach(el => {
+      const was = at.get((el.dataset.k || '').split(' ')[0])
+      const dy = was === undefined ? 0 : was - el.getBoundingClientRect().top
+      if (dy) el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' })
+    })
+  }, [sortOf])
+  const grouped = byBill(report.moneyIn)
+  const canGroup = grouped.some(([, g]) => g.length > 1)
+
   return (
     <div className="bg-card border border-soft rounded-xl shadow-soft">
       <div className="grid md:grid-cols-2 md:divide-x divide-soft">
-        <div className="p-4 flex flex-col">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money in</p>
+        <div className="p-5 flex flex-col">
+          <div className="flex items-center justify-between gap-3 min-h-4 mb-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Money in</p>
+            {sort && canGroup && (
+              <button type="button" onClick={() => resort(null)}
+                className="text-[11.5px] font-bold text-gold-800 underline underline-offset-2 decoration-gold-300 hover:text-ink-900 transition-colors cursor-pointer [animation:bp-slide_.25s_both]">
+                Group bills
+              </button>
+            )}
+          </div>
           {report.moneyIn.length === 0 && <p className="text-[13px] text-muted">Nothing received yet.</p>}
-          {byBill(report.moneyIn).map(([k, group], i) => group.length > 1 ? (
-            <PaymentGroup key={k} lines={group} opening={opening} onOpen={onOpenPayment} today={today} edit={edit} />
-          ) : (
-            <PaymentLine key={(group[0].receipt || group[0].label) + i} line={group[0]} today={today} edit={edit} loading={!!opening && opening === openKey(group[0])} onOpen={onOpenPayment} />
-          ))}
+          <div ref={listRef} className="mi-list">
+            {report.moneyIn.length > 1 && <SortHeads sort={sort} onSort={onSort} />}
+            {sort ? sortLines(report.moneyIn, sort).map(line => (
+              <div key={lineKey(line)} data-k={lineKey(line)}>
+                <PaymentLine line={line} today={today} edit={edit} loading={!!opening && opening === openKey(line)} onOpen={onOpenPayment} />
+              </div>
+            )) : grouped.map(([k, group]) => (
+              <div key={k} data-k={[k, ...group.map(lineKey)].join(' ')}>
+                {group.length > 1 ? (
+                  <PaymentGroup lines={group} opening={opening} onOpen={onOpenPayment} today={today} edit={edit} />
+                ) : (
+                  <PaymentLine line={group[0]} today={today} edit={edit} loading={!!opening && opening === openKey(group[0])} onOpen={onOpenPayment} />
+                )}
+              </div>
+            ))}
+          </div>
           <MoneyInBlank key={report.date} bills={bills} pastDay={pastDay} onAddIn={onAddIn} />
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
-          <div className="flex-1 min-h-2" />
-          <div className="flex justify-between items-baseline gap-3 border-t border-soft pt-2 text-[14px] font-extrabold">
+          <div className="flex-1 min-h-4" />
+          <WayTotals lines={report.moneyIn} />
+          <div className="flex justify-between items-center gap-3 h-11 border-t border-soft pt-3 text-[14px] font-extrabold">
             <span className="text-main">Total in</span>
             <span key={report.totalIn} className="font-mono text-[18px] text-emerald-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(report.totalIn)}</span>
           </div>
         </div>
 
-        <div className="p-4 flex flex-col border-t md:border-t-0 border-soft">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money out</p>
+        <div className="p-5 flex flex-col border-t md:border-t-0 border-soft">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Money out</p>
           {dayExpenses.length === 0 && <p className="text-[13px] text-muted">Nothing spent yet.</p>}
           {byCategory(dayExpenses).map(group => group.length > 1 ? (
             <ExpenseGroup key={group[0].category_id} expenses={group} edit={editExpense} />
@@ -807,8 +949,8 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           ))}
           <ExpenseBlank key={report.date} categories={categories} another={dayExpenses.length > 0} pastDay={pastDay} onAdd={onAdd} />
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
-          <div className="flex-1 min-h-2" />
-          <div className="flex justify-between items-baseline gap-3 border-t border-soft pt-2 text-[14px] font-extrabold">
+          <div className="flex-1 min-h-4" />
+          <div className={'flex justify-between items-center gap-3 h-11 pt-3 text-[14px] font-extrabold' + (dayExpenses.length ? '' : ' border-t border-soft')}>
             <span className="text-main">Total out</span>
             <span key={report.totalOut} className="font-mono text-[18px] text-danger-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(report.totalOut)}</span>
           </div>
@@ -821,13 +963,13 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           zero each morning, so the day before is carried in. Each figure keeps the colour it has
           above — money in green, money out red — and a hand-over is gold, so it is not read as
           money spent. */}
-      <div className="px-4 py-3 border-t-2 border-ink-800 bg-page rounded-b-xl text-[13px] text-main">
+      <div className="p-5 border-t-2 border-ink-800 bg-page rounded-b-xl text-[13px] text-main">
         <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Summary</p>
-        <div className="flex justify-between gap-3 py-0.5">
+        <div className="flex items-center justify-between gap-3 min-h-7">
           <span>Total Sales</span>
           <span className="font-mono font-bold text-emerald-600">{peso(report.totalIn)}</span>
         </div>
-        <div className="flex justify-between gap-3 py-0.5">
+        <div className="flex items-center justify-between gap-3 min-h-7">
           <span><span className="text-muted">Add:</span> {forwardedLabel(report.date)}</span>
           <span className="font-mono font-bold">{signed(report.broughtForward)}</span>
         </div>
@@ -853,16 +995,16 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
         ))}
         {/* GCash, bank and cheque money is sold but not in the drawer, so it comes off here (only on a day it came). */}
         {report.totalNotCash > 0 && (
-          <div className="flex justify-between gap-3 py-0.5" onClick={() => markSeen('cash-not-gcash')}>
-            <span className="relative"><span className="text-muted">Less:</span> GCash, bank &amp; cheque<NewTag id="cash-not-gcash" /></span>
+          <div className="flex items-center justify-between gap-3 min-h-7" onClick={() => markSeen('cash-not-gcash')}>
+            <span className="relative"><span className="text-muted">Less:</span> GCash, bank &amp; cheque<NewTag id="cash-not-gcash" at="top-0.5 -right-8" /></span>
             <span className="font-mono font-bold">({peso(report.totalNotCash)})</span>
           </div>
         )}
-        <div className="flex justify-between gap-3 border-t border-soft mt-1 pt-1.5 font-bold">
+        <div className="flex items-center justify-between gap-3 min-h-9 border-t border-soft mt-2 pt-2 font-bold">
           <span>Cash on hand</span>
           <span className="font-mono">{signed(report.cashOnHand)}</span>
         </div>
-        <div className="flex justify-between gap-3 py-0.5 mt-0.5">
+        <div className="flex items-center justify-between gap-3 min-h-7">
           <span>Total Expenses</span>
           <span className="font-mono font-bold text-danger-600">({peso(report.totalOut)})</span>
         </div>
@@ -886,13 +1028,13 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
             </span>
           </div>
         ))}
-        <div className="flex items-baseline justify-between gap-3 border-t border-soft mt-2 pt-2.5" onClick={() => markSeen('rolling-totals')}>
+        <div className="flex items-center justify-between gap-3 min-h-14 border-t border-soft mt-3 pt-3" onClick={() => markSeen('rolling-totals')}>
           <span className="relative text-[12px] font-extrabold uppercase tracking-[0.14em]">Total cash on hand<NewTag id="rolling-totals" /></span>
           <span className={'font-mono text-[26px] font-extrabold leading-none ' + (report.balance < 0 ? 'text-danger-600' : 'text-emerald-600')}>
             {report.balance < 0 && '('}<CountPeso value={Math.abs(report.balance)} />{report.balance < 0 && ')'}
           </span>
         </div>
-        {footer && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-soft mt-3 pt-2.5">{footer}</div>}
+        {footer && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-soft mt-3 pt-3">{footer}</div>}
       </div>
     </div>
   )

@@ -404,7 +404,7 @@ export function ExpensesTab() {
   const quiet = 'inline-flex items-center gap-1 min-h-8 px-1 text-[12px] font-semibold text-muted hover:text-gold-700 active:scale-95 transition-[color,transform] cursor-pointer'
 
   return (
-    <div className="space-y-3 font-sans">
+    <div className="space-y-4 font-sans">
       <div>
         <h2 className="font-display font-bold text-xl text-main flex items-center gap-2">
           <Wallet className="w-5 h-5 text-gold-600" />

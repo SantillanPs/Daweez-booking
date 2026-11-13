@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // Cash Flow → Money in: one line each, the amount in its way's colour, columns that sort, each way's total (`DayMoney`).
+  { id: 'money-in-ledger', since: '2026-11-13' },
   // Diners to pay: the front desk takes orders off a diner's slip, one by its bin or all at once (`DinerPayModal`).
   { id: 'desk-remove-orders', since: '2026-11-13' },
   // The calendar's search is an open field on its top line, not a button that opens one (`CalendarSearch`).

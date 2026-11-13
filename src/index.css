@@ -816,3 +816,23 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 /* "Remove all orders": each row of the slip slides off before the slip empties (`removeAll` in useTabOrder). */
 .slip-leave { animation: slip-leave 260ms cubic-bezier(.4, 0, .2, 1) both; }
 @keyframes slip-leave { to { opacity: 0; transform: translateX(-24px); } }
+
+/* ── Cash Flow → Money in as a ledger (`DayMoney`, Sebastian, 2026-11-13) ──
+   Time · from · who and what for · how it was paid · amount · pencil. The column it lives in is
+   narrow on a tablet, so it is asked for its own width: once narrow, who and what for drop to a
+   second line under the place, and the amount column keeps its width so every row lines up. */
+.mi-list { container-type: inline-size; }
+.mi-row { display: grid; grid-template-columns: 40px minmax(0, max-content) minmax(40px, 1fr) auto 80px 24px; align-items: center; column-gap: 8px; }
+.mi-kid { grid-template-columns: 36px minmax(0, 1fr) auto 80px 24px; }
+@container (max-width: 520px) {
+  .mi-row:not(.mi-kid) { grid-template-columns: 40px minmax(0, 1fr) auto 80px 24px; }
+  .mi-row:not(.mi-kid) > .mi-who { grid-column: 2 / -1; grid-row: 2; }
+  .mi-head > .mi-who { display: none; }
+}
+/* Each way's total for the day in columns of equal width, a thin rule between them; two a row on a phone. */
+.mi-ways { grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+.mi-way + .mi-way { border-left: 1px solid theme('colors.paper.100'); }
+@media (max-width: 480px) {
+  .mi-ways { grid-template-columns: repeat(min(var(--n), 2), minmax(0, 1fr)); }
+  .mi-way:nth-child(odd) { border-left: 0; }
+}
