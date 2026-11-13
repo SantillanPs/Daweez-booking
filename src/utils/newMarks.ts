@@ -20,6 +20,10 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: 'cash-flow-chips', since: '2026-11-14' },
   // Cash Flow → Money in: one line each, the amount in its way's colour, columns that sort, each way's total (`DayMoney`).
   { id: 'money-in-ledger', since: '2026-11-13' },
+  // The booking panel says "Paid too much" with a green minus when a bill has received more than it comes to (`ExtendStayModal`).
+  { id: 'panel-overpaid', since: '2026-11-14' },
+  // An agency's bill is worked on like a guest's: room extras, Sub-total, payments, Amount due (`NewBookingBill`).
+  { id: 'agency-bill-same', since: '2026-11-14' },
   // Diners to pay: the front desk takes orders off a diner's slip, one by its bin or all at once (`DinerPayModal`).
   { id: 'desk-remove-orders', since: '2026-11-13' },
   // The calendar's search is an open field on its top line, not a button that opens one (`CalendarSearch`).

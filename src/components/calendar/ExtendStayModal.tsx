@@ -14,7 +14,8 @@ import { withFixedPayment, PaymentPatch } from '../walk-in/bookingPayment'
 import { pendingEarlyCharge, extendStay } from '../../utils/bookingBalance'
 import { useBookingSlips } from '../../hooks/useBookingSlips'
 import { markSlipsPaid, slipNumber, unpaidSlips } from '../../utils/orderSlips'
-import { payOnBill, paySlipsIfCleared, resettleWith } from '../../utils/billPayment'
+import { overpaid, payOnBill, paySlipsIfCleared, resettleWith } from '../../utils/billPayment'
+import { NewTag } from '../NewMark'
 import { BookingStageLine } from './BookingStageLine'
 import { stayStage } from '../../utils/stayStage'
 import { undoBookingCheck } from '../../utils/db'
@@ -351,6 +352,16 @@ export function ExtendStayModal({
   const due = billDue
   const paidSoFar = billPaid
   const totalCharge = billTotal
+  // A bill paid over: `balance_due` stops at 0, so what it was paid over is worked out here, like the
+  // bill's green minus (Sebastian, 2026-11-14: "ship it"). Asked only once nothing is owed.
+  const [paidOver, setOver] = useState(0)
+  const over = billDue > 0 || billPaid <= 0 ? 0 : paidOver
+  useEffect(() => {
+    if (billDue > 0 || billPaid <= 0) return
+    let live = true
+    overpaid(groupOf(localBooking, bookings), { rooms, venues }).then(v => { if (live) setOver(v) }).catch(() => {})
+    return () => { live = false }
+  }, [billDue, billPaid, localBooking, bookings, rooms, venues])
   // Early check-in money that is recorded but deliberately NOT billed yet (the owner:
   // *"just add it to their bill for when they checkout"*). Shown as its own pending line
   // so the desk can see what the guest will owe without the money word flipping and
@@ -703,8 +714,9 @@ export function ExtendStayModal({
   const badge = room ? String(room.room_number) : (venue?.name || unitName).charAt(0)
   const subLine = [booking.room_id ? roomType : [venue?.name, roomType].filter(Boolean).join(' · '), stayLine].filter(Boolean).join(' · ')
   // The biggest thing on the panel: what is owed, or that nothing is.
-  const figure: { label: string; value: number | null; tone: string } | null =
-    billedToAgency && due > 0 ? { label: 'Agency owes', value: due, tone: 'text-blue-700' }
+  const figure: { label: string; value: number | null; tone: string; minus?: boolean } | null =
+    over > 0 ? { label: 'Paid too much', value: over, tone: 'text-emerald-700', minus: true }
+    : billedToAgency && due > 0 ? { label: 'Agency owes', value: due, tone: 'text-blue-700' }
       : billRows.length > 1 ? (billDue > 0 ? { label: 'Left to pay', value: billDue, tone: 'text-danger-600' }
         : billTotal > 0 ? { label: 'Total ' + peso(billTotal), value: null, tone: 'text-emerald-700' } : null)
       : due > 0 ? (dueNow < due
@@ -816,7 +828,7 @@ export function ExtendStayModal({
                 {figure && !nameNeeded && (
                   <>
                     <p className="text-[13px] font-bold text-muted flex items-center gap-1.5">
-                      {figure.label}
+                      {figure.minus ? <span className="relative">{figure.label}<NewTag id="panel-overpaid" /></span> : figure.label}
                       {billRows.length > 1 && !billedToAgency && (
                         <BillRooms rows={billRows} current={localBooking.id} rooms={rooms} venues={venues} onOpen={onOpenBooking} />
                       )}
@@ -828,7 +840,7 @@ export function ExtendStayModal({
                             <React.Fragment key={w}>{i > 0 && ' '}<span className="bw-word" style={{ '--i': i } as React.CSSProperties}>{w}</span></React.Fragment>
                           ))}
                         </span>
-                      ) : <CountPeso value={figure.value} />}
+                      ) : <>{figure.minus && '−'}<CountPeso value={figure.value} /></>}
                     </p>
                   </>
                 )}

@@ -55,17 +55,37 @@ export function settleBill(
   rows: Booking[],
   opts: { rooms: Room[]; venues: Venue[]; food?: Record<string, number>; includeEarlyHours?: boolean },
 ): Booking[] {
+  if (!canPrice(rows, opts)) return rows
+  const led = onLead(rows)
+  const paid = Number(led[0].downpayment_paid || 0)
+  const owed = Math.max(0, billCost(led, opts) - paid)
+  const status = paymentStatusFromMoney(paid, owed)
+  return led.map((b, i) => ({ ...b, balance_due: i === 0 ? owed : 0, payment_status: status }))
+}
+
+/** Not a block, and every room's price has arrived. */
+function canPrice(rows: Booking[], opts: { rooms: Room[]; venues: Venue[] }): boolean {
   const known = (b: Booking) => b.room_id
     ? opts.rooms.some(r => r.id === b.room_id)
     : b.venue_id ? opts.venues.some(v => v.id === normalizeVenueId(b.venue_id)) : true
-  if (rows.length === 0 || rows.some(b => b.status === 'blocked' || !known(b))) return rows
-  const led = onLead(rows)
+  return rows.length > 0 && !rows.some(b => b.status === 'blocked' || !known(b))
+}
+
+/** Every room's stay and food − the discounts, for rows already `onLead`. */
+function billCost(led: Booking[], opts: { rooms: Room[]; venues: Venue[]; food?: Record<string, number>; includeEarlyHours?: boolean }): number {
   const stays = billStays(led[0], led, opts) // opts.food: the discounts come off the food too
-  const cost = led.reduce((t, b, i) => t + stayCost(b, { ...opts, tabTotal: opts.food?.[b.id], stays: i === 0 ? stays : undefined }), 0)
-  const paid = Number(led[0].downpayment_paid || 0)
-  const owed = Math.max(0, cost - paid)
-  const status = paymentStatusFromMoney(paid, owed)
-  return led.map((b, i) => ({ ...b, balance_due: i === 0 ? owed : 0, payment_status: status }))
+  return led.reduce((t, b, i) => t + stayCost(b, { ...opts, tabTotal: opts.food?.[b.id], stays: i === 0 ? stays : undefined }), 0)
+}
+
+/**
+ * How much more the bill has received than it comes to, 0 when not. `balance_due` stops at 0, so the
+ * booking panel asks this to show an overpaid bill below zero like the bill does (Sebastian, 2026-11-14).
+ */
+export function billOver(rows: Booking[], opts: { rooms: Room[]; venues: Venue[]; food?: Record<string, number> }): number {
+  if (!canPrice(rows, opts) || rows.some(b => b.status === 'cancelled')) return 0
+  const led = onLead(rows)
+  const cost = billCost(led, opts)
+  return cost > 0 ? Math.max(0, Number(led[0].downpayment_paid || 0) - cost) : 0
 }
 
 /** The rows `settleBill` changed, to be saved. */

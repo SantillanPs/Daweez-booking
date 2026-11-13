@@ -255,7 +255,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     if (i === 0 && charges.length > 0) ea.charges = charges
     if (bfPrice && s.type === 'room') ea.breakfast_price = bfPrice
     const unit = unitOfLine(id)
-    const rentals: EquipmentRental | undefined = id === firstRoomId && !to
+    // An agency's stay takes extras like anyone's (Sebastian, 2026-11-14: the agency changes only who the
+    // bill is to and the price, as he ruled on 2026-10-06).
+    const rentals: EquipmentRental | undefined = id === firstRoomId
       ? { bigTableCount: 0, smallTableCount: 0, chairCount: 0, mineralWaterCount: 0, ...extras } : undefined
     // A correction starts from the saved row, so its payments, breakfasts and hours stay on the bill.
     const saved = rowOf(id)
@@ -302,12 +304,12 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const paidUp = received > 0 && due === 0
   // **More received than the bill comes to** (Sebastian, 2026-11-07, Erwin Cagampang's bill: ₱52,000 of
   // receipts on a ₱43,000 bill read only ₱0): the Amount due goes below zero, in green ("just make it
-  // negative green if it's gone over"), so the desk checks the receipts against the paper.
-  const over = !to && total > 0 && ed?.status !== 'cancelled' ? Math.max(0, received - total) : 0
-  // An agency's or institution's bill is "Total" only until money is taken on it at the desk; then
-  // the box says what is left, as the payment line above it does (a ₱1,900 bill with ₱950 paid read
-  // "Remaining balance ₱1,900", 2026-11-05). The paper copy stays Total only (`AgencyInvoiceDocument`).
-  const agencyTotal = !!to && received === 0
+  // negative green if it's gone over"), so the desk checks the receipts against the paper. An agency's
+  // bill too, once money is taken on it (it read ₱0, 2026-11-13).
+  const over = total > 0 && ed?.status !== 'cancelled' ? Math.max(0, received - total) : 0
+  // An agency's bill is worked on like a guest's — extras, Sub-total, payments, Amount due (Sebastian,
+  // 2026-11-14); the agency changes only who it is to and the price. Only its paper stays Total only
+  // (`AgencyInvoiceDocument`), since the office files that copy.
   // Folded payments open by themselves when one of them is the payment that was tapped.
   const [paysOpen, setPaysOpen] = useState(!!tapped)
   const [discOpen, setDiscOpen] = useState(false)
@@ -547,7 +549,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
       formCompanyName: to?.name || '', formInstitution: to && !to.dealId ? to.name : ed?.institution || '',
       formVehiclePlate: ed?.vehicle_plate || deal?.vehicle_plate || '', formInvoiceNumber: ed?.invoice_number || '', formSource: ed?.source || 'manual',
       formBreakfastRoomIds: isShort ? [] : breakfast, formBreakfastDays: bfDays, formBreakfastPlans: isShort ? {} : bfPlans, formCompanions: companions.filter(c => c.name.trim()),
-      ...extrasOf(to ? NO_EXTRAS : extras),
+      ...extrasOf(extras),
       // What the bill does not show is sent back as saved, or the save would blank it.
       formChairs: venueKit?.chairCount || 0, formEventTable: venueKit?.tableCount || 0, formEventTent: venueKit?.tentCount || 0,
       formVenueExcessHours: ed?.venue_excess_hours || 0, formBlockNotes: ed?.notes || '', venueDayBlocks: ed?.venue_day_blocks || undefined,
@@ -1130,14 +1132,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const addMoney = (<>
     <AddMoney expanded={(pop?.kind === 'disc' && Number(pop.id) >= given.length) || writing}
       onDiscount={at => { if (to) sawFeature('agency-discount'); addDisc(at) }}
-      // A new agency booking takes no payment on the bill: the agency pays later.
-      onPayment={canPay && (!to || desk) ? () => { if (writing) { setWriting(false); return } setWriting(true); if (editing) void save() } : undefined} />
+      onPayment={canPay ? () => { if (writing) { setWriting(false); return } setWriting(true); if (editing) void save() } : undefined} />
     {to && <NewTag id="agency-discount" />}
   </>)
   // The paper copy follows the saved booking, not each key typed: drawn again only once a change
   // is saved (typing on the bill was slow, 2026-10-29).
   const paperCopy = useMemo(() => ed && <PrintInvoiceModal booking={ed} rooms={rooms} venues={venues} bookingsList={bookings} onClose={() => {}} embedded />, [ed, rooms, venues, bookings])
-  const book = ed ? '' : to ? 'Agency pays' : !paid ? 'No deposit' : paidUp ? 'Paid in full' : pesoWhole(paid.amount) + ' deposit'
+  const book = ed ? '' : !paid ? 'No deposit' : paidUp ? 'Paid in full' : pesoWhole(paid.amount) + ' deposit'
 
   return createPortal(
     <div ref={scroller} className="fixed inset-0 z-[60] p-3 sm:p-4 bg-slate-900/50 overflow-y-auto bw-dim">
@@ -1241,8 +1242,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               )}
               <AddCharge sheet={sheetEl} onCharge={addCharge} cols={6}
                 // The Sub-total, bold, at the end of the add line (Sebastian, 2026-11-06, the "Bill Sub-total
-                // Row" mock: "I want the sub total to be more visible"). An agency's paper is Total only.
-                end={(!to || discHere) && (
+                // Row" mock: "I want the sub total to be more visible"). An agency's bill too; only its paper is Total only.
+                end={(
                   <div className={TOT}>
                     <span className="col-start-2 col-span-2 flex items-center justify-between gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-900">Sub-total</span>
@@ -1258,8 +1259,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                     </button>
                   )}
                 </>}
-                // The form's room extras, a tap for each one more; an agency's stay has none.
-                presets={firstRoomId && !to ? EXTRAS.map(x => ({ label: x.label, price: x.price, onPick: () => { setExtras(e => ({ ...e, [x.key]: e[x.key] + 1 })); setRemoved(null) } })) : undefined} />
+                // The form's room extras, a tap for each one more.
+                presets={firstRoomId ? EXTRAS.map(x => ({ label: x.label, price: x.price, onPick: () => { setExtras(e => ({ ...e, [x.key]: e[x.key] + 1 })); setRemoved(null) } })) : undefined} />
             </StatementChargesTable>
           )}
 
@@ -1305,9 +1306,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                   {struck.filter(g => g.kind === 'disc').map(g => (
                     <GoneLine key={g.key} icon={<Tag className="w-3 h-3" />} name={g.name} detail={g.detail} amount={'−' + pesoWhole(g.amount)} onUndo={() => unstrike(g)} />
                   ))}
-                  {/* A new agency booking shows no payments, so its "Add" (a discount only) stands on its own. */}
-                  {to && !desk && !discHere && <div className="relative min-h-[22px]">{addMoney}</div>}
-                  {(!to || desk) && (<>
+                  <>
                   {/* One payment is its own line too ("Paid", then what for, the day, how — each still a tap to
                       fix), its amount in green; two or more fold into one line with a count. Writing one is the
                       "+" beside it, gone once nothing is owed. Its bin takes it off (2026-11-06). */}
@@ -1355,21 +1354,21 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                   {paidUp && ed?.status !== 'cancelled' && (
                     <span className="bill-paid self-end mt-1.5 mb-0.5 px-[9px] py-0.5 border-2 border-emerald-700 rounded text-[11px] font-extrabold uppercase tracking-[0.1em] text-emerald-700">✓ Paid in full</span>
                   )}
-                  </>)}
+                  </>
               </>
               {/* The box starts at the icon column, so its label stands on the names' edge and its figure
                   ends on the amounts' (the border's 2.5px taken off each side). */}
-              <div onClick={to && !agencyTotal ? () => sawFeature('agency-paid-due') : over > 0 ? () => sawFeature('bill-overpaid') : undefined} className={'mt-2.5 pl-[19.5px] pr-[25.5px] py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900' + (!to || desk ? '' : ' -mx-3 px-3')}>
+              <div onClick={to ? () => sawFeature('agency-bill-same') : over > 0 ? () => sawFeature('bill-overpaid') : undefined} className="mt-2.5 pl-[19.5px] pr-[25.5px] py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
                 <span className="relative text-[9.5px] font-bold uppercase tracking-[0.1em]">
-                  {agencyTotal ? 'Total' : 'Amount due'}
-                  {to && !agencyTotal && <NewTag id="agency-paid-due" />}
+                  Amount due
+                  {to && <NewTag id="agency-bill-same" />}
                   {over > 0 && <NewTag id="bill-overpaid" />}
                   {received > 0 && !paidUp && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px text-muted">Remaining balance</span>}
                 </span>
-                <span className={'font-display text-[24px] font-extrabold leading-none' + (over > 0 ? ' text-emerald-700' : '')}>{over > 0 && '−'}<CountPeso value={agencyTotal ? total : over > 0 ? over : due} /></span>
+                <span className={'font-display text-[24px] font-extrabold leading-none' + (over > 0 ? ' text-emerald-700' : '')}>{over > 0 && '−'}<CountPeso value={over > 0 ? over : due} /></span>
               </div>
-              {/* Nothing written and nobody else paying: said once, in blue, like the calendar's pill. */}
-              {!to && received === 0 && !writing && <p className="mt-0.5 text-right text-[11px] font-bold text-sky-700 bw-rise">No deposit</p>}
+              {/* Nothing written: said once, in blue, like the calendar's pill. */}
+              {received === 0 && !writing && <p className="mt-0.5 text-right text-[11px] font-bold text-sky-700 bw-rise">No deposit</p>}
               {ed?.status === 'cancelled' && <CancelledStamp booking={ed} />}
             </div>
           </div>
@@ -1415,13 +1414,13 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
             mock, Sebastian, 2026-10-29). */}
         {statement && (
           <div aria-hidden={totalsSeen} className={'bill-slip bill-tear-t print:hidden sticky bottom-2.5 z-20 w-full max-w-xl mx-auto -mt-16 mb-2.5 flex items-center gap-3.5 pl-4 pr-3 pt-[13px] pb-[9px] rounded-b-md bg-paper-50 border-b-[1.5px] border-ink-900 text-ink-900' + (totalsSeen ? ' away' : '')}>
-            {(!to || discOff > 0) && <SlipFigure name="Sub-total" value={pesoWhole(total + discOff)} />}
+            <SlipFigure name="Sub-total" value={pesoWhole(total + discOff)} />
             {discOff > 0 && <SlipFigure name="Discount" value={'−' + pesoWhole(discOff)} tone="text-danger-600" />}
             {received > 0 && <SlipFigure name="Paid" value={'−' + pesoWhole(received)} tone="text-emerald-700" />}
             <span className="flex-1" />
             <div className="flex items-baseline gap-2 px-3 py-[5px] bg-card border-2 border-ink-900">
-              <span className="text-[9px] font-extrabold uppercase tracking-[0.1em]">{agencyTotal ? 'Total' : 'Due'}</span>
-              <span className="font-display text-[20px] font-extrabold tabular-nums leading-none"><CountPeso value={agencyTotal ? total : due} /></span>
+              <span className="text-[9px] font-extrabold uppercase tracking-[0.1em]">Due</span>
+              <span className="font-display text-[20px] font-extrabold tabular-nums leading-none"><CountPeso value={due} /></span>
             </div>
           </div>
         )}

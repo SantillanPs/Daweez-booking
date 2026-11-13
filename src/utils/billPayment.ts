@@ -1,5 +1,5 @@
 import { Booking, PaymentRecord, Room, Venue } from '../types/booking'
-import { changedRows, onLead, settleBill } from './bookingBalance'
+import { billOver, changedRows, onLead, settleBill } from './bookingBalance'
 import { groupOf } from './bookingGroup'
 import { paymentStatusFromMoney } from './bookingMoney'
 import { statusAfterPayment } from './bookingStatus'
@@ -44,10 +44,20 @@ export function payOnBill(rows: Booking[], w: {
   }))
 }
 
+/** Every room's food, read fresh. */
+async function foodOf(rows: Booking[]): Promise<Record<string, number>> {
+  const map = await getSlipsByBooking(rows.map(b => b.id))
+  return Object.fromEntries(rows.map(b => [b.id, slipsTotal(map[b.id] || [])]))
+}
+
 /** The bill priced again with every room's food read fresh (`settleBill`). */
 export async function resettle(rows: Booking[], o: { rooms: Room[]; venues: Venue[] }): Promise<Booking[]> {
-  const map = await getSlipsByBooking(rows.map(b => b.id))
-  return settleBill(rows, { ...o, food: Object.fromEntries(rows.map(b => [b.id, slipsTotal(map[b.id] || [])])) })
+  return settleBill(rows, { ...o, food: await foodOf(rows) })
+}
+
+/** How much the bill was paid over, with every room's food read fresh (`billOver`). */
+export async function overpaid(rows: Booking[], o: { rooms: Room[]; venues: Venue[] }): Promise<number> {
+  return billOver(rows, { ...o, food: await foodOf(rows) })
 }
 
 /** One room changed by `patch`: its bill priced again. Every row to save comes back, that room always. */

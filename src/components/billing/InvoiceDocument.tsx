@@ -57,6 +57,9 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
   const dueLabel = statement.paymentPlan === 'deposit' && statement.downpaymentPaid === 0 ? 'Deposit (50%)'
     : statement.downpaymentPaid > 0 && statement.balanceAfter > 0 ? 'Remaining balance'
     : ''
+  // More received than the bill comes to: below zero, in green, as on the bill on screen (2026-11-13).
+  const over = primaryBooking.status !== 'cancelled' && statement.subTotal > 0 && statement.amountDue === 0
+    ? Math.max(0, statement.downpaymentPaid - statement.subTotal) : 0
 
   // The page's three kinds of text (see `SectionName`): a grey label, the black information,
   // and a black figure.
@@ -194,7 +197,7 @@ export function InvoiceDocument({ primaryBooking, rooms, venues, statement, onCl
               Amount due
               {dueLabel && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px">{dueLabel}</span>}
             </span>
-            <span className="font-display text-[24px] font-extrabold leading-none">{peso(statement.amountDue)}</span>
+            <span className={'font-display text-[24px] font-extrabold leading-none' + (over > 0 ? ' text-emerald-700' : '')}>{over > 0 ? '−' + peso(over) : peso(statement.amountDue)}</span>
           </div>
         </div>
       </div>

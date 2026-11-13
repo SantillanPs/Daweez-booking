@@ -131,6 +131,8 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
   const paidTotal = paid.reduce((a, p) => a + p.amount, 0)
   const due = Math.max(0, subTotal - paidTotal)
   const paidUp = due === 0 && paid.length > 0
+  // More received than the bill comes to: below zero, in green, as on the one bill (`over` in NewBookingBill).
+  const over = subTotal > 0 ? Math.max(0, paidTotal - subTotal) : 0
 
   const unitOf = (key: string) => list.find(([id]) => key.startsWith('draft-' + id + '-'))?.[0]
   const removeLine = (line: StatementLineItem) => {
@@ -448,7 +450,7 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
                   Amount due
                   {paidTotal > 0 && !paidUp && <span className="block text-[9px] font-normal normal-case tracking-normal mt-px text-muted">Remaining balance</span>}
                 </span>
-                <span className="font-display text-[24px] font-extrabold leading-none"><CountPeso value={due} /></span>
+                <span className={'font-display text-[24px] font-extrabold leading-none' + (over > 0 ? ' text-emerald-700' : '')}>{over > 0 && '−'}<CountPeso value={over > 0 ? over : due} /></span>
               </div>
             </div>
           </div>
