@@ -75,8 +75,11 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, onBooki
           `BrandHeader` returns a fragment, so its letterhead div and its rule div are
           direct children too and take part in the same rhythm. The blocks therefore carry
           **no vertical padding of their own**; if one ever needs its own, this rhythm is
-          gone and the page starts drifting again. */}
-      <div ref={sheet} data-sheet className="p-6 md:p-10 overflow-y-auto print:px-8 print:py-4 print:overflow-visible flex-1 bg-card font-sans text-main leading-relaxed print:static space-y-2">
+          gone and the page starts drifting again.
+
+          The left side is 18 mm on paper (2026-11-14): the staff punch the sheet to file it,
+          and a hole punch reaches ~15 mm in, so at 8 mm it went through the text. */}
+      <div ref={sheet} data-sheet className="p-6 md:p-10 overflow-y-auto print:pl-[18mm] print:pr-8 print:py-4 print:overflow-visible flex-1 bg-card font-sans text-main leading-relaxed print:static space-y-2">
         {children}
       </div>
     </div>
