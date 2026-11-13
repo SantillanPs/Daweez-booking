@@ -1351,14 +1351,22 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                   {struck.filter(g => g.kind === 'pay').map(g => (
                     <GoneLine key={g.key} icon={<Banknote className="w-3 h-3" />} name={g.name} detail={g.detail} amount={'−' + pesoWhole(g.amount)} onUndo={() => unstrike(g)} />
                   ))}
+                  {/* A phone has no room left of the box, so there it keeps its own line. */}
                   {paidUp && ed?.status !== 'cancelled' && (
-                    <span className="bill-paid self-end mt-1.5 mb-0.5 px-[9px] py-0.5 border-2 border-emerald-700 rounded text-[11px] font-extrabold uppercase tracking-[0.1em] text-emerald-700">✓ Paid in full</span>
+                    <span className="bill-paid sm:hidden self-end mt-1.5 mb-0.5 px-[9px] py-0.5 border-2 border-emerald-700 rounded text-[11px] font-extrabold uppercase tracking-[0.1em] text-emerald-700">✓ Paid in full</span>
                   )}
                   </>
               </>
               {/* The box starts at the icon column, so its label stands on the names' edge and its figure
                   ends on the amounts' (the border's 2.5px taken off each side). */}
-              <div onClick={to ? () => sawFeature('agency-bill-same') : over > 0 ? () => sawFeature('bill-overpaid') : undefined} className="mt-2.5 pl-[19.5px] pr-[25.5px] py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
+              <div onClick={to ? () => sawFeature('agency-bill-same') : over > 0 ? () => sawFeature('bill-overpaid') : undefined} className="relative mt-2.5 pl-[19.5px] pr-[25.5px] py-1.5 flex items-center justify-between gap-2.5 border-[2.5px] border-ink-900 text-ink-900">
+                {/* Paid in full sits in the empty space left of the box, so it takes no row of its own
+                    (Sebastian, 2026-11-14: "so it doesn't take space that the content needs"). */}
+                {paidUp && ed?.status !== 'cancelled' && (
+                  <span className="absolute right-full inset-y-0 mr-5 hidden sm:flex items-center pointer-events-none">
+                    <span className="bill-paid whitespace-nowrap px-[9px] py-0.5 border-2 border-emerald-700 rounded text-[11px] font-extrabold uppercase tracking-[0.1em] text-emerald-700">✓ Paid in full</span>
+                  </span>
+                )}
                 <span className="relative text-[9.5px] font-bold uppercase tracking-[0.1em]">
                   Amount due
                   {to && <NewTag id="agency-bill-same" />}
