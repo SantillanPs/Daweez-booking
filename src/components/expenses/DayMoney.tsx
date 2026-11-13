@@ -162,7 +162,7 @@ function ExpenseLine({ expense, time, edit }: {
   return (
     <div className={editing ? 'relative z-20' : 'relative'}>
       {time ? (
-        <div className={'group/line relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 min-h-8 py-1 -mx-2 px-2 rounded-lg text-[13px] transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
+        <div className={'group/line relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 min-h-7 py-1 -mx-2 px-2 rounded-lg text-[13px] transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
           <span className={'min-w-0 truncate font-semibold text-main' + note.cls}>{note.text || 'Expense'}</span>
           {amount}
           <span className="min-w-0 truncate text-[12px] text-muted">{time}</span>
@@ -358,7 +358,7 @@ function ExpenseBlank({ categories, another, pastDay, onAdd }: {
   if (!open) {
     return (
       <button type="button" onClick={() => { setOpen(true); setPicking(true) }}
-        className="w-full mt-2 flex items-center gap-1.5 h-8 px-2 rounded-md border-[1.5px] border-dashed border-ink-200 text-[11px] font-bold text-gold-800 hover:border-gold-400 hover:bg-gold-100/40 active:scale-[0.99] transition-[background-color,border-color,transform] cursor-pointer [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">
+        className="w-full mt-2 flex items-center gap-1.5 h-7 px-2 rounded-md border-[1.5px] border-dashed border-ink-200 text-[11px] font-bold text-gold-800 hover:border-gold-400 hover:bg-gold-100/40 active:scale-[0.99] transition-[background-color,border-color,transform] cursor-pointer [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">
         <Plus aria-hidden="true" className="w-3.5 h-3.5" />{another ? 'Another expense' : 'Write an expense'}{pastDay ? ' for ' + pastDay : ''}
       </button>
     )
@@ -470,7 +470,7 @@ function MoneyInBlank({ bills, pastDay, onAddIn }: { bills: BillChoice[]; pastDa
   if (!open) {
     return (
       <button type="button" onClick={() => { setOpen(true); setTimeout(() => noteRef.current?.focus()) }}
-        className="w-full mt-2 flex items-center gap-1.5 h-8 px-2 rounded-md border-[1.5px] border-dashed border-ink-200 text-[11px] font-bold text-gold-800 hover:border-gold-400 hover:bg-gold-100/40 active:scale-[0.99] transition-[background-color,border-color,transform] cursor-pointer [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">
+        className="w-full mt-2 flex items-center gap-1.5 h-7 px-2 rounded-md border-[1.5px] border-dashed border-ink-200 text-[11px] font-bold text-gold-800 hover:border-gold-400 hover:bg-gold-100/40 active:scale-[0.99] transition-[background-color,border-color,transform] cursor-pointer [animation:bp-slide_.25s_cubic-bezier(.16,1,.3,1)]">
         <Plus aria-hidden="true" className="w-3.5 h-3.5" />Write money in{pastDay ? ' for ' + pastDay : ''}
       </button>
     )
@@ -678,7 +678,7 @@ function PaymentLine({ line, loading, onOpen, inGroup, today, edit }: {
       <span className="flex justify-end">{canEdit && <PenButton line={line} editing={editing} edit={edit} keyOf={key} />}</span>
     </>
   )
-  const grid = 'group/line relative ' + (inGroup ? 'mi-row mi-kid py-1 text-[13px]' : 'mi-row min-h-8 py-1 text-[13px]') + ' -mx-2 px-2 rounded-lg text-left' + (line.cancelled ? ' dm-struck' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')
+  const grid = 'group/line relative ' + (inGroup ? 'mi-row mi-kid py-1 text-[13px]' : 'mi-row min-h-7 py-1 text-[13px]') + ' -mx-2 px-2 rounded-lg text-left' + (line.cancelled ? ' dm-struck' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')
   // Not a <button>: the pencil is a button of its own and cannot sit inside one.
   const row = onOpen && openKey(line) ? (
     <div role="button" tabIndex={0} onClick={() => onOpen(line)} aria-busy={loading}
@@ -714,7 +714,7 @@ function PaymentGroup({ lines, opening, onOpen, today, edit }: { lines: MoneyInL
   return (
     <div>
       <button type="button" onClick={() => { setOpen(o => !o); markSeen('group-items') }} aria-expanded={open}
-        className={'group relative mi-row min-h-8 py-1 -mx-2 px-2 rounded-lg text-[13px] w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (cancelled ? ' dm-struck' : '')}>
+        className={'group relative mi-row min-h-7 py-1 -mx-2 px-2 rounded-lg text-[13px] w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer' + (cancelled ? ' dm-struck' : '')}>
         {cancelled && <i aria-hidden="true" className="dm-scratch group-aria-expanded:opacity-0" />}
         <NewTag id="group-items" />
         <span className={FAINT}>{clock(first.paidAt)}</span>
@@ -805,7 +805,7 @@ function WayTotals({ lines }: { lines: MoneyInLine[] }) {
       {kinds.map((k, i) => {
         const w = WAYS[k]
         return (
-          <div key={k} className={'mi-way h-8 flex items-center justify-center gap-1.5 min-w-0 whitespace-nowrap text-[12px] font-bold bw-rise ' + w.ink} style={{ '--i': i } as CSSProperties}>
+          <div key={k} className={'mi-way h-7 flex items-center justify-center gap-1.5 min-w-0 whitespace-nowrap text-[12px] font-bold bw-rise ' + w.ink} style={{ '--i': i } as CSSProperties}>
             <w.Icon aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
             <span>{w.name}</span>
             <span key={by.get(k)} className={AMOUNT + ' text-[13.5px] [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(by.get(k) || 0)}</span>
@@ -902,8 +902,8 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
   return (
     <div className="bg-card border border-soft rounded-xl shadow-soft">
       <div className="grid md:grid-cols-2 md:divide-x divide-soft">
-        <div className="p-5 flex flex-col">
-          <div className="flex items-center justify-between gap-3 min-h-4 mb-3">
+        <div className="px-5 pt-4 pb-3 flex flex-col">
+          <div className="flex items-center justify-between gap-3 min-h-4 mb-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Money in</p>
             {sort && canGroup && (
               <button type="button" onClick={() => resort(null)}
@@ -931,16 +931,16 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           </div>
           <MoneyInBlank key={report.date} bills={bills} pastDay={pastDay} onAddIn={onAddIn} />
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
-          <div className="flex-1 min-h-4" />
+          <div className="flex-1 min-h-3" />
           <WayTotals lines={report.moneyIn} />
-          <div className="flex justify-between items-center gap-3 h-11 border-t border-soft pt-3 text-[14px] font-extrabold">
+          <div className="flex justify-between items-center gap-3 border-t border-soft pt-3 text-[14px] font-extrabold">
             <span className="text-main">Total in</span>
             <span key={report.totalIn} className="font-mono text-[18px] text-emerald-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(report.totalIn)}</span>
           </div>
         </div>
 
-        <div className="p-5 flex flex-col border-t md:border-t-0 border-soft">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Money out</p>
+        <div className="px-5 pt-4 pb-3 flex flex-col border-t md:border-t-0 border-soft">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money out</p>
           {dayExpenses.length === 0 && <p className="text-[13px] text-muted">Nothing spent yet.</p>}
           {byCategory(dayExpenses).map(group => group.length > 1 ? (
             <ExpenseGroup key={group[0].category_id} expenses={group} edit={editExpense} />
@@ -949,8 +949,8 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           ))}
           <ExpenseBlank key={report.date} categories={categories} another={dayExpenses.length > 0} pastDay={pastDay} onAdd={onAdd} />
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
-          <div className="flex-1 min-h-4" />
-          <div className={'flex justify-between items-center gap-3 h-11 pt-3 text-[14px] font-extrabold' + (dayExpenses.length ? '' : ' border-t border-soft')}>
+          <div className="flex-1 min-h-3" />
+          <div className={'flex justify-between items-center gap-3 pt-3 text-[14px] font-extrabold' + (dayExpenses.length ? '' : ' border-t border-soft')}>
             <span className="text-main">Total out</span>
             <span key={report.totalOut} className="font-mono text-[18px] text-danger-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(report.totalOut)}</span>
           </div>
@@ -963,13 +963,13 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           zero each morning, so the day before is carried in. Each figure keeps the colour it has
           above — money in green, money out red — and a hand-over is gold, so it is not read as
           money spent. */}
-      <div className="p-5 border-t-2 border-ink-800 bg-page rounded-b-xl text-[13px] text-main">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Summary</p>
-        <div className="flex items-center justify-between gap-3 min-h-7">
+      <div className="px-5 pt-4 pb-3 border-t-2 border-ink-800 bg-page rounded-b-xl text-[13px] text-main">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Summary</p>
+        <div className="flex items-center justify-between gap-3 min-h-6">
           <span>Total Sales</span>
           <span className="font-mono font-bold text-emerald-600">{peso(report.totalIn)}</span>
         </div>
-        <div className="flex items-center justify-between gap-3 min-h-7">
+        <div className="flex items-center justify-between gap-3 min-h-6">
           <span><span className="text-muted">Add:</span> {forwardedLabel(report.date)}</span>
           <span className="font-mono font-bold">{signed(report.broughtForward)}</span>
         </div>
@@ -995,16 +995,16 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
         ))}
         {/* GCash, bank and cheque money is sold but not in the drawer, so it comes off here (only on a day it came). */}
         {report.totalNotCash > 0 && (
-          <div className="flex items-center justify-between gap-3 min-h-7" onClick={() => markSeen('cash-not-gcash')}>
+          <div className="flex items-center justify-between gap-3 min-h-6" onClick={() => markSeen('cash-not-gcash')}>
             <span className="relative"><span className="text-muted">Less:</span> GCash, bank &amp; cheque<NewTag id="cash-not-gcash" at="top-0.5 -right-8" /></span>
             <span className="font-mono font-bold">({peso(report.totalNotCash)})</span>
           </div>
         )}
-        <div className="flex items-center justify-between gap-3 min-h-9 border-t border-soft mt-2 pt-2 font-bold">
+        <div className="flex items-center justify-between gap-3 min-h-7 border-t border-soft mt-1 pt-1 font-bold">
           <span>Cash on hand</span>
           <span className="font-mono">{signed(report.cashOnHand)}</span>
         </div>
-        <div className="flex items-center justify-between gap-3 min-h-7">
+        <div className="flex items-center justify-between gap-3 min-h-6">
           <span>Total Expenses</span>
           <span className="font-mono font-bold text-danger-600">({peso(report.totalOut)})</span>
         </div>
@@ -1028,13 +1028,13 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
             </span>
           </div>
         ))}
-        <div className="flex items-center justify-between gap-3 min-h-14 border-t border-soft mt-3 pt-3" onClick={() => markSeen('rolling-totals')}>
+        <div className="flex items-center justify-between gap-3 min-h-11 border-t border-soft mt-2 pt-2" onClick={() => markSeen('rolling-totals')}>
           <span className="relative text-[12px] font-extrabold uppercase tracking-[0.14em]">Total cash on hand<NewTag id="rolling-totals" /></span>
           <span className={'font-mono text-[26px] font-extrabold leading-none ' + (report.balance < 0 ? 'text-danger-600' : 'text-emerald-600')}>
             {report.balance < 0 && '('}<CountPeso value={Math.abs(report.balance)} />{report.balance < 0 && ')'}
           </span>
         </div>
-        {footer && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-soft mt-3 pt-3">{footer}</div>}
+        {footer && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-soft mt-2 pt-3">{footer}</div>}
       </div>
     </div>
   )

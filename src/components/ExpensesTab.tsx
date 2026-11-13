@@ -19,6 +19,8 @@ import { updateExpense } from '../utils/expenses'
 import { showToast } from '../utils/toast'
 import { askConfirm } from '../utils/confirm'
 import { DayPicker } from './expenses/DayPicker'
+import { NewTag } from './NewMark'
+import { markSeen } from '../utils/newMarks'
 import { DayMoney, type BillChoice, type MoneyInInput } from './expenses/DayMoney'
 import { ExpenseHistory } from './expenses/ExpenseHistory'
 import { IncomeHistory } from './expenses/IncomeHistory'
@@ -401,10 +403,14 @@ export function ExpensesTab() {
     )
   }
 
-  const quiet = 'inline-flex items-center gap-1 min-h-8 px-1 text-[12px] font-semibold text-muted hover:text-gold-700 active:scale-95 transition-[color,transform] cursor-pointer'
+  // The links under the day as chips in two groups: what you look up, then the cash that moves, each of those
+  // in its own colour (Sebastian, 2026-11-13, the Cash Flow mock's Chips: "too bland and tiring to read through").
+  const chip = 'group inline-flex items-center gap-1.5 h-[30px] px-[11px] rounded-full text-[12px] font-bold active:scale-[.94] transition-[transform,box-shadow,background-color,color] duration-200 cursor-pointer '
+  const look = chip + 'bg-card ring-1 ring-inset ring-paper-200 text-ink-600 hover:ring-[1.5px] hover:ring-gold-400 hover:text-ink-900'
+  const lookIcon = 'w-3.5 h-3.5 text-paper-500 group-hover:text-gold-700 group-hover:scale-[1.15] transition-[color,transform] duration-300'
 
   return (
-    <div className="space-y-4 font-sans">
+    <div className="space-y-3 font-sans">
       <div>
         <h2 className="font-display font-bold text-xl text-main flex items-center gap-2">
           <Wallet className="w-5 h-5 text-gold-600" />
@@ -431,12 +437,14 @@ export function ExpensesTab() {
         onRemovePayment={removeMoneyIn}
         today={today}
         footer={<>
-          <div className="flex flex-wrap items-center gap-x-2 -ml-1">
-            <button type="button" onClick={() => setShowIncome(true)} className={quiet}><Coins className="w-3.5 h-3.5 opacity-75" />All income</button>
-            <button type="button" onClick={() => setShowHistory(true)} className={quiet}><List className="w-3.5 h-3.5 opacity-75" />All expenses</button>
-            <button type="button" onClick={() => setShowCategories(true)} className={quiet}><Tag className="w-3.5 h-3.5 opacity-75" />Categories</button>
-            <button type="button" onClick={() => setHandingOver('in')} className={quiet}><ArrowDownLeft className="w-3.5 h-3.5 opacity-75" />Add cash on hand</button>
-            <button type="button" onClick={() => setHandingOver('out')} className={quiet}><ArrowUpRight className="w-3.5 h-3.5 opacity-75" />Cash remitted</button>
+          <div className="relative flex flex-wrap items-center gap-1.5" onClick={() => markSeen('cash-flow-chips')}>
+            <NewTag id="cash-flow-chips" />
+            <button type="button" onClick={() => setShowIncome(true)} className={look}><Coins aria-hidden="true" className={lookIcon} />All income</button>
+            <button type="button" onClick={() => setShowHistory(true)} className={look}><List aria-hidden="true" className={lookIcon} />All expenses</button>
+            <button type="button" onClick={() => setShowCategories(true)} className={look}><Tag aria-hidden="true" className={lookIcon} />Categories</button>
+            <span aria-hidden="true" className="w-px h-5 mx-1 bg-paper-200" />
+            <button type="button" onClick={() => setHandingOver('in')} className={chip + 'bg-emerald-600/[.08] text-emerald-700'}><ArrowDownLeft aria-hidden="true" className="w-3.5 h-3.5 text-emerald-600 group-hover:translate-y-0.5 transition-transform duration-300" />Add cash on hand</button>
+            <button type="button" onClick={() => setHandingOver('out')} className={chip + 'bg-gold-100 text-gold-800'}><ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-gold-700 group-hover:-translate-y-0.5 transition-transform duration-300" />Cash remitted</button>
           </div>
           <button type="button" onClick={() => setPrinting(true)}
             className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 rounded-lg bg-ink-900 hover:bg-ink-700 text-white text-[11.5px] font-extrabold active:scale-95 transition-[background-color,transform] cursor-pointer">
