@@ -804,14 +804,17 @@ function TotalIn({ lines, total }: { lines: MoneyInLine[]; total: number }) {
   const kinds = WAY_ORDER.filter(k => k !== 'other' || by.get(k))
   return (
     <>
-      <div className="flex justify-between items-center gap-3 border-t border-soft pt-3 text-[14px] font-extrabold">
+      {/* The whole row is the button (Sebastian, 2026-11-14). */}
+      <div className="border-t border-soft pt-3">
         <button type="button" onClick={() => { setOpen(o => !o); markSeen('ways-folded') }} aria-expanded={open}
-          className="relative -ml-1 px-1 min-h-8 flex items-center gap-1.5 rounded-md text-main hover:bg-softbg active:scale-[0.97] transition-[background-color,transform] cursor-pointer">
-          Total in
-          <ChevronDown aria-hidden="true" className={'w-3.5 h-3.5 text-muted transition-transform duration-200 ' + (open ? 'rotate-180' : '')} />
-          <NewTag id="ways-folded" />
+          className="w-[calc(100%+0.5rem)] -mx-1 px-1 min-h-8 flex justify-between items-center gap-3 rounded-md text-[14px] font-extrabold text-main hover:bg-softbg active:scale-[0.99] transition-[background-color,transform] cursor-pointer">
+          <span className="relative flex items-center gap-1.5">
+            Total in
+            <ChevronDown aria-hidden="true" className={'w-3.5 h-3.5 text-muted transition-transform duration-200 ' + (open ? 'rotate-180' : '')} />
+            <NewTag id="ways-folded" />
+          </span>
+          <span key={total} className="font-mono text-[18px] text-emerald-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(total)}</span>
         </button>
-        <span key={total} className="font-mono text-[18px] text-emerald-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(total)}</span>
       </div>
       <div className={'grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
         <div className="overflow-hidden">
@@ -981,13 +984,14 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           <span>Total Sales</span>
           <span className="font-mono font-bold text-emerald-600">{peso(report.totalIn)}</span>
         </div>
-        <div className="flex items-center justify-between gap-3 min-h-6">
-          <span><span className="text-muted">Add:</span> {forwardedLabel(report.date)}</span>
+        {/* Money added is green, like money in; only cash remitted is gold (Sebastian, 2026-11-14). */}
+        <div className="flex items-center justify-between gap-3 min-h-6 text-emerald-600">
+          <span><span className="opacity-80">Add:</span> {forwardedLabel(report.date)}</span>
           <span className="font-mono font-bold">{signed(report.broughtForward)}</span>
         </div>
         {/* Cash put into the hotel, like a hand-over, is here only on the day it happened. */}
         {dayHandovers.filter(h => h.kind === 'in').map(added => (
-          <div key={added.id} className="flex items-center justify-between gap-3 text-gold-800 [animation:bp-slide_.3s_cubic-bezier(.16,1,.3,1)]">
+          <div key={added.id} className="flex items-center justify-between gap-3 text-emerald-600 [animation:bp-slide_.3s_cubic-bezier(.16,1,.3,1)]">
             <span className="min-w-0 truncate">
               <span className="opacity-80">Add:</span> Cash added
               {added.handed_by ? ' · by ' + added.handed_by : ''} · {timeOf(added.created_at)}
