@@ -836,6 +836,9 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 @container (max-width: 520px) {
   .mo-row:not(.mo-kid) { grid-template-columns: 40px minmax(0, 1fr) 80px 24px; }
   .mo-row:not(.mo-kid) > .mi-who { grid-column: 2 / -1; grid-row: 2; }
+  /* Its For heading sorts, so a narrow column keeps it, at the end of Item's. */
+  .mo-row.mi-head > .mi-who, .mo-row.mi-head > .mo-item { grid-column: 2; grid-row: 1; }
+  .mo-row.mi-head > .mi-who { display: block; justify-self: end; }
 }
 /* The inventory logbook (the stock logbook mock, 2026-11-12): a line just written or counted glows gold
    and settles, pop-ups rise from the bottom on a phone and grow in the middle on a PC. */

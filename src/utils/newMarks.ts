@@ -16,8 +16,9 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
-  // Cash Flow → Money out: one line each on Money in's columns, the note first, the category faint (`ExpenseLine` in `DayMoney`).
-  { id: 'money-out-ledger', since: '2026-11-14' },
+  // Cash Flow → Money out: one line each on Money in's columns, sorted by Time, Item, For or Amount from its headings
+  // (`DayMoney`; For keeps a category together and puts it in front). Took over the ledger's own tag the same day.
+  { id: 'money-out-sort', since: '2026-11-14' },
   // Cash Flow → Money out: an expense ticked "Not from hotel cash" does not come off the cash on hand (`OutsideSwitch`).
   { id: 'expense-outside', since: '2026-11-14' },
   // Inventory: the logbook, Kitchen and Hotel books, stock in from the receipt, amounts typed over as the check (`InventoryBook`).

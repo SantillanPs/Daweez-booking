@@ -137,11 +137,13 @@ const spendIcon = (name: string) => SPEND_ICONS.find(([re]) => re.test(name))?.[
 // **One line each, on Money in's columns** (the Money out ledger mock, A, Sebastian, 2026-11-14: "make it more
 // compact like the money in"): the time, the note in bold with the category's sign, the category faint beside
 // it, the amount in red and the pencil.
-function ExpenseLine({ expense, inGroup, edit }: {
+function ExpenseLine({ expense, inGroup, edit, catFirst }: {
   expense: Expense
   /** Inside a merged line: the category is said above, so the line is its note. */
   inGroup?: boolean
   edit: ExpenseEditing
+  /** Sorted by what it was for: the category leads and the note is beside it. */
+  catFirst?: boolean
 }) {
   const key = 'x:' + expense.id
   const editing = edit.editing === key
@@ -149,7 +151,8 @@ function ExpenseLine({ expense, inGroup, edit }: {
   const note = soft((expense.notes || '').trim())
   const name = edit.nameOf(expense.category_id)
   const Icon = spendIcon(name)
-  const title = note.text ? note : soft(name)
+  const title = note.text && !catFirst ? note : soft(name)
+  const beside = catFirst ? note : { text: note.text && name, cls: '' }
   // Paid from outside the hotel: said on the line, since it is the one expense the cash on hand keeps.
   const outside = (after: boolean) => expense.not_from_cash && <span className="font-bold text-gold-800">{after && ' · '}Not from hotel cash</span>
   return (
@@ -164,7 +167,7 @@ function ExpenseLine({ expense, inGroup, edit }: {
               {createElement(Icon, { "aria-hidden": true, className: "w-[15px] h-[15px] shrink-0 text-danger-600" })}
               <span className={'min-w-0 truncate' + title.cls}>{title.text}</span>
             </span>
-            <span className="mi-who min-w-0 truncate text-[12.5px] font-medium text-ink-600">{note.text && name}{outside(!!note.text)}</span>
+            <span className="mi-who min-w-0 truncate text-[12.5px] font-medium text-ink-600"><span className={beside.cls}>{beside.text}</span>{outside(!!beside.text)}</span>
           </>
         )}
         <span key={expense.amount} className={AMOUNT + ' text-right text-danger-600 ' + (inGroup ? 'text-[14px]' : 'text-[15px]') + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(expense.amount)}</span>
@@ -755,6 +758,8 @@ function PaymentGroup({ lines, opening, onOpen, today, edit }: { lines: MoneyInL
 // puts them back in the order they came.
 type SortKey = 'time' | 'where' | 'how' | 'amount'
 export interface MoneyInSort { by: SortKey; dir: 1 | -1 }
+type ExpenseSortKey = 'time' | 'item' | 'for' | 'amount'
+interface ExpenseSort { by: ExpenseSortKey; dir: 1 | -1 }
 const SORTS: Record<SortKey, (l: MoneyInLine) => string | number> = {
   time: l => l.paidAt || '',
   where: l => payHead(l).title.toLowerCase(),
@@ -766,19 +771,50 @@ const sortLines = (list: MoneyInLine[], { by, dir }: MoneyInSort) => [...list].s
   return (x < y ? -1 : x > y ? 1 : (a.paidAt || '').localeCompare(b.paidAt || '')) * dir
 })
 
-function SortHeads({ sort, onSort }: { sort: MoneyInSort | null; onSort: (by: SortKey) => void }) {
-  const head = (by: SortKey, label: string, right?: boolean) => {
-    const on = sort?.by === by
-    return (
-      <span className={right ? 'flex justify-end' : ''}>
-        <button type="button" onClick={() => onSort(by)} aria-pressed={on} aria-label={'Sort by ' + label.toLowerCase() + (on ? (sort!.dir > 0 ? ', A to Z' : ', reversed') : '')}
-          className={'inline-flex items-center gap-0.5 -mx-1 px-1 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-page transition-colors cursor-pointer ' + (on ? 'text-gold-800' : 'text-paper-500 hover:text-ink-600')}>
-          {label}
-          <ArrowUp aria-hidden="true" className={'w-2.5 h-2.5 transition-[transform,opacity] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] ' + (on ? 'opacity-100' : 'opacity-0') + (on && sort!.dir < 0 ? ' rotate-180' : '')} />
-        </button>
-      </span>
-    )
+/** One column's heading: tap to sort by it, tap again to turn it round. Money in and Money out share it. */
+function SortHead<K extends string>({ by, label, sort, onSort, right, className = '' }: {
+  by: K; label: string; sort: { by: K; dir: 1 | -1 } | null; onSort: (by: K) => void; right?: boolean; className?: string
+}) {
+  const on = sort?.by === by
+  return (
+    <span className={(right ? 'flex justify-end ' : '') + className}>
+      <button type="button" onClick={() => onSort(by)} aria-pressed={on} aria-label={'Sort by ' + label.toLowerCase() + (on ? (sort!.dir > 0 ? ', A to Z' : ', reversed') : '')}
+        className={'inline-flex items-center gap-0.5 -mx-1 px-1 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-page transition-colors cursor-pointer ' + (on ? 'text-gold-800' : 'text-paper-500 hover:text-ink-600')}>
+        {label}
+        <ArrowUp aria-hidden="true" className={'w-2.5 h-2.5 transition-[transform,opacity] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] ' + (on ? 'opacity-100' : 'opacity-0') + (on && sort!.dir < 0 ? ' rotate-180' : '')} />
+      </button>
+    </span>
+  )
+}
+
+/** Rows glide to their new places when a list is sorted: where each `[data-k]` child was is read by `capture()`
+ *  just before the change and played back once `dep` has changed. */
+function useGlide(dep: unknown) {
+  const ref = useRef<HTMLDivElement>(null)
+  const before = useRef<Map<string, number> | null>(null)
+  const capture = () => {
+    const at = new Map<string, number>()
+    ref.current?.querySelectorAll<HTMLElement>(':scope > [data-k]').forEach(el => {
+      const top = el.getBoundingClientRect().top
+      ;(el.dataset.k || '').split(' ').forEach(k => at.set(k, top))
+    })
+    before.current = at
   }
+  useLayoutEffect(() => {
+    const at = before.current
+    before.current = null
+    if (!at || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    ref.current?.querySelectorAll<HTMLElement>(':scope > [data-k]').forEach(el => {
+      const was = at.get((el.dataset.k || '').split(' ')[0])
+      const dy = was === undefined ? 0 : was - el.getBoundingClientRect().top
+      if (dy) el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' })
+    })
+  }, [dep])
+  return { ref, capture }
+}
+
+function SortHeads({ sort, onSort }: { sort: MoneyInSort | null; onSort: (by: SortKey) => void }) {
+  const head = (by: SortKey, label: string, right?: boolean) => <SortHead by={by} label={label} sort={sort} onSort={onSort} right={right} />
   return (
     <div className="relative mi-row mi-head h-6 -mx-2 px-2 border-b border-paper-100">
       <NewTag id="money-in-ledger" />
@@ -891,32 +927,44 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
   // a line. A sort belongs to its day, so another day opens grouped again.
   const [sortOf, setSortOf] = useState<(MoneyInSort & { date: string }) | null>(null)
   const sort = sortOf?.date === report.date ? sortOf : null
-  // The rows glide to their new places: where each was is read just before the change and played back after.
-  const listRef = useRef<HTMLDivElement>(null)
-  const before = useRef<Map<string, number> | null>(null)
+  // The rows glide to their new places.
+  const { ref: listRef, capture: captureIn } = useGlide(sortOf)
   const resort = (next: MoneyInSort | null) => {
-    const at = new Map<string, number>()
-    listRef.current?.querySelectorAll<HTMLElement>(':scope > [data-k]').forEach(el => {
-      const top = el.getBoundingClientRect().top
-      ;(el.dataset.k || '').split(' ').forEach(k => at.set(k, top))
-    })
-    before.current = at
+    captureIn()
     setSortOf(next && { ...next, date: report.date })
   }
   const onSort = (by: MoneyInSort['by']) => {
     markSeen('money-in-ledger')
     resort(sort?.by === by ? { by, dir: sort.dir > 0 ? -1 : 1 } : { by, dir: by === 'amount' ? -1 : 1 })
   }
-  useLayoutEffect(() => {
-    const at = before.current
-    before.current = null
-    if (!at || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    listRef.current?.querySelectorAll<HTMLElement>(':scope > [data-k]').forEach(el => {
-      const was = at.get((el.dataset.k || '').split(' ')[0])
-      const dy = was === undefined ? 0 : was - el.getBoundingClientRect().top
-      if (dy) el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' })
-    })
-  }, [sortOf])
+
+  // **Money out's columns sort it too** (the Money out sorting mock, A, Sebastian, 2026-11-14): Time, Item and Amount
+  // take a category's expenses apart, one a line, until "Group items"; For keeps them together, the categories in
+  // order, and puts the category in front of the note on every line ("the item and for should … swap the primary
+  // focus"; "if sorted by category, it should group those with the same category").
+  const [outSortOf, setOutSortOf] = useState<(ExpenseSort & { date: string }) | null>(null)
+  const outSort = outSortOf?.date === report.date ? outSortOf : null
+  const { ref: outRef, capture: captureOut } = useGlide(outSortOf)
+  const resortOut = (next: ExpenseSort | null) => {
+    captureOut()
+    setOutSortOf(next && { ...next, date: report.date })
+  }
+  const onSortOut = (by: ExpenseSortKey) => {
+    markSeen('money-out-sort')
+    resortOut(outSort?.by === by ? { by, dir: outSort.dir > 0 ? -1 : 1 } : { by, dir: by === 'amount' ? -1 : 1 })
+  }
+  const outKey = (by: ExpenseSortKey, e: Expense): string | number =>
+    by === 'time' ? e.created_at || ''
+      : by === 'amount' ? Number(e.amount || 0)
+        : by === 'item' ? ((e.notes || '').trim() || nameOf(e.category_id)).toLowerCase()
+          : nameOf(e.category_id).toLowerCase() + ' ' + (e.notes || '').trim().toLowerCase()
+  const byOut = <T,>(list: T[], key: (t: T) => string | number, dir: number) => [...list].sort((a, b) => {
+    const x = key(a), y = key(b)
+    return (x < y ? -1 : x > y ? 1 : 0) * dir
+  })
+  const outGroups = byCategory(dayExpenses)
+  const outApart = !!outSort && outSort.by !== 'for'
+  const catFirst = outSort?.by === 'for'
   const grouped = byBill(report.moneyIn)
   const canGroup = grouped.some(([, g]) => g.length > 1)
 
@@ -958,19 +1006,39 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
         </div>
 
         <div className="px-5 pt-4 pb-3 flex flex-col border-t md:border-t-0 border-soft">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money out</p>
+          <div className="flex items-center justify-between gap-3 min-h-4 mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Money out</p>
+            {outApart && outGroups.some(g => g.length > 1) && (
+              <button type="button" onClick={() => resortOut(null)}
+                className="text-[11.5px] font-bold text-gold-800 underline underline-offset-2 decoration-gold-300 hover:text-ink-900 transition-colors cursor-pointer [animation:bp-slide_.25s_both]">
+                Group items
+              </button>
+            )}
+          </div>
           {dayExpenses.length === 0 && <p className="text-[13px] text-muted">Nothing spent yet.</p>}
-          <div className="mi-list">
+          <div ref={outRef} className="mi-list">
             {dayExpenses.length > 1 && (
-              <div className="relative mo-row mi-head h-6 -mx-2 px-2 border-b border-paper-100 text-[10px] font-bold uppercase tracking-wider text-paper-500">
-                <NewTag id="money-out-ledger" />
-                <span>Time</span><span>What</span><span className="mi-who" /><span className="text-right">Amount</span><span />
+              <div className="relative mo-row mi-head h-6 -mx-2 px-2 border-b border-paper-100">
+                <NewTag id="money-out-sort" />
+                <SortHead by="time" label="Time" sort={outSort} onSort={onSortOut} />
+                <SortHead by="item" label="Item" sort={outSort} onSort={onSortOut} className="mo-item" />
+                <SortHead by="for" label="For" sort={outSort} onSort={onSortOut} className="mi-who" />
+                <SortHead by="amount" label="Amount" sort={outSort} onSort={onSortOut} right />
+                <span />
               </div>
             )}
-            {byCategory(dayExpenses).map(group => group.length > 1 ? (
-              <ExpenseGroup key={group[0].category_id} expenses={group} edit={editExpense} />
-            ) : (
-              <ExpenseLine key={group[0].id} expense={group[0]} edit={editExpense} />
+            {outApart ? byOut(dayExpenses, e => outKey(outSort!.by, e), outSort!.dir).map(e => (
+              <div key={e.id} data-k={'x:' + e.id}>
+                <ExpenseLine expense={e} edit={editExpense} />
+              </div>
+            )) : (outSort ? byOut(outGroups, g => outKey('for', g[0]), outSort.dir) : outGroups).map(group => (
+              <div key={group[0].category_id} data-k={['c:' + group[0].category_id, ...group.map(e => 'x:' + e.id)].join(' ')}>
+                {group.length > 1 ? (
+                  <ExpenseGroup expenses={group} edit={editExpense} />
+                ) : (
+                  <ExpenseLine expense={group[0]} edit={editExpense} catFirst={catFirst} />
+                )}
+              </div>
             ))}
           </div>
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27);
