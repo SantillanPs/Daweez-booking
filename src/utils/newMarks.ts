@@ -16,6 +16,9 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // The printed bill: the hotel's name steps clear of the corner hole punch, the address in short lines
+  // (`BrandHeader`). Took over the Print button's `bill-paper-tight` tag.
+  { id: 'bill-punch-corner', since: '2026-11-14' },
   // Cash Flow → Money out: one line each on Money in's columns, sorted by Time, Item, For or Amount from its headings
   // (`DayMoney`; For keeps a category together and puts it in front). Took over the ledger's own tag the same day.
   { id: 'money-out-sort', since: '2026-11-14' },
@@ -56,7 +59,6 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: 'room-trash', since: '2026-11-06' },
   // A group's printed bill fits one A5 sheet: alike rooms on one row, one Dates column, the extras beside
   // the totals, the discount and payments grouped by them (`foldAlikeRooms`, `PaperExtras`, `InvoiceDocument`).
-  { id: 'bill-paper-tight', since: '2026-11-06' },
   // A discount or payment is taken off on the bill by its bin, and stays struck through with Undo until
   // the bill closes; one alone is one plain line, the totals on one grid (`RemoveBin`, `GoneLine` in `FixPayment`).
   { id: 'bill-remove', since: '2026-11-06' },

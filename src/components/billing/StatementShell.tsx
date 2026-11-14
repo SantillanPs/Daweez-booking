@@ -49,10 +49,10 @@ export function StatementShell({ label, invoiceNumber, onClose, onPrint, onBooki
           )}
           {email && <EmailButton tone="ink" onClick={() => setEmailing(open => !open)} />}
           {onPrint && (
-            <button onClick={() => { markSeen('bill-paper-tight'); onPrint() }} className="relative bg-white hover:bg-slate-100 text-ink-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
+            <button onClick={() => { markSeen('bill-punch-corner'); onPrint() }} className="relative bg-white hover:bg-slate-100 text-ink-800 font-bold text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer">
               <Printer className="w-3.5 h-3.5" />
               Print
-              <NewTag id="bill-paper-tight" />
+              <NewTag id="bill-punch-corner" />
             </button>
           )}
           <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer" aria-label="Close">
@@ -94,13 +94,21 @@ export function BrandHeader({ invoiceNumber, dateIssued, showDate = true, headin
   // never fires on paper. The bill number sits alone under the title, larger than anything
   // beside it; `Bill no.` and the date's label are grey, the figures black — the page's one
   // rule for telling a label from the information.
+  //
+  // **The hole punch (todo #40, the "Punch Margin Bill" mock, Sebastian, 2026-11-14):** the staff
+  // file a bill with one hole in its top-left corner, which went through the hotel's name. On
+  // paper only the name block steps 12 mm right, clear of the hole; the rest of the sheet keeps
+  // its margins (an 18 mm left margin on the whole page was tried and reverted the same day).
+  // The address is two short lines and the contact line sits under them, and both sides of the
+  // letterhead end on one line above the rule (his "cleaner and organized" on the mock).
   return (
     <>
-      <div className="flex flex-row justify-between items-start gap-3">
-        <div className="min-w-0">
+      <div className="flex flex-row justify-between items-end gap-3">
+        <div className="min-w-0 print:ml-[12mm]">
           <h1 className="font-display font-extrabold text-[17px] text-ink-900 uppercase tracking-tight whitespace-nowrap leading-tight">Daweez Pension House</h1>
-          <p className="text-[9.5px] text-ink-600 mt-0.5 leading-snug">National Highway, San Agustin Sur, Tandag City, Surigao del Sur</p>
-          <p className="text-[9.5px] text-ink-600 leading-snug">daweezpensionhouse@gmail.com · 0910-7163830</p>
+          <p className="text-[9.5px] text-ink-600 mt-0.5 leading-snug whitespace-nowrap">National Highway, San Agustin Sur</p>
+          <p className="text-[9.5px] text-ink-600 leading-snug whitespace-nowrap">Tandag City, Surigao del Sur</p>
+          <p className="text-[9.5px] font-semibold text-ink-900 mt-0.5 leading-snug whitespace-nowrap">0910-7163830 · daweezpensionhouse@gmail.com</p>
         </div>
         <div className="text-right shrink-0">
           <h2 className="font-display font-bold text-[10.5px] text-ink-900 uppercase tracking-[0.12em] whitespace-nowrap">{heading}</h2>
