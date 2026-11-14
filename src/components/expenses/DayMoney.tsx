@@ -818,13 +818,15 @@ function TotalIn({ lines, total }: { lines: MoneyInLine[]; total: number }) {
       </div>
       <div className={'grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
         <div className="overflow-hidden">
-          <div className="flex flex-wrap gap-x-3.5 gap-y-1 pt-1.5 text-[11px] text-muted">
+          {/* Each way keeps its icon and its colour, as on the lines above (Sebastian, 2026-11-14: "keep the icons and text colors"). */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1.5 text-[12px] font-bold">
             {kinds.map(k => {
               const v = by.get(k) || 0
+              const w = WAYS[k]
               return (
-                <span key={k} className={'inline-flex items-center gap-1.5 whitespace-nowrap ' + (v ? '' : 'opacity-50')}>
-                  <i aria-hidden="true" className={'w-1.5 h-1.5 rounded-full ' + (v ? METHOD_DOT[k] : 'bg-paper-300')} />
-                  {WAYS[k].name} <b className="font-bold tabular-nums text-main">{peso(v)}</b>
+                <span key={k} className={'inline-flex items-center gap-1.5 whitespace-nowrap ' + w.ink + (v ? '' : ' opacity-50')}>
+                  <w.Icon aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
+                  {w.name} <b className="font-extrabold tabular-nums">{peso(v)}</b>
                 </span>
               )
             })}
