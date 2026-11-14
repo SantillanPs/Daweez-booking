@@ -16,6 +16,10 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // The eye beside the request bell hides the requests' ghost pills, so their dates can be booked (`RequestBell`).
+  { id: 'request-hide', since: '2026-11-15' },
+  // The front desk switches the guests' chat bot off and on from the calendar's top line (`ChatBotSwitch`).
+  { id: 'chat-bot-switch', since: '2026-11-15' },
   // The printed bill: the hotel's name steps clear of the corner hole punch, the address in short lines
   // (`BrandHeader`). Took over the Print button's `bill-paper-tight` tag.
   { id: 'bill-punch-corner', since: '2026-11-14' },

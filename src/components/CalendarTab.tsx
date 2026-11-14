@@ -31,6 +31,7 @@ import { SoldTwicePanel } from './calendar/SoldTwicePanel'
 import { useChannelAlerts } from '../hooks/useChannelAlerts'
 import { BookingRequest, closeBookingRequest, reopenBookingRequest, useBookingRequests } from '../utils/bookingRequests'
 import { RequestBell } from './calendar/RequestBell'
+import { ChatBotSwitch } from './calendar/ChatBotSwitch'
 import { RequestPanel } from './calendar/RequestPanel'
 import { ChannelAlert, closeChannelAlert, needsDetails } from '../utils/channelStay'
 import { bookingHalves, clashIn, dayHalf } from '../utils/halfDays'
@@ -529,6 +530,15 @@ export function CalendarTab() {
   }, [placedId, bookings])
 
   const asks = useBookingRequests()
+  // The requests' ghost pills, shown or not, kept on this device (a per-desk view, like a filter).
+  const [hideAsks, setHideAsks] = useState(() => { try { return localStorage.getItem('daweez_hide_requests') === '1' } catch { return false } })
+  const hideRequests = (hide: boolean) => {
+    setHideAsks(hide)
+    try { localStorage.setItem('daweez_hide_requests', hide ? '1' : '0') } catch { /* private window: this visit only */ }
+  }
+  const askTaken = useMemo(() => new Set(asks.requests.filter(r => rooms.some(x => x.id === r.room_id)
+    ? !isRoomAvailable(r.room_id, r.check_in, r.check_out, bookings)
+    : !isVenueRangeAvailable(r.room_id, r.check_in, r.check_out, bookings)).map(r => r.id)), [asks.requests, rooms, bookings])
   const unitName = (id: string) => {
     const room = rooms.find(r => r.id === id)
     return room ? 'Room ' + room.room_number : venues.find(v => v.id === id)?.name || 'Room'
@@ -590,7 +600,8 @@ export function CalendarTab() {
             onBooking={openFound} onBill={b => { openFound(b); setBillOf(b) }} onReceipt={(booking, record, covered) => setFoundReceipt({ booking, record, covered })} />
           <TodayStrip />
           <ChannelBell stays={namesNeeded} alerts={channel.alerts} rooms={rooms} onStay={openFound} onAlert={openChannelAlert} />
-          <RequestBell requests={asks.requests} unitName={unitName} onOpen={setAskOpen} />
+          <RequestBell requests={asks.requests} taken={askTaken} hidden={hideAsks} onHide={hideRequests} unitName={unitName} onOpen={setAskOpen} />
+          <ChatBotSwitch />
         </CalendarToolbar>
         <TimelineGrid
           rooms={rooms}
@@ -617,7 +628,7 @@ export function CalendarTab() {
           timeUp={timeUp}
           channelAlerts={channel.alerts}
           onSoldTwice={setSoldTwice}
-          requests={asks.requests}
+          requests={hideAsks ? undefined : asks.requests}
           onRequest={setAskOpen}
         />
       </div>

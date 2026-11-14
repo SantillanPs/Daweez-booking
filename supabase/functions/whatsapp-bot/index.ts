@@ -40,10 +40,12 @@ How to help:
 - Language (Sebastian, 2026-11-14): English by default. Answer in the language of the guest's latest real message, and switch whenever they do, including back to English. Tagalog when they write Tagalog or Taglish (po, opo, nyo, ano, magkano, hm, kayo, sana); Cebuano only when they write Bisaya (unsa, pila, asa, nimo, kaayo, palihug, ug, karon). Never answer Tagalog or Taglish in Cebuano: the first test (2026-11-14) answered "hm po ang rooms nyo?" in Cebuano. A greeting, a number, a name or "ok" alone does not change the language. Short, warm, plain messages; this is a chat, not an email. No markdown: no headings, tables or * bullets (the chat shows the stars); one room per line is enough.
 - Before naming any room or price, call find_free_rooms for the guest's dates. Never promise a room it did not return. Prices are in pesos.
 - A venue's price is a starting price per day; the front desk confirms the exact kind and price for an event.
-- Ask how many people are staying if they have not said. When the guest picks a room, get their full name and, if more than one person is staying, the full name of every companion (Sebastian, 2026-11-14), then call save_request right away, in that same reply.
-- Never say a request is saved, and never give the deposit, until save_request has answered "Saved" in this conversation; saying you will save it is not saving it. After saving, tell them the deposit is half the stay (give the amount) and that the front desk will confirm the booking once the deposit is received; nothing is booked until then. Do not write any account names or numbers: the hotel's GCash and bank details are added under your message by the system.
+- Only save the room the guest picked themselves. If the one they asked for is taken, offer others and wait for them to choose one; never choose for them (the test of 2026-11-15 saved Room 8 for a guest who had asked for Room 4).
+- For a room: ask how many people are staying if they have not said. When the guest picks a room, get their full name and, if more than one person is staying, the full name of every companion (Sebastian, 2026-11-14), then call save_request right away, in that same reply.
+- For a venue (Gazebo, Garden Area, Vacation House): never ask how many people are coming or for anyone's name but the guest's own (Sebastian, 2026-11-14: venues "don't need information like that"). Get their full name, then call save_request right away.
+- Never say a request is saved, and never give the deposit, until save_request has answered "Saved" in this conversation; saying you will save it is not saving it. Asked about the deposit before that, say it is half the stay. After saving, tell them the front desk will confirm the booking once the deposit is received; nothing is booked until then. Do not write the deposit amount or any account names or numbers: the system adds the deposit and the hotel's GCash and bank details under your message.
 - If you do not know something (amenities, directions, special requests), say the front desk will reply, and save their question as the note if they are making a request.
-- Never make up rooms, prices, discounts or rules.`
+- Never make up rooms, prices, discounts, rules or names: a companion's name is only one the guest wrote.`
 
 const ON = {
   whatsapp: "This chat is on WhatsApp: their phone number is already known, so do not ask for it.",
@@ -73,8 +75,8 @@ const TOOLS = [
         check_out: { type: "string" },
         guest_name: { type: "string" },
         phone: { type: "string", description: "The guest's phone number, on Messenger only" },
-        guests: { type: "integer", description: "How many people in all, the guest included" },
-        companions: { type: "array", items: { type: "string" }, description: "The full name of everyone staying besides the guest; one name less than guests" },
+        guests: { type: "integer", description: "Rooms only: how many people in all, the guest included" },
+        companions: { type: "array", items: { type: "string" }, description: "Rooms only: the full name of everyone staying besides the guest; one name less than guests" },
         note: { type: "string", description: "Anything the desk should know, in English" },
         language: { type: "string", enum: ["English", "Cebuano", "Tagalog"] },
       },
@@ -86,23 +88,39 @@ const TOOLS = [
 const isDay = (s: unknown) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s)
 
 // On WhatsApp the tools use the guest's own number, never one the model writes.
-async function runTool(name: string, input: Record<string, unknown>, chat: Chat): Promise<string> {
+// `wrote`: everything the guest wrote in this chat, lowercased, to check companions' names against.
+async function runTool(name: string, input: Record<string, unknown>, chat: Chat, wrote = ""): Promise<string> {
   if (!isDay(input.check_in) || !isDay(input.check_out)) return "Dates must be YYYY-MM-DD."
   if (name === "find_free_rooms") {
     const { data, error } = await db.rpc("free_units", { p_check_in: input.check_in, p_check_out: input.check_out })
     if (error) throw error
     return data.length ? JSON.stringify(data) : "Nothing is free for those dates."
   }
+  // The payment details go out only with a saved request (Sebastian, 2026-11-15: "only … when it has all the
+  // information needed to save a reservation"). On live (2026-11-14) the model saved "Guest Name", "Wife Name" and
+  // "Daughter Name" to get there, and the guest got the accounts while still being asked for names. So the guest's
+  // name and phone, like the companions below, must be ones the guest wrote.
+  const said = (s: unknown) => wrote.includes(String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase())
+  if (!String(input.guest_name ?? "").trim() || !said(input.guest_name)) return "The guest has not written their full name yet. Ask them for it; never make one up."
   const phone = chat.channel === "whatsapp" ? chat.key : String(input.phone ?? "")
-  if (phone.replace(/\D/g, "").length < 7) return "Ask the guest for their phone number first, then call save_request with it."
+  const digits = phone.replace(/\D/g, "")
+  if (digits.length < 7 || (chat.channel === "messenger" && !wrote.replace(/\D/g, "").includes(digits.slice(-7)))) // "0963…" written, "+63963…" passed
+    return "Ask the guest for their phone number first, then call save_request with the number they wrote."
   // The quote is worked out here, not taken from the model.
   const { data: units } = await db.rpc("free_units", { p_check_in: input.check_in, p_check_out: input.check_out })
   const unit = (units ?? []).find((u: { id: string }) => u.id === input.room_id)
   if (!unit) return "That room is not free for those dates any more. Call find_free_rooms again."
+  // A venue carries no headcount or companions, whatever the model sent.
+  const room = unit.kind === "room"
+  // The first test (2026-11-14) saved "Maria Cruz" as a companion the guest never named: the model made her up
+  // to get past NEED_COMPANIONS. A name the guest did not write is sent back to be asked for.
+  const companions = room && Array.isArray(input.companions) ? input.companions.map(String) : []
+  const madeUp = companions.filter(n => !said(n))
+  if (madeUp.length) return `The guest never wrote ${madeUp.join(", ")}. Ask them for the full name of every companion; never make one up.`
   const { error } = await db.rpc("request_booking", {
     p_source: chat.channel, p_room_id: input.room_id, p_check_in: input.check_in, p_check_out: input.check_out,
-    p_guest_name: input.guest_name, p_phone: phone, p_guests: input.guests ?? null, p_note: input.note ?? null,
-    p_companions: Array.isArray(input.companions) ? input.companions.map(String) : [],
+    p_guest_name: input.guest_name, p_phone: phone, p_guests: room ? input.guests ?? null : null, p_note: input.note ?? null,
+    p_companions: companions,
     p_quoted_total: unit.total, p_language: input.language,
   })
   if (error) return "Could not save: " + error.message + ". BAD_DATES means past or wrong dates; BAD_DETAILS means the name or phone number is missing or wrong; TOO_MANY_REQUESTS means they already have requests waiting for the desk; NEED_COMPANIONS means ask for the full name of every companion first."
@@ -114,20 +132,25 @@ async function runTool(name: string, input: Record<string, unknown>, chat: Chat)
 // GCash and first bank account the guest's bill prints. The second bank is only on an agency's statement.
 // In the guest's language: the one save_request was told (English when it was not).
 type Lang = "English" | "Cebuano" | "Tagalog"
-const WORDS: Record<Lang, { to: string; photo: string; later: string; saved: string }> = {
+// The deposit goes with where to pay it (Sebastian, 2026-11-15: "it should say how much the deposit is when giving
+// out the payment details"); before, the AI said the amount on its own and the accounts came apart from it.
+const WORDS: Record<Lang, { deposit: string; to: string; photo: string; later: string; saved: string }> = {
   English: {
+    deposit: "Deposit: {d} (half of {t})",
     to: "You can send the deposit to:",
     photo: "Please send a photo of the receipt here once paid.",
     later: "The front desk will send you the payment details.",
     saved: "Your request is saved. The front desk will confirm your booking once the deposit is received.",
   },
   Cebuano: {
+    deposit: "Deposit: {d} (katunga sa {t})",
     to: "Mahimo nimong ipadala ang deposit sa:",
     photo: "Palihug ipadala diri ang litrato sa resibo kung nakabayad na.",
     later: "Ang front desk ang mopadala nimo sa mga detalye sa pagbayad.",
     saved: "Na-save na ang imong request. Ang front desk mo-confirm sa imong booking kung madawat na ang deposit.",
   },
   Tagalog: {
+    deposit: "Deposit: {d} (kalahati ng {t})",
     to: "Maaari mong ipadala ang deposit sa:",
     photo: "Pakipadala dito ang litrato ng resibo kapag nakabayad na.",
     later: "Ipapadala ng front desk ang mga detalye ng pagbabayad.",
@@ -136,14 +159,18 @@ const WORDS: Record<Lang, { to: string; photo: string; later: string; saved: str
 }
 const words = (lang: unknown) => WORDS[lang as Lang] ?? WORDS.English
 
-async function howToPay(lang: unknown): Promise<string> {
+const peso = (n: number) => "₱" + n.toLocaleString("en-PH", { maximumFractionDigits: 2 })
+
+type Saved = { lang: unknown; total: number }
+async function howToPay({ lang, total }: Saved): Promise<string> {
   const w = words(lang)
+  const owed = w.deposit.replace("{d}", peso(total / 2)).replace("{t}", peso(total))
   const { data } = await db.from("app_settings").select("value").eq("key", "payment_accounts").maybeSingle()
   const a = (data?.value ?? {}) as Record<string, string>
-  const lines = [w.to]
+  const lines = [owed, w.to]
   if (a.gcashNumber) lines.push(`GCash: ${a.gcashNumber} (${a.gcashName})`)
   if (a.bankAccountNumber) lines.push(`${a.bankName}: ${a.bankAccountNumber} (${a.bankAccountName})`)
-  if (lines.length === 1) return w.later
+  if (lines.length === 2) return owed + "\n" + w.later
   lines.push(w.photo)
   return lines.join("\n")
 }
@@ -198,15 +225,16 @@ async function reply(chat: Chat): Promise<string> {
 Today is ${manilaToday()} (Philippine time).` },
     ...(past ?? []).reverse().map(t => ({ role: t.role as string, content: t.text as string })),
   ]
+  const wrote = (past ?? []).filter(t => t.role === "user").map(t => t.text).join(" ").replace(/\s+/g, " ").toLowerCase()
 
-  let saved: unknown = false // once saved: the request's language
+  let saved: Saved | null = null // once saved: the request's language and total
   for (let step = 0; step < 6; step++) {
     let said: Msg
     try {
       said = await ask(messages)
     } catch (e) {
       // Saved already: the guest still hears so, with where to pay, whatever the AI does next.
-      if (saved) return words(saved).saved + "\n\n" + await howToPay(saved)
+      if (saved) return words(saved.lang).saved +"\n\n" + await howToPay(saved)
       throw e
     }
     if (!said?.tool_calls?.length) {
@@ -220,11 +248,11 @@ Today is ${manilaToday()} (Philippine time).` },
       let input: Record<string, unknown> = {}
       try {
         input = JSON.parse(call.function.arguments || "{}")
-        out = await runTool(call.function.name, input, chat)
+        out = await runTool(call.function.name, input, chat, wrote)
       } catch (e) {
         out = "Error: " + String(e)
       }
-      if (out.startsWith("Saved")) saved = input.language || "English"
+      if (out.startsWith("Saved")) saved = { lang: input.language || "English", total: Number(out.match(/Total ₱([\d.]+)/)?.[1]) || 0 }
       messages.push({ role: "tool", tool_call_id: call.id, content: out })
     }
   }
@@ -232,6 +260,10 @@ Today is ${manilaToday()} (Philippine time).` },
 }
 
 async function handle(chat: Chat, text: string, msgId: string | null): Promise<string | null> {
+  // Switched off at the front desk (`ChatBotSwitch`, Sebastian, 2026-11-15): the bot says nothing and keeps
+  // nothing, so the staff answer in the page's inbox and a chat picked up later starts clean.
+  const { data: sw } = await db.from("app_settings").select("value").eq("key", "chat_bot").maybeSingle()
+  if ((sw?.value as { on?: boolean } | undefined)?.on === false) return null
   // Meta can deliver one message twice; the unique message id lets only the first through.
   const { error } = await db.from("whatsapp_turns").insert({ phone: chat.key, role: "user", text, wamid: msgId })
   if (error) return null

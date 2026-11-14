@@ -22,7 +22,8 @@ const ago = (iso: string) => {
  * **A guest asking for a room** (the mock, Sebastian, 2026-11-12). Who, which room and when, what they
  * were quoted and the deposit asked (half the stay, Sebastian). Booking it opens the new bill already
  * filled in, so the desk makes the booking the usual way; turning it down keeps a reason, like a
- * cancelled bill. A room taken since leads with turning it down.
+ * cancelled bill. A room taken since is still booked from here, on other dates the desk sets on the bill: the request
+ * is kept "in case that guest wants to reschedule" (Sebastian, 2026-11-15).
  */
 export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onBook, onDecline }: {
   request: BookingRequest
@@ -37,7 +38,7 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
   const venue = venues.find(x => x.id === r.room_id)
   const unit = room ? 'Room ' + room.room_number : venue?.name || 'Room'
   const free = room ? isRoomAvailable(r.room_id, r.check_in, r.check_out, bookings) : isVenueRangeAvailable(r.room_id, r.check_in, r.check_out, bookings)
-  const [more, setMore] = useState(!free)
+  const [more, setMore] = useState(false)
   const [picked, setPicked] = useState<string[]>(free ? [] : ['Room taken'])
   const [words, setWords] = useState('')
   const [copied, setCopied] = useState(false)
@@ -105,13 +106,10 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
           </div>
         ) : null}
 
-        {free ? (
-          <button type="button" onClick={() => onBook(r)} className="bw-shine w-full min-h-[54px] rounded-xl bg-gold-400 px-4 text-[16px] font-bold text-ink-900 hover:bg-gold-600 active:scale-[0.98] transition-[background-color,transform] duration-200 cursor-pointer">
-            Book {unit}
-          </button>
-        ) : (
-          <p className="text-center text-[13px] font-semibold text-danger-600">{unit} was taken since</p>
-        )}
+        {!free && <p className="-mb-2 text-center text-[13px] font-semibold text-danger-600">{unit} was taken on these dates</p>}
+        <button type="button" onClick={() => onBook(r)} className="bw-shine w-full min-h-[54px] rounded-xl bg-gold-400 px-4 text-[16px] font-bold text-ink-900 hover:bg-gold-600 active:scale-[0.98] transition-[background-color,transform] duration-200 cursor-pointer">
+          {free ? 'Book ' + unit : 'Book other dates'}
+        </button>
 
         <div className="grid gap-2">
           {more && (
@@ -134,11 +132,9 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
               </button>
             </div>
           )}
-          {free && (
-            <button type="button" onClick={() => setMore(m => !m)} aria-expanded={more} className="min-h-9 text-[13px] font-semibold text-muted hover:text-main cursor-pointer">
-              {more ? 'Less' : 'More'}
-            </button>
-          )}
+          <button type="button" onClick={() => setMore(m => !m)} aria-expanded={more} className="min-h-9 text-[13px] font-semibold text-muted hover:text-main cursor-pointer">
+            {more ? 'Less' : 'More'}
+          </button>
         </div>
       </div>
     </div>,

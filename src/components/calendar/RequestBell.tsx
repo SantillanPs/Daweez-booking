@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bell, Globe } from 'lucide-react'
+import { Bell, Eye, EyeOff, Globe } from 'lucide-react'
 import { BookingRequest } from '../../utils/bookingRequests'
 import { chime } from '../../utils/chime'
 import { shortDay } from '../../utils/helpers'
@@ -29,8 +29,17 @@ export function RequestMark({ source, big = false }: { source: BookingRequest['s
  * the booking sites' black one, only there while a request waits; it rings when one lands. One request
  * opens straight away; several open a list. Each also shows on the calendar as a dashed gold pill.
  */
-export function RequestBell({ requests, unitName, onOpen }: {
+//
+// **A request holds no date** (Sebastian, 2026-11-15: a pending reservation "should still be considered unoccupied").
+// The eye beside the bell takes the ghost pills off the calendar, so a guest who pays at the desk can be booked
+// on those dates. The request itself stays in the bell; one whose dates were taken since says "Taken" and can
+// still be booked on other dates on its bill, "in case that guest wants to reschedule".
+export function RequestBell({ requests, taken, hidden, onHide, unitName, onOpen }: {
   requests: BookingRequest[]
+  /** Requests whose room was booked on their dates since. */
+  taken: Set<string>
+  hidden: boolean
+  onHide: (hide: boolean) => void
   unitName: (id: string) => string
   onOpen: (r: BookingRequest) => void
 }) {
@@ -48,7 +57,16 @@ export function RequestBell({ requests, unitName, onOpen }: {
   if (n === 0) return null
   const tap = () => { markSeen('booking-requests'); if (n > 1) setOpen(o => !o); else onOpen(requests[0]) }
   return (
-    <div className="relative">
+    <div className="relative flex items-center gap-1">
+      {/* Hidden, it says so in gold: nobody wonders where the requests went. */}
+      <button type="button" onClick={() => { markSeen('request-hide'); onHide(!hidden) }} aria-pressed={hidden}
+        title={hidden ? 'Show requests on the calendar' : 'Hide requests from the calendar'} aria-label={hidden ? 'Show requests on the calendar' : 'Hide requests from the calendar'}
+        className={'relative h-8 inline-flex items-center justify-center gap-1 rounded-full text-[12px] font-bold active:scale-95 transition-[background-color,color,transform] cursor-pointer '
+          + (hidden ? 'px-2.5 border-[1.5px] border-dashed border-gold-600 text-gold-800 hover:bg-gold-100' : 'w-8 text-muted hover:text-main hover:bg-softbg')}>
+        {hidden ? <><EyeOff aria-hidden="true" className="w-3.5 h-3.5" strokeWidth={2.4} />Hidden</> : <Eye aria-hidden="true" className="w-4 h-4" strokeWidth={2.2} />}
+        <NewTag id="request-hide" />
+      </button>
+      <div className="relative">
       <button type="button" key={ring} onClick={tap} aria-expanded={n > 1 ? open : undefined}
         title={n + (n === 1 ? ' booking request' : ' booking requests')} aria-label={n + (n === 1 ? ' booking request' : ' booking requests')}
         className={'h-8 px-2.5 inline-flex items-center gap-1.5 rounded-full bg-gold-400 hover:bg-gold-500 text-ink-900 text-[13px] font-bold tabular-nums active:scale-95 transition-[background-color,transform] cursor-pointer ' + (ring ? 'bp-up' : '')}>
@@ -58,6 +76,7 @@ export function RequestBell({ requests, unitName, onOpen }: {
         </span>
       </button>
       <NewTag id="booking-requests" />
+      </div>
       {open && (<>
         <button type="button" aria-label="Close the list" onClick={() => setOpen(false)} className="fixed inset-0 z-40 cursor-default" />
         <ul className="absolute right-0 top-full z-50 mt-2 w-[340px] max-w-[calc(100vw-2rem)] rounded-lg border border-soft bg-card p-1.5 shadow-softLg animate-in fade-in duration-150">
@@ -68,6 +87,7 @@ export function RequestBell({ requests, unitName, onOpen }: {
                 <RequestMark source={r.source} />
                 <b className="font-semibold text-main">{unitName(r.room_id)}</b>
                 <span className="text-muted">{shortDay(r.check_in)} → {shortDay(r.check_out)}</span>
+                {taken.has(r.id) && <span className="rounded-full bg-danger-50 px-1.5 text-[11px] font-bold text-danger-600">Taken</span>}
                 <span className="ml-auto pl-3 max-w-[40%] truncate text-[12px] font-bold text-gold-800">{r.guest_name.split(' ')[0]}</span>
               </button>
             </li>
