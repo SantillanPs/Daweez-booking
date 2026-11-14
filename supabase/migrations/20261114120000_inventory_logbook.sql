@@ -5,7 +5,7 @@
 -- the day it was bought. The amounts in the inventory can be typed over, and that is the
 -- check. Every save can be fixed or taken back.
 --
--- Applied to development on 2026-11-14. Not on live.
+-- Applied to development and to live on 2026-11-14.
 
 -- ── Items: which book, kilos or pieces, when last checked ─────────────────────────────
 
