@@ -121,13 +121,14 @@ export function ExpensesTab() {
   }, [expenseCategories, expenses])
 
   // Written on the card at once and saved behind it; taken off again if the save fails.
-  const addExpense = async (input: { amount: number; categoryId: string; notes?: string }) => {
+  const addExpense = async (input: { amount: number; categoryId: string; notes?: string; notFromCash?: boolean }) => {
     const row = {
       id: 'exp-' + randomUUID(),
       amount: input.amount,
       category_id: input.categoryId,
       expense_date: date,
       notes: input.notes,
+      not_from_cash: !!input.notFromCash,
     }
     queryClient.setQueryData<Expense[]>(['expenses'], (list = []) => [...list, { ...row, created_at: new Date().toISOString() } as Expense])
     try {

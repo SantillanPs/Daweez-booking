@@ -22,5 +22,7 @@ export interface Expense {
   amount: number
   expense_date: string
   notes?: string
+  /** Paid with money from outside the hotel: still a cost, but it never comes off the cash on hand. */
+  not_from_cash?: boolean
   created_at: string
 }

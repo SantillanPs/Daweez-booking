@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // Cash Flow → Money out: an expense ticked "Not from hotel cash" does not come off the cash on hand (`OutsideSwitch`).
+  { id: 'expense-outside', since: '2026-11-14' },
   // Cash Flow → Money in: each way's total folded behind "Total in", opened by a tap (`TotalIn` in `DayMoney`).
   { id: 'ways-folded', since: '2026-11-14' },
   // Cash Flow: the links under the day are chips, the two cash ones in green and gold (`ExpensesTab`).

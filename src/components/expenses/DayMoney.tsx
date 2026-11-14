@@ -5,7 +5,7 @@ import { CountPeso } from '../CountPeso'
 import { NewTag } from '../NewMark'
 import { markSeen } from '../../utils/newMarks'
 import { PaymentEdit } from './PaymentEdit'
-import { ExpenseEdit, type ExpenseChange } from './ExpenseEdit'
+import { ExpenseEdit, OutsideSwitch, type ExpenseChange } from './ExpenseEdit'
 import type { PaymentPatch } from '../walk-in/bookingPayment'
 import { DailyReport, MoneyInLine, forwardedLabel, openKey } from '../../utils/dailyReport'
 import { PAYMENT_METHODS, PaymentKind, methodNeedsReference, paymentKind } from '../../utils/paymentMethod'
@@ -47,7 +47,7 @@ interface DayMoneyProps {
   dayHandovers: Handover[]
   onTakeBack: (handover: Handover) => void
   /** Saves a new expense for the day on screen. */
-  onAdd: (input: { amount: number; categoryId: string; notes?: string }) => Promise<void>
+  onAdd: (input: { amount: number; categoryId: string; notes?: string; notFromCash?: boolean }) => Promise<void>
   /** "Oct 26" when the screen is on a day gone by, so the blank line says which day it writes on. */
   pastDay?: string
   /** Opens what a payment belongs to: a booking's bill, or a diner's receipt. */
@@ -151,6 +151,8 @@ function ExpenseLine({ expense, time, edit }: {
   const note = soft((expense.notes || '').trim())
   const name = edit.nameOf(expense.category_id)
   const Icon = spendIcon(name)
+  // Paid from outside the hotel: said on the line, since it is the one expense the cash on hand keeps.
+  const outside = expense.not_from_cash && <span className="font-bold text-gold-800"> · Not from hotel cash</span>
   const amount = <span key={expense.amount} className={'justify-self-end text-danger-600 ' + AMOUNT + (time ? ' text-[14px]' : ' text-[16px]') + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(expense.amount)}</span>
   const pen = (
     <button type="button" data-pay-pen aria-label={'Edit this expense, ' + peso(expense.amount)} aria-expanded={editing}
@@ -165,7 +167,7 @@ function ExpenseLine({ expense, time, edit }: {
         <div className={'group/line relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 min-h-7 py-1 -mx-2 px-2 rounded-lg text-[13px] transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
           <span className={'min-w-0 truncate font-semibold text-main' + note.cls}>{note.text || 'Expense'}</span>
           {amount}
-          <span className="min-w-0 truncate text-[12px] text-muted">{time}</span>
+          <span className="min-w-0 truncate text-[12px] text-muted">{time}{outside}</span>
           {pen}
         </div>
       ) : (
@@ -174,7 +176,7 @@ function ExpenseLine({ expense, time, edit }: {
           <span className={'min-w-0 truncate text-[13.5px] font-bold text-main' + note.cls}>{note.text || name}</span>
           {amount}
           <span className="min-w-0 truncate text-[12px] text-muted">
-            {note.text && <span className="font-bold text-ink-600">{name}</span>}{note.text && at && ' · '}{at}
+            {note.text && <span className="font-bold text-ink-600">{name}</span>}{note.text && at && ' · '}{at}{outside}
           </span>
           {pen}
         </div>
@@ -321,6 +323,7 @@ function ExpenseBlank({ categories, another, pastDay, onAdd }: {
   const [categoryId, setCategoryId] = useState('')
   const [notes, setNotes] = useState('')
   const [amount, setAmount] = useState('')
+  const [outside, setOutside] = useState(false)
   const [tried, setTried] = useState(false)
   const line = useRef<HTMLDivElement>(null)
   const noteRef = useRef<HTMLInputElement>(null)
@@ -342,10 +345,10 @@ function ExpenseBlank({ categories, another, pastDay, onAdd }: {
     e.preventDefault()
     setTried(true)
     if (!categoryId || value <= 0) return
-    const kept = { categoryId, notes, amount }
-    setCategoryId(''); setNotes(''); setAmount(''); setTried(false); setPicking(true)
-    onAdd({ amount: value, categoryId: kept.categoryId, notes: kept.notes.trim() || undefined }).catch(() => {
-      setCategoryId(kept.categoryId); setNotes(kept.notes); setAmount(kept.amount); setPicking(false)
+    const kept = { categoryId, notes, amount, outside }
+    setCategoryId(''); setNotes(''); setAmount(''); setOutside(false); setTried(false); setPicking(true)
+    onAdd({ amount: value, categoryId: kept.categoryId, notes: kept.notes.trim() || undefined, notFromCash: kept.outside }).catch(() => {
+      setCategoryId(kept.categoryId); setNotes(kept.notes); setAmount(kept.amount); setOutside(kept.outside); setPicking(false)
     })
   }
   const typeAmount = (raw: string) => {
@@ -389,11 +392,16 @@ function ExpenseBlank({ categories, another, pastDay, onAdd }: {
           <X className="w-3.5 h-3.5" />
         </button>
       </form>
-      {(problem || pastDay) && (
-        <p role={problem ? 'alert' : undefined} className={'mt-1 text-[10px] font-semibold ' + (problem ? 'text-danger-600 [animation:bp-slide_.25s]' : 'text-muted')}>
-          {problem || 'Spent on ' + pastDay}
-        </p>
-      )}
+      <div className="mt-1 flex items-center gap-2">
+        {/* Money taken from somewhere else, not the hotel (Sebastian, 2026-11-14): listed as spent, but the
+            cash on hand keeps it. Off by default, since nearly everything is paid from the drawer. */}
+        <OutsideSwitch on={outside} onFlip={() => setOutside(o => !o)} />
+        {(problem || pastDay) && (
+          <p role={problem ? 'alert' : undefined} className={'text-[10px] font-semibold ' + (problem ? 'text-danger-600 [animation:bp-slide_.25s]' : 'text-muted')}>
+            {problem || 'Spent on ' + pastDay}
+          </p>
+        )}
+      </div>
       {picking && (
         <CategoryPicker categories={categories} chosen={categoryId} onClose={() => setPicking(false)}
           onPick={id => { setCategoryId(id); setPicking(false); setTimeout(() => noteRef.current?.focus()) }} />
@@ -1022,7 +1030,7 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
         </div>
         <div className="flex items-center justify-between gap-3 min-h-6">
           <span>Total Expenses</span>
-          <span className="font-mono font-bold text-danger-600">({peso(report.totalOut)})</span>
+          <span className="font-mono font-bold text-danger-600">({peso(report.totalCashOut)})</span>
         </div>
         {/* A hand-over is rare, so its line is here only on the day it happened. */}
         {dayHandovers.filter(h => h.kind !== 'in').map(handover => (

@@ -59,7 +59,7 @@ export async function insertExpense(expense: Omit<Expense, 'created_at'> & { cre
   return newExp
 }
 
-export async function updateExpense(id: string, change: Partial<Pick<Expense, 'category_id' | 'amount' | 'notes' | 'expense_date'>>): Promise<void> {
+export async function updateExpense(id: string, change: Partial<Pick<Expense, 'category_id' | 'amount' | 'notes' | 'expense_date' | 'not_from_cash'>>): Promise<void> {
   const { error } = await supabase.from('expenses').update(change).eq('id', id)
   if (error) throw error
 }

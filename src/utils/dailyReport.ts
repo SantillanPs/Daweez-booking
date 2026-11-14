@@ -36,6 +36,8 @@ export interface DailyReportLine {
   /** Where the money came from or went — `Room 4 · SEB · Cash`, `Salary`. */
   label: string
   amount: number
+  /** An expense paid with money from outside the hotel: listed, but not taken off the cash on hand. */
+  outside?: boolean
 }
 
 /**
@@ -81,6 +83,8 @@ export interface DailyReport {
   moneyOut: DailyReportLine[]
   totalIn: number
   totalOut: number
+  /** Of `totalOut`, what was paid from the hotel's cash — the summary's "Less: Expenses". */
+  totalCashOut: number
   net: number
   /**
    * What the hotel was holding when this day began: every dated payment before it, less every expense
@@ -98,7 +102,7 @@ export interface DailyReport {
   totalNotCash: number
   /** `broughtForward + totalIn − totalNotCash + totalAdded`: the paper's "Cash on hand" line. */
   cashOnHand: number
-  /** What the hotel holds at the end of this day: `cashOnHand − totalOut − totalHandedOver`. Tomorrow begins with it. */
+  /** What the hotel holds at the end of this day: `cashOnHand − totalCashOut − totalHandedOver`. Tomorrow begins with it. */
   balance: number
   /** Money bookings hold that carries no payment date, so it belongs to no day. */
   undatedMoney: number
@@ -315,7 +319,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
     .map(expense => {
       const notes = (expense.notes || '').trim()
       const name = categoryName(expense.category_id)
-      return { label: notes ? `${name} · ${notes}` : name, amount: expense.amount }
+      return { label: notes ? `${name} · ${notes}` : name, amount: expense.amount, outside: !!expense.not_from_cash }
     })
 
   const totalIn = moneyIn.reduce((sum, line) => (line.cancelled ? sum : sum + line.amount), 0)
@@ -323,6 +327,9 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
   // or is a cheque still to be cashed, not notes in the drawer (Sebastian, 2026-11-07). It stays in Total Sales and comes off before Cash on hand.
   const totalNotCash = moneyIn.reduce((sum, line) => (!line.cancelled && notCash(line.method) ? sum + line.amount : sum), 0)
   const totalOut = moneyOut.reduce((sum, line) => sum + line.amount, 0)
+  // Money taken from somewhere else, not the hotel (Sebastian, 2026-11-14): still spent, so it stays in
+  // Total out and the earnings, but the drawer never held it, so it comes off nothing it carries.
+  const totalCashOut = moneyOut.reduce((sum, line) => (line.outside ? sum : sum + line.amount), 0)
 
   // `YYYY-MM-DD` sorts as text, so "before this day" is a plain comparison. From the ledger's first day
   // on, only what came after it counts, on top of the balance the paper forwarded into it.
@@ -330,7 +337,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
   const counts = (day: string) => day >= from && day < date
   const inBefore = Array.from(payments.values()).reduce((sum, p) => (counts(p.day) && !p.cancelled && !notCash(p.method) ? sum + p.amount : sum), 0)
     + (from ? OPENING_BALANCE : 0)
-  const outBefore = expenses.reduce((sum, e) => (counts(e.expense_date) ? sum + e.amount : sum), 0)
+  const outBefore = expenses.reduce((sum, e) => (counts(e.expense_date) && !e.not_from_cash ? sum + e.amount : sum), 0)
   // Money handed to the owner is gone from the hotel, so it comes off what is carried over — but it
   // is never in `moneyOut`: the hotel earned it, it did not spend it.
   // Cash added (`kind: 'in'`) is the same row the other way round, so it counts as a hand-over taken back.
@@ -357,6 +364,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
     moneyOut,
     totalIn,
     totalOut,
+    totalCashOut,
     net: totalIn - totalOut,
     broughtForward,
     handedOver,
@@ -365,7 +373,7 @@ export function buildDailyReport(input: DailyReportInput): DailyReport {
     totalAdded,
     totalNotCash,
     cashOnHand: Math.round((broughtForward + totalIn - totalNotCash + totalAdded) * 100) / 100,
-    balance: Math.round((broughtForward + totalIn - totalNotCash + totalAdded - totalOut - totalHandedOver) * 100) / 100,
+    balance: Math.round((broughtForward + totalIn - totalNotCash + totalAdded - totalCashOut - totalHandedOver) * 100) / 100,
     undatedMoney,
     undatedCount,
   }

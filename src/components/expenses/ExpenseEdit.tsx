@@ -2,8 +2,27 @@ import { CSSProperties, FormEvent, useEffect, useRef, useState } from 'react'
 import { Check, Search, Tag, Trash2, X } from 'lucide-react'
 import { Expense, ExpenseCategory } from '../../types/expense'
 import { CHIP, MonthGrid, TAP_AREA } from './PaymentEdit'
+import { NewTag } from '../NewMark'
+import { markSeen } from '../../utils/newMarks'
 
-export type ExpenseChange = Partial<Pick<Expense, 'category_id' | 'amount' | 'notes' | 'expense_date'>>
+/**
+ * "Not from hotel cash": an expense paid with money from somewhere else, not the hotel (Sebastian,
+ * 2026-11-14). A tick, not a choice of two, since nearly everything is paid from the drawer.
+ */
+export function OutsideSwitch({ on, onFlip }: { on: boolean; onFlip: () => void }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} onClick={() => { onFlip(); markSeen('expense-outside') }}
+      className={'relative shrink-0 inline-flex items-center gap-1.5 min-h-7 px-1 rounded-md text-[11px] font-bold active:scale-95 transition-[color,transform] cursor-pointer ' + (on ? 'text-gold-800' : 'text-muted hover:text-main')}>
+      <span className={'grid place-items-center w-3.5 h-3.5 rounded-[4px] border-[1.5px] transition-colors ' + (on ? 'bg-gold-400 border-gold-400 text-white' : 'border-ink-200')}>
+        {on && <Check className="w-2.5 h-2.5 [animation:bp-ready_.35s_cubic-bezier(.34,1.56,.64,1)]" strokeWidth={4} />}
+      </span>
+      Not from hotel cash
+      <NewTag id="expense-outside" />
+    </button>
+  )
+}
+
+export type ExpenseChange =Partial<Pick<Expense, 'category_id' | 'amount' | 'notes' | 'expense_date' | 'not_from_cash'>>
 
 /**
  * **An expense fixed from Money out** (Sebastian, 2026-11-03, B of the mock: "make the expenses
@@ -25,6 +44,7 @@ export function ExpenseEdit({ expense, categories, nameOf, today, onSave, onRemo
   const [amount, setAmount] = useState(String(expense.amount))
   const [category, setCategory] = useState(expense.category_id)
   const [day, setDay] = useState(expense.expense_date)
+  const [outside, setOutside] = useState(!!expense.not_from_cash)
   const [open, setOpen] = useState<'category' | 'day' | null>(null)
   const [find, setFind] = useState('')
   const [removing, setRemoving] = useState(false)
@@ -66,6 +86,7 @@ export function ExpenseEdit({ expense, categories, nameOf, today, onSave, onRemo
     if (value !== expense.amount) change.amount = value
     if (category !== expense.category_id) change.category_id = category
     if (day !== expense.expense_date) change.expense_date = day
+    if (outside !== !!expense.not_from_cash) change.not_from_cash = outside
     if (Object.keys(change).length === 0) { onClose(); return }
     onSave(change)
   }
@@ -140,6 +161,7 @@ export function ExpenseEdit({ expense, categories, nameOf, today, onSave, onRemo
           </button>
         </span>
       </div>
+      <div className="mt-1"><OutsideSwitch on={outside} onFlip={() => setOutside(o => !o)} /></div>
       {open === 'category' && (
         <div className="bw-unfold">
           <label className="flex items-center gap-2 mt-2 px-2.5 rounded-lg bg-page text-muted focus-within:ring-[1.5px] focus-within:ring-gold-400 transition-shadow">

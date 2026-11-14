@@ -73,7 +73,7 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
       {hasOut ? (
         <div className="grid grid-cols-2 gap-x-5">
           <MoneyBlock title="In" lines={report.moneyIn} total={report.totalIn} />
-          <MoneyBlock title="Out" lines={report.moneyOut} total={report.totalOut} />
+          <MoneyBlock title="Out" lines={report.moneyOut.map(l => (l.outside ? { ...l, label: l.label + ' · Not from hotel cash' } : l))} total={report.totalOut} />
         </div>
       ) : (
         <MoneyBlock title="In" lines={report.moneyIn} total={report.totalIn} />
@@ -110,7 +110,7 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
         </div>
         <div className="flex justify-between gap-3">
           <span>Total Expenses</span>
-          <span className="font-mono">({peso(report.totalOut)})</span>
+          <span className="font-mono">({peso(report.totalCashOut)})</span>
         </div>
         {/* Money handed to the owner: printed only on a day it happened, like every line here. */}
         {report.handedOver.map((line, index) => (
