@@ -116,8 +116,6 @@ export interface MoneyInInput {
 // How a line reads (C of the money lines mock, Sebastian, 2026-11-03): a sign for what kind it is on the
 // left, the one thing to read first in bold, the amount as the loudest figure, and the codes and times
 // faint in the corner. The pencil waits for the pointer on a PC; on a tablet it is always there.
-const TILE = 'row-span-2 w-[34px] h-[34px] grid place-items-center rounded-[11px]'
-const LINE = 'grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-2 -mx-2 px-2 rounded-lg text-[13px]'
 const AMOUNT = 'font-display font-extrabold tabular-nums inline-block'
 const PEN = 'w-7 h-7 -my-1 -mr-1 grid place-items-center rounded-lg text-gold-800 hover:bg-gold-100 aria-expanded:bg-gold-100 active:scale-[.85] active:-rotate-[8deg] mouse:opacity-0 mouse:group-hover/line:opacity-100 mouse:focus-visible:opacity-100 mouse:aria-expanded:opacity-100 transition-[opacity,background-color,transform] cursor-pointer'
 
@@ -130,57 +128,54 @@ const SPEND_ICONS: [RegExp, LucideIcon][] = [
   [/gas|fuel|lpg|diesel/i, Fuel], [/repair|mainten/i, Wrench], [/resto|food|kitchen|market|grocer/i, ShoppingBasket],
 ]
 const spendIcon = (name: string) => SPEND_ICONS.find(([re]) => re.test(name))?.[1] || Receipt
-/** A line's sign, drawn from the icon its kind was given. */
-const sign = (Icon: LucideIcon) => createElement(Icon, { 'aria-hidden': true, className: 'w-[17px] h-[17px]' })
 
 // One expense, drawn like a payment in Money in (B of the Money out mock, Sebastian, 2026-11-03: "make
 // the expenses consistent with the design similar to the money in"). The note leads, the category is
 // second and the time last (Sebastian, 2026-11-03: "the note should be the primary focus, category is
 // 2nd, everything else is tertiary"). The pencil opens the same small slip a payment has (`ExpenseEdit`).
-// Inside a group the category is said once above, so a line there is its note and its time.
-function ExpenseLine({ expense, time, edit }: {
+// Inside a group the category is said once above, so a line there is its note.
+// **One line each, on Money in's columns** (the Money out ledger mock, A, Sebastian, 2026-11-14: "make it more
+// compact like the money in"): the time, the note in bold with the category's sign, the category faint beside
+// it, the amount in red and the pencil.
+function ExpenseLine({ expense, inGroup, edit }: {
   expense: Expense
-  /** Inside a merged line: when it was written, so the repeats can be told apart. */
-  time?: string
+  /** Inside a merged line: the category is said above, so the line is its note. */
+  inGroup?: boolean
   edit: ExpenseEditing
 }) {
   const key = 'x:' + expense.id
   const editing = edit.editing === key
   const fresh = edit.fresh === key
-  const at = expense.created_at ? new Date(expense.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
   const note = soft((expense.notes || '').trim())
   const name = edit.nameOf(expense.category_id)
   const Icon = spendIcon(name)
+  const title = note.text ? note : soft(name)
   // Paid from outside the hotel: said on the line, since it is the one expense the cash on hand keeps.
-  const outside = expense.not_from_cash && <span className="font-bold text-gold-800"> · Not from hotel cash</span>
-  const amount = <span key={expense.amount} className={'justify-self-end text-danger-600 ' + AMOUNT + (time ? ' text-[14px]' : ' text-[16px]') + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(expense.amount)}</span>
-  const pen = (
-    <button type="button" data-pay-pen aria-label={'Edit this expense, ' + peso(expense.amount)} aria-expanded={editing}
-      onClick={e => { e.stopPropagation(); edit.onEdit(editing ? null : key) }}
-      className={'justify-self-end ' + PEN}>
-      <Pencil aria-hidden="true" className="w-3.5 h-3.5" />
-    </button>
-  )
+  const outside = (after: boolean) => expense.not_from_cash && <span className="font-bold text-gold-800">{after && ' · '}Not from hotel cash</span>
   return (
     <div className={editing ? 'relative z-20' : 'relative'}>
-      {time ? (
-        <div className={'group/line relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 min-h-7 py-1 -mx-2 px-2 rounded-lg text-[13px] transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
-          <span className={'min-w-0 truncate font-semibold text-main' + note.cls}>{note.text || 'Expense'}</span>
-          {amount}
-          <span className="min-w-0 truncate text-[12px] text-muted">{time}{outside}</span>
-          {pen}
-        </div>
-      ) : (
-        <div className={'group/line relative ' + LINE + ' transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
-          <span className={TILE + ' bg-danger-50 text-danger-600'}>{sign(Icon)}</span>
-          <span className={'min-w-0 truncate text-[13.5px] font-bold text-main' + note.cls}>{note.text || name}</span>
-          {amount}
-          <span className="min-w-0 truncate text-[12px] text-muted">
-            {note.text && <span className="font-bold text-ink-600">{name}</span>}{note.text && at && ' · '}{at}{outside}
-          </span>
-          {pen}
-        </div>
-      )}
+      <div className={'group/line relative mo-row ' + (inGroup ? 'mo-kid' : 'min-h-7') + ' py-1 -mx-2 px-2 rounded-lg text-[13px] transition-colors' + (editing ? ' bg-page' : '') + (fresh ? ' [animation:ex-saved_.9s_ease-out]' : '')}>
+        <span className={FAINT}>{clock(expense.created_at)}</span>
+        {inGroup ? (
+          <span className="min-w-0 truncate font-semibold text-main"><span className={note.cls}>{note.text || 'Expense'}</span>{outside(true)}</span>
+        ) : (
+          <>
+            <span className="min-w-0 flex items-center gap-1.5 text-[14px] font-extrabold text-main">
+              {createElement(Icon, { "aria-hidden": true, className: "w-[15px] h-[15px] shrink-0 text-danger-600" })}
+              <span className={'min-w-0 truncate' + title.cls}>{title.text}</span>
+            </span>
+            <span className="mi-who min-w-0 truncate text-[12.5px] font-medium text-ink-600">{note.text && name}{outside(!!note.text)}</span>
+          </>
+        )}
+        <span key={expense.amount} className={AMOUNT + ' text-right text-danger-600 ' + (inGroup ? 'text-[14px]' : 'text-[15px]') + (fresh ? ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]' : '')}>{peso(expense.amount)}</span>
+        <span className="flex justify-end">
+          <button type="button" data-pay-pen aria-label={'Edit this expense, ' + peso(expense.amount)} aria-expanded={editing}
+            onClick={e => { e.stopPropagation(); edit.onEdit(editing ? null : key) }}
+            className={PEN}>
+            <Pencil aria-hidden="true" className="w-3.5 h-3.5" />
+          </button>
+        </span>
+      </div>
       {editing && (
         <ExpenseEdit expense={expense} categories={edit.categories} nameOf={edit.nameOf} today={edit.today}
           onClose={() => edit.onEdit(null)} onSave={change => edit.onSave(expense, change)} onRemove={() => edit.onRemove(expense)} />
@@ -207,34 +202,31 @@ function ExpenseGroup({ expenses, edit }: { expenses: Expense[]; edit: ExpenseEd
   const sum = expenses.reduce((s, e) => s + Number(e.amount || 0), 0)
   // The slip floats past the end of the group, so while it is up the group does not clip it.
   const floating = expenses.some(e => edit.editing === 'x:' + e.id)
-  const timeOf = (e: Expense) => e.created_at ? new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
-  const times = expenses.map(timeOf).filter(Boolean)
-  const span = times.length > 1 ? times[0] + '–' + times[times.length - 1] : times[0]
   const title = soft(name)
   return (
     <div>
       <button type="button" onClick={() => { setOpen(o => !o); markSeen('group-items') }} aria-expanded={open}
-        className={'group relative ' + LINE + ' w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer'}>
-        <span className={TILE + ' bg-danger-50 text-danger-600'}>{sign(Icon)}</span>
+        className="group relative mo-row min-h-7 py-1 -mx-2 px-2 rounded-lg text-[13px] w-[calc(100%+1rem)] text-left hover:bg-page aria-expanded:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer">
         <NewTag id="group-items" />
-        <span className="min-w-0 truncate text-[13.5px] font-bold text-main">
-          <span className={title.cls}>{title.text}</span>
-          <ItemCount n={expenses.length} />
+        <span className={FAINT}>{clock(expenses[0].created_at)}</span>
+        <span className="min-w-0 flex items-center gap-1.5 text-[14px] font-extrabold text-main">
+          {createElement(Icon, { "aria-hidden": true, className: "w-[15px] h-[15px] shrink-0 text-danger-600" })}
+          <span className="min-w-0 truncate"><span className={title.cls}>{title.text}</span><ItemCount n={expenses.length} /></span>
         </span>
-        <span className="flex items-center justify-end gap-1.5">
-          <span key={sum} className={'text-[16px] text-danger-600 ' + AMOUNT + ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(sum)}</span>
+        <span className="mi-who min-w-0 truncate text-[12.5px] font-medium text-ink-600">
+          {expenses.map(e => soft((e.notes || '').trim()).text || 'Expense').join(', ')}
+        </span>
+        <span key={sum} className={'text-[15px] text-right text-danger-600 ' + AMOUNT + ' [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(sum)}</span>
+        <span className="flex justify-end">
           <ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-gold-600 transition-transform duration-[350ms] ease-[cubic-bezier(.34,1.4,.64,1)] group-aria-expanded:rotate-180" />
-        </span>
-        <span className="col-span-2 min-w-0 truncate text-[12px] text-muted">
-          {span}
         </span>
       </button>
       <div className={'grid transition-[grid-template-rows] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)] ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
         <div className={'min-h-0 ' + (floating ? 'overflow-visible' : 'overflow-hidden')}>
-          <div className="ml-[17px] mb-1 pl-[27px] border-l-2 border-paper-200">
+          <div className="ml-[17px] mb-1 pl-3 border-l-2 border-paper-200">
             {expenses.map((expense, i) => (
               <div key={expense.id} className={(open ? 'bw-rise ' : '') + (edit.editing === 'x:' + expense.id ? 'relative z-20' : '')} style={{ '--i': i } as CSSProperties}>
-                <ExpenseLine expense={expense} time={timeOf(expense)} edit={edit} />
+                <ExpenseLine expense={expense} inGroup edit={edit} />
               </div>
             ))}
           </div>
@@ -956,23 +948,33 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
               </div>
             ))}
           </div>
-          <MoneyInBlank key={report.date} bills={bills} pastDay={pastDay} onAddIn={onAddIn} />
-          {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
+          {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27);
+              the blank line sits on the total, not under the list (Sebastian, 2026-11-14). */}
           <div className="flex-1 min-h-3" />
+          <MoneyInBlank key={report.date} bills={bills} pastDay={pastDay} onAddIn={onAddIn} />
           <TotalIn lines={report.moneyIn} total={report.totalIn} />
         </div>
 
         <div className="px-5 pt-4 pb-3 flex flex-col border-t md:border-t-0 border-soft">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Money out</p>
           {dayExpenses.length === 0 && <p className="text-[13px] text-muted">Nothing spent yet.</p>}
-          {byCategory(dayExpenses).map(group => group.length > 1 ? (
-            <ExpenseGroup key={group[0].category_id} expenses={group} edit={editExpense} />
-          ) : (
-            <ExpenseLine key={group[0].id} expense={group[0]} edit={editExpense} />
-          ))}
-          <ExpenseBlank key={report.date} categories={categories} another={dayExpenses.length > 0} pastDay={pastDay} onAdd={onAdd} />
-          {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
+          <div className="mi-list">
+            {dayExpenses.length > 1 && (
+              <div className="relative mo-row mi-head h-6 -mx-2 px-2 border-b border-paper-100 text-[10px] font-bold uppercase tracking-wider text-paper-500">
+                <NewTag id="money-out-ledger" />
+                <span>Time</span><span>What</span><span className="mi-who" /><span className="text-right">Amount</span><span />
+              </div>
+            )}
+            {byCategory(dayExpenses).map(group => group.length > 1 ? (
+              <ExpenseGroup key={group[0].category_id} expenses={group} edit={editExpense} />
+            ) : (
+              <ExpenseLine key={group[0].id} expense={group[0]} edit={editExpense} />
+            ))}
+          </div>
+          {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27);
+              the blank line sits on the total, not under the list (Sebastian, 2026-11-14). */}
           <div className="flex-1 min-h-3" />
+          <ExpenseBlank key={report.date} categories={categories} another={dayExpenses.length > 0} pastDay={pastDay} onAdd={onAdd} />
           <div className={'flex justify-between items-center gap-3 pt-3 text-[14px] font-extrabold' + (dayExpenses.length ? '' : ' border-t border-soft')}>
             <span className="text-main">Total out</span>
             <span key={report.totalOut} className="font-mono text-[18px] text-danger-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(report.totalOut)}</span>

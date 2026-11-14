@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Money In by Bill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Sora:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;--page:#F8F5EF;--card:#FFFFFF;--soft:rgba(28,28,28,.14);--ink:#1F1F1F;--muted:#6E6E6E;
+--emerald:#059669;--emerald50:#ECFDF5;--red:#A32F22;--red50:#FBEDEA;--gold100:#F5EAD1;--gold400:#D0AB60;--gold600:#A9812F;--gold800:#6F5420;
+--paper50:#F8F5EF;--paper100:#F1ECE1;--paper200:#E6DFD0;--paper400:#C4B9A0;--blue:#1D4ED8;--black:#1C1C1C;
+--sans:"DM Sans",system-ui,sans-serif;--display:"Sora",system-ui,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.4 var(--sans)}
+main{max-width:1060px;margin:0 auto;padding:24px 16px 48px}
+h1{font:800 20px var(--display);margin:0 0 4px}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin:18px 0 12px}
+.label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.switch{display:inline-flex;position:relative;background:var(--paper100);border-radius:999px;padding:3px}
+.switch button{position:relative;z-index:1;border:0;background:none;font:700 12.5px var(--sans);color:var(--muted);padding:6px 14px;border-radius:999px;cursor:pointer;transition:color .2s}
+.switch button[aria-pressed="true"]{color:var(--ink)}
+.switch .pill{position:absolute;top:3px;bottom:3px;border-radius:999px;background:var(--card);box-shadow:0 1px 2px rgba(0,0,0,.08);transition:left .35s cubic-bezier(.34,1.4,.64,1),width .35s cubic-bezier(.34,1.4,.64,1)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:820px){.cols{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--soft);border-radius:16px;padding:16px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 12px;padding:6px 8px;margin:0 -8px;border-radius:12px;font-size:13px;width:calc(100% + 16px);border:0;background:none;text-align:left;font-family:var(--sans);color:var(--ink);cursor:pointer;transition:background-color .15s,transform .15s}
+.row:hover{background:var(--page)}.row:active{transform:scale(.985)}
+.who{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.place{margin-left:6px;display:inline-block;padding:0 6px;border-radius:6px;font-size:10.5px;font-weight:800;background:var(--paper100);vertical-align:1px}
+.place.slip{background:var(--gold100);color:var(--gold800)}
+.amt{font:700 14px var(--mono);color:var(--emerald);justify-self:end}
+.sub{font-size:12px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc{justify-self:end;font:11px var(--mono);color:var(--muted)}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:1px}
+.bn{font:600 10.5px var(--mono);color:var(--muted);margin-left:6px;padding:0 5px;border:1px solid var(--paper200);border-radius:6px;vertical-align:1px;animation:pop .35s cubic-bezier(.34,1.56,.64,1) both}
+.count{display:inline-grid;place-items:center;min-width:24px;height:19px;padding:0 6px;border-radius:999px;background:var(--emerald50);color:var(--emerald);font-size:11px;font-weight:800;margin-left:6px;vertical-align:1px}
+.chev{width:14px;height:14px;color:var(--gold600);transition:transform .35s cubic-bezier(.34,1.4,.64,1);margin-left:6px;vertical-align:-2px}
+.grp[aria-expanded="true"]{background:var(--page)}
+.grp[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s cubic-bezier(.2,.8,.2,1)}
+.fold.open{grid-template-rows:1fr}
+.fold>div{min-height:0;overflow:hidden}
+.kids{margin:0 0 4px 6px;padding-left:12px;border-left:2px solid var(--paper200)}
+.fold.open .row{animation:rise .3s cubic-bezier(.16,1,.3,1) both}
+.fold.open .row:nth-child(2){animation-delay:.05s}.fold.open .row:nth-child(3){animation-delay:.1s}
+.total{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--soft);margin-top:10px;padding-top:8px;font-weight:800}
+.total b{font:800 18px var(--mono);color:var(--emerald)}
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
+@media (max-width:820px){.notes{grid-template-columns:1fr}}
+.notes ul{margin:0;padding-left:18px;font-size:13px;line-height:1.6}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}}
+@keyframes pop{from{opacity:0;transform:scale(.6)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Money in · bill numbers</h1>
+  <div class="top">
+    <div class="switch" role="group" aria-label="Option" id="sw">
+      <span class="pill"></span>
+      <button data-k="A" aria-pressed="true">A · Bill no. on each</button>
+      <button data-k="B" aria-pressed="false">B · Grouped by bill</button>
+    </div>
+  </div>
+  <div class="cols">
+    <div><p class="label">Today</p><div class="card" id="today"></div></div>
+    <div><p class="label">New</p><div class="card" id="new"></div></div>
+  </div>
+  <div class="notes">
+    <div class="card"><p class="label">What changes</p><ul id="changes"></ul></div>
+    <div class="card"><p class="label">Questions</p><ul>
+      <li>B: should the bill number show on a payment that is alone too?</li>
+      <li>B: payments from one bill paid at different times — one line at the first one's place?</li>
+    </ul></div>
+  </div>
+</main>
+<script>
+const P=[
+ {who:'SEBASTIAN',place:'Room 5',bill:'GRF-2026-10-0124',what:'Deposit',m:'GCash',dot:'var(--blue)',t:'9:12 AM',amt:900,rc:'PR-202610-031'},
+ {who:'HAZEL NAVARRO',place:'Room 1',bill:'GRF-2026-11-0131',what:'Deposit',m:'GCash',dot:'var(--blue)',t:'10:05 AM',amt:1575,rc:'PR-202610-032'},
+ {who:'Table 4',place:'OS-0043',slip:true,what:'Order slip',m:'Cash',dot:'var(--emerald)',t:'12:40 PM',amt:640,rc:'PR-202610-033'},
+ {who:'JUN RODEL',place:'Rooms 6, 7',bill:'GRF-2026-11-0132',what:'Full pay',m:'Bank',dot:'var(--black)',t:'1:15 PM',amt:5400,rc:'PR-202610-034'},
+ {who:'SEBASTIAN',place:'Room 5',bill:'GRF-2026-10-0124',what:'Balance',m:'Cash',dot:'var(--emerald)',t:'2:30 PM',amt:900,rc:'PR-202610-036'},
+ {who:'JUN RODEL',place:'Rooms 6, 7',bill:'GRF-2026-11-0132',what:'Late check-out',m:'Cash',dot:'var(--emerald)',t:'4:50 PM',amt:300,rc:'PR-202610-037'},
+ {who:'Walk-in',place:'OS-0044',slip:true,what:'Order slip',m:'Cash',dot:'var(--emerald)',t:'7:20 PM',amt:380,rc:'PR-202610-038'},
+];
+const peso=n=>'₱'+n.toLocaleString();
+const CHEV='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+function line(p,{bill=false,inGroup=false}={}){
+  return `<button class="row" type="button">
+    <span class="who">${inGroup?'':p.who}${inGroup?'':`<span class="place ${p.slip?'slip':''}">${p.place}</span>`}${bill&&p.bill?`<span class="bn">${p.bill}</span>`:''}${inGroup?`<span style="font-weight:600">${p.what}</span>`:''}</span>
+    <span class="amt">${peso(p.amt)}</span>
+    <span class="sub">${inGroup?'':p.what+' · '}<span class="dot" style="background:${p.dot}"></span>${p.m} · ${p.t}</span>
+    <span class="rc">${p.rc}</span></button>`;
+}
+const total=`<div class="total"><span>Total in</span><b>${peso(P.reduce((s,p)=>s+p.amt,0))}</b></div>`;
+document.getElementById('today').innerHTML=P.map(p=>line(p)).join('')+total;
+function groups(){const m=new Map();P.forEach(p=>{const k=p.bill||p.rc;(m.get(k)||m.set(k,[]).get(k)).push(p)});return[...m.values()]}
+let k='A';const open=new Set();
+function draw(){
+  const box=document.getElementById('new');
+  if(k==='A'){box.innerHTML=P.map(p=>line(p,{bill:true})).join('')+total}
+  else{
+    box.innerHTML=groups().map((g,i)=>{
+      if(g.length===1)return line(g[0],{bill:true});
+      const sum=g.reduce((s,p)=>s+p.amt,0),o=open.has(i);
+      return `<div><button class="row grp" type="button" data-g="${i}" aria-expanded="${o}">
+        <span class="who">${g[0].who}<span class="place">${g[0].place}</span><span class="count">×${g.length}</span></span>
+        <span class="amt">${peso(sum)}${CHEV}</span>
+        <span class="sub">${g.map(p=>p.what).join(' · ')}</span>
+        <span class="rc">${g[0].bill}</span></button>
+        <div class="fold ${o?'open':''}"><div><div class="kids">${g.map(p=>line(p,{inGroup:true})).join('')}</div></div></div></div>`;
+    }).join('')+total;
+    box.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{const i=+b.dataset.g;open.has(i)?open.delete(i):open.add(i);
+      b.setAttribute('aria-expanded',open.has(i));b.nextElementSibling.classList.toggle('open',open.has(i))});
+  }
+  document.getElementById('changes').innerHTML=k==='A'
+    ?'<li>Each room payment shows its bill number beside the room</li><li>Order slips stay as they are</li><li>Tap still opens the bill</li>'
+    :'<li>Payments on one bill are one line with a count, like expenses</li><li>The bill number sits where the receipt was</li><li>Tap the line to open its payments; tap a payment to open the bill</li><li>The printed sheet still lists each payment</li>';
+}
+const sw=document.getElementById('sw'),pill=sw.querySelector('.pill');
+function movePill(){const b=sw.querySelector('[aria-pressed="true"]');pill.style.left=b.offsetLeft+'px';pill.style.width=b.offsetWidth+'px'}
+sw.querySelectorAll('button').forEach(b=>b.onclick=()=>{k=b.dataset.k;sw.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));movePill();draw()});
+document.fonts.ready.then(movePill);movePill();draw();
+</script>
+</body>
+</html>

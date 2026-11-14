@@ -1,0 +1,363 @@
+<title>Bill Money Flow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: a stage. Money arrives in the tray at the top, lands on the two rooms, and the rooms pour into the bill below.
+   The caption under the controls names the rule and the function doing it. Light look on purpose (mocks are light mode). */
+:root {
+  --bg: #FFFFFF;
+  --soft: #F7EFDD;
+  --gold: #D0AB60;
+  --gold-ink: #6F5420;
+  --ink: #2B2620;
+  --muted: #8A7F70;
+  --line: #EADFC8;
+  --paid: #3E9B5B;
+  --paid-soft: #E3F2E7;
+  --owed: #D9674E;
+  --owed-soft: #FBE6E0;
+  --font: "Nunito", ui-rounded, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 48px }
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px }
+h1 { font-size: 28px; font-weight: 900; margin: 0 }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap }
+
+/* Caption + controls */
+.panel { display: flex; flex-direction: column; gap: 12px }
+.controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.btn { font: inherit; font-weight: 900; border: 0; border-radius: 999px; min-width: 44px; height: 44px; padding: 0 14px; cursor: pointer;
+  background: var(--soft); color: var(--gold-ink); transition: transform .12s }
+.btn:active { transform: scale(.94) }
+.btn.main { background: var(--gold); color: #fff; min-width: 96px }
+.btn:focus-visible, .dot:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px }
+.dots { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap }
+.dot { width: 26px; height: 8px; border-radius: 999px; border: 0; padding: 0; background: var(--line); cursor: pointer; transition: background .25s, width .25s }
+.dot.done { background: var(--gold) }
+.dot.now { background: var(--gold-ink); width: 40px }
+.caption { background: var(--soft); border-radius: 16px; padding: 12px 16px; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: baseline; min-height: 74px }
+.caption .k { grid-row: span 2; font-weight: 900; font-size: 26px; color: var(--gold); font-variant-numeric: tabular-nums }
+.caption .t { font-weight: 900; font-size: 17px }
+.caption .f { font-family: var(--mono); font-size: 12.5px; color: var(--gold-ink); overflow-wrap: anywhere }
+.caption .fn { font-family: var(--mono); font-size: 11px; color: var(--muted) }
+
+/* Stage */
+.stage { display: flex; flex-direction: column; gap: 14px }
+.tray { min-height: 64px; border: 2px dashed var(--line); border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding: 10px }
+.tray:empty::before { content: ""; }
+.chip { background: var(--ink); color: #fff; font-weight: 800; border-radius: 999px; padding: 7px 14px; white-space: nowrap; font-size: 14px }
+.chip.neg { background: var(--owed) }
+.chip.pay { background: var(--paid) }
+.chip.gold { background: var(--gold) }
+.splitbar { width: min(100%, 460px); display: flex; flex-direction: column; gap: 6px }
+.splitbar .bar { display: flex; height: 38px; border-radius: 10px; overflow: hidden; gap: 3px }
+.splitbar .seg { display: grid; place-items: center; color: #fff; font-weight: 900; font-variant-numeric: tabular-nums; animation: grow .5s cubic-bezier(.3,1.3,.5,1) both }
+.splitbar .seg:nth-child(2) { animation-delay: .12s }
+.splitbar .why { text-align: center; font-size: 12.5px; color: var(--muted); font-weight: 700 }
+@keyframes grow { from { transform: scaleX(0); opacity: 0 } }
+
+.rooms { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
+.room { background: var(--soft); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0 }
+.room .name { font-weight: 900; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold-ink) }
+.lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; min-height: 26px }
+.lines li { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; font-size: 14px; animation: drop .45s cubic-bezier(.3,1.4,.5,1) both }
+.lines li span:first-child { color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.lines li.neg span:last-child { color: var(--owed) }
+@keyframes drop { from { transform: translateY(-10px) scale(.96); opacity: 0 } }
+.totalrow { display: flex; justify-content: space-between; align-items: baseline; border-top: 2px dashed var(--line); padding-top: 6px; gap: 8px }
+.totalrow b { font-size: 22px; font-weight: 900 }
+.totalrow span { color: var(--muted); font-weight: 800; font-size: 13px }
+.mini { display: flex; justify-content: space-between; font-weight: 800; font-size: 14px; animation: drop .4s both }
+.mini.paid b { color: var(--paid) }
+.mini.owes b { color: var(--owed) }
+.bump { animation: bump .35s cubic-bezier(.3,1.6,.5,1) }
+@keyframes bump { 50% { transform: scale(1.12) } }
+
+.bill { background: var(--ink); color: #fff; border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px }
+.bill .cells { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px }
+.bill .cell { display: flex; flex-direction: column; gap: 2px; min-width: 0 }
+.bill .cell span { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #CFC4B0; font-weight: 800 }
+.bill .cell b { font-size: 24px; font-weight: 900; display: inline-block; transform-origin: left center }
+.bill .cell.paid b { color: #8FD6A4 }
+.bill .cell.owes b { color: #F2A391 }
+.readers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
+.reader { background: rgba(255,255,255,.08); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; animation: drop .4s both; min-width: 0 }
+.reader:nth-child(2) { animation-delay: .1s } .reader:nth-child(3) { animation-delay: .2s }
+.reader span { font-size: 12px; font-weight: 800; color: #CFC4B0 }
+.reader b { font-variant-numeric: tabular-nums; font-size: 13px; overflow-wrap: anywhere }
+.reader b::after { content: " ✓"; color: #8FD6A4 }
+[hidden] { display: none !important }
+
+.fly { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; will-change: transform }
+@media (max-width: 520px) {
+  .rooms { gap: 8px } .room { padding: 10px }
+  .lines li { font-size: 13px } .totalrow b { font-size: 19px }
+  .bill .cell b { font-size: 19px }
+  .readers { grid-template-columns: 1fr }
+  .dots { margin-left: 0; width: 100% }
+}
+</style>
+
+<div class="wrap">
+  <h1>Bill Money Flow</h1>
+
+  <div class="panel">
+    <div class="controls">
+      <button class="btn" id="prev" aria-label="Previous step">◀</button>
+      <button class="btn main" id="play">▶ Play</button>
+      <button class="btn" id="next" aria-label="Next step">▶|</button>
+      <div class="dots" id="dots" role="group" aria-label="Steps"></div>
+    </div>
+    <div class="caption" aria-live="polite">
+      <span class="k" id="capK"></span>
+      <span class="t" id="capT"></span>
+      <span><span class="f" id="capF"></span> <span class="fn" id="capFn"></span></span>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="tray" id="tray"></div>
+    <div class="rooms">
+      <div class="room" id="r0">
+        <span class="name">Room 1 · Deluxe</span>
+        <ul class="lines"></ul>
+        <div class="totalrow"><span>Costs</span><b class="num total">—</b></div>
+        <div class="mini paid" hidden><span>Paid</span><b class="num">₱0</b></div>
+        <div class="mini owes" hidden><span>Owes</span><b class="num">₱0</b></div>
+      </div>
+      <div class="room" id="r1">
+        <span class="name">Room 2 · Standard</span>
+        <ul class="lines"></ul>
+        <div class="totalrow"><span>Costs</span><b class="num total">—</b></div>
+        <div class="mini paid" hidden><span>Paid</span><b class="num">₱0</b></div>
+        <div class="mini owes" hidden><span>Owes</span><b class="num">₱0</b></div>
+      </div>
+    </div>
+    <div class="bill">
+      <div class="cells">
+        <div class="cell"><span>Bill total</span><b class="num" id="bTotal">—</b></div>
+        <div class="cell paid"><span>Paid</span><b class="num" id="bPaid">—</b></div>
+        <div class="cell owes"><span>Owes</span><b class="num" id="bOwes">—</b></div>
+      </div>
+      <div class="readers" id="readers" hidden>
+        <div class="reader"><span>The bill</span><b>6,620 − 3,000 = 3,620</b></div>
+        <div class="reader"><span>Pill · panel</span><b>2,143 + 1,477 = 3,620</b></div>
+        <div class="reader"><span>Paper</span><b>2,143 + 1,477 = 3,620</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const peso = n => '₱' + Math.round(n).toLocaleString('en-US')
+const $ = s => document.querySelector(s)
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+const S = { anim: false, token: 0 }
+const STOP = 'stop'
+const live = t => { if (t !== S.token) throw STOP }
+
+const R = [0, 1].map(i => {
+  const el = $('#r' + i)
+  return { el, lines: el.querySelector('.lines'), total: el.querySelector('.total'),
+    paidRow: el.querySelector('.mini.paid'), paid: el.querySelector('.mini.paid b'),
+    owesRow: el.querySelector('.mini.owes'), owes: el.querySelector('.mini.owes b') }
+})
+const tray = $('#tray'), bTotal = $('#bTotal'), bPaid = $('#bPaid'), bOwes = $('#bOwes'), readers = $('#readers')
+
+// ── Motion helpers. Off (S.anim false) they jump straight to the end, which is how Back and the steps rebuild a frame.
+function wait(ms) {
+  if (!S.anim) return Promise.resolve()
+  const t = S.token
+  return new Promise(r => setTimeout(r, ms)).then(() => live(t))
+}
+function bump(el) { if (!S.anim) return; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump') }
+function count(el, from, to, dur = 650) {
+  if (!S.anim) { el.textContent = peso(to); return Promise.resolve() }
+  const t = S.token, t0 = performance.now()
+  return new Promise(res => {
+    const f = now => {
+      if (t !== S.token) return res()
+      const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3)
+      el.textContent = peso(from + (to - from) * e)
+      p < 1 ? requestAnimationFrame(f) : (bump(el), res())
+    }
+    requestAnimationFrame(f)
+  }).then(() => live(t))
+}
+// A copy of `from` flies to `to`; `from` stays put unless hide is set.
+async function fly(from, to, hide = true) {
+  if (!S.anim) return
+  const t = S.token
+  const a = from.getBoundingClientRect(), b = to.getBoundingClientRect()
+  const c = from.cloneNode(true)
+  c.classList.add('fly'); c.style.width = a.width + 'px'; c.style.height = a.height + 'px'; c.style.margin = '0'
+  document.body.appendChild(c)
+  if (hide) from.style.visibility = 'hidden'
+  const x0 = a.left, y0 = a.top, x1 = b.left + b.width / 2 - a.width / 2, y1 = b.top + Math.min(b.height / 2, 30) - a.height / 2
+  await c.animate([
+    { transform: `translate(${x0}px,${y0}px) scale(1)` },
+    { transform: `translate(${(x0 + x1) / 2}px,${Math.min(y0, y1) - 30}px) scale(1.08)`, offset: .45 },
+    { transform: `translate(${x1}px,${y1}px) scale(.7)`, opacity: .2 },
+  ], { duration: 750, easing: 'cubic-bezier(.45,0,.25,1)' }).finished.catch(() => {})
+  c.remove()
+  live(t)
+}
+function setTray(html) { tray.innerHTML = html; return [...tray.children] }
+function chip(text, cls = '') { return `<span class="chip ${cls}">${text}</span>` }
+function splitBar(parts, colour, why) {
+  const sum = parts.reduce((a, p) => a + p.w, 0)
+  tray.innerHTML = `<div class="splitbar"><div class="bar">${parts.map(p =>
+    `<span class="seg" style="flex:${p.w / sum};background:${colour}">${p.label}</span>`).join('')}</div><div class="why">${why}</div></div>`
+  return [...tray.querySelectorAll('.seg')]
+}
+function addLine(r, label, amount, cls = '') {
+  const li = document.createElement('li')
+  if (cls) li.className = cls
+  li.innerHTML = `<span>${label}</span><span class="num">${amount}</span>`
+  if (!S.anim) li.style.animation = 'none'
+  R[r].lines.appendChild(li)
+  return li
+}
+function show(el) { el.hidden = false; if (!S.anim) el.style.animation = 'none'; else el.style.animation = '' }
+
+// ── The bill, one rule at a time. Numbers are what the app's rules give for this bill.
+const SCENES = [
+  { t: 'Each room’s rate', f: 'promo_price ?? base_price', fn: 'calculatePricing', run: async () => {
+    const [a, b] = setTray(chip('₱1,900 a night', 'gold') + chip('₱1,300 a night', 'gold'))
+    await wait(350)
+    await Promise.all([fly(a, R[0].lines), fly(b, R[1].lines)])
+    addLine(0, 'Rate', '₱1,900'); addLine(1, 'Rate', '₱1,300')
+    setTray('')
+  } },
+  { t: '× nights', f: 'subtotal = rate × max(1, nights)', fn: 'calculatePricing', run: async () => {
+    const [a, b] = setTray(chip('× 2 nights') + chip('× 2 nights'))
+    await wait(300)
+    await Promise.all([fly(a, R[0].lines), fly(b, R[1].lines)])
+    setTray('')
+    R.forEach((r, i) => { const li = r.lines.lastElementChild; li.firstElementChild.textContent = i ? '2 × ₱1,300' : '2 × ₱1,900' })
+    await Promise.all([
+      count(R[0].lines.lastElementChild.lastElementChild, 1900, 3800), count(R[1].lines.lastElementChild.lastElementChild, 1300, 2600),
+      count(R[0].total, 0, 3800), count(R[1].total, 0, 2600),
+    ])
+  } },
+  { t: 'A flat discount, shared by stay', f: '640 × 3,800 ÷ 6,400 = 380', fn: 'splitDiscounts', run: async () => {
+    setTray(chip('Discount ₱640', 'neg'))
+    await wait(700)
+    const [a, b] = splitBar([{ w: 3800, label: '−₱380' }, { w: 2600, label: '−₱260' }], 'var(--owed)', 'split 3,800 : 2,600')
+    await wait(900)
+    await Promise.all([fly(a, R[0].lines), fly(b, R[1].lines)])
+    setTray('')
+    addLine(0, 'Discount', '− ₱380', 'neg'); addLine(1, 'Discount', '− ₱260', 'neg')
+    await Promise.all([count(R[0].total, 3800, 3420), count(R[1].total, 2600, 2340)])
+  } },
+  { t: 'A charge on the bill', f: '+ event_addons.charges', fn: 'calculatePricing', run: async () => {
+    const [a] = setTray(chip('Extra bed +₱500'))
+    await wait(350)
+    await fly(a, R[0].lines)
+    setTray('')
+    addLine(0, 'Extra bed', '+ ₱500')
+    await count(R[0].total, 3420, 3920)
+  } },
+  { t: 'The room’s food slips', f: 'stayCost = grandTotal + food', fn: 'stayCost', run: async () => {
+    const [a] = setTray(chip('Food slip OS-0231 +₱360'))
+    await wait(350)
+    await fly(a, R[1].lines)
+    setTray('')
+    addLine(1, 'Food', '+ ₱360')
+    await count(R[1].total, 2340, 2700)
+  } },
+  { t: 'The bill total', f: '3,920 + 2,700', fn: 'buildStatement', run: async () => {
+    await fly(R[0].total, bTotal, false)
+    await count(bTotal, 0, 3920, 450)
+    await fly(R[1].total, bTotal, false)
+    await count(bTotal, 3920, 6620, 450)
+  } },
+  { t: 'A payment, split by what each owes', f: '3,000 × 3,920 ÷ 6,620 → 1,777', fn: 'payOnBill · allocatePayment', run: async () => {
+    setTray(chip('Paid ₱3,000 · PR-202611-014', 'pay'))
+    await wait(700)
+    const [a, b] = splitBar([{ w: 3920, label: '₱1,777' }, { w: 2700, label: '₱1,223' }], 'var(--paid)', 'split 3,920 : 2,700')
+    show(bPaid.parentElement)
+    await Promise.all([count(bPaid, 0, 3000), wait(900)])
+    R.forEach(r => show(r.paidRow))
+    await Promise.all([fly(a, R[0].paidRow), fly(b, R[1].paidRow)])
+    setTray('')
+    await Promise.all([count(R[0].paid, 0, 1777), count(R[1].paid, 0, 1223)])
+  } },
+  { t: 'What each room owes', f: 'balance_due = max(0, costs − paid)', fn: 'recomputeBalance', run: async () => {
+    R.forEach(r => show(r.owesRow))
+    await Promise.all([count(R[0].owes, 3920, 2143), count(R[1].owes, 2700, 1477)])
+    await wait(300)
+    await Promise.all([fly(R[0].owes, bOwes, false), fly(R[1].owes, bOwes, false)])
+    await count(bOwes, 0, 3620)
+    await wait(250)
+    show(readers)
+  } },
+]
+
+// ── Reset and rebuild: the stage is drawn again up to a step without motion, then that step plays.
+function clearStage() {
+  document.querySelectorAll('.fly').forEach(n => n.remove())
+  tray.innerHTML = ''
+  R.forEach(r => { r.lines.innerHTML = ''; r.total.textContent = '—'; r.paidRow.hidden = r.owesRow.hidden = true; r.paid.textContent = r.owes.textContent = '₱0' })
+  bTotal.textContent = bPaid.textContent = bOwes.textContent = '—'
+  readers.hidden = true
+}
+let cur = -1, playing = false
+const dots = $('#dots')
+SCENES.forEach((s, i) => {
+  const d = document.createElement('button')
+  d.className = 'dot'; d.setAttribute('aria-label', 'Step ' + (i + 1) + ': ' + s.t)
+  d.addEventListener('click', () => jump(i))
+  dots.appendChild(d)
+})
+function caption(k) {
+  const s = SCENES[k]
+  $('#capK').textContent = k + 1; $('#capT').textContent = s.t; $('#capF').textContent = s.f; $('#capFn').textContent = s.fn
+  ;[...dots.children].forEach((d, i) => { d.className = 'dot' + (i < k ? ' done' : i === k ? ' now' : '') })
+}
+async function rebuild(k) {
+  S.token++; S.anim = false
+  clearStage()
+  for (let i = 0; i < k; i++) await SCENES[i].run()
+  cur = k - 1
+}
+async function run(k) {
+  caption(k)
+  S.anim = !reduce
+  await SCENES[k].run()
+  cur = k
+}
+async function jump(k) {
+  playing = false; buttons()
+  await rebuild(k)
+  try { await run(k) } catch (e) { if (e !== STOP) throw e }
+  buttons()
+}
+async function loop() {
+  const t = S.token
+  try {
+    while (playing && cur < SCENES.length - 1) {
+      await run(cur + 1)
+      if (cur < SCENES.length - 1) await wait(1300)
+    }
+  } catch (e) { if (e !== STOP) throw e }
+  if (t === S.token) { playing = false; buttons() }
+}
+function buttons() {
+  $('#play').textContent = playing ? '❚❚ Pause' : cur >= SCENES.length - 1 ? '↺ Replay' : '▶ Play'
+}
+$('#play').addEventListener('click', async () => {
+  if (playing) { playing = false; buttons(); return }
+  if (cur >= SCENES.length - 1) await rebuild(0)
+  playing = true; buttons(); loop()
+})
+$('#next').addEventListener('click', () => jump(Math.min(SCENES.length - 1, cur + 1)))
+$('#prev').addEventListener('click', () => jump(Math.max(0, cur - 1)))
+
+// At rest the page shows the finished bill; Play builds it from nothing.
+;(async () => { await rebuild(SCENES.length); caption(SCENES.length - 1); buttons() })()
+</script>

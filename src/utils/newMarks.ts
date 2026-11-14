@@ -16,8 +16,12 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // Cash Flow → Money out: one line each on Money in's columns, the note first, the category faint (`ExpenseLine` in `DayMoney`).
+  { id: 'money-out-ledger', since: '2026-11-14' },
   // Cash Flow → Money out: an expense ticked "Not from hotel cash" does not come off the cash on hand (`OutsideSwitch`).
   { id: 'expense-outside', since: '2026-11-14' },
+  // Inventory: the logbook, Kitchen and Hotel books, stock in from the receipt, amounts typed over as the check (`InventoryBook`).
+  { id: 'inventory-logbook', since: '2026-11-14' },
   // Cash Flow → Money in: each way's total folded behind "Total in", opened by a tap (`TotalIn` in `DayMoney`).
   { id: 'ways-folded', since: '2026-11-14' },
   // Cash Flow: the links under the day are chips, the two cash ones in green and gold (`ExpensesTab`).
@@ -34,6 +38,8 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: 'search-field', since: '2026-11-12' },
   // Restaurant → Orders: "Remove all orders" under a table's slip takes every dish off at once (`OrderSlipPanel`).
   { id: 'remove-all-orders', since: '2026-11-12' },
+  // Guests asking for a room (Messenger, WhatsApp, the website): a gold bell and a dashed gold pill on the calendar (`RequestBell`).
+  { id: 'booking-requests', since: '2026-11-12' },
   // The big figures (Total cash on hand, the bill's Amount due, the booking panel's) roll digit by digit (`CountPeso`).
   { id: 'rolling-totals', since: '2026-11-12' },
   // An agency's bill takes discounts like a guest's, from its "Add" (`NewBookingBill`).
@@ -77,6 +83,8 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: 'cash-not-gcash', since: '2026-11-07' },
   // A bill that has received more than it comes to shows its Amount due below zero, in green (`over` in `NewBookingBill`).
   { id: 'bill-overpaid', since: '2026-11-07' },
+  // Cash Flow's Day · Month · Year: a month or a year is the staff's paper income statement (`MoneyStatement`).
+  { id: 'cash-flow-statement', since: '2026-11-14' },
 ]
 
 const KEY = 'daweez_new_seen'

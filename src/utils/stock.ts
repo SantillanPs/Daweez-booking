@@ -21,8 +21,6 @@ import { randomUUID } from './helpers'
  * disagree — which is the whole point of keeping a log at all.
  */
 
-export const STOCK_GROUPS = ['Food', 'Drinks', 'Linen', 'Toiletries', 'Other']
-
 export interface StockItem {
   id: string
   name: string
@@ -35,37 +33,12 @@ export interface StockItem {
   created_at: string
 }
 
-export interface StockMovement {
-  id: string
-  item_id: string
-  direction: 'in' | 'out'
-  quantity: number
-  reason: string
-  moved_by: string | null
-  note: string | null
-  /** What caused it: `delivery` when the desk received it, `tab_line` when a sale took it. */
-  source: string | null
-  source_id: string | null
-  created_at: string
-}
-
 /** One line of a dish's recipe: how much of one stock item the dish uses. */
 export interface DishStockLine {
   id: string
   menu_item_id: string
   item_id: string
   quantity: number
-}
-
-export interface StockMoveInput {
-  itemId: string
-  direction: 'in' | 'out'
-  quantity: number
-  reason: string
-  movedBy?: string
-  note?: string
-  source?: string
-  sourceId?: string
 }
 
 const num = (v: unknown): number => {
@@ -96,61 +69,6 @@ export async function getStockItems(): Promise<StockItem[]> {
   const { data, error } = await supabase.from('inventory_items').select('*').order('name')
   if (error) throw error
   return (data || []).map(toItem)
-}
-
-/**
- * Adds an item or corrects one. The name is the only field that must be there.
- *
- * **Correcting an item never writes its count.** This used to upsert the whole row,
- * `quantity` included, from the copy the screen was holding — so renaming an item or
- * changing its price put the old count back and silently undid every sale and
- * delivery made in between, with nothing in the log. The count moves only through
- * `applyStockMovement`; a new item starts at 0.
- */
-export async function saveStockItem(item: Partial<StockItem> & { name: string }): Promise<void> {
-  const fields = {
-    name: item.name.trim(),
-    category: item.category || 'Other',
-    unit: (item.unit || '').trim(),
-    price: item.price === undefined ? null : num(item.price),
-    par_level: item.par_level === undefined ? null : num(item.par_level),
-    active: item.active !== false,
-  }
-  const { error } = item.id
-    ? await supabase.from('inventory_items').update(fields).eq('id', item.id)
-    : await supabase.from('inventory_items').insert({ id: randomUUID(), quantity: 0, ...fields })
-  if (error) throw error
-}
-
-/** The movements log, newest first. */
-export async function getStockMovements(limit = 200): Promise<StockMovement[]> {
-  const { data, error } = await supabase
-    .from('stock_movements')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit)
-  if (error) throw error
-  return (data || []) as StockMovement[]
-}
-
-/**
- * Moves stock and writes the movement, together.
- *
- * The database function does both, so a failure writes neither: one call per line, and the log can never
- * disagree with the count.
- */
-export async function moveStock(input: StockMoveInput): Promise<void> {
-  const { error } = await supabase.rpc('apply_stock_movement', {
-    p_item_id: input.itemId,
-    p_direction: input.direction,
-    p_quantity: num(input.quantity),
-    p_reason: input.reason,
-    p_moved_by: input.movedBy || null,
-    p_note: input.note || null,
-    p_source: input.source || null,
-    p_source_id: input.sourceId || null,
-  })
-  if (error) throw error
 }
 
 // ── What a dish uses (the recipe) ─────────────────────────────────────────────

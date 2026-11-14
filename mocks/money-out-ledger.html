@@ -1,0 +1,177 @@
+<title>Money Out Ledger</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Sora:wght@700;800&family=DM+Mono:wght@500&display=swap">
+<style>
+/* Light only, the staff app's tokens. Layout: option switch, then the day's two columns as the app draws them. */
+:root{
+  color-scheme:light;
+  --page:#F8F5EF; --card:#FFFFFF; --soft:rgba(28,28,28,.12); --main:#1F1F1F; --muted:#6E6E6E; --ink600:#4A4A4A; --faint:#A39C8E; --line:#ECE6DA;
+  --gold:#D0AB60; --gold600:#B08A3E; --gold100:#F6EBD3; --gold-ink:#6F5420; --paper100:#F1ECE1; --paper200:#E6DFD0;
+  --green:#059669; --blue:#1D4ED8; --red:#DC2626; --red50:#FEF2F2;
+  --sans:"DM Sans",system-ui,sans-serif; --display:"Sora",system-ui,sans-serif; --mono:"DM Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--main);font-family:var(--sans);font-size:13px;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:980px;margin:0 auto;display:grid;gap:16px}
+.switch{display:inline-flex;gap:4px;background:var(--paper100);padding:4px;border-radius:12px;flex-wrap:wrap;justify-self:start}
+.switch button{border:0;background:transparent;font:700 12.5px var(--sans);color:var(--muted);padding:8px 14px;border-radius:9px;cursor:pointer;min-height:36px;transition:background .2s,color .2s}
+.switch button[aria-pressed="true"]{background:#1F1F1F;color:#fff}
+.card{background:var(--card);border:1px solid var(--soft);border-radius:14px;display:grid;grid-template-columns:1fr 1fr}
+@media(max-width:760px){.card{grid-template-columns:1fr}.col+.col{border-left:0!important;border-top:1px solid var(--soft)}}
+.col{padding:16px 20px 14px;min-width:0;container-type:inline-size}
+.col+.col{border-left:1px solid var(--soft)}
+.lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
+.frozen{opacity:.55}
+.num{font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.t{font-family:var(--mono);font-size:10.5px;color:var(--faint);white-space:nowrap}
+.ico{width:15px;height:15px;flex:none;color:var(--muted)}
+.trunc{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Money in ledger (as it is): time · from · who · way · amount · pen */
+.mi{display:grid;grid-template-columns:40px minmax(0,max-content) minmax(40px,1fr) auto 80px 24px;align-items:center;column-gap:8px;min-height:28px;padding:4px 8px;margin:0 -8px;border-radius:8px}
+.mi .from{display:flex;gap:6px;align-items:center;font-size:14px;font-weight:800;min-width:0}
+.mi .who{font-size:12.5px;font-weight:500;color:var(--ink600)}
+.head{min-height:24px;border-bottom:1px solid var(--line);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+@container (max-width:520px){
+  .mi{grid-template-columns:40px minmax(0,1fr) auto 80px 24px}
+  .mi>.who{grid-column:2/-1;grid-row:2}
+  .head>.who{display:none}
+}
+
+/* Money out, today: a tile and two lines each */
+.today{display:grid;grid-template-columns:34px minmax(0,1fr) auto;column-gap:12px;row-gap:2px;align-items:center;padding:8px;margin:0 -8px;border-radius:8px}
+.tile{grid-row:span 2;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--red50);color:var(--red)}
+.tile svg{width:17px;height:17px}
+.today b{font-size:13.5px}
+.today .sub{font-size:12px;color:var(--muted)}
+
+/* Money out, the ledger: time · what · category · amount · pen */
+.mo{display:grid;grid-template-columns:40px minmax(0,max-content) minmax(40px,1fr) 80px 24px;align-items:center;column-gap:8px;min-height:28px;padding:4px 8px;margin:0 -8px;border-radius:8px;width:calc(100% + 16px);border:0;background:none;font:inherit;color:inherit;text-align:left}
+.mo .what{display:flex;gap:6px;align-items:center;font-size:14px;font-weight:800;min-width:0}
+.mo .cat{font-size:12.5px;font-weight:500;color:var(--ink600)}
+.mo .cat b{font-weight:700}
+.mo .num{font-size:15px;color:var(--red)}
+.mo .ico{color:var(--red)}
+.cnt{margin-left:6px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.headmo{min-height:24px;border-bottom:1px solid var(--line);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+@container (max-width:520px){
+  .mo{grid-template-columns:40px minmax(0,1fr) 80px 24px}
+  .mo>.cat{grid-column:2/-1;grid-row:2}
+  .headmo>.cat{display:none}
+}
+button.mo{cursor:pointer;transition:background .2s,transform .15s}
+button.mo:hover,button.mo[aria-expanded="true"]{background:var(--page)}
+button.mo:active{transform:scale(.985)}
+.chev{width:14px;height:14px;color:var(--gold600);justify-self:end;transition:transform .35s cubic-bezier(.34,1.4,.64,1)}
+button.mo[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.kids{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s cubic-bezier(.2,.8,.2,1)}
+.kids.on{grid-template-rows:1fr}
+.kids>div{overflow:hidden;min-height:0}
+.kidwrap{margin:0 0 4px 17px;padding-left:12px;border-left:2px solid var(--paper200)}
+.kid{display:grid;grid-template-columns:36px minmax(0,1fr) 80px 24px;column-gap:8px;align-items:center;min-height:26px;font-size:13px}
+.kid .num{font-size:14px;color:var(--red)}
+.kids.on .kid{animation:rise .35s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i)*40ms)}
+@keyframes rise{from{opacity:0;transform:translateY(-4px)}}
+.pen{width:24px;height:24px;display:grid;place-items:center;border-radius:8px;color:var(--gold-ink);opacity:.0;transition:opacity .2s}
+.mo:hover .pen,.kid:hover .pen,.mi:hover .pen{opacity:1}
+.pen svg{width:13px;height:13px}
+.tot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--soft);margin-top:10px;padding-top:12px;font-size:14px;font-weight:800}
+.tot .num{font-family:var(--mono);font-size:18px;font-weight:500}
+.in .tot .num{color:var(--green)} .out .tot .num{color:var(--red)}
+.compare{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.compare b{color:var(--main);font-family:var(--mono);font-weight:500}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="switch" role="group" aria-label="Option">
+    <button id="o-today" aria-pressed="false">Today</button>
+    <button id="o-a" aria-pressed="true">A · What first</button>
+    <button id="o-b" aria-pressed="false">B · Category first</button>
+  </div>
+  <div class="card">
+    <div class="col in frozen">
+      <p class="lab">Money in</p>
+      <div id="moneyin"></div>
+      <div class="tot"><span>Total in</span><span class="num">₱9,850</span></div>
+    </div>
+    <div class="col out">
+      <p class="lab">Money out</p>
+      <div id="moneyout"></div>
+      <div class="tot"><span>Total out</span><span class="num">₱10,140</span></div>
+    </div>
+  </div>
+  <div class="compare"><span>Height of Money out — Today <b id="h-today">–</b></span><span>New <b id="h-new">–</b></span></div>
+</div>
+
+<script>
+const P = {
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  basket:'<path d="m15 11-1 9M19 11l-4-7M2 11h20M3.5 11l1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4M4.5 15.5h15M5 11l4-7M9 11l1 9"/>',
+  fuel:'<path d="M3 22h12M4 9h10M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/>',
+  zap:'<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  receipt:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8M12 17.5v-11"/>',
+  bed:'<path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4M12 4v6M2 18h20"/>',
+  fork:'<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7M2.1 21.8l6.4-6.3M19 5l-7 7"/>',
+  cash:'<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+  phone:'<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>',
+  pen:'<path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/>',
+  chev:'<path d="m6 9 6 6 6-6"/>',
+};
+const ic = (k, cls='ico') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k]}</svg>`;
+const pen = `<span class="pen">${ic('pen','')}</span>`;
+
+document.getElementById('moneyin').innerHTML = `
+  <div class="mi head"><span>Time</span><span>From</span><span class="who"></span><span style="text-align:right">Paid by</span><span style="text-align:right">Amount</span><span></span></div>
+  ${[
+    ['9:12a','bed','Room 3','Juan Dela Cruz · Downpayment','cash','var(--green)','₱1,500'],
+    ['11:40a','bed','Room 7','Maria Santos · Full payment','phone','var(--blue)','₱4,200'],
+    ['1:05p','fork','Restaurant','Table 4 · OS-0213','cash','var(--green)','₱650'],
+    ['3:30p','bed','Gazebo','Reyes family · Deposit','cash','var(--green)','₱3,500'],
+  ].map(r => `<div class="mi"><span class="t">${r[0]}</span><span class="from">${ic(r[1])}<span class="trunc">${r[2]}</span></span><span class="who trunc">${r[3]}</span><span style="display:flex;justify-content:flex-end;color:${r[5]}">${ic(r[4],'ico" style="color:'+r[5])}</span><span class="num" style="font-size:15px;color:${r[5]}">${r[6]}</span>${pen}</div>`).join('')}`;
+
+// The day's expenses: [time, icon, note, category, amount]; a group has kids.
+const OUT = [
+  {t:'7:40a', i:'users', note:'Weekly salary, Jen', cat:'Salaries', amt:'₱6,000'},
+  {t:'8:15a', i:'basket', note:'Market for kitchen', cat:'Resto Expenses', amt:'₱2,340'},
+  {t:'10:02a', i:'fuel', note:'Gasoline for the van', cat:'Gasoline', amt:'₱800'},
+  {t:'9:20a–4:10p', i:'receipt', cat:'Snacks', amt:'₱420', kids:[['9:20a','Bread for the desk','₱120'],['1:30p','Coffee sachets','₱180'],['4:10p','Biscuits','₱120']]},
+  {t:'2:45p', i:'zap', note:'', cat:'Electric bill', amt:'₱580'},
+];
+
+function today(){
+  return OUT.map(e => e.kids
+    ? `<div class="today"><span class="tile">${ic(e.i,'')}</span><b class="trunc">${e.cat}<span class="cnt">· ${e.kids.length} items</span></b><span class="num" style="font-size:16px;color:var(--red)">${e.amt}</span><span class="sub" style="grid-column:2/-1">${e.t}</span></div>`
+    : `<div class="today"><span class="tile">${ic(e.i,'')}</span><b class="trunc">${e.note||e.cat}</b><span class="num" style="font-size:16px;color:var(--red)">${e.amt}</span><span class="sub">${e.note?`<b style="font-size:12px;color:var(--ink600)">${e.cat}</b> · `:''}${e.t}</span></div>`
+  ).join('');
+}
+
+function ledger(catFirst){
+  const head = `<div class="mo headmo"><span>Time</span><span>${catFirst?'For':'What'}</span><span class="cat"></span><span style="text-align:right">Amount</span><span></span></div>`;
+  return head + OUT.map((e, n) => {
+    const lead = catFirst ? e.cat : (e.note || e.cat);
+    const second = catFirst ? (e.note || '') : (e.note ? e.cat : '');
+    if (!e.kids) return `<div class="mo"><span class="t">${e.t}</span><span class="what">${ic(e.i)}<span class="trunc">${lead}</span></span><span class="cat trunc">${second}</span><span class="num">${e.amt}</span>${pen}</div>`;
+    return `<button class="mo" aria-expanded="false" data-g="${n}"><span class="t">${e.t.split('–')[0]}</span><span class="what">${ic(e.i)}<span class="trunc">${e.cat}<span class="cnt">· ${e.kids.length} items</span></span></span><span class="cat trunc">${e.kids.map(k=>k[1]).join(', ')}</span><span class="num">${e.amt}</span>${ic('chev','chev')}</button>
+      <div class="kids" id="k${n}"><div><div class="kidwrap">${e.kids.map((k,i)=>`<div class="kid" style="--i:${i}"><span class="t">${k[0]}</span><span class="trunc" style="font-weight:600">${k[1]}</span><span class="num">${k[2]}</span>${pen}</div>`).join('')}</div></div></div>`;
+  }).join('');
+}
+
+const box = document.getElementById('moneyout');
+const measure = () => { const h = box.getBoundingClientRect().height; return Math.round(h)+'px'; };
+let hToday;
+function show(opt){
+  ['today','a','b'].forEach(o => document.getElementById('o-'+o).setAttribute('aria-pressed', o===opt));
+  box.innerHTML = today(); hToday = measure();
+  if (opt !== 'today') box.innerHTML = ledger(opt === 'b');
+  document.getElementById('h-today').textContent = hToday;
+  document.getElementById('h-new').textContent = measure();
+  box.querySelectorAll('button.mo').forEach(b => b.onclick = () => {
+    const on = b.getAttribute('aria-expanded') !== 'true';
+    b.setAttribute('aria-expanded', on);
+    document.getElementById('k'+b.dataset.g).classList.toggle('on', on);
+  });
+}
+['today','a','b'].forEach(o => document.getElementById('o-'+o).onclick = () => show(o));
+show('a');
+</script>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowDownLeft, ArrowUpRight, Coins, List, Printer, Tag, Wallet } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Coins, List, Printer, Tag, Wallet } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { dateToString, normalizeVenueId, randomUUID, shortDay } from '../utils/helpers'
 import { getTabs, handSale, saveHandSale, saveTabFix, saveTabRemoval, withFixedTabPayment, withoutTabPayment } from '../utils/tabs'
@@ -22,6 +22,8 @@ import { DayPicker } from './expenses/DayPicker'
 import { NewTag } from './NewMark'
 import { markSeen } from '../utils/newMarks'
 import { DayMoney, type BillChoice, type MoneyInInput } from './expenses/DayMoney'
+import { MoneyStatement } from './expenses/MoneyStatement'
+import { buildIncomeStatement } from '../utils/incomeStatement'
 import { ExpenseHistory } from './expenses/ExpenseHistory'
 import { IncomeHistory } from './expenses/IncomeHistory'
 import { CategoryManager } from './expenses/CategoryManager'
@@ -88,6 +90,24 @@ export function ExpensesTab() {
     () => (showIncome ? allMoneyIn({ bookings: allBookings, tabs, rooms, venues }) : []),
     [showIncome, allBookings, tabs, rooms, venues],
   )
+  // Day · Month · Year (Sebastian, 2026-11-14): the day is the screen the staff work on; a month or a year
+  // is the staff's paper income statement. `at` is the month on screen (`YYYY-MM`); the year is its year.
+  const [span, setSpan] = useState<'day' | 'month' | 'year'>('day')
+  const [at, setAt] = useState(today.slice(0, 7))
+  const statement = useMemo(() => {
+    if (span === 'day') return null
+    const from = span === 'month' ? at + '-01' : at.slice(0, 4) + '-01-01'
+    const to = span === 'month' ? at + '-31' : at.slice(0, 4) + '-12-31'
+    const payments = allMoneyIn({ bookings: allBookings, tabs, rooms, venues })
+    return buildIncomeStatement({ from, to, payments, bookings: allBookings, venues, expenses, categories: expenseCategories })
+  }, [span, at, allBookings, tabs, rooms, venues, expenses, expenseCategories])
+  const stepAt = (by: number) => {
+    const [y, m] = at.split('-').map(Number)
+    const next = new Date(y, m - 1 + (span === 'year' ? by * 12 : by), 1)
+    const key = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`
+    setAt(key > today.slice(0, 7) ? today.slice(0, 7) : key)
+  }
+  const atLabel = span === 'year' ? at.slice(0, 4) : new Date(at + '-01T00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const closeIncome = useCallback(() => setShowIncome(false), [])
   const billBooking = billOf ? allBookings.find(b => b.id === billOf.id) : undefined
   const dayHandovers = useMemo(() => handovers.filter(h => h.handover_date === date), [handovers, date])
@@ -417,8 +437,29 @@ export function ExpensesTab() {
           <Wallet className="w-5 h-5 text-gold-600" />
           Cash Flow
         </h2>
-        <DayPicker day={date} today={today} onPick={setDate} marksOf={marksOf} />
+        <div className="flex flex-wrap items-center gap-2">
+          <div role="group" aria-label="Period" className="relative flex gap-0.5 p-0.5 bg-paper-100 rounded-lg" onClick={() => markSeen('cash-flow-statement')}>
+            <NewTag id="cash-flow-statement" />
+            {(['day', 'month', 'year'] as const).map(k => (
+              <button key={k} type="button" aria-pressed={span === k} onClick={() => setSpan(k)}
+                className={'min-h-8 px-3 rounded-md text-[12.5px] font-bold capitalize transition-colors cursor-pointer active:scale-95 ' + (span === k ? 'bg-ink-900 text-white' : 'text-muted hover:text-main')}>
+                {k}
+              </button>
+            ))}
+          </div>
+          {span === 'day' ? <DayPicker day={date} today={today} onPick={setDate} marksOf={marksOf} /> : (
+            <div className="flex items-center gap-1">
+              <button type="button" aria-label="Before" onClick={() => stepAt(-1)} className="w-8 h-8 grid place-items-center rounded-lg text-muted hover:bg-card hover:text-main active:scale-90 transition-[background-color,color,transform] cursor-pointer"><ChevronLeft className="w-4 h-4" /></button>
+              <span className="min-w-[8.5rem] text-center text-[14px] font-bold">{atLabel}</span>
+              <button type="button" aria-label="Next" disabled={at.slice(0, span === 'year' ? 4 : 7) >= today.slice(0, span === 'year' ? 4 : 7)} onClick={() => stepAt(1)} className="w-8 h-8 grid place-items-center rounded-lg text-muted hover:bg-card hover:text-main active:scale-90 disabled:opacity-25 disabled:pointer-events-none transition-[background-color,color,transform] cursor-pointer"><ChevronRight className="w-4 h-4" /></button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {statement ? (
+        <MoneyStatement statement={statement} date={atLabel} heading={span === 'year' ? 'Yearly Income Statement' : 'Monthly Income Statement'} />
+      ) : <>
 
       <DayMoney
         report={report}
@@ -459,6 +500,7 @@ export function ExpensesTab() {
           {report.undatedCount} booking{report.undatedCount === 1 ? '' : 's'} holding ₱{report.undatedMoney.toLocaleString()} with no payment date
         </p>
       )}
+      </>}
 
       {billBooking && <WorkingBill booking={billBooking} mark={billOf?.receipt} onClose={() => setBillOf(null)}
         // The bill's Booking: the Front desk opens on the stay, its panel open (Sebastian, 2026-10-29).

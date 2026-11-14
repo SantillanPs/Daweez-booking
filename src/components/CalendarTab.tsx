@@ -29,6 +29,9 @@ import { ShortStayAlerts } from './calendar/ShortStayAlerts'
 import { ChannelBell } from './calendar/ChannelBell'
 import { SoldTwicePanel } from './calendar/SoldTwicePanel'
 import { useChannelAlerts } from '../hooks/useChannelAlerts'
+import { BookingRequest, closeBookingRequest, reopenBookingRequest, useBookingRequests } from '../utils/bookingRequests'
+import { RequestBell } from './calendar/RequestBell'
+import { RequestPanel } from './calendar/RequestPanel'
 import { ChannelAlert, closeChannelAlert, needsDetails } from '../utils/channelStay'
 import { bookingHalves, clashIn, dayHalf } from '../utils/halfDays'
 
@@ -93,7 +96,11 @@ export function CalendarTab() {
 
   // The desk is mid-task (a panel or form open): the update check is told, so it never
   // reloads under a panel (`appUpdate.ts`).
-  const deskBusy = showManualForm || showLogOld || !!selectedExtendBooking || !!blockTarget || !!billOf
+  // Guests asking for a room (Messenger, WhatsApp, the website): the gold bell, the ghost pills and their card.
+  const [askOpen, setAskOpen] = useState<BookingRequest | null>(null)
+  // The request whose new bill is open: booked, it is closed with the booking it became.
+  const [bookingAsk, setBookingAsk] = useState<BookingRequest | null>(null)
+  const deskBusy = showManualForm || showLogOld || !!selectedExtendBooking || !!blockTarget || !!billOf || !!askOpen
   React.useEffect(() => {
     setDeskBusy(deskBusy)
     return () => setDeskBusy(false)
@@ -521,6 +528,31 @@ export function CalendarTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [placedId, bookings])
 
+  const asks = useBookingRequests()
+  const unitName = (id: string) => {
+    const room = rooms.find(r => r.id === id)
+    return room ? 'Room ' + room.room_number : venues.find(v => v.id === id)?.name || 'Room'
+  }
+  // Booking a request is the usual new bill, its room, dates, name and number already written in.
+  const bookRequest = (r: BookingRequest) => {
+    setAskOpen(null)
+    setBookingAsk(r)
+    setFormSelections({ [r.room_id]: { checkIn: r.check_in, checkOut: r.check_out, type: rooms.some(x => x.id === r.room_id) ? 'room' : 'venue' } })
+    setFormStayHours(null)
+    setShowManualForm(true)
+  }
+  const declineRequest = (r: BookingRequest, note: string) => {
+    setAskOpen(null)
+    asks.answered(r.id)
+    closeBookingRequest(r.id, 'declined', undefined, note).then(
+      () => showToast('Turned down · ' + r.guest_name, 'success', {
+        label: 'Undo',
+        run: () => { reopenBookingRequest(r.id).then(asks.refresh, () => showToast('Could not undo that. Please try again.', 'error')) },
+      }),
+      () => { asks.refresh(); showToast('Could not save that. Please try again.', 'error') },
+    )
+  }
+
   const clearSelection = useCallback(() => { setTimelineSelection(null); setGroupSelection(null) }, [])
   /** The bar's Morning / Afternoon: which half of the picked day a short stay takes. */
   const pickHalf = useCallback((half: 0 | 1) => setTimelineSelection(s => (s ? { ...s, half } : s)), [])
@@ -529,7 +561,7 @@ export function CalendarTab() {
   const fmtBlockDate = shortDay
 
   const closeManualForm = () => {
-    setShowManualForm(false); setFormSelections({}); setFormStayHours(null)
+    setShowManualForm(false); setFormSelections({}); setFormStayHours(null); setBookingAsk(null)
     // Once the billing statement of an edit is closed, the booking opens again
     // in the quick view (card k134). A new booking does not ask for this.
     const created = takeFocusedBooking()
@@ -558,6 +590,7 @@ export function CalendarTab() {
             onBooking={openFound} onBill={b => { openFound(b); setBillOf(b) }} onReceipt={(booking, record, covered) => setFoundReceipt({ booking, record, covered })} />
           <TodayStrip />
           <ChannelBell stays={namesNeeded} alerts={channel.alerts} rooms={rooms} onStay={openFound} onAlert={openChannelAlert} />
+          <RequestBell requests={asks.requests} unitName={unitName} onOpen={setAskOpen} />
         </CalendarToolbar>
         <TimelineGrid
           rooms={rooms}
@@ -584,12 +617,19 @@ export function CalendarTab() {
           timeUp={timeUp}
           channelAlerts={channel.alerts}
           onSoldTwice={setSoldTwice}
+          requests={asks.requests}
+          onRequest={setAskOpen}
         />
       </div>
 
       {soldTwice && (
         <SoldTwicePanel alert={soldTwice} rooms={rooms} bookings={bookings} onClose={() => setSoldTwice(null)}
           onAnswered={channel.answered} onFailed={channel.refresh} onPlaced={setPlacedId} />
+      )}
+
+      {askOpen && (
+        <RequestPanel request={askOpen} rooms={rooms} venues={venues} bookings={bookings}
+          onClose={() => setAskOpen(null)} onBook={bookRequest} onDecline={declineRequest} />
       )}
 
       <ShortStayAlerts due={timeUpDue} rooms={rooms} venues={venues} onOut={timeUpOut} onMore={timeUpMore} />
@@ -655,7 +695,7 @@ export function CalendarTab() {
       {showManualForm && (
         <React.Suspense fallback={null}>
           <NewBookingBill
-            key={Object.keys(formSelections).join(',') + (formStayHours ? '-h' + formStayHours : '')}
+            key={Object.keys(formSelections).join(',') + (formStayHours ? '-h' + formStayHours : '') + (bookingAsk ? '-r' + bookingAsk.id : '')}
             rooms={rooms}
             venues={venues}
             bookings={bookings}
@@ -667,8 +707,17 @@ export function CalendarTab() {
             initialSelections={formSelections}
             initialStayHours={formStayHours ?? undefined}
             initialStayHalf={formStayHalf}
+            initialGuest={bookingAsk ? { name: bookingAsk.guest_name, phone: bookingAsk.phone } : undefined}
             // Booked: the panel opens with its one bill over it, ready for the money.
-            onBooked={rows => { closeManualForm(); setSelectedExtendBooking(rows[0]); setBillOf(rows[0]) }}
+            onBooked={rows => {
+              // A request booked: it leaves the bell and the calendar, and remembers the booking it became.
+              const ask = bookingAsk
+              if (ask) {
+                asks.answered(ask.id)
+                closeBookingRequest(ask.id, 'booked', rows[0].id).catch(asks.refresh)
+              }
+              closeManualForm(); setSelectedExtendBooking(rows[0]); setBillOf(rows[0])
+            }}
             onClose={closeManualForm}
           />
         </React.Suspense>

@@ -829,3 +829,20 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
   .mi-row:not(.mi-kid) > .mi-who { grid-column: 2 / -1; grid-row: 2; }
   .mi-head > .mi-who { display: none; }
 }
+/* Money out on the same ledger (the Money out ledger mock, A, Sebastian, 2026-11-14: "make it more compact like the
+   money in"): time · what it was · what it was for · amount · pencil, one line each. */
+.mo-row { display: grid; grid-template-columns: 40px minmax(0, max-content) minmax(40px, 1fr) 80px 24px; align-items: center; column-gap: 8px; }
+.mo-kid { grid-template-columns: 36px minmax(0, 1fr) 80px 24px; }
+@container (max-width: 520px) {
+  .mo-row:not(.mo-kid) { grid-template-columns: 40px minmax(0, 1fr) 80px 24px; }
+  .mo-row:not(.mo-kid) > .mi-who { grid-column: 2 / -1; grid-row: 2; }
+}
+/* The inventory logbook (the stock logbook mock, 2026-11-12): a line just written or counted glows gold
+   and settles, pop-ups rise from the bottom on a phone and grow in the middle on a PC. */
+@keyframes inv-flash { from { background-color: #F5EAD1; } }
+@keyframes inv-grow { from { opacity: 0; transform: translateY(-6px); } }
+@keyframes inv-sheet { from { transform: translateY(100%); } }
+@keyframes inv-pop { from { opacity: 0; transform: scale(0.94); } }
+@keyframes inv-fade { from { opacity: 0; } }
+@keyframes inv-line { from { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { [class*="animate-[inv-"] { animation: none !important; } }

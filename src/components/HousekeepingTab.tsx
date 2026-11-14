@@ -4,17 +4,16 @@ import { Trash2 } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { getCleaningTasks, saveCleaningTasks, CleaningTask, CLEANING_ITEMS } from '../utils/cleaning'
 import { useStockRoom } from './housekeeping/useStockRoom'
-import { StockRoom } from './housekeeping/StockRoom'
+import { InventoryBook } from './housekeeping/InventoryBook'
 import { DishStockEditor } from './housekeeping/DishStockEditor'
 
 type Tab = 'stock' | 'dishes' | 'cleaning'
 
 /**
- * Housekeeping: **the stock room**, the dishes that take stock, and the cleaning checklist.
+ * Housekeeping: **the inventory logbook**, the dishes that take stock, and the cleaning checklist.
  *
- * The stock room replaced the old flat inventory list (k71, the owner's ruling: *"go"*). The items are the same
- * rows as before — one shelf for the kitchen and the hotel — but they now carry a unit, a price, a par level,
- * and the movements that explain every number on the screen.
+ * The logbook (2026-11-14, `InventoryBook`) replaced the stock room: two books, Kitchen and Hotel, stock in
+ * copied from the receipt, and the amounts typed over as the check.
  *
  * This is the **Stock** tab (the owner's ruling, 2026-10-04). Which of the three screens shows comes from the
  * address — the sub-tabs are drawn by `DashboardLayout` with every other tab's, so this screen has no buttons
@@ -60,16 +59,7 @@ export function HousekeepingTab() {
 
   return (
     <div className="min-w-0">
-      {tab === 'stock' && (
-        <StockRoom
-          items={stock.items}
-          movements={stock.movements}
-          loading={stock.loading}
-          error={stock.error}
-          onReceive={stock.receive}
-          onSaveItem={stock.saveItem}
-        />
-      )}
+      {tab === 'stock' && <InventoryBook />}
 
       {tab === 'dishes' && (
         <DishStockEditor items={stock.items} dishStock={stock.dishStock} onSave={stock.saveRecipe} />

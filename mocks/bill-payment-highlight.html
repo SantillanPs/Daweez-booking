@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payment Highlight</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Sora:wght@700;800&family=DM+Mono:wght@500&display=swap">
+<style>
+/* Light mode only: the staff app is light. */
+:root{
+  color-scheme:light;
+  --page:#F8F5EF; --card:#FFFFFF; --soft:rgba(28,28,28,.14); --main:#1F1F1F; --muted:#6E6E6E; --line:#E4DED2;
+  --gold:#D0AB60; --gold100:#F6EBD3; --gold-ink:#9C7A2E; --emerald:#059669; --emerald700:#047857;
+  --paper50:#FBF8F2; --paper100:#F1ECE1; --ink:#1C1C1C; --danger:#C2410C; --blue:#2F6FD6;
+  --sans:"DM Sans",system-ui,sans-serif; --display:"Sora",system-ui,sans-serif; --mono:"DM Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--main);font-family:var(--sans);font-size:13px;padding:28px 16px 48px}
+.wrap{max-width:1060px;margin:0 auto;display:grid;gap:22px}
+h1{font-family:var(--display);font-weight:800;font-size:20px;margin:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.switch{display:inline-flex;gap:4px;background:var(--paper100);padding:4px;border-radius:12px;flex-wrap:wrap}
+.switch button{border:0;background:transparent;font:700 12.5px var(--sans);color:var(--muted);padding:8px 14px;border-radius:9px;cursor:pointer}
+.switch button[aria-pressed="true"]{background:var(--card);color:var(--main);box-shadow:0 1px 0 var(--soft)}
+.label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.stage{display:grid;grid-template-columns:minmax(0,340px) 40px minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:820px){.stage{grid-template-columns:minmax(0,1fr)}.arrow{transform:rotate(90deg);justify-self:center}}
+.arrow{align-self:center;font-size:26px;color:var(--gold);text-align:center}
+
+/* Cash Flow card, Money in */
+.card{background:var(--card);border:1px solid var(--soft);border-radius:16px;padding:16px}
+.row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;border-radius:10px;padding:7px 8px;margin:0 -8px;cursor:pointer;width:calc(100% + 16px);transition:background-color .15s,transform .1s}
+.row:hover{background:var(--page)} .row:active{transform:scale(.985)}
+.row.on{background:var(--gold100)}
+.who{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{display:inline-block;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:6px;background:var(--paper100);margin-left:6px}
+.amt{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--emerald);justify-self:end}
+.sub{color:var(--muted);font-size:12px}
+.pr{font-family:var(--mono);font-size:11px;color:var(--muted);justify-self:end}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--emerald);margin-right:3px;vertical-align:1px}
+.dot.g{background:var(--blue)}
+.hint{font-size:12px;color:var(--muted);margin-top:10px}
+
+/* The bill: only its money column */
+.bill{background:var(--card);border-radius:14px;box-shadow:0 10px 40px rgba(28,28,28,.16);overflow:hidden;max-width:420px}
+.billtop{background:var(--ink);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:9px 14px;font-size:10px;font-weight:800;letter-spacing:.08em}
+.billtop span:last-child{font-family:var(--mono);letter-spacing:0;opacity:.7}
+.money{padding:14px 18px 0}
+.l{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:2px 0}
+.l b{font-family:var(--mono);color:var(--main);font-size:11.5px}
+.disc{font-size:10.5px;font-weight:700;color:var(--gold-ink);padding:2px 0}
+.cap{font-size:10px;color:var(--muted);margin:4px 0 2px}
+.pays{border-top:1px solid var(--line)}
+.pay{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto 12px;gap:0 6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.pay .p{font-size:12.5px;font-weight:700}
+.pay .m{font-family:var(--mono);font-size:13px;font-weight:700;justify-self:end}
+.pay .u{grid-column:1/-1;font-size:11px;color:#4a4a4a}
+.chev{width:12px;height:12px;color:var(--gold-ink);font-size:10px;text-align:center}
+.fold{display:grid;grid-template-columns:minmax(0,1fr) auto 12px;gap:0 6px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px;font-weight:700}
+.fold small{font-weight:400;font-size:11px;color:#4a4a4a;margin-left:4px}
+.fold .m{font-family:var(--mono);font-size:13px}
+.another{margin:6px 0 2px;border:1.5px dashed var(--gold);background:var(--paper50);color:var(--gold-ink);font-weight:800;font-size:11px;border-radius:8px;padding:6px 8px}
+.due{margin:8px -18px 0;padding:8px 18px;color:#fff;display:flex;justify-content:space-between;align-items:center;background:var(--ink)}
+.due.paid{background:var(--emerald700)}
+.due span{font-size:9.5px;font-weight:800;letter-spacing:.1em}
+.due b{font-family:var(--display);font-size:20px}
+
+/* ── The highlight, three ways ── */
+/* A · Glow: a gold wash that blooms and fades back to a thin gold edge, kept while the bill is open */
+.A .pay.hit{animation:glowA 2.4s ease-out forwards}
+.A .pay.hit::before{content:"";position:absolute;left:-18px;top:0;bottom:0;width:3px;background:var(--gold);border-radius:0 3px 3px 0;transform-origin:top;animation:edge .5s .2s cubic-bezier(.34,1.4,.64,1) both}
+@keyframes glowA{0%{background:transparent}15%{background:var(--gold100);box-shadow:-18px 0 0 var(--gold100),18px 0 0 var(--gold100)}70%{background:var(--gold100);box-shadow:-18px 0 0 var(--gold100),18px 0 0 var(--gold100)}100%{background:var(--paper50);box-shadow:-18px 0 0 var(--paper50),18px 0 0 var(--paper50)}}
+@keyframes edge{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+
+/* B · Ring: the row is drawn round in gold twice, then the ring stays */
+.B .pay.hit{z-index:1}
+.B .pay.hit::after{content:"";position:absolute;inset:-1px -8px;border:2px solid var(--gold);border-radius:8px;animation:ring 1.4s ease-out both}
+@keyframes ring{0%{opacity:0;transform:scale(1.06)}25%{opacity:1;transform:scale(1)}45%{opacity:.35}65%{opacity:1}100%{opacity:1}}
+
+/* C · Focus: the others step back, the tapped one stays full ink with a gold tick for the amount */
+.C .pay{transition:opacity .5s}
+.C .pays.focus .pay:not(.hit){opacity:.38}
+.C .pay.hit .m{background:var(--gold100);border-radius:5px;padding:0 4px;margin-right:-4px;animation:pop .45s .15s cubic-bezier(.34,1.6,.64,1) both}
+@keyframes pop{from{transform:scale(.85)}to{transform:scale(1)}}
+
+.rise{animation:rise .35s cubic-bezier(.34,1.4,.64,1) both;animation-delay:calc(var(--i)*60ms)}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-delay:0s!important}}
+
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.notes h2{font-family:var(--display);font-size:14px;margin:0 0 6px}
+.notes ul{margin:0;padding-left:18px;line-height:1.6}
+.replay{border:0;background:var(--ink);color:#fff;font:700 12px var(--sans);padding:8px 14px;border-radius:9px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Which payment you tapped</h1>
+    <div class="switch" role="group" aria-label="Highlight">
+      <button data-k="A" aria-pressed="true">A · Glow</button>
+      <button data-k="B" aria-pressed="false">B · Ring</button>
+      <button data-k="C" aria-pressed="false">C · Focus</button>
+    </div>
+  </div>
+  <div class="top">
+    <div class="switch" role="group" aria-label="Bill">
+      <button data-b="part" aria-pressed="true">Part paid · list open</button>
+      <button data-b="full" aria-pressed="false">Paid in full · folded</button>
+    </div>
+    <button class="replay" id="replay">↻ Tap again</button>
+  </div>
+
+  <div class="stage">
+    <div>
+      <p class="label">Cash Flow · Money in</p>
+      <div class="card" id="cash"></div>
+      <p class="hint">Tap any row</p>
+    </div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div>
+      <p class="label">The bill</p>
+      <div class="bill" id="billWrap">
+        <div class="billtop"><span>BILLING STATEMENT</span><span>202610-609-609</span></div>
+        <div class="money" id="money"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div><h2>What changed</h2><ul>
+      <li>The tapped payment is marked on the bill</li>
+      <li>Folded payments unfold to show it</li>
+      <li>The mark stays until the bill closes</li>
+    </ul></div>
+    <div><h2>What stayed</h2><ul>
+      <li>The bill, its rows and buttons</li>
+      <li>Open from the calendar: no mark</li>
+    </ul></div>
+    <div><h2>Questions</h2><ul>
+      <li>A, B or C?</li>
+      <li>Keep the mark, or let it fade away?</li>
+    </ul></div>
+  </div>
+</div>
+
+<script>
+const bills={
+  part:{total:'₱2,200',due:'₱900',paid:false,pays:[
+    {id:'p1',p:'Deposit',u:'Oct 26 · Cash',m:'−₱800',who:'Maria Santos',room:'Room 4',pr:'PR-202610-071',dot:''},
+    {id:'p2',p:'Extra bed',u:'Oct 27 · GCash',m:'−₱500',who:'Maria Santos',room:'Room 4',pr:'PR-202610-079',dot:'g'},
+  ]},
+  full:{total:'₱3,300',due:'₱0',paid:true,pays:[
+    {id:'q1',p:'Deposit',u:'Oct 25 · Cash',m:'−₱1,100',who:'Juan Dela Cruz',room:'Room 2',pr:'PR-202610-066',dot:''},
+    {id:'q2',p:'Breakfast',u:'Oct 26 · Cash',m:'−₱400',who:'Juan Dela Cruz',room:'Room 2',pr:'PR-202610-074',dot:''},
+    {id:'q3',p:'Full payment',u:'Oct 27 · GCash',m:'−₱1,800',who:'Juan Dela Cruz',room:'Room 2',pr:'PR-202610-080',dot:'g'},
+  ]},
+};
+let style='A', bill='part', hit=null, open=false;
+
+function cash(){
+  const b=bills[bill];
+  document.getElementById('cash').innerHTML=b.pays.map(x=>`
+    <button class="row${hit===x.id?' on':''}" data-id="${x.id}" type="button">
+      <span class="who">${x.who}<span class="chip">${x.room}</span></span><span class="amt">${x.m.replace('−','')}</span>
+      <span class="sub">${x.p} · <i class="dot ${x.dot}"></i>${x.u.split(' · ')[1]}</span><span class="pr">${x.pr}</span>
+    </button>`).join('');
+  document.querySelectorAll('#cash .row').forEach(r=>r.onclick=()=>tap(r.dataset.id));
+}
+function money(){
+  const b=bills[bill];
+  const showList=!b.paid||b.pays.length<2||open;
+  const rows=b.pays.map((x,i)=>`
+    <div class="pay${hit===x.id?' hit':''}${open&&b.paid?' rise':''}" style="--i:${i}">
+      <span class="p">${x.p}</span><span class="m">${x.m}</span><span class="chev">▾</span>
+      <span class="u">${x.u}</span>
+    </div>`).join('');
+  document.getElementById('money').innerHTML=`
+    <div class="l"><span>Sub-total</span><b>${b.total}</b></div>
+    <div class="disc">+ Discount</div>
+    <div class="cap">Less: payments received</div>
+    <div class="pays${hit?' focus':''}">
+      ${b.paid&&b.pays.length>1?`<div class="fold"><span>${b.pays.length} payments<small>Oct 25 – Oct 27</small></span><span class="m">−${b.total}</span><span class="chev">${open?'▴':'▾'}</span></div>`:''}
+      ${showList?rows:''}
+    </div>
+    ${b.paid?'':'<div class="another">+ Another payment</div>'}
+    <div class="due${b.paid?' paid':''}"><span>AMOUNT DUE</span><b>${b.due}</b></div>`;
+  document.getElementById('billWrap').className='bill '+style;
+}
+function tap(id){
+  hit=null; open=false; cash(); money();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{hit=id; open=true; cash(); money();}));
+}
+function draw(){cash();money();}
+document.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{style=b.dataset.k;document.querySelectorAll('[data-k]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(hit)tap(hit);else draw();});
+document.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{bill=b.dataset.b;document.querySelectorAll('[data-b]').forEach(x=>x.setAttribute('aria-pressed',x===b));tap(bills[bill].pays[bills[bill].pays.length-1].id);});
+document.getElementById('replay').onclick=()=>tap(hit||bills[bill].pays[0].id);
+tap('p2');
+</script>
+</body>
+</html>

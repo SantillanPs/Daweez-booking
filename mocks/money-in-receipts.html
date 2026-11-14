@@ -1,0 +1,166 @@
+<title>Money In Receipts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Sora:wght@700;800&family=DM+Mono:wght@500&display=swap">
+<style>
+/* Layout: the real Cash Flow card, Money in column only, with a switch between Today and two new rows. Light mode only. */
+:root{
+  color-scheme:light;
+  --page:#F8F5EF; --card:#FFFFFF; --soft:rgba(28,28,28,.14); --main:#1F1F1F; --muted:#6E6E6E;
+  --gold:#D0AB60; --gold-ink:#9C7A2E; --emerald:#059669; --paper100:#F1ECE1; --paper400:#C4B9A0;
+  --blue:#2F6FD6; --ink:#1C1C1C;
+  --sans:"DM Sans",system-ui,sans-serif; --display:"Sora",system-ui,sans-serif; --mono:"DM Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--main);font-family:var(--sans);font-size:13px;padding-block:28px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1040px;margin:0 auto;display:grid;gap:22px}
+h1{font-family:var(--display);font-weight:800;font-size:20px;margin:0}
+.switch{display:inline-flex;gap:4px;background:var(--paper100);padding:4px;border-radius:12px;flex-wrap:wrap}
+.switch button{border:0;background:transparent;font:700 12.5px var(--sans);color:var(--muted);padding:8px 14px;border-radius:9px;cursor:pointer}
+.switch button[aria-pressed="true"]{background:var(--card);color:var(--main);box-shadow:0 1px 0 var(--soft)}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:820px){.stage{grid-template-columns:minmax(0,1fr)}}
+.label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--soft);border-radius:16px;box-shadow:0 4px 24px rgba(28,28,28,.07);padding:16px;display:flex;flex-direction:column;min-height:300px}
+.total{margin-top:auto;border-top:1px solid var(--soft);padding-top:8px;display:flex;justify-content:space-between;align-items:baseline;font-weight:800;font-size:14px}
+.total b{font-family:var(--mono);font-size:18px;color:var(--emerald)}
+.amt{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--emerald);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Today */
+.old{display:flex;justify-content:space-between;gap:12px;padding:4px 0}
+.old .bad{background:#FDECEC;border-radius:4px;padding:0 3px}
+
+/* shared row */
+.row{all:unset;box-sizing:border-box;display:grid;gap:2px 12px;border-radius:10px;padding:7px 8px;margin:0 -8px;cursor:pointer;transition:background-color .15s,transform .1s}
+.row:hover{background:var(--page)}
+.row:active{transform:scale(.985)}
+.row:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.row.loading{background:var(--page)}
+.who{font-weight:700;color:var(--main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sub{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pr{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.chip{display:inline-block;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:6px;background:var(--paper100);color:var(--main);margin-left:6px;vertical-align:1px}
+.chip.food{background:#FBF3E2;color:var(--gold-ink)}
+.how{display:inline-flex;align-items:center;gap:4px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--emerald)}
+.dot.gcash{background:var(--blue)} .dot.bank{background:var(--ink)}
+.spin{width:13px;height:13px;border:2px solid var(--paper100);border-top-color:var(--gold);border-radius:50%;animation:s .7s linear infinite;display:none}
+.row.loading .spin{display:inline-block}
+@keyframes s{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2s}}
+
+/* A: receipt line, two lines */
+.a{grid-template-columns:minmax(0,1fr) auto}
+.a .right{display:flex;align-items:center;gap:6px;justify-self:end}
+
+/* B: time down the left, one line */
+.b{grid-template-columns:52px minmax(0,1fr) auto;align-items:center}
+.b .t{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.b .mid{display:flex;align-items:baseline;gap:8px;min-width:0}
+.b .right{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.b .right .line{display:flex;align-items:center;gap:6px}
+
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.notes h2{font-family:var(--display);font-size:14px;margin:0 0 6px}
+.notes ul{margin:0;padding-left:18px;line-height:1.6;color:var(--main)}
+.legend{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.tag{display:inline-block;font-size:10.5px;font-weight:800;color:var(--gold-ink);background:#FBF3E2;padding:2px 7px;border-radius:6px}
+</style>
+
+<div class="wrap">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <h1>Money in · Sat, Oct 24</h1>
+    <div class="switch" role="group" aria-label="Which design">
+      <button id="btnA" aria-pressed="true" onclick="pick('A')">A · Receipt</button>
+      <button id="btnB" aria-pressed="false" onclick="pick('B')">B · By time</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div>
+      <p class="label">Today</p>
+      <div class="card">
+        <p class="label">Money in</p>
+        <div class="old"><span><span class="bad">3 · OS-0043</span> · Room 8 · Cash</span><span class="amt">₱400</span></div>
+        <div class="old"><span>Maria Santos · Rooms 2, 3 · GCash</span><span class="amt">₱3,000</span></div>
+        <div class="old"><span>Juan Dela Cruz · Vacation House · Bank transfer</span><span class="amt">₱7,500</span></div>
+        <div class="total"><span>Total in</span><b>₱10,900</b></div>
+      </div>
+      <div class="legend"><span><span class="tag">bug</span> SEB's ₱400 took the slip's name; the slip's ₱284 is missing</span></div>
+    </div>
+
+    <div>
+      <p class="label">New <span id="which">A · Receipt</span></p>
+      <div class="card">
+        <p class="label">Money in</p>
+        <div id="list"></div>
+        <div class="total"><span>Total in</span><b>₱11,184</b></div>
+      </div>
+      <div class="legend">
+        <span><i class="dot"></i>Cash</span><span><i class="dot gcash"></i>GCash</span><span><i class="dot bank"></i>Bank</span>
+        <span>Tap a row to try it</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div>
+      <h2>What changed</h2>
+      <ul>
+        <li>Each row is one receipt: who paid, for what, how, its PR number</li>
+        <li>Order slips only on restaurant payments (gold chip)</li>
+        <li>Room payment → billing statement. Diner → its receipt</li>
+        <li>The ₱284 slip is back in Total in (after the bug fix)</li>
+      </ul>
+    </div>
+    <div>
+      <h2>What stayed</h2>
+      <ul>
+        <li>Green amounts, Total in at the foot</li>
+        <li>The spinner while a statement opens</li>
+        <li>Money out, Summary, Print: untouched</li>
+        <li>The printed daily sheet is not in this mock</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Questions</h2>
+      <ul>
+        <li>A or B?</li>
+        <li>Show the PR number, or only on hover?</li>
+        <li>Should the printed sheet change to match?</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const pays=[
+  {t:'11:47 AM',ts:'11:47',who:'Table 3',chip:'OS-0043',food:true,for:'Order slip',how:'Cash',dot:'',pr:'PR-202610-083',amt:'₱284'},
+  {t:'2:10 PM',ts:'2:10',who:'Maria Santos',chip:'Rooms 2, 3',for:'Deposit',how:'GCash',dot:'gcash',pr:'PR-202610-084',amt:'₱3,000'},
+  {t:'3:05 PM',ts:'3:05',who:'Juan Dela Cruz',chip:'Vacation House',for:'Full payment',how:'Bank',dot:'bank',pr:'PR-202610-085',amt:'₱7,500'},
+  {t:'4:28 PM',ts:'4:28',who:'SEB',chip:'Room 8',for:'Extra foam',how:'Cash',dot:'',pr:'PR-202610-082',amt:'₱400'},
+];
+const how=p=>`<span class="how"><i class="dot ${p.dot}"></i>${p.how}</span>`;
+const chip=p=>`<span class="chip${p.food?' food':''}">${p.chip}</span>`;
+const A=p=>`<button class="row a" type="button">
+  <span class="who">${p.who}${chip(p)}</span>
+  <span class="right"><i class="spin"></i><span class="amt">${p.amt}</span></span>
+  <span class="sub">${p.for} · ${how(p)} · ${p.t}</span>
+  <span class="pr" style="justify-self:end">${p.pr}</span>
+</button>`;
+const B=p=>`<button class="row b" type="button">
+  <span class="t">${p.ts}</span>
+  <span class="mid"><span class="who">${p.who}${chip(p)}</span><span class="sub">${p.for} · ${how(p)}</span></span>
+  <span class="right"><span class="line"><i class="spin"></i><span class="amt">${p.amt}</span></span><span class="pr">${p.pr}</span></span>
+</button>`;
+function pick(k){
+  document.getElementById('btnA').setAttribute('aria-pressed',k==='A');
+  document.getElementById('btnB').setAttribute('aria-pressed',k==='B');
+  document.getElementById('which').textContent=k==='A'?'A · Receipt':'B · By time';
+  const list=document.getElementById('list');
+  list.innerHTML=pays.slice().sort((x,y)=>Date.parse('2026/10/24 '+x.t)-Date.parse('2026/10/24 '+y.t)).map(k==='A'?A:B).join('');
+  list.querySelectorAll('.row').forEach(r=>r.addEventListener('click',()=>{r.classList.add('loading');setTimeout(()=>r.classList.remove('loading'),1000)}));
+}
+pick('A');
+</script>

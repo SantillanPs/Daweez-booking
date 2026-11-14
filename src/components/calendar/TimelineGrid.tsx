@@ -17,6 +17,8 @@ import { showToast } from '../../utils/toast'
 import { venueHoursOf } from '../../utils/venueHours'
 import { ChannelAlert } from '../../utils/channelStay'
 import { ChannelMark } from './ChannelMark'
+import { BookingRequest } from '../../utils/bookingRequests'
+import { RequestMark } from './RequestBell'
 import { getRateConfig, saveRateConfig } from '../../utils/rateConfig'
 import { useConnection } from '../../utils/connection'
 import { EXCLUSIVE_ID, GROUNDS, exclusiveCovers, underRoof } from '../../utils/availability'
@@ -81,6 +83,9 @@ interface TimelineGridProps {
    *  and a stay gone from the site says so on its pill. */
   channelAlerts?: ChannelAlert[]
   onSoldTwice?: (alert: ChannelAlert) => void
+  /** Guests asking for a room: each is a dashed gold pill on its free days. */
+  requests?: BookingRequest[]
+  onRequest?: (r: BookingRequest) => void
 }
 
 // One room's row and one day's column, in one place: the header, the rows and the cells
@@ -392,6 +397,8 @@ export const TimelineGrid = React.memo(
     timeUp,
     channelAlerts,
     onSoldTwice,
+    requests,
+    onRequest,
   }: TimelineGridProps) {
     const scrollRef = React.useRef<HTMLDivElement>(null)
     // Every stay, so a room booked with others can show its whole bill's money (`asBill`).
@@ -587,10 +594,33 @@ export const TimelineGrid = React.memo(
       const width = daysList.length * 2
       const todayAt = daysList.findIndex(d => d.isToday)
       const at = (k: number) => (row ? row[k] : null)
+      // **A request is a ghost pill** (the mock, Sebastian, 2026-11-12: "B · Ghost pill"): dashed gold on
+      // the halves it asks for, from the afternoon of its first day to the morning of its last. It holds
+      // nothing: a booking made over it since simply draws in its place.
+      const start = daysList[0]?.time ?? 0
+      const halfAt = (iso: string) => Math.round((parseDay(iso).getTime() - start) / 86400000) * 2 + 1
+      const asked = (requests || []).filter(r => r.room_id === id).map(r => ({ r, from: halfAt(r.check_in), to: halfAt(r.check_out) }))
+      const requestAt = (k: number) => asked.find(a => k >= a.from && k < a.to)?.r
       let k = 0
       while (k < width) {
         const dayInfo = daysList[k >> 1]
         const booking = at(k)
+        const req = booking ? undefined : requestAt(k)
+        if (req) {
+          let span = 1
+          while (k + span < width && !at(k + span) && requestAt(k + span) === req) span++
+          cells.push(
+            <td key={k} colSpan={span} className={'p-0 h-12 border-b border-soft relative align-middle' + ((k + span) % 2 === 0 ? ' border-r' : '')}>
+              <button type="button" onClick={() => onRequest?.(req)} title={req.guest_name + ' asks for these dates'}
+                className="bw-arrive absolute inset-x-0.5 inset-y-1 rounded-md border-[1.5px] border-dashed border-gold-600 bg-[repeating-linear-gradient(135deg,#F5EAD1_0_6px,#FBF4E4_6px_12px)] px-1.5 flex items-center justify-center gap-1 text-[12px] font-bold text-gold-800 cursor-pointer select-none transition-[filter,transform] duration-200 hover:brightness-95 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]">
+                <RequestMark source={req.source} />
+                <span className="truncate">{req.guest_name.split(' ')[0]}</span>
+              </button>
+            </td>
+          )
+          k += span
+          continue
+        }
         if (booking) {
           let span = 1
           while (k + span < width && at(k + span)?.id === booking.id) span++
@@ -604,7 +634,8 @@ export const TimelineGrid = React.memo(
           continue
         }
         const morning = k % 2 === 0
-        const wholeDay = morning && !at(k + 1)
+        // A request starting this afternoon keeps its half: an empty day would swallow it.
+        const wholeDay = morning && !at(k + 1) && !requestAt(k + 1)
         const halfOf = wholeDay ? undefined : morning ? 'left' : 'right'
         const isDraftCheckIn = timelineSelection && ((type === 'room' && timelineSelection.roomId === id) || (type === 'venue' && timelineSelection.venueId === id)) && dayInfo.time === checkInTime
         const range = selectionRanges[id]

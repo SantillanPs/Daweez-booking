@@ -46,6 +46,8 @@ export function CalendarGuide() {
             <Row sign={<Pill className="border-[1.5px] border-dashed border-danger-500 bg-danger-50" />}>Sold twice: Booking.com sold a room already taken. Tap it</Row>
             <Row sign={<span className="text-[11px] font-bold text-danger-600">Cancelled</span>}>Gone from Booking.com: tap it to cancel the bill</Row>
             <Row sign={<span className="inline-flex h-6 items-center gap-1 rounded-full bg-ink-900 px-1.5 text-[11px] font-bold text-white"><Bell className="w-3 h-3" />1</span>}>The booking sites need something. Red when it is urgent</Row>
+            <Row sign={<Pill className="border-[1.5px] border-dashed border-gold-600 bg-gold-100" />}>A guest asking for these dates on Messenger, WhatsApp or the website. Tap it to book or turn it down</Row>
+            <Row sign={<span className="inline-flex h-6 items-center gap-1 rounded-full bg-gold-400 px-1.5 text-[11px] font-bold text-ink-900"><Bell className="w-3 h-3" />1</span>}>Guests asking for a room</Row>
             <Row sign={<span className="font-display text-[13px] font-bold text-blue-700">AB</span>}>Blue initials: no deposit</Row>
             <Row sign={<span className="font-display font-bold"><span className="text-danger-600">₱</span> <span className="text-emerald-700">₱</span></span>}>Red to pay, green paid · hover for how much</Row>
           </Section>

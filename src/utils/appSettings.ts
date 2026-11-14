@@ -19,7 +19,7 @@ import { supabase } from './supabaseClient'
  * app SELECT only, the same shape `rooms` uses.
  */
 
-export type AppSettingKey = 'rate_config' | 'payment_accounts' | 'channel_sync'
+export type AppSettingKey = 'rate_config' | 'payment_accounts' | 'channel_sync' | 'stock_in'
 
 /** Reads one setting. Returns null when it has never been saved. */
 export async function readAppSetting<T>(key: AppSettingKey): Promise<T | null> {

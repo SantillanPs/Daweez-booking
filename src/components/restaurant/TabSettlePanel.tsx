@@ -5,7 +5,8 @@ import { PaymentRecord } from '../../types/booking'
 import { settleTab } from '../../utils/tabs'
 import { slipNumber } from '../../utils/orderSlips'
 import { PAYMENT_METHODS, methodNeedsReference, paymentKind } from '../../utils/paymentMethod'
-import { showToast } from '../../utils/toast'
+import { showToast } from '../../utils/toast'
+
 import { peso } from '../../utils/helpers'
 
 
