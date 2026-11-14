@@ -981,9 +981,10 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
               </button>
             )}
           </div>
-          {report.moneyIn.length === 0 && <p className="text-[13px] text-muted">Nothing received yet.</p>}
+          {/* The column headings always show, even on an empty day (Sebastian, 2026-11-14). */}
           <div ref={listRef} className="mi-list">
-            {report.moneyIn.length > 1 && <SortHeads sort={sort} onSort={onSort} />}
+            <SortHeads sort={sort} onSort={onSort} />
+            {report.moneyIn.length === 0 && <p className="pt-2 text-[13px] text-muted">Nothing received yet.</p>}
             {sort ? sortLines(report.moneyIn, sort).map(line => (
               <div key={lineKey(line)} data-k={lineKey(line)}>
                 <PaymentLine line={line} today={today} edit={edit} loading={!!opening && opening === openKey(line)} onOpen={onOpenPayment} />
@@ -1015,18 +1016,16 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
               </button>
             )}
           </div>
-          {dayExpenses.length === 0 && <p className="text-[13px] text-muted">Nothing spent yet.</p>}
           <div ref={outRef} className="mi-list">
-            {dayExpenses.length > 1 && (
-              <div className="relative mo-row mi-head h-6 -mx-2 px-2 border-b border-paper-100">
-                <NewTag id="money-out-sort" />
-                <SortHead by="time" label="Time" sort={outSort} onSort={onSortOut} />
-                <SortHead by="item" label="Item" sort={outSort} onSort={onSortOut} className="mo-item" />
-                <SortHead by="for" label="For" sort={outSort} onSort={onSortOut} className="mi-who" />
-                <SortHead by="amount" label="Amount" sort={outSort} onSort={onSortOut} right />
-                <span />
-              </div>
-            )}
+            <div className="relative mo-row mi-head h-6 -mx-2 px-2 border-b border-paper-100">
+              <NewTag id="money-out-sort" />
+              <SortHead by="time" label="Time" sort={outSort} onSort={onSortOut} />
+              <SortHead by="item" label="Item" sort={outSort} onSort={onSortOut} className="mo-item" />
+              <SortHead by="for" label="For" sort={outSort} onSort={onSortOut} className="mi-who" />
+              <SortHead by="amount" label="Amount" sort={outSort} onSort={onSortOut} right />
+              <span />
+            </div>
+            {dayExpenses.length === 0 && <p className="pt-2 text-[13px] text-muted">Nothing spent yet.</p>}
             {outApart ? byOut(dayExpenses, e => outKey(outSort!.by, e), outSort!.dir).map(e => (
               <div key={e.id} data-k={'x:' + e.id}>
                 <ExpenseLine expense={e} edit={editExpense} />
