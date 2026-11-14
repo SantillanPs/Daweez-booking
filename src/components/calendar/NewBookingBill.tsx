@@ -96,7 +96,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   /** The half of the day picked for a short stay: 0 the morning, 1 the afternoon. */
   initialStayHalf?: 0 | 1
   /** A guest's request being booked: their name and number are already written in. */
-  initialGuest?: { name: string; phone: string }
+  initialGuest?: { name: string; phone: string; companions?: string[] }
   /**
    * A booking being corrected (its whole group): the same bill, filled in from what is saved
    * (Sebastian, 2026-10-23: "if it's on the bill, then editing should also be on the bill").
@@ -134,8 +134,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const [guestPhone, setGuestPhone] = useState(ed?.guest_phone && ed.guest_phone !== 'None' ? ed.guest_phone : initialGuest?.phone || '')
   const [nationality, setNationality] = useState(ed?.guest_nationality || '')
   const [address, setAddress] = useState(ed?.guest_address || '')
-  const [companions, setCompanions] = useState<Companion[]>(ed?.companions || [])
-  const [more, setMore] = useState(!!ed?.guest_address || !!ed?.companions?.length)
+  const [companions, setCompanions] = useState<Companion[]>(ed?.companions || (initialGuest?.companions || []).map(name => ({ name: name.toUpperCase() })))
+  const [more, setMore] = useState(!!ed?.guest_address || !!ed?.companions?.length || !!initialGuest?.companions?.length)
   const [hours, setHours] = useState<number>(initialStayHours || ed?.stay_hours || 3)
   // A day can be turned into hours on the bill, and back (Sebastian, 2026-10-27: "what if I made a
   // mistake here and instead of booking 1 day, it's supposed to be just 6 hours"; the "Day or Hours" mock).

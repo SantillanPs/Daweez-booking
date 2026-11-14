@@ -56,14 +56,42 @@ export function buildIncomeStatement({ from, to, payments, bookings, venues, exp
   const within = (day: string) => day >= from && day <= to
   const byId = new Map(bookings.map(b => [b.id, b]))
 
+  // CATERING is a charge the desk writes on a venue's bill ("CATER CHEF JOE 150 PAX", "Catering 380x70 Pax").
+  // A payment is never split in two (Sebastian, 2026-11-14: "go 1 by 1 first … rooms/venues first, then
+  // other charges like catering"): the bill's money fills its rooms and venues first, in the order it
+  // was paid, and only what comes after counts as Catering. So every payment of a bill is walked, the
+  // ones before the period too, to know how much of the bill was already covered.
+  const billOf = (b: Booking) => b.group_id || b.id
+  const catering = new Map<string, number>()
+  const total = new Map<string, number>()
+  bookings.forEach(b => {
+    if (b.status === 'cancelled') return
+    const key = billOf(b)
+    const cater = (b.event_addons?.charges || []).filter(c => /cater/i.test(c.name)).reduce((s, c) => s + Number(c.amount || 0), 0)
+    catering.set(key, (catering.get(key) || 0) + cater)
+    // ponytail: the bill's saved figures, not priced again; an overpaid bill reads as its payments (balance
+    // stops at 0), which only moves catering a little earlier — it is covered in full either way.
+    total.set(key, (total.get(key) || 0) + Number(b.downpayment_paid || 0) + Number(b.balance_due || 0))
+  })
+  const covered = new Map<string, number>()
+
   const take = new Map<string, number>()
   const add = (key: string, n: number) => take.set(key, (take.get(key) || 0) + n)
-  payments.forEach(p => {
-    if (p.cancelled || !within(p.day)) return
-    if (p.slip) return add('food', p.amount)
+  ;[...payments].sort((a, b) => (a.paidAt || a.day).localeCompare(b.paidAt || b.day)).forEach(p => {
+    if (p.cancelled) return
+    if (p.slip) return within(p.day) && add('food', p.amount)
     const booking = p.bookingId ? byId.get(p.bookingId) : undefined
     const venue = booking && !booking.room_id ? booking.venue_id : undefined
-    add(normalizeVenueId(venue) || 'rooms', p.amount)
+    const key = booking ? billOf(booking) : ''
+    const cater = catering.get(key) || 0
+    const before = covered.get(key) || 0
+    covered.set(key, before + p.amount)
+    const stays = (total.get(key) || 0) - cater
+    // what of this payment lands past the rooms and venues, up to the catering written on the bill
+    const toCater = cater > 0 ? Math.max(0, Math.min(before + p.amount, stays + cater) - Math.max(before, stays)) : 0
+    if (!within(p.day)) return
+    if (toCater) add('catering', toCater)
+    add(normalizeVenueId(venue) || 'rooms', p.amount - toCater)
   })
 
   const ordered = [...venues].sort((a, b) => {
@@ -75,8 +103,7 @@ export function buildIncomeStatement({ from, to, payments, bookings, venues, exp
     // a venue past the paper's three shows only in a period it earned something (the Exclusive)
     ...ordered.filter(v => VENUE_ORDER.includes(v.id) || take.get(v.id)).map(v => ({ label: v.name, amount: take.get(v.id) || 0 })),
     { label: 'Restaurant', amount: take.get('food') || 0 },
-    // Not recorded by the system yet; the paper's line stays so the sheet reads like theirs.
-    { label: 'Catering', amount: 0 },
+    { label: 'Catering', amount: take.get('catering') || 0 },
   ]
 
   const nameOf = (id: string) => categories.find(c => c.id === id)?.name || 'Other'

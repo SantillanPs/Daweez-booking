@@ -74,3 +74,4 @@
 - Gold is too pale to be text on a light background; gold buttons take dark text.
 - Built for a desktop screen first, usable on tablet and phone.
 - Screens are dense: no wasted space, little scrolling, rare options hidden until needed.
+- **Catering on the income statement** (2026-11-14): the desk writes catering as an extra charge on a venue's bill ("CATER CHEF JOE 150 PAX (395 per head)"). A payment is not split between lines (*"we don't split"*); the money goes *"1 by 1 … rooms/venues first, then other charges like catering"*.

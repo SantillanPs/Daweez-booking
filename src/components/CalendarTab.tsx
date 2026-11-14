@@ -707,7 +707,7 @@ export function CalendarTab() {
             initialSelections={formSelections}
             initialStayHours={formStayHours ?? undefined}
             initialStayHalf={formStayHalf}
-            initialGuest={bookingAsk ? { name: bookingAsk.guest_name, phone: bookingAsk.phone } : undefined}
+            initialGuest={bookingAsk ? { name: bookingAsk.guest_name, phone: bookingAsk.phone, companions: bookingAsk.companions } : undefined}
             // Booked: the panel opens with its one bill over it, ready for the money.
             onBooked={rows => {
               // A request booked: it leaves the bell and the calendar, and remembers the booking it became.

@@ -8,14 +8,14 @@
 // and the ai responds"). Meta's own page AI cannot read the system, so this one answers in its place.
 //
 // The AI is any OpenAI-style chat endpoint (Sebastian, 2026-11-12: "let's use a gemini api key first or a
-// deepseek api key"). LLM_API_KEY, plus LLM_BASE_URL and LLM_MODEL to move off the default, Gemini:
-//   Gemini    https://generativelanguage.googleapis.com/v1beta/openai   gemini-2.5-flash
+// deepseek api key"). LLM_API_KEY, plus LLM_BASE_URL and LLM_MODELS (comma-separated, tried in order) to move
+// off the default, Gemini:
+//   Gemini    https://generativelanguage.googleapis.com/v1beta/openai   (the MODELS below)
 //   DeepSeek  https://api.deepseek.com                                  deepseek-chat
 //
 // Other secrets: MESSENGER_PAGE_TOKEN (the page's access token), WHATSAPP_TOKEN and WHATSAPP_PHONE_ID (only
 // for WhatsApp), WHATSAPP_APP_SECRET (the Meta app's secret, both channels), WHATSAPP_VERIFY_TOKEN (the
-// webhook's verify token, both channels), and DEPOSIT_METHODS (how a guest can pay, in plain words; until it
-// is set the bot says the desk will send them).
+// webhook's verify token, both channels).
 // Deployed with verify_jwt off: Meta signs every post instead (X-Hub-Signature-256).
 import { createClient } from "jsr:@supabase/supabase-js@2"
 
@@ -24,8 +24,6 @@ declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void }
 const env = (k: string) => Deno.env.get(k) ?? ""
 const db = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"))
 const LLM_URL = (env("LLM_BASE_URL") || "https://generativelanguage.googleapis.com/v1beta/openai").replace(/\/$/, "") + "/chat/completions"
-// An older, steadier model first (Sebastian, 2026-11-12: "can we use an older model?"): the newest was busy.
-const LLM_MODEL = env("LLM_MODEL") || "gemini-2.5-flash"
 
 const manilaToday = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
 
@@ -39,11 +37,11 @@ It has 10 rooms and venues for events (Gazebo, Vacation House, Garden Area). Ope
 Check-in is 2 PM, check-out is 12 noon.
 
 How to help:
-- Reply in the language the guest writes in: English, Cebuano (Bisaya) or Tagalog. Short, warm, plain messages; this is a chat, not an email. No markdown: no headings, tables or * bullets (the chat shows the stars); one room per line is enough.
+- Language (Sebastian, 2026-11-14): English by default. Answer in the language of the guest's latest real message, and switch whenever they do, including back to English. Tagalog when they write Tagalog or Taglish (po, opo, nyo, ano, magkano, hm, kayo, sana); Cebuano only when they write Bisaya (unsa, pila, asa, nimo, kaayo, palihug, ug, karon). Never answer Tagalog or Taglish in Cebuano: the first test (2026-11-14) answered "hm po ang rooms nyo?" in Cebuano. A greeting, a number, a name or "ok" alone does not change the language. Short, warm, plain messages; this is a chat, not an email. No markdown: no headings, tables or * bullets (the chat shows the stars); one room per line is enough.
 - Before naming any room or price, call find_free_rooms for the guest's dates. Never promise a room it did not return. Prices are in pesos.
 - A venue's price is a starting price per day; the front desk confirms the exact kind and price for an event.
-- When the guest picks a room, get their full name, then call save_request right away, in that same reply.
-- Never say a request is saved, and never give the deposit, until save_request has answered "Saved" in this conversation; saying you will save it is not saving it. After saving, tell them the deposit is half the stay (give the amount), and how they can pay: ${env("DEPOSIT_METHODS") || "the front desk will send the payment details"}. Say the front desk will confirm the booking once the deposit is received. Nothing is booked until then.
+- Ask how many people are staying if they have not said. When the guest picks a room, get their full name and, if more than one person is staying, the full name of every companion (Sebastian, 2026-11-14), then call save_request right away, in that same reply.
+- Never say a request is saved, and never give the deposit, until save_request has answered "Saved" in this conversation; saying you will save it is not saving it. After saving, tell them the deposit is half the stay (give the amount) and that the front desk will confirm the booking once the deposit is received; nothing is booked until then. Do not write any account names or numbers: the hotel's GCash and bank details are added under your message by the system.
 - If you do not know something (amenities, directions, special requests), say the front desk will reply, and save their question as the note if they are making a request.
 - Never make up rooms, prices, discounts or rules.`
 
@@ -66,7 +64,7 @@ const TOOLS = [
   {
     type: "function", function: {
     name: "save_request",
-    description: "Leave a booking request for the front desk to confirm. Call once the guest has picked a room from find_free_rooms and given their name (and, on Messenger, their phone number).",
+    description: "Leave a booking request for the front desk to confirm. Call once the guest has picked a room from find_free_rooms and given their name, their companions' names if more than one is staying (and, on Messenger, their phone number).",
     parameters: {
       type: "object",
       properties: {
@@ -75,7 +73,8 @@ const TOOLS = [
         check_out: { type: "string" },
         guest_name: { type: "string" },
         phone: { type: "string", description: "The guest's phone number, on Messenger only" },
-        guests: { type: "integer", description: "How many people, if they said" },
+        guests: { type: "integer", description: "How many people in all, the guest included" },
+        companions: { type: "array", items: { type: "string" }, description: "The full name of everyone staying besides the guest; one name less than guests" },
         note: { type: "string", description: "Anything the desk should know, in English" },
         language: { type: "string", enum: ["English", "Cebuano", "Tagalog"] },
       },
@@ -103,28 +102,77 @@ async function runTool(name: string, input: Record<string, unknown>, chat: Chat)
   const { error } = await db.rpc("request_booking", {
     p_source: chat.channel, p_room_id: input.room_id, p_check_in: input.check_in, p_check_out: input.check_out,
     p_guest_name: input.guest_name, p_phone: phone, p_guests: input.guests ?? null, p_note: input.note ?? null,
+    p_companions: Array.isArray(input.companions) ? input.companions.map(String) : [],
     p_quoted_total: unit.total, p_language: input.language,
   })
-  if (error) return "Could not save: " + error.message + ". BAD_DATES means past or wrong dates; BAD_DETAILS means the name or phone number is missing or wrong; TOO_MANY_REQUESTS means they already have requests waiting for the desk."
+  if (error) return "Could not save: " + error.message + ". BAD_DATES means past or wrong dates; BAD_DETAILS means the name or phone number is missing or wrong; TOO_MANY_REQUESTS means they already have requests waiting for the desk; NEED_COMPANIONS means ask for the full name of every companion first."
   return `Saved for the front desk. Total ₱${unit.total}, deposit (half) ₱${unit.total / 2}.`
+}
+
+// Where to send the deposit (Sebastian, 2026-11-14: Meta's "Create order" has no API, "let's just make the AI
+// send payment details"). Written by the code, not the AI, so an account number is never mistyped: the same
+// GCash and first bank account the guest's bill prints. The second bank is only on an agency's statement.
+// In the guest's language: the one save_request was told (English when it was not).
+type Lang = "English" | "Cebuano" | "Tagalog"
+const WORDS: Record<Lang, { to: string; photo: string; later: string; saved: string }> = {
+  English: {
+    to: "You can send the deposit to:",
+    photo: "Please send a photo of the receipt here once paid.",
+    later: "The front desk will send you the payment details.",
+    saved: "Your request is saved. The front desk will confirm your booking once the deposit is received.",
+  },
+  Cebuano: {
+    to: "Mahimo nimong ipadala ang deposit sa:",
+    photo: "Palihug ipadala diri ang litrato sa resibo kung nakabayad na.",
+    later: "Ang front desk ang mopadala nimo sa mga detalye sa pagbayad.",
+    saved: "Na-save na ang imong request. Ang front desk mo-confirm sa imong booking kung madawat na ang deposit.",
+  },
+  Tagalog: {
+    to: "Maaari mong ipadala ang deposit sa:",
+    photo: "Pakipadala dito ang litrato ng resibo kapag nakabayad na.",
+    later: "Ipapadala ng front desk ang mga detalye ng pagbabayad.",
+    saved: "Na-save na ang iyong request. Kukumpirmahin ng front desk ang iyong booking kapag natanggap na ang deposit.",
+  },
+}
+const words = (lang: unknown) => WORDS[lang as Lang] ?? WORDS.English
+
+async function howToPay(lang: unknown): Promise<string> {
+  const w = words(lang)
+  const { data } = await db.from("app_settings").select("value").eq("key", "payment_accounts").maybeSingle()
+  const a = (data?.value ?? {}) as Record<string, string>
+  const lines = [w.to]
+  if (a.gcashNumber) lines.push(`GCash: ${a.gcashNumber} (${a.gcashName})`)
+  if (a.bankAccountNumber) lines.push(`${a.bankName}: ${a.bankAccountNumber} (${a.bankAccountName})`)
+  if (lines.length === 1) return w.later
+  lines.push(w.photo)
+  return lines.join("\n")
 }
 
 type Msg = { role: string; content: string | null; tool_calls?: { id: string; function: { name: string; arguments: string } }[]; tool_call_id?: string }
 
 // The first test (2026-11-12) found gemini-3.8-flash busy (503) and then silent past 90 seconds, and a
 // guest left waiting gets nothing. So each call gives up after 25 seconds, and a busy or slow model hands
-// the question to the next one: LLM_MODEL, then LLM_FALLBACK_MODEL. The free key allows only a few calls a
-// minute, so the second model is also what answers when the first is out of calls (429).
-const MODELS = [LLM_MODEL, env("LLM_FALLBACK_MODEL") || "gemini-3.5-flash-lite"]
+// the question to the next one. The free key counts each model apart: 2.5 Flash allows 20 calls a day (about
+// three chats, used up in one test on 2026-11-14), the Flash Lites 500 each. So the Lites go first and 2.5 Flash
+// is the last resort (Sebastian, 2026-11-14: "switch the models and keep the 2.5 flash a fallback").
+const MODELS = (env("LLM_MODELS") || "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash").split(",").map(m => m.trim())
+// The backup model cannot take over a tool call the first one made (Gemini refuses it without the first
+// model's hidden signature; the test of 2026-11-14 saved the request, then answered the guest with an error).
+// So the backup reads the lookups so far as plain words.
+const plain = (messages: Msg[]): Msg[] => messages.map(m =>
+  m.role === "tool" ? { role: "user", content: "(System: the lookup answered) " + m.content }
+  : m.tool_calls ? { role: "assistant", content: m.content || "(Looking that up.)" }
+  : m)
+
 async function ask(messages: Msg[]): Promise<Msg> {
   let last = ""
-  for (const model of MODELS) {
+  for (const [i, model] of MODELS.entries()) {
     const t0 = Date.now()
     try {
       const r = await fetch(LLM_URL, {
         method: "POST",
         headers: { Authorization: "Bearer " + env("LLM_API_KEY"), "Content-Type": "application/json" },
-        body: JSON.stringify({ model, messages, tools: TOOLS }),
+        body: JSON.stringify({ model, messages: i ? plain(messages) : messages, tools: TOOLS }),
         signal: AbortSignal.timeout(25_000),
       })
       console.log("AI", model, r.status, Date.now() - t0, "ms")
@@ -151,18 +199,32 @@ Today is ${manilaToday()} (Philippine time).` },
     ...(past ?? []).reverse().map(t => ({ role: t.role as string, content: t.text as string })),
   ]
 
+  let saved: unknown = false // once saved: the request's language
   for (let step = 0; step < 6; step++) {
-    const said = await ask(messages)
-    if (!said?.tool_calls?.length) return said?.content?.trim() || "Salamat! The front desk will reply to you shortly."
+    let said: Msg
+    try {
+      said = await ask(messages)
+    } catch (e) {
+      // Saved already: the guest still hears so, with where to pay, whatever the AI does next.
+      if (saved) return words(saved).saved + "\n\n" + await howToPay(saved)
+      throw e
+    }
+    if (!said?.tool_calls?.length) {
+      const text = said?.content?.trim() || "Salamat! The front desk will reply to you shortly."
+      return saved ? text + "\n\n" + await howToPay(saved) : text
+    }
     // Sent back as it came: Gemini 3 hides a signature on each tool call that must come back unchanged.
     messages.push(said)
     for (const call of said.tool_calls) {
       let out: string
+      let input: Record<string, unknown> = {}
       try {
-        out = await runTool(call.function.name, JSON.parse(call.function.arguments || "{}"), chat)
+        input = JSON.parse(call.function.arguments || "{}")
+        out = await runTool(call.function.name, input, chat)
       } catch (e) {
         out = "Error: " + String(e)
       }
+      if (out.startsWith("Saved")) saved = input.language || "English"
       messages.push({ role: "tool", tool_call_id: call.id, content: out })
     }
   }
@@ -213,7 +275,9 @@ function incoming(body: any): Incoming[] { // eslint-disable-line @typescript-es
     if (body.object === "page") {
       for (const ev of entry.messaging ?? []) {
         const m = ev.message
-        if (!m || m.is_echo || !ev.sender?.id) continue
+        // The first test (2026-11-14) got an event with no text, no attachment and no id as Meta's AI handed the chat
+        // over; the bot answered it with "I can't open photos". Only a real message (an id, and text or a file) counts.
+        if (!m || m.is_echo || !ev.sender?.id || !m.mid || !(m.text || m.attachments?.length)) continue
         // ponytail: text only; a photo or voice note gets a polite line, add media when guests send them often.
         const text = m.text ?? "(The guest sent a photo or file, which the bot cannot read.)"
         out.push({ chat: { channel: "messenger", key: "fb:" + ev.sender.id, to: ev.sender.id }, text, id: m.mid })

@@ -78,6 +78,10 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
             <span className="select-all">{r.phone}</span>
             <button type="button" onClick={copy} className="rounded-md border-[1.5px] border-soft px-2 py-0.5 text-[11px] font-bold text-ink-700 hover:bg-softbg active:scale-95 transition-[background-color,transform] cursor-pointer">{copied ? 'Copied' : 'Copy'}</button>
           </dd>
+          {r.companions?.length ? (<>
+            <dt className="font-semibold text-muted">With</dt>
+            <dd className="font-bold text-main">{r.companions.join(', ')}</dd>
+          </>) : null}
           {r.language && (<>
             <dt className="font-semibold text-muted">Speaks</dt>
             <dd><span className="inline-flex rounded-full bg-gold-100 px-2 py-0.5 text-[11px] font-bold text-gold-800">{r.language}</span></dd>

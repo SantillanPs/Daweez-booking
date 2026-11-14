@@ -13,6 +13,8 @@ export interface BookingRequest {
   check_in: string
   check_out: string
   guests: number | null
+  /** Everyone staying besides the guest; the bot asks for them when more than one is coming. */
+  companions: string[]
   guest_name: string
   phone: string
   note: string | null
