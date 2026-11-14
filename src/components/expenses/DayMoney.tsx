@@ -792,27 +792,43 @@ function SortHeads({ sort, onSort }: { sort: MoneyInSort | null; onSort: (by: So
   )
 }
 
-/** Each way's total for the day, side by side, every one in its own colour (Sebastian, 2026-11-13: "find a place
- *  for the payment type total"; "split the totals into 4 columns"; "keep it vertically compact"; each total right
- *  against its name and the room shared out evenly). A scratched-off payment counts in none. */
-function WayTotals({ lines }: { lines: MoneyInLine[] }) {
+/** Total in, and each way's total for the day folded behind it (Sebastian, 2026-11-13: "find a place for the payment
+ *  type total"; 2026-11-14: "more subtle and less distracting", the mock's option C). Each line's icon already says how
+ *  it was paid, so the totals wait for a tap: small grey words, the way's colour in a dot, a way at ₱0 faded.
+ *  A scratched-off payment counts in none. */
+function TotalIn({ lines, total }: { lines: MoneyInLine[]; total: number }) {
+  const [open, setOpen] = useState(false)
   const by = new Map<PaymentKind, number>()
   lines.forEach(l => { if (!l.cancelled) by.set(wayOf(l), (by.get(wayOf(l)) || 0) + Number(l.amount || 0)) })
   // The four ways always show, at ₱0 on a day nobody paid that way (Sebastian, 2026-11-13); anything else only when it came.
   const kinds = WAY_ORDER.filter(k => k !== 'other' || by.get(k))
   return (
-    <div className="mi-ways mb-3 grid" style={{ '--n': kinds.length } as CSSProperties}>
-      {kinds.map((k, i) => {
-        const w = WAYS[k]
-        return (
-          <div key={k} className={'mi-way h-7 flex items-center justify-center gap-1.5 min-w-0 whitespace-nowrap text-[12px] font-bold bw-rise ' + w.ink} style={{ '--i': i } as CSSProperties}>
-            <w.Icon aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
-            <span>{w.name}</span>
-            <span key={by.get(k)} className={AMOUNT + ' text-[13.5px] [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'}>{peso(by.get(k) || 0)}</span>
+    <>
+      <div className="flex justify-between items-center gap-3 border-t border-soft pt-3 text-[14px] font-extrabold">
+        <button type="button" onClick={() => { setOpen(o => !o); markSeen('ways-folded') }} aria-expanded={open}
+          className="relative -ml-1 px-1 min-h-8 flex items-center gap-1.5 rounded-md text-main hover:bg-softbg active:scale-[0.97] transition-[background-color,transform] cursor-pointer">
+          Total in
+          <ChevronDown aria-hidden="true" className={'w-3.5 h-3.5 text-muted transition-transform duration-200 ' + (open ? 'rotate-180' : '')} />
+          <NewTag id="ways-folded" />
+        </button>
+        <span key={total} className="font-mono text-[18px] text-emerald-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(total)}</span>
+      </div>
+      <div className={'grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none ' + (open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+        <div className="overflow-hidden">
+          <div className="flex flex-wrap gap-x-3.5 gap-y-1 pt-1.5 text-[11px] text-muted">
+            {kinds.map(k => {
+              const v = by.get(k) || 0
+              return (
+                <span key={k} className={'inline-flex items-center gap-1.5 whitespace-nowrap ' + (v ? '' : 'opacity-50')}>
+                  <i aria-hidden="true" className={'w-1.5 h-1.5 rounded-full ' + (v ? METHOD_DOT[k] : 'bg-paper-300')} />
+                  {WAYS[k].name} <b className="font-bold tabular-nums text-main">{peso(v)}</b>
+                </span>
+              )
+            })}
           </div>
-        )
-      })}
-    </div>
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -932,11 +948,7 @@ export function DayMoney({ report, dayExpenses, categories, onRemove, onChange, 
           <MoneyInBlank key={report.date} bills={bills} pastDay={pastDay} onAddIn={onAddIn} />
           {/* The totals sit on the same line at the foot of both columns, however long either list is (Sebastian, 2026-10-27). */}
           <div className="flex-1 min-h-3" />
-          <WayTotals lines={report.moneyIn} />
-          <div className="flex justify-between items-center gap-3 border-t border-soft pt-3 text-[14px] font-extrabold">
-            <span className="text-main">Total in</span>
-            <span key={report.totalIn} className="font-mono text-[18px] text-emerald-600 inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]">{peso(report.totalIn)}</span>
-          </div>
+          <TotalIn lines={report.moneyIn} total={report.totalIn} />
         </div>
 
         <div className="px-5 pt-4 pb-3 flex flex-col border-t md:border-t-0 border-soft">

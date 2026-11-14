@@ -829,10 +829,3 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
   .mi-row:not(.mi-kid) > .mi-who { grid-column: 2 / -1; grid-row: 2; }
   .mi-head > .mi-who { display: none; }
 }
-/* Each way's total for the day in columns of equal width, a thin rule between them; two a row on a phone. */
-.mi-ways { grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
-.mi-way + .mi-way { border-left: 1px solid theme('colors.paper.100'); }
-@media (max-width: 480px) {
-  .mi-ways { grid-template-columns: repeat(min(var(--n), 2), minmax(0, 1fr)); }
-  .mi-way:nth-child(odd) { border-left: 0; }
-}
