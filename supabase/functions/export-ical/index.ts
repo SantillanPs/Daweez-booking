@@ -16,8 +16,9 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+    // The service key: since 2026-11-15 the public key cannot run `channel_export`. This link sends
+    // only which nights are taken, never who.
+    const supabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
 
     let actualRoomId = roomId
 

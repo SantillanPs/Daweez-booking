@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react'
+import { supabase } from '../utils/supabaseClient'
 import { Link, Outlet, useNavigate, useLocation } from '@tanstack/react-router'
 import { useBookings } from '../hooks/useBookings'
 import { DashboardDataContext } from './DashboardContext'
@@ -123,9 +124,9 @@ export function DashboardLayout() {
   const tabsRef = useSlideMark<HTMLElement>(currentTab?.label)
   const subRef = useSlideMark<HTMLDivElement>(currentScreen?.to)
 
+  // 'local': the hotel login is shared, so logging out here must not log out every other tablet.
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('daweez_pms_auth')
-    navigate({ to: '/login' })
+    supabase.auth.signOut({ scope: 'local' }).finally(() => navigate({ to: '/login' }))
   }, [navigate])
 
   const handleTriggerSync = async () => {

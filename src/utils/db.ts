@@ -121,6 +121,19 @@ export async function getVenues(): Promise<Venue[]> {
   })) as Venue[]
 }
 
+/** Which days are taken, for the public website: no names, no money (`taken_stays`, 2026-11-15).
+ *  Shaped as bookings so the same availability rules (`utils/availability.ts`) read them. */
+export async function getTakenStays(): Promise<Booking[]> {
+  const { data, error } = await supabase.rpc('taken_stays')
+  if (error) throw error
+  return (data || []).map((b: Record<string, unknown>) => ({
+    ...b,
+    room_id: b.room_id || undefined,
+    venue_id: b.venue_id || undefined,
+    event_addons: b.venue_type ? { venue_type: b.venue_type } : undefined,
+  }) as unknown as Booking)
+}
+
 export async function getBookings(): Promise<Booking[]> {
   try {
     // Each bill's payments are read beside the bookings and handed to the bill's leading room (`withPayments`).

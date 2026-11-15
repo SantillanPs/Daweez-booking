@@ -14,6 +14,7 @@ import { NotFound } from './components/NotFound'
 import { hydrateRateConfig } from './utils/rateConfig'
 import { hydratePaymentAccounts } from './utils/paymentAccounts'
 import { hydrateChannelSync } from './utils/channelSync'
+import { supabase } from './utils/supabaseClient'
 
 /**
  * The shared rates and where-guests-pay are read once per page load, before any
@@ -65,9 +66,9 @@ const reserveRoute = createRoute({
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'dashboard',
-  beforeLoad: () => {
-    const isAuthed = localStorage.getItem('daweez_pms_auth') === 'true'
-    if (!isAuthed) {
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getSession()
+    if (!data.session) {
       throw redirect({
         to: '/login'
       })
@@ -224,6 +225,12 @@ export const router = createRouter({
 })
 
 // Register the router instance for type safety
+// A device whose session ends (logged out elsewhere, or the password changed) goes back to the login
+// rather than showing screens whose every read now fails.
+supabase.auth.onAuthStateChange(event => {
+  if (event === 'SIGNED_OUT' && router.state.location.pathname !== '/login') router.navigate({ to: '/login' })
+})
+
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router

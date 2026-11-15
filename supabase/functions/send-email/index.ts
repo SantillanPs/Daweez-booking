@@ -15,9 +15,9 @@ import nodemailer from "npm:nodemailer@6.9.16"
  * and which address sends — and `{ test: true, to }`, a one-line test email, so whoever
  * connects it can see it work before a guest is waiting.
  *
- * **What it refuses, and why.** The app has no staff logins yet (card k74), so this can be
- * called by anyone holding the site's public key. To keep the hotel's address from being
- * used to send anything but its own paper:
+ * **What it refuses, and why.** Only the signed-in hotel login may call it (2026-11-15; before
+ * that anyone holding the site's public key could). Even so, to keep the hotel's address from
+ * being used to send anything but its own paper:
  *   - the words of the email are written HERE, never taken from the caller;
  *   - there is one recipient, one attachment, and the attachment must be a PDF under 3 MB;
  *   - the booking it is for must exist;
@@ -61,6 +61,11 @@ serve(async (req) => {
   let log: ((status: 'sent' | 'failed', error?: string) => Promise<void>) | null = null
 
   try {
+    const db = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
+    const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer /, '')
+    const { data: who } = await db.auth.getUser(token)
+    if (!who?.user) return answer(false, 'Log in again, then send it.')
+
     const body = await req.json().catch(() => null)
     if (!body) return answer(false, 'The email could not be sent.')
 
@@ -92,8 +97,6 @@ serve(async (req) => {
     }
 
     if (!ready) return answer(false, 'Email is not set up yet.')
-
-    const db = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
 
     if (!isTest) {
       const { data: booking } = await db.from('bookings').select('id').eq('id', bookingId).maybeSingle()
