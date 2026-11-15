@@ -1,4 +1,19 @@
 {
+  "redirects": [
+    {
+      "source": "/((?!reserve|assets/|[^/]+\\.\\w+$).*)",
+      "has": [{ "type": "host", "value": "(www\\.)?daweezpensionhouse\\.online" }],
+      "destination": "/reserve",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "missing": [{ "type": "host", "value": "(www\\.)?daweezpensionhouse\\.online" }],
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/ical/room/:room_number/:channel.ics",
