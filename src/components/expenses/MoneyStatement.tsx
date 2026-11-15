@@ -1,11 +1,13 @@
 import { useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  BedDouble, ChefHat, ChevronDown, Cookie, Fuel, House, Printer, Receipt, ShoppingBasket, Trees, Users,
+  BedDouble, ChefHat, ChevronDown, Cookie, Fuel, House, Printer, Receipt, ShoppingBasket, SquareArrowOutUpRight, Trees, Users,
   UtensilsCrossed, Wrench, Zap, type LucideIcon,
 } from 'lucide-react'
 import { AnimatedNumber } from '../AnimatedNumber'
+import { NewTag } from '../NewMark'
 import { peso } from '../../utils/helpers'
+import { IncomeCheck } from './IncomeCheck'
 import { printA5 } from '../../utils/printA5'
 import type { IncomeStatement } from '../../utils/incomeStatement'
 import { StatementShell } from '../billing/StatementShell'
@@ -18,6 +20,7 @@ import { PaperEnd, PaperHead, PaperRow, PaperTitle, PaperTotal } from '../billin
 // Each line is drawn like the day's (Sebastian, 2026-11-14: "make the money in and expenses design a bit
 // more similar to the daily"): a money-in line leads with its place's sign and its amount in green, an
 // expense line is one row like the day's Money out and opens to what it holds the way a day's merged expenses do.
+// An income line opens a pop-up of every payment under it, to check against the paper (`IncomeCheck`, 2026-11-15).
 const ROW = 'grid grid-cols-[minmax(0,max-content)_minmax(40px,1fr)_80px_24px] items-center gap-x-2 min-h-7 py-1 -mx-2 px-2 rounded-lg text-[13px]'
 const AMOUNT = 'font-display font-extrabold tabular-nums inline-block [animation:bp-ready_.45s_cubic-bezier(.34,1.56,.64,1)]'
 
@@ -27,6 +30,8 @@ const LINE_ICONS: Record<string, LucideIcon> = {
   'Salaries & wages': Users, 'Restaurant expenses': ShoppingBasket, 'Catering expense': ChefHat, 'Repair & maintenance': Wrench,
   'Gasoline': Fuel, 'Light & water': Zap, 'Operational expense (snacks)': Cookie,
 }
+
+const INCOME_ROW = 'grid grid-cols-[minmax(0,1fr)_auto_24px] items-center gap-x-2 min-h-7 py-1 -mx-2 px-2 rounded-lg'
 
 /** A line with nothing in the period: a quiet dash, so the paper's lines all stay in place. */
 const Nothing = () => <span className="justify-self-end font-display font-extrabold text-ink-300">–</span>
@@ -40,6 +45,7 @@ export function MoneyStatement({ statement: s, heading, date }: {
 }) {
   const [open, setOpen] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
+  const [checking, setChecking] = useState<string | null>(null)
   const loss = s.net < 0
 
   // On screen it is drawn like the day (Sebastian, 2026-11-14: "before it's printed, keep the design of the
@@ -49,17 +55,30 @@ export function MoneyStatement({ statement: s, heading, date }: {
     <div className="bg-card border border-soft rounded-xl shadow-soft">
       <div className="grid md:grid-cols-2 md:divide-x divide-soft">
         <div className="px-5 pt-4 pb-3 flex flex-col">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Income</p>
+          <p className="relative self-start text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Income<NewTag id="income-lines-open" /></p>
           {s.income.map(l => {
             const Icon = placeIcon(l.label)
-            return (
-              <div key={l.label} className={'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 min-h-7 py-1 -mx-2 px-2 rounded-lg' + (l.amount ? '' : ' opacity-60')}>
+            const left = l.payments.filter(p => p.cancelled).length
+            const body = (
+              <>
                 <span className="min-w-0 flex items-center gap-1.5 text-[14px] font-extrabold text-main">
                   <Icon aria-hidden="true" className="w-[15px] h-[15px] shrink-0 text-muted" />
-                  <span className="min-w-0 truncate">{l.label}</span>
+                  <span className="min-w-0 truncate">
+                    {l.label}
+                    {l.payments.length > 0 && <span className="ml-1.5 text-[12.5px] font-semibold text-muted">· {l.payments.length - left} paid</span>}
+                    {left > 0 && <span className="ml-1.5 text-[12.5px] font-semibold text-danger-600">· {left} cancelled</span>}
+                  </span>
                 </span>
                 {l.amount ? <span key={l.amount} className={AMOUNT + ' text-[15px] text-right text-emerald-600'}>{peso(l.amount)}</span> : <Nothing />}
-              </div>
+              </>
+            )
+            if (!l.payments.length) return <div key={l.label} className={INCOME_ROW + ' opacity-60'}>{body}<span /></div>
+            return (
+              <button key={l.label} type="button" onClick={() => setChecking(l.label)}
+                className={INCOME_ROW + ' w-[calc(100%+1rem)] text-left hover:bg-page active:scale-[.985] transition-[background-color,transform] cursor-pointer'}>
+                {body}
+                <span className="flex justify-end"><SquareArrowOutUpRight aria-hidden="true" className="w-3.5 h-3.5 text-gold-600" /></span>
+              </button>
             )
           })}
           <div className="flex-1 min-h-3" />
@@ -148,6 +167,8 @@ export function MoneyStatement({ statement: s, heading, date }: {
           </button>
         </div>
       </div>
+
+      {checking && <IncomeCheck lines={s.income} start={checking} month={date} onClose={() => setChecking(null)} />}
 
       {printing && createPortal(
         // a portal into <body>, like every print window here, so the sheet prints from the top of the page

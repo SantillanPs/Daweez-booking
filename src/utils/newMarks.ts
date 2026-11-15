@@ -92,6 +92,7 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: 'bill-overpaid', since: '2026-11-07' },
   // Cash Flow's Day · Month · Year: a month or a year is the staff's paper income statement (`MoneyStatement`).
   { id: 'cash-flow-statement', since: '2026-11-14' },
+  { id: 'income-lines-open', since: '2026-11-15' },
 ]
 
 const KEY = 'daweez_new_seen'

@@ -13,9 +13,14 @@ import { normalizeVenueId } from './helpers'
 
 export interface StatementLine { label: string; amount: number }
 export interface ExpenseLine extends StatementLine { parts: StatementLine[] }
+/** An income line and every payment under it, so the staff can check it one by one (Sebastian, 2026-11-15:
+ *  "click on the rooms, venues, etc.. and see all the details to verify if everything is correct and see what
+ *  I'm missing"). A payment on a cancelled booking is listed too, marked, though it counts in no total —
+ *  money paid in and then left on a cancelled booking is the first thing that goes missing. */
+export interface IncomeLine extends StatementLine { payments: DatedMoneyIn[] }
 
 export interface IncomeStatement {
-  income: StatementLine[]
+  income: IncomeLine[]
   totalIn: number
   expenses: ExpenseLine[]
   totalOut: number
@@ -76,12 +81,16 @@ export function buildIncomeStatement({ from, to, payments, bookings, venues, exp
   const covered = new Map<string, number>()
 
   const take = new Map<string, number>()
-  const add = (key: string, n: number) => take.set(key, (take.get(key) || 0) + n)
+  const listed = new Map<string, DatedMoneyIn[]>()
+  // `amount` is the part of the payment that counts on that line (a payment that runs into catering is split)
+  const list = (key: string, p: DatedMoneyIn, amount = p.amount) => listed.set(key, [...(listed.get(key) || []), { ...p, amount }])
+  const add = (key: string, n: number, p: DatedMoneyIn) => { take.set(key, (take.get(key) || 0) + n); list(key, p, n) }
   ;[...payments].sort((a, b) => (a.paidAt || a.day).localeCompare(b.paidAt || b.day)).forEach(p => {
-    if (p.cancelled) return
-    if (p.slip) return within(p.day) && add('food', p.amount)
+    if (p.slip) return within(p.day) && !p.cancelled && add('food', p.amount, p)
     const booking = p.bookingId ? byId.get(p.bookingId) : undefined
     const venue = booking && !booking.room_id ? booking.venue_id : undefined
+    const place = normalizeVenueId(venue) || 'rooms'
+    if (p.cancelled) return within(p.day) && list(place, p)
     const key = booking ? billOf(booking) : ''
     const cater = catering.get(key) || 0
     const before = covered.get(key) || 0
@@ -90,20 +99,24 @@ export function buildIncomeStatement({ from, to, payments, bookings, venues, exp
     // what of this payment lands past the rooms and venues, up to the catering written on the bill
     const toCater = cater > 0 ? Math.max(0, Math.min(before + p.amount, stays + cater) - Math.max(before, stays)) : 0
     if (!within(p.day)) return
-    if (toCater) add('catering', toCater)
-    add(normalizeVenueId(venue) || 'rooms', p.amount - toCater)
+    if (toCater) add('catering', toCater, p)
+    if (p.amount - toCater) add(place, p.amount - toCater, p)
   })
 
   const ordered = [...venues].sort((a, b) => {
     const ia = VENUE_ORDER.indexOf(a.id), ib = VENUE_ORDER.indexOf(b.id)
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.name.localeCompare(b.name)
   })
-  const income: StatementLine[] = [
-    { label: 'Rooms', amount: take.get('rooms') || 0 },
+  const line = (label: string, key: string): IncomeLine => ({
+    label, amount: take.get(key) || 0,
+    payments: (listed.get(key) || []).sort((a, b) => a.day.localeCompare(b.day) || (a.paidAt || '').localeCompare(b.paidAt || '')),
+  })
+  const income: IncomeLine[] = [
+    line('Rooms', 'rooms'),
     // a venue past the paper's three shows only in a period it earned something (the Exclusive)
-    ...ordered.filter(v => VENUE_ORDER.includes(v.id) || take.get(v.id)).map(v => ({ label: v.name, amount: take.get(v.id) || 0 })),
-    { label: 'Restaurant', amount: take.get('food') || 0 },
-    { label: 'Catering', amount: take.get('catering') || 0 },
+    ...ordered.filter(v => VENUE_ORDER.includes(v.id) || take.get(v.id)).map(v => line(v.name, v.id)),
+    line('Restaurant', 'food'),
+    line('Catering', 'catering'),
   ]
 
   const nameOf = (id: string) => categories.find(c => c.id === id)?.name || 'Other'
