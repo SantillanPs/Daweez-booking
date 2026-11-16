@@ -36,15 +36,16 @@ function loadSettings(): Promise<void> {
 
 /**
  * **The hotel's own address is the guests' website** (Sebastian, 2026-11-15): daweezpensionhouse.online (and www.)
- * shows only /reserve, so a guest, Google or Meta's reviewers never land on the staff login. The staff use
- * desk.daweezpensionhouse.online (or the old vercel.app address), where everything is as before.
+ * shows only the website, at its front page since 2026-11-17 (every other path, /reserve too, goes there), so a
+ * guest, Google or Meta's reviewers never land on the staff login. The staff use desk.daweezpensionhouse.online
+ * (or the old vercel.app address), where everything is as before and the website is still at /reserve.
  */
 const guestHost = /^(www\.)?daweezpensionhouse\.online$/.test(window.location.hostname)
 
 // 1. Create a Root Route
 const rootRoute = createRootRoute({
   beforeLoad: ({ location }) => {
-    if (guestHost && location.pathname !== '/reserve') throw redirect({ to: '/reserve' })
+    if (guestHost && location.pathname !== '/') throw redirect({ to: '/', hash: location.hash })
     return loadSettings()
   },
   errorComponent: ({ error }) => <SettingsUnavailable error={error as Error} />,
@@ -228,9 +229,17 @@ const routeTree = rootRoute.addChildren([
   ])
 ])
 
+// The guest address has only the website, at its front page (Sebastian, 2026-11-17: "keep the landing page in
+// https://www.daweezpensionhouse.online/? no need for the reserve").
+const guestTree = rootRoute.addChildren([createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: lazyRouteComponent(() => import('./components/website/Website'), 'Website')
+})])
+
 // 6. Create and Export Router Instance
 export const router = createRouter({
-  routeTree,
+  routeTree: guestHost ? guestTree as unknown as typeof routeTree : routeTree,
   defaultPreload: 'intent'
 })
 
