@@ -44,10 +44,7 @@ const guestHost = /^(www\.)?daweezpensionhouse\.online$/.test(window.location.ho
 
 // 1. Create a Root Route
 const rootRoute = createRootRoute({
-  beforeLoad: ({ location }) => {
-    if (guestHost && location.pathname !== '/') throw redirect({ to: '/', hash: location.hash })
-    return loadSettings()
-  },
+  beforeLoad: () => loadSettings(),
   errorComponent: ({ error }) => <SettingsUnavailable error={error as Error} />,
   // A URL the app does not know must say so in the app's own words. Without this, TanStack Router prints a bare
   // `<p>Not Found</p>` and logs a warning that no `notFoundComponent` is configured — which is what the owner
@@ -230,9 +227,18 @@ const routeTree = rootRoute.addChildren([
 ])
 
 // The guest address has only the website, at its front page (Sebastian, 2026-11-17: "keep the landing page in
-// https://www.daweezpensionhouse.online/? no need for the reserve").
-const guestTree = rootRoute.addChildren([createRoute({
-  getParentRoute: () => rootRoute,
+// https://www.daweezpensionhouse.online/? no need for the reserve"). It has a root of its own: addChildren replaces
+// a root's pages, so sharing the staff root took every staff page away on the desk too (2026-11-17).
+const guestRoot = createRootRoute({
+  beforeLoad: ({ location }) => {
+    if (location.pathname !== '/') throw redirect({ to: '/', hash: location.hash })
+    return loadSettings()
+  },
+  errorComponent: ({ error }) => <SettingsUnavailable error={error as Error} />,
+  component: () => <MainLayout><Outlet /></MainLayout>
+})
+const guestTree = guestRoot.addChildren([createRoute({
+  getParentRoute: () => guestRoot,
   path: '/',
   component: lazyRouteComponent(() => import('./components/website/Website'), 'Website')
 })])
