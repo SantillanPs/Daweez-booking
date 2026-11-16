@@ -17,9 +17,10 @@ import './website.css'
    desk turns it into a booking. Rooms and venues are both asked for that way; a short stay is not, since
    a request holds whole days, so it sends the guest to the desk. */
 
-const PHONE = '0910-7163830'
+const PHONE = '0981 358 5500' // Sebastian, 2026-11-17 (the posters' number)
 const EMAIL = 'daweezpensionhouse@gmail.com'
-const PLACE = 'Tandag City, Surigao del Sur'
+const PLACE = 'Purok Kanipaan, San Agustin Sur, City of Tandag, 8300 Surigao del Sur'
+const TOWN = 'Tandag City, Surigao del Sur'
 const MAP_Q = 'Daweez Pension House, Tandag City, Surigao del Sur'
 // ponytail: searches Facebook until we have the page's own m.me link
 const MESSENGER = 'https://www.facebook.com/search/top?q=Daweez%20Pension%20House'
@@ -241,12 +242,12 @@ export function Website() {
         <form autoComplete="off" onSubmit={e => { e.preventDefault(); if (!nights) return; setFilter(people <= 2 ? 2 : 3); go('rooms') }}>
           <label className="date" onClick={openCalendar}><span>Check in</span><input type="date" min={today} value={checkIn} onChange={e => e.target.value && changeIn(e.target.value)} /></label>
           <label className="date" onClick={openCalendar}><span>Check out</span><input type="date" min={addDays(checkIn, 1)} value={checkOut} onChange={e => e.target.value && setCheckOut(e.target.value)} /></label>
-          <label><span>Guests</span><select value={people} onChange={e => setPeople(+e.target.value)}>
+          <label className="date pick"><span>Guests</span><select value={people} onChange={e => setPeople(+e.target.value)}>
             {Array.from({ length: 12 }, (_, i) => <option key={i} value={i + 1}>{i + 1} {i ? 'guests' : 'guest'}</option>)}
-          </select></label>
+          </select><svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg></label>
           <button type="submit">See rooms</button>
         </form>
-        <p className="hint num">{nights > 0 ? `${nights} night${nights > 1 ? 's' : ''}, ${longDay(checkIn)} to ${longDay(checkOut)}` : 'Check-out comes after check-in.'}</p>
+        <p className="hint num" key={`${checkIn}${checkOut}`}>{nights > 0 ? `${nights} night${nights > 1 ? 's' : ''}, ${longDay(checkIn)} to ${longDay(checkOut)}` : 'Check-out comes after check-in.'}</p>
       </div>
 
       <section id="rooms"><div className="wrap">
@@ -400,7 +401,13 @@ export function Website() {
         </dl>
       </div></section>
 
-      <footer><div className="wrap"><a className="brand" href="#top"><img src={logo} alt="" />Daweez Pension House</a><span>Open 24 hours. {PLACE}.</span></div></footer>
+      <footer><div className="wrap"><a className="brand" href="#top"><img src={logo} alt="" />Daweez Pension House</a><span>Open 24 hours. {TOWN}.</span></div>
+        {/* the maker's credit, its own quiet row at the very bottom (Sebastian, 2026-11-17) */}
+        <div className="wrap by"><span>Designed &amp; built by <b>Sebastian Santillan</b></span>
+          <span className="socials">
+            <a href="https://github.com/SantillanPs" target="_blank" rel="noopener" aria-label="Sebastian on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.7 1.6.2 2.9.1 3.2.8.8 1.3 1.9 1.3 3.1 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3" /></svg></a>
+            <a href="https://www.linkedin.com/in/sebastian-santillan-366841260/" target="_blank" rel="noopener" aria-label="Sebastian on LinkedIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 20.5h-3.6v-5.6c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9v5.7H9.3V9h3.4v1.6c.5-.9 1.6-1.8 3.4-1.8 3.6 0 4.3 2.4 4.3 5.5v6.2zM5.3 7.4a2.1 2.1 0 1 1 0-4.1 2.1 2.1 0 0 1 0 4.1zM7.1 20.5H3.5V9h3.6v11.5zM22.2 0H1.8C.8 0 0 .8 0 1.7v20.6c0 .9.8 1.7 1.8 1.7h20.4c1 0 1.8-.8 1.8-1.7V1.7C24 .8 23.2 0 22.2 0z" /></svg></a>
+          </span></div></footer>
 
       {ask && <RequestSheet ask={ask} checkIn={checkIn} checkOut={checkOut} people={people}
         rooms={rooms.data || []} venues={venues.data || []} onClose={() => setAsk(null)} />}

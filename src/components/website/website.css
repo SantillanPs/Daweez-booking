@@ -80,8 +80,16 @@
   & .bar label { display: flex; flex-direction: column; padding: 8px 16px; border-right: 1px solid var(--line); min-width: 0 }
   & .bar label:nth-child(3) { border-right: 0 }
   & .bar .date, & .bar .date input { cursor: pointer }
-  & .bar .date { border-radius: 12px; transition: background .2s }
-  & .bar .date:hover { background: var(--sand) }
+  & .bar .date { border-radius: 12px; transition: background .2s, transform .16s ease-out }
+  & .bar .date:hover, & .bar .date:focus-within { background: var(--sand) }
+  & .bar .date:active { transform: scale(.98) }
+  /* guests: the browser's arrow is swapped for one that turns while the list is open */
+  & .bar .pick { position: relative }
+  & .bar .pick select { appearance: none; cursor: pointer; padding-right: 22px }
+  & .bar .chev { position: absolute; right: 14px; bottom: 15px; width: 16px; height: 16px; fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; transition: transform .2s var(--ease) }
+  & .bar .pick:focus-within .chev { transform: rotate(180deg) }
+  /* the line under the bar says the new nights as the dates change */
+  & .bar .hint { animation: dw-fade .25s var(--ease) backwards }
   & .bar span { font-size: 12px; font-weight: 700; color: var(--ink2); letter-spacing: .06em; text-transform: uppercase }
   & .bar input, & .bar select { border: 0; background: none; padding: 2px 0; font-size: 16px; font-weight: 600; outline: none; min-width: 0; width: 100% }
   & .bar button { border: 0; border-radius: 12px; background: var(--ink); color: #fff; font-weight: 700; padding: 0 26px; transition: transform .15s }
@@ -261,6 +269,15 @@
   & footer { margin-top: 96px; border-top: 1px solid var(--line); padding-block: 28px; color: var(--ink2); font-size: 14px }
   & footer .wrap { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between }
   & footer .brand { color: var(--ink); font-size: 17px }
+  & footer .by { margin-top: 28px; font-size: 13px }
+  & footer .by b { color: var(--ink); font-weight: 600 }
+  & footer .socials { display: flex; gap: 8px }
+  & footer .socials a { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); color: var(--ink2); transition: background .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease), transform .16s var(--ease) }
+  & footer .socials svg { width: 16px; height: 16px; fill: currentColor }
+  & footer .socials a:active { transform: scale(.94) }
+  @media (hover: hover) and (pointer: fine) {
+    & footer .socials a:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); transform: translateY(-2px) }
+  }
 
   /* request sheet: grows from what was tapped, with its photo on top */
   & .scrim { position: fixed; inset: 0; z-index: 70; background: rgba(20,18,14,.6); opacity: 0; transition: opacity .35s }
