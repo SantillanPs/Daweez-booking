@@ -1,7 +1,7 @@
 {
   "redirects": [
     {
-      "source": "/((?!reserve|assets/|[^/]+\\.\\w+$).*)",
+      "source": "/((?!reserve|.+\\.\\w+$).*)",
       "has": [{ "type": "host", "value": "(www\\.)?daweezpensionhouse\\.online" }],
       "destination": "/reserve",
       "permanent": false
