@@ -22,8 +22,8 @@ const EMAIL = 'daweezpensionhouse@gmail.com'
 const PLACE = 'Purok Kanipaan, San Agustin Sur, City of Tandag, 8300 Surigao del Sur'
 const TOWN = 'Tandag City, Surigao del Sur'
 const MAP_Q = 'Daweez Pension House, Tandag City, Surigao del Sur'
-// ponytail: searches Facebook until we have the page's own m.me link
-const MESSENGER = 'https://www.facebook.com/search/top?q=Daweez%20Pension%20House'
+// the hotel's Facebook page (Sebastian, 2026-11-17: facebook.com/daweeztandag); m.me opens a chat with it
+const MESSENGER = 'https://m.me/daweeztandag'
 
 // The hotel's own photos (D:\Daweez Photos), resized into public/website. Rooms 1 and 9 were cut out of
 // the Facebook posters (2026-11-17). A room type shows the photo of its first room that has one; room 8
