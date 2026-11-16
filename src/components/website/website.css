@@ -1,0 +1,350 @@
+/* The guests' website (/reserve). Its own look, kept apart from the staff app under `.dw`: the logo's
+   charcoal and gold, Bricolage Grotesque over Figtree. Photo first: the hotel's photos lead, full-bleed,
+   and the words sit under or over them, never in boxes (mock v8, Sebastian, 2026-11-17). */
+
+@keyframes dw-fade { from { opacity: 0 } }
+@keyframes dw-rise { from { opacity: 0; transform: translateY(24px) } }
+@keyframes dw-draw { to { stroke-dashoffset: 0 } }
+@keyframes dw-kb { from { transform: scale(1.08) } }
+@keyframes dw-spin { to { transform: rotate(360deg) } }
+@keyframes dw-in { from { opacity: 0; transform: translateY(16px) } }
+@keyframes dw-pop { from { opacity: 0; transform: scale(.97) } }
+@keyframes dw-err { from { opacity: 0; transform: translateY(-4px) } }
+@property --h { syntax: "<number>"; inherits: false; initial-value: 3 }
+
+.dw {
+  --ink:#1C1C1C; --ink2:#55524B; --paper:#FFFFFF; --sand:#F6F4EF; --line:#E7E2D7;
+  --gold:#D0AB60; --gold-ink:#6F5420; --gold-soft:#F5EAD1; --green:#2F7D4F; --red:#A8402E;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+  color-scheme: light;
+  min-height: 100dvh; background: var(--paper); color: var(--ink); font: 16px/1.5 var(--body); -webkit-font-smoothing: antialiased;
+
+  & *, & *::before, & *::after { box-sizing: border-box }
+  & img { display: block; max-width: 100% }
+  & h1, & h2, & h3 { font-family: var(--display); letter-spacing: -.02em; text-wrap: balance; margin: 0 }
+  & h2 { font-size: clamp(28px, 4vw, 44px); line-height: 1.05; font-weight: 800 }
+  & p { margin: 0 }
+  & button, & input, & select { font: inherit; color: inherit }
+  & button { cursor: pointer }
+  & :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
+  & .wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+  & .num { font-variant-numeric: tabular-nums }
+  & .eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: var(--gold-ink) }
+  & .faint { color: var(--ink2) }
+  & .strong { font-weight: 600 }
+
+  /* nav: clear over the photo, solid once past it */
+  & nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 40; height: 64px; margin-bottom: -64px; transition: background .35s, box-shadow .35s }
+  & nav .wrap { display: flex; align-items: center; gap: 20px; height: 100% }
+  & .brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 800; font-size: 19px; text-decoration: none; color: #fff; transition: color .35s }
+  & .brand img { width: 32px; height: 32px }
+  & .links { margin-left: auto; display: flex; gap: 22px; font-weight: 600; font-size: 15px; align-items: center }
+  & nav a { color: #fff; text-decoration: none; transition: color .35s }
+  & nav .xl { color: var(--gold) }
+  & nav .cta { background: var(--gold); color: var(--ink); padding: 9px 16px; border-radius: 99px; transition: transform .15s }
+  & nav .cta:active { transform: scale(.96) }
+  & nav.solid { background: rgba(255,255,255,.96); box-shadow: 0 1px 0 var(--line) }
+  & nav.solid .brand, & nav.solid a:not(.cta, .xl) { color: var(--ink) }
+  & nav.solid .xl { color: var(--gold-ink) }
+  /* where the guest is: one gold line that slides from link to link; a mouse draws a faint line under the link it is on */
+  & .links { position: relative }
+  & .links a:not(.cta) { position: relative }
+  & .links .mark { position: absolute; left: 0; bottom: 3px; width: 1px; height: 2px; background: var(--gold); transform-origin: left; transform: translateX(var(--mx, 0)) scaleX(var(--mw, 0)); opacity: 0; transition: transform .25s var(--ease), opacity .2s; pointer-events: none }
+  & .links.marked .mark { opacity: 1 }
+  @media (hover: hover) and (pointer: fine) {
+    & .links a:not(.cta)::after { content: ''; position: absolute; left: 0; right: 0; bottom: -6px; height: 2px; background: currentColor; opacity: .35; transform: scaleX(0); transform-origin: left; transition: transform .2s var(--ease) }
+    & .links a:not(.cta):hover::after { transform: scaleX(1) }
+  }
+  @media (prefers-reduced-motion: reduce) { & .links .mark { transition: opacity .2s } & .links a::after { transition: opacity .15s } }
+  @media (max-width: 720px) { & .links a:not(.cta), & .links .mark { display: none } }
+
+  /* hero */
+  & .hero { position: relative; min-height: clamp(560px, 86vh, 820px); display: flex; align-items: flex-end; color: #fff; overflow: hidden; background: var(--ink) }
+  & .hero img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 60%; animation: dw-kb 18s var(--ease) both }
+  & .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(20,18,14,.82) 0%, rgba(20,18,14,.35) 45%, rgba(20,18,14,.15) 70%, rgba(20,18,14,.45) 100%) }
+  & .hero .wrap { position: relative; z-index: 1; width: 100%; padding-block: 0 120px }
+  & .hero h1 { font-size: clamp(44px, 8vw, 96px); line-height: .95; font-weight: 800; max-width: 11ch; animation: dw-rise .9s .1s var(--ease) both }
+  & .hero h1 em { font-style: normal; color: var(--gold) }
+  & .hero p { max-width: 40ch; font-size: 18px; opacity: .9; margin-top: 16px; animation: dw-rise .9s .22s var(--ease) both }
+  & .hero .where { position: absolute; z-index: 1; right: max(16px, env(safe-area-inset-right, 0px)); bottom: 128px; font-size: 12px; letter-spacing: .14em; opacity: .8; writing-mode: vertical-rl; transform: rotate(180deg) }
+  @media (max-width: 720px) { & .hero .where { display: none } }
+  & .ribbon { display: inline-flex; align-items: center; gap: 10px; margin-top: 18px; color: #fff; text-decoration: none; font-weight: 600; background: rgba(20,18,14,.55); border: 1px solid rgba(208,171,96,.7); border-radius: 99px; padding: 6px 16px 6px 6px; animation: dw-rise .9s .3s var(--ease) both; transition: background .25s }
+  & .ribbon:hover { background: rgba(20,18,14,.8) }
+  & .ribbon b { background: var(--gold); color: var(--ink); border-radius: 99px; padding: 3px 10px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase }
+
+  /* the booking bar lies over the photo's bottom edge */
+  & .bar { position: relative; z-index: 5; margin-top: -64px }
+  & .bar form { background: #fff; border-radius: 18px; box-shadow: 0 20px 50px rgba(28,28,28,.16); display: grid; grid-template-columns: 1fr 1fr 1fr auto; padding: 8px; animation: dw-rise .9s .35s var(--ease) both }
+  & .bar label { display: flex; flex-direction: column; padding: 8px 16px; border-right: 1px solid var(--line); min-width: 0 }
+  & .bar label:nth-child(3) { border-right: 0 }
+  & .bar .date, & .bar .date input { cursor: pointer }
+  & .bar .date { border-radius: 12px; transition: background .2s }
+  & .bar .date:hover { background: var(--sand) }
+  & .bar span { font-size: 12px; font-weight: 700; color: var(--ink2); letter-spacing: .06em; text-transform: uppercase }
+  & .bar input, & .bar select { border: 0; background: none; padding: 2px 0; font-size: 16px; font-weight: 600; outline: none; min-width: 0; width: 100% }
+  & .bar button { border: 0; border-radius: 12px; background: var(--ink); color: #fff; font-weight: 700; padding: 0 26px; transition: transform .15s }
+  & .bar button:active { transform: scale(.97) }
+  & .hint { margin-top: 10px; font-size: 14px; color: var(--ink2); padding-left: 8px }
+  @media (max-width: 720px) { & .bar form { grid-template-columns: 1fr 1fr } & .bar label:nth-child(2) { border-right: 0 } & .bar label:nth-child(3) { grid-column: 1/-1; border-top: 1px solid var(--line) } & .bar button { grid-column: 1/-1; padding: 14px } }
+
+  & section { padding-block: 88px 0 }
+  & section[id] { scroll-margin-top: 64px } /* lands under the top bar, not behind it */
+  & .head { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 28px }
+
+  /* rooms: the photo is the card */
+  & .chips { display: flex; gap: 8px; flex-wrap: wrap }
+  & .chips button { border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 8px 14px; font-weight: 600; font-size: 14px; transition: background .25s, color .25s, border-color .25s, transform .16s ease-out }
+  & .chips button:active { transform: scale(.95) }
+  & .chips button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink) }
+  & .rooms { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px 24px }
+  @media (max-width: 960px) { & .rooms { grid-template-columns: repeat(2, 1fr) } }
+  @media (max-width: 600px) { & .rooms { grid-template-columns: 1fr } }
+  & .room { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 12px; min-width: 0; animation: dw-rise .5s var(--ease) both }
+  & .room:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 14px }
+  & .room.busy { cursor: default }
+  & .ph { position: relative; aspect-ratio: 3/2; border-radius: 14px; overflow: hidden; background: var(--gold-soft); max-width: 100%; transition: transform .16s ease-out }
+  & .room:not(.busy):active .ph { transform: scale(.98) }
+  & .ph img { width: 100%; height: 100%; object-fit: cover; transition: transform .7s var(--ease), opacity .25s var(--ease); animation: dw-fade .5s var(--ease) both }
+  & .room:not(.busy):hover .ph img { transform: scale(1.05) }
+  & .room.busy .ph img { filter: grayscale(1); opacity: .7 }
+  & .no { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 64px; color: var(--gold-ink); background: repeating-linear-gradient(135deg, var(--gold-soft) 0 14px, #EFE0BF 14px 15px) }
+  & .no span { opacity: .45 }
+  & .tag { position: absolute; left: 12px; top: 12px; background: rgba(255,255,255,.95); color: var(--ink); border-radius: 99px; padding: 5px 11px; font-size: 13px; font-weight: 700; display: flex; gap: 6px; align-items: center; animation: dw-fade .25s var(--ease) backwards }
+  & .tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green) }
+  & .tag.busy::before { background: var(--red) }
+  & .cnt { position: absolute; right: 12px; bottom: 12px; background: rgba(28,28,28,.72); color: #fff; border-radius: 99px; padding: 4px 10px; font-size: 12px; font-weight: 600 }
+  & .room .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px }
+  & .room h3 { font-size: 21px; font-weight: 700 }
+  & .pr { font-weight: 700; white-space: nowrap }
+  & .pr small { font-weight: 500; color: var(--ink2) }
+  & .meta { color: var(--ink2); font-size: 14px; margin-top: -8px; display: flex; justify-content: space-between; align-items: center; gap: 12px }
+  & .ppl { display: flex; gap: 1px }
+  & .ppl i { display: contents }
+  & .ppl svg { width: 16px; height: 16px; fill: var(--ink) }
+  & .room.busy .ppl svg { fill: var(--ink2) }
+  & .empty { grid-column: 1/-1; padding: 40px; text-align: center; color: var(--ink2); border: 1.5px dashed var(--line); border-radius: 18px }
+  & .skel { aspect-ratio: 3/2; border-radius: 14px; background: linear-gradient(90deg, #F0EEE9, #F7F5F1, #F0EEE9); background-size: 200% 100% }
+
+  /* a row of equal buttons with a block sliding under the pressed one */
+  & .slide { display: grid; grid-template-columns: repeat(var(--n), 1fr); border-radius: 12px; padding: 4px; position: relative; width: 100% }
+  & .slide i { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / var(--n)); border-radius: 9px; transform: translateX(calc(var(--on) * 100%)); transition: transform .45s var(--ease) }
+  & .slide button { all: unset; position: relative; z-index: 1; text-align: center; padding: 9px 4px; cursor: pointer; font-weight: 600; font-size: 15px; transition: color .3s }
+  & .slide button:focus-visible { outline: 2px solid var(--gold); border-radius: 9px }
+
+  /* short stay */
+  & .short { margin-top: 72px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 32px; align-items: center; background: var(--sand); border-radius: 18px; overflow: hidden }
+  & .sp { position: relative; align-self: stretch; min-height: 300px; background: var(--gold-soft) }
+  & .sp img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover }
+  & .clock { position: absolute; right: 16px; top: 16px; width: 76px; height: 76px; border-radius: 50%; padding: 7px; background: conic-gradient(var(--gold) calc(var(--h) * 30deg), rgba(255,255,255,.95) 0); box-shadow: 0 4px 14px rgba(28,28,28,.25); transition: --h .7s var(--ease) }
+  & .clock b { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; background: #fff; color: var(--ink); font-family: var(--display); font-size: 20px; font-weight: 800 }
+  & .sb { padding: 28px 28px 28px 0; display: grid; gap: 12px; justify-items: start }
+  & .short h3 { font-size: 28px; font-weight: 800 }
+  & .hrs { background: #fff; border: 1px solid var(--line); max-width: 340px }
+  & .hrs i { background: var(--ink) }
+  & .hrs button[aria-pressed="true"] { color: #fff }
+  & .sprice { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap }
+  & .sprice > span { font-family: var(--display); font-size: 34px; font-weight: 800 }
+  & .sprice small { color: var(--ink2); font-size: 14px }
+  & .sask, & .ask { all: unset; cursor: pointer; background: var(--gold); color: var(--ink); font-weight: 700; border-radius: 99px; padding: 11px 20px; transition: transform .15s }
+  & .sask:active, & .ask:active { transform: scale(.96) }
+  & .sask:focus-visible, & .ask:focus-visible { outline: 2px solid #fff; outline-offset: 2px }
+  @media (max-width: 820px) { & .short { grid-template-columns: 1fr; gap: 0 } & .sp { min-height: 220px } & .sb { padding: 22px } }
+
+  /* look around */
+  & .look { display: grid; grid-template-columns: 1fr 1.6fr 1fr; grid-template-rows: 260px 260px; gap: 12px }
+  & .look button { all: unset; cursor: zoom-in; position: relative; border-radius: 14px; overflow: hidden; min-width: 0; background: var(--sand); transition: transform .16s ease-out }
+  & .look button:active { transform: scale(.98) }
+  & .look button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
+  & .look img { width: 100%; height: 100%; object-fit: cover; transition: transform .7s var(--ease) }
+  & .look button:hover img { transform: scale(1.04) }
+  & .look .a { grid-row: 1/3 } & .look .d { grid-row: 1/3; grid-column: 3 }
+  & .look .b { grid-column: 2; grid-row: 1 } & .look .c { grid-column: 2; grid-row: 2 }
+  & .look small { position: absolute; left: 12px; bottom: 12px; color: #fff; font-weight: 600; font-size: 14px; text-shadow: 0 1px 8px rgba(0,0,0,.5) }
+  @media (max-width: 720px) { & .look { grid-template-columns: 1fr 1fr; grid-template-rows: 240px 170px 170px } & .look .a { grid-row: 1; grid-column: 1 } & .look .d { grid-row: 1; grid-column: 2 } & .look .b { grid-column: 1/-1; grid-row: 2 } & .look .c { grid-column: 1/-1; grid-row: 3 } }
+
+  /* events */
+  & .events { background: var(--ink); color: #fff; margin-top: 96px; padding-block: 88px }
+  & .events .eyebrow { color: var(--gold) }
+  & .ev { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; margin-top: 28px }
+  & .vh { grid-row: 1/3; position: relative; border-radius: 18px; overflow: hidden; min-height: 520px; display: flex; align-items: flex-end }
+  & .vh > img, & .cell > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover }
+  & .vh::after, & .cell::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(20,18,14,.92), rgba(20,18,14,0) 62%); pointer-events: none }
+  & .vh .in { position: relative; z-index: 1; padding: 24px; width: 100% }
+  & .vh h3 { font-size: 32px; font-weight: 800 }
+  & .kinds { background: rgba(255,255,255,.14); margin-top: 14px; max-width: 440px }
+  & .kinds i, & .ekinds i { background: var(--gold) }
+  & .kinds button, & .ekinds button { color: #fff; font-size: 14px }
+  & .kinds button[aria-pressed="true"], & .ekinds button[aria-pressed="true"] { color: var(--ink) }
+  & .vh .price { font-family: var(--display); font-size: 28px; font-weight: 800; margin-top: 12px; display: flex; gap: 10px; align-items: center }
+  & .vh .price small { font: 500 14px var(--body); opacity: .75 }
+  & .vh .ask { margin-left: auto; font: 700 15px var(--body) }
+  & .vh .what { font-size: 14px; opacity: .8 }
+  & .cell { all: unset; cursor: pointer; position: relative; border-radius: 18px; overflow: hidden; min-height: 252px; display: flex; align-items: flex-end; background: #2A2824; color: #fff; transition: transform .16s ease-out }
+  & .cell:active { transform: scale(.98) }
+  & .cell:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
+  & .cell > img { object-position: center 70%; transition: transform .7s var(--ease) }
+  & .cell:hover > img { transform: scale(1.04) }
+  & .cell .in { position: relative; z-index: 1; padding: 20px; display: flex; justify-content: space-between; align-items: end; width: 100%; gap: 12px }
+  & .cell h3 { font-size: 22px }
+  & .cell b { font-family: var(--display); font-size: 20px; white-space: nowrap }
+  & .none { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-size: 80px; font-weight: 800; color: rgba(208,171,96,.28) }
+  @media (max-width: 820px) { & .ev { grid-template-columns: 1fr } & .vh { grid-row: auto; min-height: 440px } }
+  /* the photo area of the Vacation House opens its gallery; its words and Ask sit above it */
+  & .vh .open { all: unset; position: absolute; inset: 0; cursor: zoom-in }
+  & .vh .open:focus-visible { outline: 2px solid var(--gold); outline-offset: -4px; border-radius: 18px }
+  & .pics { position: absolute; z-index: 2; top: 14px; right: 14px; display: flex; align-items: center; gap: 6px; background: rgba(20,18,14,.6); color: #fff; border-radius: 99px; padding: 5px 11px; font-size: 13px; font-weight: 700; backdrop-filter: blur(6px) }
+  & .pics svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2 }
+
+  /* held here: a row of real parties, swiped sideways */
+  & .held { margin-top: 56px }
+  & .hh { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 16px }
+  & .hh h3 { font-size: 26px; font-weight: 800 }
+  & .hh span { font-size: 14px; opacity: .7 }
+  & .strip { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; scrollbar-width: none; overscroll-behavior-x: contain }
+  & .strip::-webkit-scrollbar { display: none }
+  & .strip button { all: unset; cursor: zoom-in; flex: none; height: 280px; border-radius: 14px; overflow: hidden; scroll-snap-align: start; background: #2A2824; transition: transform .16s ease-out }
+  & .strip button:active { transform: scale(.98) }
+  & .strip button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
+  & .strip .land { aspect-ratio: 4/3 } & .strip .wide { aspect-ratio: 16/9 } & .strip .tall { aspect-ratio: 3/4 }
+  & .strip img { width: 100%; height: 100%; object-fit: cover; transition: transform .7s var(--ease) }
+  @media (hover: hover) and (pointer: fine) { & .strip button:hover img { transform: scale(1.04) } }
+  @media (max-width: 600px) { & .strip button { height: 220px } }
+
+  /* Pension House Exclusive: its own full-bleed stage, few words, one price */
+  & .xsec { padding-block: 0; background: var(--ink); color: #fff }
+  & .excl { position: relative; min-height: clamp(540px, 78vh, 720px); display: flex; align-items: center; overflow: hidden }
+  & .xbg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 60% }
+  & .excl::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20,18,14,.92) 0%, rgba(20,18,14,.7) 45%, rgba(20,18,14,.1) 100%) }
+  & .excl::before { content: ""; position: absolute; inset: 16px; border: 1px solid rgba(208,171,96,.6); border-radius: 14px; z-index: 2; pointer-events: none }
+  & .xin { position: relative; z-index: 1; width: 100%; max-width: 1180px; margin: 0 auto; padding: 72px max(40px, env(safe-area-inset-right, 0px)) 72px max(40px, env(safe-area-inset-left, 0px)); display: grid; gap: 20px; justify-items: start }
+  & .xin .eyebrow { color: var(--gold) }
+  & .xh { font-size: clamp(40px, 6vw, 72px); line-height: .98; color: #fff; max-width: 11ch }
+  & .xh em { font-style: normal; color: var(--gold) }
+  & .ekinds { background: rgba(255,255,255,.14); width: min(340px, 100%) }
+  & .xinc { font-size: 17px; opacity: .85; max-width: 44ch }
+  & .xmore { display: inline-block; opacity: 0; transform: translateY(6px); transition: opacity .4s var(--ease), transform .4s var(--ease) }
+  & .xmore.on { opacity: 1; transform: none }
+  & .xfoot { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap }
+  & .xprice { font-family: var(--display); font-size: 48px; font-weight: 800; color: var(--gold) }
+  & .xfoot small { opacity: .7 }
+  & .xfoot .ask { margin-left: 18px; align-self: center; padding: 11px 22px }
+  & .seal { position: absolute; z-index: 3; right: clamp(36px, 6vw, 80px); top: clamp(44px, 8vh, 90px); width: clamp(96px, 12vw, 140px); height: auto }
+  & .seal .spin { animation: dw-spin 24s linear infinite; transform-origin: 60px 60px }
+  & .seal text { font-family: var(--body); font-size: 9.4px; font-weight: 700; letter-spacing: .18em; fill: var(--ink) }
+  & .seal .sd { font-family: var(--display); font-size: 30px; letter-spacing: 0; font-weight: 800 }
+  @media (max-width: 600px) { & .excl::after { background: linear-gradient(to top, rgba(20,18,14,.95) 55%, rgba(20,18,14,.3)) } & .excl { align-items: flex-end } & .seal { top: 36px; right: 36px; width: 80px } & .xin { padding: 150px 32px 44px } & .xprice { font-size: 40px } }
+
+  /* three steps */
+  & .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px }
+  & .steps div { border-top: 2px solid var(--ink); padding-top: 14px }
+  & .steps b { font-family: var(--display); font-size: 20px; display: block }
+  & .steps span { color: var(--ink2) }
+  @media (max-width: 720px) { & .steps { grid-template-columns: 1fr } }
+
+  /* find us */
+  & .find { display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px }
+  & .pic { border-radius: 18px; overflow: hidden; min-height: 320px; position: relative; background: var(--sand) }
+  & .pic iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0 }
+  & .pic a { position: absolute; left: 16px; bottom: 16px; background: #fff; color: var(--ink); text-decoration: none; font-weight: 700; border-radius: 99px; padding: 10px 16px; box-shadow: 0 4px 14px rgba(28,28,28,.18) }
+  & .find dl { margin: 0; display: grid; gap: 18px; align-content: center }
+  & .find dt { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink2) }
+  & .find dd { margin: 2px 0 0; font-size: 18px; font-weight: 600; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; overflow-wrap: anywhere }
+  & .find dd a { color: inherit; text-decoration: none }
+  & .copy { all: unset; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--gold-ink); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; transition: border-color .2s, transform .16s ease-out }
+  & .copy:active { transform: scale(.95) }
+  & .copy.done { border-color: var(--gold) }
+  & .find dd a.msg { font-size: 14px; background: var(--gold); color: var(--ink); border-radius: 99px; padding: 6px 14px }
+  @media (max-width: 820px) { & .find { grid-template-columns: 1fr } }
+
+  & footer { margin-top: 96px; border-top: 1px solid var(--line); padding-block: 28px; color: var(--ink2); font-size: 14px }
+  & footer .wrap { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between }
+  & footer .brand { color: var(--ink); font-size: 17px }
+
+  /* request sheet: grows from what was tapped, with its photo on top */
+  & .scrim { position: fixed; inset: 0; z-index: 70; background: rgba(20,18,14,.6); opacity: 0; transition: opacity .35s }
+  & .scrim.open { opacity: 1 }
+  & .sheet { position: fixed; z-index: 71; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; background: #fff; border-radius: 22px; box-shadow: 0 30px 80px rgba(28,28,28,.25); transform-origin: var(--ox, 100%) var(--oy, 100%); transform: scale(.9); opacity: 0; transition: transform .4s var(--ease), opacity .25s }
+  & .sheet.open { transform: none; opacity: 1 }
+  & .sph { position: relative; aspect-ratio: 2/1; background: var(--gold-soft); flex: none }
+  & .sph img { width: 100%; height: 100%; object-fit: cover }
+  & .x { all: unset; cursor: pointer; position: absolute; z-index: 1; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.95); color: var(--ink); display: grid; place-items: center; font-size: 20px; transition: transform .16s ease-out }
+  & .x:active { transform: scale(.95) }
+  & .sbody { padding: 20px 22px 22px }
+  & .sbody h3 { font-size: 26px }
+  & .when { margin-top: 4px; color: var(--ink2); font-size: 14px }
+  & .form { margin-top: 16px; display: grid; gap: 14px }
+  & .f { display: grid; gap: 4px }
+  & .f label { font-size: 13px; font-weight: 700; color: var(--ink2) }
+  & .f input { border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 16px; outline: none; background: #fff; transition: border-color .2s }
+  & .f input::placeholder { color: #9A968D }
+  & .f input:focus { border-color: var(--gold) }
+  & .err { font-size: 13px; color: var(--red); animation: dw-err .2s var(--ease) backwards }
+  & .switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px }
+  & .switch button { width: 46px; height: 28px; border-radius: 99px; border: 0; background: #D8D4CB; position: relative; transition: background .25s; flex: none }
+  & .switch button::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .3s var(--ease) }
+  & .switch button[aria-pressed="true"] { background: var(--gold) }
+  & .switch button[aria-pressed="true"]::after { transform: translateX(18px) }
+  & .sum { display: grid; gap: 4px; padding: 14px; background: var(--sand); border-radius: 12px; font-size: 15px }
+  & .sum div { display: flex; justify-content: space-between; gap: 12px }
+  & .sum .tot { font: 700 22px var(--display); margin-top: 4px }
+  & .sum .dep { color: var(--gold-ink); font-weight: 600 }
+  & .send { all: unset; cursor: pointer; text-align: center; background: var(--ink); color: #fff; font-weight: 700; border-radius: 12px; padding: 14px; transition: transform .15s }
+  & .send:active { transform: scale(.98) }
+  & .send:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
+  & .done-box { text-align: center; animation: dw-pop .3s var(--ease) backwards }
+  & .tick { width: 72px; height: 72px; margin: 0 auto; display: block }
+  & .tick circle { fill: var(--gold-soft) }
+  & .tick path { fill: none; stroke: var(--gold-ink); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 60; stroke-dashoffset: 60; animation: dw-draw .6s .3s var(--ease) forwards }
+  & .done-box h3 { margin-top: 10px; font-size: 24px }
+  & .done-box p { color: var(--ink2); margin-top: 6px }
+  & .pay { margin-top: 16px; text-align: left; display: grid; gap: 8px }
+  & .pay div { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px }
+  & .pay b { display: block; font-size: 15px }
+
+  /* gallery: grows from the tile, one photo a screen */
+  & .scrim.dark { background: rgba(14,13,11,.94) }
+  & .gal { position: fixed; inset: 0; z-index: 71; display: grid; grid-template-rows: auto 1fr auto; color: #fff; transform-origin: var(--ox) var(--oy); transform: scale(.6); opacity: 0; transition: transform .45s var(--ease), opacity .25s; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); pointer-events: none }
+  & .gal.open { transform: none; opacity: 1; pointer-events: auto }
+  & .gbar { display: flex; align-items: center; gap: 12px; padding: 14px max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px)) }
+  & .gbar h3 { font-size: 20px; font-weight: 800; margin-right: auto }
+  & .gn { font-size: 14px; opacity: .75 }
+  & .gbar .ask { padding: 8px 18px }
+  & .gx { all: unset; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.12); display: grid; place-items: center; font-size: 22px; transition: transform .16s ease-out }
+  & .gx:active { transform: scale(.95) }
+  & .gx:focus-visible { outline: 2px solid var(--gold) }
+  & .gmid { position: relative; min-height: 0; display: grid }
+  & .gtrack { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior: contain; min-height: 0 }
+  & .gtrack::-webkit-scrollbar { display: none }
+  & .gtrack figure { flex: none; width: 100%; margin: 0; scroll-snap-align: center; display: grid; place-items: center; padding: 0 max(16px, env(safe-area-inset-left, 0px)); min-height: 0 }
+  & .gtrack img { max-width: min(100%, 1100px); max-height: calc(100dvh - 190px); border-radius: 12px; object-fit: contain }
+  & .garr { position: absolute; top: 50%; translate: 0 -50%; width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; font-size: 22px; display: grid; place-items: center; transition: transform .16s ease-out, opacity .2s }
+  & .garr:active { transform: scale(.95) }
+  & .garr.l { left: max(16px, env(safe-area-inset-left, 0px)) } & .garr.r { right: max(16px, env(safe-area-inset-right, 0px)) }
+  & .garr[disabled] { opacity: 0; pointer-events: none }
+  @media (hover: none) { & .garr { display: none } }
+  & .thumbs { display: flex; gap: 6px; overflow-x: auto; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); scrollbar-width: none; justify-content: safe center }
+  & .thumbs::-webkit-scrollbar { display: none }
+  & .thumbs button { all: unset; cursor: pointer; flex: none; width: 64px; height: 44px; border-radius: 8px; overflow: hidden; opacity: .45; outline: 2px solid transparent; outline-offset: 1px; transition: opacity .2s, outline-color .2s }
+  & .thumbs button[aria-current="true"] { opacity: 1; outline-color: var(--gold) }
+  & .thumbs img { width: 100%; height: 100%; object-fit: cover }
+
+  /* lightbox: the photo grows from its tile */
+  & .lb { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; cursor: zoom-out }
+  & .lb img { max-width: min(92vw, 1100px); max-height: 86vh; border-radius: 12px; transition: transform .45s var(--ease) }
+
+  /* scroll in: hidden only until seen, and never for someone who turned motion off. `backwards` lets go once it has
+     played, so a later press (.cell:active) is not held back by the stagger. */
+  @media (prefers-reduced-motion: no-preference) {
+    & .rv:not(.in), & .rvg:not(.in) > * { opacity: 0 }
+    & .rv.in, & .rvg.in > * { animation: dw-in .6s var(--ease) backwards }
+    & .rvg.in > :nth-child(2) { animation-delay: 60ms } & .rvg.in > :nth-child(3) { animation-delay: 120ms }
+    & .rvg.in > :nth-child(4) { animation-delay: 180ms } & .rvg.in > :nth-child(5) { animation-delay: 240ms }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & *, & *::before, & *::after { animation: none !important; transition: none !important }
+    & .tick path { stroke-dashoffset: 0 }
+  }
+}

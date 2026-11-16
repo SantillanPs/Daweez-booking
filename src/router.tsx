@@ -34,9 +34,19 @@ function loadSettings(): Promise<void> {
   return settingsReady
 }
 
+/**
+ * **The hotel's own address is the guests' website** (Sebastian, 2026-11-15): daweezpensionhouse.online (and www.)
+ * shows only /reserve, so a guest, Google or Meta's reviewers never land on the staff login. The staff use
+ * desk.daweezpensionhouse.online (or the old vercel.app address), where everything is as before.
+ */
+const guestHost = /^(www\.)?daweezpensionhouse\.online$/.test(window.location.hostname)
+
 // 1. Create a Root Route
 const rootRoute = createRootRoute({
-  beforeLoad: () => loadSettings(),
+  beforeLoad: ({ location }) => {
+    if (guestHost && location.pathname !== '/reserve') throw redirect({ to: '/reserve' })
+    return loadSettings()
+  },
   errorComponent: ({ error }) => <SettingsUnavailable error={error as Error} />,
   // A URL the app does not know must say so in the app's own words. Without this, TanStack Router prints a bare
   // `<p>Not Found</p>` and logs a warning that no `notFoundComponent` is configured — which is what the owner
@@ -59,7 +69,7 @@ const loginRoute = createRoute({
 const reserveRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/reserve',
-  component: lazyRouteComponent(() => import('./components/PublicReservePortal'), 'PublicReservePortal')
+  component: lazyRouteComponent(() => import('./components/website/Website'), 'Website')
 })
 
 // 3. Create Dashboard Layout Route with Auth Guard
