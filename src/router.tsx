@@ -37,10 +37,12 @@ function loadSettings(): Promise<void> {
 /**
  * **The hotel's own address is the guests' website** (Sebastian, 2026-11-15): daweezpensionhouse.online (and www.)
  * shows only the website, at its front page since 2026-11-17 (every other path, /reserve too, goes there), so a
- * guest, Google or Meta's reviewers never land on the staff login. The staff use desk.daweezpensionhouse.online
- * (or the old vercel.app address), where everything is as before and the website is still at /reserve.
+ * guest, Google or Meta's reviewers never land on the staff login. desk.daweezpensionhouse.online is only the
+ * system, with no website (Sebastian, 2026-11-17). The old vercel.app address, which the staff still use, is left
+ * as it was ("don't touch this for now"), /reserve included, and so is this computer's test copy.
  */
 const guestHost = /^(www\.)?daweezpensionhouse\.online$/.test(window.location.hostname)
+const deskHost = window.location.hostname === 'desk.daweezpensionhouse.online'
 
 // 1. Create a Root Route
 const rootRoute = createRootRoute({
@@ -67,6 +69,7 @@ const loginRoute = createRoute({
 const reserveRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/reserve',
+  beforeLoad: () => { if (deskHost) throw redirect({ to: '/' }) },
   component: lazyRouteComponent(() => import('./components/website/Website'), 'Website')
 })
 
