@@ -1,7 +1,7 @@
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Banknote, Building2, Check, ChevronDown, Coffee, Plus, Tag, Trash2, Undo2, X } from 'lucide-react'
+import { Banknote, Building2, Check, ChevronDown, Coffee, Pencil, Plus, Tag, Trash2, Undo2, X } from 'lucide-react'
 import { Booking, BillCharge, BreakfastPlan, Companion, EquipmentRental, EventAddons, ExclusiveLess, PartnerDeal, Room, Venue } from '../../types/booking'
 import { buildStatement, StatementLineItem, shortDate } from '../../utils/statement'
 import { dateToString, normalizeVenueId, randomUUID, addDays, parseDay, pesoWhole } from '../../utils/helpers'
@@ -27,6 +27,8 @@ import { EXCLUSIVE_ID, exclusiveLess, isRoomAvailable, isVenueRangeAvailable } f
 import { venueHoursOf } from '../../utils/venueHours'
 import { markSeen as sawFeature } from '../../utils/newMarks'
 import { NewTag } from '../NewMark'
+import { RoomSlipFix } from '../restaurant/RoomSlipFix'
+import { tabTotal } from '../../utils/tabs'
 import { getRateConfig } from '../../utils/rateConfig'
 import { holdsMoney } from '../../utils/roomTakenOff'
 import { ADD, AddCharge, AddMoney, PayInput, WritePayment } from '../billing/BillDesk'
@@ -219,6 +221,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const [slips, setSlips] = useState<Record<string, OrderSlip[]>>({})
   const savedIds = (editing || []).map(b => b.id).join(',')
   useEffect(() => { if (savedIds) getSlipsByBooking(savedIds.split(',')).then(setSlips).catch(() => {}) }, [savedIds])
+  // The order slip open under its row to be fixed (2026-11-17), by its tab id.
+  const [fixing, setFixing] = useState('')
 
   // A venue's hours are a short stay too: before, the bill left them off, and saving a venue's hours dropped them.
   const isShort = short && !!units[0]
@@ -889,6 +893,42 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           </td>
           <td className={cell + ' text-right font-mono font-bold'}>{pesoWhole(it.amount)}</td>
         </tr>
+      )
+    }
+    // An order slip on the room and not paid yet: its number opens the slip right under its row, to fix
+    // what was ordered (Sebastian, 2026-11-17, "edit orders that are already served"). A paid one stays text.
+    if (it.band === 'food' && it.status === 'Not paid') {
+      const tabId = it.key.split('-slip-')[1]
+      const slip = Object.values(slips).flat().find(x => x.tab.id === tabId)
+      if (!slip) return undefined
+      const on = fixing === tabId
+      return (
+        <React.Fragment key={it.key}>
+          <tr className={on ? 'bg-gold-100' : undefined}>
+            <td className={cell + ' pl-0 text-left'}>
+              <button type="button" onClick={() => { sawFeature('fix-room-slip'); setFixing(on ? '' : tabId) }} aria-expanded={on}
+                className={VAL + ' relative inline-flex items-center gap-1 -ml-0.5'}>
+                {it.description}<Pencil aria-hidden="true" className="print:hidden w-2.5 h-2.5 opacity-60" />
+                <NewTag id="fix-room-slip" />
+              </button>
+              <span className="ml-1.5 border border-ink-900 px-1 text-[8.5px] font-bold uppercase tracking-wide">{it.status}</span>
+            </td>
+            <td className={cell + ' text-right font-mono'}>—</td>
+            <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>
+            <td className={cell} /><td className={cell} />
+            <td className={cell + ' text-right font-mono font-bold'}>{pesoWhole(it.amount)}</td>
+          </tr>
+          {on && (
+            <tr className="print:hidden">
+              <td colSpan={6} className="pt-1 pb-2">
+                <div className="rounded-xl border border-soft bg-card px-3.5 pb-3 pt-1 shadow-lg origin-top animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
+                  <RoomSlipFix tab={slip.tab} lines={slip.lines}
+                    onSaved={lines => setSlips(all => Object.fromEntries(Object.entries(all).map(([id, list]) => [id, list.map(x => (x.tab.id === tabId ? { ...x, lines, total: tabTotal(lines) } : x))])))} />
+                </div>
+              </td>
+            </tr>
+          )}
+        </React.Fragment>
       )
     }
     if (isShort || !it.key.endsWith('-stay')) return undefined

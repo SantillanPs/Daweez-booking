@@ -27,6 +27,11 @@ export interface OrderChange {
   other?: boolean
   /** The whole row comes off, whatever its count. */
   remove?: boolean
+  /**
+   * A fix to a slip already on a room's bill (2026-11-17): what is added is written already served, so
+   * the kitchen never sees it, and the slip is changed where it is rather than a new one opened.
+   */
+  served?: boolean
   /** When it was tapped: a row not saved yet is listed where it was tapped. */
   at: string
 }
@@ -72,10 +77,10 @@ export function withChanges(lines: TabLine[], changes: OrderChange[], tabId = ''
         kind: 'charge',
         menu_item_id: change.other ? null : change.menuItemId || null,
         other_charge: !!change.other,
-        // A charge is written already served, the same as the database writes it.
-        sent_qty: change.other ? change.delta : 0,
-        ready_qty: change.other ? change.delta : 0,
-        served_qty: change.other ? change.delta : 0,
+        // A charge, or a fix to a room's slip, is written already served, the same as the database writes it.
+        sent_qty: change.other || change.served ? change.delta : 0,
+        ready_qty: change.other || change.served ? change.delta : 0,
+        served_qty: change.other || change.served ? change.delta : 0,
         created_at: change.at,
       })
       continue
@@ -85,6 +90,15 @@ export function withChanges(lines: TabLine[], changes: OrderChange[], tabId = ''
     if (change.remove || qty <= 0) { out.splice(at, 1); continue }
     if (row.other_charge) {
       out[at] = { ...row, qty, amount: money(qty * Number(row.unit_price || 0)), sent_qty: qty, ready_qty: qty, served_qty: qty }
+      continue
+    }
+    if (change.served && change.delta > 0) {
+      out[at] = {
+        ...row, qty, amount: money(qty * Number(row.unit_price || 0)),
+        sent_qty: Number(row.sent_qty || 0) + change.delta,
+        ready_qty: Number(row.ready_qty || 0) + change.delta,
+        served_qty: Number(row.served_qty || 0) + change.delta,
+      }
       continue
     }
     out[at] = {
@@ -146,6 +160,7 @@ export async function saveOrderChanges(input: {
       delta: c.delta,
       remove: !!c.remove,
       other: !!c.other,
+      served: !!c.served,
     })),
     p_booking_id: input.bookingId || null,
     p_label: input.label?.trim() || null,

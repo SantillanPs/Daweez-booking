@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowRightToLine, Banknote, BedDouble, Check, Minus, ReceiptText, Undo2, UtensilsCrossed } from 'lucide-react'
+import { ArrowRightToLine, Banknote, BedDouble, Check, Minus, Pencil, ReceiptText, Undo2, UtensilsCrossed } from 'lucide-react'
 import { useDashboardData } from './DashboardContext'
 import { Tab, TabEvent, TabLine } from '../types/tab'
 import { SlipStory, getSlipHistory } from '../utils/slipHistory'
@@ -15,6 +15,7 @@ import { PaymentRecord } from '../types/booking'
 import { NewTag } from './NewMark'
 import { markSeen } from '../utils/newMarks'
 import { paymentMethodLabel } from '../utils/paymentMethod'
+import { RoomSlipFix } from './restaurant/RoomSlipFix'
 
 // RESTAURANT → HISTORY (Sebastian, 2026-11-05, task #2: "track orders, and serves, the sent to front desk,
 // and sent to room"). Chosen from the mock as "E · Slip steps": one line for each order slip, which opens to
@@ -67,6 +68,16 @@ export function RestaurantHistory() {
   const [open, setOpen] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [receipt, setReceipt] = useState<{ tab: Tab; lines: TabLine[]; record: PaymentRecord } | null>(null)
+  // A slip on a room's bill and not paid yet is fixed right here, under its row (Sebastian, 2026-11-17:
+  // "make it also editable in the restaurant history") — the same slip the bill opens.
+  const [fixing, setFixing] = useState<{ tab: Tab; lines: TabLine[] } | null>(null)
+  const fix = (tab: Tab) => {
+    if (fixing?.tab.id === tab.id) { setFixing(null); return }
+    markSeen('fix-room-slip')
+    readTabLines(tab.id)
+      .then(lines => setFixing({ tab, lines }))
+      .catch(() => showToast('Could not open the slip. Please try again.', 'error'))
+  }
 
   // A diner's slip paid at the front desk opens its receipt here (Sebastian, 2026-11-07: "add a way to open
   // the receipt in the restaurant history"), the same paper Cash Flow opens. Chosen from the mock as
@@ -233,6 +244,21 @@ export function RestaurantHistory() {
                     {/* The same columns as the row: its time under the row's time, its icon centred under the
                         table, its words under the dish, its amount under the total. On a phone the time goes
                         under the words. */}
+                    {s.tab.booking_id && !s.tab.paid_at && s.tab.status !== 'open' && (
+                      <div className="px-4 sm:pl-[calc(4.5rem+46px+1.75rem)] pt-1 grid gap-2.5">
+                        <button type="button" onClick={() => fix(s.tab)} tabIndex={isOpen ? 0 : -1} aria-expanded={fixing?.tab.id === s.tab.id}
+                          className={'relative justify-self-start inline-flex items-center gap-1.5 h-9 px-3 rounded-full border-[1.5px] text-[12.5px] font-bold cursor-pointer active:scale-95 transition-[background-color,border-color,color,transform] ' +
+                            (fixing?.tab.id === s.tab.id ? 'border-ink-900 bg-ink-900 text-white' : 'border-dashed border-gold-400 text-gold-800 hover:bg-gold-100')}>
+                          {fixing?.tab.id === s.tab.id ? <><Check className="w-3.5 h-3.5" />Done</> : <><Pencil className="w-3.5 h-3.5" />Fix the order</>}
+                          <NewTag id="fix-room-slip" />
+                        </button>
+                        {fixing?.tab.id === s.tab.id && (
+                          <div className="max-w-xl rounded-2xl border border-soft px-3.5 pb-3 pt-1 origin-top animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
+                            <RoomSlipFix key={s.tab.id} tab={fixing.tab} lines={fixing.lines} />
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <ol className="px-4 pt-1 pb-3.5 grid">
                       {withPaid(s, latestFirst).map((step, i, all) => {
                         if ('r' in step) {
