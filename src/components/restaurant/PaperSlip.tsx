@@ -251,18 +251,19 @@ export function PaperSlip({ onClose }: { onClose: () => void }) {
           <span className="flex-1 inline-flex items-center gap-2 text-[14px] font-semibold text-muted">
             <FileText className="w-4 h-4 text-gold-800" />Paper slip
           </span>
-          {/* Settled at the restaurant, or on a guest's bill: two icons and a thumb that slides between them. */}
-          <div role="group" aria-label="Paid at the restaurant or on a guest's bill" className="relative shrink-0 inline-flex p-[3px] rounded-full bg-softbg">
-            <span aria-hidden className={'absolute left-[3px] top-[3px] w-[34px] h-[34px] rounded-full shadow-[0_1px_2px_rgba(28,28,28,.12)] transition-[transform,background-color] duration-300 ease-[cubic-bezier(.3,1.4,.5,1)] motion-reduce:transition-none ' + (room ? 'translate-x-[34px] bg-gold-400' : 'bg-card')} />
-            <button type="button" title="Paid at the restaurant" aria-label="Paid at the restaurant" aria-pressed={!room} onClick={() => switchTo(false)}
-              className={'relative w-[34px] h-[34px] grid place-items-center rounded-full cursor-pointer active:scale-[.88] transition-[color,transform] ' + (room ? 'text-paper-400' : 'text-main')}>
+          {/* Settled at the restaurant, or on a guest's bill: one toggle, a click anywhere on it flips it (Sebastian,
+              2026-11-17: "a click toggle instead of clicking the icon"). The icons only say which side is which. */}
+          <button type="button" role="switch" aria-checked={room} aria-label="On a guest's bill" title="Paid at the restaurant, or on a guest's bill"
+            onClick={() => switchTo(!room)}
+            className="group relative shrink-0 inline-flex p-[3px] rounded-full bg-softbg cursor-pointer">
+            <span aria-hidden className={'absolute left-[3px] top-[3px] w-[34px] h-[34px] rounded-full shadow-[0_1px_2px_rgba(28,28,28,.12)] transition-[transform,background-color] duration-300 ease-[cubic-bezier(.3,1.4,.5,1)] group-active:scale-[.92] motion-reduce:transition-none ' + (room ? 'translate-x-[34px] bg-gold-400' : 'bg-card')} />
+            <span aria-hidden className={'relative w-[34px] h-[34px] grid place-items-center transition-colors ' + (room ? 'text-paper-400' : 'text-main')}>
               <Banknote className="w-4 h-4" />
-            </button>
-            <button type="button" title="On a guest's bill" aria-label="On a guest's bill" aria-pressed={room} onClick={() => switchTo(true)}
-              className={'relative w-[34px] h-[34px] grid place-items-center rounded-full cursor-pointer active:scale-[.88] transition-[color,transform] ' + (room ? 'text-main' : 'text-paper-400')}>
+            </span>
+            <span aria-hidden className={'relative w-[34px] h-[34px] grid place-items-center transition-colors ' + (room ? 'text-main' : 'text-paper-400')}>
               <BedDouble className="w-4 h-4" />
-            </button>
-          </div>
+            </span>
+          </button>
           <button type="button" aria-label="Close" onClick={onClose}
             className="w-9 h-9 -mr-2 grid place-items-center rounded-[10px] text-muted hover:bg-softbg hover:text-main cursor-pointer active:scale-90 transition-transform">
             <X className="w-4 h-4" />
