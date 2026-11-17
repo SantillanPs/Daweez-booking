@@ -26,6 +26,9 @@ import { showToast } from '../utils/toast'
  */
 export function useDinerSlips() {
   const [slips, setSlips] = useState<OrderSlip[]>([])
+  // The bills put on Pay later (Sebastian, 2026-11-17): billed too, but kept apart from the diners
+  // standing at the desk, and never announced.
+  const [later, setLater] = useState<OrderSlip[]>([])
   // The slip the desk is taking money for, as it stood when it was picked.
   const [picked, setPicked] = useState<OrderSlip | null>(null)
 
@@ -39,11 +42,13 @@ export function useDinerSlips() {
     try {
       const { tabs, lines } = await readDinerSlips()
       if (mine !== reads.current) return // a newer read is on its way
-      const billed: OrderSlip[] = tabs
+      const sent: OrderSlip[] = tabs
         .filter(t => !!t.billed_at && (lines[t.id] || []).length > 0)
         .map(t => ({ tab: t, lines: lines[t.id], total: tabTotal(lines[t.id]), paid: false }))
         .sort((a, b) => Date.parse(a.tab.billed_at || '') - Date.parse(b.tab.billed_at || ''))
+      const billed = sent.filter(s => !s.tab.pay_later_at)
       setSlips(billed)
+      setLater(sent.filter(s => !!s.tab.pay_later_at))
 
       const before = told.current
       if (before) {
@@ -67,5 +72,5 @@ export function useDinerSlips() {
   // Once it is paid it leaves the list, and what was picked is kept for its receipt.
   const paying = picked ? slips.find(s => s.tab.id === picked.tab.id) || picked : null
 
-  return { slips, paying, pay: setPicked, reload: load }
+  return { slips, later, paying, pay: setPicked, reload: load }
 }

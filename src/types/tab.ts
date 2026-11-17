@@ -91,6 +91,12 @@ export interface Tab {
    * guest's goes on their room.
    */
   billed_at?: string | null
+  /**
+   * When the bill was put on the front desk's Pay later list (Sebastian, 2026-11-17): a diner who
+   * eats and does not pay at once, under `label`. It stays off "Diners to pay", and can be paid a bit
+   * at a time; `paid_at` comes once it is all paid.
+   */
+  pay_later_at?: string | null
   /** The booking this tab belongs to, or absent for a walk-in diner. */
   booking_id?: string
   /** The walk-in's name, when there is no booking. */

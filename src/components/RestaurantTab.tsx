@@ -13,7 +13,7 @@ import { PaperSlipButton } from './restaurant/PaperSlipButton'
 import { flyDot } from './restaurant/flyDot'
 import { useTabOrder } from './restaurant/useTabOrder'
 import { useOpenSlips } from './restaurant/useOpenSlips'
-import { billOutTab, billToRoom, closeTab, markLinesSent, markLinesServed, openTab, tabTotal } from '../utils/tabs'
+import { billOutTab, billToRoom, closeTab, payLaterTab, markLinesSent, markLinesServed, openTab, tabTotal } from '../utils/tabs'
 import { withChanges } from '../utils/orderChanges'
 import { MenuItem } from '../utils/restaurantMenu'
 import { OrderSlip, cookingCount, getSlipsForBooking, newCount, readyCount, slipNumber } from '../utils/orderSlips'
@@ -403,6 +403,15 @@ export function RestaurantTab() {
     closeBill(bill.tab.id, () => billOutTab(bill.tab.id), 'Bill sent to the front desk · ' + peso(bill.total))
   }
 
+  // Pay later (Sebastian, 2026-11-17): the table is freed and the desk keeps the bill under a name.
+  const billPayLater = (name: string) => {
+    if (!billFor) return
+    const bill = billFor
+    const table = tableName(bill.tab.table_label)
+    const who = name.trim() || bill.tab.label || table || 'Walk-in'
+    closeBill(bill.tab.id, () => payLaterTab(bill.tab.id, name), (table ? table + ' is free · ' : '') + who + ' pays later · ' + peso(bill.total))
+  }
+
   // Onto a room: it asks first, by room and by name — a bill on the wrong guest's room is
   // a mistake nobody notices until that guest checks out.
   const billOntoRoom = async (guest: Booking, place: string) => {
@@ -601,6 +610,8 @@ export function RestaurantTab() {
           guests={roomGuests}
           onFrontDesk={billToFrontDesk}
           onRoom={(guest, place) => void billOntoRoom(guest, place)}
+          onPayLater={billPayLater}
+          name={billFor.tab.label}
           onClose={() => setBillFor(null)}
         />
       )}

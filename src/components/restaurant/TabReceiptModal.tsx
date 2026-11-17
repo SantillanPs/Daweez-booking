@@ -49,6 +49,13 @@ export function TabReceiptModal({ tab, lines, record, onClose }: TabReceiptModal
   const kind = paymentKind(record.method || '')
   const showRef = (kind === 'gcash' || kind === 'bank') && !!record.reference
   const lab = 'text-[8px] font-bold uppercase tracking-[0.1em]'
+  // **A part payment** (Pay later, Sebastian 2026-11-17): what was owed after this payment, from every
+  // payment on the slip up to it. Then the paper says the amount handed over and what is still to pay.
+  const upTo = [...(tab.payment_records || []).filter(r => r.id !== record.id && (r.paid_at || '') <= (record.paid_at || '')), record]
+  const left = lines.length ? total - upTo.reduce((s, r) => s + Number(r.amount || 0) + Number(r.discount || 0), 0) : 0
+  const part = left > 0.5
+  // Paid in more than one go: each receipt is for the money handed over that time, with the total beside it.
+  const split = part || upTo.length > 1
 
   return createPortal(
     <div className="fixed inset-0 z-[80] p-3 sm:p-4 bg-slate-900/50 print:bg-white print:p-0 print:static overflow-y-auto bp-dim print:[animation:none]">
@@ -85,7 +92,7 @@ export function TabReceiptModal({ tab, lines, record, onClose }: TabReceiptModal
           <div className="my-2 border-[3px] border-black py-1.5 flex flex-col items-center">
             <span className={lab}>Payment received</span>
             {/* Money in written by hand with nothing linked has no lines, so its own amount is the figure. */}
-            <span className="font-display text-[22px] font-extrabold leading-none mt-1">{peso(lines.length ? total - (record.discount || 0) : record.amount)}</span>
+            <span className="font-display text-[22px] font-extrabold leading-none mt-1">{peso(split || !lines.length ? record.amount : total - (record.discount || 0))}</span>
           </div>
 
           <div className="space-y-[3px]">
@@ -110,7 +117,14 @@ export function TabReceiptModal({ tab, lines, record, onClose }: TabReceiptModal
             ) : null}
           </div>
 
-          <p className="my-2 border-2 border-black py-1.5 text-center font-display text-[12px] font-extrabold uppercase tracking-[0.12em]">Paid in full</p>
+          {split && (
+            <div className="mt-2 space-y-[3px]">
+              <Row label="Total" value={peso(total)} mono />
+              {part && <Row label="Still to pay" value={peso(left)} mono />}
+            </div>
+          )}
+          {!part && <p className="my-2 border-2 border-black py-1.5 text-center font-display text-[12px] font-extrabold uppercase tracking-[0.12em]">Paid in full</p>}
+          {part && <div className="mb-2" />}
 
           <p className={lab}>Received by</p>
           <p className="text-[9.5px] font-bold min-h-[13px]">{record.prepared_by || ''}</p>

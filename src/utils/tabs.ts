@@ -159,6 +159,77 @@ export async function billOutTab(tabId: string): Promise<void> {
 }
 
 /**
+ * **Pay later** (Sebastian, 2026-11-17): many diners eat and do not pay at once, and their slips sat
+ * on the tables or under "Diners to pay" for weeks. The bill is sent over like any other, closed and
+ * off the tables, but onto the front desk's quiet Pay later list under the name of who pays.
+ */
+export async function payLaterTab(tabId: string, name: string): Promise<void> {
+  const now = new Date().toISOString()
+  const who = name.trim()
+  const { error } = await supabase.from('tabs')
+    .update({ status: 'closed', closed_at: now, billed_at: now, pay_later_at: now, ...(who ? { label: who } : {}) })
+    .eq('id', tabId).eq('status', 'open')
+  if (error) throw error
+}
+
+/** The names already on the Pay later list, with what each owes — so the same person is picked again, not typed twice. */
+export async function readPayLaterNames(): Promise<{ name: string; owed: number }[]> {
+  const { data, error } = await supabase.from('tabs').select('label, payment_records, tab_lines(amount)')
+    .not('pay_later_at', 'is', null).is('paid_at', null)
+  if (error) throw error
+  const owed = new Map<string, number>()
+  for (const t of data || []) {
+    const name = (t.label || '').trim()
+    if (!name) continue
+    const left = slipLeft(t.tab_lines as TabLine[], t.payment_records as PaymentRecord[])
+    owed.set(name, (owed.get(name) || 0) + left)
+  }
+  return [...owed].map(([name, owed]) => ({ name, owed }))
+}
+
+/** What is still to pay on a slip: its lines less every payment and discount already taken. */
+export function slipLeft(lines: Pick<TabLine, 'amount'>[] | null | undefined, records: PaymentRecord[] | null | undefined): number {
+  const total = (lines || []).reduce((s, l) => s + Number(l.amount || 0), 0)
+  const paid = (records || []).reduce((s, r) => s + Number(r.amount || 0) + Number(r.discount || 0), 0)
+  return Math.max(0, money(total - paid))
+}
+
+/**
+ * Money towards someone's Pay later slips, all of it or part (Sebastian, 2026-11-17: "add a partial
+ * payment"). One receipt number for what was handed over; it fills the oldest slip first, so each slip
+ * holds its own share and a slip paid off is marked paid. Hands back the whole payment, for its receipt.
+ */
+export async function payTowards(input: {
+  slips: { tab: Tab; lines: TabLine[] }[]
+  amount: number
+  method: string
+  reference?: string
+}): Promise<PaymentRecord> {
+  const paid_at = new Date().toISOString()
+  const receipt_number = nextTabReceiptNumber(await usedReceiptNumbers())
+  const whole: PaymentRecord = {
+    id: randomUUID(), amount: money(input.amount), method: input.method,
+    reference: input.reference?.trim() || undefined, paid_at, receipt_number,
+  }
+  let rest = whole.amount
+  const oldest = [...input.slips].sort((a, b) => (a.tab.created_at || '').localeCompare(b.tab.created_at || ''))
+  for (const { tab, lines } of oldest) {
+    if (rest <= 0) break
+    const left = slipLeft(lines, tab.payment_records)
+    if (left <= 0) continue
+    const share = money(Math.min(left, rest))
+    rest = money(rest - share)
+    const records = [...(tab.payment_records || []), { ...whole, id: randomUUID(), amount: share }]
+    const done = share >= left
+    const { error } = await supabase.from('tabs')
+      .update({ payment_records: records, ...(done ? { paid_at, paid_receipt_number: receipt_number } : {}) })
+      .eq('id', tab.id)
+    if (error) throw error
+  }
+  return whole
+}
+
+/**
  * A table's bill goes onto a room (Sebastian, 2026-10-05: "not all guests want their bills
  * added to the rooms"). A guest with a room sits at a table like anybody else, so a table
  * is not tied to a room while the order is taken; the room is given here, when the bill

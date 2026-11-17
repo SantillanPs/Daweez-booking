@@ -115,3 +115,9 @@ Food lines live in their own tables, never on the booking. Saving a small food l
 
 - Sebastian, 2026-11-12: *"add a feature that allow removing orders in the tables that are in the restaurant."* One dish could already be taken off; a whole table could not (notes #21).
 - Sebastian, 2026-11-13, on the front desk's order slip window: *"allow the front desk to also delete orders."* A diner's bill sent to the desk can lose a dish or all of them there, without sending it back to the restaurant.
+
+## Pay later (2026-11-17)
+
+- Sebastian, 2026-11-17: *"there are a lot of guests who eat at the restaurant and won't pay immediately so the orders just sit at the restaurant tables or front desk and just pile up taking up space and unneeded attention."* On live that day, six served slips had never been billed, the oldest from 22 Oct.
+- So "Send bill" has a third choice, **Pay later**: it asks who pays (the names already waiting are offered, so one person's slips stay together) and frees the table. The front desk keeps those bills behind one quiet **Pay later** button with a count, apart from "Diners to pay", which stays for the diners standing at the desk. The longest waiting is at the top; two weeks or more is said in red.
+- **A part payment** (his answer when asked whether they pay all at once: *"add a partial payment"*). The amount starts at what is owed; typing less leaves the rest on the list. One payment fills the oldest slip first, and its receipt says what is still to pay.

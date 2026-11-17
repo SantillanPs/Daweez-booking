@@ -16,6 +16,10 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // Pay later: the restaurant's Send bill can put a bill on the front desk's list under a name (`BillPicker`),
+  // and the desk's Pay later button takes it, all at once or a bit at a time (`restaurant/PayLater`).
+  { id: 'pay-later', since: '2026-11-17' },
+  { id: 'desk-pay-later', since: '2026-11-17' },
   // The eye beside the request bell hides the requests' ghost pills, so their dates can be booked (`RequestBell`).
   { id: 'request-hide', since: '2026-11-15' },
   // The front desk switches the guests' chat bot off and on from the calendar's top line (`ChatBotSwitch`).

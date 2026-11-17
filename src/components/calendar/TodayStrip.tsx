@@ -4,6 +4,7 @@ import { slipNumber } from '../../utils/orderSlips'
 import { useDinerSlips } from '../../hooks/useDinerSlips'
 import { DinerPayModal } from '../restaurant/DinerPayModal'
 import { tableName } from '../restaurant/served'
+import { PayLater } from '../restaurant/PayLater'
 
 // **Diners to pay** — the diners with no room whose bill the restaurant has sent over and
 // who have not paid it. The money is always taken here, at the front desk, never in the
@@ -56,6 +57,7 @@ export function TodayStrip() {
 
   return (
     <div className="relative flex items-center mr-1.5">
+      <PayLater slips={diners.later} onChanged={() => void diners.reload()} />
       {/* Each bill is its own receipt, one tap to take the money (the owner picked this
           over a "Diners to pay" button, 2026-10-15: that one looked like every other box
           on the line and said a count, not what was owed). Past three the third becomes
