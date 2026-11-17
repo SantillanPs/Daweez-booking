@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BedDouble, Banknote, Check, FileText, Plus, Search, User, X } from 'lucide-react'
+import { BedDouble, Banknote, Check, ChevronDown, Clock, FileText, Plus, Receipt, X } from 'lucide-react'
 import { useDashboardData } from '../DashboardContext'
 import { Booking } from '../../types/booking'
 import { MenuItem, getMenu } from '../../utils/restaurantMenu'
-import { savePaperSlip } from '../../utils/tabs'
+import { readPayLaterNames, savePaperSlip } from '../../utils/tabs'
 import { OrderSlip, getSlipsByBooking } from '../../utils/orderSlips'
 import { groupOf } from '../../utils/bookingGroup'
 import { stayStage } from '../../utils/stayStage'
@@ -13,6 +13,7 @@ import { changedRows } from '../../utils/bookingBalance'
 import { dateToString, peso, randomUUID } from '../../utils/helpers'
 import { showToast } from '../../utils/toast'
 import { AnimatedNumber } from '../AnimatedNumber'
+import { NewTag } from '../NewMark'
 
 // THE PAPER SLIP (Sebastian, 2026-11-11). The restaurant takes orders on paper and the staff copy
 // them in later, so the tablet's flow (table, kitchen, serve, send bill) is steps they never take. This is
@@ -20,22 +21,34 @@ import { AnimatedNumber } from '../AnimatedNumber'
 //
 // **A popup over Restaurant → Orders, opened from the top right of the empty slip** (2026-11-12). It was
 // its own sub-tab first; he asked for it to be "part of the restaurant orders", then, of it folded into
-// the slip panel, "this is bugging out. so just make it into a popup". The quick-add dishes and the list
-// of today's slips went with it ("remove this"): a logged slip is in Restaurant → History and Today's money.
+// the slip panel, "this is bugging out. so just make it into a popup". A logged slip is in Restaurant →
+// History and Today's money.
 //
-// **The name first, the dishes second, the rest last** (his comment on the mock: "the primary should be
-// name/search, 2nd is the orders, 3rd is the rest"). The switch beside the name is two icons with a sliding
-// thumb ("a bit more subtle and visual"): cash, paid now — the usual — or a bed, onto a guest's bill.
+// **Redrawn as the paper it copies** (2026-11-17, from the mock; he found the old one "really zoomed in and
+// chaotic"): one type scale (12 / 14 / 16 / 20), the slip only as tall as what is on it — no blank lines —
+// dishes on ruled lines with the menu's dotted leaders, and the total riding on Log, so the end of the slip
+// is one row. The name reads first, the dishes second, the rest steps back.
 //
-// **On a guest's bill, the name box becomes the search**, by name only ("no need for rooms since there will
-// be more than 1 reservations that are booked at the same room, just different dates"), over every stay not
-// over yet: in the hotel or still to arrive. Once picked, what is already on their bill shows under the name,
-// so the same paper slip is not logged twice.
+// **The day is a desk-calendar leaf in the corner**, where the staff write it on the paper ("find a place for
+// the date. feel free to get creative"); the whole leaf opens the date. A day gone by turns it gold, so a slip
+// copied in the next morning is never logged as today's by mistake. It is the day the money came in.
+//
+// **The switch beside it is two icons with a sliding thumb**: cash, settled at the restaurant — the usual —
+// or a bed, onto a guest's bill. On a guest's bill the name box becomes the search, by name only ("no need for
+// rooms since there will be more than 1 reservations that are booked at the same room, just different dates"),
+// over every stay not over yet. Once picked, what is already on their bill shows under the name, so the same
+// paper slip is not logged twice.
+//
+// **How they paid is one quiet word with a chevron** ("make this a bit more subtle or contextual", then "make
+// it into a popup"); the ways open above it. **Later is one of them** ("add a pay later for the paper slip",
+// "it would make sense for the pay later to be ... near the payment methods"): the slip goes on the front
+// desk's Pay later list under the name, and names already there come up as it is typed, with what they owe.
 //
 // A dish is typed the way it is written: "2 adobo" is two Chicken Adobo. A dish not on the menu is still
 // taken, with its price typed on its line. Only ✕ closes it: a tap outside would lose a half-copied slip.
 
-const METHODS = [['Cash', 'bg-emerald-700'], ['GCash', 'bg-blue-700'], ['Bank transfer', 'bg-gold-800']] as const
+const WAYS = [['Cash', 'bg-emerald-700'], ['GCash', 'bg-blue-700'], ['Bank transfer', 'bg-gold-800']] as const
+const LATER = 'Later'
 
 interface Line { key: string; item?: MenuItem; name: string; price: number; qty: number }
 
@@ -50,9 +63,16 @@ function parseDish(text: string): { qty: number; query: string } {
   return { qty: m ? Math.max(1, Number(m[1])) : 1, query: (m ? m[2] : text).trim() }
 }
 
+function Way({ m }: { m: string }) {
+  if (m === LATER) return <><Clock className="w-[13px] h-[13px]" strokeWidth={2.5} />Later</>
+  const dot = WAYS.find(w => w[0] === m)?.[1] || ''
+  return <><i className={'w-[7px] h-[7px] rounded-full ' + dot} />{m === 'Bank transfer' ? 'Bank' : m}</>
+}
+
 export function PaperSlip({ onClose }: { onClose: () => void }) {
   const { bookings, rooms, venues, updateBooking } = useDashboardData()
   const [menu, setMenu] = useState<MenuItem[]>([])
+  const [owing, setOwing] = useState<{ name: string; owed: number }[]>([])
   const [room, setRoom] = useState(false)
   const [name, setName] = useState('')
   const [guest, setGuest] = useState<Booking | null>(null)
@@ -60,17 +80,25 @@ export function PaperSlip({ onClose }: { onClose: () => void }) {
   const [lines, setLines] = useState<Line[]>([])
   const [dish, setDish] = useState('')
   const [method, setMethod] = useState('Cash')
+  const [ways, setWays] = useState(false)
   const [day, setDay] = useState(today())
   const [open, setOpen] = useState<'' | 'name' | 'dish'>('')
   const [hint, setHint] = useState('')
   const [logged, setLogged] = useState(0)
   const dayRef = useRef<HTMLInputElement>(null)
+  const later = method === LATER && !room
 
   useEffect(() => {
     let alive = true
     void getMenu().then(c => { if (alive) setMenu(c.flatMap(x => x.items)) }).catch(() => {})
     return () => { alive = false }
   }, [])
+
+  useEffect(() => {
+    let alive = true
+    void readPayLaterNames().then(n => { if (alive) setOwing(n) }).catch(() => {})
+    return () => { alive = false }
+  }, [logged])
 
   // A guest's bill: one entry per bill, not per room — a booking of three rooms is one name.
   const stays = useMemo(() => {
@@ -98,10 +126,13 @@ export function PaperSlip({ onClose }: { onClose: () => void }) {
   const { qty, query } = parseDish(dish)
   const onBill = guest && billOf.id === guest.id ? billOf.slips : []
   const total = lines.reduce((s, l) => s + l.price * l.qty, 0)
+  const guestStay = guest && stays.find(s => s.booking.id === guest.id)
+  const where = guest && (rooms.find(r => r.id === guest.room_id)?.name || venues.find(v => v.id === guest.venue_id)?.name || '')
+  const owes = later ? owing.find(o => o.name.toLowerCase() === name.trim().toLowerCase()) : undefined
 
   const switchTo = (toRoom: boolean) => {
     if (toRoom === room) return
-    setRoom(toRoom); setGuest(null); setName(''); setHint('')
+    setRoom(toRoom); setGuest(null); setName(''); setHint(''); setWays(false)
     focusOn('paper-name')
     setOpen(toRoom ? 'name' : '')
   }
@@ -109,6 +140,11 @@ export function PaperSlip({ onClose }: { onClose: () => void }) {
   const pickGuest = (b: Booking) => {
     setGuest(b); setName(b.guest_name); setOpen(''); setHint('')
     focusOn('paper-dish')
+  }
+
+  const pickWay = (m: string) => {
+    setMethod(m); setWays(false); setHint('')
+    if (m === LATER && !name.trim()) { focusOn('paper-name'); setOpen('name') }
   }
 
   const addDish = (item: MenuItem | null, label: string, qty: number) => {
@@ -132,6 +168,12 @@ export function PaperSlip({ onClose }: { onClose: () => void }) {
     return stays.filter(s => s.booking.guest_name.toLowerCase().includes(q)).slice(0, 6)
   }, [stays, name])
 
+  // Pay later: the names already on the list that fit what is typed — not the one already typed in full.
+  const laterHits = useMemo(() => {
+    const q = name.trim().toLowerCase()
+    return owing.filter(o => o.name.toLowerCase().includes(q) && o.name.toLowerCase() !== q).slice(0, 6)
+  }, [owing, name])
+
   const dishHits = useMemo(() => {
     const { query } = parseDish(dish)
     const q = query.toLowerCase()
@@ -145,11 +187,12 @@ export function PaperSlip({ onClose }: { onClose: () => void }) {
     if (!lines.length) { setHint('Add what they ordered.'); focusOn('paper-dish'); return }
     if (lines.some(l => !l.price)) { setHint('Type the price.'); document.querySelector<HTMLInputElement>('[data-price=""]')?.focus(); return }
     if (room && !guest) { setHint('Pick the guest.'); focusOn('paper-name'); setOpen('name'); return }
+    if (later && !name.trim()) { setHint('Who pays later?'); focusOn('paper-name'); setOpen('name'); return }
     const who = name.trim() || 'Walk-in'
     const kept = { lines, name, guest, room, method }
     // The form clears at once for the next paper slip and the save runs behind it; a failed save puts it back.
     const paidAt = day === today() ? new Date().toISOString() : new Date(day + 'T12:00').toISOString()
-    setLines([]); setName(''); setGuest(null); setRoom(false); setMethod('Cash'); setHint(''); setDay(today())
+    setLines([]); setName(''); setGuest(null); setRoom(false); setMethod('Cash'); setHint(''); setDay(today()); setWays(false)
     focusOn('paper-name')
     void (async () => {
       try {
@@ -157,9 +200,11 @@ export function PaperSlip({ onClose }: { onClose: () => void }) {
         const saved = await savePaperSlip({
           label: who,
           dishes: kept.lines.map(l => ({ menuItemId: l.item?.id, name: l.name, price: l.price, qty: l.qty })),
-          ...(bookingId ? { bookingId } : { paid: { method: kept.method, at: paidAt } }),
+          ...(bookingId ? { bookingId } : kept.method === LATER ? { later: true } : { paid: { method: kept.method, at: paidAt } }),
         })
-        showToast(kept.room ? peso(saved.total) + ' on ' + who + '’s bill' : peso(saved.total) + ' · ' + kept.method, 'success')
+        showToast(kept.room ? peso(saved.total) + ' on ' + who + '’s bill'
+          : kept.method === LATER ? peso(saved.total) + ' · ' + who + ' pays later'
+          : peso(saved.total) + ' · ' + kept.method, 'success')
         if (bookingId) {
           // The bill is priced again with the food on it, as when a table's bill goes on a room.
           const booking = bookings.find(b => b.id === bookingId)
@@ -180,172 +225,202 @@ export function PaperSlip({ onClose }: { onClose: () => void }) {
     })()
   }
 
-  const opt = 'w-full min-h-[46px] flex items-center gap-2.5 px-2 py-1.5 rounded-[10px] text-left text-[14px] font-semibold text-main hover:bg-gold-100 cursor-pointer'
+  const pop = 'absolute -left-2 -right-2 top-full mt-1 z-20 max-h-[220px] overflow-y-auto overscroll-contain bg-card border border-soft rounded-[10px] shadow-softLg p-1 animate-in fade-in slide-in-from-top-1 duration-200'
+  const opt = 'w-full min-h-10 flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-left text-[14px] font-semibold text-main hover:bg-gold-100 cursor-pointer'
+  const past = day !== today()
 
   return createPortal(
     <div className="fixed inset-0 z-[70] grid place-items-center p-4 bg-ink-900/35 font-sans animate-in fade-in duration-200 motion-reduce:animate-none">
       <div role="dialog" aria-modal="true" aria-label="Paper slip"
-        className="w-[480px] max-w-full max-h-[calc(100dvh-32px)] overflow-y-auto overscroll-contain bg-card rounded-[18px] p-[18px] grid gap-3.5 content-start shadow-softLg animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
+        className="w-[400px] max-w-full bg-card rounded-[18px] px-4 pt-3 pb-4 grid gap-3 content-start shadow-softLg animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
 
-        <div className="flex items-center justify-between gap-2 -mt-1">
-          <span className="inline-flex items-center gap-2 font-display text-[19px] font-bold tracking-tight text-main">
-            <FileText className="w-[18px] h-[18px] text-gold-800" />Paper slip
+        <div className="flex items-center gap-2">
+          {/* The day: a calendar leaf; anywhere on it opens the date (Sebastian: "the entire ui of the date should be clickable"). */}
+          <button type="button" title="Day on the slip" aria-label={'Day on the slip: ' + dayOf(day)}
+            onClick={() => { try { dayRef.current?.showPicker() } catch { dayRef.current?.focus() } }}
+            className={'relative w-9 h-10 shrink-0 grid grid-rows-[16px_1fr] overflow-hidden rounded-[10px] border bg-card text-center cursor-pointer hover:-rotate-[4deg] transition-[transform,border-color] motion-reduce:transition-none ' + (past ? 'border-gold-400' : 'border-paper-300')}>
+            <small className={'text-[12px] leading-4 font-bold transition-colors ' + (past ? 'bg-gold-400 text-ink-900' : 'bg-softbg text-muted')}>
+              {new Date(day + 'T12:00').toLocaleDateString('en-US', { month: 'short' })}
+            </small>
+            <b key={day} className="font-display text-[16px] leading-[22px] font-extrabold text-main animate-in fade-in slide-in-from-top-2 duration-300 motion-reduce:animate-none">
+              {new Date(day + 'T12:00').getDate()}
+            </b>
+            <input ref={dayRef} type="date" value={day} max={today()} tabIndex={-1} aria-hidden onChange={e => e.target.value && setDay(e.target.value)}
+              className="absolute inset-0 w-full h-full opacity-0 pointer-events-none" />
+          </button>
+          <span className="flex-1 inline-flex items-center gap-2 text-[14px] font-semibold text-muted">
+            <FileText className="w-4 h-4 text-gold-800" />Paper slip
           </span>
+          {/* Settled at the restaurant, or on a guest's bill: two icons and a thumb that slides between them. */}
+          <div role="group" aria-label="Paid at the restaurant or on a guest's bill" className="relative shrink-0 inline-flex p-[3px] rounded-full bg-softbg">
+            <span aria-hidden className={'absolute left-[3px] top-[3px] w-[34px] h-[34px] rounded-full shadow-[0_1px_2px_rgba(28,28,28,.12)] transition-[transform,background-color] duration-300 ease-[cubic-bezier(.3,1.4,.5,1)] motion-reduce:transition-none ' + (room ? 'translate-x-[34px] bg-gold-400' : 'bg-card')} />
+            <button type="button" title="Paid at the restaurant" aria-label="Paid at the restaurant" aria-pressed={!room} onClick={() => switchTo(false)}
+              className={'relative w-[34px] h-[34px] grid place-items-center rounded-full cursor-pointer active:scale-[.88] transition-[color,transform] ' + (room ? 'text-paper-400' : 'text-main')}>
+              <Banknote className="w-4 h-4" />
+            </button>
+            <button type="button" title="On a guest's bill" aria-label="On a guest's bill" aria-pressed={room} onClick={() => switchTo(true)}
+              className={'relative w-[34px] h-[34px] grid place-items-center rounded-full cursor-pointer active:scale-[.88] transition-[color,transform] ' + (room ? 'text-main' : 'text-paper-400')}>
+              <BedDouble className="w-4 h-4" />
+            </button>
+          </div>
           <button type="button" aria-label="Close" onClick={onClose}
-            className="w-11 h-11 -mr-2.5 grid place-items-center rounded-[10px] text-muted hover:bg-softbg hover:text-main cursor-pointer active:scale-90 transition-transform">
+            className="w-9 h-9 -mr-2 grid place-items-center rounded-[10px] text-muted hover:bg-softbg hover:text-main cursor-pointer active:scale-90 transition-transform">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* 1 · Who */}
+        {/* Who */}
         <div className="relative">
-          <div className="flex items-center gap-3">
-            <label className={'flex-1 min-w-0 flex items-center gap-2 border-b-2 py-1 transition-colors focus-within:border-gold-400 ' + (room ? 'border-gold-400' : 'border-paper-200')}>
-              {room ? <Search className="w-5 h-5 shrink-0 text-gold-800 animate-in zoom-in-50 duration-300" /> : <User className="w-5 h-5 shrink-0 text-muted" />}
-              <input id="paper-name" autoFocus value={name} autoComplete="off" aria-label={room ? 'Find the guest' : 'Name on the slip'}
-                placeholder={room ? 'Guest’s name, e.g. Reyes' : 'Name, e.g. Mang Ben'}
-                onFocus={() => room && !guest && setOpen('name')}
-                onChange={e => { setName(e.target.value); if (guest) setGuest(null); if (room) setOpen('name') }}
-                onKeyDown={e => {
-                  if (e.key === 'Escape') setOpen('')
-                  if (e.key !== 'Enter') return
-                  e.preventDefault()
-                  if (room && !guest && name.trim() && nameHits[0]) pickGuest(nameHits[0].booking)
-                  else { setOpen(''); focusOn('paper-dish') }
-                }}
-                className="flex-1 min-w-0 bg-transparent outline-none py-1 font-display text-[24px] font-bold tracking-tight text-main placeholder:text-paper-400 placeholder:font-semibold" />
-              {guest && <Check className="w-5 h-5 shrink-0 text-emerald-700 animate-in zoom-in-50 duration-300" strokeWidth={3} />}
-            </label>
-            {/* Paid now, or on a guest's bill: two icons and a thumb that slides between them. */}
-            <div role="group" aria-label="Paid now or on a guest's bill" className="relative shrink-0 inline-flex p-[3px] rounded-full bg-softbg">
-              <span aria-hidden className={'absolute left-[3px] top-[3px] w-10 h-10 rounded-full shadow-[0_1px_2px_rgba(28,28,28,.12)] transition-[transform,background-color] duration-300 ease-[cubic-bezier(.3,1.4,.5,1)] motion-reduce:transition-none ' + (room ? 'translate-x-10 bg-gold-400' : 'bg-card')} />
-              <button type="button" title="Paid now" aria-label="Paid now" aria-pressed={!room} onClick={() => switchTo(false)}
-                className={'relative w-10 h-10 grid place-items-center rounded-full cursor-pointer active:scale-[.88] transition-[color,transform] ' + (room ? 'text-paper-400' : 'text-main')}>
-                <Banknote className="w-[18px] h-[18px]" />
-              </button>
-              <button type="button" title="On a guest's bill" aria-label="On a guest's bill" aria-pressed={room} onClick={() => switchTo(true)}
-                className={'relative w-10 h-10 grid place-items-center rounded-full cursor-pointer active:scale-[.88] transition-[color,transform] ' + (room ? 'text-main' : 'text-paper-400')}>
-                <BedDouble className="w-[18px] h-[18px]" />
-              </button>
-            </div>
-          </div>
+          <label className="flex items-center gap-2 border-b-[1.5px] border-paper-300 py-1 transition-colors focus-within:border-gold-400">
+            <input id="paper-name" autoFocus value={name} autoComplete="off" aria-label={room ? 'Find the guest' : later ? 'Who pays later' : 'Name on the slip'}
+              placeholder={room ? 'Guest’s name, e.g. Reyes' : later ? 'Who pays, e.g. Sir James' : 'Name, e.g. Mang Ben'}
+              onFocus={() => ((room && !guest) || later) && setOpen('name')}
+              onBlur={() => setOpen(o => (o === 'name' ? '' : o))}
+              onChange={e => { setName(e.target.value); if (guest) setGuest(null); if (room || later) setOpen('name') }}
+              onKeyDown={e => {
+                if (e.key === 'Escape') setOpen('')
+                if (e.key !== 'Enter') return
+                e.preventDefault()
+                if (room && !guest && name.trim() && nameHits[0]) pickGuest(nameHits[0].booking)
+                else { setOpen(''); focusOn('paper-dish') }
+              }}
+              className="flex-1 min-w-0 bg-transparent outline-none py-1 font-display text-[20px] font-bold tracking-tight text-main placeholder:text-paper-400 placeholder:font-semibold" />
+            {guest && (
+              <span title={guestStay?.note} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-muted whitespace-nowrap animate-in fade-in duration-300">
+                <i className={'w-[7px] h-[7px] rounded-full ' + (guestStay?.arriving ? 'bg-gold-400' : 'bg-emerald-700')} />{where}
+              </span>
+            )}
+            {owes && <span className="text-[12px] font-semibold text-muted whitespace-nowrap animate-in fade-in duration-300">owes {peso(owes.owed)}</span>}
+            {guest && <Check className="w-4 h-4 shrink-0 text-emerald-700 animate-in zoom-in-50 duration-300" strokeWidth={3} />}
+          </label>
 
+          {/* The lists float over the slip (Sebastian, 2026-11-17: "it shouldn't occupy space in the slip"). */}
           {open === 'name' && room && !guest && (
-            <div role="listbox" className="absolute left-0 right-0 top-full mt-1.5 z-10 bg-card border border-soft rounded-[14px] shadow-softLg p-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+            <div role="listbox" className={pop}>
               {nameHits.length ? nameHits.map((s, i) => (
                 <button key={s.booking.id} type="button" onMouseDown={e => e.preventDefault()} onClick={() => pickGuest(s.booking)}
                   className={opt + (i === 0 && name.trim() ? ' bg-gold-100' : '')}>
-                  <User className="w-4 h-4 shrink-0 text-muted" />
-                  <span className="flex-1 min-w-0">
-                    <span className="block truncate">{s.booking.guest_name}</span>
-                    <small className="flex items-center gap-1.5 text-[12px] font-medium text-muted">
-                      <i className={'w-[7px] h-[7px] rounded-full ' + (s.arriving ? 'bg-gold-400' : 'bg-emerald-700')} />{s.note}
-                    </small>
-                  </span>
+                  <span className="flex-1 min-w-0 truncate">{s.booking.guest_name}</span>
+                  <small className="inline-flex items-center gap-1.5 text-[12px] font-medium text-muted whitespace-nowrap">
+                    <i className={'w-[7px] h-[7px] rounded-full ' + (s.arriving ? 'bg-gold-400' : 'bg-emerald-700')} />{s.note}
+                  </small>
                 </button>
-              )) : <p className="m-2.5 text-[12.5px] text-muted">No guest by that name.</p>}
+              )) : <p className="m-2.5 text-[12px] text-muted">No guest by that name.</p>}
+            </div>
+          )}
+          {open === 'name' && later && laterHits.length > 0 && (
+            <div role="listbox" className={pop}>
+              {laterHits.map(o => (
+                <button key={o.name} type="button" onMouseDown={e => e.preventDefault()} onClick={() => { setName(o.name); setOpen(''); focusOn('paper-dish') }} className={opt}>
+                  <span className="flex-1 min-w-0 truncate">{o.name}</span>
+                  <small className="text-[12px] font-medium text-muted whitespace-nowrap">owes {peso(o.owed)}</small>
+                </button>
+              ))}
             </div>
           )}
 
           {guest && onBill.length > 0 && (
-            <div className="mt-2 grid gap-0.5 px-2.5 py-2 rounded-xl bg-page animate-in fade-in slide-in-from-top-1 duration-200">
-              <span className="text-[10.5px] font-bold tracking-[0.08em] text-muted">ALREADY ON THE BILL</span>
-              {onBill.map(s => (
-                <div key={s.tab.id} className="grid grid-cols-[52px_minmax(0,1fr)_auto] gap-2 text-[12.5px] text-muted">
-                  <span>{dayOf(dateToString(new Date(s.tab.created_at)))}</span>
-                  <span className="truncate text-main">{slipItems(s.lines)}</span>
-                  <b className="font-bold text-main tabular-nums">{peso(s.total)}</b>
-                </div>
-              ))}
+            <div title={onBill.map(s => dayOf(dateToString(new Date(s.tab.created_at))) + ' · ' + slipItems(s.lines)).join('\n')}
+              className="mt-2 flex items-center gap-2 px-3 py-2 rounded-[10px] bg-page text-[12px] font-semibold text-muted animate-in fade-in slide-in-from-top-1 duration-200">
+              <Receipt className="w-3.5 h-3.5 shrink-0 text-gold-800" />
+              <span className="flex-1">{onBill.length} {onBill.length === 1 ? 'slip' : 'slips'} already on the bill</span>
+              <b className="font-bold text-main tabular-nums">{peso(onBill.reduce((s, x) => s + x.total, 0))}</b>
             </div>
           )}
         </div>
 
-        {/* 2 · What they ordered */}
+        {/* What they ordered: ruled lines with the menu's dotted leaders. */}
         <div>
-          {lines.map(l => (
-            <div key={l.key} className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-2.5 items-center min-h-[52px] border-b border-soft animate-in fade-in slide-in-from-top-2 duration-300">
-              <span className="inline-flex items-center rounded-xl bg-softbg">
-                <button type="button" aria-label="One less" onClick={() => step(l.key, -1)} className="w-9 h-11 text-[18px] font-bold text-muted cursor-pointer active:scale-90">−</button>
-                <b key={l.qty} className="min-w-5 text-center font-display text-[15px] font-extrabold animate-in zoom-in-125 duration-300">{l.qty}</b>
-                <button type="button" aria-label="One more" onClick={() => step(l.key, 1)} className="w-9 h-11 text-[18px] font-bold text-muted cursor-pointer active:scale-90">+</button>
-              </span>
-              <span className="min-w-0 truncate text-[14.5px] font-semibold text-main">
-                {l.name}
-                {l.item && <small className="block text-[11.5px] font-medium text-muted">{peso(l.price)}</small>}
-              </span>
-              {l.item
-                ? <span className="text-[14.5px] font-bold tabular-nums">{peso(l.price * l.qty)}</span>
-                : <input autoFocus data-price={l.price ? l.key : ''} inputMode="decimal" placeholder="₱ 150" aria-label={'Price of ' + l.name}
-                    defaultValue={l.price || ''} onChange={e => { const p = parseFloat(e.target.value.replace(/[^\d.]/g, '')) || 0; setLines(ls => ls.map(x => (x.key === l.key ? { ...x, price: p } : x))) }}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); focusOn('paper-dish') } }}
-                    className="w-[84px] bg-transparent border-b-[1.5px] border-gold-400 py-1 text-right text-[16px] font-bold outline-none placeholder:text-paper-400" />}
-            </div>
-          ))}
+          <div className="max-h-[34dvh] overflow-y-auto overscroll-contain">
+            {lines.map(l => (
+              <div key={l.key} className="group grid grid-cols-[auto_minmax(0,1fr)_auto] gap-2.5 items-center h-9 border-b border-paper-200 animate-in fade-in slide-in-from-top-1 duration-300">
+                {/* − + show on hover; a tablet has no hover, so they always show there. */}
+                <span className="inline-flex items-center h-7 rounded-full transition-colors group-hover:bg-softbg group-focus-within:bg-softbg [@media(hover:none)]:bg-softbg">
+                  <button type="button" aria-label="One less" onClick={() => step(l.key, -1)}
+                    className="w-6 h-7 text-[15px] font-bold text-muted cursor-pointer opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100 active:scale-90">−</button>
+                  <b key={l.qty} className="min-w-[14px] text-center font-display text-[14px] font-extrabold text-gold-800 animate-in zoom-in-125 duration-300">{l.qty}</b>
+                  <button type="button" aria-label="One more" onClick={() => step(l.key, 1)}
+                    className="w-6 h-7 text-[15px] font-bold text-muted cursor-pointer opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100 active:scale-90">+</button>
+                </span>
+                <span className="flex items-baseline gap-2 min-w-0 text-[14px] font-semibold text-main">
+                  <span className="truncate">{l.name}</span>
+                  <span className="flex-1 min-w-3 border-b border-dotted border-paper-400 -translate-y-1" />
+                </span>
+                {l.item
+                  ? <span className="min-w-14 text-right font-display text-[14px] font-semibold tabular-nums">{peso(l.price * l.qty)}</span>
+                  : <input autoFocus data-price={l.price ? l.key : ''} inputMode="decimal" placeholder="₱ 150" aria-label={'Price of ' + l.name}
+                      defaultValue={l.price || ''} onChange={e => { const p = parseFloat(e.target.value.replace(/[^\d.]/g, '')) || 0; setLines(ls => ls.map(x => (x.key === l.key ? { ...x, price: p } : x))) }}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); focusOn('paper-dish') } }}
+                      className="w-[72px] bg-transparent border-b-[1.5px] border-gold-400 py-0.5 text-right text-[16px] font-semibold outline-none placeholder:text-paper-400" />}
+              </div>
+            ))}
+          </div>
           <div className="relative">
-            <label className="flex items-center gap-2 border-b-[1.5px] border-paper-200 py-1.5 transition-colors focus-within:border-gold-400">
-              <Plus className="w-4 h-4 shrink-0 text-gold-800" />
+            <label className="flex items-center gap-2.5 h-9">
+              <span className="w-[62px] grid place-items-center text-gold-800"><Plus className="w-4 h-4" /></span>
               <input id="paper-dish" value={dish} autoComplete="off" aria-label="Add a dish" placeholder="Dish, e.g. 2 adobo"
                 onChange={e => { setDish(e.target.value); setOpen('dish') }}
+                onBlur={() => setOpen(o => (o === 'dish' ? '' : o))}
                 onKeyDown={e => {
                   if (e.key === 'Escape') setOpen('')
                   if (e.key !== 'Enter') return
                   e.preventDefault()
                   if (query) addDish(dishHits[0] || null, query, qty)
                 }}
-                className="flex-1 min-w-0 bg-transparent outline-none py-1 text-[16px] font-semibold text-main placeholder:text-paper-400 placeholder:font-medium" />
+                className="flex-1 min-w-0 bg-transparent outline-none text-[16px] font-semibold text-main placeholder:text-paper-400 placeholder:font-medium" />
             </label>
             {open === 'dish' && query && (
-                <div role="listbox" className="absolute left-0 right-0 top-full mt-1.5 z-10 bg-card border border-soft rounded-[14px] shadow-softLg p-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                  {dishHits.map((d, i) => (
-                    <button key={d.id} type="button" onMouseDown={e => e.preventDefault()} onClick={() => addDish(d, d.name, qty)} className={opt + (i === 0 ? ' bg-gold-100' : '')}>
-                      <span className="min-w-7 font-display text-[13px] font-extrabold text-gold-800">{qty}×</span>
-                      <span className="flex-1 min-w-0 truncate">{d.name}</span>
-                      <em className="not-italic text-[13px] text-muted">{peso(d.price)}</em>
-                    </button>
-                  ))}
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => addDish(null, query, qty)} className={opt + ' text-muted' + (dishHits.length ? '' : ' bg-gold-100')}>
-                    <span className="min-w-7 font-display text-[13px] font-extrabold text-gold-800">{qty}×</span>
-                    <span className="flex-1 min-w-0 truncate">“{query}”, not on the menu</span>
+              <div role="listbox" className={pop}>
+                {dishHits.map((d, i) => (
+                  <button key={d.id} type="button" onMouseDown={e => e.preventDefault()} onClick={() => addDish(d, d.name, qty)} className={opt + (i === 0 ? ' bg-gold-100' : '')}>
+                    <span className="min-w-6 font-display text-[12px] font-extrabold text-gold-800">{qty}×</span>
+                    <span className="flex-1 min-w-0 truncate">{d.name}</span>
+                    <small className="text-[12px] font-medium text-muted">{peso(d.price)}</small>
                   </button>
-                </div>
+                ))}
+                <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => addDish(null, query, qty)} className={opt + ' text-muted' + (dishHits.length ? '' : ' bg-gold-100')}>
+                  <span className="min-w-6 font-display text-[12px] font-extrabold text-gold-800">{qty}×</span>
+                  <span className="flex-1 min-w-0 truncate">“{query}”, not on the menu</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
 
-        {/* 3 · The rest */}
-        <div className="grid gap-3 pt-3 border-t border-soft">
-          <div className="flex justify-between items-center gap-2.5 flex-wrap">
+        {/* The end of the slip: how it was settled, and Log with the total on it. */}
+        <div className="grid gap-2">
+          {hint && <p role="alert" className="text-right text-[12px] font-semibold text-red-700">{hint}</p>}
+          <div className="flex items-center gap-2 pt-3 border-t-[1.5px] border-ink-900">
             {room
-              ? <span className="inline-flex items-center gap-1.5 min-h-10 text-[12.5px] font-bold text-gold-800">
-                  <BedDouble className="w-[15px] h-[15px]" />{guest ? 'On ' + guest.guest_name.split(' ')[0] + '’s bill' : 'Pick the guest ↑'}
+              ? <span className="flex-1 inline-flex items-center gap-1.5 text-[12px] font-bold text-gold-800">
+                  <BedDouble className="w-4 h-4" />{guest ? where || 'On ' + guest.guest_name.split(' ')[0] + '’s bill' : 'Pick the guest ↑'}
                 </span>
-              : <div className="flex flex-wrap gap-1">
-                  {METHODS.map(([m, dot]) => (
-                    <button key={m} type="button" aria-pressed={method === m} onClick={() => setMethod(m)}
-                      className={'inline-flex items-center gap-1.5 min-h-10 px-3 rounded-full text-[12.5px] font-bold cursor-pointer active:scale-[.94] transition-[background-color,color,transform] ' + (method === m ? 'bg-softbg text-main' : 'text-muted')}>
-                      <i className={'w-2 h-2 rounded-full ' + dot} />{m === 'Bank transfer' ? 'Bank' : m}
-                    </button>
-                  ))}
+              : <div className="flex-1 relative">
+                  {ways && <div className="fixed inset-0 z-10" onClick={() => setWays(false)} />}
+                  <button type="button" aria-haspopup="menu" aria-expanded={ways} onClick={() => setWays(w => !w)}
+                    className={'relative inline-flex items-center gap-1.5 h-9 pl-1 pr-2 rounded-full text-[12px] font-bold hover:bg-softbg cursor-pointer active:scale-[.96] transition-[background-color,transform] ' + (later ? 'text-gold-800' : 'text-main')}>
+                    <Way m={method} />
+                    <ChevronDown className={'w-3 h-3 opacity-60 transition-transform duration-200 ' + (ways ? 'rotate-180' : '')} strokeWidth={3} />
+                    <NewTag id="paper-slip-later" at="-top-1.5 -right-2" />
+                  </button>
+                  <div role="menu" className={'absolute left-0 bottom-full mb-1.5 z-20 min-w-[148px] grid gap-0.5 p-1.5 bg-card border border-paper-300 rounded-[14px] shadow-softLg origin-bottom-left transition-[opacity,transform] duration-200 ease-[cubic-bezier(.2,.9,.3,1.2)] motion-reduce:transition-none ' + (ways ? 'opacity-100 scale-100' : 'opacity-0 scale-[.92] translate-y-1 pointer-events-none')}>
+                    {[...WAYS.map(w => w[0] as string), LATER].map(m => (
+                      <React.Fragment key={m}>
+                        {m === LATER && <i className="block h-px mx-1.5 my-1 bg-paper-300" />}
+                        <button type="button" role="menuitemradio" aria-checked={method === m} tabIndex={ways ? 0 : -1} onClick={() => pickWay(m)}
+                          className={'w-full inline-flex items-center gap-1.5 h-9 px-3 rounded-[10px] text-[12px] font-bold cursor-pointer transition-colors ' + (method === m ? (m === LATER ? 'bg-gold-100 text-gold-800' : 'bg-softbg text-main') : 'text-muted hover:bg-softbg')}>
+                          <Way m={m} />
+                        </button>
+                      </React.Fragment>
+                    ))}
+                  </div>
                 </div>}
-            <div className="flex items-baseline gap-2">
-              {/* The day it was paid, for a slip copied in the next morning; a guest's bill needs no day. */}
-              {!room && (
-                <label className="relative text-[12.5px] font-semibold text-main border-b-[1.5px] border-dashed border-gold-400 cursor-pointer">
-                  {dayOf(day)}
-                  <input ref={dayRef} type="date" value={day} max={today()} aria-label="Day it was paid" onChange={e => e.target.value && setDay(e.target.value)}
-                    onClick={() => dayRef.current?.showPicker?.()} className="absolute inset-0 opacity-0 cursor-pointer" />
-                </label>
-              )}
-              <span className="text-[12px] text-muted">·</span>
-              <b className="font-display text-[20px] font-extrabold tabular-nums"><AnimatedNumber value={total} prefix="₱" duration={450} /></b>
-            </div>
+            <button type="button" onClick={log}
+              className="h-11 px-5 rounded-[10px] bg-ink-900 hover:bg-ink-700 text-white text-[14px] font-bold inline-flex items-center gap-2 cursor-pointer active:scale-[.97] transition-[transform,background-color]">
+              <Check className="w-4 h-4" />Log
+              <b className="font-display text-[16px] font-extrabold tabular-nums"><AnimatedNumber value={total} prefix="₱" duration={450} /></b>
+            </button>
           </div>
-          {hint && <p role="alert" className="-mt-1.5 text-[12px] font-semibold text-red-700">{hint}</p>}
-          <button type="button" onClick={log}
-            className="h-12 rounded-[14px] bg-ink-900 hover:bg-ink-700 text-white text-[15px] font-bold flex items-center justify-center gap-2 cursor-pointer active:scale-[.97] transition-[transform,background-color]">
-            <Check className="w-[18px] h-[18px]" />Log slip
-          </button>
         </div>
       </div>
     </div>,

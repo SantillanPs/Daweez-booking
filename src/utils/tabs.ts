@@ -509,6 +509,8 @@ export async function savePaperSlip(input: {
   paid?: { method: string; at: string }
   /** Or onto this booking's bill. */
   bookingId?: string
+  /** Or onto the front desk's Pay later list, under `label` (Sebastian, 2026-11-17: "add a pay later for the paper slip"). */
+  later?: boolean
 }): Promise<{ tab: Tab; total: number; receipt?: string }> {
   const at = new Date().toISOString()
   // Opened first, as a table is: `apply_order_changes` writes only to a slip that is there.
@@ -527,6 +529,10 @@ export async function savePaperSlip(input: {
   const total = tabTotal(saved.lines)
   if (input.bookingId) {
     await billToRoom(saved.tab.id, input.bookingId)
+    return { tab: saved.tab, total }
+  }
+  if (input.later) {
+    await payLaterTab(saved.tab.id, input.label)
     return { tab: saved.tab, total }
   }
   const record = await settleTab({ tab: saved.tab, amount: total, method: input.paid?.method || 'Cash', paidAt: input.paid?.at })
