@@ -293,8 +293,8 @@ export function Website() {
                       : <span key="busy" className="tag busy">{till ? `Occupied till ${longDay(till)}` : 'Occupied'}</span>)}
                     {nos.length > 1 && <span className="cnt">{nos.length} rooms</span>}
                   </div>
-                  <div className="row"><h3>{t.name}</h3><span className="pr num">{pesoWhole(t.price)}<small> a night</small></span></div>
-                  <div className="meta"><span>Room {nos.join(', ')}</span>
+                  <div className="row"><h3>{nos.length > 1 ? 'Rooms' : 'Room'} {nos.join(', ')}</h3><span className="pr num">{pesoWhole(t.price)}<small> a night</small></span></div>
+                  <div className="meta"><span>{t.name}</span>
                     <span className="ppl" title={`Up to ${t.sleeps}`} aria-label={`Up to ${t.sleeps} people`}>{Array.from({ length: t.sleeps }, (_, k) => <i key={k}>{PERSON}</i>)}</span></div>
                 </button>
               )
@@ -571,7 +571,7 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
   const photo = room && ROOM_PHOTOS.includes(room.room_number) ? `/website/room-${room.room_number}.webp` : ask.photo
   // The sheet's photo opens whole (Sebastian, 2026-11-17: "these should be able to view the full image").
   const [look, setLook] = useState<DOMRect | null>(null)
-  const title = room ? `${ask.title}, Room ${room.room_number}` : ask.title
+  const title = room ? `Room ${room.room_number}, ${ask.title}` : ask.title
   const [breakfast, setBreakfast] = useState(false)
   const [errs, setErrs] = useState<{ room?: string; name?: string; phone?: string; companions?: string; shot?: string; ref?: string; form?: string }>({})
   const [step, setStep] = useState<'you' | 'pay' | 'sent'>('you')
