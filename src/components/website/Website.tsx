@@ -166,15 +166,25 @@ function RequestStatus({ id }: { id: string }) {
         </div>
         <h1>{s === 'open' ? 'Payment received' : s === 'booked' ? "You're booked" : "We couldn't reserve it"}</h1>
         <p className="sub">{s === 'open' ? `We'll text you as soon as ${data.place} is reserved for ${day(data.check_in)}.`
-          : s === 'booked' ? `${data.place}, ${day(data.check_in)} to ${day(data.check_out)}. See you at 2 PM.`
+          : s === 'booked' ? data.place
           : `We'll call you about your ${pesoWhole(data.pay_amount)}. You can call us too.`}</p>
+        {/* When to come leads once booked (Sebastian, 2026-11-19: "highlight more of when they should go to the hotel
+            and at what time", mock A). The hours are the rooms'; a venue shows its days only. */}
+        {s === 'booked' && <div className="arrive">
+          <div className="day">{longDay(data.check_in)}</div>
+          {data.place.startsWith('Room') ? <>
+            <div className="time">Check in from 2 PM</div>
+            <div className="out">Check out {longDay(data.check_out)} by 12 noon</div>
+          </> : <div className="out">to {longDay(data.check_out)}</div>}
+        </div>}
         <dl className="amt num">
           <dt>Paid</dt><dd>{pesoWhole(data.pay_amount)} by {way}</dd>
           <dt>Ref no.</dt><dd>{data.pay_reference}</dd>
         </dl>
         {s === 'open' && <p className="promise">If we can't reserve it, we'll call you.</p>}
         <div className="btns">
-          <a className="btn soft" href={MESSENGER} target="_blank" rel="noopener">Message us</a>
+          {s === 'booked' ? <a className="btn soft" href={`https://www.google.com/maps/search/${encodeURIComponent(MAP_Q)}`} target="_blank" rel="noopener">Get directions</a>
+            : <a className="btn soft" href={MESSENGER} target="_blank" rel="noopener">Message us</a>}
           <a className="btn dark" href={'tel:' + PHONE.replace(/\s/g, '')}>Call us · {PHONE}</a>
         </div>
       </main>}

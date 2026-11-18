@@ -381,6 +381,10 @@
   & .ring.no .fg { stroke: var(--red) }
   & .ring i { position: absolute; inset: 0; display: grid; place-items: center; font: 800 22px var(--display); font-style: normal; color: var(--green) }
   & .ring.no i { color: var(--red) }
+  &.rs .arrive { margin-top: 20px; background: #E3F0E7; border-radius: 18px; padding: 18px 16px; animation: dw-in .5s .12s var(--ease) backwards }
+  &.rs .arrive .day { font: 800 34px/1 var(--display); letter-spacing: -.02em }
+  &.rs .arrive .time { font: 700 18px var(--display); color: var(--green); margin-top: 6px }
+  &.rs .arrive .out { font-size: 14px; color: var(--ink2); margin-top: 10px }
   &.rs .amt { margin: 24px auto 0; display: grid; grid-template-columns: auto auto; gap: 4px 18px; text-align: left; font-size: 15px }
   &.rs .amt dt { color: var(--ink2) }
   &.rs .amt dd { margin: 0; font-weight: 600 }
