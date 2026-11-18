@@ -180,8 +180,9 @@ export async function readPayLaterNames(): Promise<{ name: string; owed: number 
   const owed = new Map<string, number>()
   for (const t of data || []) {
     const name = (t.label || '').trim()
-    if (!name) continue
     const left = slipLeft(t.tab_lines as TabLine[], t.payment_records as PaymentRecord[])
+    // A removed slip has no rows left and is no longer on the list.
+    if (!name || left <= 0) continue
     owed.set(name, (owed.get(name) || 0) + left)
   }
   return [...owed].map(([name, owed]) => ({ name, owed }))

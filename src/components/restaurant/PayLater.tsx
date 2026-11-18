@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Banknote, Clock, X } from 'lucide-react'
+import { AlertTriangle, Banknote, Clock, Trash2, X } from 'lucide-react'
 import { Tab, TabLine } from '../../types/tab'
 import { PaymentRecord } from '../../types/booking'
 import { OrderSlip, slipNumber } from '../../utils/orderSlips'
@@ -12,6 +12,8 @@ import { tableName } from './served'
 import { NewTag } from '../NewMark'
 import { markSeen } from '../../utils/newMarks'
 import { peso } from '../../utils/helpers'
+import { saveOrderChanges } from '../../utils/orderChanges'
+import { showToast } from '../../utils/toast'
 
 // **Pay later** (Sebastian, 2026-11-17): many diners eat and do not pay at once, and their slips sat
 // on the restaurant's tables or under "Diners to pay", "taking up space and unneeded attention". The
@@ -112,8 +114,56 @@ function PayLaterModal({ owing, onClose, onChanged }: { owing: Owing; onClose: (
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, receipt])
 
-  const paying = Math.min(Math.max(0, amount || 0), owing.left)
-  const slips = [...owing.slips].sort((a, b) => (a.tab.created_at || '').localeCompare(b.tab.created_at || ''))
+  // **A slip on Pay later can be removed** (Sebastian, 2026-11-18: "I want the entire order slip to be
+  // removable. the remove button should be below the receive button"). Every row comes off the way the
+  // desk takes a diner's orders off (`apply_order_changes`, stock back), so the empty slip drops off the
+  // list. A slip with money on it stays: what was received belongs to it. Several slips: the desk ticks
+  // which, none to start. The slip goes at once and is saved behind; a failed save puts it back.
+  const [asking, setAsking] = useState(false)
+  const [picks, setPicks] = useState<Set<string>>(new Set())
+  const [leaving, setLeaving] = useState<Set<string>>(new Set())
+  const [gone, setGone] = useState<Set<string>>(new Set())
+
+  const slips = [...owing.slips].filter(s => !gone.has(s.tab.id)).sort((a, b) => (a.tab.created_at || '').localeCompare(b.tab.created_at || ''))
+  const left = slips.reduce((n, s) => n + slipLeft(s.lines, s.tab.payment_records), 0)
+  const paying = Math.min(Math.max(0, amount || 0), left)
+  const free = slips.filter(s => (s.tab.payment_records || []).length === 0)
+
+  const removeSlips = (chosen: OrderSlip[]) => {
+    setAsking(false)
+    setPicks(new Set())
+    const ids = chosen.map(s => s.tab.id)
+    const all = chosen.length === slips.length
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    setLeaving(s => new Set([...s, ...ids]))
+    window.setTimeout(() => {
+      setGone(s => new Set([...s, ...ids]))
+      setAmount(a => Math.min(a, left - chosen.reduce((n, s) => n + slipLeft(s.lines, s.tab.payment_records), 0)))
+      if (all) onClose()
+    }, reduce ? 0 : 260)
+    const at = new Date().toISOString()
+    Promise.all(chosen.map(s => saveOrderChanges({
+      tabId: s.tab.id,
+      changes: s.lines.map(l => ({ lineId: l.id, menuItemId: l.menu_item_id, description: l.description, unitPrice: Number(l.unit_price || 0), delta: 0, remove: true, at })),
+    }))).then(() => {
+      onChanged()
+      showToast(all ? owing.name + ' is off Pay later' : chosen.map(s => slipNumber(s.tab) || 'The order slip').join(', ') + ' removed', 'success')
+    }).catch(err => {
+      console.error('Could not remove the order slip:', err)
+      onChanged()
+      setLeaving(s => new Set([...s].filter(id => !ids.includes(id))))
+      setGone(s => new Set([...s].filter(id => !ids.includes(id))))
+      setError('Not removed. Please try again.')
+      if (all) showToast((owing.name) + '’s order slip was not removed. Please try again.', 'error')
+    })
+  }
+
+  const chosen = free.length === 1 ? free : free.filter(s => picks.has(s.tab.id))
+  const confirmRemove = () => {
+    if (chosen.length === 0) { setError('Tick the slips to remove.'); return }
+    setError('')
+    removeSlips(chosen)
+  }
 
   const receive = async () => {
     if (saving.current) return
@@ -122,7 +172,7 @@ function PayLaterModal({ owing, onClose, onChanged }: { owing: Owing; onClose: (
     if (needsRef && !reference.trim()) { setError('Enter the ' + method + ' reference number.'); return }
     setError('')
     saving.current = true
-    const before = owing
+    const before = { ...owing, slips, left }
     setSealed({ amount: paying, left: before.left - paying })
     try {
       const record = await payTowards({ slips: before.slips, amount: paying, method, reference })
@@ -165,7 +215,7 @@ function PayLaterModal({ owing, onClose, onChanged }: { owing: Owing; onClose: (
 
         <div className="px-4 pt-2 pb-3 overflow-y-auto">
           {slips.map(s => (
-            <div key={s.tab.id}>
+            <div key={s.tab.id} className={leaving.has(s.tab.id) ? 'slip-leave' : undefined}>
               <p className="mt-2 flex justify-between text-[11px] font-bold uppercase tracking-[0.06em] text-muted">
                 <span>{[slipNumber(s.tab), tableName(s.tab.table_label), shortDay(s.tab.created_at)].filter(Boolean).join(' · ')}</span>
                 <span className="tabular-nums">{peso(s.total)}</span>
@@ -191,7 +241,7 @@ function PayLaterModal({ owing, onClose, onChanged }: { owing: Owing; onClose: (
 
           <div className="flex items-baseline justify-between gap-2 pt-3 mt-1 border-t border-soft">
             <span className="text-[14px] font-medium text-muted">Left to pay</span>
-            <span key={owing.left} className="font-display text-[26px] leading-none font-extrabold tracking-tight tabular-nums text-main bw-rise">{peso(owing.left)}</span>
+            <span key={left} className="font-display text-[26px] leading-none font-extrabold tracking-tight tabular-nums text-main bw-rise">{peso(left)}</span>
           </div>
 
           <div className="mt-3 pt-3 border-t border-soft space-y-2.5">
@@ -214,21 +264,75 @@ function PayLaterModal({ owing, onClose, onChanged }: { owing: Owing; onClose: (
               <span className="text-[13px] font-semibold text-muted whitespace-nowrap">Paying</span>
               <span className="flex-1 flex items-center h-11 px-3 rounded-lg border border-soft bg-card focus-within:border-gold-500">
                 <span className="text-[16px] font-bold text-muted">₱</span>
-                <NumInput value={amount} onChange={setAmount} placeholder={String(owing.left)} aria-label="Amount paid"
+                <NumInput value={amount} onChange={setAmount} placeholder={String(left)} aria-label="Amount paid"
                   onFocus={e => e.currentTarget.select()}
                   className="w-full bg-transparent pl-1 text-[16px] font-bold text-main tabular-nums focus:outline-none" />
               </span>
             </label>
             <p className="min-h-[18px] text-right text-[12.5px] text-muted">
-              {paying > 0 && paying < owing.left - 0.005 ? <><b className="text-gold-800 tabular-nums">{peso(owing.left - paying)}</b> still to pay after this</> : null}
+              {paying > 0 && paying < left - 0.005 ? <><b className="text-gold-800 tabular-nums">{peso(left - paying)}</b> still to pay after this</> : null}
             </p>
             {error && <p role="alert" className="text-[12px] font-semibold text-danger-600">{error}</p>}
             <button type="button" onClick={() => void receive()}
               className="w-full min-h-12 inline-flex items-center justify-center gap-1.5 text-[14px] font-bold px-3 rounded-lg bg-gold-400 hover:bg-gold-600 text-ink-900 transition-[background-color,transform] active:scale-[0.98] cursor-pointer">
               Receive {peso(paying)}
             </button>
+            {free.length > 0 && (
+              <div className="flex justify-center">
+                <button type="button" onClick={() => { markSeen('pay-later-remove'); setError(''); setPicks(new Set()); setAsking(true) }}
+                  className="relative min-h-11 inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-danger-600 transition-colors cursor-pointer">
+                  <Trash2 className="w-4 h-4" /> Remove order slip{free.length > 1 ? 's' : ''}
+                  <NewTag id="pay-later-remove" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* The ask, drawn like `ConfirmDialog`, over this window: one slip is asked plainly; several are ticked. */}
+        {asking && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-ink-900/50 bp-dim" onClick={() => setAsking(false)}>
+            <div className="w-full bg-card rounded-xl shadow-softLg overflow-hidden bp-rise motion-reduce:[animation:none]" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start gap-3 px-5 pt-4 pb-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-danger-50"><AlertTriangle className="w-4 h-4 text-danger-500" /></div>
+                <div className="min-w-0">
+                  <h3 className="font-display font-bold text-main text-[15px] leading-snug">
+                    {free.length === 1 ? 'Remove ' + (slipNumber(free[0].tab) || 'this order slip') + '?' : 'Which slips for ' + owing.name + '?'}
+                  </h3>
+                  {free.length === 1 && (
+                    <p className="text-[12px] text-muted mt-1 leading-snug">
+                      {free[0].lines.length === 1 ? '1 line' : free[0].lines.length + ' lines'} · {peso(free[0].total)} comes off.{slips.length === 1 ? ' ' + owing.name + ' leaves Pay later.' : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {free.length > 1 && (
+                <div className="grid gap-1 px-5 pb-3">
+                  {free.map(s => {
+                    const on = picks.has(s.tab.id)
+                    return (
+                      <label key={s.tab.id} className={'grid grid-cols-[20px_1fr_auto] items-center gap-2.5 min-h-11 px-2.5 rounded-lg border text-[14px] cursor-pointer transition-colors ' + (on ? 'border-danger-500 bg-danger-50' : 'border-soft')}>
+                        <input type="checkbox" checked={on} className="w-[18px] h-[18px] accent-danger-500"
+                          onChange={() => { setError(''); setPicks(p => { const n = new Set(p); if (n.has(s.tab.id)) n.delete(s.tab.id); else n.add(s.tab.id); return n }) }} />
+                        <span className="min-w-0 truncate">{[slipNumber(s.tab), shortDay(s.tab.created_at)].filter(Boolean).join(' · ')}</span>
+                        <b className="tabular-nums">{peso(s.total)}</b>
+                      </label>
+                    )
+                  })}
+                  {error && <p role="alert" className="text-[12px] font-semibold text-danger-600">{error}</p>}
+                </div>
+              )}
+              <div className="flex gap-2 px-5 pb-4">
+                <button type="button" onClick={() => { setError(''); setAsking(false) }}
+                  className="flex-1 border border-soft text-main text-sm font-semibold py-2.5 rounded-lg hover:bg-page transition-colors cursor-pointer">Cancel</button>
+                <button type="button" onClick={confirmRemove}
+                  className="flex-1 text-sm font-bold py-2.5 rounded-lg transition-colors cursor-pointer bg-danger-500 hover:bg-danger-600 text-white">
+                  {free.length === 1 ? 'Remove' : chosen.length === 0 ? 'Pick a slip' : 'Remove ' + (chosen.length === 1 ? '1 slip' : chosen.length + ' slips') + ' · ' + peso(chosen.reduce((n, s) => n + s.total, 0))}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>,
     document.body,

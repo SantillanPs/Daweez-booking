@@ -20,6 +20,8 @@ export const NEW_FEATURES: NewFeature[] = [
   // and the desk's Pay later button takes it, all at once or a bit at a time (`restaurant/PayLater`).
   { id: 'pay-later', since: '2026-11-17' },
   { id: 'desk-pay-later', since: '2026-11-17' },
+  // A slip on Pay later with no money on it is removed from under Receive (`PayLaterModal`).
+  { id: 'pay-later-remove', since: '2026-11-18' },
   // The paper slip redrawn, and Later among its ways to pay (`restaurant/PaperSlip`).
   { id: 'paper-slip-later', since: '2026-11-17' },
   // A room's order slip not paid yet is fixed from its number on the bill, and from Restaurant → History (`RoomSlipFix`).
