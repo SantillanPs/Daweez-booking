@@ -126,11 +126,69 @@ export function Website() {
     document.title = 'Daweez Pension House, Tandag City'
     const link = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap' })
     document.head.appendChild(link)
+    return () => link.remove()
+  }, [])
+  // ?r= is the guest's own page after paying. A query, not a path, since the guest host sends every path to the front page.
+  const r = new URLSearchParams(location.search).get('r')
+  return r ? <RequestStatus id={r} /> : <Site />
+}
+
+type Status = { status: 'open' | 'booked' | 'declined'; place: string; check_in: string; check_out: string; pay_amount: number; pay_method: string; pay_reference: string } | null
+
+/* The page a guest lands on after paying (Sebastian, 2026-11-19, the Quiet mock): one line, the money, and
+   "If we can't reserve it, we'll call you." It says nothing about the desk checking, only what comes next.
+   It asks again every 30 seconds and whenever the guest comes back to it. */
+function RequestStatus({ id }: { id: string }) {
+  const { data, isPending } = useQuery({
+    queryKey: ['request-status', id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('request_status', { p_id: id })
+      if (error) throw error
+      return data as Status
+    },
+    refetchInterval: 30_000,
+    retry: 1,
+  })
+  const s = data?.status
+  const day = (d: string) => parseDay(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
+  const way = data?.pay_method === 'GCash' ? 'GCash' : 'bank transfer'
+  return (
+    <div className="dw rs">
+      <header><a href="/"><img src={logo} alt="" />Daweez Pension House</a></header>
+      {isPending ? null : !data ? <main key="none">
+        <h1>We can't find this link</h1>
+        <p className="sub">Call us and we'll look it up.</p>
+        <div className="btns"><a className="btn dark" href={'tel:' + PHONE.replace(/\s/g, '')}>Call us · {PHONE}</a></div>
+      </main> : <main key={s}>
+        <div className={'ring' + (s === 'open' ? '' : ' full') + (s === 'declined' ? ' no' : '')}>
+          <svg viewBox="0 0 84 84"><circle className="bg" cx="42" cy="42" r="38" /><circle className="fg" cx="42" cy="42" r="38" /></svg>
+          <i>{s === 'open' ? '½' : s === 'booked' ? '✓' : '!'}</i>
+        </div>
+        <h1>{s === 'open' ? 'Payment received' : s === 'booked' ? "You're booked" : "We couldn't reserve it"}</h1>
+        <p className="sub">{s === 'open' ? `We'll text you as soon as ${data.place} is reserved for ${day(data.check_in)}.`
+          : s === 'booked' ? `${data.place}, ${day(data.check_in)} to ${day(data.check_out)}. See you at 2 PM.`
+          : `We'll call you about your ${pesoWhole(data.pay_amount)}. You can call us too.`}</p>
+        <dl className="amt num">
+          <dt>Paid</dt><dd>{pesoWhole(data.pay_amount)} by {way}</dd>
+          <dt>Ref no.</dt><dd>{data.pay_reference}</dd>
+        </dl>
+        {s === 'open' && <p className="promise">If we can't reserve it, we'll call you.</p>}
+        <div className="btns">
+          <a className="btn soft" href={MESSENGER} target="_blank" rel="noopener">Message us</a>
+          <a className="btn dark" href={'tel:' + PHONE.replace(/\s/g, '')}>Call us · {PHONE}</a>
+        </div>
+      </main>}
+    </div>
+  )
+}
+
+function Site() {
+  useEffect(() => {
     // The top links glide to their section instead of jumping (Sebastian, 2026-11-17). Set on <html>, since that is
     // what scrolls, and only while the website is open so the staff app keeps its own scrolling.
     const html = document.documentElement
     if (!reduceMotion()) html.style.scrollBehavior = 'smooth'
-    return () => { link.remove(); html.style.scrollBehavior = '' }
+    return () => { html.style.scrollBehavior = '' }
   }, [])
 
   const today = dateToString(new Date())
@@ -580,6 +638,9 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
   const [reading, setReading] = useState<'' | 'reading' | 'done'>('')
   const [readOut, setReadOut] = useState<Record<string, unknown> | null>(null)
   const [refNo, setRefNo] = useState('')
+  // Once the screenshot is read, the ways to pay, the account and the screenshot fold into one line: the guest
+  // has paid, so only the reference is left to check (Sebastian, 2026-11-19). "Change" opens them again.
+  const [folded, setFolded] = useState(false)
   const upload = useRef<Promise<boolean> | null>(null)
   const latest = useRef('')
   const typed = useRef(false)
@@ -649,7 +710,7 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
         if (latest.current === path) {
           setReadOut(data && typeof data === 'object' ? data : null)
           const got = typeof data?.reference === 'string' ? data.reference : ''
-          if (got && !typed.current) { setRefNo(got); setReading('done') } else setReading('')
+          if (got && !typed.current) { setRefNo(got); setReading('done'); setFolded(true) } else setReading('')
         }
       } catch { if (latest.current === path) setReading('') }
       return true
@@ -669,7 +730,7 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
     const back = (form: string, field?: 'shot') => { setStep('pay'); setErrs(field ? { shot: form } : { form }) }
     if (!(await upload.current)) return back('The screenshot did not go through. Add it again.', 'shot')
     const note = ask.venue ? (ask.kind ? `Wants ${ask.title}` : null) : breakfast ? 'Wants breakfast' : null
-    const { error } = await supabase.rpc('request_booking', {
+    const { data, error } = await supabase.rpc('request_booking', {
       p_source: 'website', p_room_id: roomId, p_check_in: checkIn, p_check_out: checkOut,
       p_guest_name: name.trim(), p_phone: phone.trim(), p_guests: ask.venue ? null : people, p_note: note,
       p_quoted_total: total, p_language: 'en', p_companions: names,
@@ -679,7 +740,7 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
     if (error) {
       const code = Object.keys(REFUSED).find(k => error.message?.includes(k))
       back(code ? REFUSED[code] : `It didn't go through. Check your connection and try again, or call ${PHONE}.`)
-    }
+    } else location.assign('?r=' + data) // the guest's own page, which they can keep (Sebastian, 2026-11-19)
   }
 
   const steps = () => {
@@ -728,6 +789,8 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
         <form className="form" noValidate onSubmit={send}>
           <Seg label="How much" value={half ? 'half' : 'all'} onPick={k => setHalf(k === 'half')}
             items={[{ k: 'half', t: 'Half', s: pesoWhole(deposit) }, { k: 'all', t: 'All', s: pesoWhole(total) }]} />
+          {folded && shot ? <div className="paid"><img src={shot.url} alt="" /><div><b>Sent by {way.label}</b><span className="num">{pesoWhole(amount)}</span></div>
+            <button type="button" onClick={() => setFolded(false)}>Change</button></div> : <>
           <div><div className="lab">Send it by</div>
             <Seg label="Send it by" value={way.k} onPick={setWayK} items={ways.map(w => ({ k: w.k, t: w.label }))} /></div>
           <div className="acct" key={way.k}><div><span>{way.name}</span><b className="num">{way.number}</b><span className="num">Send exactly {pesoWhole(amount)}</span></div><Copy text={way.number.replace(/\D/g, '')} /></div>
@@ -738,7 +801,7 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
                 : <><div className="ic" aria-hidden="true">⤒</div><div><b>Add the screenshot</b><span>The {way.label} receipt, after you send</span></div></>}
             </label>
             {errs.shot && <span className="err">{errs.shot}</span>}
-          </div>
+          </div></>}
           <div className="f"><label htmlFor="dw-rf">Reference no.{reading === 'done' && <span className="readtag">✓ Read from your screenshot</span>}</label>
             <input id="dw-rf" className={'num' + (reading === 'reading' ? ' reading' : '')} inputMode="numeric"
               placeholder={reading === 'reading' ? 'Reading your screenshot…' : 'e.g. 9012 345 678 901'} value={refNo}
@@ -753,12 +816,6 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
         {steps()}
         <svg className="tick" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" /><path d="M22 37l10 10 19-21" /></svg>
         <h3>Payment sent</h3>
-        <p>Thank you, {name.trim().split(' ')[0]}. The desk is checking your {pesoWhole(amount)}.</p>
-        <div className="track">
-          <div><i className="ok" />Request and screenshot sent</div>
-          <div><i className="wait" />The desk finds it in {way?.label}</div>
-          <div><i />We text {phone.trim()}: the {title} is yours</div>
-        </div>
       </div>}
     </div>
     {look && photo && <Lightbox src={photo} from={look} onClose={() => setLook(null)} />}
