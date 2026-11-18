@@ -716,7 +716,12 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
       const { error } = await supabase.storage.from('payment-shots').upload(path, file, { contentType: file.type })
       if (error) { if (latest.current === path) setReading(''); return false }
       try {
-        const { data } = await supabase.functions.invoke('read-payment-shot', { body: { path } })
+        // On live the read once never answered and the box sat on "Reading…" (2026-11-19): after 10 seconds the
+        // guest just types it.
+        const { data } = await Promise.race([
+          supabase.functions.invoke('read-payment-shot', { body: { path } }),
+          new Promise<{ data: null }>(res => setTimeout(() => res({ data: null }), 10_000)),
+        ])
         if (latest.current === path) {
           setReadOut(data && typeof data === 'object' ? data : null)
           const got = typeof data?.reference === 'string' ? data.reference : ''

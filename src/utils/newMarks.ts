@@ -26,8 +26,8 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: 'paper-slip-later', since: '2026-11-17' },
   // A room's order slip not paid yet is fixed from its number on the bill, and from Restaurant → History (`RoomSlipFix`).
   { id: 'fix-room-slip', since: '2026-11-17' },
-  // A website request comes paid: its screenshot, reference and checks on the request panel (`RequestPanel`).
-  { id: 'request-paid', since: '2026-11-17' },
+  // The request panel kept to the one job: the guest, the money to find, Confirm or Remove (`RequestPanel`).
+  { id: 'request-simple', since: '2026-11-19' },
   // The eye beside the request bell hides the requests' ghost pills, so their dates can be booked (`RequestBell`).
   { id: 'request-hide', since: '2026-11-15' },
   // The front desk switches the guests' chat bot off and on from the calendar's top line (`ChatBotSwitch`).

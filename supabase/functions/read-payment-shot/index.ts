@@ -1,6 +1,6 @@
 // **Reads a payment screenshot** (Sebastian, 2026-11-17: "auto extracting the reference number just from uploading
 // a screenshot"). The website uploads the guest's GCash or bank receipt to the private `payment-shots` bucket, then
-// asks this function what it says: the reference number, the amount, who it was sent to. The guest only checks the
+// asks this function what it says: the reference number and who it was sent to. The guest only checks the
 // reference box instead of typing it, and the desk's panel checks the rest against the request. Reading it proves
 // nothing: the desk still finds the money in the app. Anything that fails here answers {} and the guest types it.
 //
@@ -14,10 +14,12 @@ const MODELS = (env("SHOT_MODELS") || "gemini-3.5-flash-lite,gemini-3.1-flash-li
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info", "Access-Control-Allow-Methods": "POST, OPTIONS" }
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...CORS, "Content-Type": "application/json" } })
 
+// Only the reference and the account it went to (Sebastian, 2026-11-19): the amount is what the guest picked, and the
+// desk finds it in the app.
 const ASK = `This is a screenshot of a payment receipt from GCash or a Philippine bank app (BPI, Landbank, or another).
-Answer only with JSON: {"reference": string|null, "amount": number|null, "sent_to_name": string|null, "sent_to_number": string|null, "when": string|null, "app": string|null}.
-reference is the transaction's reference number exactly as shown (digits and spaces). amount is the peso amount sent, a number.
-sent_to_name and sent_to_number are the receiver. when is the date and time shown. app is "GCash", "BPI", "Landbank" or the bank's name.
+Answer only with JSON: {"reference": string|null, "sent_to_name": string|null, "sent_to_number": string|null}.
+reference is the transaction's reference number exactly as shown (digits and spaces).
+sent_to_name and sent_to_number are the receiver's name and account or mobile number as shown.
 If this is not a payment receipt, answer {}.`
 
 function b64(bytes: Uint8Array) {
@@ -46,7 +48,7 @@ Deno.serve(async req => {
   for (const model of MODELS) {
     try {
       const r = await fetch(URL_, {
-        method: "POST",
+        method: "POST", signal: AbortSignal.timeout(8000),
         headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
         body: JSON.stringify({
           model, temperature: 0, response_format: { type: "json_object" },
@@ -57,14 +59,10 @@ Deno.serve(async req => {
       const text = (await r.json()).choices?.[0]?.message?.content || "{}"
       const got = JSON.parse(text.replace(/^```(json)?|```$/g, "").trim())
       const clean = (v: unknown, n = 80) => (typeof v === "string" && v.trim() ? v.trim().slice(0, n) : null)
-      const amount = Number(String(got.amount ?? "").replace(/[^\d.]/g, ""))
       return json({
         reference: clean(got.reference, 40),
-        amount: Number.isFinite(amount) && amount > 0 ? amount : null,
         sent_to_name: clean(got.sent_to_name),
         sent_to_number: clean(got.sent_to_number, 40),
-        when: clean(got.when, 40),
-        app: clean(got.app, 40),
       })
     } catch { /* the next model */ }
   }
