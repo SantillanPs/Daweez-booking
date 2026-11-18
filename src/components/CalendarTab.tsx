@@ -24,7 +24,8 @@ import { showToast } from '../utils/toast'
 import { OPEN_END, isOpenEnded } from '../utils/openBlock'
 import { groupOf } from '../utils/bookingGroup'
 import { shortStayOut, shortStayTimeUp } from '../utils/shortStay'
-import { resettleWith } from '../utils/billPayment'
+import { payOnBill, resettleWith } from '../utils/billPayment'
+import { freshReceiptNumber } from '../utils/receiptNumber'
 import { ShortStayAlerts } from './calendar/ShortStayAlerts'
 import { ChannelBell } from './calendar/ChannelBell'
 import { SoldTwicePanel } from './calendar/SoldTwicePanel'
@@ -727,7 +728,26 @@ export function CalendarTab() {
                 asks.answered(ask.id)
                 closeBookingRequest(ask.id, 'booked', rows[0].id).catch(asks.refresh)
               }
-              closeManualForm(); setSelectedExtendBooking(rows[0]); setBillOf(rows[0])
+              closeManualForm()
+              const open = (list: Booking[]) => { const first = list.find(b => b.id === rows[0].id) || rows[0]; setSelectedExtendBooking(first); setBillOf(first) }
+              if (!ask?.pay_amount) { open(rows); return }
+              // **A website guest paid before asking** (Sebastian, 2026-11-17): the desk found it in the app and
+              // pressed "It came in", so the payment goes on the new bill, dated when the guest sent it.
+              const amount = ask.pay_amount
+              void (async () => {
+                try {
+                  const number = await freshReceiptNumber(rows[0], allBookings)
+                  const paid = payOnBill(rows, {
+                    amount, method: ask.pay_method || 'GCash', reference: ask.pay_reference || '', paidAt: ask.created_at, number,
+                    purpose: ask.quoted_total && amount >= ask.quoted_total ? 'Full payment' : 'Deposit',
+                  })
+                  for (const b of paid) await updateBooking(b)
+                  open(paid)
+                } catch {
+                  showToast('Booked, but the payment is not on the bill yet. Write it on the bill.', 'error')
+                  open(rows)
+                }
+              })()
             }}
             onClose={closeManualForm}
           />

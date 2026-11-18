@@ -22,6 +22,29 @@ export interface BookingRequest {
   quoted_total: number | null
   language: string | null
   created_at: string
+  /** What a website guest paid before sending (2026-11-17): the desk finds it in the app, then books it. */
+  pay_amount?: number | null
+  pay_method?: 'GCash' | 'Bank transfer' | null
+  /** Which of the hotel's accounts it went to. */
+  pay_account?: 'gcash' | 'bank' | 'bank2' | null
+  pay_reference?: string | null
+  /** The screenshot's path in the private `payment-shots` bucket. */
+  pay_shot?: string | null
+  /** What `read-payment-shot` read off it. */
+  pay_read?: { reference?: string | null; amount?: number | null; sent_to_name?: string | null; sent_to_number?: string | null; when?: string | null; app?: string | null } | null
+}
+
+/** A short-lived link to a payment screenshot; only the desk may look. */
+export async function paymentShotUrl(path: string): Promise<string | null> {
+  const { data } = await supabase.storage.from('payment-shots').createSignedUrl(path, 600)
+  return data?.signedUrl ?? null
+}
+
+/** Who used this reference before ("Ana Cruz, 3 Nov"), or null. */
+export async function referenceSeen(reference: string, except: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('payment_reference_seen', { p_reference: reference, p_except: except })
+  if (error) throw error
+  return (data as string | null) ?? null
 }
 
 export async function readBookingRequests(): Promise<BookingRequest[]> {

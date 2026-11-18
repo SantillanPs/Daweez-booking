@@ -10,6 +10,7 @@
 @keyframes dw-in { from { opacity: 0; transform: translateY(16px) } }
 @keyframes dw-pop { from { opacity: 0; transform: scale(.97) } }
 @keyframes dw-err { from { opacity: 0; transform: translateY(-4px) } }
+@keyframes dw-shimmer { to { background-position: -200% 0 } }
 @property --h { syntax: "<number>"; inherits: false; initial-value: 3 }
 
 .dw {
@@ -244,6 +245,20 @@
   & .seal .sd { font-family: var(--display); font-size: 30px; letter-spacing: 0; font-weight: 800 }
   @media (max-width: 600px) { & .excl::after { background: linear-gradient(to top, rgba(20,18,14,.95) 55%, rgba(20,18,14,.3)) } & .excl { align-items: flex-end } & .seal { top: 36px; right: 36px; width: 80px } & .xin { padding: 150px 32px 44px } & .xprice { font-size: 40px } }
 
+  /* questions: each opens in place; the height slides where the browser can (interpolate-size) */
+  & .faq { display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; align-items: start; interpolate-size: allow-keywords }
+  & .faq details { border-bottom: 1px solid var(--line) }
+  & .faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 16px; align-items: center; padding-block: 18px; font-family: var(--display); font-size: 18px; font-weight: 700 }
+  & .faq summary::-webkit-details-marker { display: none }
+  & .faq summary::after { content: '+'; font-size: 24px; font-weight: 400; color: var(--gold-ink); transition: transform .25s var(--ease) }
+  & .faq details[open] summary::after { transform: rotate(45deg) }
+  & .faq summary:active { opacity: .7 }
+  & .faq details::details-content { block-size: 0; overflow: hidden; transition: block-size .3s var(--ease), content-visibility .3s allow-discrete }
+  & .faq details[open]::details-content { block-size: auto }
+  & .faq p { margin: 0 0 18px; color: var(--ink2); max-width: 46ch }
+  @media (max-width: 720px) { & .faq { grid-template-columns: 1fr } }
+  @media (prefers-reduced-motion: reduce) { & .faq details::details-content, & .faq summary::after { transition: none } }
+
   /* three steps */
   & .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px }
   & .steps div { border-top: 2px solid var(--ink); padding-top: 14px }
@@ -269,15 +284,6 @@
   & footer { margin-top: 96px; border-top: 1px solid var(--line); padding-block: 28px; color: var(--ink2); font-size: 14px }
   & footer .wrap { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between }
   & footer .brand { color: var(--ink); font-size: 17px }
-  & footer .by { margin-top: 28px; font-size: 13px }
-  & footer .by b { color: var(--ink); font-weight: 600 }
-  & footer .socials { display: flex; gap: 8px }
-  & footer .socials a { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); color: var(--ink2); transition: background .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease), transform .16s var(--ease) }
-  & footer .socials svg { width: 16px; height: 16px; fill: currentColor }
-  & footer .socials a:active { transform: scale(.94) }
-  @media (hover: hover) and (pointer: fine) {
-    & footer .socials a:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); transform: translateY(-2px) }
-  }
 
   /* request sheet: grows from what was tapped, with its photo on top */
   & .scrim { position: fixed; inset: 0; z-index: 70; background: rgba(20,18,14,.6); opacity: 0; transition: opacity .35s }
@@ -286,6 +292,9 @@
   & .sheet.open { transform: none; opacity: 1 }
   & .sph { position: relative; aspect-ratio: 2/1; background: var(--gold-soft); flex: none }
   & .sph img { width: 100%; height: 100%; object-fit: cover }
+  & .sph .see { all: unset; display: block; width: 100%; height: 100%; cursor: zoom-in }
+  & .sph .see:focus-visible { outline: 2px solid var(--gold); outline-offset: -4px }
+  & .scrim.lbs { z-index: 79 }
   & .x { all: unset; cursor: pointer; position: absolute; z-index: 1; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.95); color: var(--ink); display: grid; place-items: center; font-size: 20px; transition: transform .16s ease-out }
   & .x:active { transform: scale(.95) }
   & .sbody { padding: 20px 22px 22px }
@@ -293,6 +302,7 @@
   & .when { margin-top: 4px; color: var(--ink2); font-size: 14px }
   & .form { margin-top: 16px; display: grid; gap: 14px }
   & .f { display: grid; gap: 4px }
+  & .f input + input { margin-top: 4px }
   & .f label { font-size: 13px; font-weight: 700; color: var(--ink2) }
   & .f input { border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 16px; outline: none; background: #fff; transition: border-color .2s }
   & .f input::placeholder { color: #9A968D }
@@ -319,6 +329,38 @@
   & .pay { margin-top: 16px; text-align: left; display: grid; gap: 8px }
   & .pay div { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px }
   & .pay b { display: block; font-size: 15px }
+
+  /* pay before it is sent: You → Pay → Done, half or all, the account, the screenshot, its reference read off it */
+  & .psteps { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink2); margin-bottom: 14px }
+  & .psteps i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; background: var(--sand); transition: background .3s, color .3s }
+  & .psteps i.on { background: var(--ink); color: #fff }
+  & .psteps i.ok { background: var(--green); color: #fff }
+  & .psteps hr { flex: 1; border: 0; border-top: 1px solid var(--line); margin: 0 }
+  & .pseg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--sand); border-radius: 12px; padding: 4px; position: relative }
+  & .pseg .knob { position: absolute; top: 4px; bottom: 4px; background: #fff; border-radius: 9px; box-shadow: 0 1px 3px rgba(28,28,28,.12); transition: left .3s var(--ease), width .3s var(--ease) }
+  & .pseg button { all: unset; cursor: pointer; position: relative; text-align: center; padding: 9px 4px; font-weight: 700; font-size: 15px; min-height: 26px }
+  & .pseg button small { display: block; font-weight: 600; font-size: 12px; color: var(--ink2) }
+  & .pseg button:focus-visible { outline: 2px solid var(--gold); border-radius: 9px }
+  & .lab { font-size: 13px; font-weight: 700; color: var(--ink2); margin-bottom: 4px }
+  & .acct { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border: 1px dashed var(--gold); background: var(--gold-soft); border-radius: 12px; animation: dw-pop .3s var(--ease) backwards; font-size: 14px; color: var(--gold-ink) }
+  & .acct b { display: block; font: 700 18px var(--display); color: var(--ink) }
+  & .drop { border: 1.5px dashed var(--line); border-radius: 14px; padding: 14px; display: flex; gap: 14px; align-items: center; cursor: pointer; transition: border-color .2s, background .2s }
+  & .drop.has { border-color: var(--gold); border-style: solid }
+  & .drop:focus-within { border-color: var(--gold) }
+  & .drop input { position: absolute; width: 1px; height: 1px; opacity: 0 }
+  & .drop .ic { width: 44px; height: 44px; border-radius: 12px; background: var(--sand); display: grid; place-items: center; font-size: 20px; flex: none }
+  & .drop img { width: 44px; height: 72px; object-fit: cover; border-radius: 6px; flex: none; animation: dw-pop .3s var(--ease) backwards }
+  & .drop b { display: block }
+  & .drop span { font-size: 13px; color: var(--ink2) }
+  @media (hover: hover) and (pointer: fine) { & .drop:hover { border-color: var(--gold) } }
+  & .f input.reading { border-color: var(--gold); background: linear-gradient(90deg, #fff 0%, var(--gold-soft) 50%, #fff 100%) 0 0 / 200% 100%; animation: dw-shimmer 1.1s linear infinite }
+  & .f .readtag { float: right; font-weight: 700; color: var(--gold-ink); animation: dw-pop .3s var(--ease) backwards }
+  & .back { all: unset; cursor: pointer; text-align: center; font-size: 14px; font-weight: 600; color: var(--ink2); padding: 6px }
+  & .track { display: grid; gap: 8px; text-align: left; margin-top: 14px }
+  & .track div { display: flex; gap: 10px; align-items: center; font-size: 14px }
+  & .track i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); flex: none }
+  & .track i.ok { background: var(--green); border-color: var(--green) }
+  & .track i.wait { border-color: var(--gold); border-top-color: transparent; animation: dw-spin 1s linear infinite }
 
   /* gallery: grows from the tile, one photo a screen */
   & .scrim.dark { background: rgba(14,13,11,.94) }

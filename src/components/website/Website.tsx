@@ -24,6 +24,21 @@ const TOWN = 'Tandag City, Surigao del Sur'
 const MAP_Q = 'Daweez Pension House, Tandag City, Surigao del Sur'
 // the hotel's Facebook page (Sebastian, 2026-11-17: facebook.com/daweeztandag); m.me opens a chat with it
 const MESSENGER = 'https://m.me/daweeztandag'
+// the hotel's FAQ and booking-policy posts on Facebook, in the site's plain words (Sebastian, 2026-11-17)
+const FAQ: [string, string][] = [
+  ['Where are you?', 'Purok Kanipaan, San Agustin Sur, Tandag City. Search Daweez Pension House on Google Maps.'],
+  ['When is check-in and check-out?', 'Check in from 2 PM. Check out by 12 noon.'],
+  ['Can I check in early or leave late?', 'Yes, at ₱100 an hour. Leaving more than 3 hours late is charged one night.'],
+  ['How much do I pay to book a room?', 'Half the stay. The rest is paid when you check in.'],
+  ['How can I pay?', 'Cash, GCash, or a bank transfer to BPI, Landbank or Security Bank.'],
+  ['Can I get my money back if I cancel?', 'No. What you paid to book is not refunded, but it can move to another free date.'],
+  ['Can I change my dates?', 'Yes, to other free dates. Tell us ahead of time.'],
+  ['Is there a deposit for the Vacation House?', 'Yes, ₱2,000 when you check in, on top of the booking. The rest of the bill is paid then too.'],
+  ['Can I walk in?', 'Yes, if a room is free. Guests with a reservation come first.'],
+  ['Is breakfast included?', 'No. You can order from our menu ahead or here.'],
+  ['Is there Wi-Fi?', 'Yes. Ask the front desk for your Wi-Fi voucher.'],
+  ['Is there parking?', 'Yes, free for our guests.'],
+]
 
 // The hotel's own photos (D:\Daweez Photos), resized into public/website. Rooms 1 and 9 were cut out of
 // the Facebook posters (2026-11-17). A room type shows the photo of its first room that has one; room 8
@@ -59,7 +74,9 @@ const openCalendar = (e: React.MouseEvent<HTMLLabelElement>) => {
 
 interface RoomType { name: string; rooms: Room[]; sleeps: number; price: number; breakfast: number | null }
 /** What a request is for: a room (its first free one) or a venue, with the venue's kind when one was picked. */
-interface Ask { id: string; title: string; photo?: string; price: number; venue: boolean; kind?: string; breakfast: number | null; from: DOMRect }
+interface Ask { id: string; title: string; photo?: string; price: number; venue: boolean; kind?: string; breakfast: number | null; from: DOMRect
+  /** The free rooms of a kind there are several of: the guest picks one. */
+  choices?: Room[] }
 interface Kind { key?: string; label: string; price: number }
 
 /** The day the guest now in that room leaves: the latest check-out of what holds it on those dates. */
@@ -222,7 +239,7 @@ export function Website() {
           <div className={'links' + (solid && here ? ' marked' : '')} ref={links}>
             <span className="mark" aria-hidden="true" />
             <a href="#rooms">Rooms</a><a href="#look">Look around</a><a href="#events">Events</a>
-            {whole && <a href="#exclusive" className="xl">Exclusive</a>}<a href="#find">Find us</a>
+            {whole && <a href="#exclusive" className="xl">Exclusive</a>}<a href="#faq">FAQ</a><a href="#find">Find us</a>
             <a className="cta" href="#rooms">Book</a>
           </div>
         </div>
@@ -268,7 +285,7 @@ export function Website() {
               const photo = photoOf(t.rooms)
               return (
                 <button key={t.name} className={'room' + (free.length ? '' : ' busy')} style={{ animationDelay: i * 50 + 'ms' }} disabled={!free.length}
-                  onClick={e => setAsk({ id: free[0].id, title: t.name, photo, price: t.price, venue: false, breakfast: t.breakfast, from: e.currentTarget.getBoundingClientRect() })}>
+                  onClick={e => setAsk({ id: free[0].id, title: t.name, photo, price: t.price, venue: false, breakfast: t.breakfast, from: e.currentTarget.getBoundingClientRect(), choices: free.length > 1 ? free : undefined })}>
                   <div className="ph">
                     {photo ? <img src={photo} alt={t.name} loading="lazy" /> : <div className="no"><span>{nos[0]}</span></div>}
                     {bookings.data && nights > 0 && (free.length
@@ -387,6 +404,13 @@ export function Website() {
         </div>
       </div></section>
 
+      <section id="faq"><div className="wrap">
+        <div className="head rv" ref={reveal}><div><div className="eyebrow">Good to know</div><h2>Questions</h2></div></div>
+        <div className="faq rvg" ref={reveal}>
+          {FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}
+        </div>
+      </div></section>
+
       <section id="find"><div className="wrap find">
         <div className="pic">
           <iframe title="Map" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://www.google.com/maps?q=${encodeURIComponent(MAP_Q)}&output=embed`} />
@@ -402,12 +426,7 @@ export function Website() {
       </div></section>
 
       <footer><div className="wrap"><a className="brand" href="#top"><img src={logo} alt="" />Daweez Pension House</a><span>Open 24 hours. {TOWN}.</span></div>
-        {/* the maker's credit, its own quiet row at the very bottom (Sebastian, 2026-11-17) */}
-        <div className="wrap by"><span>Designed &amp; built by <b>Sebastian Santillan</b></span>
-          <span className="socials">
-            <a href="https://github.com/SantillanPs" target="_blank" rel="noopener" aria-label="Sebastian on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.7 1.6.2 2.9.1 3.2.8.8 1.3 1.9 1.3 3.1 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3" /></svg></a>
-            <a href="https://www.linkedin.com/in/sebastian-santillan-366841260/" target="_blank" rel="noopener" aria-label="Sebastian on LinkedIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 20.5h-3.6v-5.6c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9v5.7H9.3V9h3.4v1.6c.5-.9 1.6-1.8 3.4-1.8 3.6 0 4.3 2.4 4.3 5.5v6.2zM5.3 7.4a2.1 2.1 0 1 1 0-4.1 2.1 2.1 0 0 1 0 4.1zM7.1 20.5H3.5V9h3.6v11.5zM22.2 0H1.8C.8 0 0 .8 0 1.7v20.6c0 .9.8 1.7 1.8 1.7h20.4c1 0 1.8-.8 1.8-1.7V1.7C24 .8 23.2 0 22.2 0z" /></svg></a>
-          </span></div></footer>
+      </footer>
 
       {ask && <RequestSheet ask={ask} checkIn={checkIn} checkOut={checkOut} people={people}
         rooms={rooms.data || []} venues={venues.data || []} onClose={() => setAsk(null)} />}
@@ -439,7 +458,7 @@ function Lightbox({ src, from, onClose }: { src: string; from: DOMRect; onClose:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   return <>
-    <div className={'scrim' + (on ? ' open' : '')} />
+    <div className={'scrim lbs' + (on ? ' open' : '')} />
     <div className={'lb' + (on ? ' on' : '')} onClick={close}><img ref={img} src={src} alt="" onLoad={grow} /></div>
   </>
 }
@@ -509,8 +528,34 @@ const REFUSED: Record<string, string> = {
   TOO_MANY_REQUESTS: 'You already have requests waiting. The desk will call you soon.',
   BAD_DATES: 'Those dates can no longer be booked. Pick dates from today on.',
   BAD_DETAILS: 'Check your name and number, then send again.',
+  NEED_PAYMENT: 'Add the screenshot and the reference number, then send again.',
 }
 
+interface Way { k: 'gcash' | 'bank' | 'bank2'; label: string; name: string; number: string; method: 'GCash' | 'Bank transfer' }
+// "Bank of the Philippine Islands (BPI)" is BPI on a button.
+// "Land Bank of the Philippines (LB)" is Landbank: nobody calls it LB.
+const shortBank = (n: string) => /land ?bank/i.test(n) ? 'Landbank' : n.match(/\(([^)]+)\)/)?.[1] || n
+
+/** A row of choices with a white knob that slides to the one picked. */
+function Seg<T extends string>({ items, value, onPick, label }: { items: { k: T; t: string; s?: string }[]; value: T; onPick: (k: T) => void; label: string }) {
+  const box = useRef<HTMLDivElement>(null), knob = useRef<HTMLSpanElement>(null)
+  useLayoutEffect(() => {
+    const b = box.current?.querySelector<HTMLElement>('[aria-pressed="true"]'), k = knob.current
+    if (b && k) { k.style.left = b.offsetLeft + 'px'; k.style.width = b.offsetWidth + 'px' }
+  })
+  return <div className="pseg" ref={box} role="group" aria-label={label}><span className="knob" ref={knob} />
+    {items.map(i => <button key={i.k} type="button" aria-pressed={i.k === value} onClick={() => onPick(i.k)}>{i.t}{i.s && <small className="num">{i.s}</small>}</button>)}
+  </div>
+}
+
+/**
+ * **Pay to keep it** (Sebastian, 2026-11-17): "since the guests will be able to book a room in the website, they should
+ * also be able to pay before the reservation gets saved". You → Pay → Done: half or all of the stay, by GCash or a bank
+ * transfer, with the screenshot of the transfer. No request goes in without it ("Can a website guest still send a
+ * request without paying?" — "no"). The request still holds nothing: the desk finds the money in the app and books it.
+ * The screenshot is read for its reference number as soon as it is added (`read-payment-shot`), so the guest only
+ * checks it; typing over it always wins.
+ */
 function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }: {
   ask: Ask; checkIn: string; checkOut: string; people: number; rooms: Room[]; venues: Venue[]; onClose: () => void
 }) {
@@ -518,19 +563,44 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [companions, setCompanions] = useState('')
+  // One box for each person coming with the guest (Sebastian, 2026-11-17: "I chose 3 guests, why is there only 1 field").
+  const [companions, setCompanions] = useState<string[]>([])
+  // A kind with several free rooms: the guest says which one; it is never picked for them (Sebastian, 2026-11-17).
+  const [roomId, setRoomId] = useState(ask.choices ? '' : ask.id)
+  const room = ask.choices?.find(r => r.id === roomId)
+  const photo = room && ROOM_PHOTOS.includes(room.room_number) ? `/website/room-${room.room_number}.webp` : ask.photo
+  // The sheet's photo opens whole (Sebastian, 2026-11-17: "these should be able to view the full image").
+  const [look, setLook] = useState<DOMRect | null>(null)
+  const title = room ? `${ask.title}, Room ${room.room_number}` : ask.title
   const [breakfast, setBreakfast] = useState(false)
-  const [errs, setErrs] = useState<{ name?: string; phone?: string; companions?: string; form?: string }>({})
-  const [sent, setSent] = useState(false)
+  const [errs, setErrs] = useState<{ room?: string; name?: string; phone?: string; companions?: string; shot?: string; ref?: string; form?: string }>({})
+  const [step, setStep] = useState<'you' | 'pay' | 'sent'>('you')
+  const [half, setHalf] = useState(true)
+  const [shot, setShot] = useState<{ path: string; url: string } | null>(null)
+  const [reading, setReading] = useState<'' | 'reading' | 'done'>('')
+  const [readOut, setReadOut] = useState<Record<string, unknown> | null>(null)
+  const [refNo, setRefNo] = useState('')
+  const upload = useRef<Promise<boolean> | null>(null)
+  const latest = useRef('')
+  const typed = useRef(false)
   const days = nightsOf(checkIn, checkOut)
   const unit = ask.venue ? 'day' : 'night'
   // A venue is never asked for a headcount or companions (the same rule as the chat bot).
   const party = ask.venue ? 1 : people
   const total = calculatePricing(ask.venue
     ? { venueId: ask.id, eventAddons: { venue_type: ask.kind }, checkIn, checkOut, guestEmail: '', source: 'website', rooms, venues }
-    : { roomId: ask.id, checkIn, checkOut, guestEmail: '', source: 'website', breakfastEnabled: breakfast, rooms, venues }).grandTotal
+    : { roomId: roomId || ask.id, checkIn, checkOut, guestEmail: '', source: 'website', breakfastEnabled: breakfast, rooms, venues }).grandTotal
   const deposit = Math.round(total / 2)
+  const amount = half ? deposit : total
   const pay = getPaymentAccounts()
+  const ways = ([
+    pay.gcashNumber && { k: 'gcash', label: 'GCash', name: pay.gcashName, number: pay.gcashNumber, method: 'GCash' },
+    pay.bankAccountNumber && { k: 'bank', label: shortBank(pay.bankName), name: pay.bankAccountName, number: pay.bankAccountNumber, method: 'Bank transfer' },
+    pay.bank2AccountNumber && { k: 'bank2', label: shortBank(pay.bank2Name), name: pay.bank2AccountName, number: pay.bank2AccountNumber, method: 'Bank transfer' },
+  ].filter(Boolean)) as Way[]
+  const [wayK, setWayK] = useState<Way['k']>(ways[0]?.k || 'gcash')
+  const way = ways.find(w => w.k === wayK) || ways[0]
+  const names = companions.slice(0, party - 1).map(s => s.trim()).filter(Boolean)
 
   const close = () => { setOpen(false); setTimeout(onClose, 300) }
 
@@ -541,73 +611,156 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
     el.style.setProperty('--ox', from.left + from.width / 2 - left + 'px')
     el.style.setProperty('--oy', from.top + from.height / 2 - top + 'px')
     requestAnimationFrame(() => setOpen(true))
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && close()
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && !document.querySelector('.lb') && close() // Escape on the open photo closes only the photo
     document.addEventListener('keydown', esc)
     setTimeout(() => el.querySelector('input')?.focus({ preventScroll: true }), 350)
     return () => document.removeEventListener('keydown', esc)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  useEffect(() => { ref.current?.scrollTo({ top: 0 }) }, [step])
+
+  const toPay = (e: React.FormEvent) => {
+    e.preventDefault()
+    const next = {
+      room: roomId ? undefined : 'Pick the room you want.',
+      name: name.trim() ? undefined : 'Write your name so the desk knows who to look for.',
+      phone: phone.replace(/\D/g, '').length >= 10 ? undefined : 'Write a number we can call, like 0917 482 3361.',
+      companions: party > 1 && names.length < party - 1 ? 'Write the name of everyone coming with you.' : undefined,
+    }
+    setErrs(next)
+    if (!next.room && !next.name && !next.phone && !next.companions) setStep('pay')
+  }
+
+  // The screenshot goes up the moment it is picked, and is read for its reference behind it.
+  const addShot = (file: File | undefined) => {
+    if (!file) return
+    if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type)) { setErrs({ shot: 'Add a picture of the receipt, like a screenshot.' }); return }
+    if (file.size > 6 * 1024 * 1024) { setErrs({ shot: 'That picture is too big. Take a screenshot of the receipt instead.' }); return }
+    const path = crypto.randomUUID() + '.' + file.type.split('/')[1].replace('jpeg', 'jpg')
+    latest.current = path
+    setShot({ path, url: URL.createObjectURL(file) })
+    setErrs({}); setReadOut(null)
+    setReading(typed.current && refNo ? '' : 'reading')
+    upload.current = (async () => {
+      const { error } = await supabase.storage.from('payment-shots').upload(path, file, { contentType: file.type })
+      if (error) { if (latest.current === path) setReading(''); return false }
+      try {
+        const { data } = await supabase.functions.invoke('read-payment-shot', { body: { path } })
+        if (latest.current === path) {
+          setReadOut(data && typeof data === 'object' ? data : null)
+          const got = typeof data?.reference === 'string' ? data.reference : ''
+          if (got && !typed.current) { setRefNo(got); setReading('done') } else setReading('')
+        }
+      } catch { if (latest.current === path) setReading('') }
+      return true
+    })()
+  }
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault()
-    const names = companions.split(/[,\n]/).map(s => s.trim()).filter(Boolean)
     const next = {
-      name: name.trim() ? undefined : 'Write your name so the desk knows who to look for.',
-      phone: phone.replace(/\D/g, '').length >= 10 ? undefined : 'Write a number we can call, like 0917 482 3361.',
-      companions: party > 1 && names.length < party - 1 ? `Write the name of everyone coming with you (${party - 1}), separated by commas.` : undefined,
+      shot: shot ? undefined : `Add the screenshot of the ${way?.label || 'payment'} receipt.`,
+      ref: refNo.replace(/\D/g, '').length >= 6 ? undefined : 'Write the reference number on your receipt.',
     }
     setErrs(next)
-    if (next.name || next.phone || next.companions) return
+    if (next.shot || next.ref || !way || !shot) return
     // Shown at once and taken back if the database refuses (the app's rule: buttons never wait).
-    setSent(true)
+    setStep('sent')
+    const back = (form: string, field?: 'shot') => { setStep('pay'); setErrs(field ? { shot: form } : { form }) }
+    if (!(await upload.current)) return back('The screenshot did not go through. Add it again.', 'shot')
     const note = ask.venue ? (ask.kind ? `Wants ${ask.title}` : null) : breakfast ? 'Wants breakfast' : null
     const { error } = await supabase.rpc('request_booking', {
-      p_source: 'website', p_room_id: ask.id, p_check_in: checkIn, p_check_out: checkOut,
+      p_source: 'website', p_room_id: roomId, p_check_in: checkIn, p_check_out: checkOut,
       p_guest_name: name.trim(), p_phone: phone.trim(), p_guests: ask.venue ? null : people, p_note: note,
       p_quoted_total: total, p_language: 'en', p_companions: names,
+      p_pay_amount: amount, p_pay_method: way.method, p_pay_account: way.k, p_pay_reference: refNo.trim(),
+      p_pay_shot: shot.path, p_pay_read: readOut,
     })
     if (error) {
-      setSent(false)
       const code = Object.keys(REFUSED).find(k => error.message?.includes(k))
-      setErrs({ form: code ? REFUSED[code] : `The request didn't go through. Check your connection and try again, or call ${PHONE}.` })
+      back(code ? REFUSED[code] : `It didn't go through. Check your connection and try again, or call ${PHONE}.`)
     }
+  }
+
+  const steps = () => {
+    const n = step === 'you' ? 1 : step === 'pay' ? 2 : 3
+    const c = (i: number) => n > i ? 'ok' : n === i ? 'on' : ''
+    return <div className="psteps" aria-hidden="true"><i className={c(1)}>{n > 1 ? '✓' : 1}</i>You<hr /><i className={c(2)}>{n > 2 ? '✓' : 2}</i>Pay<hr /><i className={c(3)}>3</i>Done</div>
   }
 
   return <>
     <div className={'scrim' + (open ? ' open' : '')} onClick={close} />
     <div ref={ref} className={'sheet' + (open ? ' open' : '')} role="dialog" aria-modal="true" aria-labelledby="dw-sheet">
       <div className="sph">
-        {ask.photo ? <img src={ask.photo} alt="" /> : <div className="no" />}
+        {photo ? <button className="see" aria-label="See the whole photo" onClick={e => setLook(e.currentTarget.getBoundingClientRect())}><img key={photo} src={photo} alt="" /></button> : <div className="no" />}
         <button className="x" aria-label="Close" onClick={close}>×</button>
       </div>
-      {!sent ? <div className="sbody">
-        <h3 id="dw-sheet">{ask.title}</h3>
+      {step === 'you' && <div className="sbody">
+        {steps()}
+        <h3 id="dw-sheet">{title}</h3>
         <p className="when num">{longDay(checkIn)} to {longDay(checkOut)}{ask.venue ? '' : ` · ${people} ${people > 1 ? 'people' : 'person'}`}</p>
-        <form className="form" noValidate onSubmit={send}>
+        <form className="form" noValidate onSubmit={toPay}>
+          {ask.choices && <div className="f"><div className="lab">Which room</div>
+            <Seg label="Which room" value={roomId} onPick={k => { setRoomId(k); setErrs(e => ({ ...e, room: undefined })) }}
+              items={ask.choices.map(r => ({ k: r.id, t: 'Room ' + r.room_number }))} />
+            {errs.room && <span className="err">{errs.room}</span>}</div>}
           <div className="f"><label htmlFor="dw-nm">Your name</label><input id="dw-nm" placeholder="e.g. Maria Santos" autoComplete="name" value={name} onChange={e => setName(e.target.value)} />{errs.name && <span className="err">{errs.name}</span>}</div>
           <div className="f"><label htmlFor="dw-ph">Mobile number</label><input id="dw-ph" inputMode="tel" placeholder="e.g. 0917 482 3361" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value)} />{errs.phone && <span className="err">{errs.phone}</span>}</div>
-          {party > 1 && <div className="f"><label htmlFor="dw-cp">Who is coming with you</label><input id="dw-cp" placeholder="e.g. Jose Santos, Ana Santos" value={companions} onChange={e => setCompanions(e.target.value)} />{errs.companions && <span className="err">{errs.companions}</span>}</div>}
+          {party > 1 && <div className="f"><label htmlFor="dw-cp0">Who is coming with you</label>
+            {Array.from({ length: party - 1 }, (_, i) => <input key={i} id={'dw-cp' + i} aria-label={`Person ${i + 2}`}
+              placeholder={['e.g. Jose Santos', 'e.g. Ana Santos', 'e.g. Ben Santos', 'e.g. Lea Santos'][i % 4]}
+              value={companions[i] || ''} onChange={e => { const v = e.target.value; setCompanions(c => { const n = [...c]; n[i] = v; return n }) }} />)}
+            {errs.companions && <span className="err">{errs.companions}</span>}</div>}
           {ask.breakfast && <div className="switch"><span>Breakfast every morning <span className="num faint">{pesoWhole(ask.breakfast)}</span></span>
             <button type="button" aria-pressed={breakfast} aria-label="Breakfast" onClick={() => setBreakfast(b => !b)} /></div>}
           <div className="sum num">
             <div><span>{pesoWhole(ask.price)} × {days} {unit}{days > 1 ? 's' : ''}</span><span>{pesoWhole(ask.price * days)}</span></div>
             {total > ask.price * days && <div><span>Breakfast</span><span>{pesoWhole(total - ask.price * days)}</span></div>}
             <div className="tot"><span>Total</span><Count value={total} /></div>
-            <div className="dep"><span>Half to keep it</span><Count value={deposit} /></div>
           </div>
-          {errs.form && <p className="err">{errs.form}</p>}
-          <button className="send" type="submit">Send request</button>
+          <button className="send" type="submit">Pay to keep it</button>
         </form>
-      </div> : <div className="sbody done-box">
+      </div>}
+      {step === 'pay' && way && <div className="sbody">
+        {steps()}
+        <h3 id="dw-sheet">Pay to keep it</h3>
+        <p className="when num">{title}</p>
+        <form className="form" noValidate onSubmit={send}>
+          <Seg label="How much" value={half ? 'half' : 'all'} onPick={k => setHalf(k === 'half')}
+            items={[{ k: 'half', t: 'Half', s: pesoWhole(deposit) }, { k: 'all', t: 'All', s: pesoWhole(total) }]} />
+          <div><div className="lab">Send it by</div>
+            <Seg label="Send it by" value={way.k} onPick={setWayK} items={ways.map(w => ({ k: w.k, t: w.label }))} /></div>
+          <div className="acct" key={way.k}><div><span>{way.name}</span><b className="num">{way.number}</b><span className="num">Send exactly {pesoWhole(amount)}</span></div><Copy text={way.number.replace(/\D/g, '')} /></div>
+          <div className="f">
+            <label className={'drop' + (shot ? ' has' : '')}>
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={e => addShot(e.target.files?.[0])} />
+              {shot ? <><img src={shot.url} alt="" /><div><b>Screenshot added</b><span>Tap to change it</span></div></>
+                : <><div className="ic" aria-hidden="true">⤒</div><div><b>Add the screenshot</b><span>The {way.label} receipt, after you send</span></div></>}
+            </label>
+            {errs.shot && <span className="err">{errs.shot}</span>}
+          </div>
+          <div className="f"><label htmlFor="dw-rf">Reference no.{reading === 'done' && <span className="readtag">✓ Read from your screenshot</span>}</label>
+            <input id="dw-rf" className={'num' + (reading === 'reading' ? ' reading' : '')} inputMode="numeric"
+              placeholder={reading === 'reading' ? 'Reading your screenshot…' : 'e.g. 9012 345 678 901'} value={refNo}
+              onChange={e => { typed.current = true; setReading(''); setRefNo(e.target.value) }} />
+            {errs.ref && <span className="err">{errs.ref}</span>}</div>
+          {errs.form && <p className="err">{errs.form}</p>}
+          <button className="send" type="submit">Send payment</button>
+          <button className="back" type="button" onClick={() => { setErrs({}); setStep('you') }}>Back</button>
+        </form>
+      </div>}
+      {step === 'sent' && <div className="sbody done-box">
+        {steps()}
         <svg className="tick" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" /><path d="M22 37l10 10 19-21" /></svg>
-        <h3>Request sent</h3>
-        <p>Thank you, {name.trim().split(' ')[0]}. The desk will call {phone.trim()} to confirm the {ask.title}.</p>
-        <div className="pay">
-          <p className="num strong">Once confirmed, send {pesoWhole(deposit)} to:</p>
-          {pay.gcashNumber && <div><b>GCash</b>{pay.gcashName} · <span className="num">{pay.gcashNumber}</span></div>}
-          {pay.bankAccountNumber && <div><b>{pay.bankName}</b>{pay.bankAccountName} · <span className="num">{pay.bankAccountNumber}</span></div>}
+        <h3>Payment sent</h3>
+        <p>Thank you, {name.trim().split(' ')[0]}. The desk is checking your {pesoWhole(amount)}.</p>
+        <div className="track">
+          <div><i className="ok" />Request and screenshot sent</div>
+          <div><i className="wait" />The desk finds it in {way?.label}</div>
+          <div><i />We text {phone.trim()}: the {title} is yours</div>
         </div>
       </div>}
     </div>
+    {look && photo && <Lightbox src={photo} from={look} onClose={() => setLook(null)} />}
   </>
 }
