@@ -40,9 +40,9 @@ const FAQ: [string, string][] = [
   ['Is there parking?', 'Yes, free for our guests.'],
 ]
 
-// The hotel's own photos (D:\Daweez Photos), resized into public/website. Rooms 1 and 9 were cut out of
-// the Facebook posters (2026-11-17). A room type shows the photo of its first room that has one; room 8
-// and the Gazebo keep the patterned slot until theirs come.
+// The hotel's own photos, resized into public/website. Every room's photo and the Gazebo's are the ones on
+// its Airbnb listing (Sebastian, 2026-11-19: "airbnb has the gazebo photos you needed"); the Gazebo is the
+// dining hall. A room type shows the photo of its first room that has one.
 const ROOM_PHOTOS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 const photoOf = (rooms: Room[]) => {
   const n = rooms.map(r => r.room_number).find(n => ROOM_PHOTOS.includes(n))
@@ -53,6 +53,8 @@ const LOOK = [['a', 'look-bar', 'The bar'], ['b', 'look-hall', 'Hallway'], ['c',
 // real parties. The first two sets were cut out of the hotel's Facebook posters, without their frame or label.
 const VH_PICS = ['vacation-house', 'vh-morning', 'vh-night', 'vh-living', 'vh-dining-1', 'vh-kitchen-1', 'vh-kitchen-1b', 'vh-bar', 'vh-pantry', 'vh-kitchen-2', 'vh-dining-2', 'vh-master', 'vh-master-bath', 'vh-upstairs-1', 'vh-upstairs-2']
 const GARDEN_PICS = ['garden', 'garden-palms', 'garden-lawn', 'garden-hut']
+const GAZEBO_PICS = ['gazebo', 'gazebo-1', 'gazebo-2', 'gazebo-3', 'gazebo-4', 'gazebo-5', 'gazebo-6']
+const VENUE_PICS: Record<string, string[]> = { 'venue-garden': GARDEN_PICS, 'venue-gazebo': GAZEBO_PICS }
 const HELD: [string, string][] = [['ev-wedding', 'wide'], ['ev-80th', 'land'], ['ev-arch', 'tall'], ['ev-kids', 'land'], ['ev-canopies', 'wide'], ['ev-long-table', 'tall'], ['ev-hall-party', 'land'], ['ev-round-tables', 'tall'], ['ev-dinner', 'tall']]
 const PICS_ICON = <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10" r="2" /><path d="M21 16l-5-5-8 8" /></svg>
 type Gal = { title: string; photos: string[]; at: number; from: DOMRect; ask?: (e: React.MouseEvent) => void }
@@ -418,14 +420,18 @@ function Site() {
                 </div>
               </div>
             )}
-            {[gazebo, garden].map(v => v && (
-              <button key={v.id} className="cell" onClick={e => v.id === 'venue-garden'
-                ? setGal({ title: v.name, photos: GARDEN_PICS, at: 0, from: e.currentTarget.getBoundingClientRect(), ask: e2 => askVenue(v, e2, v.name, '/website/garden.webp') })
+            {[gazebo, garden].map(v => v && (() => {
+              const pics = VENUE_PICS[v.id]
+              const cover = pics && `/website/${pics[0]}.webp`
+              return (
+              <button key={v.id} className="cell" onClick={e => pics
+                ? setGal({ title: v.name, photos: pics, at: 0, from: e.currentTarget.getBoundingClientRect(), ask: e2 => askVenue(v, e2, v.name, cover) })
                 : askVenue(v, e, v.name)}>
-                {v.id === 'venue-garden' ? <><img src="/website/garden.webp" alt="The Garden Area" loading="lazy" /><span className="pics">{PICS_ICON}{GARDEN_PICS.length}</span></> : <div className="none">G</div>}
+                {pics ? <><img src={cover} alt={v.name} loading="lazy" /><span className="pics">{PICS_ICON}{pics.length}</span></> : <div className="none">G</div>}
                 <div className="in"><h3>{v.name}</h3><b className="num">{pesoWhole(v.base_price)}</b></div>
               </button>
-            ))}
+              )
+            })())}
           </div>
           <div className="held rv" ref={reveal}>
             <div className="hh"><h3>Held here</h3><span>Swipe →</span></div>
@@ -716,11 +722,11 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
       const { error } = await supabase.storage.from('payment-shots').upload(path, file, { contentType: file.type })
       if (error) { if (latest.current === path) setReading(''); return false }
       try {
-        // On live the read once never answered and the box sat on "Reading…" (2026-11-19): after 10 seconds the
+        // On live the read once never answered and the box sat on "Reading…" (2026-11-19): after 15 seconds (a cold start once took 10) the
         // guest just types it.
         const { data } = await Promise.race([
           supabase.functions.invoke('read-payment-shot', { body: { path } }),
-          new Promise<{ data: null }>(res => setTimeout(() => res({ data: null }), 10_000)),
+          new Promise<{ data: null }>(res => setTimeout(() => res({ data: null }), 15_000)),
         ])
         if (latest.current === path) {
           setReadOut(data && typeof data === 'object' ? data : null)
