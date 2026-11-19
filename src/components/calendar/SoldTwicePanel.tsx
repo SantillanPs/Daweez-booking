@@ -18,9 +18,11 @@ const fmtDays = (a: string, b: string) => {
  * in it (the app never moves a booking by itself, Sebastian, 2026-10-20). The first free room of the
  * same kind leads and the rest wait under More.
  */
-export function SoldTwicePanel({ alert, rooms, bookings, onClose, onAnswered, onFailed, onPlaced }: {
+export function SoldTwicePanel({ alert, rooms, bookings, unitName, onClose, onAnswered, onFailed, onPlaced }: {
   alert: ChannelAlert
   rooms: Room[]
+  /** "Room 3", or a venue's name: the Vacation House has its own link (2026-11-19). */
+  unitName: (id: string) => string
   bookings: Booking[]
   onClose: () => void
   /** Takes it off the calendar and the bell at once. */
@@ -34,11 +36,14 @@ export function SoldTwicePanel({ alert, rooms, bookings, onClose, onAnswered, on
   const site = CHANNEL_NAME[alert.channel]
   const here = rooms.find(r => r.id === alert.room_id)
   const inWay = bookings.find(b => b.id === alert.booking_id)
-  // The same kind of room first, the guest having paid for that kind.
-  const free = useMemo(() => rooms
+  // The same kind of room first, the guest having paid for that kind. A venue's guest is not moved
+  // into a room: the house has no like for like.
+  const venue = !here
+  const name = unitName(alert.room_id)
+  const free = useMemo(() => venue ? [] : rooms
     .filter(r => r.id !== alert.room_id && isRoomAvailable(r.id, alert.check_in, alert.check_out, bookings))
     .sort((a, b) => Number(b.name === here?.name) - Number(a.name === here?.name) || a.room_number - b.room_number),
-  [rooms, bookings, alert, here])
+  [rooms, bookings, alert, here, venue])
   const [best, ...others] = free
 
   const place = (room: Room) => {
@@ -62,10 +67,10 @@ export function SoldTwicePanel({ alert, rooms, bookings, onClose, onAnswered, on
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div aria-hidden="true" onClick={onClose} className="absolute inset-0 bg-slate-900/50 animate-in fade-in duration-200 motion-reduce:animate-none" />
-      <div role="dialog" aria-label={'Room ' + here?.room_number + ' sold twice'} className="bw-arrive relative w-full max-w-[26rem] max-h-[88vh] overflow-y-auto rounded-xl bg-card p-5 grid gap-4 shadow-softLg">
+      <div role="dialog" aria-label={name + ' sold twice'} className="bw-arrive relative w-full max-w-[26rem] max-h-[88vh] overflow-y-auto rounded-xl bg-card p-5 grid gap-4 shadow-softLg">
         <div className="flex items-center gap-3">
           <span aria-hidden="true" className="w-[42px] h-[42px] shrink-0 grid place-items-center rounded-[10px] border-[1.5px] border-dashed border-danger-500 bg-danger-50 font-display text-[19px] font-bold text-danger-600">!</span>
-          <h3 className="flex-1 min-w-0 font-display font-bold text-[18px] leading-tight text-main">Room {here?.room_number} sold twice</h3>
+          <h3 className="flex-1 min-w-0 font-display font-bold text-[18px] leading-tight text-main">{name} sold twice</h3>
           <button type="button" onClick={onClose} aria-label="Close" title="Close" className="-mr-2 w-11 h-11 shrink-0 flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-softbg transition-colors cursor-pointer">
             <X className="w-5 h-5" />
           </button>
@@ -90,7 +95,7 @@ export function SoldTwicePanel({ alert, rooms, bookings, onClose, onAnswered, on
             <button type="button" onClick={() => place(best)} className="bw-shine w-full min-h-[54px] rounded-xl bg-gold-400 px-4 text-[16px] font-bold text-ink-900 hover:bg-gold-600 active:scale-[0.98] transition-[background-color,transform] duration-200 cursor-pointer">
               Put guest in Room {best.room_number}
             </button>
-          ) : (
+          ) : !venue && (
             <p className="text-center text-[13px] font-semibold text-muted">No other room is free on these dates.</p>
           )}
           <div className="grid gap-2">

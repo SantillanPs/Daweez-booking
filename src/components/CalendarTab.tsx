@@ -603,7 +603,7 @@ export function CalendarTab() {
           <CalendarSearch allBookings={allBookings} rooms={rooms} venues={venues}
             onBooking={openFound} onBill={b => { openFound(b); setBillOf(b) }} onReceipt={(booking, record, covered) => setFoundReceipt({ booking, record, covered })} />
           <TodayStrip />
-          <ChannelBell stays={namesNeeded} alerts={channel.alerts} rooms={rooms} onStay={openFound} onAlert={openChannelAlert} />
+          <ChannelBell stays={namesNeeded} alerts={channel.alerts} unitName={unitName} onStay={openFound} onAlert={openChannelAlert} />
           <RequestBell requests={asks.requests} taken={askTaken} hidden={hideAsks} onHide={hideRequests} unitName={unitName} onOpen={setAskOpen} />
           <ChatBotSwitch />
         </CalendarToolbar>
@@ -640,7 +640,7 @@ export function CalendarTab() {
       </div>
 
       {soldTwice && (
-        <SoldTwicePanel alert={soldTwice} rooms={rooms} bookings={bookings} onClose={() => setSoldTwice(null)}
+        <SoldTwicePanel alert={soldTwice} rooms={rooms} bookings={bookings} unitName={unitName} onClose={() => setSoldTwice(null)}
           onAnswered={channel.answered} onFailed={channel.refresh} onPlaced={setPlacedId} />
       )}
 

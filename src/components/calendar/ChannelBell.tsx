@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Bell } from 'lucide-react'
-import { Booking, Room } from '../../types/booking'
+import { Booking } from '../../types/booking'
 import { ChannelAlert, channelOf } from '../../utils/channelStay'
 import { ChannelMark } from './ChannelMark'
 import { chime } from '../../utils/chime'
@@ -14,11 +14,12 @@ const fmtDay = shortDay
  * waits, rings when something lands, and is red for a stay sold twice or cancelled. One thing opens
  * straight away; several open a list.
  */
-export function ChannelBell({ stays, alerts, rooms, onStay, onAlert }: {
+export function ChannelBell({ stays, alerts, unitName, onStay, onAlert }: {
   /** The site's stays with no name yet. */
   stays: Booking[]
   alerts: ChannelAlert[]
-  rooms: Room[]
+  /** "Room 3", or a venue's name: the Vacation House has its own link (2026-11-19). */
+  unitName: (id: string) => string
   onStay: (b: Booking) => void
   onAlert: (a: ChannelAlert) => void
 }) {
@@ -35,7 +36,6 @@ export function ChannelBell({ stays, alerts, rooms, onStay, onAlert }: {
   useEffect(() => { if (ring) chime() }, [ring])
 
   if (n === 0) return null
-  const roomName = (id: string) => 'Room ' + (rooms.find(r => r.id === id)?.room_number ?? '?')
   const row = (key: string, channel: ReturnType<typeof channelOf>, room: string, b: { check_in: string; check_out: string }, word: string, tone: string, pick: () => void) => (
     <li key={key}>
       <button type="button" onClick={() => { setOpen(false); pick() }}
@@ -68,8 +68,8 @@ export function ChannelBell({ stays, alerts, rooms, onStay, onAlert }: {
       {open && (<>
         <button type="button" aria-label="Close the list" onClick={() => setOpen(false)} className="fixed inset-0 z-40 cursor-default" />
         <ul className="absolute right-0 top-full z-50 mt-2 w-[330px] max-w-[calc(100vw-2rem)] rounded-lg border border-soft bg-card p-1.5 shadow-softLg animate-in fade-in duration-150">
-          {alerts.map(a => row(a.id, a.channel, roomName(a.room_id), a, a.kind === 'clash' ? 'Sold twice' : 'Cancelled', 'text-danger-600', () => onAlert(a)))}
-          {stays.map(b => row(b.id, channelOf(b), roomName(b.room_id || ''), b, 'Name needed', 'text-blue-700', () => onStay(b)))}
+          {alerts.map(a => row(a.id, a.channel, unitName(a.room_id), a, a.kind === 'clash' ? 'Sold twice' : 'Cancelled', 'text-danger-600', () => onAlert(a)))}
+          {stays.map(b => row(b.id, channelOf(b), unitName(b.room_id || b.venue_id || ''), b, 'Name needed', 'text-blue-700', () => onStay(b)))}
         </ul>
       </>)}
     </div>
