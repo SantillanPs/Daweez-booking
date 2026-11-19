@@ -2,6 +2,7 @@ import React from 'react'
 import { Bell, Building2, Coffee, House, LogIn, LogOut } from 'lucide-react'
 import { AskCup } from './BreakfastParts'
 import { ChannelMark } from './ChannelMark'
+import { RequestMark } from './RequestBell'
 
 // The key to the calendar: **every sign on it, and what it means, in one place** (Sebastian,
 // 2026-10-08: *"move all of the instructions there so that all the calendar is showing is
@@ -41,7 +42,10 @@ export function CalendarGuide() {
             <Row sign={<span className="ex-roof ex-sign relative flex h-6 w-[30px] flex-col rounded border border-gold-400"><House className="m-auto w-3 h-3 text-gold-800" /></span>}>Pension House Exclusive: every room and the Gazebo (the Vacation House &amp; Garden when added). Tap it to open the booking</Row>
             <Row sign={<Pill className="bg-emerald-50 border-emerald-600 shadow-[0_0_0_3px_#fff]" />}>A guest who was there first stays under the Exclusive; their room comes off its price</Row>
             <Row sign={<Building2 className="w-4 h-4" />}>Agency reservation</Row>
+            <Row sign={<ChannelMark channel="airbnb" />}>From Airbnb</Row>
             <Row sign={<ChannelMark channel="booking_com" />}>From Booking.com</Row>
+            <Row sign={<RequestMark source="website" />}>Booked from the website</Row>
+            <Row sign={<RequestMark source="messenger" />}>Booked from Messenger</Row>
             <Row sign={<span className="text-[11px] font-bold leading-3 text-blue-700">Name needed</span>}>Tap it and type the guest's name from Booking.com's message</Row>
             <Row sign={<Pill className="border-[1.5px] border-dashed border-danger-500 bg-danger-50" />}>Sold twice: Booking.com sold a room already taken. Tap it</Row>
             <Row sign={<span className="text-[11px] font-bold text-danger-600">Cancelled</span>}>Gone from Booking.com: tap it to cancel the bill</Row>

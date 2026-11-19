@@ -8,6 +8,8 @@ import { clockLabel, shortStayOut } from '../../utils/shortStay'
 import { blockReason, isOpenEnded } from '../../utils/openBlock'
 import { channelOf, needsDetails } from '../../utils/channelStay'
 import { ChannelMark } from './ChannelMark'
+import { RequestMark } from './RequestBell'
+import { useSources } from '../../utils/bookingSource'
 import { isExclusive } from '../../utils/availability'
 
 export interface TimelineCellProps {
@@ -257,6 +259,7 @@ export const TimelineCell = React.memo(
     setExtendError
   }: TimelineCellProps) {
     const [showTooltip, setShowTooltip] = React.useState(false)
+    const sources = useSources()
     // **The hover card opens downwards on the top rows** (Sebastian, 2026-10-08). It
     // always opened above the pill, and on the first few rooms that put it under the
     // calendar's top line, cut off. It now looks at how much grid there is above the pill
@@ -301,6 +304,8 @@ export const TimelineCell = React.memo(
       const freeAt = booking.stay_hours && !booking.actual_check_out ? shortStayOut(booking) : null
       const narrow = span < 2
       const channel = channelOf(booking)
+      // a guest who asked on the website or Messenger, the way a booking site's stay wears its mark (2026-11-19)
+      const asked = channel ? undefined : sources.get(booking.id) as 'website' | 'messenger' | undefined
       return (
         <td
           colSpan={span}
@@ -389,6 +394,7 @@ export const TimelineCell = React.memo(
               {askIn && <AskDoor k="in" className="shrink-0" />}
               {agencyName && !isBlock && <Building2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
               {channel && <ChannelMark channel={channel} />}
+              {asked && <RequestMark source={asked} />}
               <span className={'min-w-0 truncate' + (gone ? ' line-through' : '')}>
                 {isContinuation && <span className="opacity-70" title={'Already staying — arrived ' + booking.check_in}>‹ </span>}
                 {pillWords}

@@ -24,6 +24,7 @@ import { markSeen } from '../utils/newMarks'
 import { DayMoney, type BillChoice, type MoneyInInput } from './expenses/DayMoney'
 import { MoneyStatement } from './expenses/MoneyStatement'
 import { buildIncomeStatement } from '../utils/incomeStatement'
+import { countSources, sourcesOf, useRequestSources } from '../utils/bookingSource'
 import { ExpenseHistory } from './expenses/ExpenseHistory'
 import { IncomeHistory } from './expenses/IncomeHistory'
 import { CategoryManager } from './expenses/CategoryManager'
@@ -101,6 +102,13 @@ export function ExpensesTab() {
     const payments = allMoneyIn({ bookings: allBookings, tabs, rooms, venues })
     return buildIncomeStatement({ from, to, payments, bookings: allBookings, venues, expenses, categories: expenseCategories })
   }, [span, at, allBookings, tabs, rooms, venues, expenses, expenseCategories])
+  const requestSources = useRequestSources()
+  const sourceCounts = useMemo(() => {
+    if (span === 'day') return []
+    const from = span === 'month' ? at + '-01' : at.slice(0, 4) + '-01-01'
+    const to = span === 'month' ? at + '-31' : at.slice(0, 4) + '-12-31'
+    return countSources(allBookings, sourcesOf(requestSources.data, allBookings), from, to)
+  }, [span, at, allBookings, requestSources.data])
   const stepAt = (by: number) => {
     const [y, m] = at.split('-').map(Number)
     const next = new Date(y, m - 1 + (span === 'year' ? by * 12 : by), 1)
@@ -458,7 +466,7 @@ export function ExpensesTab() {
       </div>
 
       {statement ? (
-        <MoneyStatement statement={statement} date={atLabel} heading={span === 'year' ? 'Yearly Income Statement' : 'Monthly Income Statement'} />
+        <MoneyStatement statement={statement} date={atLabel} sources={sourceCounts} span={span === 'year' ? 'year' : 'month'} heading={span === 'year' ? 'Yearly Income Statement' : 'Monthly Income Statement'} />
       ) : <>
 
       <DayMoney

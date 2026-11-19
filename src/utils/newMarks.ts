@@ -28,6 +28,8 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: 'fix-room-slip', since: '2026-11-17' },
   // The request panel kept to the one job: the guest, the money to find, Confirm or Remove (`RequestPanel`).
   { id: 'request-simple', since: '2026-11-19' },
+  // Where bookings came from: a bar in Cash Flow's month and year (`SourceBar`); the pills wear the website's or Messenger's mark.
+  { id: 'booking-sources', since: '2026-11-19' },
   // The eye beside the request bell hides the requests' ghost pills, so their dates can be booked (`RequestBell`).
   { id: 'request-hide', since: '2026-11-15' },
   // The front desk switches the guests' chat bot off and on from the calendar's top line (`ChatBotSwitch`).

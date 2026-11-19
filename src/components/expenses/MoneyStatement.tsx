@@ -8,6 +8,8 @@ import { AnimatedNumber } from '../AnimatedNumber'
 import { NewTag } from '../NewMark'
 import { peso } from '../../utils/helpers'
 import { IncomeCheck } from './IncomeCheck'
+import { SourceBar } from './SourceBar'
+import type { SourceCount } from '../../utils/bookingSource'
 import { printA5 } from '../../utils/printA5'
 import type { IncomeStatement } from '../../utils/incomeStatement'
 import { StatementShell } from '../billing/StatementShell'
@@ -36,12 +38,15 @@ const INCOME_ROW = 'grid grid-cols-[minmax(0,1fr)_auto_24px] items-center gap-x-
 /** A line with nothing in the period: a quiet dash, so the paper's lines all stay in place. */
 const Nothing = () => <span className="justify-self-end font-display font-extrabold text-ink-300">–</span>
 
-export function MoneyStatement({ statement: s, heading, date }: {
+export function MoneyStatement({ statement: s, heading, date, sources, span }: {
   statement: IncomeStatement
   /** `Monthly Income Statement` / `Yearly Income Statement`, for the paper. */
   heading: string
   /** `October 2026` / `2026`. */
   date: string
+  /** How many bookings came from each place in the period; on screen only. */
+  sources: SourceCount[]
+  span: 'month' | 'year'
 }) {
   const [open, setOpen] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
@@ -137,6 +142,8 @@ export function MoneyStatement({ statement: s, heading, date }: {
           </div>
         </div>
       </div>
+
+      <SourceBar counts={sources} span={span} />
 
       <div className="px-5 pt-4 pb-3 border-t-2 border-ink-800 bg-page rounded-b-xl text-[13px] text-main">
         <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Summary</p>

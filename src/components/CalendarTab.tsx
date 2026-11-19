@@ -5,6 +5,7 @@ import { isRoomAvailable, isVenueRangeAvailable, EXCLUSIVE_ID } from '../utils/a
 import { dateToString, normalizeVenueId, parseDay, shortDay } from '../utils/helpers'
 import { breakfastOn, isConfirmed, wantsBreakfastToday, withBreakfastTime, saveBreakfastChoices, breakfastAskOpen, BREAKFAST_ASK_UNTIL } from '../utils/breakfastChoice'
 import { useQueryClient } from '@tanstack/react-query'
+import { SourceContext, sourcesOf, useRequestSources } from '../utils/bookingSource'
 import { extendStay } from '../utils/bookingBalance'
 import { clearStayHours, getBookings } from '../utils/db'
 import { takeFocusedBooking } from '../utils/bookingFocus'
@@ -222,6 +223,8 @@ export function CalendarTab() {
   const timeUpMore = useCallback((b: Booking) => void answerTimeUp(b, { late_check_out_hours: Number(b.late_check_out_hours || 0) + 1 }, 'Could not add the hour. Please try again.'), [answerTimeUp])
 
   const queryClient = useQueryClient()
+  const requestSources = useRequestSources()
+  const sources = useMemo(() => sourcesOf(requestSources.data, allBookings), [requestSources.data, allBookings])
   const serveBreakfast = useCallback(async (booking: Booking) => {
     const choices = (booking.breakfast_choices || []).map(c => c.date === todayKey ? { ...c, served_at: new Date().toISOString() } : c)
     const before = queryClient.getQueryData<Booking[]>(['bookings'])
@@ -604,6 +607,7 @@ export function CalendarTab() {
           <RequestBell requests={asks.requests} taken={askTaken} hidden={hideAsks} onHide={hideRequests} unitName={unitName} onOpen={setAskOpen} />
           <ChatBotSwitch />
         </CalendarToolbar>
+        <SourceContext.Provider value={sources}>
         <TimelineGrid
           rooms={rooms}
           venues={venues}
@@ -632,6 +636,7 @@ export function CalendarTab() {
           requests={hideAsks ? undefined : asks.requests}
           onRequest={setAskOpen}
         />
+        </SourceContext.Provider>
       </div>
 
       {soldTwice && (
@@ -726,7 +731,7 @@ export function CalendarTab() {
               const ask = bookingAsk
               if (ask) {
                 asks.answered(ask.id)
-                closeBookingRequest(ask.id, 'booked', rows[0].id).catch(asks.refresh)
+                closeBookingRequest(ask.id, 'booked', rows[0].id).then(() => requestSources.refetch(), asks.refresh)
               }
               closeManualForm()
               const open = (list: Booking[]) => { const first = list.find(b => b.id === rows[0].id) || rows[0]; setSelectedExtendBooking(first); setBillOf(first) }

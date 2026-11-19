@@ -12,8 +12,9 @@ export function RequestMark({ source, big = false }: { source: BookingRequest['s
   if (source === 'website') return <Globe aria-label="Website" className={'shrink-0 text-gold-800 ' + box} strokeWidth={2.2} />
   if (source === 'messenger') return (
     <svg aria-label="Messenger" viewBox="0 0 24 24" className={'shrink-0 ' + box}>
-      <path d="M12 2C6.5 2 2 6.1 2 11.3c0 2.9 1.4 5.5 3.7 7.2V22l3.4-1.9c.9.3 1.9.4 2.9.4 5.5 0 10-4.1 10-9.2S17.5 2 12 2z" fill="#0084FF" />
-      <path d="M6.5 14.2l3.2-3.4 2.3 2 3.3-3.6-3.1 3.5-2.3-2z" fill="#fff" stroke="#fff" strokeWidth="1.4" strokeLinejoin="round" />
+      {/* Messenger's own bubble and bolt, in its blue (Sebastian, 2026-11-19: "just use the blue one") */}
+      <path d="M12 2C6.36 2 2 6.13 2 11.7c0 2.91 1.19 5.44 3.14 7.17.16.14.26.35.27.57l.05 1.78c.02.57.6.94 1.12.71l1.98-.87c.17-.08.36-.09.53-.04.91.25 1.88.38 2.91.38 5.64 0 10-4.13 10-9.7S17.64 2 12 2z" fill="#0084FF" />
+      <path d="M6 14.53l2.94-4.66a1.5 1.5 0 0 1 2.17-.4l2.34 1.75c.21.16.51.16.72 0l3.16-2.4c.42-.32.97.18.69.63l-2.94 4.66a1.5 1.5 0 0 1-2.17.4l-2.34-1.75a.6.6 0 0 0-.72 0l-3.16 2.4c-.42.32-.97-.18-.69-.63z" fill="#fff" />
     </svg>
   )
   return (

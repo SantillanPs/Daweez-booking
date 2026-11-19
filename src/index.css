@@ -166,6 +166,10 @@
 .bp-down { display: inline-block; animation: bp-down 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
 .bp-nudge { display: inline-block; animation: bp-nudge 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .bp-ready { animation: bp-ready 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+/* the report's "Where bookings came from" bar: each place's share grows in, one after another */
+@keyframes src-grow { from { transform: scaleX(0); } }
+.src-grow { transform-origin: left; animation: src-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 60ms); }
+@media (prefers-reduced-motion: reduce) { .src-grow { animation: none; } }
 .bp-squash { animation: bp-squash 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
 /* A tick that draws itself: the stroke starts hidden and is run out along its path. */
 .bp-tick { stroke-dasharray: 24; stroke-dashoffset: 24; animation: bp-tick 0.35s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
