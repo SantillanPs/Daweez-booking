@@ -342,7 +342,7 @@ function AddCatering({ heads: lastHeads, onAdd, sheet }: { heads: number; onAdd:
               ))}
             </div>
             <div className="flex items-end gap-1.5">
-              <input ref={whatBox} value={what} onChange={e => setWhat(e.target.value)} placeholder="For · e.g. Lunch"
+              <input ref={whatBox} value={what} onChange={e => setWhat(e.target.value)} placeholder="e.g. Lunch"
                 aria-label="What the catering is for" className={SLOT + ' w-28 text-[16px] font-semibold'} />
               <label className={MONEY}>
                 <input ref={headBox} inputMode="numeric" placeholder="150" aria-label="Heads" value={heads || ''}
