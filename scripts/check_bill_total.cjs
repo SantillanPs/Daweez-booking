@@ -13,7 +13,7 @@ import { bookingLines } from './src/utils/statementLines'
 import { billStays } from './src/utils/pricing'
 const rooms = [{ id: 'room-1', room_number: 1, name: 'Room 1', base_price: 1000, breakfast_price: 150, capacity: 2, description: '', image_url: '' }]
 const venues = [{ id: 'venue-gazebo', name: 'Gazebo', base_price: 4000, capacity: 50, description: '', image_url: '', details: { chairs: 0, tables: 0, extras: [] } }]
-const charges = [{ id: 'c1', name: 'Catering', amount: 26600, date: '2026-11-15' }]
+const charges = [{ id: 'c1', name: 'Catering', amount: 26600, date: '2026-11-15' }, { id: 'c2', name: 'Lunch', amount: 3000, date: '2026-11-15', kind: 'catering', qty: 20, price: 150 }]
 const room = {
   id: 'b-room', room_id: 'room-1', check_in: '2026-11-15', check_out: '2026-11-17', status: 'confirmed',
   breakfast_included: true, early_check_in_hours: 2, late_check_out_hours: 3, actual_check_out: '2026-11-17T15:00:00',

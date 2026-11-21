@@ -30,7 +30,7 @@ export const shortDate = (iso?: string) => {
   return m + '/' + d + '/' + (y || '').slice(2)
 }
 
-export type StatementBand = 'room' | 'breakfast' | 'extras' | 'discount' | 'food'
+export type StatementBand = 'room' | 'breakfast' | 'extras' | 'catering' | 'discount' | 'food'
 
 export interface StatementLineItem {
   key: string
@@ -349,10 +349,13 @@ export function bookingLines(b: Booking, o: {
       items.push({ key: b.id + '-addon-' + label, band: 'extras', description: label, qty: '1', unit: 'PC', price: rate, discount: 0, amount: rate, remove: { event_addons: { ...ea, [field]: false } } })
     })
     // Charges the desk wrote on the bill, under Extras with the day they were put on.
+    // A catering line is its own band, its heads × the price a head.
     ;(ea.charges || []).forEach(c => {
+      const cater = c.kind === 'catering'
       items.push({
-        key: b.id + '-charge-' + c.id, band: 'extras', description: c.name, qty: '1', unit: 'PC',
-        price: c.amount, discount: 0, amount: c.amount, checkIn: c.date,
+        key: b.id + '-charge-' + c.id, band: cater ? 'catering' : 'extras', description: c.name,
+        qty: cater ? String(c.qty || 1) : '1', unit: cater ? 'PAX' : 'PC',
+        price: cater ? Number(c.price || c.amount) : c.amount, discount: 0, amount: c.amount, checkIn: c.date,
         remove: { event_addons: { ...ea, charges: (ea.charges || []).filter(x => x.id !== c.id) } },
       })
     })

@@ -58,13 +58,14 @@ const BAND_LABEL: Record<StatementBand, string> = {
   room: 'Room Accommodation:',
   breakfast: 'Breakfast:',
   extras: 'Extras:',
+  catering: 'Catering:',
   discount: 'Discount:',
   food: 'Restaurant & bar:',
 }
 
 // The order the desk reads money in: what was stayed in, then what was eaten, then extras,
 // then anything taken off the price, then the food they ordered.
-const BAND_ORDER: StatementBand[] = ['room', 'breakfast', 'extras', 'food', 'discount']
+const BAND_ORDER: StatementBand[] = ['room', 'breakfast', 'extras', 'catering', 'food', 'discount']
 
 /**
  * `dates={false}` drops the Check In / Check Out columns and calls the count `Qty`: the agency
@@ -141,7 +142,7 @@ export function StatementChargesTable({ items, dates = true, paper = false, away
                     )}
                   </td>
                   <td className={cell + ' text-right font-mono'}>{it.price ? money(it.price) : '—'}</td>
-                  {oneDates && <td className={cell + ' text-right font-mono'}>{it.checkIn ? dayMonth(it.checkIn) + '–' + dayMonth(it.checkOut) : ''}</td>}
+                  {oneDates && <td className={cell + ' text-right font-mono'}>{it.checkIn ? dayMonth(it.checkIn) + (it.checkOut ? '–' + dayMonth(it.checkOut) : '') : ''}</td>}
                   {dates && !oneDates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>}
                   {dates && !oneDates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>}
                   {/* The unit lives here when it is not a night: `3 hrs` for a short stay,

@@ -8,13 +8,15 @@ const { buildSync } = require('esbuild')
 const entry = `
 import { buildIncomeStatement } from './src/utils/incomeStatement'
 const venues = [{ id: 'venue-gazebo', name: 'Gazebo' }]
-const bookings = [{ id: 'b1', venue_id: 'venue-gazebo', status: 'confirmed', downpayment_paid: 30600, balance_due: 0,
-  event_addons: { charges: [{ id: 'c1', name: 'Catering 380x70 Pax', amount: 26600, date: '2026-11-15' }] } }]
+// one charge typed the old way ("Catering …"), one written by + Catering (kind), named only "Lunch"
+const bookings = [{ id: 'b1', venue_id: 'venue-gazebo', status: 'confirmed', downpayment_paid: 33600, balance_due: 0,
+  event_addons: { charges: [{ id: 'c1', name: 'Catering 380x70 Pax', amount: 26600, date: '2026-11-15' },
+    { id: 'c2', name: 'Lunch', amount: 3000, date: '2026-11-15', kind: 'catering', qty: 20, price: 150 }] } }]
 const pay = (day, amount) => ({ day, amount, paidAt: day + 'T10:00:00', bookingId: 'b1', slip: false })
-const payments = [pay('2026-11-02', 20600), pay('2026-10-05', 10000)]
+const payments = [pay('2026-11-02', 23600), pay('2026-10-05', 10000)]
 const line = (from, to, label) => buildIncomeStatement({ from, to, payments, bookings, venues, expenses: [], categories: [] }).income.find(l => l.label === label).amount
 const got = [line('2026-10-01', '2026-10-31', 'Gazebo'), line('2026-10-01', '2026-10-31', 'Catering'), line('2026-11-01', '2026-11-30', 'Gazebo'), line('2026-11-01', '2026-11-30', 'Catering')]
-if (got.join() !== '4000,6000,0,20600') throw new Error('Catering split wrong: ' + got.join())
+if (got.join() !== '4000,6000,0,23600') throw new Error('Catering split wrong: ' + got.join())
 console.log('catering ok'); process.exit(0)
 `
 const out = buildSync({

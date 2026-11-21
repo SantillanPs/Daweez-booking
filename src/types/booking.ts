@@ -177,6 +177,11 @@ export interface BillCharge {
   amount: number
   /** `YYYY-MM-DD`, the day it was added. */
   date: string
+  /** A catering line (2026-11-21): `amount` is `qty` heads × `price` a head, under the bill's own
+   *  Catering band. Staff used to type a charge called "cater"; those still count as catering in Cash Flow. */
+  kind?: 'catering'
+  qty?: number
+  price?: number
 }
 
 // Staff-applied discount. 'percent' takes a % (20% or 10%) off the stay;

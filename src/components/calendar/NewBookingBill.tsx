@@ -348,9 +348,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     if ('late_check_out_hours' in r) putHours(id, 'late', 0)
   }
   const undo = () => { if (!removed) return; setBreakfast(removed.breakfast); setExtras(removed.extras); setCharges(removed.charges); setDiscs(removed.discs); setHrs(removed.hrs); setRemoved(null) }
-  const addCharge = (name: string, amount: number) => {
+  const addCharge = (name: string, amount: number, more?: Partial<BillCharge>) => {
     if (!first) return
-    setCharges(c => [...c, { id: randomUUID(), name, amount, date: first.checkIn }])
+    setCharges(c => [...c, { id: randomUUID(), name, amount, date: first.checkIn, ...more }])
     setRemoved(null)
   }
 
@@ -1281,6 +1281,11 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
                 </tr>
               )}
               <AddCharge sheet={sheetEl} onCharge={addCharge} cols={6}
+                // Catering is only ever sold with a venue (Sebastian, 2026-11-21).
+                cater={list.some(([, s]) => s.type === 'venue') ? {
+                  heads: charges.filter(c => c.kind === 'catering').slice(-1)[0]?.qty || 0,
+                  onAdd: (what, heads, per) => addCharge(what, heads * per, { kind: 'catering', qty: heads, price: per }),
+                } : undefined}
                 // The Sub-total, bold, at the end of the add line (Sebastian, 2026-11-06, the "Bill Sub-total
                 // Row" mock: "I want the sub total to be more visible"). An agency's bill too; only its paper is Total only.
                 end={(

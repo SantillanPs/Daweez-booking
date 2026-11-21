@@ -75,3 +75,4 @@
 - Built for a desktop screen first, usable on tablet and phone.
 - Screens are dense: no wasted space, little scrolling, rare options hidden until needed.
 - **Catering on the income statement** (2026-11-14): the desk writes catering as an extra charge on a venue's bill ("CATER CHEF JOE 150 PAX (395 per head)"). A payment is not split between lines (*"we don't split"*); the money goes *"1 by 1 … rooms/venues first, then other charges like catering"*.
+- **Catering on the bill** (2026-11-21): catering is only ever sold with a venue, and the meals on the paper bills (lunch, AM / PM snack, dinner, halo-halo) are catering — the owner: *"yes it was for catering"*. Each meal is written as heads × a price a head.

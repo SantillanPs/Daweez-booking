@@ -144,10 +144,10 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
     if (line.remove.event_addons) setAddons(a => ({ ...a, [id]: line.remove!.event_addons! }))
   }
   // A charge goes on the bill's first room, as on a booking of several rooms.
-  const addCharge = (name: string, amount: number) => {
+  const addCharge = (name: string, amount: number, more?: Partial<BillCharge>) => {
     const id = list[0]?.[0]
     if (!id) return
-    const c: BillCharge = { id: randomUUID(), name, amount, date: first!.checkIn }
+    const c: BillCharge = { id: randomUUID(), name, amount, date: first!.checkIn, ...more }
     setAddons(a => ({ ...a, [id]: { ...a[id], charges: [...(a[id]?.charges || []), c] } }))
     setRemoved(null)
   }
@@ -361,6 +361,10 @@ export function LogOldBill({ rooms, venues, bookings, createManualBooking, onClo
                 </tr>
               )}
               <AddCharge sheet={sheetEl} onCharge={addCharge} cols={6}
+                cater={list.some(([, s]) => s.type === 'venue') ? {
+                  heads: (addons[list[0][0]]?.charges || []).filter(c => c.kind === 'catering').slice(-1)[0]?.qty || 0,
+                  onAdd: (what, heads, per) => addCharge(what, heads * per, { kind: 'catering', qty: heads, price: per }),
+                } : undefined}
                 // The Sub-total, bold, at the end of the add line, as on the one bill (Sebastian, 2026-11-06).
                 end={
                   <div className={TOT}>

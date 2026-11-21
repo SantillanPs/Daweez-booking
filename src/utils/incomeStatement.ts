@@ -72,7 +72,7 @@ export function buildIncomeStatement({ from, to, payments, bookings, venues, exp
   bookings.forEach(b => {
     if (b.status === 'cancelled') return
     const key = billOf(b)
-    const cater = (b.event_addons?.charges || []).filter(c => /cater/i.test(c.name)).reduce((s, c) => s + Number(c.amount || 0), 0)
+    const cater = (b.event_addons?.charges || []).filter(c => c.kind === 'catering' || /cater/i.test(c.name)).reduce((s, c) => s + Number(c.amount || 0), 0)
     catering.set(key, (catering.get(key) || 0) + cater)
     // ponytail: the bill's saved figures, not priced again; an overpaid bill reads as its payments (balance
     // stops at 0), which only moves catering a little earlier — it is covered in full either way.

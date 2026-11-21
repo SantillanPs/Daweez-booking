@@ -224,8 +224,11 @@ export function WritePayment({ open, onOpen, onPay, paidOn, fills, sheet, gone, 
  * to add a bill in the billing statement. for example: DINNER - 300 pesos"*): what for and
  * how much, and it goes under Extras. Written in a box that floats over the bill (2026-10-27).
  */
-export function AddCharge({ onCharge, cols, beside, end, presets, sheet }: {
+export function AddCharge({ onCharge, cols, beside, end, presets, sheet, cater }: {
   onCharge: (name: string, amount: number) => void; cols: number
+  /** A bill with a venue: "+ Catering" writes a meal as heads × a price a head (2026-11-21). `heads` is the
+   *  last catering line's, since a party's meals are usually for the same people. */
+  cater?: { heads: number; onAdd: (what: string, heads: number, per: number) => void }
   /** Blanks that sit to its left — a logged paper's Breakfast. */
   beside?: React.ReactNode
   /** What sits at the line's right end, over the totals — the Sub-total. */
@@ -266,6 +269,7 @@ export function AddCharge({ onCharge, cols, beside, end, presets, sheet }: {
             <button ref={blank} type="button" onClick={() => (open ? shut() : setOpen(true))} aria-expanded={open} aria-label="Add a charge" className={ADD}>
               <Plus aria-hidden="true" className="w-3 h-3" strokeWidth={3} />Charge
             </button>
+            {cater && sheet && <AddCatering {...cater} sheet={sheet} />}
           </div>
           {end}
         </div>
@@ -298,5 +302,65 @@ export function AddCharge({ onCharge, cols, beside, end, presets, sheet }: {
         )}
       </td>
     </tr>
+  )
+}
+
+// The meals a party is catered, the staff's own words on the paper bills (lunch, AM / PM snack, dinner).
+const MEALS = ['Breakfast', 'AM snack', 'Lunch', 'PM snack', 'Dinner']
+
+/** "+ Catering": what the meal is (a tap, or typed), how many heads, the price a head, and what it comes to. */
+function AddCatering({ heads: lastHeads, onAdd, sheet }: { heads: number; onAdd: (what: string, heads: number, per: number) => void; sheet: HTMLElement }) {
+  const [open, setOpen] = useState(false)
+  const [what, setWhat] = useState('')
+  const [heads, setHeads] = useState(0)
+  const [per, setPer] = useState(0)
+  const btn = useRef<HTMLButtonElement>(null)
+  const whatBox = useRef<HTMLInputElement>(null)
+  const headBox = useRef<HTMLInputElement>(null)
+  const perBox = useRef<HTMLInputElement>(null)
+  useLateFocus(whatBox, open)
+  const shut = () => { setOpen(false); setWhat(''); setPer(0) }
+  const add = () => {
+    if (!what.trim()) { want(whatBox.current); return }
+    if (!(heads > 0)) { want(headBox.current); return }
+    if (!(per > 0)) { want(perBox.current); return }
+    onAdd(what.trim(), heads, per)
+    shut()
+  }
+  return (
+    <>
+      <button ref={btn} type="button" onClick={() => { markSeen('catering'); if (open) shut(); else { setHeads(lastHeads); setOpen(true) } }} aria-expanded={open} aria-label="Add catering" className={ADD + ' relative'}>
+        <Plus aria-hidden="true" className="w-3 h-3" strokeWidth={3} />Catering<NewTag id="catering" />
+      </button>
+      {open && (
+        <Floating at={() => btn.current!} sheet={sheet} label="Add catering" onClose={shut}>
+          <form onSubmit={e => { e.preventDefault(); add() }} className="flex flex-col gap-2 p-1 max-w-[320px]">
+            <div className="flex flex-wrap gap-1">
+              {MEALS.map(m => (
+                <button key={m} type="button" onClick={() => { setWhat(m); want(heads > 0 ? perBox.current : headBox.current) }} aria-pressed={what === m}
+                  className="min-h-8 px-2.5 rounded-[3px] border-[1.5px] border-gold-400 bg-paper-50 hover:bg-white aria-pressed:bg-gold-100 text-[11px] font-bold text-ink-900 active:scale-90 transition-[background-color,transform] cursor-pointer">{m}</button>
+              ))}
+            </div>
+            <div className="flex items-end gap-1.5">
+              <input ref={whatBox} value={what} onChange={e => setWhat(e.target.value)} placeholder="For · e.g. Lunch"
+                aria-label="What the catering is for" className={SLOT + ' w-28 text-[16px] font-semibold'} />
+              <label className={MONEY}>
+                <input ref={headBox} inputMode="numeric" placeholder="150" aria-label="Heads" value={heads || ''}
+                  onChange={e => setHeads(digits(e.target.value))} className={MONEY_IN + ' !w-12'} />
+                <span className="text-[10px] font-bold text-muted">pax</span>
+              </label>
+              <span className="pb-0.5 text-[11px] font-bold text-muted">×</span>
+              <label className={MONEY}>
+                <span className="font-display text-[11px] font-extrabold text-muted">₱</span>
+                <input ref={perBox} inputMode="numeric" placeholder="380" aria-label="Price a head" value={per ? per.toLocaleString() : ''}
+                  onChange={e => setPer(digits(e.target.value))} className={MONEY_IN + ' !w-14'} />
+              </label>
+              <button type="submit" aria-label="Add the catering" className={OK}><Check className="w-3.5 h-3.5" strokeWidth={3} /></button>
+            </div>
+            {heads > 0 && per > 0 && <p className="text-right font-mono text-[11px] font-bold text-ink-900 bw-rise">= ₱{(heads * per).toLocaleString()}</p>}
+          </form>
+        </Floating>
+      )}
+    </>
   )
 }

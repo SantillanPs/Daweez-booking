@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // Catering on a venue's bill: "+ Catering" writes a meal as heads × a price a head, under its own band (`AddCatering`).
+  { id: 'catering', since: '2026-11-21' },
   // Pay later: the restaurant's Send bill can put a bill on the front desk's list under a name (`BillPicker`),
   // and the desk's Pay later button takes it, all at once or a bit at a time (`restaurant/PayLater`).
   { id: 'pay-later', since: '2026-11-17' },
