@@ -3,9 +3,12 @@
  * date, title and URL across the top of the hotel's paper. Injected for the moment of printing
  * only, and removed when the dialog closes.
  */
-export function printA5() {
+export const printA5 = () => printOn('A5')
+
+/** The same on another paper: the Journal is a wide table, printed on A4 sideways. */
+export function printOn(size: string) {
   const style = document.createElement('style')
-  style.textContent = '@page { size: A5; margin: 0; }'
+  style.textContent = '@page { size: ' + size + '; margin: 0; }'
   document.head.appendChild(style)
   const done = () => {
     style.remove()

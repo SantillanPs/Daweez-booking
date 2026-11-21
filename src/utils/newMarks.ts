@@ -109,6 +109,8 @@ export const NEW_FEATURES: NewFeature[] = [
   // Cash Flow's Day · Month · Year: a month or a year is the staff's paper income statement (`MoneyStatement`).
   { id: 'cash-flow-statement', since: '2026-11-14' },
   { id: 'income-lines-open', since: '2026-11-15' },
+  // Cash Flow → Month → Booked: the staff's Journal, every bill booked in the month and what it still owes (`MonthJournal`).
+  { id: 'month-journal', since: '2026-11-22' },
 ]
 
 const KEY = 'daweez_new_seen'

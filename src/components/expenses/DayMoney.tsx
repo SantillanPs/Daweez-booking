@@ -605,7 +605,7 @@ const WAYS: Record<PaymentKind, { ink: string; Icon: LucideIcon; name: string }>
 const WAY_ORDER: PaymentKind[] = ['cash', 'gcash', 'bank', 'check', 'other']
 const wayOf = (line: MoneyInLine) => paymentKind(line.method)
 
-const WaySign = ({ kind }: { kind: PaymentKind }) => {
+export const WaySign = ({ kind }: { kind: PaymentKind }) => {
   const w = WAYS[kind]
   return <w.Icon aria-label={w.name} role="img" className={'w-[15px] h-[15px] shrink-0 ' + w.ink} />
 }

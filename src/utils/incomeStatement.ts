@@ -46,7 +46,7 @@ const MISC = 'Miscellaneous'
 const NOT_A_COST = /deposit/i
 
 // The venues' own lines, in the paper's order; any other venue follows them by name.
-const VENUE_ORDER = ['venue-vacation', 'venue-gazebo', 'venue-garden']
+export const VENUE_ORDER = ['venue-vacation', 'venue-gazebo', 'venue-garden']
 
 export function buildIncomeStatement({ from, to, payments, bookings, venues, expenses, categories }: {
   /** First and last day, `YYYY-MM-DD`, both counted. */

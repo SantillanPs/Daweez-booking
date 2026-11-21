@@ -23,6 +23,9 @@ import { NewTag } from './NewMark'
 import { markSeen } from '../utils/newMarks'
 import { DayMoney, type BillChoice, type MoneyInInput } from './expenses/DayMoney'
 import { MoneyStatement } from './expenses/MoneyStatement'
+import { MonthJournal } from './expenses/MonthJournal'
+import { buildJournal } from '../utils/journal'
+import { getSlipsByBooking, slipsTotal } from '../utils/orderSlips'
 import { buildIncomeStatement } from '../utils/incomeStatement'
 import { countSources, sourcesOf, useRequestSources } from '../utils/bookingSource'
 import { ExpenseHistory } from './expenses/ExpenseHistory'
@@ -102,6 +105,23 @@ export function ExpensesTab() {
     const payments = allMoneyIn({ bookings: allBookings, tabs, rooms, venues })
     return buildIncomeStatement({ from, to, payments, bookings: allBookings, venues, expenses, categories: expenseCategories })
   }, [span, at, allBookings, tabs, rooms, venues, expenses, expenseCategories])
+  // Month → Booked: the staff's Journal (Sebastian, 2026-11-22). Its bills' food comes from their slips,
+  // read for the month's bookings only.
+  const [sheet, setSheet] = useState<'money' | 'booked'>('money')
+  const showJournal = span === 'month' && sheet === 'booked'
+  const monthIds = useMemo(() => showJournal
+    ? allBookings.filter(b => (b.created_at ? dateToString(new Date(b.created_at)) : b.check_in).slice(0, 7) === at).map(b => b.id).sort()
+    : [], [showJournal, allBookings, at])
+  const monthSlips = useQuery({
+    queryKey: ['journal-slips', monthIds.join()],
+    queryFn: () => getSlipsByBooking(monthIds),
+    enabled: monthIds.length > 0,
+  })
+  const journal = useMemo(() => {
+    if (!showJournal) return null
+    const food = Object.fromEntries(Object.entries(monthSlips.data || {}).map(([id, slips]) => [id, slipsTotal(slips)]))
+    return buildJournal({ month: at, bookings: allBookings, rooms, venues, food })
+  }, [showJournal, monthSlips.data, at, allBookings, rooms, venues])
   const requestSources = useRequestSources()
   const sourceCounts = useMemo(() => {
     if (span === 'day') return []
@@ -455,6 +475,17 @@ export function ExpensesTab() {
               </button>
             ))}
           </div>
+          {span === 'month' && (
+            <div role="group" aria-label="Sheet" className="relative flex gap-0.5 p-0.5 bg-paper-100 rounded-lg" onClick={() => markSeen('month-journal')}>
+              <NewTag id="month-journal" />
+              {([['money', 'Money in & out'], ['booked', 'Booked']] as const).map(([k, label]) => (
+                <button key={k} type="button" aria-pressed={sheet === k} onClick={() => setSheet(k)}
+                  className={'min-h-8 px-3 rounded-md text-[12.5px] font-bold transition-colors cursor-pointer active:scale-95 ' + (sheet === k ? 'bg-ink-900 text-white' : 'text-muted hover:text-main')}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           {span === 'day' ? <DayPicker day={date} today={today} onPick={setDate} marksOf={marksOf} /> : (
             <div className="flex items-center gap-1">
               <button type="button" aria-label="Before" onClick={() => stepAt(-1)} className="w-8 h-8 grid place-items-center rounded-lg text-muted hover:bg-card hover:text-main active:scale-90 transition-[background-color,color,transform] cursor-pointer"><ChevronLeft className="w-4 h-4" /></button>
@@ -465,7 +496,9 @@ export function ExpensesTab() {
         </div>
       </div>
 
-      {statement ? (
+      {journal ? (
+        <MonthJournal journal={journal} month={atLabel} onOpen={id => setBillOf({ id })} />
+      ) : statement ? (
         <MoneyStatement statement={statement} date={atLabel} sources={sourceCounts} span={span === 'year' ? 'year' : 'month'} heading={span === 'year' ? 'Yearly Income Statement' : 'Monthly Income Statement'} />
       ) : <>
 
