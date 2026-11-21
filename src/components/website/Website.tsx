@@ -243,11 +243,16 @@ function Site() {
   const types = useMemo(() => {
     const by = new Map<string, RoomType>()
     for (const r of [...(rooms.data || [])].sort((a, b) => a.room_number - b.room_number)) {
-      const t = by.get(r.name) || { name: r.name, rooms: [], sleeps: r.capacity, price: getEffectiveNightlyPrice(r.base_price, r.promo_price), breakfast: r.breakfast_price || null }
+      // One card is one kind at one price: Room 3 is a Full Double like 2 and 4 but costs more, so it has its own
+      // card (Sebastian, 2026-11-19: "do they have the same price or not? if not, then separate them").
+      const price = getEffectiveNightlyPrice(r.base_price, r.promo_price)
+      const key = r.name + '|' + price + '|' + r.capacity
+      const t = by.get(key) || { name: r.name, rooms: [], sleeps: r.capacity, price, breakfast: r.breakfast_price || null }
       t.rooms.push(r)
-      by.set(r.name, t)
+      by.set(key, t)
     }
-    return [...by.values()].sort((a, b) => a.price - b.price)
+    // In room-number order, the way a card leads with its number (Sebastian, 2026-11-19: "sort the rooms").
+    return [...by.values()].sort((a, b) => a.rooms[0].room_number - b.rooms[0].room_number)
   }, [rooms.data])
 
   // Short stays: for each length any room sells, the cheapest price and the rooms that sell it.
@@ -354,7 +359,7 @@ function Site() {
               const till = !free.length ? occupiedTill(t.rooms[0], checkIn, checkOut, bookings.data || []) : null
               const photo = photoOf(t.rooms)
               return (
-                <button key={t.name} className={'room' + (free.length ? '' : ' busy')} style={{ animationDelay: i * 50 + 'ms' }} disabled={!free.length}
+                <button key={t.rooms[0].id} className={'room' + (free.length ? '' : ' busy')} style={{ animationDelay: i * 50 + 'ms' }} disabled={!free.length}
                   onClick={e => setAsk({ id: free[0].id, title: t.name, photo, price: t.price, venue: false, breakfast: t.breakfast, from: e.currentTarget.getBoundingClientRect(), choices: free.length > 1 ? free : undefined })}>
                   <div className="ph">
                     {photo ? <img src={photo} alt={t.name} loading="lazy" /> : <div className="no"><span>{nos[0]}</span></div>}
@@ -657,6 +662,7 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
   // Once the screenshot is read, the ways to pay, the account and the screenshot fold into one line: the guest
   // has paid, so only the reference is left to check (Sebastian, 2026-11-19). "Change" opens them again.
   const [folded, setFolded] = useState(false)
+  const [bigQr, setBigQr] = useState(false)
   const upload = useRef<Promise<boolean> | null>(null)
   const latest = useRef('')
   const typed = useRef(false)
@@ -814,7 +820,22 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
             <button type="button" onClick={() => setFolded(false)}>Change</button></div> : <>
           <div><div className="lab">Send it by</div>
             <Seg label="Send it by" value={way.k} onPick={setWayK} items={ways.map(w => ({ k: w.k, t: w.label }))} /></div>
-          <div className="acct" key={way.k}><div><span>{way.name}</span><b className="num">{way.number}</b><span className="num">Send exactly {pesoWhole(amount)}</span></div><Copy text={way.number.replace(/\D/g, '')} /></div>
+          {way.k === 'gcash'
+            // The hotel's GCash QR, redrawn from the card at the desk (Sebastian, 2026-11-21, the mock's "A · Beside").
+            // A guest paying on this same phone can't scan its own screen, so Save QR hands GCash's "Upload QR" the
+            // image; tapping the code opens it big for a second phone. The image is for the account in the settings
+            // on that day: a new GCash account needs a new gcash-qr.png / .svg.
+            ? <div className="acct qr" key={way.k}>
+                <button type="button" className="qrb" onClick={() => setBigQr(true)} aria-label="Show the GCash QR code big"><img src="/website/gcash-qr.svg" alt="" /></button>
+                <div className="who"><span>{way.name}</span><b className="num">{way.number}</b><span className="num">Send exactly {pesoWhole(amount)}</span>
+                  <div className="acts"><Copy text={way.number.replace(/\D/g, '')} /><a className="copy" href="/website/gcash-qr.png" download="Daweez GCash QR.png">Save QR</a></div></div>
+              </div>
+            : <div className="acct" key={way.k}><div><span>{way.name}</span><b className="num">{way.number}</b><span className="num">Send exactly {pesoWhole(amount)}</span></div><Copy text={way.number.replace(/\D/g, '')} /></div>}
+          {bigQr && <div className="bigqr" onClick={() => setBigQr(false)}>
+            <div className="card" onClick={e => e.stopPropagation()}><img src="/website/gcash-qr.svg" alt="The hotel's GCash QR code" />
+              <b>{way.name}</b><span className="num">Send exactly {pesoWhole(amount)}</span>
+              <div className="acts"><a className="copy" href="/website/gcash-qr.png" download="Daweez GCash QR.png">Save QR</a><button type="button" className="copy" onClick={() => setBigQr(false)}>Close</button></div></div>
+          </div>}
           <div className="f">
             <label className={'drop' + (shot ? ' has' : '')}>
               <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={e => addShot(e.target.files?.[0])} />

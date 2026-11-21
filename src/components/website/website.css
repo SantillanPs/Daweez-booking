@@ -345,6 +345,19 @@
   & .lab { font-size: 13px; font-weight: 700; color: var(--ink2); margin-bottom: 4px }
   & .acct { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border: 1px dashed var(--gold); background: var(--gold-soft); border-radius: 12px; animation: dw-pop .3s var(--ease) backwards; font-size: 14px; color: var(--gold-ink) }
   & .acct b { display: block; font: 700 18px var(--display); color: var(--ink) }
+  & .acct.qr { justify-content: flex-start; gap: 14px }
+  & .acct .who { flex: 1; min-width: 0 }
+  & .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px }
+  & .acts .copy { background: #fff; text-decoration: none }
+  & .qrb { all: unset; cursor: zoom-in; flex: none; width: 104px; background: #fff; border-radius: 10px; padding: 6px; transition: transform .16s ease-out }
+  & .qrb:active { transform: scale(.95) }
+  & .qrb:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
+  & .qrb img, & .bigqr img { display: block; width: 100%; height: auto; image-rendering: pixelated }
+  & .bigqr { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 24px; background: rgba(28,28,28,.55); animation: dw-fade .2s backwards }
+  & .bigqr .card { width: min(340px, 100%); background: #fff; border-radius: 22px; padding: 22px; text-align: center; animation: dw-pop .35s var(--ease) backwards }
+  & .bigqr b { display: block; font: 700 20px var(--display); margin-top: 10px }
+  & .bigqr span { color: var(--ink2); font-size: 14px }
+  & .bigqr .acts { justify-content: center; margin-top: 12px }
   & .drop { border: 1.5px dashed var(--line); border-radius: 14px; padding: 14px; display: flex; gap: 14px; align-items: center; cursor: pointer; transition: border-color .2s, background .2s }
   & .drop.has { border-color: var(--gold); border-style: solid }
   & .drop:focus-within { border-color: var(--gold) }
