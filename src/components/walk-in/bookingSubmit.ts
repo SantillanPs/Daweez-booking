@@ -104,10 +104,16 @@ export async function submitBookingForm(p: BookingSubmitParams): Promise<Booking
   // The saved row a line is: the one its key names (`id~row`, the same room or venue on the bill
   // again), else the one of that unit no other line names.
   const named = new Set(Object.keys(p.unitSelections).map(k => k.split('~')[1]).filter(Boolean))
+  const onBill = new Set(Object.keys(p.unitSelections).map(unitOfLine))
+  const free = (eb: Booking) => !named.has(eb.id) && !processedBookingIds.has(eb.id)
+  // A room changed on the bill (Room 2 → Room 4) is the same stay moved: it takes the row whose room
+  // left the bill, so the bill keeps its number and its payments. Made a new row, the old one was
+  // deleted and its deposit was left under a bill that no longer existed (found 2026-11-22).
   const rowFor = (key: string, field: 'room_id' | 'venue_id') => {
     const [id, row] = key.split('~')
-    return row ? p.editingBookings?.find(eb => eb.id === row)
-      : p.editingBookings?.find(eb => eb[field] === id && !named.has(eb.id) && !processedBookingIds.has(eb.id))
+    if (row) return p.editingBookings?.find(eb => eb.id === row)
+    return p.editingBookings?.find(eb => eb[field] === id && free(eb))
+      ?? p.editingBookings?.find(eb => eb[field] && !onBill.has(eb[field]!) && free(eb))
   }
 
   try {
