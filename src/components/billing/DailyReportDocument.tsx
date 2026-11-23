@@ -55,7 +55,7 @@ export function DailyReportDocument({ report, prettyDate, embedded = false, onCl
         {/* Printed only on a day something was spent, like every line here. */}
         {report.moneyOut.length > 0 && <>
           <PaperHead>Less: Expenses</PaperHead>
-          {report.moneyOut.map((line, index) => <PaperRow key={`${line.label}-${index}`} label={line.label} amount={line.amount} note={line.outside ? 'Not from hotel cash' : undefined} />)}
+          {report.moneyOut.map((line, index) => <PaperRow key={`${line.label}-${index}`} label={line.label} amount={line.amount} note={line.outside ? 'Not from daily cash flow' : undefined} />)}
           <PaperTotal label="Total expenses" amount={report.totalOut} out />
         </>}
 

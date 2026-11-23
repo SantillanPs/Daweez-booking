@@ -48,6 +48,8 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: 'expense-outside', since: '2026-11-14' },
   // Inventory: the logbook, Kitchen and Hotel books, stock in from the receipt, amounts typed over as the check (`InventoryBook`).
   { id: 'inventory-logbook', since: '2026-11-14' },
+  // Cash Flow → Money out: the expense line's pill shows what comes off the cash on hand, and the totals follow the line as it is typed (`OutsideSwitch`).
+  { id: 'expense-cash-pill', since: '2026-11-23' },
   // Cash Flow → Money in: each way's total folded behind "Total in", opened by a tap (`TotalIn` in `DayMoney`).
   { id: 'ways-folded', since: '2026-11-14' },
   // Cash Flow: the links under the day are chips, the two cash ones in green and gold (`ExpensesTab`).

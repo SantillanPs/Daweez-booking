@@ -1,23 +1,38 @@
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from 'react'
-import { Check, Search, Tag, Trash2, X } from 'lucide-react'
+import { Banknote, BanknoteX, Check, Search, Tag, Trash2, X } from 'lucide-react'
+import { peso } from '../../utils/helpers'
 import { Expense, ExpenseCategory } from '../../types/expense'
 import { CHIP, MonthGrid, TAP_AREA } from './PaymentEdit'
 import { NewTag } from '../NewMark'
 import { markSeen } from '../../utils/newMarks'
 
 /**
- * "Not from hotel cash": an expense paid with money from somewhere else, not the hotel (Sebastian,
- * 2026-11-14). A tick, not a choice of two, since nearly everything is paid from the drawer.
+ * Whether an expense comes off the cash on hand (Sebastian, 2026-11-14: money from somewhere else is
+ * listed as spent, but the cash on hand keeps it). One pill that is both the switch and what it does,
+ * option D of the mock (2026-11-23: "make it visual, not text based", "merge the button and the
+ * indicator"): dark with the amount leaving the cash note while it comes off, light gold with the note
+ * crossed out and a green tick when the cash on hand keeps it. Off by default, since nearly everything
+ * is paid from the drawer.
  */
-export function OutsideSwitch({ on, onFlip }: { on: boolean; onFlip: () => void }) {
+export function OutsideSwitch({ on, amount, onFlip }: { on: boolean; amount: number; onFlip: () => void }) {
   return (
-    <button type="button" role="switch" aria-checked={on} onClick={() => { onFlip(); markSeen('expense-outside') }}
-      className={'relative shrink-0 inline-flex items-center gap-1.5 min-h-7 px-1 rounded-md text-[11px] font-bold active:scale-95 transition-[color,transform] cursor-pointer ' + (on ? 'text-gold-800' : 'text-muted hover:text-main')}>
-      <span className={'grid place-items-center w-3.5 h-3.5 rounded-[4px] border-[1.5px] transition-colors ' + (on ? 'bg-gold-400 border-gold-400 text-white' : 'border-ink-200')}>
-        {on && <Check className="w-2.5 h-2.5 [animation:bp-ready_.35s_cubic-bezier(.34,1.56,.64,1)]" strokeWidth={4} />}
+    // The words beside the pill say what it is for, and go while it does not deduct (Sebastian, 2026-11-23).
+    <button type="button" role="switch" aria-checked={!on} onClick={() => { onFlip(); markSeen('expense-cash-pill') }}
+      className="group relative shrink-0 inline-flex items-center gap-2 min-h-[30px] active:scale-[.96] transition-transform cursor-pointer">
+      <span className={'inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-full font-display text-[13px] font-extrabold tabular-nums transition-colors duration-300 ' + (on ? 'bg-gold-100' : 'bg-ink-900')}>
+        <span key={String(on)} className="grid place-items-center [animation:bp-ready_.35s_cubic-bezier(.34,1.56,.64,1)]">
+          {on ? <BanknoteX aria-hidden="true" className="w-[15px] h-[15px] text-gold-800" /> : <Banknote aria-hidden="true" className="w-[15px] h-[15px] text-gold-400" />}
+        </span>
+        {on
+          ? <Check aria-hidden="true" className="w-4 h-4 text-emerald-600 [animation:bp-ready_.35s_cubic-bezier(.34,1.56,.64,1)]" strokeWidth={3} />
+          : <span key="out" className="text-danger-300 [animation:bp-slide_.3s_cubic-bezier(.16,1,.3,1)]">−{peso(amount)}</span>}
       </span>
-      Not from hotel cash
-      <NewTag id="expense-outside" />
+      {!on && (
+        <span className="text-[11.5px] font-bold text-ink-600 group-hover:text-ink-900 transition-colors [animation:bp-slide_.3s_cubic-bezier(.16,1,.3,1)]">
+          Deduct from Daily Cash Flow
+        </span>
+      )}
+      <NewTag id="expense-cash-pill" at="top-1/2 -translate-y-1/2 -right-9" />
     </button>
   )
 }
@@ -161,7 +176,7 @@ export function ExpenseEdit({ expense, categories, nameOf, today, onSave, onRemo
           </button>
         </span>
       </div>
-      <div className="mt-1"><OutsideSwitch on={outside} onFlip={() => setOutside(o => !o)} /></div>
+      <div className="mt-1"><OutsideSwitch on={outside} amount={value} onFlip={() => setOutside(o => !o)} /></div>
       {open === 'category' && (
         <div className="bw-unfold">
           <label className="flex items-center gap-2 mt-2 px-2.5 rounded-lg bg-page text-muted focus-within:ring-[1.5px] focus-within:ring-gold-400 transition-shadow">
