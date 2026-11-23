@@ -2,10 +2,12 @@ import React from 'react'
 import { X } from 'lucide-react'
 import { StatementBand, StatementLineItem, shortDate } from '../../utils/statement'
 import { SectionName } from './StatementShell'
+import { morningsWithGaps } from '../../utils/breakfast'
 
 const money = (n: number) => (n < 0 ? '−₱' + Math.abs(n).toLocaleString() : '₱' + n.toLocaleString())
 /** `2026-10-19` → `10/19`: the paper's one Dates column; the year is in the Stay above it. */
 const dayMonth = (iso?: string) => shortDate(iso).split('/').slice(0, 2).join('/')
+const gapsOf = (it: StatementLineItem) => it.band === 'breakfast' && it.mornings ? morningsWithGaps(it.mornings) : ''
 
 /**
  * **The extras beside the totals, on paper** (Sebastian, 2026-11-06, the long-bill mock, "D · Beside
@@ -142,9 +144,12 @@ export function StatementChargesTable({ items, dates = true, paper = false, away
                     )}
                   </td>
                   <td className={cell + ' text-right font-mono'}>{it.price ? money(it.price) : '—'}</td>
+                  {/* Breakfast mornings that skip a day print as `11/24, 26–27` across both date columns. */}
+                  {gapsOf(it) ? <>{(dates || oneDates) && <td colSpan={oneDates ? 1 : 2} className={cell + ' text-right font-mono'}>{gapsOf(it)}</td>}</> : <>
                   {oneDates && <td className={cell + ' text-right font-mono'}>{it.checkIn ? dayMonth(it.checkIn) + (it.checkOut ? '–' + dayMonth(it.checkOut) : '') : ''}</td>}
                   {dates && !oneDates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkIn)}</td>}
                   {dates && !oneDates && <td className={cell + ' text-right font-mono'}>{shortDate(it.checkOut)}</td>}
+                  </>}
                   {/* The unit lives here when it is not a night: `3 hrs` for a short stay,
                       and the count for anything sold by the piece. */}
                   <td className={cell + ' text-right font-mono'}>

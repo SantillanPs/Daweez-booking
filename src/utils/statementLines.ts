@@ -48,6 +48,8 @@ export interface StatementLineItem {
   nights?: number
   /** A room's breakfast row only: the room's number, so the rooms' rows can be joined into one. */
   room?: string
+  /** A room's breakfast row only: the mornings it is billed for, which may skip a day. */
+  mornings?: string[]
   /** A room's stay row only: its number, so alike rooms can share one row on paper (`foldAlikeRooms`). */
   roomNo?: number
   /** How many rooms one folded row stands for, printed `×3` beside its name. */
@@ -82,6 +84,7 @@ export function mergeBreakfastRows(items: StatementLineItem[]): StatementLineIte
     amount: rows.reduce((sum, i) => sum + i.amount, 0),
     checkIn: rows.map(i => i.checkIn || '').sort()[0] || undefined,
     checkOut: rows.map(i => i.checkOut || '').sort().slice(-1)[0] || undefined,
+    mornings: [...new Set(rows.flatMap(i => i.mornings || []))].sort(),
   }
   let placed = false
   return items.flatMap(i => {
@@ -228,7 +231,7 @@ export function bookingLines(b: Booking, o: {
   // Breakfast is the room's own price once a night (2026-10-17) and prints as one line
   // under the Breakfast band — `Room 6 · Breakfast`, 2 × NIGHT — never per guest.
   if (isRoom && pricing.breakfastTotal > 0) {
-    // From the first morning to the last: the stay's, or the ones chosen on the bill.
+    // The stay's mornings, or the ones chosen on the bill, which may skip a day (2026-11-23).
     const mornings = breakfastMornings(b.check_in, b.check_out, b.breakfast_days)
     items.push({
       key: b.id + '-breakfast',
@@ -242,6 +245,7 @@ export function bookingLines(b: Booking, o: {
       remove: { breakfast_included: false },
       room: String(rooms.find(r => r.id === b.room_id)?.room_number ?? ''),
       checkIn: mornings[0] || b.check_out, checkOut: mornings[mornings.length - 1] || b.check_out,
+      mornings,
     })
   }
 

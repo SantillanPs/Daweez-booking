@@ -289,11 +289,12 @@ export function MonthPick({ end, checkIn, checkOut, free, taken, sameDay, onPick
   )
 }
 
-// The breakfast line's first or last morning (Sebastian, 2026-10-29: "make the breakfast date
-// editable"). Only the stay's mornings are there to tap; the ones with breakfast are shaded.
-export function MorningPick({ end, from, to, mornings, onPick }: {
-  end: 'from' | 'to'; from: string; to: string; mornings: string[]
-  onPick: (from: string, to: string) => void
+// The breakfast line's mornings (Sebastian, 2026-10-29: "make the breakfast date editable";
+// 2026-11-23: "one day breakfast, then another day none", the mock's option A). Each of the stay's
+// mornings is tapped on or off; a morning with breakfast is dark with a gold tick that draws in.
+export function MorningPick({ mornings, picked, onToggle, onEvery }: {
+  mornings: string[]; picked: string[]
+  onToggle: (day: string) => void; onEvery: () => void
 }) {
   if (mornings.length === 0) return null
   const first = mornings[0], last = mornings[mornings.length - 1]
@@ -302,28 +303,27 @@ export function MorningPick({ end, from, to, mornings, onPick }: {
   const [y, m] = first.split('-').map(Number)
   const lead = new Date(y, m - 1, Number(first.slice(8))).getDay()
   const months = [...new Set(days.map(d => MONTHS[Number(d.slice(5, 7)) - 1]))].join(' – ')
-  const nope = (el: HTMLElement) => { el.classList.remove('bw-nope'); void el.offsetWidth; el.classList.add('bw-nope') }
-  const tap = (d: string, el: HTMLElement) => {
-    if (end === 'from') return d <= to ? onPick(d, to) : nope(el)
-    return d >= from ? onPick(from, d) : nope(el)
-  }
+  const count = mornings.filter(d => picked.includes(d)).length
   return (
     <div className="p-1">
-      <div className="mb-1.5 text-center font-display text-[12px] font-bold text-ink-900">{end === 'from' ? 'First breakfast' : 'Last breakfast'} · {months}</div>
+      <div className="mb-1.5 text-center font-display text-[12px] font-bold text-ink-900">Breakfast mornings · {months}</div>
       <div className="grid grid-cols-7 text-center text-[9px] font-bold text-muted pb-0.5">{['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i}>{d}</span>)}</div>
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 gap-px">
         {Array.from({ length: lead }, (_, i) => <span key={'x' + i} />)}
         {days.map(d => {
-          const ok = mornings.includes(d)
-          const edge = d === from && d === to ? 'bg-ink-900 text-white rounded-lg' : d === from ? 'bg-ink-900 text-white rounded-l-lg' : d === to ? 'bg-ink-900 text-white rounded-r-lg' : ''
-          const tone = edge || (d > from && d < to ? 'bg-gold-100' : 'hover:bg-gold-100 hover:rounded-lg')
+          const ok = mornings.includes(d), on = ok && picked.includes(d)
           return (
-            <button key={d} type="button" disabled={!ok} onClick={e => tap(d, e.currentTarget)} aria-label={MONTHS[Number(d.slice(5, 7)) - 1] + ' ' + Number(d.slice(8))}
-              className={'h-[30px] grid place-items-center text-[11.5px] font-semibold active:scale-90 transition-[background-color,transform] ' + (ok ? tone + ' cursor-pointer' : 'text-paper-300 cursor-default')}>
+            <button key={d} type="button" disabled={!ok} onClick={() => onToggle(d)} aria-pressed={on} aria-label={MONTHS[Number(d.slice(5, 7)) - 1] + ' ' + Number(d.slice(8))}
+              className={'relative h-[34px] grid place-items-center rounded-lg text-[11.5px] font-semibold active:scale-90 transition-[background-color,color,transform] ' + (!ok ? 'text-paper-300 cursor-default' : on ? 'bg-ink-900 text-white cursor-pointer' : 'text-ink-900 hover:bg-gold-100 cursor-pointer')}>
               {Number(d.slice(8))}
+              {on && <svg aria-hidden="true" viewBox="0 0 10 10" className="absolute right-[3px] top-[3px] w-[9px] h-[9px]"><path className="bf-tick" d="M1.5 5.2l2.3 2.3L8.6 2.6" /></svg>}
             </button>
           )
         })}
+      </div>
+      <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
+        <span><b className="text-ink-900 tabular-nums">{count}</b> of {mornings.length} mornings</span>
+        {count < mornings.length && <button type="button" onClick={onEvery} className="px-0.5 py-0.5 font-semibold text-gold-800 border-b-[1.5px] border-dotted border-gold-400 cursor-pointer">Every morning</button>}
       </div>
     </div>
   )

@@ -8,7 +8,7 @@ import { dateToString, normalizeVenueId, randomUUID, addDays, parseDay, pesoWhol
 import { changedRows, onLead, settleBill } from '../../utils/bookingBalance'
 import { resettle } from '../../utils/billPayment'
 import { focusBookingAfterCreate } from '../../utils/bookingFocus'
-import { breakfastSellable, roomBreakfastPrice, stayMornings } from '../../utils/breakfast'
+import { breakfastMornings, breakfastSellable, morningsWithGaps, roomBreakfastPrice, stayMornings } from '../../utils/breakfast'
 import { venueTypes } from '../../utils/venueTypes'
 import { discountsOf } from '../../utils/discounts'
 import { getEffectiveNightlyPrice } from '../../utils/promoMode'
@@ -202,7 +202,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   useEffect(() => { if (!went) return; const t = setTimeout(() => setWent(null), 7000); return () => clearTimeout(t) }, [went])
   // Everything tapped on the bill opens in one floating box (Sebastian, 2026-10-27, the "Bill pop-ups" mock);
   // `v` is the rate it opens on.
-  const [pop, setPop] = useState<{ kind: 'swap' | 'add' | 'kind' | 'len' | 'bf' | 'bfFrom' | 'bfTo' | 'in' | 'out' | 'rate' | 'bfPrice' | 'disc' | 'staff' | 'to'; id: string; at: HTMLElement; v?: number } | null>(null)
+  const [pop, setPop] = useState<{ kind: 'swap' | 'add' | 'kind' | 'len' | 'bf' | 'bfDays' | 'in' | 'out' | 'rate' | 'bfPrice' | 'disc' | 'staff' | 'to'; id: string; at: HTMLElement; v?: number } | null>(null)
   const [fresh, setFresh] = useState<string | null>(null)
   // The room whose trash was tapped once and now asks "Remove".
   const [asking, setAsking] = useState<string | null>(null)
@@ -743,23 +743,29 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const bfLines = statement?.lineItems.filter(i => /^draft-.+-breakfast$/.test(i.key)) || []
   const bfFrom = bfLines.map(i => i.checkIn || '').filter(Boolean).sort()[0] || ''
   const bfTo = bfLines.map(i => i.checkOut || '').sort().slice(-1)[0] || ''
-  // Every room on the breakfast line takes the mornings from the first to the last that fall in its
-  // own stay. All of them is no choice at all, so a stay made longer later has breakfast every morning.
-  // A room left with none has its breakfast switched off.
-  const pickMornings = (from: string, last: string) => {
-    const on = bfRooms.filter(([id]) => breakfast.includes(id))
+  // The mornings are tapped one by one, so a stay can skip a day (Sebastian, 2026-11-23: "one day
+  // breakfast, then another day none"). Every room on the line takes the tapped mornings that fall in
+  // its own stay. All of them is no choice at all, so a stay made longer later has breakfast every
+  // morning. A room left with none has its breakfast switched off.
+  const bfOn = bfRooms.filter(([id]) => breakfast.includes(id))
+  const bfAll = [...new Set(bfOn.flatMap(([, s]) => stayMornings(s.checkIn, s.checkOut)))].sort()
+  const bfPicked = [...new Set(bfOn.flatMap(([id, s]) => breakfastMornings(s.checkIn, s.checkOut, bfDays[id])))].sort()
+  const bfGaps = morningsWithGaps(bfPicked)
+  const pickMornings = (want: string[]) => {
     const days: Record<string, string[]> = { ...bfDays }
     const off: string[] = []
-    on.forEach(([id, s]) => {
+    bfOn.forEach(([id, s]) => {
       const all = stayMornings(s.checkIn, s.checkOut)
-      const mine = all.filter(d => d >= from && d <= last)
+      const mine = all.filter(d => want.includes(d))
       if (mine.length === 0) { off.push(id); delete days[id] } else if (mine.length === all.length) delete days[id]
       else days[id] = mine
     })
     setBfDays(days)
     if (off.length > 0) setBreakfast(b => b.filter(x => !off.includes(x)))
-    setRemoved(null); setFresh('bf'); setPop(null)
+    if (off.length === bfOn.length) setPop(null)
+    setRemoved(null); setFresh('bf')
   }
+  const toggleMorning = (d: string) => pickMornings(bfPicked.includes(d) ? bfPicked.filter(x => x !== d) : [...bfPicked, d])
   const lastRoomKey = 'draft-' + list[list.length - 1]?.[0] + '-stay'
   const isOpen = (kind: NonNullable<typeof pop>['kind'], id = '') => pop?.kind === kind && pop.id === id
   const toggle = (kind: NonNullable<typeof pop>['kind'], id = '') => (e: React.MouseEvent<HTMLElement>) => {
@@ -812,13 +818,20 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
               </button>
             </> : it.price ? pesoWhole(it.price) : '—'}
           </td>
-          {/* The first and the last morning can be changed (Sebastian, 2026-10-29); the count and the money follow. */}
-          <td className={cell + ' text-right font-mono'}>
-            <button type="button" data-bf-from onClick={toggle('bfFrom')} aria-expanded={isOpen('bfFrom')} aria-label="First breakfast" className={VAL}>{shortDate(bfFrom)}</button>
-          </td>
-          <td className={cell + ' text-right font-mono'}>
-            <button type="button" data-bf-to onClick={toggle('bfTo')} aria-expanded={isOpen('bfTo')} aria-label="Last breakfast" className={VAL}>{shortDate(bfTo)}</button>
-          </td>
+          {/* The mornings can be changed (Sebastian, 2026-10-29), one by one (2026-11-23); the count and
+              the money follow. Mornings that skip a day read `11/24, 26–27` across both date columns. */}
+          {bfGaps ? (
+            <td colSpan={2} className={cell + ' text-right font-mono'}>
+              <button type="button" data-bf-days onClick={e => { sawFeature('breakfast-mornings'); toggle('bfDays')(e) }} aria-expanded={isOpen('bfDays')} aria-label="Breakfast mornings" className={VAL + ' relative'}>{bfGaps}<NewTag id="breakfast-mornings" /></button>
+            </td>
+          ) : <>
+            <td className={cell + ' text-right font-mono'}>
+              <button type="button" data-bf-days onClick={e => { sawFeature('breakfast-mornings'); toggle('bfDays')(e) }} aria-expanded={isOpen('bfDays')} aria-label="Breakfast mornings" className={VAL + ' relative'}>{shortDate(bfFrom)}<NewTag id="breakfast-mornings" /></button>
+            </td>
+            <td className={cell + ' text-right font-mono'}>
+              <button type="button" onClick={e => { sawFeature('breakfast-mornings'); toggle('bfDays')(e) }} aria-expanded={isOpen('bfDays')} aria-label="Breakfast mornings" className={VAL}>{shortDate(bfTo)}</button>
+            </td>
+          </>}
           <td className={cell + ' text-right font-mono'}>{count}</td>
           <td className={cell + ' text-right font-mono font-bold'}>{pesoWhole(amount)}</td>
         </tr>
@@ -1056,11 +1069,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
           }} />
       </Floating>
     )
-    if (p.kind === 'bfFrom' || p.kind === 'bfTo') return (
-      <Floating key={p.kind} {...common} at={() => sheet.current?.querySelector<HTMLElement>(p.kind === 'bfFrom' ? '[data-bf-from]' : '[data-bf-to]') || p.at} right width={236} label={p.kind === 'bfFrom' ? 'First breakfast' : 'Last breakfast'}>
-        <MorningPick end={p.kind === 'bfFrom' ? 'from' : 'to'} from={bfFrom} to={bfTo}
-          mornings={[...new Set(bfRooms.filter(([id]) => breakfast.includes(id)).flatMap(([, s]) => stayMornings(s.checkIn, s.checkOut)))].sort()}
-          onPick={pickMornings} />
+    if (p.kind === 'bfDays') return (
+      <Floating key={p.kind} {...common} at={() => sheet.current?.querySelector<HTMLElement>('[data-bf-days]') || p.at} right width={244} label="Breakfast mornings">
+        <MorningPick mornings={bfAll} picked={bfPicked} onToggle={toggleMorning} onEvery={() => pickMornings(bfAll)} />
       </Floating>
     )
     if (p.kind === 'rate') return (
