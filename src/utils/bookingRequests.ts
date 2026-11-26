@@ -32,7 +32,16 @@ export interface BookingRequest {
   pay_shot?: string | null
   /** What `read-payment-shot` read off it. */
   pay_read?: { reference?: string | null; amount?: number | null; sent_to_name?: string | null; sent_to_number?: string | null; when?: string | null; app?: string | null } | null
+  /** The website's reserve flow (2026-11-26): the other rooms of the same request, */
+  more_rooms?: string[]
+  /** roughly when the guest arrives ("5 PM", "Evening"), */
+  arrival?: string | null
+  /** and, for a guest paying at the hotel, the day they said they would come to pay the half. */
+  pay_on?: string | null
 }
+
+/** Every room (or the venue) a request asks for, the first one first. */
+export const unitsOf = (r: BookingRequest) => [r.room_id, ...(r.more_rooms || [])]
 
 /** A short-lived link to a payment screenshot; only the desk may look. */
 export async function paymentShotUrl(path: string): Promise<string | null> {

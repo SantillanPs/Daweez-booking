@@ -16,6 +16,8 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // A website request: every room it asks for, when the guest arrives, and the day a guest paying at the hotel comes to pay (`RequestPanel`).
+  { id: 'request-pay-day', since: '2026-11-26' },
   // The bill's Breakfast dates: each morning is tapped on or off, so a stay can skip a day (`MorningPick`).
   { id: 'breakfast-mornings', since: '2026-11-23' },
   // Catering on a venue's bill: "+ Catering" writes a meal as heads × a price a head, under its own band (`AddCatering`).

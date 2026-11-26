@@ -76,9 +76,7 @@ const openCalendar = (e: React.MouseEvent<HTMLLabelElement>) => {
 
 interface RoomType { name: string; rooms: Room[]; sleeps: number; price: number; breakfast: number | null }
 /** What a request is for: a room (its first free one) or a venue, with the venue's kind when one was picked. */
-interface Ask { id: string; title: string; photo?: string; price: number; venue: boolean; kind?: string; breakfast: number | null; from: DOMRect
-  /** The free rooms of a kind there are several of: the guest picks one. */
-  choices?: Room[] }
+interface Ask { id: string; title: string; photo?: string; price: number; venue: boolean; kind?: string; from: DOMRect }
 interface Kind { key?: string; label: string; price: number }
 
 /** The day the guest now in that room leaves: the latest check-out of what holds it on those dates. */
@@ -121,6 +119,7 @@ function Slide({ items, on, pick, className }: { items: string[]; on: number; pi
   )
 }
 
+const CUP = <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z" /><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16" /><path d="M8 3c0 1.5 1 1.5 1 3M12 3c0 1.5 1 1.5 1 3" /></svg>
 const PERSON = <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4" /><path d="M4 21a8 8 0 0 1 16 0z" /></svg>
 
 export function Website() {
@@ -135,7 +134,7 @@ export function Website() {
   return r ? <RequestStatus id={r} /> : <Site />
 }
 
-type Status = { status: 'open' | 'booked' | 'declined'; place: string; check_in: string; check_out: string; pay_amount: number; pay_method: string; pay_reference: string } | null
+type Status = { status: 'open' | 'booked' | 'declined'; place: string; check_in: string; check_out: string; pay_amount: number | null; pay_method: string; pay_reference: string; pay_on: string | null; quoted_total: number | null } | null
 
 /* The page a guest lands on after paying (Sebastian, 2026-11-19, the Quiet mock): one line, the money, and
    "If we can't reserve it, we'll call you." It says nothing about the desk checking, only what comes next.
@@ -154,6 +153,8 @@ function RequestStatus({ id }: { id: string }) {
   const s = data?.status
   const day = (d: string) => parseDay(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
   const way = data?.pay_method === 'GCash' ? 'GCash' : 'bank transfer'
+  // Paying at the hotel (2026-11-26): the page says the day and the half, and that the room is not held till then.
+  const toPay = !data?.pay_amount && data?.pay_on ? Math.round((data.quoted_total || 0) / 2) : 0
   return (
     <div className="dw rs">
       <header><a href="/"><img src={logo} alt="" />Daweez Pension House</a></header>
@@ -166,10 +167,11 @@ function RequestStatus({ id }: { id: string }) {
           <svg viewBox="0 0 84 84"><circle className="bg" cx="42" cy="42" r="38" /><circle className="fg" cx="42" cy="42" r="38" /></svg>
           <i>{s === 'open' ? '½' : s === 'booked' ? '✓' : '!'}</i>
         </div>
-        <h1>{s === 'open' ? 'Payment received' : s === 'booked' ? "You're booked" : "We couldn't reserve it"}</h1>
-        <p className="sub">{s === 'open' ? `We'll text you as soon as ${data.place} is reserved for ${day(data.check_in)}.`
+        <h1>{s === 'open' && toPay ? 'Request sent' : s === 'open' ? 'Payment received' : s === 'booked' ? "You're booked" : "We couldn't reserve it"}</h1>
+        <p className="sub">{s === 'open' && toPay ? `Come to the front desk on ${longDay(data.pay_on!)} to pay the half. Until it's paid, someone else can take ${data.place.startsWith('Rooms') ? 'the rooms' : data.place.startsWith('Room') ? 'the room' : 'the day'}.`
+          : s === 'open' ? `We'll text you as soon as ${data.place} is reserved for ${day(data.check_in)}.`
           : s === 'booked' ? data.place
-          : `We'll call you about your ${pesoWhole(data.pay_amount)}. You can call us too.`}</p>
+          : data.pay_amount ? `We'll call you about your ${pesoWhole(data.pay_amount)}. You can call us too.` : 'Call us and we can find you other dates.'}</p>
         {/* When to come leads once booked (Sebastian, 2026-11-19: "highlight more of when they should go to the hotel
             and at what time", mock A). The hours are the rooms'; a venue shows its days only. */}
         {s === 'booked' && <div className="arrive">
@@ -179,11 +181,14 @@ function RequestStatus({ id }: { id: string }) {
             <div className="out">Check out {longDay(data.check_out)} by 12 noon</div>
           </> : <div className="out">to {longDay(data.check_out)}</div>}
         </div>}
-        <dl className="amt num">
+        {data.pay_amount ? <dl className="amt num">
           <dt>Paid</dt><dd>{pesoWhole(data.pay_amount)} by {way}</dd>
           <dt>Ref no.</dt><dd>{data.pay_reference}</dd>
-        </dl>
-        {s === 'open' && <p className="promise">If we can't reserve it, we'll call you.</p>}
+        </dl> : toPay > 0 && s === 'open' && <dl className="amt num">
+          <dt>To pay</dt><dd>{pesoWhole(toPay)} at the front desk</dd>
+          <dt>By</dt><dd>{longDay(data.pay_on!)}</dd>
+        </dl>}
+        {s === 'open' && !toPay && <p className="promise">If we can't reserve it, we'll call you.</p>}
         <div className="btns">
           {s === 'booked' ? <a className="btn soft" href={`https://www.google.com/maps/search/${encodeURIComponent(MAP_Q)}`} target="_blank" rel="noopener">Get directions</a>
             : <a className="btn soft" href={MESSENGER} target="_blank" rel="noopener">Message us</a>}
@@ -206,7 +211,6 @@ function Site() {
   const today = dateToString(new Date())
   const [checkIn, setCheckIn] = useState(today)
   const [checkOut, setCheckOut] = useState(addDays(today, 1))
-  const [people, setPeople] = useState(2)
   const [filter, setFilter] = useState(0)
   const [kind, setKind] = useState(0)
   const [hrsOn, setHrsOn] = useState(0)
@@ -304,7 +308,7 @@ function Site() {
   const onDay = checkIn === today ? ' today' : ''
   const changeIn = (v: string) => { setCheckIn(v); if (checkOut <= v) setCheckOut(addDays(v, 1)) }
   const askVenue = (v: Venue, e: React.MouseEvent, title: string, photo?: string, k?: Kind) =>
-    setAsk({ id: v.id, title, photo, price: k?.price ?? v.base_price, venue: true, kind: k?.key, breakfast: null, from: e.currentTarget.getBoundingClientRect() })
+    setAsk({ id: v.id, title, photo, price: k?.price ?? v.base_price, venue: true, kind: k?.key, from: e.currentTarget.getBoundingClientRect() })
 
   return (
     <div className="dw">
@@ -331,14 +335,13 @@ function Site() {
       </header>
 
       <div className="wrap bar">
-        <form autoComplete="off" onSubmit={e => { e.preventDefault(); if (!nights) return; setFilter(people <= 2 ? 2 : 3); go('rooms') }}>
+        <form autoComplete="off" onSubmit={e => { e.preventDefault(); if (!nights) return; go('rooms') }}>
           <label className="date" onClick={openCalendar}><span>Check in</span><input type="date" min={today} value={checkIn} onChange={e => e.target.value && changeIn(e.target.value)} /></label>
           <label className="date" onClick={openCalendar}><span>Check out</span><input type="date" min={addDays(checkIn, 1)} value={checkOut} onChange={e => e.target.value && setCheckOut(e.target.value)} /></label>
-          <label className="date pick"><span>Guests</span><select value={people} onChange={e => setPeople(+e.target.value)}>
-            {Array.from({ length: 12 }, (_, i) => <option key={i} value={i + 1}>{i + 1} {i ? 'guests' : 'guest'}</option>)}
-          </select><svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg></label>
           <button type="submit">See rooms</button>
         </form>
+        {/* How a reservation goes, before the guest starts (Sebastian, 2026-11-26, the reserve-flow mock). */}
+        <div className="how" aria-hidden="true"><i>1</i>Pick rooms<hr /><i>2</i>Your details<hr /><i>3</i>Pay half</div>
         <p className="hint num" key={`${checkIn}${checkOut}`}>{nights > 0 ? `${nights} night${nights > 1 ? 's' : ''}, ${longDay(checkIn)} to ${longDay(checkOut)}` : 'Check-out comes after check-in.'}</p>
       </div>
 
@@ -360,13 +363,15 @@ function Site() {
               const photo = photoOf(t.rooms)
               return (
                 <button key={t.rooms[0].id} className={'room' + (free.length ? '' : ' busy')} style={{ animationDelay: i * 50 + 'ms' }} disabled={!free.length}
-                  onClick={e => setAsk({ id: free[0].id, title: t.name, photo, price: t.price, venue: false, breakfast: t.breakfast, from: e.currentTarget.getBoundingClientRect(), choices: free.length > 1 ? free : undefined })}>
+                  onClick={e => setAsk({ id: free[0].id, title: t.name, photo, price: t.price, venue: false, from: e.currentTarget.getBoundingClientRect() })}>
                   <div className="ph">
                     {photo ? <img src={photo} alt={t.name} loading="lazy" /> : <div className="no"><span>{nos[0]}</span></div>}
                     {bookings.data && nights > 0 && (free.length
                       ? <span key="free" className="tag">{t.rooms.length > 1 ? `${free.length} available${onDay}` : `Available${onDay}`}</span>
                       : <span key="busy" className="tag busy">{till ? `Occupied till ${longDay(till)}` : 'Occupied'}</span>)}
+                    {t.breakfast && <span className="bfp num">{CUP}{pesoWhole(t.price + t.breakfast)} with breakfast</span>}
                     {nos.length > 1 && <span className="cnt">{nos.length} rooms</span>}
+                    {free.length > 0 && <span className="res">Reserve</span>}
                   </div>
                   <div className="row"><h3>{nos.length > 1 ? 'Rooms' : 'Room'} {nos.join(', ')}</h3><span className="pr num">{pesoWhole(t.price)}<small> a night</small></span></div>
                   <div className="meta"><span>{t.name}</span>
@@ -507,8 +512,9 @@ function Site() {
       <footer><div className="wrap"><a className="brand" href="#top"><img src={logo} alt="" />Daweez Pension House</a><span>Open 24 hours. {TOWN}.</span></div>
       </footer>
 
-      {ask && <RequestSheet ask={ask} checkIn={checkIn} checkOut={checkOut} people={people}
-        rooms={rooms.data || []} venues={venues.data || []} onClose={() => setAsk(null)} />}
+      {ask && <RequestSheet ask={ask} checkIn={checkIn} checkOut={checkOut}
+        rooms={rooms.data || []} venues={venues.data || []}
+        free={(rooms.data || []).filter(r => !bookings.data || isRoomAvailable(r.id, checkIn, checkOut, bookings.data))} onClose={() => setAsk(null)} />}
       {look && <Lightbox {...look} onClose={() => setLook(null)} />}
       {gal && <Gallery {...gal} onClose={() => setGal(null)} />}
     </div>
@@ -628,32 +634,40 @@ function Seg<T extends string>({ items, value, onPick, label }: { items: { k: T;
 }
 
 /**
- * **Pay to keep it** (Sebastian, 2026-11-17): "since the guests will be able to book a room in the website, they should
- * also be able to pay before the reservation gets saved". You → Pay → Done: half or all of the stay, by GCash or a bank
- * transfer, with the screenshot of the transfer. No request goes in without it ("Can a website guest still send a
- * request without paying?" — "no"). The request still holds nothing: the desk finds the money in the app and books it.
- * The screenshot is read for its reference number as soon as it is added (`read-payment-shot`), so the guest only
- * checks it; typing over it always wins.
+ * **Keep your room** (Sebastian, 2026-11-26, the reserve-flow mock). Guests used the site only to check prices: it
+ * took one room per request, every companion's name, and the money before anything. Now the guest lists the rooms
+ * they want (one or several), how many are coming and roughly when they arrive, then either pays half now — the
+ * room is theirs — or picks a day, up to a month from today and before the stay, to pay at the front desk; until
+ * then someone else can take the room ("give an incentive to the guest that they should pay the downpayment").
+ * Paying now is as before (2026-11-17): half or all, by GCash or a bank, the screenshot read for its reference
+ * (`read-payment-shot`), typing over it always wins. A request still holds nothing: the desk books it.
  */
-function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }: {
-  ask: Ask; checkIn: string; checkOut: string; people: number; rooms: Room[]; venues: Venue[]; onClose: () => void
+const ARRIVE = ['2 PM', '5 PM', 'Evening', 'Not sure']
+const roomPhoto = (r: Room) => ROOM_PHOTOS.includes(r.room_number) ? `/website/room-${r.room_number}.webp` : undefined
+
+function RequestSheet({ ask, checkIn, checkOut, rooms, venues, free, onClose }: {
+  ask: Ask; checkIn: string; checkOut: string; rooms: Room[]; venues: Venue[]
+  /** every room free on those dates, for "+ Add a room" */
+  free: Room[]; onClose: () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  // One box for each person coming with the guest (Sebastian, 2026-11-17: "I chose 3 guests, why is there only 1 field").
-  const [companions, setCompanions] = useState<string[]>([])
-  // A kind with several free rooms: the guest says which one; it is never picked for them (Sebastian, 2026-11-17).
-  const [roomId, setRoomId] = useState(ask.choices ? '' : ask.id)
-  const room = ask.choices?.find(r => r.id === roomId)
-  const photo = room && ROOM_PHOTOS.includes(room.room_number) ? `/website/room-${room.room_number}.webp` : ask.photo
+  const [stay, setStay] = useState<Room[]>(() => ask.venue ? [] : rooms.filter(r => r.id === ask.id))
+  const [adding, setAdding] = useState(false)
+  // How many are coming is asked here (Sebastian, 2026-11-23), up to what the rooms picked sleep.
+  const most = stay.reduce((n, r) => n + r.capacity, 0) || 1
+  const [people, setPeople] = useState(Math.min(2, most))
+  const party = Math.min(people, most)
+  const [arrive, setArrive] = useState('')
+  const photo = ask.venue ? ask.photo : (stay[0] && roomPhoto(stay[0])) || ask.photo
   // The sheet's photo opens whole (Sebastian, 2026-11-17: "these should be able to view the full image").
   const [look, setLook] = useState<DOMRect | null>(null)
-  const title = room ? `Room ${room.room_number}, ${ask.title}` : ask.title
   const [breakfast, setBreakfast] = useState(false)
-  const [errs, setErrs] = useState<{ room?: string; name?: string; phone?: string; companions?: string; shot?: string; ref?: string; form?: string }>({})
+  const [errs, setErrs] = useState<{ room?: string; name?: string; phone?: string; shot?: string; ref?: string; day?: string; form?: string }>({})
   const [step, setStep] = useState<'you' | 'pay' | 'sent'>('you')
+  const [later, setLater] = useState(false)
   const [half, setHalf] = useState(true)
   const [shot, setShot] = useState<{ path: string; url: string } | null>(null)
   const [reading, setReading] = useState<'' | 'reading' | 'done'>('')
@@ -668,13 +682,32 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
   const typed = useRef(false)
   const days = nightsOf(checkIn, checkOut)
   const unit = ask.venue ? 'day' : 'night'
-  // A venue is never asked for a headcount or companions (the same rule as the chat bot).
-  const party = ask.venue ? 1 : people
-  const total = calculatePricing(ask.venue
-    ? { venueId: ask.id, eventAddons: { venue_type: ask.kind }, checkIn, checkOut, guestEmail: '', source: 'website', rooms, venues }
-    : { roomId: roomId || ask.id, checkIn, checkOut, guestEmail: '', source: 'website', breakfastEnabled: breakfast, rooms, venues }).grandTotal
+
+  const priced = stay.map(r => ({
+    r, nightly: getEffectiveNightlyPrice(r.base_price, r.promo_price),
+    total: calculatePricing({ roomId: r.id, checkIn, checkOut, guestEmail: '', source: 'website', breakfastEnabled: breakfast, rooms, venues }).grandTotal,
+  }))
+  const total = ask.venue
+    ? calculatePricing({ venueId: ask.id, eventAddons: { venue_type: ask.kind }, checkIn, checkOut, guestEmail: '', source: 'website', rooms, venues }).grandTotal
+    : priced.reduce((s, p) => s + p.total, 0)
+  const nightsOnly = priced.reduce((s, p) => s + p.nightly * days, 0)
+  const bfPrices = [...new Set(stay.map(r => r.breakfast_price).filter(Boolean))] as number[]
   const deposit = Math.round(total / 2)
   const amount = half ? deposit : total
+  const others = free.filter(r => !stay.some(s => s.id === r.id)).sort((a, b) => a.room_number - b.room_number)
+  const what = ask.venue ? ask.title : stay.map(r => 'Room ' + r.room_number).join(' + ')
+  const thing = ask.venue ? 'day' : stay.length > 1 ? 'rooms' : 'room'
+
+  // The days the guest can come by to pay: today up to a month from today, and before the stay begins.
+  const today = dateToString(new Date())
+  const lastDay = [addDays(today, 30), addDays(checkIn, -1)].sort()[0]
+  const visitDays = useMemo(() => {
+    const out: string[] = []
+    for (let d = today; d <= lastDay; d = addDays(d, 1)) out.push(d)
+    return out
+  }, [today, lastDay])
+  const [payOn, setPayOn] = useState(visitDays[Math.min(1, visitDays.length - 1)] || '')
+
   const pay = getPaymentAccounts()
   const ways = ([
     pay.gcashNumber && { k: 'gcash', label: 'GCash', name: pay.gcashName, number: pay.gcashNumber, method: 'GCash' },
@@ -683,7 +716,6 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
   ].filter(Boolean)) as Way[]
   const [wayK, setWayK] = useState<Way['k']>(ways[0]?.k || 'gcash')
   const way = ways.find(w => w.k === wayK) || ways[0]
-  const names = companions.slice(0, party - 1).map(s => s.trim()).filter(Boolean)
 
   const close = () => { setOpen(false); setTimeout(onClose, 300) }
 
@@ -696,7 +728,6 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
     requestAnimationFrame(() => setOpen(true))
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && !document.querySelector('.lb') && close() // Escape on the open photo closes only the photo
     document.addEventListener('keydown', esc)
-    setTimeout(() => el.querySelector('input')?.focus({ preventScroll: true }), 350)
     return () => document.removeEventListener('keydown', esc)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -705,13 +736,12 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
   const toPay = (e: React.FormEvent) => {
     e.preventDefault()
     const next = {
-      room: roomId ? undefined : 'Pick the room you want.',
+      room: ask.venue || stay.length ? undefined : 'Add the room you want.',
       name: name.trim() ? undefined : 'Write your name so the desk knows who to look for.',
       phone: phone.replace(/\D/g, '').length >= 10 ? undefined : 'Write a number we can call, like 0917 482 3361.',
-      companions: party > 1 && names.length < party - 1 ? 'Write the name of everyone coming with you.' : undefined,
     }
     setErrs(next)
-    if (!next.room && !next.name && !next.phone && !next.companions) setStep('pay')
+    if (!next.room && !next.name && !next.phone) setStep('pay')
   }
 
   // The screenshot goes up the moment it is picked, and is read for its reference behind it.
@@ -746,27 +776,30 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault()
-    const next = {
+    const paying = !later
+    const next = paying ? {
       shot: shot ? undefined : `Add the screenshot of the ${way?.label || 'payment'} receipt.`,
       ref: refNo.replace(/\D/g, '').length >= 6 ? undefined : 'Write the reference number on your receipt.',
-    }
+    } : { day: payOn ? undefined : 'Pick the day you can come by.' }
     setErrs(next)
-    if (next.shot || next.ref || !way || !shot) return
+    if (Object.values(next).some(Boolean) || (paying && (!way || !shot))) return
     // Shown at once and taken back if the database refuses (the app's rule: buttons never wait).
     setStep('sent')
     const back = (form: string, field?: 'shot') => { setStep('pay'); setErrs(field ? { shot: form } : { form }) }
-    if (!(await upload.current)) return back('The screenshot did not go through. Add it again.', 'shot')
+    if (paying && !(await upload.current)) return back('The screenshot did not go through. Add it again.', 'shot')
     const note = ask.venue ? (ask.kind ? `Wants ${ask.title}` : null) : breakfast ? 'Wants breakfast' : null
     const { data, error } = await supabase.rpc('request_booking', {
-      p_source: 'website', p_room_id: roomId, p_check_in: checkIn, p_check_out: checkOut,
-      p_guest_name: name.trim(), p_phone: phone.trim(), p_guests: ask.venue ? null : people, p_note: note,
-      p_quoted_total: total, p_language: 'en', p_companions: names,
-      p_pay_amount: amount, p_pay_method: way.method, p_pay_account: way.k, p_pay_reference: refNo.trim(),
-      p_pay_shot: shot.path, p_pay_read: readOut,
+      p_source: 'website', p_room_id: ask.venue ? ask.id : stay[0].id, p_more_rooms: stay.slice(1).map(r => r.id),
+      p_check_in: checkIn, p_check_out: checkOut,
+      p_guest_name: name.trim(), p_phone: phone.trim(), p_guests: ask.venue ? null : party, p_note: note,
+      p_quoted_total: total, p_language: 'en', p_arrival: ask.venue || arrive === 'Not sure' ? null : arrive || null,
+      ...(paying
+        ? { p_pay_amount: amount, p_pay_method: way!.method, p_pay_account: way!.k, p_pay_reference: refNo.trim(), p_pay_shot: shot!.path, p_pay_read: readOut }
+        : { p_pay_on: payOn }),
     })
     if (error) {
       const code = Object.keys(REFUSED).find(k => error.message?.includes(k))
-      back(code ? REFUSED[code] : `It didn't go through. Check your connection and try again, or call ${PHONE}.`)
+      back(code === 'NEED_PAYMENT' && !paying ? 'Pick a day from today, before your stay.' : code ? REFUSED[code] : `It didn't go through. Check your connection and try again, or call ${PHONE}.`)
     } else location.assign('?r=' + data) // the guest's own page, which they can keep (Sebastian, 2026-11-19)
   }
 
@@ -775,6 +808,44 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
     const c = (i: number) => n > i ? 'ok' : n === i ? 'on' : ''
     return <div className="psteps" aria-hidden="true"><i className={c(1)}>{n > 1 ? '✓' : 1}</i>You<hr /><i className={c(2)}>{n > 2 ? '✓' : 2}</i>Pay<hr /><i className={c(3)}>3</i>Done</div>
   }
+
+  const payNow = way && <>
+    <Seg label="How much" value={half ? 'half' : 'all'} onPick={k => setHalf(k === 'half')}
+      items={[{ k: 'half', t: 'Half', s: pesoWhole(deposit) }, { k: 'all', t: 'All', s: pesoWhole(total) }]} />
+    {folded && shot ? <div className="paid"><img src={shot.url} alt="" /><div><b>Sent by {way.label}</b><span className="num">{pesoWhole(amount)}</span></div>
+      <button type="button" onClick={() => setFolded(false)}>Change</button></div> : <>
+    <div><div className="lab">Send it by</div>
+      <Seg label="Send it by" value={way.k} onPick={setWayK} items={ways.map(w => ({ k: w.k, t: w.label }))} /></div>
+    {way.k === 'gcash'
+      // The hotel's GCash QR, redrawn from the card at the desk (Sebastian, 2026-11-21, the mock's "A · Beside").
+      // A guest paying on this same phone can't scan its own screen, so Save QR hands GCash's "Upload QR" the
+      // image; tapping the code opens it big for a second phone. The image is for the account in the settings
+      // on that day: a new GCash account needs a new gcash-qr.png / .svg.
+      ? <div className="acct qr" key={way.k}>
+          <button type="button" className="qrb" onClick={() => setBigQr(true)} aria-label="Show the GCash QR code big"><img src="/website/gcash-qr.svg" alt="" /></button>
+          <div className="who"><span>{way.name}</span><b className="num">{way.number}</b><span className="num">Send exactly {pesoWhole(amount)}</span>
+            <div className="acts"><Copy text={way.number.replace(/\D/g, '')} /><a className="copy" href="/website/gcash-qr.png" download="Daweez GCash QR.png">Save QR</a></div></div>
+        </div>
+      : <div className="acct" key={way.k}><div><span>{way.name}</span><b className="num">{way.number}</b><span className="num">Send exactly {pesoWhole(amount)}</span></div><Copy text={way.number.replace(/\D/g, '')} /></div>}
+    {bigQr && <div className="bigqr" onClick={() => setBigQr(false)}>
+      <div className="card" onClick={e => e.stopPropagation()}><img src="/website/gcash-qr.svg" alt="The hotel's GCash QR code" />
+        <b>{way.name}</b><span className="num">Send exactly {pesoWhole(amount)}</span>
+        <div className="acts"><a className="copy" href="/website/gcash-qr.png" download="Daweez GCash QR.png">Save QR</a><button type="button" className="copy" onClick={() => setBigQr(false)}>Close</button></div></div>
+    </div>}
+    <div className="f">
+      <label className={'drop' + (shot ? ' has' : '')}>
+        <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={e => addShot(e.target.files?.[0])} />
+        {shot ? <><img src={shot.url} alt="" /><div><b>Screenshot added</b><span>Tap to change it</span></div></>
+          : <><div className="ic" aria-hidden="true">⤒</div><div><b>Add the screenshot</b><span>The {way.label} receipt, after you send</span></div></>}
+      </label>
+      {errs.shot && <span className="err">{errs.shot}</span>}
+    </div></>}
+    <div className="f"><label htmlFor="dw-rf">Reference no.{reading === 'done' && <span className="readtag">✓ Read from your screenshot</span>}</label>
+      <input id="dw-rf" className={'num' + (reading === 'reading' ? ' reading' : '')} inputMode="numeric"
+        placeholder={reading === 'reading' ? 'Reading your screenshot…' : 'e.g. 9012 345 678 901'} value={refNo}
+        onChange={e => { typed.current = true; setReading(''); setRefNo(e.target.value) }} />
+      {errs.ref && <span className="err">{errs.ref}</span>}</div>
+  </>
 
   return <>
     <div className={'scrim' + (open ? ' open' : '')} onClick={close} />
@@ -785,79 +856,75 @@ function RequestSheet({ ask, checkIn, checkOut, people, rooms, venues, onClose }
       </div>
       {step === 'you' && <div className="sbody">
         {steps()}
-        <h3 id="dw-sheet">{title}</h3>
-        <p className="when num">{longDay(checkIn)} to {longDay(checkOut)}{ask.venue ? '' : ` · ${people} ${people > 1 ? 'people' : 'person'}`}</p>
+        <h3 id="dw-sheet">{ask.venue ? ask.title : 'Your stay'}</h3>
+        <p className="when num">{longDay(checkIn)} to {longDay(checkOut)} · {days} {unit}{days > 1 ? 's' : ''}</p>
         <form className="form" noValidate onSubmit={toPay}>
-          {ask.choices && <div className="f"><div className="lab">Which room</div>
-            <Seg label="Which room" value={roomId} onPick={k => { setRoomId(k); setErrs(e => ({ ...e, room: undefined })) }}
-              items={ask.choices.map(r => ({ k: r.id, t: 'Room ' + r.room_number }))} />
-            {errs.room && <span className="err">{errs.room}</span>}</div>}
+          {!ask.venue && <div className="f"><div className="stay">
+            {priced.map(({ r, nightly }) => <div className="r" key={r.id}>
+              {roomPhoto(r) ? <img src={roomPhoto(r)} alt="" /> : <span className="ph" />}
+              <div><b>Room {r.room_number}</b><span className="num">{r.name} · {pesoWhole(nightly)}</span></div>
+              {stay.length > 1 && <button type="button" className="rm" aria-label={`Take Room ${r.room_number} off`} onClick={() => setStay(s => s.filter(x => x.id !== r.id))}>×</button>}
+            </div>)}
+            {others.length > 0 && <>
+              <button type="button" className="add" aria-expanded={adding} onClick={() => setAdding(a => !a)}>{adding ? 'Close' : stay.length ? '+ Add a room' : '+ Pick a room'}</button>
+              <div className={'pick' + (adding ? ' open' : '')}><div><div className="rchips">
+                {others.map(r => <button type="button" key={r.id} tabIndex={adding ? 0 : -1}
+                  onClick={() => { setStay(s => [...s, r]); setAdding(false); setErrs(e => ({ ...e, room: undefined })) }}>
+                  Room {r.room_number} <small className="num">{pesoWhole(getEffectiveNightlyPrice(r.base_price, r.promo_price))}</small></button>)}
+              </div></div></div></>}
+          </div>{errs.room && <span className="err">{errs.room}</span>}</div>}
+          {!ask.venue && <div className="count"><span>Guests</span><div className="step">
+            <button type="button" aria-label="One fewer" aria-disabled={party <= 1} onClick={() => party > 1 && setPeople(party - 1)}>−</button>
+            <b key={party} className="num">{party}</b>
+            <button type="button" aria-label="One more" aria-disabled={party >= most} onClick={() => party < most && setPeople(party + 1)}>+</button></div></div>}
           <div className="f"><label htmlFor="dw-nm">Your name</label><input id="dw-nm" placeholder="e.g. Maria Santos" autoComplete="name" value={name} onChange={e => setName(e.target.value)} />{errs.name && <span className="err">{errs.name}</span>}</div>
           <div className="f"><label htmlFor="dw-ph">Mobile number</label><input id="dw-ph" inputMode="tel" placeholder="e.g. 0917 482 3361" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value)} />{errs.phone && <span className="err">{errs.phone}</span>}</div>
-          {party > 1 && <div className="f"><label htmlFor="dw-cp0">Who is coming with you</label>
-            {Array.from({ length: party - 1 }, (_, i) => <input key={i} id={'dw-cp' + i} aria-label={`Person ${i + 2}`}
-              placeholder={['e.g. Jose Santos', 'e.g. Ana Santos', 'e.g. Ben Santos', 'e.g. Lea Santos'][i % 4]}
-              value={companions[i] || ''} onChange={e => { const v = e.target.value; setCompanions(c => { const n = [...c]; n[i] = v; return n }) }} />)}
-            {errs.companions && <span className="err">{errs.companions}</span>}</div>}
-          {ask.breakfast && <div className="switch"><span>Breakfast every morning <span className="num faint">{pesoWhole(ask.breakfast)}</span></span>
+          {!ask.venue && <div className="f"><div className="lab">Arriving around</div><div className="rchips">
+            {ARRIVE.map(t => <button type="button" key={t} aria-pressed={arrive === t} onClick={() => setArrive(a => a === t ? '' : t)}>{t}</button>)}
+          </div></div>}
+          {bfPrices.length > 0 && <div className="switch"><span>Breakfast {bfPrices.length === 1 && <span className="num faint">{pesoWhole(bfPrices[0])} a room</span>}</span>
             <button type="button" aria-pressed={breakfast} aria-label="Breakfast" onClick={() => setBreakfast(b => !b)} /></div>}
           <div className="sum num">
-            <div><span>{pesoWhole(ask.price)} × {days} {unit}{days > 1 ? 's' : ''}</span><span>{pesoWhole(ask.price * days)}</span></div>
-            {total > ask.price * days && <div><span>Breakfast</span><span>{pesoWhole(total - ask.price * days)}</span></div>}
+            {ask.venue
+              ? <div><span>{pesoWhole(ask.price)} × {days} {unit}{days > 1 ? 's' : ''}</span><span>{pesoWhole(ask.price * days)}</span></div>
+              : priced.map(({ r, nightly }) => <div key={r.id}><span>Room {r.room_number}{days > 1 ? ` × ${days} nights` : ''}</span><span>{pesoWhole(nightly * days)}</span></div>)}
+            {!ask.venue && total > nightsOnly && <div><span>Breakfast</span><span>{pesoWhole(total - nightsOnly)}</span></div>}
             <div className="tot"><span>Total</span><Count value={total} /></div>
           </div>
-          <button className="send" type="submit">Pay to keep it</button>
+          <button className="send" type="submit">Next</button>
         </form>
       </div>}
-      {step === 'pay' && way && <div className="sbody">
+      {step === 'pay' && <div className="sbody">
         {steps()}
-        <h3 id="dw-sheet">Pay to keep it</h3>
-        <p className="when num">{title}</p>
+        <h3 id="dw-sheet">Keep your {thing}</h3>
+        <p className="when num">{what} · {pesoWhole(total)}</p>
         <form className="form" noValidate onSubmit={send}>
-          <Seg label="How much" value={half ? 'half' : 'all'} onPick={k => setHalf(k === 'half')}
-            items={[{ k: 'half', t: 'Half', s: pesoWhole(deposit) }, { k: 'all', t: 'All', s: pesoWhole(total) }]} />
-          {folded && shot ? <div className="paid"><img src={shot.url} alt="" /><div><b>Sent by {way.label}</b><span className="num">{pesoWhole(amount)}</span></div>
-            <button type="button" onClick={() => setFolded(false)}>Change</button></div> : <>
-          <div><div className="lab">Send it by</div>
-            <Seg label="Send it by" value={way.k} onPick={setWayK} items={ways.map(w => ({ k: w.k, t: w.label }))} /></div>
-          {way.k === 'gcash'
-            // The hotel's GCash QR, redrawn from the card at the desk (Sebastian, 2026-11-21, the mock's "A · Beside").
-            // A guest paying on this same phone can't scan its own screen, so Save QR hands GCash's "Upload QR" the
-            // image; tapping the code opens it big for a second phone. The image is for the account in the settings
-            // on that day: a new GCash account needs a new gcash-qr.png / .svg.
-            ? <div className="acct qr" key={way.k}>
-                <button type="button" className="qrb" onClick={() => setBigQr(true)} aria-label="Show the GCash QR code big"><img src="/website/gcash-qr.svg" alt="" /></button>
-                <div className="who"><span>{way.name}</span><b className="num">{way.number}</b><span className="num">Send exactly {pesoWhole(amount)}</span>
-                  <div className="acts"><Copy text={way.number.replace(/\D/g, '')} /><a className="copy" href="/website/gcash-qr.png" download="Daweez GCash QR.png">Save QR</a></div></div>
+          <button type="button" className={'opt' + (later ? '' : ' on')} aria-pressed={!later} onClick={() => { setLater(false); setErrs({}) }}>
+            <i /><div><b>Pay half now <span className="num">{pesoWhole(deposit)}</span></b><span className="sure">✓ The {thing} {stay.length > 1 ? 'are' : 'is'} yours</span></div></button>
+          {visitDays.length > 0 && <button type="button" className={'opt' + (later ? ' on' : '')} aria-pressed={later} onClick={() => { setLater(true); setErrs({}) }}>
+            <i /><div><b>Pay at the hotel</b><span className="risk">Until it's paid, someone else can take the {thing}</span></div></button>}
+          {later
+            ? <div className="grow" key="later">
+                <div className="f"><div className="lab">When can you come by?</div>
+                  <div className="vdays">{visitDays.map((d, k) => {
+                    const t = parseDay(d)
+                    return <button type="button" key={d} aria-pressed={payOn === d} onClick={() => { setPayOn(d); setErrs({}) }}>
+                      <small>{k ? t.toLocaleDateString('en-PH', { weekday: 'short' }) : 'Today'}</small><b className="num">{t.getDate()}</b><small>{t.toLocaleDateString('en-PH', { month: 'short' })}</small></button>
+                  })}</div>
+                  <span className="faint small">Up to a month from today, and before your stay.</span>
+                  {errs.day && <span className="err">{errs.day}</span>}</div>
+                {payOn && <div className="hold" key={payOn}><span className="faint">Pay the half at the front desk</span><b className="num">{pesoWhole(deposit)} on {longDay(payOn)}</b><span className="faint">We'll text you to confirm.</span></div>}
               </div>
-            : <div className="acct" key={way.k}><div><span>{way.name}</span><b className="num">{way.number}</b><span className="num">Send exactly {pesoWhole(amount)}</span></div><Copy text={way.number.replace(/\D/g, '')} /></div>}
-          {bigQr && <div className="bigqr" onClick={() => setBigQr(false)}>
-            <div className="card" onClick={e => e.stopPropagation()}><img src="/website/gcash-qr.svg" alt="The hotel's GCash QR code" />
-              <b>{way.name}</b><span className="num">Send exactly {pesoWhole(amount)}</span>
-              <div className="acts"><a className="copy" href="/website/gcash-qr.png" download="Daweez GCash QR.png">Save QR</a><button type="button" className="copy" onClick={() => setBigQr(false)}>Close</button></div></div>
-          </div>}
-          <div className="f">
-            <label className={'drop' + (shot ? ' has' : '')}>
-              <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={e => addShot(e.target.files?.[0])} />
-              {shot ? <><img src={shot.url} alt="" /><div><b>Screenshot added</b><span>Tap to change it</span></div></>
-                : <><div className="ic" aria-hidden="true">⤒</div><div><b>Add the screenshot</b><span>The {way.label} receipt, after you send</span></div></>}
-            </label>
-            {errs.shot && <span className="err">{errs.shot}</span>}
-          </div></>}
-          <div className="f"><label htmlFor="dw-rf">Reference no.{reading === 'done' && <span className="readtag">✓ Read from your screenshot</span>}</label>
-            <input id="dw-rf" className={'num' + (reading === 'reading' ? ' reading' : '')} inputMode="numeric"
-              placeholder={reading === 'reading' ? 'Reading your screenshot…' : 'e.g. 9012 345 678 901'} value={refNo}
-              onChange={e => { typed.current = true; setReading(''); setRefNo(e.target.value) }} />
-            {errs.ref && <span className="err">{errs.ref}</span>}</div>
+            : <div className="grow" key="now">{payNow}</div>}
           {errs.form && <p className="err">{errs.form}</p>}
-          <button className="send" type="submit">Send payment</button>
+          <button className="send" type="submit">Send request</button>
           <button className="back" type="button" onClick={() => { setErrs({}); setStep('you') }}>Back</button>
         </form>
       </div>}
       {step === 'sent' && <div className="sbody done-box">
         {steps()}
         <svg className="tick" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" /><path d="M22 37l10 10 19-21" /></svg>
-        <h3>Payment sent</h3>
+        <h3>{later ? 'Request sent' : 'Payment sent'}</h3>
       </div>}
     </div>
     {look && photo && <Lightbox src={photo} from={look} onClose={() => setLook(null)} />}

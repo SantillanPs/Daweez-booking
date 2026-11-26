@@ -17,7 +17,7 @@ import { showToast } from '../../utils/toast'
 import { venueHoursOf } from '../../utils/venueHours'
 import { ChannelAlert } from '../../utils/channelStay'
 import { ChannelMark } from './ChannelMark'
-import { BookingRequest } from '../../utils/bookingRequests'
+import { BookingRequest, unitsOf } from '../../utils/bookingRequests'
 import { RequestMark } from './RequestBell'
 import { getRateConfig, saveRateConfig } from '../../utils/rateConfig'
 import { useConnection } from '../../utils/connection'
@@ -599,7 +599,7 @@ export const TimelineGrid = React.memo(
       // nothing: a booking made over it since simply draws in its place.
       const start = daysList[0]?.time ?? 0
       const halfAt = (iso: string) => Math.round((parseDay(iso).getTime() - start) / 86400000) * 2 + 1
-      const asked = (requests || []).filter(r => r.room_id === id).map(r => ({ r, from: halfAt(r.check_in), to: halfAt(r.check_out) }))
+      const asked = (requests || []).filter(r => unitsOf(r).includes(id)).map(r => ({ r, from: halfAt(r.check_in), to: halfAt(r.check_out) }))
       const requestAt = (k: number) => asked.find(a => k >= a.from && k < a.to)?.r
       let k = 0
       while (k < width) {

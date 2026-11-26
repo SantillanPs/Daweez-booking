@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
-import { BookingRequest, paymentShotUrl, referenceSeen } from '../../utils/bookingRequests'
+import { BookingRequest, paymentShotUrl, referenceSeen, unitsOf } from '../../utils/bookingRequests'
 import { getPaymentAccounts } from '../../utils/paymentAccounts'
 import { pesoWhole, shortDay } from '../../utils/helpers'
 import { RequestMark } from './RequestBell'
@@ -53,10 +53,12 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
   onBook: (r: BookingRequest) => void
   onDecline: (r: BookingRequest, note: string) => void
 }) {
-  const room = rooms.find(x => x.id === r.room_id)
-  const venue = venues.find(x => x.id === r.room_id)
-  const unit = room ? 'Room ' + room.room_number : venue?.name || 'Room'
-  const free = room ? isRoomAvailable(r.room_id, r.check_in, r.check_out, bookings) : isVenueRangeAvailable(r.room_id, r.check_in, r.check_out, bookings)
+  const nameOf = (id: string) => {
+    const room = rooms.find(x => x.id === id)
+    return room ? 'Room ' + room.room_number : venues.find(x => x.id === id)?.name || 'Room'
+  }
+  // A website request can ask for several rooms (2026-11-26); each one is checked.
+  const taken = unitsOf(r).filter(u => !(rooms.some(x => x.id === u) ? isRoomAvailable(u, r.check_in, r.check_out, bookings) : isVenueRangeAvailable(u, r.check_in, r.check_out, bookings)))
   const [removing, setRemoving] = useState(false)
   const [copied, setCopied] = useState(false)
   const paid = !!r.pay_amount
@@ -68,7 +70,7 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
   useEffect(() => { if (r.pay_reference) referenceSeen(r.pay_reference, r.id).then(setSeen, () => setSeen(null)) }, [r.pay_reference, r.id])
   const to = paid ? sentTo(r) : null
   const problems = [
-    !free && unit + ' was taken on these dates',
+    taken.length > 0 && taken.map(nameOf).join(' + ') + (taken.length > 1 ? ' were' : ' was') + ' taken on these dates',
     to && !to.ours && 'Sent to ' + to.to + ', not the hotel',
     seen && 'Same reference as ' + seen,
   ].filter(Boolean) as string[]
@@ -81,7 +83,7 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div aria-hidden="true" onClick={onClose} className="absolute inset-0 bg-slate-900/50 animate-in fade-in duration-200 motion-reduce:animate-none" />
       <div role="dialog" aria-label={'Request from ' + r.guest_name} className="bw-arrive relative w-full max-w-[24rem] max-h-[88vh] overflow-y-auto rounded-xl bg-card p-5 grid gap-4 shadow-softLg">
-        <NewTag id="request-simple" />
+        <NewTag id="request-pay-day" />
         <div className="grid gap-0.5">
           <div className="-mt-2 -mr-2 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
             <RequestMark source={r.source} />
@@ -97,6 +99,8 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
               <span aria-live="polite" className={'[grid-area:1/1] text-emerald-700 transition-[opacity,transform] duration-200 ' + (copied ? '' : 'opacity-0 translate-y-1.5')}>Copied</span>
             </button>
           </div>
+          <p className="text-[14px] font-semibold text-main">{unitsOf(r).map(nameOf).join(' + ')}
+            <span className="font-normal text-muted"> · {shortDay(r.check_in)} → {shortDay(r.check_out)}{r.guests ? ` · ${r.guests} ${r.guests > 1 ? 'guests' : 'guest'}` : ''}{r.arrival ? ` · arriving ${r.arrival}` : ''}</span></p>
           {r.companions?.length ? <p className="text-[14px] font-semibold text-main"><span className="text-muted">with</span> {r.companions.join(', ')}</p> : null}
           {r.note && <p className="text-[13px] text-muted">{r.note}</p>}
         </div>
@@ -113,6 +117,13 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
               {r.pay_reference && <span className="mt-1 text-[15px] font-bold tabular-nums text-main break-all"><span className="mr-1.5 text-[12px] font-semibold text-muted">ref</span>{r.pay_reference}</span>}
               {to?.ours && <span className="text-[13px] font-semibold text-main"><span className="mr-1.5 text-[12px] text-muted">to</span>{to.to} <span className="text-emerald-700">{'✓'}</span></span>}
             </div>
+          </div>
+        ) : r.pay_on && r.quoted_total ? (
+          // Paying at the hotel (the website, 2026-11-26): nothing is paid yet, and the guest named the day they come.
+          <div className="rounded-xl bg-softbg p-3.5 grid gap-0.5">
+            <span className="text-[12px] font-semibold text-muted">Pays at the front desk</span>
+            <b className="font-display text-[26px] leading-none font-bold tabular-nums text-main">{pesoWhole(r.quoted_total / 2)}</b>
+            <span className="text-[14px] font-semibold text-main">on {shortDay(r.pay_on)}</span>
           </div>
         ) : r.quoted_total ? (
           <div className="flex gap-2.5">

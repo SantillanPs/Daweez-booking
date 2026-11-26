@@ -31,7 +31,7 @@ import { ShortStayAlerts } from './calendar/ShortStayAlerts'
 import { ChannelBell } from './calendar/ChannelBell'
 import { SoldTwicePanel } from './calendar/SoldTwicePanel'
 import { useChannelAlerts } from '../hooks/useChannelAlerts'
-import { BookingRequest, closeBookingRequest, reopenBookingRequest, useBookingRequests } from '../utils/bookingRequests'
+import { BookingRequest, closeBookingRequest, reopenBookingRequest, unitsOf, useBookingRequests } from '../utils/bookingRequests'
 import { RequestBell } from './calendar/RequestBell'
 import { ChatBotSwitch } from './calendar/ChatBotSwitch'
 import { RequestPanel } from './calendar/RequestPanel'
@@ -540,9 +540,9 @@ export function CalendarTab() {
     setHideAsks(hide)
     try { localStorage.setItem('daweez_hide_requests', hide ? '1' : '0') } catch { /* private window: this visit only */ }
   }
-  const askTaken = useMemo(() => new Set(asks.requests.filter(r => rooms.some(x => x.id === r.room_id)
-    ? !isRoomAvailable(r.room_id, r.check_in, r.check_out, bookings)
-    : !isVenueRangeAvailable(r.room_id, r.check_in, r.check_out, bookings)).map(r => r.id)), [asks.requests, rooms, bookings])
+  const askTaken = useMemo(() => new Set(asks.requests.filter(r => unitsOf(r).some(u => rooms.some(x => x.id === u)
+    ? !isRoomAvailable(u, r.check_in, r.check_out, bookings)
+    : !isVenueRangeAvailable(u, r.check_in, r.check_out, bookings))).map(r => r.id)), [asks.requests, rooms, bookings])
   const unitName = (id: string) => {
     const room = rooms.find(r => r.id === id)
     return room ? 'Room ' + room.room_number : venues.find(v => v.id === id)?.name || 'Room'
@@ -551,7 +551,8 @@ export function CalendarTab() {
   const bookRequest = (r: BookingRequest) => {
     setAskOpen(null)
     setBookingAsk(r)
-    setFormSelections({ [r.room_id]: { checkIn: r.check_in, checkOut: r.check_out, type: rooms.some(x => x.id === r.room_id) ? 'room' : 'venue' } })
+    // every room of the request on the one bill (a website request can hold several, 2026-11-26)
+    setFormSelections(Object.fromEntries(unitsOf(r).map(u => [u, { checkIn: r.check_in, checkOut: r.check_out, type: rooms.some(x => x.id === u) ? 'room' : 'venue' } as UnitSel])))
     setFormStayHours(null)
     setShowManualForm(true)
   }

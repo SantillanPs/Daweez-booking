@@ -78,26 +78,23 @@
 
   /* the booking bar lies over the photo's bottom edge */
   & .bar { position: relative; z-index: 5; margin-top: -64px }
-  & .bar form { background: #fff; border-radius: 18px; box-shadow: 0 20px 50px rgba(28,28,28,.16); display: grid; grid-template-columns: 1fr 1fr 1fr auto; padding: 8px; animation: dw-rise .9s .35s var(--ease) both }
+  & .bar form { background: #fff; border-radius: 18px; box-shadow: 0 20px 50px rgba(28,28,28,.16); display: grid; grid-template-columns: 1fr 1fr auto; padding: 8px; animation: dw-rise .9s .35s var(--ease) both }
   & .bar label { display: flex; flex-direction: column; padding: 8px 16px; border-right: 1px solid var(--line); min-width: 0 }
-  & .bar label:nth-child(3) { border-right: 0 }
+  & .bar label:nth-child(2) { border-right: 0 }
   & .bar .date, & .bar .date input { cursor: pointer }
   & .bar .date { border-radius: 12px; transition: background .2s, transform .16s ease-out }
   & .bar .date:hover, & .bar .date:focus-within { background: var(--sand) }
   & .bar .date:active { transform: scale(.98) }
-  /* guests: the browser's arrow is swapped for one that turns while the list is open */
-  & .bar .pick { position: relative }
-  & .bar .pick select { appearance: none; cursor: pointer; padding-right: 22px }
-  & .bar .chev { position: absolute; right: 14px; bottom: 15px; width: 16px; height: 16px; fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; transition: transform .2s var(--ease) }
-  & .bar .pick:focus-within .chev { transform: rotate(180deg) }
-  /* the line under the bar says the new nights as the dates change */
   & .bar .hint { animation: dw-fade .25s var(--ease) backwards }
   & .bar span { font-size: 12px; font-weight: 700; color: var(--ink2); letter-spacing: .06em; text-transform: uppercase }
   & .bar input, & .bar select { border: 0; background: none; padding: 2px 0; font-size: 16px; font-weight: 600; outline: none; min-width: 0; width: 100% }
   & .bar button { border: 0; border-radius: 12px; background: var(--ink); color: #fff; font-weight: 700; padding: 0 26px; transition: transform .15s }
   & .bar button:active { transform: scale(.97) }
+  & .how { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding-left: 8px; font-size: 13px; font-weight: 700; color: var(--ink2) }
+  & .how i { width: 20px; height: 20px; border-radius: 50%; background: var(--gold-soft); color: var(--gold-ink); display: grid; place-items: center; font-style: normal; font-size: 12px; flex: none }
+  & .how hr { flex: 1; max-width: 48px; border: 0; border-top: 1px solid var(--line); margin: 0 }
   & .hint { margin-top: 10px; font-size: 14px; color: var(--ink2); padding-left: 8px }
-  @media (max-width: 720px) { & .bar form { grid-template-columns: 1fr 1fr } & .bar label:nth-child(2) { border-right: 0 } & .bar label:nth-child(3) { grid-column: 1/-1; border-top: 1px solid var(--line) } & .bar button { grid-column: 1/-1; padding: 14px } }
+  @media (max-width: 720px) { & .bar form { grid-template-columns: 1fr 1fr } & .bar label:nth-child(2) { border-right: 0 } & .bar button { grid-column: 1/-1; padding: 14px } }
 
   & section { padding-block: 88px 0 }
   & section[id] { scroll-margin-top: 64px } /* lands under the top bar, not behind it */
@@ -124,7 +121,16 @@
   & .tag { position: absolute; left: 12px; top: 12px; background: rgba(255,255,255,.95); color: var(--ink); border-radius: 99px; padding: 5px 11px; font-size: 13px; font-weight: 700; display: flex; gap: 6px; align-items: center; animation: dw-fade .25s var(--ease) backwards }
   & .tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green) }
   & .tag.busy::before { background: var(--red) }
-  & .cnt { position: absolute; right: 12px; bottom: 12px; background: rgba(28,28,28,.72); color: #fff; border-radius: 99px; padding: 4px 10px; font-size: 12px; font-weight: 600 }
+  /* the price with breakfast, on the photo so it takes no row of its own (Sebastian, 2026-11-23) */
+  & .bfp { position: absolute; left: 12px; bottom: 12px; background: rgba(255,255,255,.92); color: var(--gold-ink); border-radius: 99px; padding: 4px 11px 4px 9px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 5px; transition: transform .35s var(--ease) }
+  & .bfp svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transform-origin: 40% 80%; transition: transform .35s var(--ease) }
+  & .room:not(.busy):hover .bfp { transform: translateY(-3px) }
+  & .room:not(.busy):hover .bfp svg { transform: rotate(-14deg) }
+  /* the room's one action, on its photo (2026-11-26) */
+  & .res { position: absolute; right: 12px; bottom: 12px; background: var(--ink); color: #fff; border-radius: 99px; padding: 7px 15px; font-size: 13px; font-weight: 700; transition: transform .16s ease-out }
+  & .room:active .res { transform: scale(.95) }
+  @media (hover: hover) and (pointer: fine) { & .room:not(.busy):hover .res { background: var(--gold-ink) } }
+  & .cnt { position: absolute; right: 12px; top: 12px; background: rgba(28,28,28,.72); color: #fff; border-radius: 99px; padding: 4px 10px; font-size: 12px; font-weight: 600 }
   & .room .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px }
   & .room h3 { font-size: 21px; font-weight: 700 }
   & .pr { font-weight: 700; white-space: nowrap }
@@ -309,11 +315,61 @@
   & .f input::placeholder { color: #9A968D }
   & .f input:focus { border-color: var(--gold) }
   & .err { font-size: 13px; color: var(--red); animation: dw-err .2s var(--ease) backwards }
+  /* the guests counter: the switch's box, without the switch's button styles */
+  & .count { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 8px 7px 14px; border: 1px solid var(--line); border-radius: 10px }
+  & .step { display: flex; align-items: center; gap: 4px }
+  & .step button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: #fff; font-size: 20px; line-height: 1; color: var(--ink); cursor: pointer; transition: transform .16s ease-out, opacity .2s }
+  & .step button:active { transform: scale(.9) }
+  & .step button[aria-disabled="true"] { opacity: .35; cursor: default }
+  & .step b { min-width: 28px; text-align: center; font-size: 17px; animation: dw-fade .25s var(--ease) }
   & .switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px }
   & .switch button { width: 46px; height: 28px; border-radius: 99px; border: 0; background: #D8D4CB; position: relative; transition: background .25s; flex: none }
   & .switch button::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .3s var(--ease) }
   & .switch button[aria-pressed="true"] { background: var(--gold) }
   & .switch button[aria-pressed="true"]::after { transform: translateX(18px) }
+  /* the rooms of the stay: × takes one off, "+ Add a room" slides the other free rooms open (2026-11-26) */
+  & .stay { border: 1px solid var(--line); border-radius: 12px; overflow: hidden }
+  & .stay .r { display: flex; align-items: center; gap: 12px; padding: 10px 8px 10px 12px; animation: dw-pop .3s var(--ease) backwards }
+  & .stay .r + .r { border-top: 1px solid var(--line) }
+  & .stay .r img, & .stay .r .ph { width: 46px; height: 36px; border-radius: 8px; object-fit: cover; background: var(--gold-soft); flex: none }
+  & .stay .r div { flex: 1; min-width: 0 }
+  & .stay .r b { display: block; font-size: 15px }
+  & .stay .r span { font-size: 13px; color: var(--ink2) }
+  & .stay .rm { all: unset; cursor: pointer; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--ink2); font-size: 20px; transition: transform .16s ease-out }
+  & .stay .rm:active { transform: scale(.9) }
+  & .stay .add { all: unset; cursor: pointer; display: block; box-sizing: border-box; width: 100%; padding: 12px; font-weight: 700; font-size: 14px; color: var(--gold-ink); border-top: 1px dashed var(--line) }
+  & .pick { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .35s var(--ease) }
+  & .pick.open { grid-template-rows: 1fr }
+  & .pick > div { overflow: hidden }
+  & .pick .rchips { padding: 0 12px 12px }
+  & .rchips { display: flex; gap: 6px; flex-wrap: wrap }
+  & .rchips button { all: unset; cursor: pointer; border: 1px solid var(--line); border-radius: 99px; padding: 9px 14px; font-size: 14px; font-weight: 600; transition: background .2s, color .2s, border-color .2s, transform .16s ease-out }
+  & .rchips button:active { transform: scale(.95) }
+  & .rchips button small { color: var(--ink2); font-weight: 500 }
+  & .rchips button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink) }
+  & .rchips button:focus-visible, & .stay button:focus-visible, & .opt:focus-visible, & .vdays button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
+  /* pay now, or pick a day to pay at the hotel (2026-11-26) */
+  & .opt { all: unset; cursor: pointer; display: flex; gap: 12px; align-items: flex-start; padding: 14px; border: 1.5px solid var(--line); border-radius: 14px; transition: border-color .2s, transform .16s ease-out }
+  & .opt:active { transform: scale(.98) }
+  & .opt i { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); flex: none; margin-top: 2px; box-sizing: border-box; transition: border-color .2s, box-shadow .2s }
+  & .opt.on { border-color: var(--ink) }
+  & .opt.on i { border-color: var(--ink); box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 10px var(--ink) }
+  & .opt b { display: block; font-size: 16px }
+  & .opt b .num { color: var(--gold-ink) }
+  & .opt .sure { font-size: 13px; font-weight: 700; color: var(--green) }
+  & .opt .risk { font-size: 13px; color: var(--red) }
+  & .grow { display: grid; gap: 14px; animation: dw-pop .3s var(--ease) backwards }
+  & .vdays { display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 2px 4px; scrollbar-width: none }
+  & .vdays::-webkit-scrollbar { display: none }
+  & .vdays button { all: unset; cursor: pointer; scroll-snap-align: start; flex: none; width: 52px; padding: 8px 0; border: 1px solid var(--line); border-radius: 12px; text-align: center; display: grid; transition: transform .16s ease-out, background .2s, color .2s }
+  & .vdays button:active { transform: scale(.94) }
+  & .vdays small { font-size: 11px; font-weight: 600; color: var(--ink2) }
+  & .vdays b { font: 700 18px var(--display) }
+  & .vdays button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink) }
+  & .vdays button[aria-pressed="true"] small { color: #ddd }
+  & .small { font-size: 13px }
+  & .hold { display: grid; gap: 2px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; font-size: 14px; animation: dw-pop .3s var(--ease) backwards }
+  & .hold b { font: 700 18px var(--display) }
   & .sum { display: grid; gap: 4px; padding: 14px; background: var(--sand); border-radius: 12px; font-size: 15px }
   & .sum div { display: flex; justify-content: space-between; gap: 12px }
   & .sum .tot { font: 700 22px var(--display); margin-top: 4px }

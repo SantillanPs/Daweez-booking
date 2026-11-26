@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Bell, Eye, EyeOff, Globe } from 'lucide-react'
-import { BookingRequest } from '../../utils/bookingRequests'
+import { BookingRequest, unitsOf } from '../../utils/bookingRequests'
 import { chime } from '../../utils/chime'
 import { shortDay } from '../../utils/helpers'
 import { markSeen } from '../../utils/newMarks'
@@ -86,7 +86,7 @@ export function RequestBell({ requests, taken, hidden, onHide, unitName, onOpen 
               <button type="button" onClick={() => { setOpen(false); onOpen(r) }}
                 className="w-full min-h-11 flex items-center gap-2 rounded-lg px-2 text-left text-[13px] hover:bg-softbg active:scale-[0.98] transition-[background-color,transform] cursor-pointer">
                 <RequestMark source={r.source} />
-                <b className="font-semibold text-main">{unitName(r.room_id)}</b>
+                <b className="font-semibold text-main">{unitsOf(r).map(unitName).join(' + ')}</b>
                 <span className="text-muted">{shortDay(r.check_in)} → {shortDay(r.check_out)}</span>
                 {taken.has(r.id) && <span className="rounded-full bg-danger-50 px-1.5 text-[11px] font-bold text-danger-600">Taken</span>}
                 <span className="ml-auto pl-3 max-w-[40%] truncate text-[12px] font-bold text-gold-800">{r.guest_name.split(' ')[0]}</span>
