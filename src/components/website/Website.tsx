@@ -327,7 +327,7 @@ function Site() {
       <header className="hero" id="top" ref={heroRef}>
         <img className="bg" src="/website/hero.webp" alt="Daweez Pension House at dusk" />
         <div className="wrap">
-          <h1>Rest easy in <em>Tandag City.</em></h1>
+          <h1>Where comfort feels <em>like home.</em></h1>
           <p>10 rooms, a vacation house and a garden for your event.</p>
           {whole && <a className="ribbon" href="#exclusive"><b>Exclusive</b>Have the whole house →</a>}
         </div>
