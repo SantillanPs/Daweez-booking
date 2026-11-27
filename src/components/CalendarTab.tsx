@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useDashboardData } from './DashboardContext'
 import { Booking, PaymentRecord } from '../types/booking'
 import { isRoomAvailable, isVenueRangeAvailable, EXCLUSIVE_ID } from '../utils/availability'
-import { dateToString, normalizeVenueId, parseDay, shortDay } from '../utils/helpers'
+import { dateToString, normalizeVenueId, parseDay, shortDay, pesoWhole } from '../utils/helpers'
 import { breakfastOn, isConfirmed, wantsBreakfastToday, withBreakfastTime, saveBreakfastChoices, breakfastAskOpen, BREAKFAST_ASK_UNTIL } from '../utils/breakfastChoice'
 import { useQueryClient } from '@tanstack/react-query'
 import { SourceContext, sourcesOf, useRequestSources } from '../utils/bookingSource'
@@ -31,7 +31,7 @@ import { ShortStayAlerts } from './calendar/ShortStayAlerts'
 import { ChannelBell } from './calendar/ChannelBell'
 import { SoldTwicePanel } from './calendar/SoldTwicePanel'
 import { useChannelAlerts } from '../hooks/useChannelAlerts'
-import { BookingRequest, closeBookingRequest, reopenBookingRequest, unitsOf, useBookingRequests } from '../utils/bookingRequests'
+import { BookingRequest, closeBookingRequest, confirmRequestPayment, reopenBookingRequest, unitsOf, useBookingRequests } from '../utils/bookingRequests'
 import { RequestBell } from './calendar/RequestBell'
 import { ChatBotSwitch } from './calendar/ChatBotSwitch'
 import { RequestPanel } from './calendar/RequestPanel'
@@ -103,6 +103,8 @@ export function CalendarTab() {
   const [askOpen, setAskOpen] = useState<BookingRequest | null>(null)
   // The request whose new bill is open: booked, it is closed with the booking it became.
   const [bookingAsk, setBookingAsk] = useState<BookingRequest | null>(null)
+  /** "Confirm & book": the request's bill saves itself unseen and only the booking panel opens. */
+  const [bookNow, setBookNow] = useState(false)
   const deskBusy = showManualForm || showLogOld || !!selectedExtendBooking || !!blockTarget || !!billOf || !!askOpen
   React.useEffect(() => {
     setDeskBusy(deskBusy)
@@ -548,13 +550,48 @@ export function CalendarTab() {
     return room ? 'Room ' + room.room_number : venues.find(v => v.id === id)?.name || 'Room'
   }
   // Booking a request is the usual new bill, its room, dates, name and number already written in.
-  const bookRequest = (r: BookingRequest) => {
+  const bookRequest = (r: BookingRequest, now = false) => {
     setAskOpen(null)
     setBookingAsk(r)
+    setBookNow(now)
     // every room of the request on the one bill (a website request can hold several, 2026-11-26)
     setFormSelections(Object.fromEntries(unitsOf(r).map(u => [u, { checkIn: r.check_in, checkOut: r.check_out, type: rooms.some(x => x.id === u) ? 'room' : 'venue' } as UnitSel])))
     setFormStayHours(null)
     setShowManualForm(true)
+  }
+  // **Confirmed onto the booking the desk already made** (Sebastian, 2026-11-27): the first website guest called and was
+  // booked by hand, so the request becomes that booking (the guest's page turns to "You're booked") and its payment goes
+  // on that bill, unless the desk had typed it in already. Nothing new is booked.
+  const confirmOnto = (r: BookingRequest, booking: Booking, addMoney: boolean) => {
+    setAskOpen(null)
+    asks.answered(r.id)
+    void (async () => {
+      try {
+        await closeBookingRequest(r.id, 'booked', booking.id)
+        void requestSources.refetch()
+      } catch { asks.refresh(); showToast('Could not save that. Please try again.', 'error'); return }
+      if (!addMoney || !r.pay_amount) { showToast('Confirmed · ' + r.guest_name, 'success'); return }
+      try {
+        const rows = groupOf(booking, bookings)
+        const number = await freshReceiptNumber(rows[0], allBookings)
+        const paid = payOnBill(rows, {
+          amount: r.pay_amount, method: r.pay_method || 'GCash', reference: r.pay_reference || '', paidAt: r.created_at, number,
+          purpose: r.quoted_total && r.pay_amount >= r.quoted_total ? 'Full payment' : 'Deposit',
+        })
+        for (const b of paid) await updateBooking(b)
+        showToast('Confirmed · ' + pesoWhole(r.pay_amount) + ' on the bill', 'success')
+      } catch {
+        showToast('Confirmed, but the payment is not on the bill yet. Write it on the bill.', 'error')
+      }
+    })()
+  }
+  // "Confirm only": the money was found, the guest is told; the request stays in the bell until it is booked.
+  const confirmOnly = (r: BookingRequest) => {
+    setAskOpen(null)
+    confirmRequestPayment(r.id).then(
+      () => { asks.refresh(); showToast('Payment confirmed · ' + r.guest_name, 'success') },
+      () => showToast('Could not save that. Please try again.', 'error'),
+    )
   }
   const declineRequest = (r: BookingRequest, note: string) => {
     setAskOpen(null)
@@ -576,7 +613,7 @@ export function CalendarTab() {
   const fmtBlockDate = shortDay
 
   const closeManualForm = () => {
-    setShowManualForm(false); setFormSelections({}); setFormStayHours(null); setBookingAsk(null)
+    setShowManualForm(false); setFormSelections({}); setFormStayHours(null); setBookingAsk(null); setBookNow(false)
     // Once the billing statement of an edit is closed, the booking opens again
     // in the quick view (card k134). A new booking does not ask for this.
     const created = takeFocusedBooking()
@@ -647,7 +684,8 @@ export function CalendarTab() {
 
       {askOpen && (
         <RequestPanel request={askOpen} rooms={rooms} venues={venues} bookings={bookings}
-          onClose={() => setAskOpen(null)} onBook={bookRequest} onDecline={declineRequest} />
+          onClose={() => setAskOpen(null)} onBook={r => bookRequest(r)} onBookNow={r => bookRequest(r, true)}
+          onConfirmOnto={confirmOnto} onConfirmOnly={confirmOnly} onDecline={declineRequest} />
       )}
 
       <ShortStayAlerts due={timeUpDue} rooms={rooms} venues={venues} onOut={timeUpOut} onMore={timeUpMore} />
@@ -726,6 +764,7 @@ export function CalendarTab() {
             initialStayHours={formStayHours ?? undefined}
             initialStayHalf={formStayHalf}
             initialGuest={bookingAsk ? { name: bookingAsk.guest_name, phone: bookingAsk.phone, companions: bookingAsk.companions } : undefined}
+            autoBook={!!bookingAsk && bookNow}
             // Booked: the panel opens with its one bill over it, ready for the money.
             onBooked={rows => {
               // A request booked: it leaves the bell and the calendar, and remembers the booking it became.
@@ -735,7 +774,10 @@ export function CalendarTab() {
                 closeBookingRequest(ask.id, 'booked', rows[0].id).then(() => requestSources.refetch(), asks.refresh)
               }
               closeManualForm()
-              const open = (list: Booking[]) => { const first = list.find(b => b.id === rows[0].id) || rows[0]; setSelectedExtendBooking(first); setBillOf(first) }
+              // Booked at once: the panel opens, the bill does not (the guest's details were all there).
+              const now = bookNow
+              if (now) showToast('Booked · ' + (ask?.guest_name || rows[0].guest_name), 'success')
+              const open = (list: Booking[]) => { const first = list.find(b => b.id === rows[0].id) || rows[0]; setSelectedExtendBooking(first); if (!now) setBillOf(first) }
               if (!ask?.pay_amount) { open(rows); return }
               // **A website guest paid before asking** (Sebastian, 2026-11-17): the desk found it in the app and
               // pressed "It came in", so the payment goes on the new bill, dated when the guest sent it.

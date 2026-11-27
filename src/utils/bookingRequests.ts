@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import { Booking, PaymentRecord } from '../types/booking'
+import { groupOf } from './bookingGroup'
+import { onLead } from './bookingBalance'
 
 // **A booking request** (2026-11-12): a guest asking on Messenger or WhatsApp (our bot) or on the website. It is
 // never a booking: the desk turns it into one on a bill, or turns it down (the owner: "the system
@@ -38,10 +41,39 @@ export interface BookingRequest {
   arrival?: string | null
   /** and, for a guest paying at the hotel, the day they said they would come to pay the half. */
   pay_on?: string | null
+  /** "Confirm only" (2026-11-27): the desk found the money; the guest is told, nothing is booked yet. */
+  pay_confirmed_at?: string | null
 }
 
 /** Every room (or the venue) a request asks for, the first one first. */
 export const unitsOf = (r: BookingRequest) => [r.room_id, ...(r.more_rooms || [])]
+
+const digitsOf = (v?: string | null) => (v || '').replace(/\D/g, '')
+const firstName = (v: string) => v.trim().toLowerCase().split(/\s+/)[0] || ''
+
+/** **The booking the desk already made for this request** (Sebastian, 2026-11-27): the first website guest called,
+ *  the staff booked her by hand and never saw the request. One of the request's rooms on overlapping dates, under the
+ *  same first name or holding the same payment reference. `moneyOn` is the receipt that already holds the guest's
+ *  reference, when the desk typed it in too. */
+export function bookedAlready(r: BookingRequest, bookings: Booking[]): { booking: Booking; sameName: boolean; sameDates: boolean; moneyOn: PaymentRecord | null } | null {
+  const ref = digitsOf(r.pay_reference)
+  const units = unitsOf(r)
+  for (const b of bookings) {
+    if (b.status === 'blocked' || !units.includes(b.room_id || b.venue_id || '')) continue
+    if (!(b.check_in < r.check_out && r.check_in < b.check_out)) continue
+    const bill = groupOf(b, bookings)
+    const moneyOn = ref.length >= 4 ? bill.flatMap(x => x.payment_records || []).find(p => digitsOf(p.reference) === ref) || null : null
+    const sameName = !!firstName(r.guest_name) && firstName(b.guest_name) === firstName(r.guest_name)
+    if (!sameName && !moneyOn) continue
+    return { booking: onLead(bill)[0] || b, sameName, sameDates: b.check_in === r.check_in && b.check_out === r.check_out, moneyOn }
+  }
+  return null
+}
+
+export async function confirmRequestPayment(id: string): Promise<void> {
+  const { error } = await supabase.rpc('confirm_request_payment', { p_id: id })
+  if (error) throw error
+}
 
 /** A short-lived link to a payment screenshot; only the desk may look. */
 export async function paymentShotUrl(path: string): Promise<string | null> {

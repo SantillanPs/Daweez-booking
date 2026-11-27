@@ -134,7 +134,7 @@ export function Website() {
   return r ? <RequestStatus id={r} /> : <Site />
 }
 
-type Status = { status: 'open' | 'booked' | 'declined'; place: string; check_in: string; check_out: string; pay_amount: number | null; pay_method: string; pay_reference: string; pay_on: string | null; quoted_total: number | null } | null
+type Status = { status: 'open' | 'booked' | 'declined'; pay_confirmed?: boolean; place: string; check_in: string; check_out: string; pay_amount: number | null; pay_method: string; pay_reference: string; pay_on: string | null; quoted_total: number | null } | null
 
 /* The page a guest lands on after paying (Sebastian, 2026-11-19, the Quiet mock): one line, the money, and
    "If we can't reserve it, we'll call you." It says nothing about the desk checking, only what comes next.
@@ -167,7 +167,7 @@ function RequestStatus({ id }: { id: string }) {
           <svg viewBox="0 0 84 84"><circle className="bg" cx="42" cy="42" r="38" /><circle className="fg" cx="42" cy="42" r="38" /></svg>
           <i>{s === 'open' ? '½' : s === 'booked' ? '✓' : '!'}</i>
         </div>
-        <h1>{s === 'open' && toPay ? 'Request sent' : s === 'open' ? 'Payment received' : s === 'booked' ? "You're booked" : "We couldn't reserve it"}</h1>
+        <h1>{s === 'open' && toPay ? 'Request sent' : s === 'open' ? (data.pay_confirmed ? 'Payment confirmed' : 'Payment received') : s === 'booked' ? "You're booked" : "We couldn't reserve it"}</h1>
         <p className="sub">{s === 'open' && toPay ? `Come to the front desk on ${longDay(data.pay_on!)} to pay the half. Until it's paid, someone else can take ${data.place.startsWith('Rooms') ? 'the rooms' : data.place.startsWith('Room') ? 'the room' : 'the day'}.`
           : s === 'open' ? `We'll text you as soon as ${data.place} is reserved for ${day(data.check_in)}.`
           : s === 'booked' ? data.place

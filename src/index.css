@@ -857,3 +857,10 @@ button:hover > .bw-door { transform: translateX(3px) rotate(-8deg); }
 @keyframes inv-fade { from { opacity: 0; } }
 @keyframes inv-line { from { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { [class*="animate-[inv-"] { animation: none !important; } }
+
+/* A website payment found in the app (RequestPanel, 2026-11-27): its last 4 digits typed into slots, then a stamp
+   lands on the screenshot. */
+.rq-slot.pop { animation: bw-unpop 0.2s; }
+.rq-stamp { animation: rq-stamp 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+@keyframes rq-stamp { 0% { opacity: 0; transform: rotate(-24deg) scale(2.2); } 55% { opacity: 1; transform: rotate(-14deg) scale(0.92); } 100% { opacity: 1; transform: rotate(-14deg) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .rq-slot.pop, .rq-stamp { animation: none; } .rq-stamp { transform: rotate(-14deg); } }

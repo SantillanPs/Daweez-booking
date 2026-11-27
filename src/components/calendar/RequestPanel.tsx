@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X, BedDouble, CalendarDays, Moon, Users, Clock, Coffee, Phone, Wallet, Copy } from 'lucide-react'
+import { X, BedDouble, CalendarDays, Moon, Users, Clock, Coffee, Phone, Wallet, Copy, Link2, Check, Receipt, CircleCheck } from 'lucide-react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
-import { BookingRequest, paymentShotUrl, referenceSeen, unitsOf } from '../../utils/bookingRequests'
+import { BookingRequest, bookedAlready, paymentShotUrl, referenceSeen, unitsOf } from '../../utils/bookingRequests'
 import { getPaymentAccounts } from '../../utils/paymentAccounts'
 import { parseDay, pesoWhole, shortDay } from '../../utils/helpers'
 import { RequestMark } from './RequestBell'
@@ -45,21 +45,30 @@ const ago = (iso: string) => {
  * a check that passed says nothing, only a problem gets a line. Confirm opens the new bill already filled in (on other
  * dates if the room was taken since: the request is kept "in case that guest wants to reschedule", 2026-11-15).
  */
-export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onBook, onDecline }: {
+export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onBook, onBookNow, onConfirmOnto, onConfirmOnly, onDecline }: {
   request: BookingRequest
   rooms: Room[]
   venues: Venue[]
   bookings: Booking[]
   onClose: () => void
+  /** Opens the new bill filled in: only when the room was taken, so it can go on other dates. */
   onBook: (r: BookingRequest) => void
+  /** Books it at once from the request, no bill opening (Sebastian, 2026-11-27: "the information of the guest is all there"). */
+  onBookNow: (r: BookingRequest) => void
+  /** The booking the desk already made: the request becomes it, and the payment goes on it unless it is there already. */
+  onConfirmOnto: (r: BookingRequest, booking: Booking, addMoney: boolean) => void
+  /** The money was found; the guest is told, nothing is booked yet. */
+  onConfirmOnly: (r: BookingRequest) => void
   onDecline: (r: BookingRequest, note: string) => void
 }) {
   const nameOf = (id: string) => {
     const room = rooms.find(x => x.id === id)
     return room ? 'Room ' + room.room_number : venues.find(x => x.id === id)?.name || 'Room'
   }
+  // Booked by hand already (the guest called): that booking is not "taken", it is this request.
+  const found = bookedAlready(r, bookings)
   // A website request can ask for several rooms (2026-11-26); each one is checked.
-  const taken = unitsOf(r).filter(u => !(rooms.some(x => x.id === u) ? isRoomAvailable(u, r.check_in, r.check_out, bookings) : isVenueRangeAvailable(u, r.check_in, r.check_out, bookings)))
+  const taken = found ? [] : unitsOf(r).filter(u => !(rooms.some(x => x.id === u) ? isRoomAvailable(u, r.check_in, r.check_out, bookings) : isVenueRangeAvailable(u, r.check_in, r.check_out, bookings)))
   const [removing, setRemoving] = useState(false)
   const [copied, setCopied] = useState(false)
   const paid = !!r.pay_amount
@@ -76,7 +85,7 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
   const problems = ([
     taken.length > 0 && units.length > 1 && { icon: BedDouble, text: taken.map(nameOf).join(' + ') + (taken.length > 1 ? ' were' : ' was') + ' taken on these dates' },
     to && !to.ours && { icon: Wallet, text: 'Sent to ' + to.to + ', not the hotel' },
-    seen && { icon: Copy, text: 'Same reference as ' + seen },
+    seen && !found?.moneyOn && { icon: Copy, text: 'Same reference as ' + seen },
   ].filter(Boolean)) as { icon: typeof X; text: string }[]
   const nights = Math.round((parseDay(r.check_out).getTime() - parseDay(r.check_in).getTime()) / 86400000)
   const allRooms = units.every(isRoom)
@@ -92,6 +101,23 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
         <span className="text-[12px] font-semibold text-muted">{d.toLocaleDateString('en-US', { weekday: 'short' })} · {d.toLocaleDateString('en-US', { month: 'short' })}</span>
       </div>
     )
+  }
+
+  // **The money is found before anything is confirmed** (Sebastian, 2026-11-27: "a payment confirmed step, only then
+  // does it add to the bill"; mock A): the desk types the last 4 of the reference they see in the app. Only once it
+  // matches do the buttons appear. Money already on the booking, or confirmed before, needs nothing.
+  const ref = digits(r.pay_reference)
+  const last4 = ref.slice(-4)
+  const [typed, setTyped] = useState('')
+  const [nope, setNope] = useState(0)
+  const [stamped, setStamped] = useState(false)
+  const checked = !paid || !!found?.moneyOn || !!r.pay_confirmed_at || stamped
+  const type = (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 4)
+    setTyped(d)
+    if (d.length < 4) return
+    if (d === last4) setTimeout(() => setStamped(true), 220)
+    else { setNope(n => n + 1); setTimeout(() => setTyped(''), 380) }
   }
 
   const copy = () => {
@@ -145,18 +171,59 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
           {r.note && !breakfast && <p className="text-[13px] text-muted">{r.note}</p>}
         </div>
 
+        {found && (
+          <div className="bw-arrive grid gap-2 rounded-xl bg-softbg p-3.5">
+            <span className="flex items-center gap-1.5 text-[12px] font-bold text-gold-800"><Link2 className="w-3.5 h-3.5" />Booked already</span>
+            <div className="min-w-0 grid">
+              <b className="text-[15px] font-bold text-main break-words">{found.booking.guest_name} · {nameOf(found.booking.room_id || found.booking.venue_id || '')}</b>
+              <span className="text-[12px] font-semibold text-muted tabular-nums">{shortDay(found.booking.check_in)} → {shortDay(found.booking.check_out)}{found.booking.invoice_number ? ' · #' + found.booking.invoice_number : ''}{found.booking.prepared_by ? ' · ' + found.booking.prepared_by : ''}</span>
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] font-semibold text-emerald-700">
+              {found.sameName && <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" />Same name</span>}
+              {found.sameDates && <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" />Same dates</span>}
+              {found.moneyOn && <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" />Same reference</span>}
+            </div>
+          </div>
+        )}
+
         {paid ? (
-          <div className="flex items-center gap-3.5 rounded-xl bg-gold-100 p-3.5">
+          <div className={'grid gap-3 rounded-xl p-3.5 transition-colors duration-500 ' + (checked ? 'bg-emerald-50' : 'bg-gold-100')}>
+          <div className="flex items-center gap-3.5">
             <button type="button" onClick={() => shot && setZoom(true)} aria-label="See the screenshot"
-              className="w-[64px] h-[88px] shrink-0 overflow-hidden rounded-md bg-gold-200 cursor-zoom-in active:scale-95 transition-transform">
+              className="relative w-[64px] h-[88px] shrink-0 overflow-hidden rounded-md bg-gold-200 cursor-zoom-in active:scale-95 transition-transform">
               {shot && <img src={shot} alt="" className="w-full h-full object-cover object-top animate-in fade-in duration-300" />}
+              {checked && <span className={'absolute left-1 right-1 top-[38%] rounded border-[2.5px] border-emerald-700 bg-white/90 py-0.5 text-center font-display text-[9px] font-extrabold tracking-wide text-emerald-700 ' + (stamped ? 'rq-stamp' : '-rotate-[14deg]')}>RECEIVED</span>}
             </button>
             <div className="min-w-0 grid gap-0.5">
-              <span className="flex items-center gap-1.5 text-[12px] font-semibold text-gold-800"><Wallet className="w-3.5 h-3.5" />Find in {way}</span>
+              {checked
+                ? <span className="flex items-center gap-1.5 text-[12px] font-semibold text-emerald-700"><CircleCheck className="w-3.5 h-3.5" />{found?.moneyOn ? 'On that bill' : 'Found in ' + way}</span>
+                : <span className="flex items-center gap-1.5 text-[12px] font-semibold text-gold-800"><Wallet className="w-3.5 h-3.5" />Find in {way}</span>}
               <b className="font-display text-[30px] leading-none font-bold tabular-nums text-main">{pesoWhole(r.pay_amount!)}</b>
               {r.pay_reference && <span className="mt-1 text-[15px] font-bold tabular-nums text-main break-all"><span className="mr-1.5 text-[12px] font-semibold text-muted">ref</span>{r.pay_reference}</span>}
               {to?.ours && <span className="text-[13px] font-semibold text-main"><span className="mr-1.5 text-[12px] text-muted">to</span>{to.to} <span className="text-emerald-700">{'✓'}</span></span>}
+              {found?.moneyOn && <span className="flex items-center gap-1.5 text-[12px] font-semibold text-emerald-700"><Receipt className="w-3.5 h-3.5" />{found.moneyOn.receipt_number}</span>}
             </div>
+          </div>
+          {!checked && (last4.length === 4 ? (
+            <label className="grid justify-items-center gap-2 border-t-[1.5px] border-dashed border-gold-200 pt-3">
+              <span className="text-[13px] font-semibold text-gold-800">Last 4 of the ref in {way}</span>
+              {/* The shake restarts by remounting the slots only: the box keeps its focus for the next try. */}
+              <span className="relative">
+              <span key={nope} className={'flex items-center gap-1.5 ' + (nope ? 'animate-shake' : '')}>
+                {[0, 1, 2, 3].map(i => (
+                  <span key={i + (typed[i] || '')} className={'rq-slot grid place-items-center w-10 h-12 rounded-lg bg-card font-display text-[20px] font-bold tabular-nums text-main ' + (typed[i] ? 'pop ' : '') + (typed.length === 4 && typed === last4 ? 'ring-[1.5px] ring-emerald-700 text-emerald-700' : i === typed.length ? 'ring-2 ring-gold-600' : 'ring-[1.5px] ring-gold-200')}>{typed[i] || ''}</span>
+                ))}
+              </span>
+                <input value={typed} onChange={e => type(e.target.value)} inputMode="numeric" autoComplete="off" maxLength={4} placeholder="e.g. 5570"
+                  aria-label={'Last 4 digits of the reference in ' + way} className="absolute inset-0 w-full opacity-0 text-[16px] cursor-text" />
+              </span>
+            </label>
+          ) : (
+            // No reference to match against: the desk says they found it.
+            <button type="button" onClick={() => setStamped(true)} className="min-h-11 border-t-[1.5px] border-dashed border-gold-200 text-[14px] font-bold text-gold-800 hover:text-main cursor-pointer">
+              Found it in {way}
+            </button>
+          ))}
           </div>
         ) : r.pay_on && r.quoted_total ? (
           // Paying at the hotel (the website, 2026-11-26): nothing is paid yet, and the guest named the day they come.
@@ -184,9 +251,13 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
           </p>
         ))}
 
-        <button type="button" onClick={() => onBook(r)} className="bw-shine w-full min-h-[54px] rounded-xl bg-gold-400 px-4 text-[16px] font-bold text-ink-900 hover:bg-gold-600 active:scale-[0.98] transition-[background-color,transform] duration-200 cursor-pointer">
-          Confirm
-        </button>
+        {checked && (
+          <button type="button" className={'bw-shine w-full min-h-[54px] rounded-xl bg-gold-400 px-4 text-[16px] font-bold text-ink-900 hover:bg-gold-600 active:scale-[0.98] transition-[background-color,transform] duration-200 cursor-pointer ' + (stamped ? 'bw-arrive' : '')}
+            onClick={() => found ? onConfirmOnto(r, found.booking, paid && !found.moneyOn) : taken.length ? onBook(r) : onBookNow(r)}>
+            <NewTag id="request-confirm" />
+            {found ? 'Confirm on this booking' : taken.length ? 'Confirm' : 'Confirm & book'}
+          </button>
+        )}
 
         <div className="-mt-2 grid">
           <div className={'grid transition-[grid-template-rows] duration-300 ' + (removing ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
@@ -197,9 +268,14 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
               </button>
             </div>
           </div>
-          <button type="button" onClick={() => setRemoving(m => !m)} aria-expanded={removing} className="min-h-9 text-[13px] font-semibold text-muted hover:text-main cursor-pointer">
-            {removing ? 'Keep it' : 'Remove'}
-          </button>
+          <div className="flex justify-center gap-6">
+            {paid && checked && !found && !r.pay_confirmed_at && !removing && (
+              <button type="button" onClick={() => onConfirmOnly(r)} className="min-h-9 text-[13px] font-semibold text-muted hover:text-main cursor-pointer">Confirm only</button>
+            )}
+            <button type="button" onClick={() => setRemoving(m => !m)} aria-expanded={removing} className="min-h-9 text-[13px] font-semibold text-muted hover:text-main cursor-pointer">
+              {removing ? 'Keep it' : 'Remove'}
+            </button>
+          </div>
         </div>
       </div>
       {zoom && shot && <div onClick={() => setZoom(false)} className="fixed inset-0 z-10 grid place-items-center bg-slate-900/80 p-4 cursor-zoom-out animate-in fade-in duration-200 motion-reduce:animate-none">

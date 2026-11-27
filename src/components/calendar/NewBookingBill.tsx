@@ -87,7 +87,7 @@ export interface Discount { pct: boolean; v: number; note?: string }
  * the booking form's own `submitBookingForm`, so the rooms, prices, receipt and rollback are the
  * form's; nothing is saved until Book.
  */
-export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, initialStayHalf, initialGuest, editing, desk, mark: tapped, onSaved, onBooked, onBooking, onClose }: {
+export function NewBookingBill({ rooms, venues, bookings, allBookings, createManualBooking, updateBooking, cancelBooking, deleteBooking, initialSelections, initialStayHours, initialStayHalf, initialGuest, autoBook, editing, desk, mark: tapped, onSaved, onBooked, onBooking, onClose }: {
   rooms: Room[]; venues: Venue[]; bookings: Booking[]; allBookings: Booking[]
   createManualBooking: (params: ManualBookingInput) => Promise<Booking>
   updateBooking: (b: Booking) => Promise<void>
@@ -99,6 +99,8 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   initialStayHalf?: 0 | 1
   /** A guest's request being booked: their name and number are already written in. */
   initialGuest?: { name: string; phone: string; companions?: string[] }
+  /** A request confirmed and booked at once (Sebastian, 2026-11-27): the bill saves itself unseen; it shows only if the save fails. */
+  autoBook?: boolean
   /**
    * A booking being corrected (its whole group): the same bill, filled in from what is saved
    * (Sebastian, 2026-10-23: "if it's on the bill, then editing should also be on the bill").
@@ -635,6 +637,9 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
     focusBookingAfterCreate(result.bookings[0]?.id)
     if (onBooked) onBooked(result.bookings); else onClose()
   }
+
+  const booked = useRef(false)
+  useEffect(() => { if (autoBook && !booked.current) { booked.current = true; void handleBook() } })
 
   // **Saved as it is made** (the one-bill mock: "No Save button"). Every save and every payment
   // waits its turn, and each reads the rows from the cache when it runs, so a payment written
@@ -1192,7 +1197,7 @@ export function NewBookingBill({ rooms, venues, bookings, allBookings, createMan
   const book = ed ? '' : !paid ? 'No deposit' : paidUp ? 'Paid in full' : pesoWhole(paid.amount) + ' deposit'
 
   return createPortal(
-    <div ref={scroller} className="fixed inset-0 z-[60] p-3 sm:p-4 bg-slate-900/50 overflow-y-auto bw-dim">
+    <div ref={scroller} className={'fixed inset-0 z-[60] p-3 sm:p-4 bg-slate-900/50 overflow-y-auto bw-dim' + (autoBook && !error ? ' hidden' : '')}>
       <div ref={sheetRef} className="relative bw-eject bill-snap">
         {floating()}
         <StatementShell label={(ed ? 'Billing statement' : 'New booking') + (to ? ' · agency' : '')} invoiceNumber={ed?.invoice_number || 'numbered when booked'} onClose={ed ? close : onClose}

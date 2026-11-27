@@ -16,6 +16,9 @@ export interface NewFeature {
  * feature wears `<NewTag id=… />` and calls `markSeen(id)` when tapped.
  */
 export const NEW_FEATURES: NewFeature[] = [
+  // A booking request: the money is found first (the last 4 of its reference), then Confirm & book books it at once, Confirm on this booking
+  // joins a booking the desk already made, and Confirm only tells the guest without booking (`RequestPanel`).
+  { id: 'request-confirm', since: '2026-11-27' },
   // A booking request's stay as a ticket: in, nights, out and the room, an icon on each fact (`RequestPanel`).
   { id: 'request-ticket', since: '2026-11-27' },
   // A website request: every room it asks for, when the guest arrives, and the day a guest paying at the hotel comes to pay (`RequestPanel`).
