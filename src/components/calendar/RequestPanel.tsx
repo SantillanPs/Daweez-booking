@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { X, BedDouble, CalendarDays, Moon, Users, Clock, Coffee, Phone, Wallet, Copy } from 'lucide-react'
 import { Booking, Room, Venue } from '../../types/booking'
 import { isRoomAvailable, isVenueRangeAvailable } from '../../utils/availability'
 import { BookingRequest, paymentShotUrl, referenceSeen, unitsOf } from '../../utils/bookingRequests'
 import { getPaymentAccounts } from '../../utils/paymentAccounts'
-import { pesoWhole, shortDay } from '../../utils/helpers'
+import { parseDay, pesoWhole, shortDay } from '../../utils/helpers'
 import { RequestMark } from './RequestBell'
 import { NewTag } from '../NewMark'
 
@@ -39,8 +39,9 @@ const ago = (iso: string) => {
 
 /**
  * **A guest asking for a room.** Kept to the one job (Sebastian, 2026-11-19: "let's redesign this to keep it simpler"):
- * who it is, the money to find in the app, and Confirm or Remove. The stay is not repeated here, since the calendar
- * already shows it as the request's pill. The screenshot is read only for the reference and the account it went to;
+ * who it is, the stay, the money to find in the app, and Confirm or Remove. The stay is a ticket — in, nights, out, the
+ * room — with an icon on each fact (Sebastian, 2026-11-27: "I need to immediately know the room and dates"); a taken
+ * room turns its tile red instead of adding a line. The screenshot is read only for the reference and the account it went to;
  * a check that passed says nothing, only a problem gets a line. Confirm opens the new bill already filled in (on other
  * dates if the room was taken since: the request is kept "in case that guest wants to reschedule", 2026-11-15).
  */
@@ -69,11 +70,29 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
   useEffect(() => { if (r.pay_shot) void paymentShotUrl(r.pay_shot).then(setShot) }, [r.pay_shot])
   useEffect(() => { if (r.pay_reference) referenceSeen(r.pay_reference, r.id).then(setSeen, () => setSeen(null)) }, [r.pay_reference, r.id])
   const to = paid ? sentTo(r) : null
-  const problems = [
-    taken.length > 0 && taken.map(nameOf).join(' + ') + (taken.length > 1 ? ' were' : ' was') + ' taken on these dates',
-    to && !to.ours && 'Sent to ' + to.to + ', not the hotel',
-    seen && 'Same reference as ' + seen,
-  ].filter(Boolean) as string[]
+  const units = unitsOf(r)
+  const isRoom = (id: string) => rooms.some(x => x.id === id)
+  // The tile says which rooms; with one, a red tile is the whole message. With several it cannot say which, so a line does.
+  const problems = ([
+    taken.length > 0 && units.length > 1 && { icon: BedDouble, text: taken.map(nameOf).join(' + ') + (taken.length > 1 ? ' were' : ' was') + ' taken on these dates' },
+    to && !to.ours && { icon: Wallet, text: 'Sent to ' + to.to + ', not the hotel' },
+    seen && { icon: Copy, text: 'Same reference as ' + seen },
+  ].filter(Boolean)) as { icon: typeof X; text: string }[]
+  const nights = Math.round((parseDay(r.check_out).getTime() - parseDay(r.check_in).getTime()) / 86400000)
+  const allRooms = units.every(isRoom)
+  const tile = allRooms ? units.map(u => rooms.find(x => x.id === u)!.room_number).join(' · ') : units.map(nameOf).join(' + ')
+  // The website writes breakfast as the note; it reads better as one of the stay's facts.
+  const breakfast = r.note === 'Wants breakfast'
+  const end = (day: string, label: string) => {
+    const d = parseDay(day)
+    return (
+      <div className="grid gap-px px-2 py-2.5 text-center">
+        <span className="flex items-center justify-center gap-1 text-[11px] font-bold uppercase tracking-wide text-muted"><CalendarDays className="w-3.5 h-3.5 text-gold-600" />{label}</span>
+        <b className="font-display text-[28px] leading-none font-bold tabular-nums text-main">{d.getDate()}</b>
+        <span className="text-[12px] font-semibold text-muted">{d.toLocaleDateString('en-US', { weekday: 'short' })} · {d.toLocaleDateString('en-US', { month: 'short' })}</span>
+      </div>
+    )
+  }
 
   const copy = () => {
     navigator.clipboard?.writeText(r.phone).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1400) }, () => {})
@@ -82,7 +101,7 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div aria-hidden="true" onClick={onClose} className="absolute inset-0 bg-slate-900/50 animate-in fade-in duration-200 motion-reduce:animate-none" />
-      <div role="dialog" aria-label={'Request from ' + r.guest_name} className="bw-arrive relative w-full max-w-[24rem] max-h-[88vh] overflow-y-auto rounded-xl bg-card p-5 grid gap-4 shadow-softLg">
+      <div role="dialog" aria-label={'Request from ' + r.guest_name} className="bw-arrive relative w-full max-w-[24rem] max-h-[88vh] overflow-y-auto overflow-x-hidden rounded-xl bg-card p-5 grid gap-4 shadow-softLg">
         <NewTag id="request-pay-day" />
         <div className="grid gap-0.5">
           <div className="-mt-2 -mr-2 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
@@ -95,14 +114,35 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <h3 className="min-w-0 font-display font-bold text-[22px] leading-tight text-main break-words">{r.guest_name}</h3>
             <button type="button" onClick={copy} title="Copy the number" className="inline-grid text-[15px] font-semibold tabular-nums text-gold-800 active:scale-95 transition-transform cursor-pointer">
-              <span className={'[grid-area:1/1] border-b-[1.5px] border-dashed border-gold-200 transition-[opacity,transform] duration-200 ' + (copied ? 'opacity-0 -translate-y-1.5' : '')}>{r.phone}</span>
+              <span className={'[grid-area:1/1] inline-flex items-center gap-1.5 border-b-[1.5px] border-dashed border-gold-200 transition-[opacity,transform] duration-200 ' + (copied ? 'opacity-0 -translate-y-1.5' : '')}><Phone className="w-4 h-4" />{r.phone}</span>
               <span aria-live="polite" className={'[grid-area:1/1] text-emerald-700 transition-[opacity,transform] duration-200 ' + (copied ? '' : 'opacity-0 translate-y-1.5')}>Copied</span>
             </button>
           </div>
-          <p className="text-[14px] font-semibold text-main">{unitsOf(r).map(nameOf).join(' + ')}
-            <span className="font-normal text-muted"> · {shortDay(r.check_in)} → {shortDay(r.check_out)}{r.guests ? ` · ${r.guests} ${r.guests > 1 ? 'guests' : 'guest'}` : ''}{r.arrival ? ` · arriving ${r.arrival}` : ''}</span></p>
+        </div>
+
+        <div className="grid gap-2.5">
+          <div className="bw-arrive relative grid grid-cols-[1fr_auto_1fr_auto] rounded-xl bg-softbg">
+            <NewTag id="request-ticket" />
+            {end(r.check_in, 'In')}
+            <span className="grid place-items-center content-center gap-0.5 px-0.5 text-[11px] font-bold text-gold-800" title={nights + (nights === 1 ? ' night' : ' nights')}>
+              <Moon className="w-[18px] h-[18px] text-gold-600" />{nights}
+            </span>
+            {end(r.check_out, 'Out')}
+            <span className={'grid place-items-center content-center gap-0.5 rounded-r-xl px-3.5 text-white transition-colors duration-300 ' + (taken.length ? 'bg-danger-600' : 'bg-ink-900')}>
+              <BedDouble className="w-[18px] h-[18px] opacity-70" />
+              <b className={'font-display font-bold leading-none text-center ' + (tile.length > 5 ? 'text-[14px] max-w-[6.5rem]' : 'text-[22px]')}>{tile}</b>
+              <small className="text-[10px] font-bold uppercase opacity-85">{taken.length ? 'Taken' : allRooms ? (units.length > 1 ? 'Rooms' : 'Room') : 'Venue'}</small>
+            </span>
+          </div>
+          {(r.guests || r.arrival || breakfast) && (
+            <div className="flex flex-wrap justify-evenly gap-x-3 gap-y-1.5 text-[13px] font-semibold text-main">
+              {r.guests ? <span className="inline-flex items-center gap-1.5"><Users className="w-[15px] h-[15px] text-gold-600" />{r.guests} {r.guests > 1 ? 'guests' : 'guest'}</span> : null}
+              {r.arrival && <span className="inline-flex items-center gap-1.5"><Clock className="w-[15px] h-[15px] text-gold-600" />{r.arrival}</span>}
+              {breakfast && <span className="inline-flex items-center gap-1.5"><Coffee className="w-[15px] h-[15px] text-gold-600" />Breakfast</span>}
+            </div>
+          )}
           {r.companions?.length ? <p className="text-[14px] font-semibold text-main"><span className="text-muted">with</span> {r.companions.join(', ')}</p> : null}
-          {r.note && <p className="text-[13px] text-muted">{r.note}</p>}
+          {r.note && !breakfast && <p className="text-[13px] text-muted">{r.note}</p>}
         </div>
 
         {paid ? (
@@ -112,7 +152,7 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
               {shot && <img src={shot} alt="" className="w-full h-full object-cover object-top animate-in fade-in duration-300" />}
             </button>
             <div className="min-w-0 grid gap-0.5">
-              <span className="text-[12px] font-semibold text-gold-800">Find in {way}</span>
+              <span className="flex items-center gap-1.5 text-[12px] font-semibold text-gold-800"><Wallet className="w-3.5 h-3.5" />Find in {way}</span>
               <b className="font-display text-[30px] leading-none font-bold tabular-nums text-main">{pesoWhole(r.pay_amount!)}</b>
               {r.pay_reference && <span className="mt-1 text-[15px] font-bold tabular-nums text-main break-all"><span className="mr-1.5 text-[12px] font-semibold text-muted">ref</span>{r.pay_reference}</span>}
               {to?.ours && <span className="text-[13px] font-semibold text-main"><span className="mr-1.5 text-[12px] text-muted">to</span>{to.to} <span className="text-emerald-700">{'✓'}</span></span>}
@@ -138,9 +178,9 @@ export function RequestPanel({ request: r, rooms, venues, bookings, onClose, onB
           </div>
         ) : null}
 
-        {problems.map((p, i) => (
+        {problems.map(({ icon: Icon, text: p }, i) => (
           <p key={p} className="bw-arrive -mt-1 flex items-center gap-2 rounded-lg bg-danger-50 px-3 py-2 text-[13px] font-semibold text-danger-600" style={{ animationDelay: i * 90 + 'ms' }}>
-            <span aria-hidden="true" className="w-5 h-5 shrink-0 grid place-items-center rounded-full bg-white text-[11px] font-bold">!</span>{p}
+            <Icon aria-hidden="true" className="w-4 h-4 shrink-0" />{p}
           </p>
         ))}
 
